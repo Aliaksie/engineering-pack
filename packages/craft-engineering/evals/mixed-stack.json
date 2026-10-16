@@ -1,0 +1,14 @@
+{
+  "id": "mixed-stack",
+  "prompt": "The backend uses Java, the UI uses TypeScript and the worker is Python. Select guidance for changing only the Java endpoint.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Selects JVM/backend guidance."
+    },
+    {
+      "id": "c2",
+      "description": "Does not impose TypeScript compiler rules on Java."
+    }
+  ]
+}

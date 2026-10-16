@@ -1,0 +1,38 @@
+{
+  "name": "craft-capabilities",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Portable AI capability packages: workflows, standards, skills, evals, tools and MCP with host adapters",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "node scripts/validate-capabilities.mjs",
+    "validate:claude": "claude plugin validate ./dist/claude --strict",
+    "lint:scripts": "node scripts/lint-plugin-scripts.mjs",
+    "test": "node scripts/run-tests.mjs",
+    "sync:craft-bar": "node scripts/sync-craft-bar.mjs",
+    "check": "npm run validate && npm run check:craft-bar && npm run build && npm run validate:exports && npm run lint:scripts && npm run test:unit",
+    "check:craft-bar": "node scripts/sync-craft-bar.mjs --check",
+    "build": "node scripts/build.mjs",
+    "build:claude": "node scripts/build.mjs claude",
+    "build:codex": "node scripts/build.mjs codex",
+    "build:agents": "node scripts/build.mjs agents",
+    "validate:exports": "node scripts/validate-marketplace.mjs dist/claude",
+    "pretest": "npm run build",
+    "eval:report": "node scripts/eval-report.mjs",
+    "route": "node runtime/cli.mjs route",
+    "operation": "node runtime/cli.mjs operation",
+    "checkpoint:save": "node runtime/cli.mjs checkpoint-save",
+    "checkpoint:read": "node runtime/cli.mjs checkpoint-read",
+    "build:cursor": "node scripts/build.mjs cursor",
+    "build:copilot": "node scripts/build.mjs copilot",
+    "build:gemini": "node scripts/build.mjs gemini",
+    "test:unit": "node scripts/run-tests.mjs",
+    "hooks:report": "node scripts/hook-report.mjs",
+    "locate": "node runtime/cli.mjs locate",
+    "services:prepare": "node runtime/cli.mjs prepare-services"
+  },
+  "license": "MIT"
+}

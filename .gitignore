@@ -1,0 +1,16 @@
+.idea/
+node_modules/
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.plan/
+/PLAN.md
+.pr-loop/
+**/evals/results/
+.DS_Store
+
+dist/
+.eval-results/
+
+.capabilities/state/

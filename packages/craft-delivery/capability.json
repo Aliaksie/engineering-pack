@@ -1,0 +1,90 @@
+{
+  "formatVersion": 1,
+  "name": "craft-delivery",
+  "version": "0.0.1",
+  "description": "Project-grounded planning, implementation, review and repository context.",
+  "instructions": "AGENTS.md",
+  "skills": [
+    "skills/write-adr",
+    "skills/apply-change",
+    "skills/inspect-architecture",
+    "skills/review-code",
+    "skills/route-work",
+    "skills/implement-story",
+    "skills/maintain-context",
+    "skills/plan-change",
+    "skills/resolve-service",
+    "skills/configure-service"
+  ],
+  "workflows": [
+    "workflows/deliver-change.md",
+    "workflows/ship-change.md"
+  ],
+  "standards": [],
+  "evals": [
+    "evals/no-tracker.json",
+    "evals/workflow-apply-change.json",
+    "evals/workflow-plan-change.json",
+    "evals/workflow-inspect-architecture.json",
+    "evals/workflow-review-code.json",
+    "evals/workflow-route-work.json",
+    "evals/workflow-implement-story.json",
+    "evals/workflow-maintain-context.json",
+    "evals/workflow-resolve-service.json",
+    "evals/workflow-write-adr.json",
+    "evals/workflow-deliver-change.json"
+  ],
+  "tools": [],
+  "hooks": [
+    {
+      "name": "routing",
+      "event": "before-tool",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "prompt-routing",
+      "event": "before-prompt",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "restore",
+      "event": "session-start",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "checkpoint",
+      "event": "before-compact",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "milestone",
+      "event": "after-tool",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "turn-checkpoint",
+      "event": "turn-end",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    },
+    {
+      "name": "compact-restore",
+      "event": "after-compact",
+      "tool": "any",
+      "handler": "hooks/context.mjs"
+    }
+  ],
+  "mcp": [],
+  "optionalDependencies": [
+    "craft-engineering",
+    "craft-review"
+  ],
+  "author": {
+    "name": "craft-capabilities contributors"
+  }
+}

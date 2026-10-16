@@ -1,0 +1,123 @@
+{
+  "formatVersion": 1,
+  "modules": [
+    {
+      "name": "orders",
+      "path": "services/orders",
+      "owner": "orders-team",
+      "languages": [
+        "jvm"
+      ],
+      "layers": [
+        "backend"
+      ],
+      "dependsOn": [],
+      "checks": [
+        {
+          "command": "./gradlew",
+          "args": [
+            "test"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "console",
+      "path": "ui",
+      "languages": [
+        "typescript"
+      ],
+      "layers": [
+        "ui"
+      ],
+      "frameworks": [
+        "react"
+      ],
+      "dependsOn": [
+        "orders"
+      ]
+    },
+    {
+      "name": "assistant",
+      "path": "agents/assistant",
+      "languages": [
+        "python"
+      ],
+      "layers": [
+        "agent"
+      ],
+      "providers": [
+        "foundry"
+      ],
+      "dependsOn": [
+        "orders"
+      ]
+    }
+  ],
+  "services": {
+    "git": {
+      "provider": "git",
+      "transport": "cli",
+      "command": "git"
+    },
+    "codehost": {
+      "provider": "gitlab",
+      "transport": "cli",
+      "command": "glab",
+      "host": "gitlab.example.com",
+      "repository": "team/project"
+    },
+    "tasks": {
+      "provider": "team-tracker",
+      "transport": "cli",
+      "command": "team-task-cli",
+      "operations": {
+        "task.read": {
+          "args": [
+            "read",
+            "{id}"
+          ]
+        },
+        "task.search": {
+          "args": [
+            "search",
+            "{query}"
+          ]
+        }
+      }
+    }
+  },
+  "permissions": {
+    "writeOperations": []
+  },
+  "execution": {
+    "roles": {
+      "researcher": {
+        "mode": "delegate",
+        "profile": "research"
+      },
+      "reviewer": {
+        "mode": "main"
+      },
+      "locator": {
+        "mode": "delegate",
+        "profile": "lookup"
+      }
+    },
+    "hosts": {
+      "codex": {
+        "delegation": false,
+        "models": {}
+      }
+    }
+  },
+  "checkpoint": {
+    "enabled": false
+  },
+  "review": {
+    "readOnly": true
+  },
+  "routing": {
+    "editHints": false
+  }
+}

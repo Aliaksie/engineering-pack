@@ -1,0 +1,26 @@
+{
+  "id": "workflow-write-adr",
+  "prompt": "A project has an existing ADR template, numbered index and an accepted record choosing synchronous service calls. Draft a proposal for replacing a particular cross-service operation with asynchronous delivery because of a supplied availability requirement; neither exactly-once delivery nor benchmark results have been established. The same request also renames a private helper. Explain whether that rename needs its own ADR. Use the supplied repository artifacts, preserve decision history and keep implementation details in their canonical home. The user has not authorized accepting the decision.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Cite the problem, constraints, alternatives and consequences using local conventions."
+    },
+    {
+      "id": "c2",
+      "description": "Keep new status Proposed unless acceptance is authorized."
+    },
+    {
+      "id": "c3",
+      "description": "Maintain the existing index and appropriate supersession links without invented numbers or remote writes."
+    },
+    {
+      "id": "c4",
+      "description": "Justify recording the consequential choice while avoiding a separate routine-helper ADR; distinguish code/tests/local comments from durable decision rationale."
+    },
+    {
+      "id": "c5",
+      "description": "Produce a proportionate record of one coherent decision with credible alternatives, costs and unresolved delivery assumptions; link implementation detail instead of duplicating it and invent no measurements or guarantees."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "workflow-plan-change",
+  "prompt": "Plan only a substantial mixed-stack compatibility change from supplied local code and requirements. Some ownership evidence is missing.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Produce acceptance criteria, cited affected modules, alternatives, risks and executable verification steps."
+    },
+    {
+      "id": "c2",
+      "description": "Distinguish blocking decisions from assumptions and unavailable evidence."
+    },
+    {
+      "id": "c3",
+      "description": "Do not implement or publish when planning alone is authorized."
+    }
+  ]
+}

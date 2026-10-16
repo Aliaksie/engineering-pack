@@ -1,0 +1,36 @@
+query InboxPage($name: String!, $owner: String!, $cursor: String) {
+  repository(name: $name, owner: $owner) {
+    pullRequests(after: $cursor, first: 50, states: OPEN, orderBy: {direction: DESC, field: UPDATED_AT}) {
+      pageInfo { endCursor hasNextPage }
+      nodes {
+        ...InboxIdentity
+        commits(last: 1) { nodes { commit { committedDate oid } } }
+        comments(first: 50) {
+          pageInfo { hasNextPage }
+          nodes { body createdAt author { login } }
+        }
+        reviews(first: 50) {
+          pageInfo { hasNextPage }
+          nodes { body state submittedAt author { login } }
+        }
+        reviewThreads(first: 50) {
+          pageInfo { hasNextPage }
+          nodes {
+            line path id isOutdated isResolved
+            comments(first: 20) {
+              pageInfo { hasNextPage }
+              nodes { body createdAt author { login } }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+fragment InboxIdentity on PullRequest {
+  url number title isDraft
+  createdAt updatedAt
+  headRefName headRefOid baseRefName
+  changedFiles deletions additions
+  author { login }
+}
