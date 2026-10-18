@@ -8,7 +8,10 @@ that need them. A routing or publication plan grants no permission to execute it
 | Tool | Input and result | Effects |
 |---|---|---|
 | Router and catalog | Intent, paths, declarations and risks → explained loading plan | Reads configuration; does not execute tasks or contact services |
-| Batched locator | Literal terms and scopes → bounded path/line/snippet evidence | One local Git inventory and bounded file scan; no model/network; explicit coverage limits |
+| Batched locator | Independent literals/scopes → compact path/line/snippet evidence; dependent requests stay deferred | Bounded local inventory/scan; optional session/task-scoped reuse and receipts; no model/network |
+| Pack context report | Routed guidance selection → paths, hashes, bytes and estimated tokens | Reads selected package resources; report-only budgets; never infers live occupancy |
+| Session status/advice | Explicit task state, host observations and saved receipts → next-action advice | Reads bounded local state and needed repository/resource evidence; no compaction, reset or model call |
+| Attempt receipt | Bounded operation/target/approach/outcome/evidence → retry and escalation history | Explicit local state write and bounded Git reads; no retry or model switch |
 | Service preparation | Configured bindings and optional host-observed tool names → compact operation map | Pure metadata preparation; no discovery/probes, credentials, persistent cache or invocation |
 | Catalog validator | Catalog and optional target set → validated contract or error | Pure validation; source validation checks registered files |
 | Service bindings | Operation, parameters and binding → CLI argv or MCP plan | No subprocess or network call |
@@ -16,7 +19,10 @@ that need them. A routing or publication plan grants no permission to execute it
 | Review snapshot | Explicit committed base/head → immutable identities and diff | Bounded local Git reads; excludes working-tree changes |
 | Review result checker | Snapshot and result → structural verdict | Reads artifacts; does not judge findings or publish them |
 
-`runtime/cli.mjs` exposes routing, lookup, operation plans and checkpoint actions.
+`cli/main.mjs` exposes routing, lookup, service plans, context reporting, session status/advice,
+attempt receipts and checkpoint actions. Installed packages expose `support/cli/main.mjs`.
+`engine/` owns portable decisions; application use cases orchestrate `platform/` operations.
+`hosts/` owns native callbacks and `tooling/export/` constructs installed bundles.
 `prepare-review.mjs` writes a new snapshot artifact exclusively; `check-review.mjs` validates
 recorded results. No tool in this table posts a review. Checkpoints preserve explicit state,
 not fresh verification or proof of task completion.

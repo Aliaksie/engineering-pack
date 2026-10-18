@@ -1,7 +1,7 @@
 # AI Capability Package format
 
 `packages/<name>/capability.json` is the canonical manifest. Format version 1 is a local
-contract validated by `scripts/lib/capabilities.mjs` and described by
+contract validated by `tooling/lib/capabilities.mjs` and described by
 [the JSON schema](../schemas/capability.schema.json). It does not replace host plugin formats.
 
 | Field | Meaning |
@@ -14,7 +14,7 @@ contract validated by `scripts/lib/capabilities.mjs` and described by
 | `standards` | Canonical quality guidance, loaded when relevant |
 | `evals` | JSON scenarios: id, prompt and named rubric criteria |
 | `tools` | Executable paths with runtime and network effect declarations |
-| `hooks` | Normalized lifecycle policies; v1 supports session, prompt, tool, compaction and turn events |
+| `hooks` | Normalized lifecycle handler declarations; v1 supports session, prompt, tool, compaction and turn events |
 | `mcp` | Optional server declarations; no live defaults or credential literals |
 | `optionalDependencies` | Other capabilities useful when installed; absence is a reported limitation |
 
@@ -42,7 +42,15 @@ export function evaluate({ event, tool, command, cwd, routing, checkpoint, proje
 }
 ```
 
-Policies must be pure, synchronous and self-contained within their package. Hook tools are
+Handlers are synchronous entry points that return decision/context data. Portable decisions
+belong in `engine/`; application use cases translate lifecycle events into facts and collect
+observations. `hosts/` owns native parsing, execution and serialization. The bundled package
+handlers delegate to these shared use cases rather than reimplementing policy.
+
+The shipped bin/hook entry points import shared application modules. `tooling/export/`
+rebases those imports into the installed package's `support/` tree, which includes the engine,
+application, platform, integrations and CLI. Installed packages remain self-contained; do not
+import authoring tooling or a sibling package at runtime. Hook tools are
 `shell` or `any`; normalized events are `session-start`, `before-prompt`, `before-tool`,
 `after-tool`, `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where
 the host supports blocking. Context is injected only where its wire schema supports it. Adapters own

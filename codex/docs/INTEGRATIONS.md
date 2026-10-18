@@ -1,6 +1,7 @@
 # Project services and tool bindings
 
-The development host and external services are separate adapters. A Codex session can use
+Coding-agent hosts and external systems have separate owners: `hosts/` handles native
+observations and controls; `integrations/` maps external service transports. A Codex session can use
 GitLab and Jira; a Claude session can use GitHub and local task files. No MCP connector is
 required by delivery or review.
 

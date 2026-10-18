@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { sessionAdvice, readSessionInput } from './runtime/session.mjs';
-import { readProject } from './runtime/project.mjs';
+import { readSessionInput } from './platform/node/resources/session-input.mjs';
+import { sessionStatus } from './application/session/status.mjs';
+import { readProject } from './application/project/configuration.mjs';
 import { runSession } from '../platform-runtime/session.mjs';
-await runSession(sessionAdvice, readSessionInput, readProject, "claude");
+await runSession(sessionStatus, readSessionInput, readProject, "claude");

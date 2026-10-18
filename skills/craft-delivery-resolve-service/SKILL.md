@@ -17,7 +17,7 @@ text needs no tracker connection.
 Use the exported runtime:
 
 ```text
-node <package-root>/support/runtime/cli.mjs operation --root <project> --operation <name> --params <json>
+node <package-root>/support/cli/main.mjs operation --root <project> --operation <name> --params <json>
 ```
 
 The authoring equivalent is `npm run operation -- ...`. Supported normalized operations

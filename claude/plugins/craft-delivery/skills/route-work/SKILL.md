@@ -12,7 +12,7 @@ Read the shared [package instructions](../../AGENTS.md) when using this capabili
 When a task crosses boundaries or the next skill is unclear, ask the deterministic router:
 
 ```text
-node <package-root>/support/runtime/cli.mjs route --root <project> --intent <intent> --file <path>
+node <package-root>/support/cli/main.mjs route --root <project> --intent <intent> --file <path>
 ```
 
 In the authoring checkout, `npm run route -- ...` invokes the same runtime. Supply a supported

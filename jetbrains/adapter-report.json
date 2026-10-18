@@ -65,7 +65,7 @@
           "supported": false
         }
       ],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "unavailable-in-current-adapter",
@@ -108,7 +108,7 @@
       "hooks": "none",
       "mcp": "none",
       "hookMappings": [],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "unavailable-in-current-adapter",
@@ -144,7 +144,7 @@
           "supported": false
         }
       ],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "unavailable-in-current-adapter",
@@ -176,7 +176,7 @@
       "hooks": "none",
       "mcp": "none",
       "hookMappings": [],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "unavailable-in-current-adapter",

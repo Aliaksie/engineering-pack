@@ -755,6 +755,13 @@
               "escalateTo": {
                 "type": "string",
                 "minLength": 1
+              },
+              "class": {
+                "enum": [
+                  "economical",
+                  "standard",
+                  "strong"
+                ]
               }
             }
           }

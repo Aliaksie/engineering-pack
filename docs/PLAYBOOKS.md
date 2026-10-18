@@ -1,7 +1,8 @@
 # Portable playbook catalog
 
-`runtime/catalog.json` owns engineering selection rules. Adapters copy the shared runtime;
-they do not select practices or infer a stack. Package skill IDs identify loadable content.
+`engine/routing/catalog.json` owns engineering selection rules. `tooling/export/` bundles
+the canonical runtime; `hosts/` translates native formats. Neither selects practices or
+infers a stack. Package skill IDs identify loadable content.
 Versions remain `0.0.1`.
 
 Logical identities use `<kind>:<slug>` with lowercase hyphenated slugs. Supported kinds are
@@ -77,7 +78,7 @@ For example, a consumer may declare:
 
 Save that configuration as `<project>/.capabilities/project.json`. From this source checkout,
 run `npm run route -- --root <project> --intent implement --file worker/main.ts`, or invoke
-the exported `runtime/cli.mjs` with `--root` pointing to the same consumer project.
+the exported `cli/main.mjs` with `--root` pointing to the same consumer project.
 
 A playbook must justify its trigger, problem, contribution, inputs, result, boundaries,
 consumer, and evidence. Keep the skill entry concise: decisions, evidence to collect,

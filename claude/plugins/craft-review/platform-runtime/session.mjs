@@ -1,4 +1,4 @@
-// Host observations and controls live here; all decision policy stays in runtime/session.mjs.
+// Host observations and controls live here; portable decision policy stays in engine/session/.
 export function sessionCapabilities(platform) {
   if (platform === 'claude') return { observation: 'statusline-current-usage', display: 'optional-native-statusline', commands: { compact: '/compact', 'start-new-session': '/clear' } };
   if (platform === 'codex') return { observation: 'native-ui-only; no stable usage field in mapped hooks', display: 'native /statusline; explicit CLI advice fallback', commands: { inspectUsage: '/statusline', compact: '/compact', 'start-new-session': '/new' } };
@@ -28,6 +28,10 @@ export async function runSession(advisor, readInput, readProject, platform) {
   try {
     let data, root = process.cwd(), json = false, nativeStdin = false;
     const args = process.argv.slice(2);
+    if (args.includes('--help')) {
+      process.stdout.write('usage: session.mjs [--data task.json] [--root project] [--json] [--native-stdin]\n');
+      return;
+    }
     const seen = new Set();
     for (let index = 0; index < args.length; index++) {
       const flag = args[index];
@@ -54,9 +58,13 @@ export async function runSession(advisor, readInput, readProject, platform) {
       }
       const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       if (data && data.sessionId !== payload.session_id) throw new Error('task record does not identify this native session');
-      input = { ...input, sessionId: payload.session_id, usage: sessionObservation(payload, platform) };
+      const model = payload.model?.id;
+      const knownModel = typeof model === 'string' && model.length > 0 && model.length <= 512 && !/[\x00-\x1f\x7f]/.test(model);
+      input = { ...input, sessionId: payload.session_id, usage: sessionObservation(payload, platform),
+        host: { ...input.host, ...(knownModel ? { model } : {}) } };
+      if (knownModel === false && input.host) delete input.host.model;
     }
-    const advice = advisor(input, readProject(root));
-    process.stdout.write(`${json ? JSON.stringify({ ...advice, host: sessionCapabilities(platform) }, null, 2) : renderSession(advice, platform)}\n`);
+    const advice = advisor({ ...input, host: { reliableCompaction: Boolean(sessionCapabilities(platform).commands.compact), ...input.host, name: platform } }, readProject(root), { root });
+    process.stdout.write(`${json ? JSON.stringify({ ...advice, sessionHost: advice.host, host: sessionCapabilities(platform) }, null, 2) : renderSession(advice, platform)}\n`);
   } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }
 }

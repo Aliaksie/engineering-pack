@@ -36,3 +36,18 @@ For parallel writers, follow [Git/worktree isolation](git-discipline.md#parallel
 Return the workspace and base revision, changed paths or commits, actual checks, assumptions
 and unresolved issues. The coordinator reviews the result and verifies the integrated state.
 Delegation does not transfer responsibility for architecture, acceptance or publication.
+
+## Preserve continuity and bound retries
+
+Keep selected-guidance estimates, observed current-context occupancy and pack activity separate.
+Unknown host telemetry remains unknown. Prefer a safe boundary for compaction; finish a useful
+bounded step first. Save a small continuation checkpoint before replacing context: goal, state,
+completed work, approach, evidence identifiers, changed paths, validation, remaining work,
+blockers and next step. Resume from that checkpoint and current repository evidence.
+
+Use declared operation attempt limits. After a no-progress attempt, inspect evidence and
+change approach; at exhaustion return control or use evidence-bound configured model advice.
+Changing models cannot resolve a missing permission or tool. Escalation requires current-target
+quality evidence or missing declared capability, not discomfort or session age. Repeated lookup
+alone is not provider token telemetry. Invalidate evidence when its files, revision, module
+configuration, manifest or task identity changes.

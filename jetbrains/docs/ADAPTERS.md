@@ -1,6 +1,7 @@
 # Host adapters and hook support
 
-Host adapters export shared capabilities and map lifecycle events. Service bindings separately
+The exporters in `tooling/export/` construct host bundles; `hosts/` owns native observations,
+controls and wire formats. Service bindings separately
 choose Git/codehost/tracker tools. Build output is not automatically installed or trusted.
 
 See [current target-platform installation and support](PLATFORMS.md) for Codex, Claude,
@@ -116,10 +117,13 @@ or policy decisions, not automatic skill loading. Gemini supplies prompt/session
 context. `adapter-report.json` exposes every hook’s native event, denial and context capability,
 and marks unsupported events. Native skill names are added to routing hints by the adapter.
 
-The package hooks use no LLM calls. Shared handlers are pure; wrappers normalize events and
-invoke the local runtime. State snapshots are opt-in. A context-handler failure remains
-advisory; a before-shell policy that cannot evaluate returns a denial with a configuration
-error. Host timeout/trust/failure behavior still applies and differs by platform.
+Package hook entry points use no LLM calls. Host wrappers normalize native events;
+application use cases collect observations and translate lifecycle facts for portable engine
+decisions. Hosts render those decisions into native responses. State snapshots are opt-in.
+A context-handler failure remains advisory; a valid before-shell policy call that cannot
+evaluate returns a denial with a configuration error. Malformed or non-object JSON receives
+the default allow decision. Inputs over 64 KiB fail the runner before evaluation. Host
+timeout, trust and process-failure behavior still applies and differs by platform.
 
 Claude/Codex exports include native MCP configuration when declared. Workspace overlays and
 the plain bundle include declarations only; connect them using the host’s normal flow.

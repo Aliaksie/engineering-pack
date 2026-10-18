@@ -6,10 +6,11 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 
 | Document | Purpose |
 |---|---|
-| [Architecture](ARCHITECTURE.md) | Capability, runtime, host and service boundaries |
+| [Architecture](ARCHITECTURE.md) | Engine, application, platform, host, integration and tooling ownership |
 | [Naming](NAMING.md) | Repository, package, skill, workflow and tool conventions |
 | [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
+| [Session status](SESSION.md) | Context occupancy, pack estimates, activity and execution budgets |
 | [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |
 | [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
 | [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |

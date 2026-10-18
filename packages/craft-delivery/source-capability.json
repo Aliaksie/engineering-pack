@@ -23,6 +23,7 @@
   "standards": [],
   "evals": [
     "evals/no-tracker.json",
+    "evals/session-efficiency.json",
     "evals/workflow-apply-change.json",
     "evals/workflow-plan-change.json",
     "evals/workflow-inspect-architecture.json",

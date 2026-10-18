@@ -25,3 +25,8 @@ Their generated skill names are adapter-owned. Optional tools use a branded dire
 as `tools/craft-review-inbox`, with concise subcommands inside it. Internal JavaScript symbols
 follow existing code conventions. Consumer identities, service operation names and vendor
 event names retain their actual contracts rather than being renamed for branding.
+
+Top-level directories name ownership rather than generic adapters or scripts. Follow the
+[architecture map](ARCHITECTURE.md#ownership). Within each layer, group related responsibilities
+by feature at shallow depth; keep a single small responsibility as a file until a folder
+has useful components. Internal plans and local evaluation artifacts stay ignored.

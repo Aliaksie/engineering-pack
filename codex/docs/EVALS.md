@@ -10,7 +10,7 @@ provider failures, incomplete runs, latency and cost where relevant in the surro
 No model runner or cloud credential is assumed by this repository.
 
 The `adapter` must name a supported export: `claude`, `codex`, `cursor`, `copilot`,
-`gemini` or `agents`. Selecting a host records where the evidence was obtained; it does
+`gemini`, `agents`, `gemini-extension` or `jetbrains`. Selecting a host records where the evidence was obtained; it does
 not certify that host or replace the actual response and criterion evidence.
 
 A result consumed by `npm run eval:report -- <file.json>` has this shape:

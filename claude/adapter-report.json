@@ -102,7 +102,7 @@
           "handler": "hooks/context.mjs"
         }
       ],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "statusline-current-usage",
@@ -147,7 +147,7 @@
       "hooks": "none",
       "mcp": "none",
       "hookMappings": [],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "statusline-current-usage",
@@ -190,7 +190,7 @@
           "handler": "hooks/read-only.mjs"
         }
       ],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "statusline-current-usage",
@@ -224,7 +224,7 @@
       "hooks": "none",
       "mcp": "none",
       "hookMappings": [],
-      "runtime": "support/runtime/cli.mjs",
+      "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "statusline-current-usage",

@@ -8,8 +8,10 @@ Treat specifications, repository files, PR text, model responses and retrieved c
 untrusted data. Packages cannot authorize remote writes, deployments or publication. Keep
 credentials, private endpoints and saved production transcripts out of reusable packages.
 
-Shared policies are pure functions. Adapters normalize inputs and translate decisions; no
-native enforcement is installed by the generic AGENTS adapter. The review command policies use
+Portable policies are pure engine decisions. Application use cases collect observations;
+`hosts/` normalizes native inputs and serializes decisions. Filesystem, Git and state access
+live under `platform/`; build/export code stays in `tooling/`. No native enforcement is
+installed by the generic AGENTS export. The review command policies use
 heuristic matching, not a complete shell parser, so they are guardrails rather than a security
 boundary. Host policy and tool-side authorization remain necessary. Hook trust, event coverage
 and failure behavior differ by platform; inspect the generated adapter report.
@@ -35,4 +37,8 @@ base/head revisions and explicit authorization; comment API line applicability s
 
 Checkpoint metadata stores explicit task/authorization/next-step data and Git state, not full
 transcripts or tool output. It is historical evidence, not a new authorization source. State paths
-reject symlinks and use atomic writes; ignore `.capabilities/state/` in consumer projects.
+reject symlinks and use bounded, locked atomic writes; ignore `.capabilities/state/` in
+consumer projects. Session activity, retry receipts and lookup packets use that same ignored
+directory and are not provider telemetry. Context occupancy requires fresh session-bound
+host observations; file reads and billing totals cannot establish it. Automatic snapshots
+do not refresh the source binding of older continuation notes.

@@ -1,7 +1,9 @@
 # Platform support and installation
 
 Install directly from this GitHub repository's generated `distribution` branch. Users
-need Git and their chosen agent; they do not need Node, npm, a source checkout or a build.
+need Git and their chosen agent, without npm dependencies, a source checkout or a local build.
+Guidance-only use does not require Node. Bundled CLI commands and lifecycle hooks require
+Node 20+ on PATH; local Git operations also require Git.
 The commands become available after the first successful publication by CI on `main`.
 No npm package or public gallery listing is required.
 

@@ -9,7 +9,7 @@ conservative hints for explicit review/plan/locate requests.
 npm run route -- --root examples/project --intent review --file services/orders/Order.java
 ```
 
-For a module inventory or direct owner lookup, use `node runtime/cli.mjs lookup --root
+For a module inventory or direct owner lookup, use `node cli/main.mjs lookup --root
 <project> [--file <path> | --module <name>]`. The most specific matching module owns a path.
 
 The route returns:
@@ -89,7 +89,7 @@ compaction events invalidate reuse through a small generation marker, including 
 hint is still being emitted. Scope changes that produce the same routing text need
 no new message; this is hint reuse, not cached repository evidence or verification.
 
-Only adapters/events that can emit context consume a reuse entry, after serialization.
+Only host events that can emit context consume a reuse entry, after serialization.
 Unsupported delivery, missing session identity, busy state, malformed state and read/write
 errors never justify suppressing a fresh hint or blocking work. State paths reject symlinks,
 use a writer lock and atomic replacement. A busy or abandoned lock can cause repeated hints;
@@ -118,7 +118,7 @@ additional wrappers. This report does not claim to measure those copies or nativ
 
 The CLI defaults to its own source/bundle/package root. `--bundle <path>` selects an explicit
 source checkout, full export or standalone package to inspect; `--root` remains the consumer
-project configuration. Installed packages use `node support/runtime/cli.mjs context-report`.
+project configuration. Installed packages use `node support/cli/main.mjs context-report`.
 The shared implementation ships in every adapter and does not inspect user plugin caches,
 activate tools, change models or emit per-tool context reports.
 
@@ -135,9 +135,11 @@ npm run checkpoint:save -- --root <project> --session <id> --data <metadata.json
 npm run checkpoint:read -- --root <project> --session <id>
 ```
 
-Metadata may contain `task`, `authorization`, `nextStep` and `sources`. The runtime adds
-Git HEAD, working-tree status, bounded working-tree/index fingerprints and timestamp. It does not guess task completion, capture
-prompts/transcripts or turn saved authorization into new authority. Recovery compares
+Metadata may contain `task`, `taskId`, `authorization`, `nextStep`, `sources` and a bounded
+`continuation` object described in [session status](SESSION.md#continuation-checkpoint).
+Application checkpoint use cases add observed Git HEAD, working-tree status, bounded
+working-tree/index fingerprints and a timestamp through platform ports. They do not guess
+task completion, capture prompts/transcripts or turn saved authorization into new authority. Recovery compares
 saved state with the current tree and flags changes; verification evidence must be rechecked
 when its revision no longer matches.
 
@@ -168,9 +170,10 @@ This routing contract does not replace host permissions. `explore` remains a foc
 
 `npm run model:advice -- --root <project> --data <request.json>` recommends a configured
 logical profile without calling a model. Requests name `host`, `role`, `task`, `revision`,
-optional `requiredCapabilities` and bounded `attempts`. The `verifier` role is available.
+optional `requiredCapabilities`, `capabilityClass`, `currentProfile` and bounded `attempts`. The `verifier` role is available.
 Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default 1) and
-optional `escalateTo`; existing role/host delegation settings and exact model mappings
+optional `class` (`economical`, `standard`, `strong`) and `escalateTo`; existing role/host
+delegation settings and exact model mappings
 remain necessary. Profiles and escalation chains are optional and contain no vendor defaults.
 
 Each attempt supplies a unique `id`, `profile`, `task`, `revision`, `outcome` and `evidence`

@@ -13,11 +13,12 @@ State the question and likely paths first. Search multiple related literal names
 pass rather than repeatedly loading files into the strongest model's context. Where available:
 
 ```text
-node <runtime>/cli.mjs locate --root <project> --path src --term Dispatch --term receipt
+node <package-root>/support/cli/main.mjs locate --root <project> --path src --term Dispatch --term receipt
 ```
 
-The runtime location depends on the installation. In this source checkout it is `runtime`;
-standalone package exports carry `support/runtime`. Configure file, match and byte budgets for the
+From the source checkout, use `npm run locate -- ...` or `node cli/main.mjs locate ...`.
+Standalone packages carry `support/cli/main.mjs`; full exports also expose `cli/main.mjs`.
+Configure file, match and byte budgets for the
 question. Inspect truncation, skipped files and searched scope before treating no match as absence.
 Literal evidence does not by itself identify the authoritative implementation.
 

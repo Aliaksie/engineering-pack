@@ -1,4 +1,4 @@
-import { HOSTS, hookMapping } from './hosts.mjs';
+import { HOSTS, hookMapping } from './registry.mjs';
 
 export function normalize(payload, platform, definition) {
   let input = payload.tool_input ?? payload.toolArgs ?? {};
@@ -17,10 +17,25 @@ export function normalize(payload, platform, definition) {
     session: typeof rawSession === 'string' && rawSession.length <= 512 ? rawSession : undefined };
 }
 
+export function renderContext(context, platform) {
+  if (typeof context === 'string') return context;
+  if (!context) return '';
+  if (context.kind === 'routing') {
+    const { intent, execution, skills, references, modules, missing, taskBoundary } = context.data;
+    const native = skills.map(skill => platform === 'claude' ? skill : skill.replace(':','-'));
+    return `Routing hints (no authorization implied; reuse until scope/config changes): ${JSON.stringify({ intent, execution, skills: native, references, modules, missing, ...(taskBoundary ? { taskBoundary } : {}) })}`;
+  }
+  if (context.kind === 'checkpoint') return `Checkpoint data; verify against the current tree before continuing: ${JSON.stringify(context.data)}`;
+  if (context.kind === 'services') return `Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): ${JSON.stringify(context.data)}`;
+  if (context.kind === 'preserve') return 'Preserve task scope, original authorization, evidence and next step in the project checkpoint. Compaction hooks do not replace milestone checkpoints.';
+  if (context.kind === 'unavailable') return `Routing/checkpoint unavailable: ${context.data}`;
+  return '';
+}
 export function serialize(result, platform, definition) {
   const mapping = hookMapping(platform, definition);
   if (!mapping) return { output: '', error: '', exitCode: 0 };
   const denied = result.decision === 'deny' && mapping.deny;
+  result = { ...result, context: renderContext(result.context, platform) };
   const context = mapping.context && typeof result.context === 'string'
     ? result.context.length > 12000 ? `${result.context.slice(0, 12000)}\n[truncated; use the runtime checkpoint/route CLI for full data]` : result.context : '';
   if (platform === 'claude' && denied) return { output: '', error: `${result.reason}\n`, exitCode: 2 };
@@ -44,27 +59,26 @@ export function serialize(result, platform, definition) {
 export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
   if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
   const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
+  let bytes = 0;
+  for await (const chunk of process.stdin) { bytes += chunk.length; if (bytes > 65536) throw new Error('hook input exceeds 64 KiB'); chunks.push(chunk); }
   let payload;
   try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
-  let result = { decision: 'allow' };
+  let result = delivery.default();
   let pending;
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
     const event = normalize(payload, platform, definition);
     if (definition.tool !== 'shell' || event.tool === 'shell') {
       try {
         const prepared = prepare(event);
-        if (prepared.routing) prepared.routing.nativeSkills = prepared.routing.skills.map((skill) => platform === 'claude' ? skill : skill.replace(':', '-'));
         result = evaluate(prepared);
+        result = { ...result, ...(result.context ? { context: renderContext(result.context, platform) } : {}) };
         if (delivery.reuse) {
           pending = delivery.reuse(prepared, result);
           result = pending.result;
         }
       }
       catch (error) {
-        result = definition.tool === 'shell' && definition.event === 'before-tool'
-          ? { decision: 'deny', reason: `Policy could not be evaluated: ${error.message}` }
-          : { decision: 'allow', context: `Routing/checkpoint unavailable: ${error.message}` };
+        result = delivery.failure(definition, error.message);
       }
     }
   }
