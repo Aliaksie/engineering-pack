@@ -1,0 +1,22 @@
+{
+  "id": "unreachable-source",
+  "prompt": "Draft concise stories from a specification proposing an admin dashboard to reduce support lookup time. It is unclear whether the dashboard is required or a suggested solution. The linked backend repository is unavailable. Supplied UI tests expect read-only users to see aggregate counts, but the specification says administrators only. Identify the consequential product questions, avoid invented discovery claims, and draft unaffected outcomes without a large template.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Labels implementation claims as unverified or unreachable."
+    },
+    {
+      "id": "c2",
+      "description": "Drafts locally without claiming absent code or posting remotely."
+    },
+    {
+      "id": "c3",
+      "description": "Distinguishes desired outcome from proposed solution and preserves conflicting tested/specification claims as a cited product question rather than silently choosing authority."
+    },
+    {
+      "id": "c4",
+      "description": "Keeps unaffected stories short, independently valuable and observable, including only relevant states and explicit assumptions."
+    }
+  ]
+}

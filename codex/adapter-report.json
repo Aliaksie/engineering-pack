@@ -1,0 +1,201 @@
+{
+  "formatVersion": 1,
+  "adapter": "codex",
+  "packages": [
+    {
+      "package": "craft-delivery",
+      "version": "0.0.1",
+      "adapter": "codex",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-delivery-write-adr",
+        "craft-delivery-apply-change",
+        "craft-delivery-inspect-architecture",
+        "craft-delivery-review-code",
+        "craft-delivery-route-work",
+        "craft-delivery-implement-story",
+        "craft-delivery-maintain-context",
+        "craft-delivery-plan-change",
+        "craft-delivery-resolve-service",
+        "craft-delivery-configure-service",
+        "craft-delivery-workflow-deliver-change",
+        "craft-delivery-workflow-ship-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "native-before-tool-requires-trust",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "routing",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "prompt-routing",
+          "normalizedEvent": "before-prompt",
+          "name": "UserPromptSubmit",
+          "context": true,
+          "deny": false,
+          "event": "before-prompt",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "restore",
+          "normalizedEvent": "session-start",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "startup|resume",
+          "event": "session-start",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "checkpoint",
+          "normalizedEvent": "before-compact",
+          "name": "PreCompact",
+          "context": false,
+          "deny": false,
+          "event": "before-compact",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "milestone",
+          "normalizedEvent": "after-tool",
+          "name": "PostToolUse",
+          "context": true,
+          "deny": false,
+          "event": "after-tool",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "turn-checkpoint",
+          "normalizedEvent": "turn-end",
+          "name": "Stop",
+          "context": false,
+          "deny": false,
+          "event": "turn-end",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "compact-restore",
+          "normalizedEvent": "after-compact",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "compact",
+          "event": "after-compact",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-engineering",
+      "version": "0.0.1",
+      "adapter": "codex",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-engineering-design-agent",
+        "craft-engineering-evaluate-agent",
+        "craft-engineering-backend-engineering",
+        "craft-engineering-backend-foundations",
+        "craft-engineering-foundations",
+        "craft-engineering-react-engineering",
+        "craft-engineering-locate-code",
+        "craft-engineering-security-engineering",
+        "craft-engineering-testing-engineering",
+        "craft-engineering-ui-foundations",
+        "craft-engineering-workflow-change-agent",
+        "craft-engineering-workflow-review-change",
+        "craft-engineering-workflow-select-discipline"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-review",
+      "version": "0.0.1",
+      "adapter": "codex",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-review-review-change",
+        "craft-review-workflow-review-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "native-before-tool-requires-trust",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "read-only",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "shell",
+          "handler": "hooks/read-only.mjs"
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-stories",
+      "version": "0.0.1",
+      "adapter": "codex",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-stories-audit-specs",
+        "craft-stories-ground-spec",
+        "craft-stories-write-stories",
+        "craft-stories-workflow-prepare-stories"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
+      ]
+    }
+  ]
+}

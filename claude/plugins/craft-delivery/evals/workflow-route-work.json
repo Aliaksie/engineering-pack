@@ -1,0 +1,18 @@
+{
+  "id": "workflow-route-work",
+  "prompt": "A browser TypeScript module and Python agent share a repository. Change only the browser module; its provider list is empty.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Use deterministic module selection and inspect declaration/inference provenance."
+    },
+    {
+      "id": "c2",
+      "description": "Do not infer Node from TypeScript or load the unrelated agent/provider."
+    },
+    {
+      "id": "c3",
+      "description": "Report unavailable targets and preserve authorization rather than automatically delegating."
+    }
+  ]
+}

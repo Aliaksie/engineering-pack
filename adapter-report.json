@@ -1,0 +1,163 @@
+{
+  "formatVersion": 1,
+  "adapter": "gemini-extension",
+  "packages": [
+    {
+      "package": "craft-delivery",
+      "version": "0.0.1",
+      "adapter": "gemini-extension",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-delivery-write-adr",
+        "craft-delivery-apply-change",
+        "craft-delivery-inspect-architecture",
+        "craft-delivery-review-code",
+        "craft-delivery-route-work",
+        "craft-delivery-implement-story",
+        "craft-delivery-maintain-context",
+        "craft-delivery-plan-change",
+        "craft-delivery-resolve-service",
+        "craft-delivery-configure-service",
+        "craft-delivery-workflow-deliver-change",
+        "craft-delivery-workflow-ship-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "unsupported-not-installed",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "routing",
+          "normalizedEvent": "before-tool",
+          "supported": false
+        },
+        {
+          "id": "prompt-routing",
+          "normalizedEvent": "before-prompt",
+          "supported": false
+        },
+        {
+          "id": "restore",
+          "normalizedEvent": "session-start",
+          "supported": false
+        },
+        {
+          "id": "checkpoint",
+          "normalizedEvent": "before-compact",
+          "supported": false
+        },
+        {
+          "id": "milestone",
+          "normalizedEvent": "after-tool",
+          "supported": false
+        },
+        {
+          "id": "turn-checkpoint",
+          "normalizedEvent": "turn-end",
+          "supported": false
+        },
+        {
+          "id": "compact-restore",
+          "normalizedEvent": "after-compact",
+          "supported": false
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Lifecycle hooks are not installed.",
+        "MCP declarations require host-specific registration."
+      ]
+    },
+    {
+      "package": "craft-engineering",
+      "version": "0.0.1",
+      "adapter": "gemini-extension",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-engineering-design-agent",
+        "craft-engineering-evaluate-agent",
+        "craft-engineering-backend-engineering",
+        "craft-engineering-backend-foundations",
+        "craft-engineering-foundations",
+        "craft-engineering-react-engineering",
+        "craft-engineering-locate-code",
+        "craft-engineering-security-engineering",
+        "craft-engineering-testing-engineering",
+        "craft-engineering-ui-foundations",
+        "craft-engineering-workflow-change-agent",
+        "craft-engineering-workflow-review-change",
+        "craft-engineering-workflow-select-discipline"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Lifecycle hooks are not installed.",
+        "MCP declarations require host-specific registration."
+      ]
+    },
+    {
+      "package": "craft-review",
+      "version": "0.0.1",
+      "adapter": "gemini-extension",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-review-review-change",
+        "craft-review-workflow-review-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "unsupported-not-installed",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "read-only",
+          "normalizedEvent": "before-tool",
+          "supported": false
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Lifecycle hooks are not installed.",
+        "MCP declarations require host-specific registration."
+      ]
+    },
+    {
+      "package": "craft-stories",
+      "version": "0.0.1",
+      "adapter": "gemini-extension",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "craft-stories-audit-specs",
+        "craft-stories-ground-spec",
+        "craft-stories-write-stories",
+        "craft-stories-workflow-prepare-stories"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Lifecycle hooks are not installed.",
+        "MCP declarations require host-specific registration."
+      ]
+    }
+  ]
+}

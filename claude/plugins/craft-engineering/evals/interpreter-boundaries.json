@@ -1,0 +1,18 @@
+{
+  "id": "interpreter-boundaries",
+  "prompt": "A service runs an external file utility with structured argv and no shell. An uploaded filename can begin with an option; its path may traverse a symlink. The content passes a MIME signature check. Review whether the code is safe and propose focused verification without executing live attack payloads.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Explains that argv removes shell parsing but not option/operand semantics, and checks the actual tool support and allowed operands."
+    },
+    {
+      "id": "c2",
+      "description": "Investigates permitted root, symlink/race and file-processing limits; does not claim signature sniffing or textual canonicalization alone proves safety."
+    },
+    {
+      "id": "c3",
+      "description": "Keeps authorization and malformed/oversized/cross-scope checks distinct, with controlled evidence and no invented security pass."
+    }
+  ]
+}

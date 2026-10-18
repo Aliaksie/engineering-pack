@@ -1,0 +1,976 @@
+{
+  "formatVersion": 1,
+  "stackIntents": [
+    "implement",
+    "plan",
+    "investigate",
+    "review",
+    "verify"
+  ],
+  "extensions": {
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".py": "python",
+    ".java": "java",
+    ".kt": "kotlin",
+    ".kts": "kotlin",
+    ".cs": "csharp",
+    ".go": "go"
+  },
+  "runtimeImplications": {
+    "java": "jvm",
+    "kotlin": "jvm",
+    "jvm": "jvm"
+  },
+  "entries": [
+    {
+      "id": "workflow:implement",
+      "skills": [
+        "craft-delivery:apply-change"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "implement"
+        ]
+      },
+      "value": {
+        "problem": "Unbounded implementation can miss the requested outcome or verification.",
+        "contribution": "Sequence scope, evidence, focused edits and criterion-mapped checks.",
+        "inputs": "Authorized request, project instructions, affected code and checks.",
+        "result": "Focused change with observed verification and limitations.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:plan",
+      "skills": [
+        "craft-delivery:plan-change"
+      ],
+      "references": [
+        "craft-engineering:foundations/references/design-principles.md"
+      ],
+      "when": {
+        "intents": [
+          "plan"
+        ]
+      },
+      "value": {
+        "problem": "Substantial work starts before boundaries, decisions and checks are understood.",
+        "contribution": "Produce executable steps with alternatives, uncertainty and verification.",
+        "inputs": "Request, acceptance criteria, constraints and repository evidence.",
+        "result": "Cited plan with risks, ordered steps and unresolved choices.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:investigate",
+      "skills": [
+        "craft-delivery:inspect-architecture"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "investigate"
+        ]
+      },
+      "value": {
+        "problem": "Architecture or ownership assumptions can misdirect a change.",
+        "contribution": "Trace source and decision status before recommending work.",
+        "inputs": "Question, affected paths and available project sources.",
+        "result": "Grounded explanation with ownership, constraints and missing evidence.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:locate",
+      "skills": [
+        "craft-engineering:locate-code"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "locate"
+        ]
+      },
+      "value": {
+        "problem": "Repository lookup can waste model context through repeated tiny searches or unsupported absence claims.",
+        "contribution": "Select bounded batched evidence lookup and optional authorized extraction without loading implementation disciplines.",
+        "inputs": "Explicit repository question, affected paths, search terms and coverage limits.",
+        "result": "Compact cited evidence with searched scope, truncation and unresolved ambiguity.",
+        "boundaries": "Deterministic lookup remains the default; selection neither launches a worker nor grants new authorization.",
+        "consumer": "Locate intent and bounded repository evidence gathering.",
+        "evidence": "Routing tests establish minimal selection only; model cost and latency require observed execution evidence."
+      }
+    },
+    {
+      "id": "workflow:research",
+      "skills": [
+        "craft-delivery:inspect-architecture"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "research"
+        ]
+      },
+      "value": {
+        "problem": "Repository lookup can silently turn a proposal or inference into a fact.",
+        "contribution": "Require cited local evidence and disclose unavailable sources.",
+        "inputs": "Bounded repository question and accessible sources.",
+        "result": "Relevant sources and decision status with explicit unknowns.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:review",
+      "skills": [
+        "craft-review:review-change"
+      ],
+      "fallbackSkills": {
+        "craft-review:review-change": "craft-delivery:review-code"
+      },
+      "references": [],
+      "when": {
+        "intents": [
+          "review"
+        ]
+      },
+      "value": {
+        "problem": "Findings can refer to a stale or unidentified revision.",
+        "contribution": "Bind findings and verification limits to immutable review input.",
+        "inputs": "Authorized review scope and base/head snapshot.",
+        "result": "Evidence-backed findings and snapshot provenance.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:story",
+      "skills": [
+        "craft-stories:write-stories"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "story"
+        ]
+      },
+      "value": {
+        "problem": "Task authoring can invent requirements or require an unavailable tracker.",
+        "contribution": "Ground local story criteria in source and expose unanswered questions.",
+        "inputs": "Task text, accessible code and specification evidence.",
+        "result": "Local story draft with checkable criteria and unknowns.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "workflow:verify",
+      "skills": [
+        "craft-engineering:testing-engineering"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "verify"
+        ]
+      },
+      "value": {
+        "problem": "Passing unrelated checks can be mistaken for proof of a change.",
+        "contribution": "Choose the boundary and assertion that proves each affected claim.",
+        "inputs": "Acceptance criteria, affected code and actual check commands.",
+        "result": "Criterion-mapped observed results and verification gaps.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:foundations",
+      "skills": [
+        "craft-engineering:foundations"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "implement",
+          "review"
+        ]
+      },
+      "value": {
+        "problem": "Unnecessary structure and unrelated edits obscure the change.",
+        "contribution": "Apply scope, boundary and context discipline before adding code.",
+        "inputs": "Affected code, user scope and applicable project policy.",
+        "result": "Coherent implementation or review with justified structure.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:architecture",
+      "skills": [
+        "craft-delivery:inspect-architecture"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "plan"
+        ]
+      },
+      "value": {
+        "problem": "Planning can rely on superseded or proposed architecture.",
+        "contribution": "Distinguish accepted decisions, observed behavior and inference.",
+        "inputs": "Decision sources, module declarations and affected paths.",
+        "result": "Cited constraints, owners and surfaced discrepancies.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:task-grounding",
+      "skills": [
+        "craft-stories:ground-spec"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "story"
+        ]
+      },
+      "value": {
+        "problem": "Story criteria can claim behavior the repository does not support.",
+        "contribution": "Require source grounding and preserve missing evidence.",
+        "inputs": "Task intent and accessible repository sources.",
+        "result": "Grounded criteria and explicit unavailable evidence.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:testing",
+      "skills": [
+        "craft-engineering:testing-engineering"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "implement",
+          "review",
+          "verify"
+        ]
+      },
+      "value": {
+        "problem": "A test may mock away the boundary it claims to verify.",
+        "contribution": "Map behavioral claims to discriminating assertions and appropriate checks.",
+        "inputs": "Acceptance criteria, real runner configuration and affected dependencies.",
+        "result": "Small verification plan and observed results with limits.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:security",
+      "skills": [
+        "craft-engineering:security-engineering"
+      ],
+      "references": [],
+      "when": {
+        "risks": [
+          "auth",
+          "untrusted-input",
+          "secrets"
+        ]
+      },
+      "value": {
+        "problem": "Changed trust boundaries can expose inputs, authority or secrets.",
+        "contribution": "Trace validation and authorization before effects and inspect unsafe data flow.",
+        "inputs": "Affected trust boundaries, authorization policy and data handling.",
+        "result": "Evidence-backed security decisions or findings.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:accessibility",
+      "skills": [],
+      "references": [
+        "craft-engineering:react-engineering/references/accessibility.md"
+      ],
+      "when": {
+        "layers": [
+          "ui"
+        ],
+        "risks": [
+          "accessibility"
+        ]
+      },
+      "value": {
+        "problem": "A visible UI can still prevent keyboard or assistive interaction.",
+        "contribution": "Review observable interaction and accessible feedback on affected UI.",
+        "inputs": "Affected interaction, UI source and accessibility risk.",
+        "result": "Interaction-specific findings and verification recommendations.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "layer:ui",
+      "skills": [
+        "craft-engineering:ui-foundations"
+      ],
+      "references": [],
+      "when": {
+        "layers": [
+          "ui"
+        ]
+      },
+      "value": {
+        "problem": "UI changes can miss state, accessible feedback and stale interactions.",
+        "contribution": "Examine observable loading, failure and interaction boundaries.",
+        "inputs": "Affected UI behavior and project conventions.",
+        "result": "UI decisions and checks tied to user-visible outcomes.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "layer:backend",
+      "skills": [
+        "craft-engineering:backend-foundations"
+      ],
+      "references": [],
+      "when": {
+        "layers": [
+          "backend"
+        ]
+      },
+      "value": {
+        "problem": "Services can mishandle duplicate, partial or unauthorized effects.",
+        "contribution": "Expose transaction, idempotency, consistency and recovery boundaries.",
+        "inputs": "Affected service contract and actual persistence/runtime configuration.",
+        "result": "Explicit backend invariants and affected failure checks.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "layer:agent",
+      "skills": [
+        "craft-engineering:design-agent",
+        "craft-engineering:evaluate-agent"
+      ],
+      "references": [],
+      "when": {
+        "layers": [
+          "agent"
+        ]
+      },
+      "value": {
+        "problem": "Agent behavior can expand authority or hide uncertain outcomes.",
+        "contribution": "Constrain tool authority and demand observable behavior evaluation.",
+        "inputs": "Agent task, tool schema, authorization and evaluation evidence.",
+        "result": "Bounded agent design and meaningful evaluation requirements.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "language:javascript",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/javascript.md"
+      ],
+      "when": {
+        "languages": [
+          "javascript"
+        ]
+      },
+      "value": {
+        "problem": "Browser/server APIs and module boundaries can be conflated.",
+        "contribution": "Verify module/runtime configuration and asynchronous failure boundaries.",
+        "inputs": "Actual JavaScript configuration and affected execution path.",
+        "result": "Language-specific checks without inferring a runtime or provider.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language/runtime reference within engineering foundations.",
+        "evidence": "Structural content placement decision: concise guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "language:typescript",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/typescript.md"
+      ],
+      "when": {
+        "languages": [
+          "typescript"
+        ]
+      },
+      "value": {
+        "problem": "Static types can falsely imply external values are validated.",
+        "contribution": "Use narrowing and explicit boundary models against repository configuration.",
+        "inputs": "Pinned compiler configuration and affected data boundaries.",
+        "result": "Type decisions that preserve runtime validation and domain meaning.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language reference within engineering foundations.",
+        "evidence": "Structural content placement decision: substantive TypeScript guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "language:python",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/python.md"
+      ],
+      "when": {
+        "languages": [
+          "python"
+        ]
+      },
+      "value": {
+        "problem": "Synchronous clients or shared state can break asynchronous request behavior.",
+        "contribution": "Inspect interpreter, resource ownership and sync/async boundaries.",
+        "inputs": "Interpreter/dependency evidence and affected call path.",
+        "result": "Python-specific lifecycle and failure checks.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language/runtime reference within engineering foundations.",
+        "evidence": "Structural content placement decision: concise guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "language:go",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/go.md"
+      ],
+      "when": {
+        "languages": [
+          "go"
+        ]
+      },
+      "value": {
+        "problem": "Goroutines and request IO can outlive their owning operation.",
+        "contribution": "Trace context propagation, termination and preserved error identity.",
+        "inputs": "go.mod, affected IO and concurrency ownership.",
+        "result": "Cancellation and lifecycle decisions with appropriate race evidence.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language/runtime reference within engineering foundations.",
+        "evidence": "Structural content placement decision: concise guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "language:csharp",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/csharp.md"
+      ],
+      "when": {
+        "languages": [
+          "csharp"
+        ]
+      },
+      "value": {
+        "problem": "Resource and dependency lifetimes can conflict with asynchronous work.",
+        "contribution": "Inspect target framework, disposal and cancellation ownership.",
+        "inputs": "Project files, dependency lifetimes and affected call path.",
+        "result": "Lifetime and cancellation decisions without assuming a framework.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language/runtime reference within engineering foundations.",
+        "evidence": "Structural content placement decision: concise guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "language:java",
+      "skills": [],
+      "references": [],
+      "when": {
+        "languages": [
+          "java"
+        ]
+      },
+      "unavailable": "No independent language playbook passed the audit; use repository language configuration.",
+      "value": {
+        "problem": "Java file identity can incorrectly imply Spring or standalone guidance.",
+        "contribution": "Expose precise language identity and the absence of independent guidance.",
+        "inputs": "Declared language or file-extension inference.",
+        "result": "Visible Java identity with explicit guidance limitation.",
+        "boundaries": "No independent language playbook passed the audit; use repository language configuration.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "language:kotlin",
+      "skills": [],
+      "references": [],
+      "when": {
+        "languages": [
+          "kotlin"
+        ]
+      },
+      "unavailable": "No independent language playbook passed the audit; use repository language configuration.",
+      "value": {
+        "problem": "Kotlin file identity can incorrectly imply a framework.",
+        "contribution": "Expose language identity separately from JVM and optional frameworks.",
+        "inputs": "Declared language or file-extension inference.",
+        "result": "Visible Kotlin identity with explicit guidance limitation.",
+        "boundaries": "No independent language playbook passed the audit; use repository language configuration.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "runtime:jvm",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/languages/jvm.md"
+      ],
+      "when": {
+        "runtimes": [
+          "jvm"
+        ]
+      },
+      "value": {
+        "problem": "Blocking, cancellation and lifecycle assumptions can cross JVM boundaries.",
+        "contribution": "Inspect build/runtime configuration and affected thread or resource ownership.",
+        "inputs": "JVM configuration and affected execution path.",
+        "result": "Runtime decisions independent of Java/Kotlin and framework selection.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow-selected language/runtime reference within engineering foundations.",
+        "evidence": "Structural content placement decision: concise guidance is selectively loaded as a reference; no measured model improvement claimed."
+      }
+    },
+    {
+      "id": "runtime:node",
+      "skills": [],
+      "references": [],
+      "when": {
+        "runtimes": [
+          "node"
+        ]
+      },
+      "value": {
+        "problem": "TypeScript can be mistaken for evidence of Node.",
+        "contribution": "Require an explicit runtime declaration before Node-specific loading.",
+        "inputs": "Consumer runtime declaration.",
+        "result": "Node context identity for independently selected practices.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      },
+      "contextOnly": true
+    },
+    {
+      "id": "runtime:browser",
+      "skills": [],
+      "references": [],
+      "when": {
+        "runtimes": [
+          "browser"
+        ]
+      },
+      "unavailable": "No independent browser playbook; use selected UI practices.",
+      "value": {
+        "problem": "Browser code can accidentally receive server-specific guidance.",
+        "contribution": "Keep explicit browser identity separate from UI/framework decisions.",
+        "inputs": "Consumer runtime declaration.",
+        "result": "Browser context and explicit standalone-guidance limitation.",
+        "boundaries": "No independent browser playbook; use selected UI practices.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "framework:react",
+      "skills": [
+        "craft-engineering:react-engineering"
+      ],
+      "references": [],
+      "when": {
+        "frameworks": [
+          "react"
+        ]
+      },
+      "value": {
+        "problem": "Component state and effect boundaries can obscure observable failures.",
+        "contribution": "Use React-specific interaction, state and testing references selectively.",
+        "inputs": "Explicit React declaration and affected behavior.",
+        "result": "Relevant React guidance without inferring backend runtime.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "framework:spring",
+      "skills": [],
+      "references": [],
+      "when": {
+        "frameworks": [
+          "spring"
+        ]
+      },
+      "unavailable": "No independent Spring playbook; resolve version-sensitive proxy and transaction behavior from official documentation.",
+      "documentationQuestion": "For the pinned Spring version, which proxy and transaction boundaries affect the changed path?",
+      "value": {
+        "problem": "Proxy/transaction assumptions can rely on an unverified framework version.",
+        "contribution": "Expose unavailable guidance and a conditional pinned-version question.",
+        "inputs": "Explicit Spring declaration and affected transaction/proxy path.",
+        "result": "Visible framework limitation and external evidence need.",
+        "boundaries": "No independent Spring playbook; resolve version-sensitive proxy and transaction behavior from official documentation.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "provider:bedrock",
+      "skills": [],
+      "references": [
+        "craft-engineering:design-agent/references/bedrock.md"
+      ],
+      "when": {
+        "providers": [
+          "bedrock"
+        ],
+        "layers": [
+          "agent"
+        ]
+      },
+      "value": {
+        "problem": "Provider-specific agent semantics can contaminate unrelated work.",
+        "contribution": "Require both Bedrock and an agent layer before provider reference loading.",
+        "inputs": "Explicit provider and module-local agent evidence.",
+        "result": "Bounded provider reference selection.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "provider:foundry",
+      "skills": [],
+      "references": [
+        "craft-engineering:design-agent/references/foundry.md"
+      ],
+      "when": {
+        "providers": [
+          "foundry"
+        ],
+        "layers": [
+          "agent"
+        ]
+      },
+      "value": {
+        "problem": "Provider-specific agent semantics can contaminate unrelated work.",
+        "contribution": "Require both Foundry and an agent layer before provider reference loading.",
+        "inputs": "Explicit provider and module-local agent evidence.",
+        "result": "Bounded provider reference selection.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:error-handling",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/error-handling.md"
+      ],
+      "when": {
+        "risks": [
+          "failure-path",
+          "timeout",
+          "retry",
+          "partial-write",
+          "cancellation"
+        ]
+      },
+      "value": {
+        "problem": "Timeout or partial effects can be misreported as failure or success.",
+        "contribution": "Decide deadline, retry safety, cancellation and recovery separately.",
+        "inputs": "Caller contract, side effects, retry layers and deadline ownership.",
+        "result": "Explicit failure policy with affected-case verification.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Workflow entry points and host loading plans.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:debugging",
+      "skills": [],
+      "references": [
+        "craft-engineering:testing-engineering/references/systematic-debugging.md"
+      ],
+      "when": {
+        "risks": [
+          "debugging",
+          "regression"
+        ]
+      },
+      "value": {
+        "problem": "Speculative edits can conceal the cause of an observed failure.",
+        "contribution": "Compare hypotheses through bounded discriminating experiments.",
+        "inputs": "Observed and expected behavior, affected state and available traces.",
+        "result": "Supported cause, focused fix and verification or explicit missing evidence.",
+        "boundaries": "No automatic delegation, remote effects or unrelated fixes.",
+        "consumer": "Investigate, plan, implement and review workflows with a debugging risk.",
+        "evidence": "Paired model investigation outcomes remain pending; routing fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:test-reliability",
+      "skills": [],
+      "references": [
+        "craft-engineering:testing-engineering/references/test-data-and-flakiness.md"
+      ],
+      "when": {
+        "risks": [
+          "flaky-test",
+          "test-data"
+        ]
+      },
+      "value": {
+        "problem": "Reruns and shared fixtures can hide a failed assertion or leak state.",
+        "contribution": "Preserve first failures, isolate data and distinguish cleanup from assertion outcomes.",
+        "inputs": "Failing command, fixture lifecycle, seed/concurrency and execution target.",
+        "result": "Reproducible evidence, scoped cleanup and an explicit coverage or reliability gap.",
+        "boundaries": "No unscoped cleanup, automatic deletion or concealed retry failures.",
+        "consumer": "Investigate, implement and verify workflows with a test reliability risk.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:concurrency",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/async-patterns.md"
+      ],
+      "when": {
+        "risks": [
+          "concurrency",
+          "queue",
+          "idempotency"
+        ]
+      },
+      "value": {
+        "problem": "Concurrent delivery and crash windows can duplicate or abandon effects.",
+        "contribution": "Decide completion, bounded work, identity and recovery using actual guarantees.",
+        "inputs": "Caller contract, effect ownership, load limits and transport semantics.",
+        "result": "Explicit concurrency/delivery invariants and affected interleaving checks.",
+        "boundaries": "Affected behavior only; no assumed runtime, framework, provider, remote effects or additional authorization.",
+        "consumer": "Risk-selected investigate/plan/implement/review/verify workflows.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:observability",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/observability-logging.md"
+      ],
+      "when": {
+        "risks": [
+          "observability",
+          "logging",
+          "audit-trail"
+        ]
+      },
+      "value": {
+        "problem": "Telemetry can leak data, create unbounded load or conceal required audit failure.",
+        "contribution": "Choose actionable bounded signals and distinguish diagnostics from required audit records.",
+        "inputs": "Operational question, signal path, data policy and failure contract.",
+        "result": "Observed safe signals with explicit export failure behavior.",
+        "boundaries": "Affected behavior only; no assumed runtime, framework, provider, remote effects or additional authorization.",
+        "consumer": "Risk-selected investigate/plan/implement/review/verify workflows.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:service-boundaries",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/service-layers.md"
+      ],
+      "when": {
+        "risks": [
+          "service-boundary",
+          "resource-lifetime"
+        ]
+      },
+      "value": {
+        "problem": "Shared clients or arbitrary layering can violate request/tenant lifetimes.",
+        "contribution": "Choose a seam for present ownership, contract or lifecycle benefit.",
+        "inputs": "Architecture constraints, dependency direction, lifecycle and affected caller.",
+        "result": "Justified boundary with isolation and protocol verification.",
+        "boundaries": "Affected behavior only; no assumed runtime, framework, provider, remote effects or additional authorization.",
+        "consumer": "Risk-selected investigate/plan/implement/review/verify workflows.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:performance",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/performance-efficiency.md"
+      ],
+      "when": {
+        "risks": [
+          "performance",
+          "cache",
+          "resource-budget"
+        ]
+      },
+      "value": {
+        "problem": "Unmeasured optimization can trade correctness for an irrelevant local speedup.",
+        "contribution": "Use comparable workload measurements and bounded resource/cache semantics.",
+        "inputs": "Representative baseline, budget, workload and execution constraints.",
+        "result": "Before/after evidence, preserved correctness and stated limits.",
+        "boundaries": "Affected behavior only; no assumed runtime, framework, provider, remote effects or additional authorization.",
+        "consumer": "Risk-selected investigate/plan/implement/review/verify workflows.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
+      "id": "practice:distributed-systems",
+      "skills": [],
+      "references": [
+        "craft-engineering:backend-engineering/references/distributed-systems.md"
+      ],
+      "when": {
+        "risks": [
+          "distributed-system",
+          "distributed-systems",
+          "consistency",
+          "replication",
+          "partition"
+        ]
+      },
+      "value": {
+        "problem": "Independently failing state owners can violate caller-visible consistency and recovery contracts.",
+        "contribution": "Choose consistency, ordering and cross-resource recovery by explicit invariants and supported guarantees.",
+        "inputs": "State ownership, allowed staleness, conflicting effects and actual protocol guarantees.",
+        "result": "Bounded consistency/recovery choices and targeted failure-window checks.",
+        "boundaries": "No assumed global transaction, cloud or exactly-once guarantee; consumer policy owns requirements.",
+        "consumer": "Risk-selected engineering workflows across languages.",
+        "evidence": "Source/export resolution and routing checks; broader task evidence remains consumer-specific."
+      }
+    },
+    {
+      "id": "practice:infrastructure",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/infrastructure.md"
+      ],
+      "when": {
+        "risks": [
+          "infrastructure",
+          "deployment",
+          "rollout",
+          "disaster-recovery",
+          "provisioning"
+        ]
+      },
+      "value": {
+        "problem": "Resource/configuration changes can destroy state or break rollout/recovery assumptions.",
+        "contribution": "Trace desired state, access, replacement, compatibility and recoverability before effects.",
+        "inputs": "Consumer environment, resource/state ownership, rollout and recovery targets.",
+        "result": "Proportionate infrastructure change and recovery checks with explicit execution authority.",
+        "boundaries": "No assumed tool, cloud, topology or permission to apply/deploy changes.",
+        "consumer": "Risk-selected engineering workflows affecting deployment or infrastructure.",
+        "evidence": "Source/export resolution and routing checks; actual environment validation remains explicit."
+      }
+    },
+    {
+      "id": "practice:execution-optimization",
+      "skills": [],
+      "references": [
+        "craft-engineering:foundations/references/execution-optimization.md"
+      ],
+      "when": {
+        "risks": [
+          "execution-optimization",
+          "model-budget",
+          "context-reuse",
+          "prompt-cache",
+          "tool-cache",
+          "model-routing"
+        ]
+      },
+      "value": {
+        "problem": "Repeated context/tool/model work can waste latency or budget and obscure freshness.",
+        "contribution": "Select supported cache/reuse/model-profile techniques with explicit identity and correctness boundaries.",
+        "inputs": "Task quality bar, source identities, consumer budget and actual host features.",
+        "result": "Configured optimization choice with known availability and measurement gaps.",
+        "boundaries": "No default cache, model client, unsupported model switch or correctness dependency.",
+        "consumer": "Engineering workflows with explicit execution cost/context risks.",
+        "evidence": "Deterministic reference resolution and existing profile-routing tests; actual savings require observed usage."
+      }
+    },
+    {
+      "id": "practice:service-integration",
+      "skills": [
+        "craft-delivery:configure-service"
+      ],
+      "references": [],
+      "when": {
+        "risks": [
+          "service-integration",
+          "service-binding"
+        ]
+      },
+      "value": {
+        "problem": "Service invocation plans alone do not establish a configured working integration.",
+        "contribution": "Discover consumer tools, configure exact secret-free binding and verify an authorized real read.",
+        "inputs": "Requested operation, explicit service/account/project and available CLI/MCP schema.",
+        "result": "Verified bounded read or reviewable configuration with missing prerequisites stated.",
+        "boundaries": "No assumed account, credentials, universal response decoder or write permission.",
+        "consumer": "Explicit consumer integration setup or repair.",
+        "evidence": "Source/export resolution and binding fixtures; live access verification is consumer-specific."
+      }
+    }
+  ],
+  "intents": [
+    "implement",
+    "plan",
+    "investigate",
+    "review",
+    "story",
+    "locate",
+    "research",
+    "status",
+    "verify"
+  ],
+  "layerExtensions": {
+    ".tsx": "ui",
+    ".jsx": "ui",
+    ".html": "ui",
+    ".css": "ui",
+    ".scss": "ui",
+    ".vue": "ui",
+    ".svelte": "ui"
+  }
+}

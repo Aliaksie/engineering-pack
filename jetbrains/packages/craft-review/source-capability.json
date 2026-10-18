@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "name": "craft-review",
+  "version": "0.0.1",
+  "description": "Headless, revision-bound review for local diffs, GitHub PRs and GitLab MRs.",
+  "author": {
+    "name": "craft-capabilities contributors"
+  },
+  "instructions": "AGENTS.md",
+  "skills": [
+    "skills/review-change"
+  ],
+  "workflows": [
+    "workflows/review-change.md"
+  ],
+  "standards": [],
+  "evals": [
+    "evals/draft-only.json"
+  ],
+  "tools": [
+    {
+      "name": "prepare-review",
+      "path": "bin/prepare-review.mjs",
+      "runtime": "node",
+      "network": "none"
+    },
+    {
+      "name": "check-review",
+      "path": "bin/check-review.mjs",
+      "runtime": "node",
+      "network": "none"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "read-only",
+      "event": "before-tool",
+      "tool": "shell",
+      "handler": "hooks/read-only.mjs"
+    }
+  ],
+  "mcp": [],
+  "optionalDependencies": [
+    "craft-engineering",
+    "craft-delivery"
+  ]
+}

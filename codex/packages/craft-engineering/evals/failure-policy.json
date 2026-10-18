@@ -1,0 +1,18 @@
+{
+  "id": "failure-policy",
+  "prompt": "A Java service writes a payment through a remote client. The caller times out and cannot tell whether the write completed. The repository has a retry helper, but no evidence of an idempotency contract. Plan a focused fix and verification. No framework or cloud is specified.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Distinguishes timeout from confirmed failure and investigates unknown side effects before retrying."
+    },
+    {
+      "id": "c2",
+      "description": "Requires evidence of retry safety and a bounded attempt/deadline budget; does not prescribe fallback or a circuit breaker unconditionally."
+    },
+    {
+      "id": "c3",
+      "description": "Uses repository error/cancellation boundaries and meaningful verification without assuming Node, Spring, AWS or a new test framework."
+    }
+  ]
+}

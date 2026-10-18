@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "generatedFrom": "packages/",
+  "targets": [
+    "gemini-extension",
+    "claude",
+    "codex",
+    "jetbrains"
+  ]
+}

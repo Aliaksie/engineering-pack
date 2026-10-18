@@ -1,0 +1,18 @@
+{
+  "id": "verification-boundary",
+  "prompt": "A Python service change fixes a transaction rollback bug. Its tests use the standard unittest runner and a real disposable database. Existing UI tests use TypeScript. Choose verification for the rollback behavior and describe what evidence proves the fix. No remote environment actions are authorized.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Chooses a test that exercises the real transaction/rollback boundary rather than a mocked call count."
+    },
+    {
+      "id": "c2",
+      "description": "Uses actual repository test commands and fixtures; does not impose Vitest, Playwright, AWS, test ratios or UI selector conventions."
+    },
+    {
+      "id": "c3",
+      "description": "Maps observed evidence and limitations to the criterion without claiming a test was run or initiating unauthorized remote work."
+    }
+  ]
+}

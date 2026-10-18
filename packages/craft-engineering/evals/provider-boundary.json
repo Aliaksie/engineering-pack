@@ -1,0 +1,18 @@
+{
+  "id": "provider-boundary",
+  "prompt": "An agent on Microsoft Foundry calls an order API twice after a timeout. Propose a fix without access to the cloud account.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Addresses idempotency and authorization outside model judgment."
+    },
+    {
+      "id": "c2",
+      "description": "Verifies Foundry context rather than suggesting AWS IAM as if it were applicable."
+    },
+    {
+      "id": "c3",
+      "description": "Separates local tests from unrun provider integration checks."
+    }
+  ]
+}

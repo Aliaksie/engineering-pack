@@ -1,0 +1,22 @@
+{
+  "id": "workflow-deliver-change",
+  "prompt": "Continue delivery from an already accepted implementation plan. Local edits/checks are authorized; commits, deployment, tracker writes and other agents are not. The implementation remains uncommitted. A review identifies a defect after the first check run; correct it and verify the final working state. The craft-review package is installed but its snapshot tool captures committed base/head only.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Start at the needed stage and preserve the accepted plan rather than repeating every stage."
+    },
+    {
+      "id": "c2",
+      "description": "Compose focused implementation, criterion-mapped verification and relevant review/context maintenance."
+    },
+    {
+      "id": "c3",
+      "description": "Return actual evidence and limitations without mandatory TDD, tracker, delegation or deployment."
+    },
+    {
+      "id": "c4",
+      "description": "Review the actual uncommitted changes with explicit working-tree scope, create no commit for tooling, and rerun affected checks after correcting the review defect rather than reusing stale evidence."
+    }
+  ]
+}

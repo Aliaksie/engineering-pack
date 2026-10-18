@@ -1,0 +1,18 @@
+{
+  "id": "workflow-review-code",
+  "prompt": "Review an explicitly committed local change. craft-review is unavailable; tests have not been run and no publication is authorized.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "State unavailable capability and retain exact revision/source evidence for fallback findings."
+    },
+    {
+      "id": "c2",
+      "description": "Distinguish verified defects and unrun verification gaps; do not fabricate tests."
+    },
+    {
+      "id": "c3",
+      "description": "Return a local draft without source changes or publication."
+    }
+  ]
+}

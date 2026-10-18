@@ -1,0 +1,18 @@
+{
+  "id": "telemetry-failure",
+  "prompt": "A Java service emits best-effort diagnostic logs and a required durable audit record for a privileged write. The telemetry backend is unavailable. Current code catches and ignores failure for both. Review the policy and propose focused verification; no logging vendor or framework is specified.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Distinguishes best-effort diagnostics from required audit durability and establishes the accepted operation failure/recovery contract."
+    },
+    {
+      "id": "c2",
+      "description": "Does not prescribe production silence, an unconditional swallow or an invented logging wrapper; considers bounded overhead and sensitive fields."
+    },
+    {
+      "id": "c3",
+      "description": "Recommends observing actual signals and exporter/audit failure behavior without claiming unexecuted checks passed."
+    }
+  ]
+}

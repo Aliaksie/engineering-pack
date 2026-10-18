@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "name": "craft-stories",
+  "version": "0.0.1",
+  "description": "Code grounding, specification audits and local user-story drafts.",
+  "instructions": "AGENTS.md",
+  "skills": [
+    "skills/audit-specs",
+    "skills/ground-spec",
+    "skills/write-stories"
+  ],
+  "workflows": [
+    "workflows/prepare-stories.md"
+  ],
+  "standards": [],
+  "evals": [
+    "evals/unreachable-source.json"
+  ],
+  "tools": [],
+  "hooks": [],
+  "mcp": [],
+  "optionalDependencies": [],
+  "author": {
+    "name": "craft-capabilities contributors"
+  }
+}

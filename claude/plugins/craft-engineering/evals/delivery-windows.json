@@ -1,0 +1,18 @@
+{
+  "id": "delivery-windows",
+  "prompt": "A Python queue worker can receive a payment message twice, including concurrently. It checks a stored key, calls a remote payment service, and then records completion. A process can crash between those steps. Propose the smallest safe design and verification without assuming a cloud or exactly-once transport.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Identifies both the concurrent check/effect race and crash-after-effect window; a local key/claim alone is not proof of remote effect atomicity."
+    },
+    {
+      "id": "c2",
+      "description": "Requires actual provider-enforced idempotency, transaction scope or reconciliation evidence and states unresolved duplicate/unknown-outcome risk."
+    },
+    {
+      "id": "c3",
+      "description": "Bounds active work, backlog and retry/redrive behavior using actual transport guarantees without prescribing a mandatory DLQ or unbounded Promise.all."
+    }
+  ]
+}

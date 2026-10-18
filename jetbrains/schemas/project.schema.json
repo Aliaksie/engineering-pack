@@ -1,0 +1,762 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Consumer project configuration v1",
+  "type": "object",
+  "properties": {
+    "formatVersion": {
+      "const": 1
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "javascript",
+          "typescript",
+          "python",
+          "jvm",
+          "csharp",
+          "go",
+          "java",
+          "kotlin"
+        ]
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "ui",
+          "backend",
+          "agent"
+        ]
+      }
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "javascript",
+                "typescript",
+                "python",
+                "jvm",
+                "csharp",
+                "go",
+                "java",
+                "kotlin"
+              ]
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "ui",
+                "backend",
+                "agent"
+              ]
+            }
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "frameworks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "command"
+              ]
+            }
+          },
+          "runtimes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path"
+        ]
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "git": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "cli"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "args"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "mcp"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "tool": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "arguments": {
+                        "type": "object"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "tool",
+                      "arguments"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport"
+              ]
+            }
+          ]
+        },
+        "codehost": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "cli"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "args"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "mcp"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "tool": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "arguments": {
+                        "type": "object"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "tool",
+                      "arguments"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport"
+              ]
+            }
+          ]
+        },
+        "tasks": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "cli"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "args"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "transport": {
+                  "const": "mcp"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "operations": {
+                  "type": "object",
+                  "propertyNames": {
+                    "enum": [
+                      "git.status",
+                      "git.diff",
+                      "change.read",
+                      "change.diff",
+                      "task.read",
+                      "task.search",
+                      "git.commit",
+                      "git.push",
+                      "change.publish",
+                      "task.transition",
+                      "task.comment"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "tool": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "arguments": {
+                        "type": "object"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "tool",
+                      "arguments"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "provider",
+                "transport"
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "writeOperations": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "git.commit",
+              "git.push",
+              "change.publish",
+              "task.transition",
+              "task.comment"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "object",
+          "properties": {
+            "locator": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
+            },
+            "researcher": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
+            },
+            "implementer": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
+            },
+            "reviewer": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
+            },
+            "planner": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": []
+        },
+        "hosts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "delegation": {
+                "type": "boolean"
+              },
+              "models": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false,
+            "required": []
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    },
+    "checkpoint": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "readOnly": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "readOnly"
+      ]
+    },
+    "runtimes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "editHints"
+      ],
+      "properties": {
+        "editHints": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "formatVersion"
+  ]
+}

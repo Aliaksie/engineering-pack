@@ -1,0 +1,9 @@
+{
+  "name": "craft-review",
+  "version": "0.0.1",
+  "description": "Headless, revision-bound review for local diffs, GitHub PRs and GitLab MRs.",
+  "author": {
+    "name": "craft-capabilities contributors"
+  },
+  "hooks": "./platform-hooks/hooks.json"
+}

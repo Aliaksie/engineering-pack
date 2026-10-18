@@ -1,0 +1,18 @@
+{
+  "id": "workflow-inspect-architecture",
+  "prompt": "An accepted ADR and current implementation disagree about ownership. A proposal suggests a third option. Investigate the supplied repository.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Cite relevant sources and distinguish accepted decision, proposal, observed behavior and inference."
+    },
+    {
+      "id": "c2",
+      "description": "Surface the discrepancy and practical consequence without inventing an ADR or resolving authority silently."
+    },
+    {
+      "id": "c3",
+      "description": "Keep search bounded to supplied/linked repositories."
+    }
+  ]
+}

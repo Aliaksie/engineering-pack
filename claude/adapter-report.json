@@ -1,0 +1,201 @@
+{
+  "formatVersion": 1,
+  "adapter": "claude",
+  "packages": [
+    {
+      "package": "craft-delivery",
+      "version": "0.0.1",
+      "adapter": "claude",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "write-adr",
+        "apply-change",
+        "inspect-architecture",
+        "review-code",
+        "route-work",
+        "implement-story",
+        "maintain-context",
+        "plan-change",
+        "resolve-service",
+        "configure-service",
+        "workflow-deliver-change",
+        "workflow-ship-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "native-before-tool",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "routing",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "prompt-routing",
+          "normalizedEvent": "before-prompt",
+          "name": "UserPromptSubmit",
+          "context": true,
+          "deny": false,
+          "event": "before-prompt",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "restore",
+          "normalizedEvent": "session-start",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "startup|resume",
+          "event": "session-start",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "checkpoint",
+          "normalizedEvent": "before-compact",
+          "name": "PreCompact",
+          "context": false,
+          "deny": false,
+          "event": "before-compact",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "milestone",
+          "normalizedEvent": "after-tool",
+          "name": "PostToolUse",
+          "context": true,
+          "deny": false,
+          "event": "after-tool",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "turn-checkpoint",
+          "normalizedEvent": "turn-end",
+          "name": "Stop",
+          "context": false,
+          "deny": false,
+          "event": "turn-end",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        },
+        {
+          "id": "compact-restore",
+          "normalizedEvent": "after-compact",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "compact",
+          "event": "after-compact",
+          "tool": "any",
+          "handler": "hooks/context.mjs"
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-engineering",
+      "version": "0.0.1",
+      "adapter": "claude",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "design-agent",
+        "evaluate-agent",
+        "backend-engineering",
+        "backend-foundations",
+        "foundations",
+        "react-engineering",
+        "locate-code",
+        "security-engineering",
+        "testing-engineering",
+        "ui-foundations",
+        "workflow-change-agent",
+        "workflow-review-change",
+        "workflow-select-discipline"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-review",
+      "version": "0.0.1",
+      "adapter": "claude",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "review-change",
+        "workflow-review-change"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "native-before-tool",
+      "mcp": "none",
+      "hookMappings": [
+        {
+          "id": "read-only",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "shell",
+          "handler": "hooks/read-only.mjs"
+        }
+      ],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Live host loading has not been tested."
+      ]
+    },
+    {
+      "package": "craft-stories",
+      "version": "0.0.1",
+      "adapter": "claude",
+      "sourceManifest": "source-capability.json",
+      "skills": [
+        "audit-specs",
+        "ground-spec",
+        "write-stories",
+        "workflow-prepare-stories"
+      ],
+      "workflows": "exported-as-skills",
+      "instructions": "AGENTS.md-linked-from-skills",
+      "standards": "included-on-demand",
+      "evals": "included-not-executed",
+      "tools": "included-not-executed",
+      "hooks": "none",
+      "mcp": "none",
+      "hookMappings": [],
+      "runtime": "support/runtime/cli.mjs",
+      "limitations": [
+        "Live host loading has not been tested."
+      ]
+    }
+  ]
+}

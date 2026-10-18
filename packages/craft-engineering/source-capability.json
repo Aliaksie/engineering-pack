@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "name": "craft-engineering",
+  "version": "0.0.1",
+  "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance.",
+  "instructions": "AGENTS.md",
+  "skills": [
+    "skills/design-agent",
+    "skills/evaluate-agent",
+    "skills/backend-engineering",
+    "skills/backend-foundations",
+    "skills/foundations",
+    "skills/react-engineering",
+    "skills/locate-code",
+    "skills/security-engineering",
+    "skills/testing-engineering",
+    "skills/ui-foundations"
+  ],
+  "workflows": [
+    "workflows/change-agent.md",
+    "workflows/review-change.md",
+    "workflows/select-discipline.md"
+  ],
+  "standards": [
+    "standards/craft-bar.md"
+  ],
+  "evals": [
+    "evals/local-conventions.json",
+    "evals/mixed-stack.json",
+    "evals/provider-boundary.json",
+    "evals/failure-policy.json",
+    "evals/verification-boundary.json",
+    "evals/test-reliability.json",
+    "evals/delivery-windows.json",
+    "evals/telemetry-failure.json",
+    "evals/foundation-portability.json",
+    "evals/ui-policy-boundaries.json",
+    "evals/interpreter-boundaries.json",
+    "evals/typescript-runtime-contract.json"
+  ],
+  "tools": [],
+  "hooks": [],
+  "mcp": [],
+  "optionalDependencies": [
+    "craft-delivery"
+  ],
+  "author": {
+    "name": "craft-capabilities contributors"
+  }
+}
