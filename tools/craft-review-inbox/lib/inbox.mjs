@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { derive } from '../bin/derive.mjs';
+import { derive } from '../../../application/inbox.mjs';
 import { repoName, prNumber } from './config.mjs';
 import { atomicWrite, jsonFile, noSymlinks, run, saveJson, withLock } from './io.mjs';
 import { render, states } from './render.mjs';

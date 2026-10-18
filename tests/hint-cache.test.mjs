@@ -3,8 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reuseRoutingHint, commitRoutingHint, invalidateRoutingHint } from '../runtime/hint-cache.mjs';
-import { validateProject } from '../runtime/project.mjs';
+import { reuseRoutingHint, commitRoutingHint, invalidateRoutingHint } from '../application/context-delivery/hints.mjs';
+import { validateProject } from '../application/project/configuration.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hint reuse '));

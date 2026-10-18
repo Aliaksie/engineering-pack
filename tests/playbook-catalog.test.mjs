@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { catalog } from '../runtime/catalog.mjs';
-import { validatePlaybookCatalog } from '../runtime/validate-catalog.mjs';
-import { validateCatalogSources } from '../scripts/lib/playbook-catalog.mjs';
-import { loadCapabilities } from '../scripts/lib/capabilities.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
+import { validatePlaybookCatalog } from '../engine/contracts/catalog.mjs';
+import { validateCatalogSources } from '../tooling/lib/playbook-catalog.mjs';
+import { loadCapabilities } from '../tooling/lib/capabilities.mjs';
 
 const copy = () => structuredClone(catalog);
 
@@ -54,10 +54,10 @@ test('authoring resolves catalog targets against registered package skills and r
   assert.throws(() => validateCatalogSources(root, packages.filter((p) => p.manifest.name !== 'craft-engineering')), /unresolved catalog target/);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'catalog sources '));
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
-  fs.mkdirSync(path.join(repo, 'runtime'));
+  fs.mkdirSync(path.join(repo, 'engine/routing'), { recursive:true });
   const changed = copy();
   changed.entries[0].references = ['craft-engineering:testing-engineering/references/absent.md'];
-  fs.writeFileSync(path.join(repo, 'runtime/catalog.json'), JSON.stringify(changed));
+  fs.writeFileSync(path.join(repo, 'engine/routing/catalog.json'), JSON.stringify(changed));
   assert.throws(() => validateCatalogSources(repo, packages), /ENOENT/);
 });
 

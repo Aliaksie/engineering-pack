@@ -1,7 +1,7 @@
 # Craft Capabilities
 
 This repository authors portable AI Capability Packages. Canonical content lives in
-`packages/`; development-host packaging belongs to adapters. Node 20+, ESM, no npm dependencies.
+`packages/`; native host translation belongs to `hosts/` and export construction to `tooling/export/`. Node 20+, ESM, no npm dependencies.
 
 ## Commands
 
@@ -19,6 +19,8 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run locate -- ...` | Batch bounded literal searches into compact source evidence |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
+| `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |
+| `npm run session:attempt -- ...` | Record one bounded acceptance attempt without executing a retry |
 | `npm run session:advice -- ...` | Recommend a next action from explicit task state and fresh host observations |
 | `npm run eval:pair -- ...` | Prepare or explicitly run one frozen baseline/candidate pair; does not judge quality |
 | `npm run services:prepare -- ...` | Prepare configured service/tool metadata without live discovery |
@@ -37,10 +39,14 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `packages/<name>/standards` | Canonical quality guidance |
 | `packages/<name>/evals` | Provider-independent scenarios and rubric criteria |
 | `packages/craft-review/bin` | Revision-bound Git snapshots and review artifact validation |
-| `runtime` | Deterministic routing, tool plans and opt-in checkpoint state |
+| `engine` | Portable JSON decisions: routing, discovery, sessions, budgets and policy |
+| `application` | Use-case orchestration; calls public engine and platform boundaries |
+| `platform` | Runtime/OS implementations: Node filesystem, Git, state and processes |
+| `integrations` | External Git/codehost/transport mappings |
+| `cli` | Argument parsing and display |
 | `tools/craft-review-inbox` | Optional personal GitHub inbox; excluded from default exports |
-| `adapters` | Host payloads, manifests, discovery paths, hook output and feature reports |
-| `scripts` | Authoring validation, builds and eval-result checks |
+| `hosts` | Native coding-agent observations, controls and wire formats |
+| `tooling` | Build, export, validation, release and evaluation tooling |
 | `examples/project` | Consumer configuration skeleton; no live connections |
 | `schemas` | Published local authoring schema; runtime validator is dependency-free |
 | `dist` | Generated, ignored platform exports; never edit by hand |
@@ -52,8 +58,8 @@ This repository authors portable AI Capability Packages. Canonical content lives
 - Load common principles, language, application layer and provider guidance independently.
   Examples in a language do not make its compiler rules universal.
 - Keep vendor model aliases, permission grants and cache paths out of shared instructions.
-- Shared hooks accept normalized input and return allow/deny/context data. Adapters serialize host
-  responses. Unsupported enforcement must be visible in the adapter report.
+- Application use cases translate host events into lifecycle facts. The engine returns portable
+  decisions; hosts serialize native responses. Unsupported enforcement stays visible in export reports.
 - MCP declarations are opt-in and secret-free. Builds never activate connections or tools.
 - Keep packages self-contained. No runtime imports from authoring scripts or sibling packages. The builder copies the shared
   runtime into each export; keep one canonical source.

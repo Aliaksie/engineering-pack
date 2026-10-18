@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { derive } from '../tools/craft-review-inbox/bin/derive.mjs';
+import { derive } from '../application/inbox.mjs';
 
 const date = (day) => `2026-08-${String(day).padStart(2, '0')}T09:00:00Z`;
 const connection = (...items) => ({ nodes: items });

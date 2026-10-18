@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { route } from '../runtime/router.mjs';
-import { catalog } from '../runtime/catalog.mjs';
+import { route } from '../application/routing/select.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
 
 const select = (file, config = {}, intent = 'implement', risks = []) => route({ intent, files: [file], project: { formatVersion: 1, ...config }, risks });
 

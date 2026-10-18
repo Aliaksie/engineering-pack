@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../runtime/cli.mjs';
-import { route } from '../runtime/router.mjs';
-import { readProject } from '../runtime/project.mjs';
-import { snapshot, validateReview } from '../packages/craft-review/lib/review.mjs';
+import { run } from '../cli/main.mjs';
+import { route } from '../application/routing/select.mjs';
+import { readProject } from '../application/project/configuration.mjs';
+import { snapshot, validateReview } from '../application/review.mjs';
 
 function command(binary, args, cwd) {
   return spawnSync(binary, args, { cwd, shell: false, encoding: 'utf8' });
@@ -78,7 +78,7 @@ test('each host export exposes the standalone delivery CLI without shell entry p
   const { root } = fixture(t);
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     const folder = host === 'claude' ? 'plugins' : 'packages';
-    const cli = path.resolve('dist', host, folder, 'craft-delivery/support/runtime/cli.mjs');
+    const cli = path.resolve('dist', host, folder, 'craft-delivery/support/cli/main.mjs');
     const result = command(process.execPath, [cli, 'route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], root);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).loading.workflow, 'workflow:implement');

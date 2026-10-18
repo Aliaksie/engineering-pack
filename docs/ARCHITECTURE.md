@@ -1,59 +1,114 @@
 # Architecture
 
-Four installation units cover engineering craft, delivery, change review and product stories.
-Language and agent disciplines live within craft-engineering because they share its grounding,
-testing and quality concerns. Selective skill loading gives specialization without making
-every discipline a separate package dependency.
+Capability content lives in `packages/`. Four installation units cover engineering,
+delivery, review and product stories. Languages and application/provider disciplines
+remain independently selected guidance within craft-engineering.
 
 ```mermaid
 flowchart TD
-  P[Project configuration and task evidence] --> R[Shared deterministic runtime]
-  R --> C[Relevant capability skills and module context]
-  R --> T[Typed service invocation plans]
-  R --> E[Tool / main thread / delegated role]
-  C --> H[Host adapters]
-  H --> A[Claude / Codex / Cursor / Copilot / Gemini / JetBrains / AGENTS]
+  CLI[cli/ and hosts/] --> APP[application/: use cases]
+  APP --> ENGINE[engine/: portable JSON decisions]
+  APP --> PORTS[platform/: runtime ports]
+  PORTS --> NODE[platform/node: filesystem / Git / search / state]
+  APP --> EXT[integrations/: external transports]
+  BUILD[tooling/: build and export] --> CONTENT[packages/: guidance plus bundled runtime]
 ```
 
-There are three distinct boundaries:
+## Ownership
 
-1. **Capability content** owns workflows, standards, skills and eval cases.
-2. **Shared runtime** owns deterministic routing, service-operation planning and checkpoint
-   state. It does not call a model, execute a remote operation or spawn a worker.
-3. **Host adapters** own discovery paths, native names, hook events and wire responses.
-   **Service bindings** separately map Git, codehost and tracker operations to CLI/MCP tools.
+| Location | Owns |
+|---|---|
+| `engine/contracts/` | Project/catalog contracts and portable path validation |
+| `engine/routing/` | Guidance selection, module/delegation decisions, generic operation plans |
+| `engine/discovery/` | Independent lookup batches, bounded matching and compact results |
+| `engine/cache/` | Reuse validity and deterministic identities |
+| `engine/session/` | Context estimates, occupancy recommendations, activity and attempt budgets |
+| `engine/policy/` | Model advice, context delivery, review and inbox decisions |
+| `engine/checkpoint.mjs` | Small continuation contracts, source binding and comparison |
+| `application/` | Observation collection and execution of concrete local use cases |
+| `application/{routing,discovery,session,context-delivery}/` | Related use cases grouped by feature |
+| `platform/index.mjs` | Wiring for bounded observation/storage operations |
+| `platform/node/` | Concrete Node ports; repository and resource observations are grouped separately |
+| `integrations/` | External Git/codehost command syntax, observation normalization and output projections |
+| `hosts/` | Native host payloads, telemetry, capability declarations, controls and wire output |
+| `cli/` | Arguments, help and text display |
+| `tooling/export/` | Build-time platform exporters |
 
-Host, language, application layer and agent provider remain independent. Module ownership
-and dependencies come from the consumer, not a fixed list of repositories. File extensions
-are evidence for language; they are not proof of an architecture. A route declares what
-needs loading and what is missing, with tool/skill availability explicitly unverified until
-the host checks it.
+Folders represent features with multiple responsibilities. Small features remain files.
+Top-level names identify ownership: `engine/` decides, `application/` orchestrates,
+`platform/` implements runtime/OS access, `hosts/` adapts coding-agent hosts,
+`integrations/` maps external systems, `cli/` handles human input/output,
+`tooling/` builds and validates, and `packages/` contains agent-facing guidance.
+No former runtime, adapter or script paths are retained as forwarding modules.
 
-Shared hook handlers are pure. Adapter wrappers normalize events; the runtime may read trusted
-project configuration and write opt-in checkpoint state; handlers return data. Unsupported
-context injection or lifecycle events are reported. Instructions are suggestions, not a claim
-that a host enforces them. Tool-side authorization remains separate.
+## Engine contract
 
-`craft-review` consumes immutable local Git snapshots and validates structured findings.
-Interactive use and bots share that method. Publication is a separate authorized job with
-fresh revision checks. The optional personal inbox lives under `tools/craft-review-inbox`, outside
-default capability exports.
+`engine/index.mjs` exports `evaluate(request)`. Requests and responses contain only JSON:
 
-Builds validate source, stage generated exports and refuse unmanaged/symlinked output.
-The same canonical runtime is copied into each exported package’s `support/runtime` so an
-installed package never imports the authoring tree or a versioned sibling package. One source
-is maintained; copies are build artifacts. All source versions stay at 0.0.1 during this initial
-iteration. Evals separate packaging correctness from actual model behavior.
+```json
+{"formatVersion":1,"operation":"attempt-status","input":{"operation":"implement","records":[]}}
+```
 
-## Distribution boundaries
+Success returns `{ "formatVersion": 1, "ok": true, "result": ... }`. Failure returns
+`ok: false` with a stable `error.code` (`UNSUPPORTED_VERSION`, `UNKNOWN_OPERATION`, or
+`INVALID_INPUT`) and a diagnostic message. Callers must not branch on message prose.
+Inputs are copied before evaluation; no caller-owned objects are mutated. Clocks,
+repository versions, file observations, host capabilities and catalog data are explicit
+inputs. Time-sensitive advice requires an explicit clock value.
 
-The existing `adapters/` directory is the integration layer; there is no parallel
-`integrations/` tree. Codex receives a local marketplace of portable plugins. Gemini
-receives either a native guidance extension or the existing explicit hook overlay.
-JetBrains receives a project rule generated from the foundations skill and the same
-portable resources. External IDE agents use their native distribution. See
-[platform support](PLATFORMS.md). All generated copies remain under ignored `dist/`.
+The engine imports only its own portable modules. It does not read files, invoke Git,
+use Node globals, inspect environment variables or interpret native host payloads.
+Application use cases call the public boundary through `application/engine-client.mjs`,
+which only serializes requests and unwraps responses. Catalog loading and provider facts
+belong to the relevant use cases;
+Node implementations do not import application logic or engine policy. Application code
+imports only `platform/index.mjs`, never `platform/node/` details. The platform entry point
+wires the current Node implementation without introducing a second infrastructure layer. Port callbacks stay within application/Node orchestration; they never cross the JSON engine boundary.
 
-No new skill hierarchy, custom installer, MCP service or IDE plugin is required. Existing
-package names and the Claude marketplace identifier remain stable. Reuse the four current
-packages and their selective references rather than expanding into new micro-skills.
+A future Rust implementation can replace `evaluate` while retaining observation collection,
+CLI output and host adapters. No native bridge, process protocol or second implementation
+is required now. JavaScript remains a supported long-term implementation. Contract replay
+and dependency tests enforce the useful boundary independently of implementation language.
+
+## Evidence and effects
+
+Pack context measures selected guidance; current occupancy requires fresh, session-bound
+host observations. Pack activity counts its own receipts, never provider usage. Missing or
+incomplete observations stay unknown. See [session behavior](SESSION.md).
+
+Discovery batches only known independent literal lookups. Cached evidence is bound to
+session/task, HEAD, scoped inventory/file versions, manifests/config and implementation
+identity. Unavailable evidence triggers fresh discovery. Hint reuse separately records only
+successfully emitted context; lifecycle invalidation survives an in-flight delivery.
+
+Checkpoint, activity and hint state share bounded, symlink-checked, atomic file storage,
+with separate formats and lifecycles. Automatic Git snapshots cannot renew the source
+binding of older continuation notes. A reset recommendation requires a fresh continuation.
+
+The engine returns plans and advice. It does not call models, switch profiles, execute
+remote operations, compact a host session or publish findings. Context-delivery policy
+receives lifecycle facts, not hook event names. Application code
+translates lifecycle events and collects delivery evidence; hosts parse and run native hooks.
+Host lifecycle controls belong to `hosts/`; external service mappings belong to
+`integrations/`. Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
+
+## Packages and exports
+
+Package names, manifests and useful bin/hook entry points remain external interfaces.
+The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/` and `cli/` into
+each package's `support/`, and rebases shared imports in package entry points. Installed
+packages run after relocation without authoring scripts or sibling package dependencies.
+Full bundles also expose these directories at their root. No legacy runtime paths or
+fallback loaders are retained. Generated host glue remains in `platform-runtime/`;
+that name describes an installed host interface rather than the old source tree.
+
+The optional inbox remains under `tools/craft-review-inbox/` because it owns separate
+consumer configuration, remote pagination, checkout and review-artifact lifecycles. Its
+shared status and authorization decisions now use the engine, and external command
+recognition uses integrations. It runs from the repository checkout and stays excluded
+from default exports. Its separate I/O is retained rather than merging remote inbox state
+with session checkpoint state.
+
+Builds validate source, stage exports and refuse unmanaged or symlinked output. Versions
+stay at `0.0.1`. Deterministic checks establish packaging and contract correctness; they do
+not establish model quality or an efficiency improvement.

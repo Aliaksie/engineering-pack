@@ -4,7 +4,7 @@ Run `npm run check` with Node 20+. No npm install is needed. `npm test` builds e
 Review skill changes for useful decision criteria, selective references and clear scope.
 Keep examples portable and verify any executable behavior affected by the change.
 
-Keep canonical content in packages and native host behavior in adapters. Generated output is
+Keep canonical content in `packages/` and native host behavior in `hosts/`. Generated output is
 ignored and reproducible; never repair it by hand. Build refuses to overwrite unmanaged output.
 
 Read [package format](PACKAGE-FORMAT.md), [adapters](ADAPTERS.md) and [security](SECURITY.md)
@@ -22,8 +22,11 @@ Use `npm run validate:claude` after building when Claude Code is available. Nati
 complements isolated build tests; neither proves actual model behavior. Use [eval cases](EVALS.md)
 for workflow and instruction changes, and record any live checks honestly.
 
-Shared runtime behavior belongs in `runtime/`, wire behavior in `adapters/`, and workflow
-guidance in packages. Exercise real Git snapshots and hostile/partial hook payloads with isolated
+Portable decisions belong in `engine/`, orchestration in `application/`, Node I/O behind
+`platform/index.mjs`, wire behavior in `hosts/`, and workflow guidance in `packages/`.
+External system mappings belong in `integrations/`; build, export, validation and release
+code belongs in `tooling/`. Keep folders feature-oriented and the engine JSON boundary
+independent of Node so another implementation can replace it without migrating use cases. Exercise real Git snapshots and hostile/partial hook payloads with isolated
 fixtures. Service planning tests must never contact a real tracker or codehost.
 
 ## GitHub Actions
@@ -38,7 +41,7 @@ After every matrix check succeeds, the packaging job rebuilds and uploads `dist/
 the host layouts require them. The upload contains generated bundles only, not local plans
 or personal state. On eligible main-branch runs, a separate job publishes the generated GitHub installation branch; see [publishing](RELEASING.md). It does not publish npm packages or create versioned releases.
 
-The workflow uses read-only repository permissions and SHA-pinned official actions. Action
+The workflow defaults to read-only repository permissions and SHA-pinned official actions. Action
 runtime versions are separate from the Node versions tested by this project. Local checks and hosted CI results are reported separately.
 
 Pinned action releases: [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1),

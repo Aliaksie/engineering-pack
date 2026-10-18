@@ -5,7 +5,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { publishDistribution } from '../scripts/publish-distribution.mjs';
+import { publishDistribution } from '../tooling/publish-distribution.mjs';
 
 // Real Git against a local bare remote: no GitHub credentials or network access.
 test('publishing creates a branch, skips unchanged trees, preserves history and removes old files', t => {
@@ -43,7 +43,7 @@ test('publishing creates a branch, skips unchanged trees, preserves history and 
 });
 
 test('publisher CLI refuses local or untrusted workflow execution', () => {
-  const script = fileURLToPath(new URL('../scripts/publish-distribution.mjs', import.meta.url));
+  const script = fileURLToPath(new URL('../tooling/publish-distribution.mjs', import.meta.url));
   const result = spawnSync(process.execPath, [script], {
     env: { ...process.env, GITHUB_ACTIONS: 'false', GH_TOKEN: '' }, encoding: 'utf8'
   });

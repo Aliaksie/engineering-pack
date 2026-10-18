@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate } from '../packages/craft-review/hooks/read-only.mjs';
+import { evaluateReviewPublication } from '../application/review.mjs';
+const evaluate = event => evaluateReviewPublication(event);
 
 test('read-only guard distinguishes direct commands from inert arguments', () => {
   for (const command of ['echo "git push"', "printf '%s' 'gh pr comment 1'", 'git log --grep="git push"']) {

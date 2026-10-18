@@ -5,13 +5,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { BEGIN, END, apply, check, render, skillDirs } from '../scripts/sync-craft-bar.mjs';
+import { BEGIN, END, apply, check, render, skillDirs } from '../tooling/sync-craft-bar.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function fixture(t, contents = {}) {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-block-')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  for (const file of ['scripts/sync-craft-bar.mjs', 'packages/craft-engineering/standards/craft-bar.md']) {
+  for (const file of ['tooling/sync-craft-bar.mjs', 'packages/craft-engineering/standards/craft-bar.md']) {
     const destination = path.join(directory, file);
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(path.join(root, file), destination);
@@ -22,7 +22,7 @@ function fixture(t, contents = {}) {
     fs.mkdirSync(path.dirname(files[skill]), { recursive: true });
     fs.writeFileSync(files[skill], body);
   }
-  const invoke = (...args) => spawnSync(process.execPath, [path.join(directory, 'scripts/sync-craft-bar.mjs'), ...args], { encoding: 'utf8' });
+  const invoke = (...args) => spawnSync(process.execPath, [path.join(directory, 'tooling/sync-craft-bar.mjs'), ...args], { encoding: 'utf8' });
   return { files, invoke };
 }
 

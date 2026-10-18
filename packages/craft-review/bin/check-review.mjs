@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import { validateReview } from '../lib/review.mjs';
+import { validateReview } from '../../../application/review.mjs';
 try {
   if (process.argv.length !== 4) throw new Error('usage: check-review.mjs <snapshot.json> <review.json>');
   const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));

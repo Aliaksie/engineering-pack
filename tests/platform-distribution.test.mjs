@@ -4,11 +4,11 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { copy } from '../adapters/shared/export.mjs';
-import { assembleDistribution } from '../scripts/distribution.mjs';
-import { validateMarketplace } from '../scripts/validate-marketplace.mjs';
-import { build } from '../scripts/build.mjs';
-import { files, loadCapabilities } from '../scripts/lib/capabilities.mjs';
+import { copy } from '../tooling/export/export.mjs';
+import { assembleDistribution } from '../tooling/distribution.mjs';
+import { validateMarketplace } from '../tooling/validate-marketplace.mjs';
+import { build } from '../tooling/build.mjs';
+import { files, loadCapabilities } from '../tooling/lib/capabilities.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -31,7 +31,7 @@ test('Codex marketplace resolves every plugin within the generated bundle', () =
 test('new distributions are reproducible and do not activate hooks or MCP', t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'engineering-distributions-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
-  for (const directory of ['packages', 'adapters', 'runtime', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
+  for (const directory of ['packages', 'hosts', 'tooling/export', 'engine', 'application', 'platform', 'integrations', 'cli', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
   for (const host of ['gemini-extension', 'jetbrains']) {
     build(fixture, host);
     const root = path.join(fixture, 'dist', host);
@@ -71,7 +71,7 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   const codex = read(path.join(output, '.agents/plugins/marketplace.json'));
   for (const plugin of codex.plugins) {
     assert.equal(read(path.join(output, plugin.source.path, 'plugin.json')).name, plugin.name);
-    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/runtime/cli.mjs')));
+    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
   }
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));
   fs.unlinkSync(path.join(output, '.engineering-distribution.json'));

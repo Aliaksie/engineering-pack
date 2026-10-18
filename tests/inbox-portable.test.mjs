@@ -8,7 +8,7 @@ import { readConfig } from '../tools/craft-review-inbox/lib/config.mjs';
 import { checkout, mark, recordPosted, scan, tick } from '../tools/craft-review-inbox/lib/inbox.mjs';
 import { atomicWrite, jsonFile, run, saveJson, withLock } from '../tools/craft-review-inbox/lib/io.mjs';
 import { execute } from '../tools/craft-review-inbox/bin/inbox.mjs';
-import { lintScripts } from '../scripts/lint-plugin-scripts.mjs';
+import { lintScripts } from '../tooling/lint-plugin-scripts.mjs';
 
 const NOW = '2026-10-16T12:00:00Z';
 const HEAD = 'a'.repeat(40);

@@ -4,9 +4,9 @@ A portable set of engineering practices and workflows for reliable AI-assisted s
 engineering. Agents can change; engineering standards should belong to the team and repository.
 
 ```text
-Engineering practices → packages/ + deterministic runtime/
+Engineering practices → packages/ + portable engine/
                                 ↓
-                            adapters/
+                      hosts/ + tooling/export/
                   ┌─────────┼─────────┬───────────┐
                 Codex     Claude    Gemini    JetBrains rules
                   └─────────┴─────────┘
@@ -15,8 +15,9 @@ Engineering practices → packages/ + deterministic runtime/
 
 ## Install
 
-Use this repository's ready-built `distribution` branch. No source checkout, Node or local
-build is required. These commands work after the first successful CI publication from
+Use this repository's ready-built `distribution` branch. No source checkout or local build
+is required. Bundled CLI commands and hooks require Node 20+ on PATH; Git operations also
+require Git. These commands work after the first successful CI publication from
 `main`; see [installation and updates](docs/PLATFORMS.md) for verification and limitations.
 
 ### Codex CLI
@@ -93,7 +94,7 @@ Run these from the source checkout:
 
 ```text
 npm run route -- --root examples/project --intent review --file services/orders/Order.java
-npm run locate -- --root . --path runtime --term planOperation --max-matches 5
+npm run locate -- --root . --path engine/routing --term planOperation --max-matches 5
 npm run context:report -- --root examples/project --intent review --file services/orders/Order.java
 ```
 
@@ -108,7 +109,7 @@ not measure live session usage. For manual testing, route `--intent explore` or 
 without requiring source access. `verify` selects verification reasoning; `run-check` plans
 declared module commands without claiming execution. See [routing](docs/ROUTING.md).
 
-Optional [session advice](.plan/SESSION-ADVICE.md) suggests next actions from explicit task
+Optional [session status and advice](docs/SESSION.md) suggests next actions from explicit task
 milestones and context recovery from fresh host observations. Native usage/session controls
 remain primary; unknown usage stays unknown. One shared advisor ships with every adapter.
 
@@ -120,7 +121,7 @@ npm run operation -- --root examples/project --operation task.read --params '{"i
 
 This returns an explicit invocation plan for the example task tool; it does not execute it.
 The JSON quoting shown is for a POSIX shell; adapt it to your shell. In an exported standalone package the CLI is at
-`support/runtime/cli.mjs`; a full bundle also has `runtime/cli.mjs`.
+`support/cli/main.mjs`; a full bundle also has `cli/main.mjs`.
 
 Consumer `.capabilities/project.json` configures modules, Git/codehost/task tools, execution
 profiles and optional checkpoints. Declare runtime/framework/provider evidence independently
@@ -143,8 +144,10 @@ indexes the full design. The initial version stays **0.0.1**.
 
 ## Contributing and optional tools
 
-Canonical content lives in `packages/`; shared runtime code lives in `runtime/`; native host
-packaging belongs in `adapters/`. Read [contributing](docs/CONTRIBUTING.md) for authoring checks
+Canonical content lives in `packages/`; portable decisions live in `engine/` and use cases
+in `application/`. Filesystem, Git and state access live in `platform/`; external transport
+mappings live in `integrations/`. CLI handling lives in `cli/`, native host translation
+in `hosts/`, and build/export/validation/release tools in `tooling/`. Read [contributing](docs/CONTRIBUTING.md) for authoring checks
 and [the architecture](docs/ARCHITECTURE.md) for these boundaries. The
 [logical catalog](docs/PLAYBOOKS.md) explains selective loading.
 

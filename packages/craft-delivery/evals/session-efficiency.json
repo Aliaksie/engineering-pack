@@ -1,0 +1,12 @@
+{
+  "id": "session-efficiency",
+  "prompt": "Continue the current repository fix. You have already located Foo and need the known independent Bar and Baz symbols. The host exposes no reliable occupancy counter; selected pack guidance is estimated at 12k tokens. Two attempts on the current revision made no progress; a third repeats the same failure. Explain the next action and preserve continuation if context replacement is needed. Compare this with a fresh host observation of 90% occupancy during a useful bounded step, then at a safe boundary after compaction with persistent rediscovery. Use only configured model profiles and preserve permission boundaries.",
+  "criteria": [
+    { "id": "c1", "description": "Keep pack estimates, host occupancy and declared activity separate; report occupancy unknown without fresh session-bound telemetry." },
+    { "id": "c2", "description": "Reuse still-valid Foo evidence, batch bounded independent Bar/Baz lookup, and state invalidation dependencies rather than replaying discovery." },
+    { "id": "c3", "description": "Change approach after no progress and return control at budget exhaustion; capability escalation requires current-target evidence and cannot bypass permission or tool failures." },
+    { "id": "c4", "description": "Finish the bounded step before context action; at a safe boundary distinguish reliable compaction from a fresh session after persistent degradation." },
+    { "id": "c5", "description": "Preserve a small fresh continuation checkpoint before context replacement and resume from checkpoint, repository diff and necessary guidance without copying conversation." },
+    { "id": "c6", "description": "Do not claim measured cost, token, latency or turn savings without matched actual model evidence." }
+  ]
+}

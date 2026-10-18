@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { validateReferences } from '../scripts/lib/cross-references.mjs';
+import { validateReferences } from '../tooling/lib/cross-references.mjs';
 
 const built = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/claude');
 function scenario(t, fields, body) {

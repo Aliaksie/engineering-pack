@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { route } from '../runtime/router.mjs';
-import { catalog } from '../runtime/catalog.mjs';
-import { validatePlaybookCatalog } from '../runtime/validate-catalog.mjs';
+import { route } from '../application/routing/select.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
+import { validatePlaybookCatalog } from '../engine/contracts/catalog.mjs';
 
 test('review selects only an explicitly installed fallback and explains the substitution', () => {
   const primary = 'craft-review:review-change';

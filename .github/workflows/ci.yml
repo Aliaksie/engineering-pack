@@ -115,6 +115,6 @@ jobs:
       - name: Build installation branch
         run: npm run build:distribution
       - name: Publish generated files
-        run: node scripts/publish-distribution.mjs
+        run: node tooling/publish-distribution.mjs
         env:
           GH_TOKEN: ${{ github.token }}

@@ -28,5 +28,5 @@ Add only the modules, stack evidence and service bindings you actually use; the 
 example is a menu of configuration fields, not a required project structure. Without a
 configuration file the runtime uses this same minimal default. Run commands from the source
 checkout with `--root` pointing at your project, or invoke an installed package's
-`support/runtime/cli.mjs` directly. See [routing](../../docs/ROUTING.md) and
+`support/cli/main.mjs` directly. See [routing](../../docs/ROUTING.md) and
 [integrations](../../docs/INTEGRATIONS.md) for the field contracts.

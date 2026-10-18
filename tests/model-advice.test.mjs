@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { modelAdvice } from '../runtime/model-advice.mjs';
-import { validateProject } from '../runtime/project.mjs';
+import { modelAdvice } from '../application/session/models.mjs';
+import { validateProject } from '../application/project/configuration.mjs';
 
 const config = () => ({ formatVersion: 1, execution: {
   roles: { verifier: { mode: 'delegate', profile: 'bounded' } },

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { saveCheckpoint, recoverCheckpoint } from '../runtime/checkpoint.mjs';
+import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'checkpoint-content-'));
@@ -83,4 +83,15 @@ test('checkpoint marks failed Git inspection and legacy snapshots as incomplete'
   assert.equal(failed.current.gitAvailable, false);
   assert.equal(failed.changeDetection.complete, false);
   assert.match(failed.current.fingerprints.issues.join('\n'), /could not be inspected/);
+});
+
+test('continuation checkpoints preserve bounded resume fields without conversation history', (t) => {
+  const { root } = fixture(t);
+  const continuation = Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, `${key}: identifier or concise summary`]));
+  saveCheckpoint(root, 'resume', { continuation });
+  assert.deepEqual(recoverCheckpoint(root, 'resume').saved.continuation, continuation);
+  assert.deepEqual(saveCheckpoint(root, 'resume').state.continuation, continuation, 'automatic snapshots retain explicit continuation');
+  assert.throws(() => saveCheckpoint(root, 'resume', { continuation: { ...continuation, transcript: 'old conversation' } }), /continuation/);
+  assert.throws(() => saveCheckpoint(root, 'resume', { continuation: { goal: 'missing fields' } }), /continuation/);
+  assert.throws(() => saveCheckpoint(root, 'resume', { continuation: Object.fromEntries(Object.keys(continuation).map(key => [key, 'x'.repeat(1000)])) }), /8 KiB/);
 });

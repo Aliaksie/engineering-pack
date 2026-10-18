@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { policyReport, localHookReport } from '../scripts/hook-report.mjs';
+import { policyReport, localHookReport } from '../tooling/hook-report.mjs';
 
 test('hook report exposes false and missed blocks without treating its corpus as a success gate', () => {
   const cases = [
@@ -31,9 +31,9 @@ test('measurement refuses exports that do not match the source being reported', 
   const os = await import('node:os');
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'stale hook report ')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  for (const folder of ['runtime', 'adapters/shared', 'packages/craft-review/hooks', 'dist/claude/plugins/craft-review']) {
+  for (const folder of ['engine', 'application', 'integrations', 'cli', 'hosts', 'packages/craft-review/hooks', 'dist/claude/plugins/craft-review']) {
     fs.cpSync(path.resolve(folder), path.join(directory, folder), { recursive: true });
   }
-  fs.appendFileSync(path.join(directory, 'runtime/project.mjs'), '\n// Changed after export.\n');
+  fs.appendFileSync(path.join(directory, 'application/project/configuration.mjs'), '\n// Changed after export.\n');
   assert.throws(() => localHookReport(directory, 1), /exports are stale/);
 });

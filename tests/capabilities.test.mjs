@@ -5,12 +5,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { ADAPTERS, build, checkBuild } from '../scripts/build.mjs';
-import { files, frontmatter, json, loadCapabilities, validateCapability } from '../scripts/lib/capabilities.mjs';
-import { evaluateReport } from '../scripts/eval-report.mjs';
-import { copy } from '../adapters/shared/export.mjs';
-import { evaluate as reviewPolicy } from '../packages/craft-review/hooks/read-only.mjs';
-import { HOSTS } from '../adapters/shared/hosts.mjs';
+import { ADAPTERS, build, checkBuild } from '../tooling/build.mjs';
+import { files, frontmatter, json, loadCapabilities, validateCapability } from '../tooling/lib/capabilities.mjs';
+import { evaluateReport } from '../tooling/eval-report.mjs';
+import { copy } from '../tooling/export/export.mjs';
+import { evaluateReviewPublication } from '../application/review.mjs';
+const reviewPolicy = event => evaluateReviewPublication(event);
+import { HOSTS } from '../hosts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packages = loadCapabilities(root);
@@ -20,9 +21,9 @@ const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(valu
 function fixture(t) {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'capability test '));
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
-  copy(path.join(root, 'adapters'), path.join(repo, 'adapters'));
+  copy(path.join(root, 'hosts'), path.join(repo, 'hosts'));
   copy(path.join(root, 'docs'), path.join(repo, 'docs'));
-  copy(path.join(root, 'runtime'), path.join(repo, 'runtime'));
+  for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(root, folder), path.join(repo, folder));
   const source = byName('craft-review');
   const packageRoot = path.join(repo, 'packages', source.manifest.name);
   copy(source.root, packageRoot);

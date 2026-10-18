@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
-import { rewriteLinks } from '../adapters/shared/export.mjs';
+import { rewriteLinks } from '../tooling/export/export.mjs';
 
 // Use both path implementations so Windows regressions fail on every CI runner.
 for (const [name, paths, root] of [

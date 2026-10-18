@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prepareServices } from '../runtime/services.mjs';
-import { planOperation } from '../runtime/bindings.mjs';
+import { prepareServices } from '../application/services.mjs';
+import { planOperation } from '../application/services.mjs';
 
 const operation = (summary, name) => summary.services.flatMap((service) => service.operations).find((entry) => entry.operation === name);
 

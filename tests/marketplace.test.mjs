@@ -4,8 +4,8 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { validateCatalog, validateMarketplace } from '../scripts/validate-marketplace.mjs';
-import { readFrontmatter, validatePlugin } from '../scripts/lib/plugin-manifest.mjs';
+import { validateCatalog, validateMarketplace } from '../tooling/validate-marketplace.mjs';
+import { readFrontmatter, validatePlugin } from '../tooling/lib/plugin-manifest.mjs';
 
 const built = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/claude');
 function fixture(t) {

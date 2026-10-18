@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { preparePair, runPair } from '../scripts/paired-eval.mjs';
+import { preparePair, runPair } from '../tooling/paired-eval.mjs';
 
 function fixture(t, code = 'process.stdin.pipe(process.stdout)') {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'paired eval '));
@@ -83,5 +83,20 @@ test('a preceding runner cannot silently change the next arm inputs in either or
       assert.equal(fs.existsSync(path.join(output, order[1], 'stdout.txt')), false);
       assert.equal(fs.existsSync(path.join(output, 'collection.json')), false);
     }
+  }
+});
+
+test('relative output paths pass an absolute workspace argv matching the runner cwd', t => {
+  const { root, file, output } = fixture(t, 'process.stdout.write(JSON.stringify({cwd:process.cwd(),workspace:process.argv[1]}))');
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  config.runner.args.push('{workspace}');
+  fs.writeFileSync(file, JSON.stringify(config));
+  const relative = path.relative(process.cwd(), output);
+  preparePair(file, relative, root);
+  assert.equal(runPair(relative).collectionComplete, true);
+  for (const arm of ['baseline', 'candidate']) {
+    const result = JSON.parse(fs.readFileSync(path.join(output, arm, 'stdout.txt'), 'utf8'));
+    assert.equal(result.workspace, path.join(output, arm, 'workspace'));
+    assert.equal(result.cwd, fs.realpathSync(result.workspace));
   }
 });

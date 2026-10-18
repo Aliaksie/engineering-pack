@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateReview, publicationPlan } from '../packages/craft-review/lib/review.mjs';
+import { validateReview, publicationPlan } from '../application/review.mjs';
 
 const input = {
   formatVersion: 1, provider: 'github', repository: 'sample/project', changeId: 12,

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { snapshot } from '../lib/review.mjs';
+import { snapshot } from '../../../application/review.mjs';
 try {
   const options = {};
   const allowed = ['root', 'base', 'head', 'provider', 'repository', 'change-id', 'output'];

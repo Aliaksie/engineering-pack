@@ -5,8 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { HOSTS } from '../adapters/shared/hosts.mjs';
-import { saveCheckpoint, readCheckpoint } from '../runtime/checkpoint.mjs';
+import { HOSTS } from '../hosts/registry.mjs';
+import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const native = ['claude', 'codex', 'cursor', 'copilot', 'gemini'];
