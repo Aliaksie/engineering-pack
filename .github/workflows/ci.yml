@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches-ignore: [distribution]
   pull_request:
   workflow_dispatch:
 
@@ -43,6 +44,8 @@ jobs:
         run: npm run lint:scripts
       - name: Build all host packages
         run: npm run build
+      - name: Assemble direct-install distribution
+        run: npm run build:distribution
       - name: Validate generated exports
         run: npm run validate:exports
       - name: Run tests
@@ -74,7 +77,9 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - name: Build packages
-        run: npm run build
+        run: |
+          npm run build
+          npm run build:distribution
       - name: Validate package output
         run: npm run validate:exports
       - name: Upload host bundles
@@ -85,3 +90,31 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publish GitHub installation branch
+    needs: [check, package]
+    if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: engineering-pack-distribution
+      cancel-in-progress: false
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Build installation branch
+        run: npm run build:distribution
+      - name: Publish generated files
+        run: node scripts/publish-distribution.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

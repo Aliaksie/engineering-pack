@@ -11,8 +11,10 @@ import * as agents from '../adapters/agents/index.mjs';
 import * as cursor from '../adapters/cursor/index.mjs';
 import * as copilot from '../adapters/copilot/index.mjs';
 import * as gemini from '../adapters/gemini/index.mjs';
+import * as geminiExtension from '../adapters/gemini/extension.mjs';
+import * as jetbrains from '../adapters/jetbrains/index.mjs';
 
-export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents };
+export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents, 'gemini-extension': geminiExtension, jetbrains };
 const MARKER = '.capability-build.json';
 
 export function build(repo, target) {
@@ -94,7 +96,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const args = process.argv.slice(2);
   const target = args.length ? args[0] : 'all';
   if (args.length > 1 || (target !== 'all' && !Object.hasOwn(ADAPTERS, target))) {
-    process.stderr.write('usage: node scripts/build.mjs [all|claude|codex|cursor|copilot|gemini|agents]\n');
+    process.stderr.write('usage: node scripts/build.mjs [all|claude|codex|cursor|copilot|gemini|agents|gemini-extension|jetbrains]\n');
     process.exitCode = 2;
   } else {
     const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

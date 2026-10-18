@@ -9,7 +9,7 @@ export function emitBundle(item, packages, output, adapterRoot, platform = 'agen
   for (const name of skills) {
     const target = path.join(output, skillRoot, name);
     copy(path.join(destination, 'skills', name), target);
-    const resourceRoot = `../../../packages/${manifest.name}`;
+    const resourceRoot = path.relative(target, destination).split(path.sep).join('/');
     const sourceSkill = path.join(destination, 'skills', name);
     // Rebase links in all skill resources, including cross-skill links and package context.
     const visit = (directory) => {

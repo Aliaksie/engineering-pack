@@ -29,14 +29,14 @@ fixtures. Service planning tests must never contact a real tracker or codehost.
 ## GitHub Actions
 
 CI runs on push, pull request and manual dispatch. It validates manifests, catalog and source targets,
-checks generated guidance, lints portable scripts, builds six host exports, validates exports
+checks generated guidance, lints portable scripts, builds eight host exports and the GitHub distribution, validates exports
 and runs tests on Linux/macOS/Windows with Node 24, plus Linux with the Node 20 minimum.
 No dependency installation, cloud credentials or model runner is required.
 
 After every matrix check succeeds, the packaging job rebuilds and uploads `dist/` as
 `craft-capabilities-<commit-sha>` for 14 days. Hidden generated manifests are included because
 the host layouts require them. The upload contains generated bundles only, not local plans
-or personal state. It does not create a release or publish to a registry/marketplace.
+or personal state. On eligible main-branch runs, a separate job publishes the generated GitHub installation branch; see [publishing](RELEASING.md). It does not publish npm packages or create versioned releases.
 
 The workflow uses read-only repository permissions and SHA-pinned official actions. Action
 runtime versions are separate from the Node versions tested by this project. Local checks and hosted CI results are reported separately.

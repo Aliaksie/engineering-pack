@@ -26,6 +26,8 @@ export const HOSTS = {
     'before-prompt': event('BeforeAgent', true), 'session-start': event('SessionStart', true),
     'before-compact': event('PreCompress'), 'turn-end': event('AfterAgent')
   } },
+  'gemini-extension': { skills: 'skills', events: {} },
+  jetbrains: { skills: '.agents/skills', events: {} },
   agents: { skills: '.agents/skills', events: {} }
 };
 export function hookMapping(platform, definition) {

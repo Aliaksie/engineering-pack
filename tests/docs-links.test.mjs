@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,8 +36,8 @@ function inspectLinks(directory) {
   return failures;
 }
 
-test('source documentation and six distributable layouts contain reachable local links', () => {
-  for (const relative of ['docs', 'packages', ...['agents', 'claude', 'codex', 'copilot', 'cursor', 'gemini'].map(host => `dist/${host}`)]) {
+test('source documentation and distributable layouts contain reachable local links', () => {
+  for (const relative of ['docs', 'packages', ...['agents', 'claude', 'codex', 'copilot', 'cursor', 'gemini', 'gemini-extension', 'jetbrains', 'distribution'].map(host => `dist/${host}`)]) {
     assert.deepEqual(inspectLinks(path.join(checkout, relative)), [], relative);
   }
 });
@@ -61,4 +61,18 @@ test('link inspection distinguishes missing resources from external addresses an
     '[space](<../asset name.md>)'
   ].join('\r\n'));
   assert.deepEqual(inspectLinks(fixture), [{ file: path.join('nested', 'reader.md'), line: 2, target: '../removed.md' }]);
+});
+
+
+test('GitHub-distributed plugins retain reachable links when installed in isolation', t => {
+  const fixture = mkdtempSync(path.join(tmpdir(), 'installed-engineering-'));
+  t.after(() => rmSync(fixture, { recursive: true, force: true }));
+  for (const [host, folder] of [['claude', 'plugins'], ['codex', 'packages']]) {
+    const packages = path.join(checkout, 'dist/distribution', host, folder);
+    for (const entry of readdirSync(packages)) {
+      const installed = path.join(fixture, host, entry);
+      cpSync(path.join(packages, entry), installed, { recursive: true });
+      assert.deepEqual(inspectLinks(installed), [], `${host}/${entry}`);
+    }
+  }
 });

@@ -44,7 +44,8 @@ export function rewriteLinks(text, sourceFile, targetFile, mapTarget) {
     if (!pathname) return match;
     const resolved = path.resolve(path.dirname(sourceFile), pathname);
     const mapped = mapTarget(resolved);
-    return `](${path.relative(path.dirname(targetFile), mapped).split(path.sep).join('/')}${fragment})`;
+    const mappedHref = /^[a-z]+:/i.test(mapped) ? mapped : path.relative(path.dirname(targetFile), mapped).split(path.sep).join('/');
+    return `](${mappedHref}${fragment})`;
   });
 }
 
@@ -92,7 +93,7 @@ export function preparePackage(item, packages, destination, platform) {
       const id = path.basename(local);
       body = body.replaceAll(`\`${id}\``, `\`${manifest.name}-${id}\``);
     }
-    write(target, 'SKILL.md', `---\nname: ${name}\ndescription: ${JSON.stringify(entry.info.description)}\n---\n\nRead the shared [package instructions](../../AGENTS.md) when using this capability.\n\n${body.trim()}\n`);
+    write(target, 'SKILL.md', `---\nname: ${name}\ndescription: ${JSON.stringify(entry.info.description)}\n---\n\n<!-- Generated from packages/; edit the portable source and rebuild. -->\n\nRead the shared [package instructions](../../AGENTS.md) when using this capability.\n\n${body.trim()}\n`);
     for (const file of files(target).filter((file) => file.endsWith('.md') && path.basename(file) !== 'SKILL.md')) {
       fs.writeFileSync(file, packageDocument(fs.readFileSync(file, 'utf8'), path.join(entry.source, path.relative(target, file)), file, item, packages, destination, platform));
     }

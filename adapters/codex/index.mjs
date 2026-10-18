@@ -16,4 +16,15 @@ export function emit(item, packages, output, adapterRoot) {
   });
   return report(manifest, 'codex', skills, manifest.hooks.length ? 'native-before-tool-requires-trust' : 'none', manifest.mcp.length ? 'native-config' : 'none');
 }
-export function finish() {}
+export function finish(packages, output) {
+  writeJson(output, '.agents/plugins/marketplace.json', {
+    name: 'engineering-pack',
+    interface: { displayName: 'Engineering Pack' },
+    plugins: packages.map(({ manifest }) => ({
+      name: manifest.name,
+      source: { source: 'local', path: `./packages/${manifest.name}` },
+      policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+      category: 'Productivity'
+    }))
+  });
+}

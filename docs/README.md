@@ -23,3 +23,5 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | [Contributing](CONTRIBUTING.md) | Authoring and local checks |
 | [Security](SECURITY.md) | Trust and execution boundaries |
 | [Releasing](RELEASING.md) | Sharing requirements and output layout |
+
+[Target platform installation and support](PLATFORMS.md) covers Codex, Claude, Gemini and JetBrains.

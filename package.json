@@ -13,14 +13,14 @@
     "lint:scripts": "node scripts/lint-plugin-scripts.mjs",
     "test": "node scripts/run-tests.mjs",
     "sync:craft-bar": "node scripts/sync-craft-bar.mjs",
-    "check": "npm run validate && npm run check:craft-bar && npm run build && npm run validate:exports && npm run lint:scripts && npm run test:unit",
+    "check": "npm run validate && npm run check:craft-bar && npm run build && npm run build:distribution && npm run validate:exports && npm run lint:scripts && npm run test:unit",
     "check:craft-bar": "node scripts/sync-craft-bar.mjs --check",
     "build": "node scripts/build.mjs",
     "build:claude": "node scripts/build.mjs claude",
     "build:codex": "node scripts/build.mjs codex",
     "build:agents": "node scripts/build.mjs agents",
     "validate:exports": "node scripts/validate-marketplace.mjs dist/claude",
-    "pretest": "npm run build",
+    "pretest": "npm run build && npm run build:distribution",
     "eval:report": "node scripts/eval-report.mjs",
     "route": "node runtime/cli.mjs route",
     "operation": "node runtime/cli.mjs operation",
@@ -32,7 +32,8 @@
     "test:unit": "node scripts/run-tests.mjs",
     "hooks:report": "node scripts/hook-report.mjs",
     "locate": "node runtime/cli.mjs locate",
-    "services:prepare": "node runtime/cli.mjs prepare-services"
+    "services:prepare": "node runtime/cli.mjs prepare-services",
+    "build:distribution": "node scripts/distribution.mjs"
   },
   "license": "MIT"
 }

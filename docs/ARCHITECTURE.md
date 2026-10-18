@@ -12,7 +12,7 @@ flowchart TD
   R --> T[Typed service invocation plans]
   R --> E[Tool / main thread / delegated role]
   C --> H[Host adapters]
-  H --> A[Claude / Codex / Cursor / Copilot / Gemini / AGENTS]
+  H --> A[Claude / Codex / Cursor / Copilot / Gemini / JetBrains / AGENTS]
 ```
 
 There are three distinct boundaries:
@@ -44,3 +44,16 @@ The same canonical runtime is copied into each exported package’s `support/run
 installed package never imports the authoring tree or a versioned sibling package. One source
 is maintained; copies are build artifacts. All source versions stay at 0.0.1 during this initial
 iteration. Evals separate packaging correctness from actual model behavior.
+
+## Distribution boundaries
+
+The existing `adapters/` directory is the integration layer; there is no parallel
+`integrations/` tree. Codex receives a local marketplace of portable plugins. Gemini
+receives either a native guidance extension or the existing explicit hook overlay.
+JetBrains receives a project rule generated from the foundations skill and the same
+portable resources. External IDE agents use their native distribution. See
+[platform support](PLATFORMS.md). All generated copies remain under ignored `dist/`.
+
+No new skill hierarchy, custom installer, MCP service or IDE plugin is required. Existing
+package names and the Claude marketplace identifier remain stable. Reuse the four current
+packages and their selective references rather than expanding into new micro-skills.

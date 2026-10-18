@@ -3,9 +3,13 @@
 Host adapters export shared capabilities and map lifecycle events. Service bindings separately
 choose Git/codehost/tracker tools. Build output is not automatically installed or trusted.
 
+See [current target-platform installation and support](PLATFORMS.md) for Codex, Claude,
+Gemini extensions and JetBrains, including update instructions and official sources.
+
 ## Installation by host
 
-Run `npm run build` from the source checkout with Node 20+. Each export is a separate
+For direct GitHub installation use the [platform guide](PLATFORMS.md). The following
+paths are for local development. Run `npm run build` from the source checkout with Node 20+. Each export is a separate
 bundle; use the one for your host. Keep Node available on the host's PATH for the bundled
 CLI and hook wrappers. Local Git operations also require Git. No npm install is needed.
 
@@ -16,6 +20,8 @@ CLI and hook wrappers. Local Git operations also require Git. No npm install is 
 | Cursor | `dist/cursor` | Merge `.cursor/skills`, hook configuration and supporting resources into the target project |
 | Copilot | `dist/copilot` | Merge `.github/skills`, instructions, hook configuration and supporting resources |
 | Gemini CLI | `dist/gemini` | Merge `.gemini/skills`, settings, GEMINI.md and supporting resources |
+| Gemini native extension | `dist/gemini-extension` | `gemini extensions install ./dist/gemini-extension`; guidance only |
+| JetBrains AI Chat | `dist/jetbrains` | Merge project rule/resources; select Always in IDE |
 | AGENTS / Agent Skills | `dist/agents` | Merge `.agents/skills` and supporting resources; merge the instruction index into your own instructions |
 
 ### Claude Code
@@ -37,7 +43,7 @@ a task tracker or enable automatic checkpoints.
 
 Each package has a root `plugin.json`, namespaced skills and its own runtime. Hook-bearing
 packages declare their hook file through `extensions.com.openai`. The output is a portable
-plugin directory, not a generated Codex marketplace. Follow the current host's manual local
+plugin directory, accompanied by a generated local Codex marketplace. Follow the current host's manual local
 installation flow in [OpenAI's packaging guide](https://developers.openai.com/plugins/build/plugins).
 Review and trust hooks separately using the host's controls; host support and settings determine
 whether they run. Packages containing lifecycle hooks are intended for manual installation;

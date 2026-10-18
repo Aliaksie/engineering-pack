@@ -1,9 +1,72 @@
-# Craft Capabilities
+# Engineering Pack
 
-Portable engineering playbooks and deterministic tools for investigating, planning,
-implementing, verifying and reviewing software changes with a coding agent. Choose a workflow,
-load the relevant guidance, and keep decisions grounded in the target project's code and policy.
-Exports are available for Claude Code, Codex, Cursor, Copilot, Gemini CLI and AGENTS/Agent Skills.
+A portable set of engineering practices and workflows for reliable AI-assisted software
+engineering. Agents can change; engineering standards should belong to the team and repository.
+
+```text
+Engineering practices → packages/ + deterministic runtime/
+                                ↓
+                            adapters/
+                  ┌─────────┼─────────┬───────────┐
+                Codex     Claude    Gemini    JetBrains rules
+                  └─────────┴─────────┘
+                     external agents in IDEs
+```
+
+## Install
+
+Use this repository's ready-built `distribution` branch. No source checkout, Node or local
+build is required. These commands work after the first successful CI publication from
+`main`; see [installation and updates](docs/PLATFORMS.md) for verification and limitations.
+
+### Codex CLI
+
+```sh
+codex plugin marketplace add Aliaksie/engineering-pack --ref distribution
+codex plugin add craft-engineering@engineering-pack
+```
+
+Install other packages from the same marketplace as needed; see [Codex setup](docs/PLATFORMS.md#codex-cli).
+
+### Claude Code
+
+```sh
+claude plugin marketplace add Aliaksie/engineering-pack#distribution
+claude plugin install craft-engineering@craft-capabilities
+```
+
+### Gemini CLI
+
+```sh
+gemini extensions install https://github.com/Aliaksie/engineering-pack --ref distribution
+```
+
+### JetBrains AI
+
+Download the [distribution ZIP](https://github.com/Aliaksie/engineering-pack/archive/refs/heads/distribution.zip)
+and follow the [project-rule setup](docs/PLATFORMS.md#jetbrains-native-ai-chat). External agents
+inside JetBrains use their native integration above.
+
+## Philosophy
+
+Keep vendor-neutral knowledge in one core and platform packaging thin. Prefer deterministic
+checks over prompt rules, repository evidence over generic instructions, and a small set of
+composable skills over exhaustive micro-skills. Load language and framework references only
+when relevant. Humans own engineering decisions and authorization; agents validate changes
+and report evidence and limits. Bound review to the changed revision and material findings;
+do not rerun AI review indefinitely looking for fresh issues.
+
+## Adding a portable skill
+
+Add `packages/<package>/skills/<name>/SKILL.md` with `name` and `description` front matter,
+and register its directory in that package's `capability.json`. Describe the goal, trigger,
+context, process, validation, expected output and failure/escalation conditions. Keep host
+commands in adapters. Colocate detailed references only when useful; use `package:skill`
+for logical references. Run `npm run check`; the existing builder exports every target.
+No vendor copies need manual maintenance. See [contributing](docs/CONTRIBUTING.md).
+
+
+## Portable core
 
 This is an initial **0.0.1** release. Export layouts and deterministic behavior are tested
 locally; live host loading and broad improvements in model output remain unverified.
@@ -20,33 +83,9 @@ language, runtime, framework, layer and provider guidance independently. Java do
 Spring; TypeScript does not imply Node.js. Story authoring can run without implementation
 guidance. Installation does not load the whole collection into each request.
 
-## Quick start
-
-From a source checkout, use Node 20+ and Git. There are no npm dependencies to install:
-
-```text
-npm run check
-```
-
-This validates the source, builds all six exports under `dist/`, and runs the tests.
-Use `npm run build` when you only need to regenerate the bundles.
-
-For Claude Code, add the generated marketplace and install a package:
-
-```text
-claude plugin marketplace add ./dist/claude
-claude plugin install craft-engineering@craft-capabilities
-```
-
-In a Claude Code session in your target project, invoke `/craft-engineering:foundations`
-with a concrete task and the relevant files. Install other packages from the table above
-when you need their workflows. The package READMEs describe their entry points.
-
-For Codex, Cursor, Copilot, Gemini or a plain Agent Skills host, follow
-[installation by host](docs/ADAPTERS.md#installation-by-host). Building creates files;
-installation, hook trust and optional service connections are separate steps.
-The source repository URL itself is not a Claude marketplace because `dist/` is generated
-and excluded from Git.
+Contributors use Node 20+ and `npm run check`. Use `npm run build` to regenerate all eight bundles without running checks. Building does
+not install plugins, trust hooks or connect services. For Cursor, Copilot and plain Agent
+Skills hosts, see [additional adapters](docs/ADAPTERS.md#installation-by-host).
 
 ## Try the tools without installing a host bundle
 
