@@ -94,12 +94,23 @@ Run these from the source checkout:
 ```text
 npm run route -- --root examples/project --intent review --file services/orders/Order.java
 npm run locate -- --root . --path runtime --term planOperation --max-matches 5
+npm run context:report -- --root examples/project --intent review --file services/orders/Order.java
 ```
 
 The first returns a loading plan for the example module: guidance, owner, checks and execution
 role. The second returns bounded source matches with paths, lines and snippets. Neither runs
 a model or contacts a service. The [example configuration](examples/project/README.md)
 contains illustrative modules and tool names; it is not a running application.
+
+The context report measures selected guidance files with disclosed token estimates; it does
+not measure live session usage. For manual testing, route `--intent explore` or use
+`craft-engineering:workflow-explore-testing` to prepare a charter or retain observed findings
+without requiring source access. `verify` selects verification reasoning; `run-check` plans
+declared module commands without claiming execution. See [routing](docs/ROUTING.md).
+
+Optional [session advice](.plan/SESSION-ADVICE.md) suggests next actions from explicit task
+milestones and context recovery from fresh host observations. Native usage/session controls
+remain primary; unknown usage stays unknown. One shared advisor ships with every adapter.
 
 ## Route work and resolve tools
 

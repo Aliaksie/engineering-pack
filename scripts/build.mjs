@@ -36,7 +36,12 @@ export function build(repo, target) {
     const reports = packages.map((item) => ADAPTERS[target].emit(item, packages, stage, path.join(repo, 'adapters')));
     ADAPTERS[target].finish(packages, stage);
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
-    for (const { manifest } of packages) copy(path.join(repo, 'runtime'), path.join(stage, packageFolder, manifest.name, 'support/runtime'));
+    for (const { manifest } of packages) {
+      const destination = path.join(stage, packageFolder, manifest.name);
+      copy(path.join(repo, 'runtime'), path.join(destination, 'support/runtime'));
+      write(destination, 'platform-runtime/session.mjs', fs.readFileSync(path.join(repo, 'adapters/shared/session.mjs'), 'utf8'));
+      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { sessionAdvice, readSessionInput } from './runtime/session.mjs';\nimport { readProject } from './runtime/project.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionAdvice, readSessionInput, readProject, ${JSON.stringify(target)});\n`);
+    }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {
       fs.copyFileSync(license, path.join(stage, 'LICENSE'));

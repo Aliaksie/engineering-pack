@@ -65,6 +65,18 @@ test('prompt routing hints appear only where the native context schema supports 
   }
 });
 
+test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {
+  const dir = fixture(t);
+  for (const host of native) {
+    const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, prompt: 'verify this feature' }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const capable = HOSTS[host].events['before-prompt'].context;
+    assert.equal(result.stdout.includes('workflow-verify-feature'), capable, host);
+    assert.equal(result.stdout.includes('testing-only'), capable, host);
+    assert.ok(!result.stdout.includes('apply-change'), host);
+  }
+});
+
 test('edit routing is opt-in and prompt hints omit the full catalog evidence', (t) => {
   const quiet = fixture(t);
   const enabled = fixture(t, { routing: { editHints: true } });
@@ -77,6 +89,26 @@ test('edit routing is opt-in and prompt hints omit the full catalog evidence', (
     assert.equal(opted.stdout.includes('Routing hints'), HOSTS[host].events['before-tool'].context, host);
     assert.ok(!opted.stdout.includes('documentationQuestions'), 'full route remains available through the CLI');
     assert.ok(!opted.stdout.includes('selections'), 'catalog evidence must not be injected on every edit');
+  }
+});
+
+test('opted-in native hooks reuse only emitted hints and re-emit after compaction', (t) => {
+  for (const host of native) {
+    const dir = fixture(t, { routing: { dedupeHints: true } });
+    const input = { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session', prompt: 'review the scoped change' };
+    const first = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
+    const next = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(next.status, 0, next.stderr);
+    const capable = HOSTS[host].events['before-prompt'].context;
+    assert.equal(first.stdout.includes('Routing hints'), capable, host);
+    assert.ok(!next.stdout.includes('Routing hints'), host);
+    if (!capable) assert.ok(!fs.existsSync(path.join(dir, '.capabilities/state')), host);
+    else assert.ok(Buffer.byteLength(next.stdout) < Buffer.byteLength(first.stdout));
+    const compact = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session' }, dir);
+    assert.equal(compact.status, 0, compact.stderr);
+    const resumed = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
+    assert.equal(resumed.stdout.includes('Routing hints'), capable, host);
   }
 });
 

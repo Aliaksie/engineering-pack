@@ -15,8 +15,12 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
+| `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run locate -- ...` | Batch bounded literal searches into compact source evidence |
+| `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
+| `npm run session:advice -- ...` | Recommend a next action from explicit task state and fresh host observations |
+| `npm run eval:pair -- ...` | Prepare or explicitly run one frozen baseline/candidate pair; does not judge quality |
 | `npm run services:prepare -- ...` | Prepare configured service/tool metadata without live discovery |
 | `npm run operation -- ...` | Resolve a service operation into a CLI/MCP invocation plan |
 | `npm run checkpoint:save -- ...` | Save explicit task metadata and Git state |

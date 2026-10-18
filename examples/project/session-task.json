@@ -1,0 +1,11 @@
+{
+  "sessionId": "example-session",
+  "task": {
+    "id": "example-change",
+    "revision": "replace-with-current-source-identity",
+    "stage": "implement",
+    "status": "completed",
+    "verification": "pending",
+    "files": ["services/orders/Order.java"]
+  }
+}

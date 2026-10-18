@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { files, frontmatter, stringify } from '../../scripts/lib/capabilities.mjs';
 import { hookMapping } from './hosts.mjs';
+import { sessionCapabilities } from './session.mjs';
 
 export function write(root, file, text) {
   const target = path.join(root, file);
@@ -111,7 +112,7 @@ export function emitHooks(item, destination, platform, adapterRoot) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
     const wrapper = `platform-hooks/${definition.name}.mjs`;
-    write(destination, wrapper, `#!/usr/bin/env node\nimport { evaluate } from '../${definition.handler}';\nimport { runHook } from '../platform-runtime/hook.mjs';\nimport { prepareEvent } from '../support/runtime/hooks.mjs';\nawait runHook(evaluate, '${platform}', ${JSON.stringify(definition)}, prepareEvent);\n`);
+    write(destination, wrapper, `#!/usr/bin/env node\nimport { evaluate } from '../${definition.handler}';\nimport { runHook } from '../platform-runtime/hook.mjs';\nimport { prepareEvent, reuseRoutingHint, commitRoutingHint } from '../support/runtime/hooks.mjs';\nawait runHook(evaluate, '${platform}', ${JSON.stringify(definition)}, prepareEvent, { reuse: reuseRoutingHint, commit: commitRoutingHint });\n`);
     fs.chmodSync(path.join(destination, wrapper), 0o755);
     const hooks = [{ type: 'command', command: `node "${rootVariable}/${wrapper}"` }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);
@@ -134,6 +135,7 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     hooks: hookStatus, mcp: mcpStatus,
     hookMappings: manifest.hooks.map((definition) => ({ id: definition.name, normalizedEvent: definition.event, ...(hookMapping(platform, definition) ?? { supported: false }) })),
     runtime: 'support/runtime/cli.mjs',
+    sessionAdvice: { entry: 'support/session.mjs', ...sessionCapabilities(platform), activation: 'explicit-only; no statusline settings or hooks changed' },
     limitations: platform === 'agents' ? ['Lifecycle hooks are not installed.', 'MCP declarations require host-specific registration.']
       : platform === 'codex' ? ['Local plugin export; hooks require host support and trust. Live host loading has not been tested.']
       : ['Live host loading has not been tested.']

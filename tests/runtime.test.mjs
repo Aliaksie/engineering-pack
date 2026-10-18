@@ -139,8 +139,11 @@ test('locator starts in tools and selects an economical worker only through expl
 });
 
 test('all built-in routed skills resolve to actual capability source', () => {
-  const ids = new Set(loadCapabilities(root).flatMap(({ manifest }) => manifest.skills.map((folder) => `${manifest.name}:${path.basename(folder)}`)));
-  for (const intent of ['implement', 'review', 'plan', 'story', 'research', 'verify', 'locate', 'status']) {
+  const ids = new Set(loadCapabilities(root).flatMap(({ manifest }) => [
+    ...manifest.skills.map((folder) => `${manifest.name}:${path.basename(folder)}`),
+    ...manifest.workflows.map((file) => `${manifest.name}:workflow-${path.basename(file, '.md')}`)
+  ]));
+  for (const intent of ['implement', 'review', 'plan', 'story', 'research', 'verify', 'locate', 'status', 'explore']) {
     const result = route({ intent, files: ['agents/assistant/main.py', 'ui/Orders.tsx', 'services/orders/Order.java'], project, risks: ['auth'], availableSkills: [...ids] });
     for (const skill of result.skills) assert.ok(ids.has(skill), skill);
     assert.deepEqual(result.missing, []);

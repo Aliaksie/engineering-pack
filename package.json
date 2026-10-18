@@ -33,7 +33,11 @@
     "hooks:report": "node scripts/hook-report.mjs",
     "locate": "node runtime/cli.mjs locate",
     "services:prepare": "node runtime/cli.mjs prepare-services",
-    "build:distribution": "node scripts/distribution.mjs"
+    "build:distribution": "node scripts/distribution.mjs",
+    "context:report": "node runtime/cli.mjs context-report",
+    "session:advice": "node runtime/cli.mjs session-advice",
+    "eval:pair": "node scripts/paired-eval.mjs",
+    "model:advice": "node runtime/cli.mjs model-advice"
   },
   "license": "MIT"
 }

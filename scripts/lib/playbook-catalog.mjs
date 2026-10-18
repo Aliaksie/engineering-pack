@@ -10,8 +10,10 @@ export function validateCatalogSources(repo, packages) {
     const [name, local] = target.split(':');
     const pkg = byName.get(name);
     const folder = `skills/${local.split('/')[0]}`;
-    if (!pkg?.manifest.skills.includes(folder)) throw new Error(`unresolved catalog target: ${target}`);
-    const source = `skills/${local}${target.includes('/references/') ? '' : '/SKILL.md'}`;
+    const workflow = !local.includes('/') && local.startsWith('workflow-') ? `workflows/${local.slice('workflow-'.length)}.md` : null;
+    const registeredWorkflow = workflow && pkg?.manifest.workflows.includes(workflow);
+    if (!registeredWorkflow && !pkg?.manifest.skills.includes(folder)) throw new Error(`unresolved catalog target: ${target}`);
+    const source = registeredWorkflow ? workflow : `skills/${local}${target.includes('/references/') ? '' : '/SKILL.md'}`;
     const file = localPath(pkg.root, source);
     if (!fs.readFileSync(file, 'utf8').trim()) throw new Error(`empty catalog target: ${target}`);
   }

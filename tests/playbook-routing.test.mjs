@@ -7,6 +7,52 @@ import { catalog } from '../runtime/catalog.mjs';
 
 const select = (file, config = {}, intent = 'implement', risks = []) => route({ intent, files: [file], project: { formatVersion: 1, ...config }, risks });
 
+test('verification uses reasoning while declared check execution is a minimal tool plan', () => {
+  const project = { formatVersion: 1, frameworks: ['react'], layers: ['ui'],
+    modules: [{ name: 'ui', path: 'ui', checks: [{ command: 'consumer-test', args: ['--affected'] }] }] };
+  const verify = route({ intent: 'verify', files: ['ui/main.tsx'], project });
+  assert.equal(verify.execution.mode, 'main');
+  assert.ok(verify.skills.includes('craft-engineering:testing-engineering'));
+  const check = route({ intent: 'run-check', files: ['ui/main.tsx'], project, risks: ['auth'] });
+  assert.equal(check.execution.mode, 'tool');
+  assert.deepEqual(check.skills, []);
+  assert.deepEqual(check.references, []);
+  assert.deepEqual(check.checks, [{ module: 'ui', cwd: 'ui', command: 'consumer-test', args: ['--affected'], execution: 'not-run' }]);
+  assert.deepEqual(check.operations, []);
+  const unknown = route({ intent: 'run-check', files: ['outside/main.tsx'], project });
+  assert.equal(unknown.execution.mode, 'main');
+  assert.match(unknown.missing[0], /No checks declared/);
+});
+
+test('exploration needs neither source paths nor runner and loads only its outcome workflow', () => {
+  const result = route({ intent: 'explore', project: { formatVersion: 1,
+    languages: ['typescript'], layers: ['agent'], providers: ['bedrock'] }, risks: ['auth'] });
+  assert.deepEqual(result.skills, ['craft-engineering:workflow-explore-testing']);
+  assert.deepEqual(result.references, []);
+  assert.deepEqual(result.checks, []);
+  assert.deepEqual(result.missing, []);
+  assert.deepEqual(result.loading.specializations, []);
+  assert.equal(result.execution.mode, 'main');
+});
+
+test('testing-only routes never select product implementation, even with module implementation skills', () => {
+  const project = { formatVersion: 1, languages: ['typescript'], frameworks: ['react'], layers: ['ui'],
+    modules: [{ name: 'ui', path: 'ui', skills: ['craft-delivery:apply-change'], checks: [{ command: 'consumer-test', args: [] }] }] };
+  for (const verificationMode of [undefined, 'manual', 'automation', 'test-code']) {
+    const result = route({ intent: 'verify', files: ['ui/main.tsx'], project, verificationMode });
+    assert.ok(result.skills.includes('craft-engineering:workflow-verify-feature'));
+    assert.ok(!result.skills.includes('craft-delivery:apply-change'));
+    assert.equal(result.taskBoundary.productEdits, 'not-selected');
+    assert.equal(result.taskBoundary.testEdits, verificationMode === 'test-code' ? 'requested-test-scope-only' : 'not-selected');
+    if (verificationMode === 'manual') {
+      assert.deepEqual(result.loading.specializations, []);
+      assert.deepEqual(result.references, []);
+    }
+  }
+  assert.ok(route({ intent: 'implement', files: ['ui/main.tsx'], project }).skills.includes('craft-delivery:apply-change'));
+  assert.throws(() => route({ intent: 'implement', verificationMode: 'manual' }), /verificationMode/);
+});
+
 test('TypeScript browser and Node contexts remain independent of React', () => {
   const browser = select('src/main.ts', { runtimes: ['browser'], layers: ['ui'] });
   assert.ok(browser.loading.specializations.includes('runtime:browser'));
@@ -73,7 +119,8 @@ test('catalog identities are unique and all load targets exist', () => {
     assert.match(entry.id, /^(workflow|practice|language|runtime|framework|provider|layer):[a-z][a-z0-9-]*$/);
     for (const target of [...entry.skills, ...entry.references]) {
       const [pkg, local] = target.split(':');
-      const location = entry.skills.includes(target) ? `skills/${local}/SKILL.md` : `skills/${local}`;
+      const location = entry.skills.includes(target) ? local.startsWith('workflow-')
+        ? `workflows/${local.slice('workflow-'.length)}.md` : `skills/${local}/SKILL.md` : `skills/${local}`;
       assert.ok(fs.existsSync(path.join('packages', pkg, location)), target);
     }
   }

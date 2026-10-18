@@ -19,7 +19,9 @@
   "workflows": [
     "workflows/change-agent.md",
     "workflows/review-change.md",
-    "workflows/select-discipline.md"
+    "workflows/select-discipline.md",
+    "workflows/explore-testing.md",
+    "workflows/verify-feature.md"
   ],
   "standards": [
     "standards/craft-bar.md"
@@ -31,6 +33,8 @@
     "evals/failure-policy.json",
     "evals/verification-boundary.json",
     "evals/test-reliability.json",
+    "evals/exploratory-testing.json",
+    "evals/testing-only.json",
     "evals/delivery-windows.json",
     "evals/telemetry-failure.json",
     "evals/foundation-portability.json",

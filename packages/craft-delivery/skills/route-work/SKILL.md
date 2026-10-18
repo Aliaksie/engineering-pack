@@ -13,7 +13,10 @@ node <package-root>/support/runtime/cli.mjs route --root <project> --intent <int
 
 In the authoring checkout, `npm run route -- ...` invokes the same runtime. Supply a supported
 intent such as `implement`, `plan`, `review`, `story`, `investigate`, `locate`, `research`,
-`status` or `verify`; repeat file arguments for the actual scope.
+`status`, `verify`, `explore` or `run-check`; repeat file arguments for the actual scope.
+`verify` selects testing-only orchestration. Add `--verification-mode manual`, `automation`
+or `test-code` when that mode is established; only test-code requests select test editing,
+and no verification mode selects product-code implementation.
 
 Read the result as a declaration-based plan. Module owners, dependencies and checks still
 need verification in the consumer checkout. Review the `loading` evidence and missing context,
