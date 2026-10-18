@@ -35,16 +35,17 @@ export function renderText(text, packages, platform) {
 
 // Rebase actual Markdown links when native skill names change. Logical prose references
 // and filesystem references are different concerns.
-export function rewriteLinks(text, sourceFile, targetFile, mapTarget) {
+export function rewriteLinks(text, sourceFile, targetFile, mapTarget, paths = path) {
   return text.replace(/\]\(([^)\s]+)\)/g, (match, href) => {
     if (/^(?:[a-z]+:|#)/i.test(href)) return match;
     const hash = href.indexOf('#');
     const pathname = hash === -1 ? href : href.slice(0, hash);
     const fragment = hash === -1 ? '' : href.slice(hash);
     if (!pathname) return match;
-    const resolved = path.resolve(path.dirname(sourceFile), pathname);
+    const resolved = paths.resolve(paths.dirname(sourceFile), pathname);
     const mapped = mapTarget(resolved);
-    const mappedHref = /^[a-z]+:/i.test(mapped) ? mapped : path.relative(path.dirname(targetFile), mapped).split(path.sep).join('/');
+    // Windows drive letters are filesystem roots, not URL schemes.
+    const mappedHref = !paths.isAbsolute(mapped) && /^[a-z]+:/i.test(mapped) ? mapped : paths.relative(paths.dirname(targetFile), mapped).split(paths.sep).join('/');
     return `](${mappedHref}${fragment})`;
   });
 }
