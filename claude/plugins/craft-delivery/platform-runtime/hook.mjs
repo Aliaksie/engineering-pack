@@ -9,6 +9,7 @@ export function normalize(payload, platform, definition) {
     : /^(?:Read|read|read_file|view)$/i.test(name) ? 'read' : 'other';
   const rawSession = payload.session_id ?? payload.sessionId ?? payload.conversation_id;
   return { event: definition.event, host: platform, tool,
+    contextSupported: hookMapping(platform, definition)?.context === true,
     cwd: typeof payload.cwd === 'string' ? payload.cwd : process.cwd(),
     command: typeof input?.command === 'string' ? input.command : typeof input?.cmd === 'string' ? input.cmd : '',
     file: typeof input?.file_path === 'string' ? input.file_path : typeof input?.path === 'string' ? input.path : undefined,
@@ -40,13 +41,14 @@ export function serialize(result, platform, definition) {
   return { output: output ? `${JSON.stringify(output)}\n` : '', error: '', exitCode: 0 };
 }
 
-export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event) {
+export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
   if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
   let payload;
   try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
   let result = { decision: 'allow' };
+  let pending;
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
     const event = normalize(payload, platform, definition);
     if (definition.tool !== 'shell' || event.tool === 'shell') {
@@ -54,6 +56,10 @@ export async function runHook(evaluate, platform, definition = { name: 'policy',
         const prepared = prepare(event);
         if (prepared.routing) prepared.routing.nativeSkills = prepared.routing.skills.map((skill) => platform === 'claude' ? skill : skill.replace(':', '-'));
         result = evaluate(prepared);
+        if (delivery.reuse) {
+          pending = delivery.reuse(prepared, result);
+          result = pending.result;
+        }
       }
       catch (error) {
         result = definition.tool === 'shell' && definition.event === 'before-tool'
@@ -65,5 +71,10 @@ export async function runHook(evaluate, platform, definition = { name: 'policy',
   const wire = serialize(result, platform, definition);
   if (wire.output) process.stdout.write(wire.output);
   if (wire.error) process.stderr.write(wire.error);
+  if (pending?.diagnostic) process.stderr.write(`${pending.diagnostic}\n`);
+  if (pending && delivery.commit) {
+    try { delivery.commit(pending, Boolean(wire.output && result.context && hookMapping(platform, definition)?.context)); }
+    catch (error) { process.stderr.write(`Routing hint reuse unavailable: ${error.message}\n`); }
+  }
   process.exitCode = wire.exitCode;
 }

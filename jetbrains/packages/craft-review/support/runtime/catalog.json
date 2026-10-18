@@ -182,7 +182,7 @@
     {
       "id": "workflow:verify",
       "skills": [
-        "craft-engineering:testing-engineering"
+        "craft-engineering:workflow-verify-feature"
       ],
       "references": [],
       "when": {
@@ -192,7 +192,7 @@
       },
       "value": {
         "problem": "Passing unrelated checks can be mistaken for proof of a change.",
-        "contribution": "Choose the boundary and assertion that proves each affected claim.",
+        "contribution": "Orchestrate manual, existing-automation or explicitly requested test-code verification without selecting product implementation.",
         "inputs": "Acceptance criteria, affected code and actual check commands.",
         "result": "Criterion-mapped observed results and verification gaps.",
         "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
@@ -951,6 +951,47 @@
         "consumer": "Explicit consumer integration setup or repair.",
         "evidence": "Source/export resolution and binding fixtures; live access verification is consumer-specific."
       }
+    },
+    {
+      "id": "workflow:run-check",
+      "skills": [],
+      "references": [],
+      "when": {
+        "intents": [
+          "run-check"
+        ]
+      },
+      "contextOnly": true,
+      "value": {
+        "problem": "Known check execution should not be confused with deciding what verification is adequate.",
+        "contribution": "Plan declared module checks without loading implementation guidance or claiming they ran.",
+        "inputs": "Explicit task scope, accepted outcomes and available consumer evidence.",
+        "result": "Declared command records or an explicit missing-check limitation.",
+        "boundaries": "Selection plans work only; no new authorization or observed execution is implied.",
+        "consumer": "Explicit task intent; no stack specialization is needed by default.",
+        "evidence": "Deterministic routing fixtures; paired model evidence remains pending."
+      }
+    },
+    {
+      "id": "workflow:explore",
+      "skills": [
+        "craft-engineering:workflow-explore-testing"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "explore"
+        ]
+      },
+      "value": {
+        "problem": "Manual testing needs useful outcomes without requiring a repository or automated runner.",
+        "contribution": "Bound exploratory work by accepted outcomes, environment, authorization and actual observations.",
+        "inputs": "Explicit task scope, accepted outcomes and available consumer evidence.",
+        "result": "Exploratory charter or observed findings with evidence and coverage limits.",
+        "boundaries": "Selection plans work only; no new authorization or observed execution is implied.",
+        "consumer": "Explicit task intent; no stack specialization is needed by default.",
+        "evidence": "Deterministic routing fixtures; paired model evidence remains pending."
+      }
     }
   ],
   "intents": [
@@ -962,7 +1003,9 @@
     "locate",
     "research",
     "status",
-    "verify"
+    "verify",
+    "run-check",
+    "explore"
   ],
   "layerExtensions": {
     ".tsx": "ui",

@@ -1,9 +1,13 @@
 ---
 name: deliver-change
-description: Carry an authorized change from its current stage to verified local completion.
+description: Implement an authorized feature or product-code fix through scoped coding, verification and local completion.
 ---
 
 # Carry evidence through delivery
+
+Use this flow when the requested outcome includes changing product behavior through code.
+For testing-only requests, use `craft-engineering-workflow-verify-feature` when available;
+verification does not by itself authorize implementing or repairing the product.
 
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
@@ -40,6 +44,11 @@ Correct in-scope defects and repeat affected checks after a correction. Keep evi
 to the version it covers. Stop a dependent stage when a decision or capability is missing,
 while completing useful independent work; preserve the partial result instead of inventing a
 pass or retrying without a stopping condition.
+
+At a completed stage, use the bundled `session-advice` action when a next-step suggestion
+would help. Supply the current task/revision and observed verification, not a guessed status
+from tool success. Continue necessary authorized work; a suggestion is not an extra approval
+gate. Use native context indicators; file-size estimates do not establish session occupancy.
 
 Complete local delivery with the changed behavior, acceptance-to-check results and material
 limits. If the user also requested an external or installation action, continue with

@@ -103,6 +103,17 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "native-ui-only; no stable usage field in mapped hooks",
+        "display": "native /statusline; explicit CLI advice fallback",
+        "commands": {
+          "inspectUsage": "/statusline",
+          "compact": "/compact",
+          "start-new-session": "/new"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
       ]
@@ -125,7 +136,9 @@
         "craft-engineering-ui-foundations",
         "craft-engineering-workflow-change-agent",
         "craft-engineering-workflow-review-change",
-        "craft-engineering-workflow-select-discipline"
+        "craft-engineering-workflow-select-discipline",
+        "craft-engineering-workflow-explore-testing",
+        "craft-engineering-workflow-verify-feature"
       ],
       "workflows": "exported-as-skills",
       "instructions": "AGENTS.md-linked-from-skills",
@@ -136,6 +149,17 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "native-ui-only; no stable usage field in mapped hooks",
+        "display": "native /statusline; explicit CLI advice fallback",
+        "commands": {
+          "inspectUsage": "/statusline",
+          "compact": "/compact",
+          "start-new-session": "/new"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
       ]
@@ -169,6 +193,17 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "native-ui-only; no stable usage field in mapped hooks",
+        "display": "native /statusline; explicit CLI advice fallback",
+        "commands": {
+          "inspectUsage": "/statusline",
+          "compact": "/compact",
+          "start-new-session": "/new"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
       ]
@@ -193,6 +228,17 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "native-ui-only; no stable usage field in mapped hooks",
+        "display": "native /statusline; explicit CLI advice fallback",
+        "commands": {
+          "inspectUsage": "/statusline",
+          "compact": "/compact",
+          "start-new-session": "/new"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Local plugin export; hooks require host support and trust. Live host loading has not been tested."
       ]

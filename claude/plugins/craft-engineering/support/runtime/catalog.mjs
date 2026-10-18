@@ -6,8 +6,8 @@ export const catalog = validatePlaybookCatalog(JSON.parse(fs.readFileSync(new UR
 
 // Match each affected module independently so a provider/framework in one module
 // cannot borrow a layer declared by a different module.
-export function loadingPlan({ intent, files, modules, project, risks, availableSkills }) {
-  const stack = catalog.stackIntents.includes(intent);
+export function loadingPlan({ intent, files, modules, project, risks, availableSkills, verificationMode }) {
+  const stack = catalog.stackIntents.includes(intent) && !(intent === 'verify' && verificationMode === 'manual');
   const missingContext = [];
   const member = (file, scope) => scope.path === '.' || file === scope.path || file.startsWith(`${scope.path}/`);
   const unmatched = files.filter((file) => !modules.some((scope) => member(file, scope)));

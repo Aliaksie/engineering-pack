@@ -681,6 +681,26 @@
               "required": [
                 "mode"
               ]
+            },
+            "verifier": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ]
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "mode"
+              ]
             }
           },
           "additionalProperties": false,
@@ -704,6 +724,39 @@
             },
             "additionalProperties": false,
             "required": []
+          }
+        },
+        "profiles": {
+          "type": "object",
+          "maxProperties": 16,
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "capabilities"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "capabilities": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                }
+              },
+              "maxAttempts": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "escalateTo": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
       },
@@ -744,13 +797,16 @@
     "routing": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "editHints"
-      ],
+      "required": [],
       "properties": {
         "editHints": {
           "type": "boolean",
           "default": false
+        },
+        "dedupeHints": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt in to session-scoped routing hint hash state; no prompts or evidence are stored."
         }
       }
     }

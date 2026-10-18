@@ -66,6 +66,13 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "unavailable-in-current-adapter",
+        "display": "explicit CLI advice fallback",
+        "commands": {},
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Lifecycle hooks are not installed.",
         "MCP declarations require host-specific registration."
@@ -89,7 +96,9 @@
         "craft-engineering-ui-foundations",
         "craft-engineering-workflow-change-agent",
         "craft-engineering-workflow-review-change",
-        "craft-engineering-workflow-select-discipline"
+        "craft-engineering-workflow-select-discipline",
+        "craft-engineering-workflow-explore-testing",
+        "craft-engineering-workflow-verify-feature"
       ],
       "workflows": "exported-as-skills",
       "instructions": "AGENTS.md-linked-from-skills",
@@ -100,6 +109,13 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "unavailable-in-current-adapter",
+        "display": "explicit CLI advice fallback",
+        "commands": {},
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Lifecycle hooks are not installed.",
         "MCP declarations require host-specific registration."
@@ -129,6 +145,13 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "unavailable-in-current-adapter",
+        "display": "explicit CLI advice fallback",
+        "commands": {},
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Lifecycle hooks are not installed.",
         "MCP declarations require host-specific registration."
@@ -154,6 +177,13 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "unavailable-in-current-adapter",
+        "display": "explicit CLI advice fallback",
+        "commands": {},
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Lifecycle hooks are not installed.",
         "MCP declarations require host-specific registration."

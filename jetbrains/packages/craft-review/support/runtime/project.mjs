@@ -67,10 +67,10 @@ export function validateProject(project) {
     strings(project.permissions.writeOperations ?? [], 'writeOperations', WRITE_OPERATIONS);
   }
   if (project.execution !== undefined) {
-    keys(project.execution, ['roles', 'hosts'], 'execution');
+    keys(project.execution, ['roles', 'hosts', 'profiles'], 'execution');
     if (project.execution.roles !== undefined && !plain(project.execution.roles)) throw new Error('execution roles must be an object');
     for (const [role, rule] of Object.entries(project.execution.roles ?? {})) {
-      if (!['locator', 'researcher', 'implementer', 'reviewer', 'planner'].includes(role)) throw new Error('unknown execution role');
+      if (!['locator', 'researcher', 'implementer', 'reviewer', 'planner', 'verifier'].includes(role)) throw new Error('unknown execution role');
       keys(rule, ['mode', 'profile'], 'execution role');
       if (!['main', 'delegate', 'tool'].includes(rule.mode) || (rule.profile !== undefined && typeof rule.profile !== 'string')) throw new Error('invalid execution rule');
     }
@@ -79,6 +79,25 @@ export function validateProject(project) {
       keys(host, ['delegation', 'models'], 'execution host');
       if (host.delegation !== undefined && typeof host.delegation !== 'boolean') throw new Error('delegation must be boolean');
       if (host.models !== undefined && (!plain(host.models) || Object.values(host.models).some((model) => typeof model !== 'string' || !model))) throw new Error('model profiles must map to explicit host model names');
+    }
+    if (project.execution.profiles !== undefined) {
+      if (!plain(project.execution.profiles) || Object.keys(project.execution.profiles).length > 16) throw new Error('execution profiles must be an object with at most 16 profiles');
+      const profiles = project.execution.profiles;
+      for (const [name, profile] of Object.entries(profiles)) {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) throw new Error('invalid execution profile name');
+        keys(profile, ['capabilities', 'maxAttempts', 'escalateTo'], 'execution profile');
+        strings(profile.capabilities, 'profile capabilities');
+        if (profile.capabilities.length > 32 || profile.capabilities.some((item) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item))) throw new Error('invalid profile capabilities');
+        if (profile.maxAttempts !== undefined && (!Number.isInteger(profile.maxAttempts) || profile.maxAttempts < 1 || profile.maxAttempts > 5)) throw new Error('profile maxAttempts must be 1..5');
+        if (profile.escalateTo !== undefined && !Object.hasOwn(profiles, profile.escalateTo)) throw new Error('unknown escalation profile');
+      }
+      for (const name of Object.keys(profiles)) {
+        const seen = new Set(); let next = name;
+        while (next !== undefined) {
+          if (seen.has(next)) throw new Error('execution profile escalation cycle');
+          seen.add(next); next = profiles[next].escalateTo;
+        }
+      }
     }
   }
   if (project.checkpoint !== undefined) {
@@ -90,8 +109,8 @@ export function validateProject(project) {
     if (typeof project.review.readOnly !== 'boolean') throw new Error('review.readOnly must be boolean');
   }
   if (project.routing !== undefined) {
-    keys(project.routing, ['editHints'], 'routing');
-    if (typeof project.routing.editHints !== 'boolean') throw new Error('routing editHints must be boolean');
+    keys(project.routing, ['editHints', 'dedupeHints'], 'routing');
+    for (const field of ['editHints', 'dedupeHints']) if (project.routing[field] !== undefined && typeof project.routing[field] !== 'boolean') throw new Error(`routing ${field} must be boolean`);
   }
   return project;
 }

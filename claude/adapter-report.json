@@ -103,6 +103,16 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "statusline-current-usage",
+        "display": "optional-native-statusline",
+        "commands": {
+          "compact": "/compact",
+          "start-new-session": "/clear"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Live host loading has not been tested."
       ]
@@ -125,7 +135,9 @@
         "ui-foundations",
         "workflow-change-agent",
         "workflow-review-change",
-        "workflow-select-discipline"
+        "workflow-select-discipline",
+        "workflow-explore-testing",
+        "workflow-verify-feature"
       ],
       "workflows": "exported-as-skills",
       "instructions": "AGENTS.md-linked-from-skills",
@@ -136,6 +148,16 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "statusline-current-usage",
+        "display": "optional-native-statusline",
+        "commands": {
+          "compact": "/compact",
+          "start-new-session": "/clear"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Live host loading has not been tested."
       ]
@@ -169,6 +191,16 @@
         }
       ],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "statusline-current-usage",
+        "display": "optional-native-statusline",
+        "commands": {
+          "compact": "/compact",
+          "start-new-session": "/clear"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Live host loading has not been tested."
       ]
@@ -193,6 +225,16 @@
       "mcp": "none",
       "hookMappings": [],
       "runtime": "support/runtime/cli.mjs",
+      "sessionAdvice": {
+        "entry": "support/session.mjs",
+        "observation": "statusline-current-usage",
+        "display": "optional-native-statusline",
+        "commands": {
+          "compact": "/compact",
+          "start-new-session": "/clear"
+        },
+        "activation": "explicit-only; no statusline settings or hooks changed"
+      },
       "limitations": [
         "Live host loading has not been tested."
       ]

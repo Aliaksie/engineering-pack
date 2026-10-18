@@ -8,7 +8,6 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 |---|---|
 | [Architecture](ARCHITECTURE.md) | Capability, runtime, host and service boundaries |
 | [Naming](NAMING.md) | Repository, package, skill, workflow and tool conventions |
-| [Composition](COMPOSITION.md) | Self-contained packages and optional procedure handoffs |
 | [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
 | [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |

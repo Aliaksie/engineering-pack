@@ -41,6 +41,8 @@ paths against the actual checkout. Architectural decisions are still read from s
 | Name/path location | Bounded repository search tool |
 | Git status | Planned local git invocation |
 | Snapshot, revision checks, report shape, checkpoint IO | Bundled deterministic scripts |
+| Declared module check execution (`run-check`) | Tool plan; missing checks require verification design |
+| Verification design/interpretation (`verify`) or manual exploration (`explore`) | Main thread |
 | Planning, implementation, ambiguous ownership | Main thread |
 | Review or bounded research | Main thread unless a delegated role is explicitly selected |
 
@@ -79,6 +81,53 @@ are off by default; a consumer can opt in with `routing: { "editHints": true }`.
 data stays available through the CLI. Configured service metadata is prepared on supported
 session-start/resume hooks; this is local metadata, not live discovery or authentication.
 
+Optional `routing: { "dedupeHints": true }` stores only the last emitted hint's hash and
+timestamp under `.capabilities/state/`, scoped by session and host. Ignore this directory in
+Git. Identical hints are suppressed for at most 15 minutes; changed hint text, project
+configuration or router/catalog source causes emission again. Session start/resume and
+compaction events invalidate reuse through a small generation marker, including when an older
+hint is still being emitted. Scope changes that produce the same routing text need
+no new message; this is hint reuse, not cached repository evidence or verification.
+
+Only adapters/events that can emit context consume a reuse entry, after serialization.
+Unsupported delivery, missing session identity, busy state, malformed state and read/write
+errors never justify suppressing a fresh hint or blocking work. State paths reject symlinks,
+use a writer lock and atomic replacement. A busy or abandoned lock can cause repeated hints;
+it cannot turn a permission denial into an allow. This setting does not enable checkpoints,
+cache tool schemas, save prompts or change authorization. It remains off by default.
+
+## Guidance size without a live token meter
+
+```text
+npm run context:report -- --root examples/project --intent review --file services/orders/Order.java --budget-bytes 20000
+```
+
+`context-report` uses the same routing plan and reads only selected entry files, explicitly
+selected references and required package instructions. It reports logical identities, paths,
+SHA-256 hashes, unique-path bytes, repeated selections and identical content. Linked detail
+is not recursively loaded. Estimates use `ceil(UTF-8 bytes / 4)` per unique path; this is a
+disclosed heuristic, not a tokenizer or measurement of actual host loading.
+
+`--budget-bytes` is optional and report-only: an overrun never silently removes guidance.
+Missing optional packages/files make totals a lower bound and the within-budget status
+unknown. The report excludes host discovery metadata, tool schemas, conversation and tool
+output; current session occupancy and capacity remain unknown. Use native host observations
+for live usage, not these file estimates or cumulative billed tokens.
+Full exports measure their package resources; host-discovered overlay copies may contain
+additional wrappers. This report does not claim to measure those copies or native UI rules.
+
+The CLI defaults to its own source/bundle/package root. `--bundle <path>` selects an explicit
+source checkout, full export or standalone package to inspect; `--root` remains the consumer
+project configuration. Installed packages use `node support/runtime/cli.mjs context-report`.
+The shared implementation ships in every adapter and does not inspect user plugin caches,
+activate tools, change models or emit per-tool context reports.
+
+Use `verify` to choose or interpret acceptance evidence. Use `run-check` with affected paths
+to plan the consumer's declared module commands; commands remain `not-run` until a caller
+executes them within authorization. Use `explore` for a bounded manual testing charter or
+actual observations when an application and tools are available. It selects only the
+exploratory workflow, without assuming a language, repository, runner or browser connector.
+
 ## Checkpoint and recovery
 
 ```text
@@ -108,3 +157,25 @@ Risk tags such as `failure-path`, `timeout`, `retry`, `partial-write` and `cance
 select the cross-language error-handling reference without requiring Node or a provider.
 For example: `npm run route -- --intent implement --file src/Main.java --risk timeout`.
 A risk selects guidance; it is not evidence that the corresponding defect exists.
+
+## Testing-only scope and model advice
+
+`implement` selects product-code delivery. `verify` selects the testing-only workflow;
+`--verification-mode manual|automation|test-code` distinguishes observations, existing
+checks and explicitly requested test changes. Manual mode omits stack guidance. All modes
+exclude module-added implementation skills; product fixes require separate authorization.
+This routing contract does not replace host permissions. `explore` remains a focused charter.
+
+`npm run model:advice -- --root <project> --data <request.json>` recommends a configured
+logical profile without calling a model. Requests name `host`, `role`, `task`, `revision`,
+optional `requiredCapabilities` and bounded `attempts`. The `verifier` role is available.
+Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default 1) and
+optional `escalateTo`; existing role/host delegation settings and exact model mappings
+remain necessary. Profiles and escalation chains are optional and contain no vendor defaults.
+
+Each attempt supplies a unique `id`, `profile`, `task`, `revision`, `outcome` and `evidence`
+reference. Only matching task/revision quality failures count toward escalation. Capability
+names are declarations, and cited outcomes are caller records, not independent measurements.
+Current-target `permission-denied` or `tool-unavailable` stops advice across all profiles;
+resolve that prerequisite before supplying a fresh attempt set. No chain means stop rather
+than invent a stronger model. A configured host mapping alone establishes no quality benefit.

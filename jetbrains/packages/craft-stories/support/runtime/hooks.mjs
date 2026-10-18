@@ -4,6 +4,8 @@ import { readProject } from './project.mjs';
 import { route } from './router.mjs';
 import { prepareServices } from './services.mjs';
 import { readCheckpoint, recoverCheckpoint, saveCheckpoint } from './checkpoint.mjs';
+import { invalidateRoutingHint } from './hint-cache.mjs';
+export { reuseRoutingHint, commitRoutingHint } from './hint-cache.mjs';
 
 function projectRoot(cwd) {
   let directory = path.resolve(cwd);
@@ -23,13 +25,18 @@ function intentOf(event, project) {
   const text = event.prompt ?? '';
   if (/^\s*(?:review|\/review)\b/i.test(text)) return 'review';
   if (/^\s*(?:plan|\/plan)\b/i.test(text)) return 'plan';
+  if (/^\s*(?:verify|\/verify)\b/i.test(text)) return 'verify';
   if (/^\s*(?:find|locate|where)\b/i.test(text)) return 'locate';
   return null;
 }
 export function prepareEvent(event) {
   const root = projectRoot(event.cwd);
   const project = readProject(root);
-  const result = { ...event, project };
+  const result = { ...event, project, routingRoot: root };
+  if (event.session && project.routing?.dedupeHints === true && ['session-start', 'before-compact', 'after-compact'].includes(event.event)) {
+    try { invalidateRoutingHint(root, event.session, event.host); }
+    catch { /* Reuse is advisory; unavailable state never authorizes or blocks work. */ }
+  }
   const intent = intentOf(event, project);
   if (event.event === 'session-start' && Object.keys(project.services ?? {}).length) result.services = prepareServices(project);
   if (intent) {

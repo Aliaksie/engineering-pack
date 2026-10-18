@@ -9,7 +9,9 @@ Read the shared [package instructions](../../../packages/craft-engineering/AGENT
 
 # Testing Engineering
 
-State the claim that verification should establish. Inspect the real runner configuration and an affected test before choosing a boundary. Use existing adequate evidence; introduce a new test when it protects behavior or resolves uncertainty, rather than to inflate coverage or mirror code.
+State the claim that verification should establish. For automated checks, inspect the real runner configuration and an affected test before choosing a boundary. For manual observations, establish the application/build, environment, expected behavior and available test data; source access is optional. Use existing adequate evidence; introduce a new test when it protects behavior or resolves uncertainty, rather than to inflate coverage or mirror code.
+
+For a bounded manual exploration, use `craft-engineering-workflow-explore-testing` when available. Planning checks, executing declared checks and interpreting their adequacy are distinct tasks; a successful command does not establish acceptance by itself.
 
 **Which references bind a change:** Select the pages whose contracts or risks are affected; size alone does not determine applicability. Read their decision criteria before relying on them.
 
