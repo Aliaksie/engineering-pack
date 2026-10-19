@@ -33,6 +33,10 @@
     {
       "id": "c8",
       "description": "Keep one private progress record with decisions, checks, completed/remaining work and authorized commit IDs; do not interpret a local plan path as permission to version it. Avoid per-step reports and duplicate implementation prose; identify only unmet documentation needs."
+    },
+    {
+      "id": "c9",
+      "description": "Put task-branch setup before implementation edits in the execution sequence, select a worktree only for needed isolation and preserve existing changes. Planning-only authorization describes that step without changing Git state or adding repository hooks."
     }
   ]
 }

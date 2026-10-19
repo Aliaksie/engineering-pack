@@ -24,9 +24,10 @@ Use `craft-delivery:inspect-architecture` for a boundary that affects the soluti
 then `craft-delivery:apply-change` for the authorized implementation. Local work remains usable
 without a remote tracker or model worker.
 
-Before implementation edits, establish a task branch from the intended base and inspect the
-index/worktree. Do not work directly on consumer-protected/default branches without an explicit
+Start the authorized implementation sequence by inspecting the branch/index/worktree and
+creating or selecting a task branch from the intended base, before source edits. Do not work directly on consumer-protected/default branches without an explicit
 task-specific exception; use a worktree when isolation is needed. Preserve existing edits.
+This is agent workflow guidance; applying it does not require installing repository Git hooks.
 
 Before implementation, carry forward the applicable accepted decisions and read the selected
 engineering detail for the affected behavior. Select security/testing detail by the actual

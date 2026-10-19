@@ -43,9 +43,7 @@
     "eval:pair": "node tooling/paired-eval.mjs",
     "model:advice": "node cli/main.mjs model-advice",
     "version:sync": "node tooling/version.mjs",
-    "version:check": "node tooling/version.mjs --check",
-    "hooks:install": "node tooling/install-git-hooks.mjs",
-    "check:branch": "node tooling/git-guard.mjs check"
+    "version:check": "node tooling/version.mjs --check"
   },
   "license": "MIT"
 }

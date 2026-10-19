@@ -40,7 +40,7 @@
     },
     {
       "id": "c10",
-      "description": "Before implementation edits move authorized work onto a task branch, using a worktree only for needed isolation. Respect protected/default branches, preserve existing work and hooks, and distinguish Git-action enforcement from prevention of file edits."
+      "description": "Start implementation by inspecting branch/index/worktree and creating or selecting a task branch before edits, using a worktree only for needed isolation. Respect protected/default branches and preserve existing work and hooks; do not install repository Git hooks as a prerequisite for following the workflow."
     },
     {
       "id": "c11",

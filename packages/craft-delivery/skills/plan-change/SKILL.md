@@ -31,7 +31,12 @@ Write only the detail needed for execution:
 
 - State the observable success conditions and explicit exclusions from the request.
 - Describe the approach and any alternative whose trade-off could change that choice.
-- Order the implementation steps around actual dependencies; name likely paths and owners.
+- Start the implementation sequence with inspecting the branch/index/worktree and creating
+  or selecting a task branch from the intended base, before source edits. Use a worktree
+  when isolation is needed; preserve unrelated work. A planning-only request describes this
+  step without changing Git state. Do not add repository hooks to apply this guidance.
+- Order the remaining implementation steps around actual dependencies; name likely paths
+  and owners.
 - Attach verification to outcomes, including material rejection, failure and recovery cases.
   Separate structural validity from user-facing usefulness using the artifact's actual criteria.
 - Select security/testing guidance for affected concerns, such as confidential-data egress,
