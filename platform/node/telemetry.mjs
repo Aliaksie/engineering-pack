@@ -31,7 +31,14 @@ export function appendTelemetry(root, event) {
   const text = `${JSON.stringify(event)}\n`;
   if (Buffer.byteLength(text) > 8192) throw new Error('telemetry event too large');
   const file = stateFile(root, 'telemetry.jsonl', true);
-  const ticket = lockState(file);
+  let ticket;
+  try { ticket = lockState(file); }
+  catch (error) {
+    // Windows can deny reopening a lock while another writer deletes it. A
+    // denied/busy telemetry lock drops this event; never write without ownership.
+    if (['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) return false;
+    throw error;
+  }
   if (!ticket) return false;
   try {
     const stat = regular(file, TELEMETRY_MAX_BYTES);

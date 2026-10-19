@@ -11,6 +11,7 @@ import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEM
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { execute } from '../cli/requests.mjs';
+import { lockState } from '../platform/node/state-files.mjs';
 
 const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z', sessionId:'a'.repeat(32), operationId:'12345678-1234-4234-a234-123456789abc', packVersion:'0.0.2', host:'codex', outcome:'success', durationMs:12 };
 function fixture(t, config) {
@@ -82,6 +83,30 @@ test('concurrent processes append complete JSONL events within the shared bound'
   })));
   const lines=fs.readFileSync(path.join(root,'.capabilities/state/telemetry.jsonl'),'utf8').trim().split('\n');
   assert.ok(lines.length>0 && lines.length<=160); for(const line of lines) assert.equal(JSON.parse(line).schemaVersion,1);
+});
+test('denied telemetry lock acquisition skips the event without touching another writer or weakening shared locks', t => {
+  const root=fixture(t), event=telemetryEvent(envelope);
+  const directory=path.join(root,'.capabilities/state'); fs.mkdirSync(directory,{recursive:true});
+  const file=path.join(directory,'telemetry.jsonl'), lock=`${file}.lock`;
+  fs.writeFileSync(lock,'another writer');
+  const open=fs.openSync;
+  for (const code of ['EPERM','EACCES','EBUSY','EIO']) {
+    const failure=Object.assign(new Error('lock unavailable'),{code});
+    const mock=t.mock.method(fs,'openSync',(name,...args) => {
+      if (name===lock) throw failure;
+      return open(name,...args);
+    });
+    try {
+      if (code==='EIO') assert.throws(() => appendTelemetry(root,event),error => error===failure);
+      else assert.equal(appendTelemetry(root,event),false);
+      assert.throws(() => lockState(file),error => error===failure);
+      assert.equal(fs.existsSync(file),false);
+      assert.equal(fs.readFileSync(lock,'utf8'),'another writer');
+    } finally { mock.mock.restore(); }
+  }
+  fs.unlinkSync(lock);
+  assert.equal(appendTelemetry(root,event),true);
+  assert.deepEqual(readTelemetry(root),[event]);
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {
   const root=fixture(t), options={intent:'implement',file:[],risk:[],host:'codex',session:'session',task:'task'};
