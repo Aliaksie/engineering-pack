@@ -12,7 +12,9 @@ verification does not by itself authorize implementing or repairing the product.
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
 current paths/revision and verification evidence. Do not repeat discovery or create a new
-document for every stage.
+document for every stage. For cross-repository work, retain ownership of facts, generation,
+dependencies, tests, CI and outputs before adding infrastructure. Resolve missing ownership
+through `craft-delivery:inspect-architecture`; reassess when later evidence changes scope.
 
 Use `craft-delivery:inspect-architecture` for a boundary that affects the solution and
 `craft-delivery:plan-change` for material unresolved implementation choices. Use
@@ -21,7 +23,8 @@ then `craft-delivery:apply-change` for the authorized implementation. Local work
 without a remote tracker or model worker.
 
 Before implementation, carry forward the applicable accepted decisions and read the selected
-engineering detail for the affected behavior. Reuse current evidence, but do not bypass this
+engineering detail for the affected behavior. Select security/testing detail by the actual
+concerns, carrying forward still-current selections. Reuse current evidence, but do not bypass this
 step because the edit looks small. Use `craft-delivery:inspect-architecture` to settle missing
 decision context; use `craft-delivery:write-adr` only when a consequential choice needs a record.
 This is a workflow prerequisite, not a claim that every host can enforce document reads.
@@ -34,8 +37,13 @@ and verify the combined state before calling the task complete; worker success i
 integration result. If commits are in scope, group changes by coherent task outcome rather
 than by worker, and follow the consumer's message and merge conventions.
 
-Exercise the acceptance conditions with real checks. Update inaccurate maintained context
-through `craft-delivery:maintain-context`. Use `craft-delivery:review-code` for a requested or
+Carry the chosen evidence/execution approach and checkpoint boundary from planning. Reassess
+when risk, evidence or phase changes; do not poll model/session advice every turn. Use
+`craft-engineering:foundations` for bounded batching, worker returns and continuation detail.
+
+Exercise the acceptance conditions with real checks. Structural validity does not establish
+user-facing quality: review presentation or usefulness when the declared artifact criteria
+require it. Update inaccurate maintained context through `craft-delivery:maintain-context`. Use `craft-delivery:review-code` for a requested or
 risk-justified review, keeping its scope aligned with the current changes. Selecting independent
 review does not grant permission to spawn an agent. A committed snapshot excludes working-tree
 edits; inspect those directly rather than creating an unauthorized commit.
@@ -43,7 +51,9 @@ edits; inspect those directly rather than creating an unauthorized commit.
 Correct in-scope defects and repeat affected checks after a correction. Keep evidence attached
 to the version it covers. Stop a dependent stage when a decision or capability is missing,
 while completing useful independent work; preserve the partial result instead of inventing a
-pass or retrying without a stopping condition.
+pass or retrying without a stopping condition. After an environment failure, diagnose the
+missing prerequisite once; retry only when evidence or conditions change. Continue independent
+authorized work without adding unrelated network/browser preflights.
 
 At a completed stage, use the bundled `session-advice` action when a next-step suggestion
 would help. Supply the current task/revision and observed verification, not a guessed status
@@ -51,5 +61,9 @@ from tool success. Continue necessary authorized work; a suggestion is not an ex
 gate. Use native context indicators; file-size estimates do not establish session occupancy.
 
 Complete local delivery with the changed behavior, acceptance-to-check results and material
-limits. If the user also requested an external or installation action, continue with
+limits. Record generation/check results, relevant presentation review, local revision/commit
+and remote delivery independently. Mark unavailable checks with the missing prerequisite;
+hook success proves none of these outcomes. A failed push leaves successful local work intact
+and remote delivery incomplete. Unknown usage stays unknown. If the user also requested an
+external or installation action, continue with
 `craft-delivery:workflow-ship-change` under that existing authorization and explicit target.

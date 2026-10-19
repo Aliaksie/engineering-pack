@@ -10,9 +10,22 @@ the requested outcome and identify the decisions that still affect behavior. Reu
 plans and current evidence instead of producing a new plan merely because this skill was loaded.
 
 Inspect applicable instructions, the relevant implementation and real check commands.
-Use `craft-delivery:inspect-architecture` for an unresolved boundary. Batch missing fact
-lookups; a permitted economical worker may supply a compact, cited inventory, while the main
-reasoner chooses the approach and assesses risks. Recheck sources affected by later edits.
+Use `craft-delivery:inspect-architecture` for an unresolved boundary. When work crosses
+repositories, carry forward supplied ownership of facts, generation, dependencies, tests, CI
+and outputs; inspect only unresolved responsibilities. A data-only consumer stays data-only
+when a separate engine owns execution. Unknown ownership is a decision gap, not permission to
+vendor that engine. Revisit ownership when later sources change scope; ordinary local work
+needs no separate architecture stage.
+
+For substantial work, identify the next unknown, independent evidence requests, dependencies,
+execution owner and acceptance in the existing task record. Use bounded deterministic lookup
+for known symbols, exact text and metadata; inspect coverage and truncation. Stage dependent
+questions after their inputs. A permitted economical worker may interpret a narrow inventory;
+keep ambiguous ownership, architecture and sensitive trust decisions with the main reasoner
+or a suitable configured strong profile. No failed cheap attempt is required first.
+Use `craft-engineering:foundations` for context-discipline and execution-optimization detail,
+including model choice, bounded returns, evidence reuse and continuation. Recheck affected
+sources after edits. Tiny or tightly coupled work usually needs one owner.
 
 Write only the detail needed for execution:
 
@@ -20,6 +33,10 @@ Write only the detail needed for execution:
 - Describe the approach and any alternative whose trade-off could change that choice.
 - Order the implementation steps around actual dependencies; name likely paths and owners.
 - Attach verification to outcomes, including material rejection, failure and recovery cases.
+  Separate structural validity from user-facing usefulness using the artifact's actual criteria.
+- Select security/testing guidance for affected concerns, such as confidential-data egress,
+  renderer escaping or provider failures; reuse current selections rather than loading every
+  discipline. Carry the approach and useful checkpoint boundary into delivery.
 - Identify assumptions, blockers and the decision needed to remove each blocker.
 
 When parallel work is worthwhile and authorized, separate independent assignments by outcome

@@ -1,6 +1,6 @@
 {
   "id": "workflow-deliver-change",
-  "prompt": "Continue delivery from an already accepted implementation plan. Local edits/checks are authorized; commits, deployment, tracker writes and other agents are not. The implementation remains uncommitted. A review identifies a defect after the first check run; correct it and verify the final working state. The craft-review package is installed but its snapshot tool captures committed base/head only.",
+  "prompt": "Continue delivery from an already accepted implementation plan. Local edits/checks are authorized; commits, deployment, tracker writes and other agents are not. The implementation remains uncommitted. A review identifies a defect after the first check run; correct it and verify the final working state. The craft-review package is installed but its snapshot tool captures committed base/head only. In a separate synthetic delivery variant, an accepted plan keeps a data-only consumer separate from its engine. A later source changes output ownership. A generated artifact is schema-valid but fails declared presentation criteria; confidential fields cross a provider boundary. Browser review is blocked by a missing browser. In a variant explicitly authorizing a local commit and push, the commit succeeds and the push fails. Usage telemetry is unavailable. Contrast a simple local correction.",
   "criteria": [
     {
       "id": "c1",
@@ -17,6 +17,26 @@
     {
       "id": "c4",
       "description": "Review the actual uncommitted changes with explicit working-tree scope, create no commit for tooling, and rerun affected checks after correcting the review defect rather than reusing stale evidence."
+    },
+    {
+      "id": "c5",
+      "description": "Carry supplied ownership into the task record before infrastructure changes; reassess the later source and select concern-relevant security/testing guidance without moving engine responsibilities into the data-only consumer."
+    },
+    {
+      "id": "c6",
+      "description": "Keep schema checks and declared usefulness/presentation acceptance separate; report the poor artifact as incomplete against its quality criteria."
+    },
+    {
+      "id": "c7",
+      "description": "Diagnose the blocked browser prerequisite once and retry only with changed conditions or evidence, continuing independent authorized work without unrelated preflight."
+    },
+    {
+      "id": "c8",
+      "description": "Report generation/checks, presentation, local revision/commit and remote delivery independently: successful local work survives failed push, remote delivery remains incomplete, hook success is insufficient and usage is unknown."
+    },
+    {
+      "id": "c9",
+      "description": "Keep the simple local correction proportionate and preserve the accepted execution approach and checkpoint boundary, reassessing on changed risk or phase rather than polling advice each turn."
     }
   ]
 }
