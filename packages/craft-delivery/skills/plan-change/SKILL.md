@@ -31,10 +31,11 @@ Write only the detail needed for execution:
 
 - State the observable success conditions and explicit exclusions from the request.
 - Describe the approach and any alternative whose trade-off could change that choice.
-- Start the implementation sequence with inspecting the branch/index/worktree and creating
-  or selecting a task branch from the intended base, before source edits. Use a worktree
-  when isolation is needed; preserve unrelated work. A planning-only request describes this
-  step without changing Git state. Do not add repository hooks to apply this guidance.
+- Start the implementation sequence with inspecting branch/index/worktree and relevant existing
+  changes, then establishing a safe boundary under consumer branching/workspace policy and
+  repository protection. Preserve unrelated work; select a task branch/worktree when required
+  by policy or isolation/concurrency needs. Planning-only scope describes this without changing
+  Git state. Do not add repository hooks to apply this guidance.
 - Order the remaining implementation steps around actual dependencies; name likely paths
   and owners.
 - Attach verification to outcomes, including material rejection, failure and recovery cases.
@@ -46,9 +47,10 @@ Write only the detail needed for execution:
 
 When parallel work is worthwhile and authorized, separate independent assignments by outcome
 and owned paths, name their dependencies and integration owner, and choose isolated workspaces
-for concurrent writers. Keep overlapping changes sequential. Plan coherent commit boundaries
-using existing user authorization or standing consumer policy; worker count does not determine
-commit count. Track completed units by their resulting commits when authorized. Use the
+for concurrent writers. Keep overlapping changes sequential. Plan coherent review/rollback
+boundaries; commit strategy and frequency follow consumer policy and existing authorization,
+including one final commit or no autonomous commits. Worker count does not determine commit
+count. Record resulting commit IDs when commits are authorized and useful. Use the
 available engineering Git/context references for worktree and handoff details.
 
 For persisted data or public interfaces, account for old and new consumers during transition,

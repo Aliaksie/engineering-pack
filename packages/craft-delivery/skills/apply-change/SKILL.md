@@ -5,12 +5,12 @@ description: Make and verify a scoped source change in the target repository.
 
 # Deliver the requested behavior
 
-Establish what the user expects to change and inspect the existing working tree before
-editing. Before implementation edits, inspect the branch and consumer-protected/default
-branches; create or select a task branch under the existing local-work authorization. Use a
-worktree when isolation is needed. Do not implement on a protected/default branch or detached
-HEAD without an explicit task-specific exception. Preserve unrelated edits and follow the target repository's instructions, installed
-versions and actual build configuration. Local request text is sufficient; a tracker is optional.
+Establish what the user expects to change. Before implementation edits, inspect branch, index,
+working tree and relevant existing changes; establish a safe change boundary under consumer
+branching/workspace policy and repository protection. Preserve unrelated work. Use a task branch
+or worktree when policy, protection, isolation or concurrency requires it. Follow the target
+repository's instructions, installed versions and actual build configuration. Local request
+text is sufficient; a tracker is optional.
 
 Use the current acceptance criteria as the implementation boundary. For a defect, compare the
 expected and observed behavior and reproduce the failure when practical. If reproduction is
@@ -51,10 +51,8 @@ unrelated full campaign.
 
 Finish with the behavior delivered, acceptance evidence, files or interfaces affected and
 remaining limits. If interrupted, preserve a compact progress note and verify the checkout
-before resuming. When local commits are authorized by the user or standing consumer policy,
-commit each completed, verified coherent unit and record its ID in the internal task record.
-Use `craft-engineering:foundations` for Git/worktree discipline. Do not delay all checkpoints
-until a long task ends, commit broken intermediate steps merely to mark progress, or combine
-unrelated work. An explicit no-commit instruction keeps delivery as a reviewed working diff.
-Without commit authorization preserve the diff and report that limit; do not invent permission.
-Push, deployment and history rewriting require their own existing scope.
+before resuming. Follow consumer commit strategy and existing user authorization or standing
+consumer policy; implementation alone does not authorize commits. When commits are authorized
+and useful, keep them coherent and verified and record their IDs privately. Otherwise preserve
+a reviewable diff. Use `craft-engineering:foundations` for Git/workspace and commit detail.
+Push, force-push, history rewriting, merge and deployment require their own existing scope.

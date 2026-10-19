@@ -5,14 +5,20 @@ work and the paths belonging to the task. Follow the consumer's branching, commi
 policy. Carry forward the user's existing authorization and standing consumer commit policy;
 do not ask again for each completed unit. A package cannot grant Git permissions. Respect
 explicit no-commit scope; without commit authorization preserve a reviewable diff. Local
-commit scope does not authorize push or history rewrite.
+commit scope does not authorize push, force-push, history rewrite or merge.
 
-Before the first implementation edit, inspect the current branch and consumer-protected/default
-branches. Create or select a task branch from the intended base; do not implement or commit
-on a protected/default branch without an explicit task-specific exception. Carry existing
-uncommitted work deliberately and never reset it to obtain a clean base. Detached HEAD needs
-an intentional task branch before implementation. For isolated or concurrent work use a
-worktree; ordinary single-owner work can use a task branch in the current checkout.
+Before the first implementation edit, inspect branch, index, working tree and relevant existing
+changes. Establish a safe change boundary under the consumer's branching/workspace policy and
+repository protection. Discover the actual default/protected branches from repository evidence;
+branch names alone do not establish protection. Do not modify them when policy or protection
+forbids it. Preserve unrelated work without reset or clean.
+
+Use a task branch or worktree when policy, protection, isolation or concurrency requires it.
+A task branch is a useful fallback when policy is unspecified, not a universal prerequisite.
+Trunk-based work, host-managed workspaces, patches, ephemeral checkouts and intentional detached
+HEAD can be valid when the consumer workflow permits them and the result remains recoverable
+and reviewable. Existing policy may authorize direct default-branch work; no additional
+per-task exception is needed when it already covers the action.
 
 Use existing consumer branch guards and server-side protection where available. When asked
 to establish enforcement, inspect existing hooks before installing or composing guards; never
@@ -22,13 +28,11 @@ coverage honestly. Builds and package installation must not silently activate po
 
 ## Commit a coherent outcome
 
-When local commits are authorized, commit each completed, verified coherent work unit so it
-can be reviewed and selectively reverted. Do this at useful completion boundaries during a
-long task rather than leaving every outcome in one final diff. Include
-its implementation, meaningful tests and necessary documentation together. A large task may
-need several independently reviewable commits; several tightly coupled subtasks may belong
-in one. Do not create a commit per file, tool call or worker, or package unrelated tasks
-merely because they finished together. Follow the consumer's squash policy where applicable.
+When commits are authorized and useful to the consumer workflow, preserve coherent, verified
+change boundaries for review and rollback. Follow its commit strategy: several task commits,
+one final commit, squash, externally managed commits or no autonomous commits are valid.
+Include implementation, meaningful tests and necessary documentation together; avoid mixing
+unrelated outcomes. File, tool-call and worker counts do not determine commit count.
 
 Stage only the intended paths or hunks and inspect the actual staged diff. Preserve unrelated
 staged work; never include it just to obtain a clean status. Check generated files, secrets,

@@ -24,10 +24,9 @@ Use `craft-delivery:inspect-architecture` for a boundary that affects the soluti
 then `craft-delivery:apply-change` for the authorized implementation. Local work remains usable
 without a remote tracker or model worker.
 
-Start the authorized implementation sequence by inspecting the branch/index/worktree and
-creating or selecting a task branch from the intended base, before source edits. Do not work directly on consumer-protected/default branches without an explicit
-task-specific exception; use a worktree when isolation is needed. Preserve existing edits.
-This is agent workflow guidance; applying it does not require installing repository Git hooks.
+Before source edits, establish a safe change boundary through `craft-delivery:apply-change`,
+respecting consumer branching/workspace policy, repository protection and unrelated work.
+Applying this guidance does not require installing repository Git hooks.
 
 Before implementation, carry forward the applicable accepted decisions and read the selected
 engineering detail for the affected behavior. Select security/testing detail by the actual
@@ -42,10 +41,9 @@ lookup can share source; concurrent writers should use separate branches/worktre
 supported. Coordinate overlapping paths and shared test resources. Review returned changes
 and verify the combined state before calling the task complete; worker success is not an
 integration result. If commits are in scope, group changes by coherent task outcome rather
-than by worker, and follow the consumer's message and merge conventions. Commit each completed,
-verified unit under existing user authorization or standing consumer policy; retain its ID in
-the internal record for review and selective rollback. Respect explicit no-commit scope.
-Use worktrees when isolation is needed, not as a mandatory stage for a single owner.
+than by worker, and follow consumer commit strategy, message and merge conventions under
+existing authorization. Preserve coherent, verified review/rollback boundaries; retain resulting
+commit IDs privately. Neither implementation nor delegation grants commit or remote-action scope.
 
 Carry the chosen evidence/execution approach and checkpoint boundary from planning. Reassess
 when risk, evidence or phase changes; do not poll model/session advice every turn. Use
