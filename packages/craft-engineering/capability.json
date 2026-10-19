@@ -25,7 +25,8 @@
     "workflows/verify-feature.md"
   ],
   "standards": [
-    "standards/craft-bar.md"
+    "standards/craft-bar.md",
+    "standards/session-setup.md"
   ],
   "evals": [
     "evals/local-conventions.json",

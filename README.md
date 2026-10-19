@@ -48,6 +48,13 @@ Download the [distribution ZIP](https://github.com/Aliaksie/engineering-pack/arc
 and follow the [project-rule setup](docs/PLATFORMS.md#jetbrains-native-ai-chat). External agents
 inside JetBrains use their native integration above.
 
+## First use
+
+After installing any adapter, ask **"Check Engineering Pack setup, hook activity and session usage."**
+The first-use notice explains supported features, activation that remains unverified,
+and available session controls. See [setup and session visibility](docs/ADAPTERS.md#first-use-setup-and-session-visibility)
+for manual fallbacks when your host does not expose hooks or token counters.
+
 ## Philosophy
 
 Keep vendor-neutral knowledge in one core and platform packaging thin. Prefer deterministic
