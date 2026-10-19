@@ -46,6 +46,21 @@ test('catalog distinguishes context identity, unavailable guidance and actual lo
   assert.throws(() => validatePlaybookCatalog(copy(), { availableTargets: new Set() }), /unresolved catalog target/);
 });
 
+test('path selectors accept canonical scopes and reject traversal, globs and ambiguous paths', () => {
+  const schema=JSON.parse(fs.readFileSync('schemas/playbook-catalog.schema.json','utf8'));
+  const pattern=new RegExp(schema.$defs.entry.properties.when.properties.paths.items.pattern);
+  for (const [valid,paths] of [
+    [true,['.','a','.github/workflows','automation/release.yml']],
+    [false,['','..','./ci','ci/../release','ci/./release','ci//release','ci/','/ci','C:/ci','ci\\release','ci/*.yml','ci/**','ci/[ab]','ci/{a,b}','ci?','ci\0file']]
+  ]) for (const scope of paths) {
+    const changed=copy();
+    changed.entries.find(entry=>entry.id==='practice:github-actions-path').when={paths:[scope]};
+    if (valid) assert.doesNotThrow(()=>validatePlaybookCatalog(changed));
+    else assert.throws(()=>validatePlaybookCatalog(changed),undefined,scope);
+    assert.equal(pattern.test(scope),valid,scope);
+  }
+});
+
 test('authoring resolves catalog targets against registered package skills and real references', (t) => {
   const root = path.resolve('.');
   const packages = loadCapabilities(root);

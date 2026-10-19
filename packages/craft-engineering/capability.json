@@ -10,6 +10,7 @@
     "skills/backend-engineering",
     "skills/backend-foundations",
     "skills/foundations",
+    "skills/infrastructure-engineering",
     "skills/react-engineering",
     "skills/locate-code",
     "skills/security-engineering",
@@ -40,7 +41,8 @@
     "evals/foundation-portability.json",
     "evals/ui-policy-boundaries.json",
     "evals/interpreter-boundaries.json",
-    "evals/typescript-runtime-contract.json"
+    "evals/typescript-runtime-contract.json",
+    "evals/ci-cd-boundaries.json"
   ],
   "tools": [],
   "hooks": [],
