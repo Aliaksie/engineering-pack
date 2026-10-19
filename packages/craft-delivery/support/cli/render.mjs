@@ -7,7 +7,7 @@ export function renderSessionStatus(status) {
     ? `${Math.round(usage.usedRatio * 100)}% (${usage.currentTokens}/${usage.capacityTokens}); ${status.pressure}; ${usage.source}`
     : `unknown — ${usage.reason}`;
   const lines = [
-    'Engineering Pack — Session', `Host: ${host.name} | Model: ${host.model}`,
+    'Engineering Pack — Session', `Pack version: ${value(status.packVersion)}`, `Host: ${host.name} | Model: ${host.model}`,
     `Context: ${contextLine}`,
     `Pack: ${packContext.estimatedTokens === null ? 'unknown' : `~${packContext.estimatedTokens}`} estimated tokens selected; ${value(packContext.skills)} skills / ${value(packContext.references)} references`,
     `Task: ${status.operation} | Attempts: ${value(activity.attempts)}/${value(activity.maxAttempts)}`,

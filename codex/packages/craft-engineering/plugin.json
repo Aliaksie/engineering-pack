@@ -1,9 +1,0 @@
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "craft-engineering",
-  "version": "0.0.1",
-  "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance.",
-  "author": {
-    "name": "craft-capabilities contributors"
-  }
-}

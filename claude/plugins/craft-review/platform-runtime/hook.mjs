@@ -58,37 +58,54 @@ export function serialize(result, platform, definition) {
 
 export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
   if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
+  const observational = delivery.observational === true;
   const chunks = [];
-  let bytes = 0;
-  for await (const chunk of process.stdin) { bytes += chunk.length; if (bytes > 65536) throw new Error('hook input exceeds 64 KiB'); chunks.push(chunk); }
+  let bytes = 0, inputError;
+  try {
+    for await (const chunk of process.stdin) { bytes += chunk.length; if (bytes > 65536) throw new Error('hook input exceeds 64 KiB'); chunks.push(chunk); }
+  } catch (error) { inputError = error; }
   let payload;
   try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
-  let result = delivery.default();
-  let pending;
-  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-    const event = normalize(payload, platform, definition);
-    if (definition.tool !== 'shell' || event.tool === 'shell') {
+  const valid = Boolean(payload && typeof payload === 'object' && !Array.isArray(payload));
+  const event = normalize(valid ? payload : {}, platform, definition);
+  const invoke = () => {
+    if (inputError) {
+      delivery.diagnostic?.(bytes > 65536 ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT');
+      if (!observational) throw inputError;
+      process.exitCode = 0;
+      return { failed: true };
+    }
+    if (!valid) delivery.diagnostic?.('INVALID_INPUT');
+    let result = delivery.default(), pending, failed = false;
+    if (valid && (definition.tool !== 'shell' || event.tool === 'shell')) {
       try {
         const prepared = prepare(event);
         result = evaluate(prepared);
-        result = { ...result, ...(result.context ? { context: renderContext(result.context, platform) } : {}) };
-        if (delivery.reuse) {
-          pending = delivery.reuse(prepared, result);
-          result = pending.result;
-        }
-      }
-      catch (error) {
-        result = delivery.failure(definition, error.message);
+        result = { ...result, ...(result.context ? { context:renderContext(result.context,platform) } : {}) };
+        if (delivery.reuse) { pending = delivery.reuse(prepared,result); result = pending.result; }
+      } catch (error) {
+        failed = true; delivery.diagnostic?.('HOOK_FAILED');
+        result = observational ? { decision: 'allow' } : delivery.failure(definition,error.message);
       }
     }
+    // Observation never supplies a host permission decision or injected context.
+    const wire = observational ? { output: '', error: '', exitCode: 0 } : serialize(result,platform,definition);
+    if (wire.output) process.stdout.write(wire.output);
+    if (wire.error) process.stderr.write(wire.error);
+    if (pending?.diagnostic) process.stderr.write(`${pending.diagnostic}\n`);
+    if (pending && delivery.commit) {
+      try { delivery.commit(pending,Boolean(wire.output && result.context && hookMapping(platform,definition)?.context)); }
+      catch (error) { delivery.diagnostic?.('CACHE_UNAVAILABLE'); process.stderr.write(`Routing hint reuse unavailable: ${error.message}\n`); }
+    }
+    process.exitCode = wire.exitCode;
+    return { decision:result.decision, failed };
+  };
+  try { return delivery.run ? delivery.run(event,invoke) : invoke(); }
+  catch (error) {
+    if (!observational) throw error;
+    delivery.diagnostic?.('HOOK_FAILED');
+    process.exitCode = 0;
+    return { failed: true };
   }
-  const wire = serialize(result, platform, definition);
-  if (wire.output) process.stdout.write(wire.output);
-  if (wire.error) process.stderr.write(wire.error);
-  if (pending?.diagnostic) process.stderr.write(`${pending.diagnostic}\n`);
-  if (pending && delivery.commit) {
-    try { delivery.commit(pending, Boolean(wire.output && result.context && hookMapping(platform, definition)?.context)); }
-    catch (error) { process.stderr.write(`Routing hint reuse unavailable: ${error.message}\n`); }
-  }
-  process.exitCode = wire.exitCode;
+  finally { if (delivery.flush) { try { await delivery.flush(); } catch { /* Advisory export. */ } } }
 }

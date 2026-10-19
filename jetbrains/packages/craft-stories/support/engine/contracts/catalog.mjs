@@ -1,11 +1,11 @@
-import { LANGUAGES, LAYERS } from './project.mjs';
+import { LANGUAGES, LAYERS, relativeFile } from './project.mjs';
 
 const slug = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const identity = new RegExp(`^(workflow|practice|language|runtime|framework|provider|layer):${slug}$`);
 const skill = new RegExp(`^${slug}:${slug}$`);
 const reference = new RegExp(`^${slug}:${slug}/references/(?:${slug}/)*${slug}\\.md$`);
 export const VALUE_FIELDS = ['problem', 'contribution', 'inputs', 'result', 'boundaries', 'consumer', 'evidence'];
-const dimensions = ['intents', 'risks', 'languages', 'runtimes', 'frameworks', 'providers', 'layers'];
+const dimensions = ['intents', 'risks', 'languages', 'runtimes', 'frameworks', 'providers', 'layers', 'paths'];
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 function keys(value, allowed, label) {
   if (!object(value)) throw new Error(`${label} must be an object`);
@@ -55,10 +55,15 @@ export function validatePlaybookCatalog(catalog, { availableTargets } = {}) {
     strings(entry.references, `${entry.id} references`, { empty: true, pattern: reference });
     keys(entry.when, dimensions, `${entry.id} selector`);
     if (!Object.keys(entry.when).length) throw new Error(`${entry.id} requires selectors`);
-    for (const [dimension, values] of Object.entries(entry.when)) strings(values, `${entry.id} ${dimension}`, {
-      allowed: dimension === 'intents' ? catalog.intents : dimension === 'languages' ? LANGUAGES : dimension === 'layers' ? LAYERS : undefined,
-      pattern: new RegExp(`^${slug}$`)
-    });
+    for (const [dimension, values] of Object.entries(entry.when)) {
+      strings(values, `${entry.id} ${dimension}`, {
+        allowed: dimension === 'intents' ? catalog.intents : dimension === 'languages' ? LANGUAGES : dimension === 'layers' ? LAYERS : undefined,
+        pattern: dimension === 'paths' ? undefined : new RegExp(`^${slug}$`)
+      });
+      if (dimension === 'paths') for (const value of values) {
+        if (relativeFile(value) !== value || /[*?\[\]{}]/.test(value)) throw new Error(`invalid selector path: ${value}`);
+      }
+    }
     if (entry.id.startsWith('workflow:') && (!entry.when.intents || Object.keys(entry.when).length !== 1)) throw new Error(`${entry.id} workflow requires only an intent selector`);
     if (entry.when.intents?.some((intent) => !catalog.stackIntents.includes(intent)) && !/^(workflow|practice):/.test(entry.id)) throw new Error(`${entry.id} specialization cannot select non-stack intents`);
     keys(entry.value, VALUE_FIELDS, `${entry.id} value`);

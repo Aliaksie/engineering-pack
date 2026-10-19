@@ -39,6 +39,9 @@ so a reader can inspect it. Citation counts are not a quality measure.
 - [service-layers](references/service-layers.md): Contracts, state ownership and dependency direction.
 - [performance-efficiency](references/performance-efficiency.md): Workload evidence and bounded resource use.
 
+For pipeline validation, release gates or deployment automation, select
+[infrastructure engineering](../craft-engineering-infrastructure-engineering/SKILL.md); keep CI/CD rules there.
+
 Return a proportionate decision or focused change, the evidence that supports it and any unresolved limitation. Opening this skill grants no authority to change external systems.
 
 Package tools and shared assets: `../../packages/craft-engineering` relative to this skill directory.

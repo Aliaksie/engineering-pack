@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "adapter": "jetbrains",
+  "hooks": "unsupported-not-installed",
+  "sessionAdvice": {
+    "entry": "support/session.mjs",
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {},
+    "activation": "explicit-only; no statusline settings or hooks changed"
+  },
+  "controls": {
+    "surface": "Use the actual host surface and version documentation",
+    "commands": {}
+  }
+}

@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-review",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Headless, revision-bound review for local diffs, GitHub PRs and GitLab MRs.",
   "author": {
     "name": "craft-capabilities contributors"
@@ -37,6 +37,48 @@
       "event": "before-tool",
       "tool": "shell",
       "handler": "hooks/read-only.mjs"
+    },
+    {
+      "name": "observe-session-start",
+      "event": "session-start",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-prompt",
+      "event": "before-prompt",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-tool",
+      "event": "before-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-tool",
+      "event": "after-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-compact",
+      "event": "before-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-compact",
+      "event": "after-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-turn-end",
+      "event": "turn-end",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
     }
   ],
   "mcp": [],

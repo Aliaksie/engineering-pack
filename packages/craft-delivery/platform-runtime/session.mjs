@@ -24,7 +24,13 @@ export function renderSession(advice, platform) {
   const command = sessionCapabilities(platform).commands[suggestion.action];
   return `${status} | Next: ${command ?? suggestion.action}${suggestion.checks ? ` (${suggestion.checks.length} declared check(s); inspect JSON for argv)` : ''}`;
 }
-export async function runSession(advisor, readInput, readProject, platform) {
+export async function runSession(advisor, readInput, readProject, platform, observation = {}) {
+  const args = process.argv.slice(2), index = args.indexOf('--root');
+  const hint = index >= 0 && args[index+1] && !args[index+1].startsWith('--') ? args[index+1] : process.cwd();
+  return observation.run ? observation.run(hint,platform,() => session(advisor,readInput,readProject,platform,observation))
+    : session(advisor,readInput,readProject,platform,observation);
+}
+async function session(advisor, readInput, readProject, platform, observation) {
   try {
     let data, root = process.cwd(), json = false, nativeStdin = false;
     const args = process.argv.slice(2);
@@ -48,7 +54,7 @@ export async function runSession(advisor, readInput, readProject, platform) {
     // Only Claude has a verified status-line payload contract here. Other adapters accept
     // explicit normalized data and never scrape private transcripts to invent a token count.
     let input = data ?? {};
-    if (nativeStdin && platform !== 'claude') throw new Error('native usage input is unsupported by this adapter');
+    if (nativeStdin && platform !== 'claude') { observation.diagnostic?.('HOST_CAPABILITY_UNAVAILABLE'); throw new Error('native usage input is unsupported by this adapter'); }
     if ((!data || nativeStdin) && platform === 'claude') {
       const chunks = []; let bytes = 0;
       for await (const chunk of process.stdin) {
@@ -66,5 +72,5 @@ export async function runSession(advisor, readInput, readProject, platform) {
     }
     const advice = advisor({ ...input, host: { reliableCompaction: Boolean(sessionCapabilities(platform).commands.compact), ...input.host, name: platform } }, readProject(root), { root });
     process.stdout.write(`${json ? JSON.stringify({ ...advice, sessionHost: advice.host, host: sessionCapabilities(platform) }, null, 2) : renderSession(advice, platform)}\n`);
-  } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }
+  } catch (error) { observation.diagnostic?.('INVALID_INPUT'); process.stderr.write(`${error.message}\n`); process.exitCode = 2; return { failed:true }; }
 }

@@ -42,3 +42,10 @@ consumer projects. Session activity, retry receipts and lookup packets use that 
 directory and are not provider telemetry. Context occupancy requires fresh session-bound
 host observations; file reads and billing totals cannot establish it. Automatic snapshots
 do not refresh the source binding of older continuation notes.
+
+## Usage telemetry
+
+Engineering Pack does not send telemetry remotely by default. Local metadata excludes
+prompts, transcripts, code, file contents, commands, raw session IDs and credentials.
+See [observability and privacy](OBSERVABILITY.md) for exact fields, scoped correlation,
+retention, failure behavior, opt-out and optional OTLP export.

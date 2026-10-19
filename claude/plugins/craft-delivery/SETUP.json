@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "adapter": "claude",
+  "hooks": "native-before-tool",
+  "sessionAdvice": {
+    "entry": "support/session.mjs",
+    "observation": "statusline-current-usage",
+    "display": "optional-native-statusline",
+    "commands": {
+      "compact": "/compact",
+      "start-new-session": "/clear"
+    },
+    "activation": "explicit-only; no statusline settings or hooks changed"
+  },
+  "controls": {
+    "surface": "Use the actual host surface and version documentation",
+    "commands": {}
+  }
+}

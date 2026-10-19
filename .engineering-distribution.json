@@ -1,5 +1,6 @@
 {
   "formatVersion": 1,
+  "version": "0.0.2",
   "generatedFrom": "packages/",
   "targets": [
     "gemini-extension",

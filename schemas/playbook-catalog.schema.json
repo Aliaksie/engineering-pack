@@ -117,6 +117,17 @@
           "additionalProperties": false,
           "minProperties": 1,
           "properties": {
+            "paths": {
+              "description": "Canonical project-relative file or directory scopes; matches exact files or descendants, with no glob syntax.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?:\\.|(?!/|[A-Za-z]:)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\\\u0000*?\\[\\]{}])(?!.*//)(?!.*[/]$).+)$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
             "intents": {
               "type": "array",
               "items": {

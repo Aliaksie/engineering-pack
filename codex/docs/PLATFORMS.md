@@ -31,6 +31,54 @@ Sources: [Codex CLI installation commands](https://learn.chatgpt.com/docs/cli/re
 [skill discovery](https://learn.chatgpt.com/docs/build-skills),
 [project instructions](https://developers.openai.com/codex/guides/agents-md/).
 
+### First use: hooks and token visibility
+
+Ask the agent: **"Check Engineering Pack setup, hook activity and session usage."**
+On first skill use, all exported packages ask the agent to give one brief setup
+notice per conversation; see the [shared setup policy](ADAPTERS.md#first-use-setup-and-session-visibility).
+This works independently of hooks, but requires
+the agent to load and follow the skill's linked package instructions; installation
+alone cannot display a welcome message.
+
+| Need | Codex terminal CLI | Desktop app or IDE |
+|---|---|---|
+| Verify installed guidance | Invoke an installed skill and confirm it loads | Use the surface's skill/plugin discovery controls |
+| Review hook setup | Open `/hooks`, inspect sources, and review/trust the current definitions | Establish the surface and version; use documented controls if available |
+| Inspect session usage | `/status` | Use native session information if exposed |
+| Persistent token/context display | `/statusline`, then select token/context counters | Native UI availability must be verified for that surface |
+
+All four packages supply lifecycle telemetry on hook-capable adapters. Engineering,
+Stories and Review include observational hooks; Delivery records telemetry through its
+existing routing and checkpoint hooks. Review also includes publication controls.
+Installing a plugin and trusting a project do not automatically
+trust plugin hooks. Changed hook definitions require review again.
+
+If `/hooks` is missing, do not keep retrying it or assume hooks are active. Identify
+the host surface and version first. A separately installed CLI does not establish
+the desktop/IDE runtime's capabilities or share verified activation with it.
+
+With default local telemetry enabled, observe a normal edit/tool action and look
+for fresh `host.hook` events in the target project's
+`.capabilities/state/telemetry.jsonl`. Direct wrapper execution and explicit CLI
+events establish only those invocation paths. Missing events do not by themselves
+distinguish missing discovery, trust, disabled telemetry or a storage failure.
+
+For a status read without hooks, the agent can resolve the package root from its
+loaded skill and run:
+
+```sh
+node "<package-root>/support/session.mjs" --root "<project-root>" --json
+```
+
+Replace the placeholders with the actual installed package and target project.
+This command requires Node 20+, writes local operational telemetry by default,
+and does not activate hooks or configure a token display. The current pack adapter
+has no automatic Codex token-count input: unavailable counts stay unknown. Cumulative
+session tokens and current context occupancy are separate measurements.
+
+Sources: [hook discovery and trust](https://learn.chatgpt.com/docs/hooks),
+[CLI hook browser and status controls](https://learn.chatgpt.com/docs/developer-commands?surface=cli).
+
 ## Claude Code
 
 ```sh
@@ -109,10 +157,10 @@ Users refresh the Codex marketplace with
 `claude plugin update craft-engineering@craft-capabilities` (repeat for installed packages).
 For Gemini use `gemini extensions update engineering-pack`, then restart the session.
 For project overlays, review and merge regenerated files; preserve consumer changes.
-Verify the new skills in a fresh session. Package versions remain at the initial `0.0.1`;
-if a host skips an unchanged version, uninstall/reinstall the affected plugin through its
-native UI/CLI to refresh the cached copy. Publishing new code is not a version bump. Normal
-versioned releases can be introduced when a release/version change is requested.
+Verify the new skills in a fresh session. Pack versions are synchronized from the canonical
+root version; see [versioned releases](RELEASING.md#manual-versioned-release). Rolling
+updates between releases can retain a version. If a host skips an unchanged version,
+uninstall/reinstall the affected plugin through its native UI/CLI to refresh its cache.
 
 ## Local development and publication
 

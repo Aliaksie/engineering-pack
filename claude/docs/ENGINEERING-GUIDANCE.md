@@ -13,6 +13,7 @@ make its implementation pattern a universal rule.
 | Consistency, conflicting writes and cross-resource recovery | [Distributed systems](../plugins/craft-engineering/skills/backend-engineering/references/distributed-systems.md) |
 | Signals, correlation, sensitive data and audit semantics | [Observability](../plugins/craft-engineering/skills/backend-engineering/references/observability-logging.md) |
 | Desired state, resource lifecycle, rollout and recovery | [Infrastructure](../plugins/craft-engineering/skills/foundations/references/infrastructure.md) |
+| Pipeline validation, release gates and automation recovery | [Infrastructure engineering](../plugins/craft-engineering/skills/infrastructure-engineering/SKILL.md), with shared [CI/CD](../plugins/craft-engineering/skills/infrastructure-engineering/references/ci-cd.md) and conditional [GitHub Actions](../plugins/craft-engineering/skills/infrastructure-engineering/references/github-actions.md) detail |
 | Contracts, dependency direction, ownership and resource lifetimes | [Service boundaries](../plugins/craft-engineering/skills/backend-engineering/references/service-layers.md) |
 | Capacity, backpressure, caching and performance evidence | [Performance](../plugins/craft-engineering/skills/backend-engineering/references/performance-efficiency.md) |
 | Context reuse, prompt/tool caches and logical model profiles | [Execution optimization](../plugins/craft-engineering/skills/foundations/references/execution-optimization.md) |

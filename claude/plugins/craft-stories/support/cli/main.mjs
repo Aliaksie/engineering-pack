@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { flushTelemetry, withTelemetry, observe } from '../application/telemetry/observe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,11 @@ const help = {
 export function run(argv) {
   const [action, ...args] = argv;
   if (action === 'help' || action === '--help' || args.includes('--help')) return help[action] ?? { commands: ['route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' };
+  const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
+  return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },
+    () => observe('cli.command', () => parse(action,args), () => ({ command:action }), { failureCode:'INVALID_INPUT' }));
+}
+function parse(action,args) {
   const allowed = ['root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
   const options = { file: [], risk: [], term: [], path: [] };
   const repeat = ['file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool'];
@@ -44,4 +50,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(proces
     process.stdout.write(process.argv[2] === 'session' && !process.argv.includes('--json') && !process.argv.includes('--help') ? renderSessionStatus(result) : `${JSON.stringify(result, null, process.argv[2] === 'locate' ? undefined : 2)}\n`);
   }
   catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }
+  finally { await flushTelemetry(); }
 }

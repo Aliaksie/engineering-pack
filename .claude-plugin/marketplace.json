@@ -10,25 +10,25 @@
     {
       "name": "craft-delivery",
       "source": "./claude/plugins/craft-delivery",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "description": "Project-grounded planning, implementation, review and repository context."
     },
     {
       "name": "craft-engineering",
       "source": "./claude/plugins/craft-engineering",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance."
     },
     {
       "name": "craft-review",
       "source": "./claude/plugins/craft-review",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "description": "Headless, revision-bound review for local diffs, GitHub PRs and GitLab MRs."
     },
     {
       "name": "craft-stories",
       "source": "./claude/plugins/craft-stories",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "description": "Code grounding, specification audits and local user-story drafts."
     }
   ]

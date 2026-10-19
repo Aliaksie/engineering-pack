@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-engineering",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance.",
   "instructions": "AGENTS.md",
   "skills": [
@@ -10,6 +10,7 @@
     "skills/backend-engineering",
     "skills/backend-foundations",
     "skills/foundations",
+    "skills/infrastructure-engineering",
     "skills/react-engineering",
     "skills/locate-code",
     "skills/security-engineering",
@@ -24,7 +25,8 @@
     "workflows/verify-feature.md"
   ],
   "standards": [
-    "standards/craft-bar.md"
+    "standards/craft-bar.md",
+    "standards/session-setup.md"
   ],
   "evals": [
     "evals/local-conventions.json",
@@ -40,10 +42,54 @@
     "evals/foundation-portability.json",
     "evals/ui-policy-boundaries.json",
     "evals/interpreter-boundaries.json",
-    "evals/typescript-runtime-contract.json"
+    "evals/typescript-runtime-contract.json",
+    "evals/ci-cd-boundaries.json"
   ],
   "tools": [],
-  "hooks": [],
+  "hooks": [
+    {
+      "name": "observe-session-start",
+      "event": "session-start",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-prompt",
+      "event": "before-prompt",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-tool",
+      "event": "before-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-tool",
+      "event": "after-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-compact",
+      "event": "before-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-compact",
+      "event": "after-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-turn-end",
+      "event": "turn-end",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    }
+  ],
   "mcp": [],
   "optionalDependencies": [
     "craft-delivery"

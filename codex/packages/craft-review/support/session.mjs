@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { readSessionInput } from './platform/node/resources/session-input.mjs';
 import { sessionStatus } from './application/session/status.mjs';
-import { readProject } from './application/project/configuration.mjs';
+import { flushTelemetry } from './application/telemetry/observe.mjs';
+import { readProject, readInput } from './application/project/configuration.mjs';
+import { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';
 import { runSession } from '../platform-runtime/session.mjs';
-await runSession(sessionStatus, readSessionInput, readProject, "codex");
+await runSession(sessionStatus, readInput, readProject, "codex", { run:observeNativeSession, diagnostic:hookDiagnostic });
+await flushTelemetry();

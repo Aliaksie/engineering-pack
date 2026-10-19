@@ -12,7 +12,7 @@ export function loadingPlan({ intent, files, modules, project, risks, availableS
     const scopedFiles = scope === project ? (modules.length ? unmatched : files) : files.filter((file) =>
       member(file, scope) && !modules.some((other) => other.path.length > scope.path.length && member(file, other)));
     const evidence = [{ dimension: 'intents', values: [intent], source: 'request', inferred: false }, { dimension: 'risks', values: risks, source: 'request', inferred: false }];
-    const values = {};
+    const values = { paths: scopedFiles };
     for (const dimension of ['languages', 'runtimes', 'frameworks', 'providers', 'layers']) {
       values[dimension] = [...(scope[dimension] ?? project[dimension] ?? [])];
       if (values[dimension].length) evidence.push({ dimension, values: [...values[dimension]], source: scope[dimension] !== undefined && scope !== project ? `module:${scope.name}` : 'project', inferred: false });
@@ -46,7 +46,9 @@ export function loadingPlan({ intent, files, modules, project, risks, availableS
   const selections = [];
   for (const entry of catalog.entries) {
     if (!stack && !entry.when.intents) continue;
-    const matched = contexts.filter(({ values }) => Object.entries(entry.when).every(([dimension, choices]) => choices.some((value) => (dimension === 'intents' ? [intent] : dimension === 'risks' ? risks : values[dimension] ?? []).includes(value))));
+    const matched = contexts.filter(({ values }) => Object.entries(entry.when).every(([dimension, choices]) => choices.some((value) =>
+      dimension === 'paths' ? values.paths.some(file => member(file,{ path:value }))
+        : (dimension === 'intents' ? [intent] : dimension === 'risks' ? risks : values[dimension] ?? []).includes(value))));
     if (!matched.length) continue;
     const { value, ...loadingEntry } = entry;
     const substitutions = [];
@@ -58,7 +60,11 @@ export function loadingPlan({ intent, files, modules, project, risks, availableS
       }
       return primary;
     });
-    selections.push({ ...loadingEntry, skills, ...(substitutions.length ? { substitutions } : {}), evidence: matched.flatMap(({ evidence }) => evidence.filter((item) => Object.hasOwn(entry.when, item.dimension))), reason: entry.when });
+    const matchedEvidence = matched.flatMap(({ values, evidence }) => [
+      ...evidence.filter((item) => Object.hasOwn(entry.when, item.dimension)),
+      ...(entry.when.paths ? [{ dimension:'paths', values:values.paths.filter(file => entry.when.paths.some(path => member(file,{ path }))), source:'request', inferred:false }] : [])
+    ]);
+    selections.push({ ...loadingEntry, skills, ...(substitutions.length ? { substitutions } : {}), evidence:matchedEvidence, reason: entry.when });
   }
   return {
     workflow: selections.find((entry) => entry.id.startsWith('workflow:'))?.id ?? null,

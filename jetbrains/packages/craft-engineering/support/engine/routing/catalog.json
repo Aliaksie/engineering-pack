@@ -905,6 +905,80 @@
       }
     },
     {
+      "id": "practice:ci-cd",
+      "skills": [
+        "craft-engineering:infrastructure-engineering"
+      ],
+      "references": [
+        "craft-engineering:infrastructure-engineering/references/ci-cd.md"
+      ],
+      "when": {
+        "risks": [
+          "ci-cd",
+          "pipeline",
+          "build-pipeline",
+          "release-pipeline"
+        ]
+      },
+      "value": {
+        "problem": "Pipeline changes can bypass checks or publish unvalidated artifacts with excessive permissions.",
+        "contribution": "Select shared CI/CD validation and conditional provider detail from affected paths or explicit task evidence.",
+        "inputs": "Affected pipeline configuration, invoked scripts, requested risks and consumer policy.",
+        "result": "Scoped configuration checks, behavioral verification and explicit hosted-run evidence or limits.",
+        "boundaries": "No provider inferred from a Git remote, assumed runner or permission to dispatch, deploy or publish.",
+        "consumer": "Engineering work affecting CI/CD configuration or release automation.",
+        "evidence": "Deterministic routing and export checks establish selection; model task outcomes require recorded evaluation."
+      }
+    },
+    {
+      "id": "practice:github-actions-path",
+      "skills": [
+        "craft-engineering:infrastructure-engineering"
+      ],
+      "references": [
+        "craft-engineering:infrastructure-engineering/references/ci-cd.md",
+        "craft-engineering:infrastructure-engineering/references/github-actions.md"
+      ],
+      "when": {
+        "paths": [
+          ".github/workflows"
+        ]
+      },
+      "value": {
+        "problem": "Pipeline changes can bypass checks or publish unvalidated artifacts with excessive permissions.",
+        "contribution": "Select shared CI/CD validation and conditional provider detail from affected paths or explicit task evidence.",
+        "inputs": "Affected pipeline configuration, invoked scripts, requested risks and consumer policy.",
+        "result": "Scoped configuration checks, behavioral verification and explicit hosted-run evidence or limits.",
+        "boundaries": "No provider inferred from a Git remote, assumed runner or permission to dispatch, deploy or publish.",
+        "consumer": "Engineering work affecting CI/CD configuration or release automation.",
+        "evidence": "Deterministic routing and export checks establish selection; model task outcomes require recorded evaluation."
+      }
+    },
+    {
+      "id": "practice:github-actions",
+      "skills": [
+        "craft-engineering:infrastructure-engineering"
+      ],
+      "references": [
+        "craft-engineering:infrastructure-engineering/references/ci-cd.md",
+        "craft-engineering:infrastructure-engineering/references/github-actions.md"
+      ],
+      "when": {
+        "risks": [
+          "github-actions"
+        ]
+      },
+      "value": {
+        "problem": "Pipeline changes can bypass checks or publish unvalidated artifacts with excessive permissions.",
+        "contribution": "Select shared CI/CD validation and conditional provider detail from affected paths or explicit task evidence.",
+        "inputs": "Affected pipeline configuration, invoked scripts, requested risks and consumer policy.",
+        "result": "Scoped configuration checks, behavioral verification and explicit hosted-run evidence or limits.",
+        "boundaries": "No provider inferred from a Git remote, assumed runner or permission to dispatch, deploy or publish.",
+        "consumer": "Engineering work affecting CI/CD configuration or release automation.",
+        "evidence": "Deterministic routing and export checks establish selection; model task outcomes require recorded evaluation."
+      }
+    },
+    {
       "id": "practice:execution-optimization",
       "skills": [],
       "references": [

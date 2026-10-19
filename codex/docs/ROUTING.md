@@ -18,7 +18,8 @@ The route returns:
   language/runtime/framework/layer/provider evidence, with inference and missing context.
 - Logical skills and conditionally selected references.
 - Matching module owners, transitive dependent modules and declared checks.
-- Provider references only for agent work using the selected provider.
+- Agent-provider references only for agent work using the selected provider; CI/CD
+  provider detail only from affected pipeline paths or explicit task evidence.
 - Execution mode, role, optional configured model and reasons.
 - Tool plans and missing bindings/skills, with no work executed.
 

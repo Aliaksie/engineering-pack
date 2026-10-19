@@ -1,10 +1,11 @@
 {
   "formatVersion": 1,
+  "version": "0.0.2",
   "adapter": "gemini-extension",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -80,7 +81,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -89,6 +90,7 @@
         "craft-engineering-backend-engineering",
         "craft-engineering-backend-foundations",
         "craft-engineering-foundations",
+        "craft-engineering-infrastructure-engineering",
         "craft-engineering-react-engineering",
         "craft-engineering-locate-code",
         "craft-engineering-security-engineering",
@@ -105,9 +107,45 @@
       "standards": "included-on-demand",
       "evals": "included-not-executed",
       "tools": "included-not-executed",
-      "hooks": "none",
+      "hooks": "unsupported-not-installed",
       "mcp": "none",
-      "hookMappings": [],
+      "hookMappings": [
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "supported": false
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "supported": false
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "supported": false
+        }
+      ],
       "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
@@ -123,7 +161,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -142,6 +180,41 @@
           "id": "read-only",
           "normalizedEvent": "before-tool",
           "supported": false
+        },
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "supported": false
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "supported": false
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "supported": false
         }
       ],
       "runtime": "support/cli/main.mjs",
@@ -159,7 +232,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -173,9 +246,45 @@
       "standards": "included-on-demand",
       "evals": "included-not-executed",
       "tools": "included-not-executed",
-      "hooks": "none",
+      "hooks": "unsupported-not-installed",
       "mcp": "none",
-      "hookMappings": [],
+      "hookMappings": [
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "supported": false
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "supported": false
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "supported": false
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "supported": false
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "supported": false
+        }
+      ],
       "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",

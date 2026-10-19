@@ -1,9 +1,0 @@
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "craft-stories",
-  "version": "0.0.1",
-  "description": "Code grounding, specification audits and local user-story drafts.",
-  "author": {
-    "name": "craft-capabilities contributors"
-  }
-}

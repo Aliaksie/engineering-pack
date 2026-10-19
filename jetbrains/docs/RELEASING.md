@@ -4,7 +4,9 @@ The source branch is `main`; `packages/` remains the authoritative engineering c
 The generated `distribution` branch is the GitHub installation channel for Claude, Codex
 and Gemini, and includes a downloadable JetBrains overlay. npm publication is unnecessary.
 The Claude marketplace identifier stays `craft-capabilities`; Codex uses `engineering-pack`.
-All initial source/native manifest versions stay at `0.0.1` until a version change is requested.
+The canonical pack version is `package.json.version`; the initial versioned release is `0.0.2`.
+Capability manifests and the bundled runtime version are mechanically synchronized
+projections. `npm run version:check` rejects drift, and every build checks consistency.
 
 ## Activate GitHub installation
 
@@ -51,11 +53,55 @@ contain no workflow, and CI ignores pushes to that branch.
 
 Every successful eligible CI run refreshes the generated branch. Users update with native
 platform commands; the [installation guide](PLATFORMS.md#updates-and-verification) explains
-initial-version caching limits. CI records the source revision in each distribution commit.
+rolling-update caching limits. CI records the source revision in each distribution commit.
 Keep `dist/`, local eval results and plans out of source commits. Do not edit the generated
 branch manually. The build contains the [MIT license](../LICENSE).
 
-For a requested versioned release, update canonical manifests and regenerate adapters.
-Release tags, npm publication, a public gallery listing and automatic semantic model
-certification are intentionally outside this workflow. Live host loading and model behavior
-require separate evidence. Existing CI artifacts retain all eight development exports.
+## Manual versioned release
+
+After merging the PR, choose **Release → Run workflow** on `main`. Select `current`
+to publish `v0.0.2` from the merged version without incrementing it again. Later releases
+may use `patch`, `minor` or `major` to prepare and commit the next stable SemVer version,
+or `current` after a reviewed version change has already merged. Locally,
+`npm run version:sync -- 0.0.2` synchronizes required projections; do not edit copies
+independently. Format/schema versions are separate from the pack release version.
+
+The workflow validates the selected main SHA, checks tag absence, synchronizes metadata,
+commits only version files when needed, and runs `npm run check` again before publication.
+It archives all eight adapter bundles plus the combined distribution, preserving hidden
+files, and records source/release SHAs and SHA-256 checksums. An atomic normal Git push
+publishes the version commit and `vX.Y.Z` tag together. An advanced main, existing tag,
+version mismatch, failed check or rejected push blocks publication; refs are never forced.
+
+The release and rolling distribution publisher share a concurrency group. The release
+explicitly refreshes the installation branch at the validated release revision because
+GitHub token-authored commits may not trigger another CI run. A draft GitHub Release is
+created, all eleven assets (nine archives, provenance and checksums) are uploaded and
+counted, and only then is the release published. Archive names include the pack version;
+build reports, native manifests, distribution marker and runtime metadata carry it too.
+No npm publication, hosted analytics setup or semantic model certification occurs.
+
+The repository must allow GitHub Actions to write main, release tags, releases and the
+installation branch using the workflow token. If main requires reviewed changes, prepare
+the version with a version PR and use `current` after merge; the unchanged main ref and
+new tag still need the repository's allowed Git push policy. Never bypass branch rules.
+If those rules forbid the workflow push, arrange an approved repository policy before
+running a real release. Local tests do not establish these remote permissions.
+
+### Partial failure and recovery
+
+Before the atomic push, failed validation leaves remote refs unchanged. After the push,
+a failed installation update, asset upload or release publication does not roll back the
+tag. Recovery artifacts are retained for 14 days. Do not rerun a bump to recover the same
+release, delete tags or move an existing tag. Verify that the remote tag resolves to the
+recorded release revision and that the version and checksums agree with retained artifacts.
+Then retry only the missing installation/publication step against that revision, using
+an explicitly authorized workflow or GitHub CLI action. For a draft release, upload only
+missing assets, verify all eleven assets/checksums, and publish the draft. A workflow
+rerun from preparation deliberately refuses the existing tag. Recovery is a deliberate
+external action; this documentation grants no agent permission to execute it.
+
+The official Claude validator can additionally be run with `npm run validate:claude` when
+its CLI is installed. Local Git tests cover version guards and ref behavior without a
+GitHub account. Live host loading, repository permission enforcement and model behavior
+require separate evidence.

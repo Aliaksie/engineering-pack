@@ -1,10 +1,11 @@
 {
   "formatVersion": 1,
+  "version": "0.0.2",
   "adapter": "codex",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -120,7 +121,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -129,6 +130,7 @@
         "craft-engineering-backend-engineering",
         "craft-engineering-backend-foundations",
         "craft-engineering-foundations",
+        "craft-engineering-infrastructure-engineering",
         "craft-engineering-react-engineering",
         "craft-engineering-locate-code",
         "craft-engineering-security-engineering",
@@ -145,9 +147,82 @@
       "standards": "included-on-demand",
       "evals": "included-not-executed",
       "tools": "included-not-executed",
-      "hooks": "none",
+      "hooks": "native-before-tool-requires-trust",
       "mcp": "none",
-      "hookMappings": [],
+      "hookMappings": [
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "startup|resume",
+          "event": "session-start",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "name": "UserPromptSubmit",
+          "context": true,
+          "deny": false,
+          "event": "before-prompt",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "name": "PostToolUse",
+          "context": true,
+          "deny": false,
+          "event": "after-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "name": "PreCompact",
+          "context": false,
+          "deny": false,
+          "event": "before-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "compact",
+          "event": "after-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "name": "Stop",
+          "context": false,
+          "deny": false,
+          "event": "turn-end",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        }
+      ],
       "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",
@@ -166,7 +241,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -190,6 +265,78 @@
           "event": "before-tool",
           "tool": "shell",
           "handler": "hooks/read-only.mjs"
+        },
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "startup|resume",
+          "event": "session-start",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "name": "UserPromptSubmit",
+          "context": true,
+          "deny": false,
+          "event": "before-prompt",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "name": "PostToolUse",
+          "context": true,
+          "deny": false,
+          "event": "after-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "name": "PreCompact",
+          "context": false,
+          "deny": false,
+          "event": "before-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "compact",
+          "event": "after-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "name": "Stop",
+          "context": false,
+          "deny": false,
+          "event": "turn-end",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
         }
       ],
       "runtime": "support/cli/main.mjs",
@@ -210,7 +357,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -224,9 +371,82 @@
       "standards": "included-on-demand",
       "evals": "included-not-executed",
       "tools": "included-not-executed",
-      "hooks": "none",
+      "hooks": "native-before-tool-requires-trust",
       "mcp": "none",
-      "hookMappings": [],
+      "hookMappings": [
+        {
+          "id": "observe-session-start",
+          "normalizedEvent": "session-start",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "startup|resume",
+          "event": "session-start",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-prompt",
+          "normalizedEvent": "before-prompt",
+          "name": "UserPromptSubmit",
+          "context": true,
+          "deny": false,
+          "event": "before-prompt",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-tool",
+          "normalizedEvent": "before-tool",
+          "name": "PreToolUse",
+          "context": true,
+          "deny": true,
+          "event": "before-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-tool",
+          "normalizedEvent": "after-tool",
+          "name": "PostToolUse",
+          "context": true,
+          "deny": false,
+          "event": "after-tool",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-before-compact",
+          "normalizedEvent": "before-compact",
+          "name": "PreCompact",
+          "context": false,
+          "deny": false,
+          "event": "before-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-after-compact",
+          "normalizedEvent": "after-compact",
+          "name": "SessionStart",
+          "context": true,
+          "deny": false,
+          "matcher": "compact",
+          "event": "after-compact",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        },
+        {
+          "id": "observe-turn-end",
+          "normalizedEvent": "turn-end",
+          "name": "Stop",
+          "context": false,
+          "deny": false,
+          "event": "turn-end",
+          "tool": "any",
+          "handler": "hooks/observe.mjs"
+        }
+      ],
       "runtime": "support/cli/main.mjs",
       "sessionAdvice": {
         "entry": "support/session.mjs",

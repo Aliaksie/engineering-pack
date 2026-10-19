@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "adapter": "codex",
+  "hooks": "native-before-tool-requires-trust",
+  "sessionAdvice": {
+    "entry": "support/session.mjs",
+    "observation": "native-ui-only; no stable usage field in mapped hooks",
+    "display": "native /statusline; explicit CLI advice fallback",
+    "commands": {
+      "inspectUsage": "/statusline",
+      "compact": "/compact",
+      "start-new-session": "/new"
+    },
+    "activation": "explicit-only; no statusline settings or hooks changed"
+  },
+  "controls": {
+    "surface": "Codex terminal CLI only; verify desktop/IDE controls separately",
+    "commands": {
+      "reviewHooks": "/hooks",
+      "inspectUsage": "/status",
+      "configureUsage": "/statusline"
+    }
+  }
+}

@@ -47,6 +47,11 @@ belong in `engine/`; application use cases translate lifecycle events into facts
 observations. `hosts/` owns native parsing, execution and serialization. The bundled package
 handlers delegate to these shared use cases rather than reimplementing policy.
 
+A handler can export `prepare` to replace delivery-specific preparation. Telemetry-only
+handlers also export `observational = true`: their runner produces no host decision or
+context and remains nonblocking on input or execution failure. This does not change the
+input size bound or the failure behavior of policy handlers.
+
 The shipped bin/hook entry points import shared application modules. `tooling/export/`
 rebases those imports into the installed package's `support/` tree, which includes the engine,
 application, platform, integrations and CLI. Installed packages remain self-contained; do not
@@ -68,3 +73,8 @@ values refer to external variables. HTTP endpoints reject credentials, query str
 fragments. V1 deliberately omits host-specific OAuth/header configuration; unsupported fields
 fail instead of being silently discarded. Claude/Codex emit native connection files;
 the AGENTS export includes declarations for a future host adapter to register.
+
+In this repository, `package.json.version` owns the pack release version. Required
+capability `version` fields remain explicit for standalone portability, but are synchronized
+by `npm run version:sync` and checked for drift before builds. Native exports and installed
+runtime metadata use that same value.

@@ -28,6 +28,12 @@ module so unrelated module evidence cannot combine. Empty module arrays override
 defaults; absent fields inherit project defaults. Consumers should explicitly declare module
 stack dimensions in mixed repositories.
 
+`when.paths` selects by canonical project-relative file or directory scope: an exact file
+or a descendant across a directory boundary matches. It has no glob syntax. Matching uses
+the affected paths within each module and records that path evidence; a matching path
+cannot borrow a provider or framework from another module. Paths select guidance to
+verify against the repository, not proof of a configured service or permission to execute it.
+
 `skills` uses existing `package:skill` IDs; `references` uses `package:skill/references/file.md`.
 An identity can report `unavailable` rather than inventing guidance. A
 `documentationQuestion` describes a question to resolve only if the changed behavior needs it,
@@ -52,8 +58,9 @@ The `loading` field contains:
 The `languages` output recognizes JVM declarations. Precise Java/Kotlin
 identities appear under `loading`. Configure `runtimes` independently at project/module level;
 TypeScript and backend layers do not infer Node. Java/Kotlin imply JVM but never Spring.
-Frameworks and providers require explicit declarations. Providers additionally require an agent
-layer. Story authoring loads no implementation specializations or provider references.
+Framework and agent-provider specializations require explicit declarations. Agent providers
+additionally require an agent layer. CI/CD references use their own task/path selectors.
+Story authoring loads no implementation specializations or provider references.
 
 The `locate` intent selects only `craft-engineering:locate-code`; execution stays in tools
 and declared stack or risk tags do not load engineering disciplines for lookup. Planning
@@ -99,6 +106,12 @@ for explicit invocation or configured module skills. `distributed-system`/`consi
 `rollout`/`disaster-recovery` select infrastructure lifecycle guidance. These concepts do not
 require a particular language, backend framework or cloud. See the
 [engineering guidance map](ENGINEERING-GUIDANCE.md).
+
+`ci-cd`/`pipeline`/`build-pipeline`/`release-pipeline` select infrastructure engineering and
+its shared CI/CD reference. Affected `.github/workflows` paths or explicit `github-actions`
+risk additionally select the GitHub Actions reference. A GitHub remote or codehost binding
+alone selects neither. Other providers use the shared guidance and their actual tooling;
+specialization belongs in references under the same skill, not a skill per Git vendor.
 
 Guidance uses consumer policy and available evidence. UI/security/TypeScript references
 do not prescribe a universal styling, state or test stack, or claim conformance and safety

@@ -219,3 +219,8 @@ existing collector and retain local configs, outputs and judgments under ignored
 needed before reporting turn, latency, cost or correctness improvements. Unknown measurements
 stay unknown. A compact continuation fixture does not establish behavior in a genuinely
 saturated long conversation.
+
+The operational view includes the canonical pack version. Supporting local telemetry is
+enabled by default and independent of session counters and host occupancy; see
+[observability and privacy](OBSERVABILITY.md) for content, limits, disable configuration
+and explicit remote opt-in. Telemetry volume never estimates host context usage.

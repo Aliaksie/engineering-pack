@@ -109,7 +109,7 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
     packContext: { scope: 'caller-declared selected guidance; estimated tokens, not occupancy', estimatedTokens: null, skills: null, references: null, ...(input.packContext ?? {}) },
     activity: { scope: 'caller-declared Engineering Pack activity; not provider usage', ...Object.fromEntries(activityFields.map(field => [field, null])), ...activity }, recommendation: suggestion, suggestion: suppressed ? null : suggestion, suppressed,
     notice: key ? suppressed ? previous : { key, at: new Date(now).toISOString() } : null,
-    authorization: 'advice-only; no command, compaction, reset or state write was executed',
+    authorization: 'advice-only; no command, compaction, reset or checkpoint write was executed',
     evidence: 'Task completion and verification are caller declarations, not inferred or independently certified.' };
 }
 

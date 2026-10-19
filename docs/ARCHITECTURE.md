@@ -109,6 +109,22 @@ recognition uses integrations. It runs from the repository checkout and stays ex
 from default exports. Its separate I/O is retained rather than merging remote inbox state
 with session checkpoint state.
 
-Builds validate source, stage exports and refuse unmanaged or symlinked output. Versions
-stay at `0.0.1`. Deterministic checks establish packaging and contract correctness; they do
+Builds validate source, stage exports and refuse unmanaged or symlinked output. The canonical pack version is `package.json.version`; package and runtime
+metadata are synchronized projections checked before every build. Deterministic checks establish packaging and contract correctness; they do
 not establish model quality or an efficiency improvement.
+
+## Supporting telemetry
+
+`application/telemetry/events.mjs` defines a bounded JSON envelope and metadata allowlists.
+Application use cases emit at operation boundaries. `platform/index.mjs` exposes local
+storage, scoped identity, version, clock and bounded HTTP ports; their Node implementations
+remain under `platform/node/`. `integrations/otel/` maps sanitized envelopes to OTLP JSON.
+The engine imports neither telemetry runtime nor providers. Provider objects never cross
+its JSON boundary or enter the application event contract. No separate top-level telemetry
+subsystem or event bus is needed. See [observability and privacy](OBSERVABILITY.md).
+
+Telemetry trace scopes use public platform context ports; Node implements async context
+isolation in its existing telemetry module. The portable event/context contract remains
+plain JSON. Application boundaries own spans and reason codes; transport mappings own
+OTLP serialization. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
+for diagnostics, bounded loss behavior and the zero-model-cost contract.

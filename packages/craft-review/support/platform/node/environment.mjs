@@ -18,5 +18,6 @@ export const relativePath = (root, file) => file && path.isAbsolute(file) ? path
 export const bundleRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', path.basename(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')) === 'support' ? '..' : '.');
 export const clock = () => { const ms = Date.now(); return { ms, iso: new Date(ms).toISOString() }; };
 export const uniqueId = () => randomUUID();
+export const runtimeVersion = () => JSON.parse(fs.readFileSync(new URL('./pack-version.json', import.meta.url), 'utf8')).version;
 export const catalogData = () => JSON.parse(fs.readFileSync(new URL('../../engine/routing/catalog.json', import.meta.url), 'utf8'));
 export const sourceIdentity = files => files.map(file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8')).join('\n');

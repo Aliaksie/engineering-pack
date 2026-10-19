@@ -1,4 +1,5 @@
-import { readProject } from '../application/project/configuration.mjs';
+import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
+import { readProject, readInput } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
 import { planOperation } from '../application/services.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
@@ -7,37 +8,40 @@ import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt } from '../application/session/activity.mjs';
 import { prepareServices } from '../application/services.mjs';
 import { contextReport } from '../application/session/context.mjs';
-import { readSessionInput, bundleRoot } from '../platform/index.mjs';
+import { bundleRoot } from '../platform/index.mjs';
 import { modelAdvice } from '../application/session/models.mjs';
 
 
 export function execute(action, options, root) {
+  return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
+}
+function executeRequest(action, options, root) {
 
   if (action === 'locate') {
     const limits = {};
     for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {
       if (options[flag] !== undefined) limits[field] = Number(options[flag]);
     }
-    const request = options.data ? readSessionInput(options.data) : { terms: options.term, paths: options.path, ...limits };
+    const request = options.data ? readInput(options.data) : { terms: options.term, paths: options.path, ...limits };
     return discover(root, request, { session: options.session, task: options.task });
   }
   if (action === 'prepare-services') return prepareServices(readProject(root), { availableCommands: options['available-command'], availableMcpTools: options['available-mcp-tool'] });
-  if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readSessionInput(options.data) : {}, readProject(root), { root, session: options.session, task: options.task, bundle: options.bundle });
+  if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root), { root, session: options.session, task: options.task, bundle: options.bundle });
   if (action === 'session-attempt') {
     if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');
-    const state = recordAttempt(root, options.session, options.task, readSessionInput(options.data));
+    const state = recordAttempt(root, options.session, options.task, readInput(options.data));
     return { recorded: state.attempts.at(-1), authorization: 'local receipt only; no retry, model switch or command was executed' };
   }
   const activity = (result, values) => {
     if (options.session && options.task) {
       try { updateSessionState(root, options.session, options.task, state => addActivity(state, values)); }
-      catch (error) { return { ...result, activityDiagnostic: error.message }; }
+      catch (error) { diagnostic('state','STATE_UNAVAILABLE'); return { ...result, activityDiagnostic: error.message }; }
     }
     return result;
   };
   if (action === 'model-advice') {
     if (!options.data) throw new Error('model-advice requires --data <request.json>');
-    return modelAdvice(readSessionInput(options.data), readProject(root));
+    return modelAdvice(readInput(options.data), readProject(root));
   }
   if (action === 'lookup') return lookup(readProject(root), { file: options.file[0], module: options.module });
   if (action === 'context-report') {
@@ -52,7 +56,7 @@ export function execute(action, options, root) {
   }
   if (action === 'operation') return planOperation(readProject(root), options.operation, JSON.parse(options.params ?? '{}'));
   if (action === 'checkpoint-save') {
-    const metadata = options.data ? readSessionInput(options.data) : {};
+    const metadata = options.data ? readInput(options.data) : {};
     const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.task ? { taskId: options.task } : {}) });
     return activity(saved, { checkpoints: 1 });
   }

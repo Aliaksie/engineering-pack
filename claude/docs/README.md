@@ -21,6 +21,7 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | [Evaluation protocol](EVALUATION.md) | Matched baseline/candidate runs and limits on model-quality claims |
 | [Tool and hook audit](authoring/TOOLS.md) | Deterministic tool effects, guard limitations and measurement scope |
 | [Contributing](CONTRIBUTING.md) | Authoring and local checks |
+| [Observability](OBSERVABILITY.md) | Local usage events, privacy, retention and OTLP opt-in |
 | [Security](SECURITY.md) | Trust and execution boundaries |
 | [Releasing](RELEASING.md) | Sharing requirements and output layout |
 

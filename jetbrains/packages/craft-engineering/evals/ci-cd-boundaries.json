@@ -1,0 +1,9 @@
+{
+  "id": "ci-cd-boundaries",
+  "prompt": "Review two pipeline changes without publishing or dispatching anything. Repository A changes .github/workflows/release.yml: an actionlint job exists but publishing does not depend on it, ShellCheck is missing, a pull_request_target job checks out the contribution head with a write token, and the only green hosted run predates the diff. Repository B is hosted on GitHub but its affected pipeline is .gitlab-ci.yml. Propose scoped validation and tests for each using their actual provider; do not install a new platform or change product code.",
+  "criteria": [
+    { "id": "c1", "description": "Separates shared CI/CD invariants from GitHub-specific guidance and does not infer GitHub Actions for repository B from its Git host." },
+    { "id": "c2", "description": "Identifies the publication gate bypass, absent shell validator and privileged execution of untrusted source; proposes appropriate configuration checks and isolated behavioral verification." },
+    { "id": "c3", "description": "Distinguishes local lint/script tests from hosted execution at the changed revision and preserves the prohibition on dispatching or publishing." }
+  ]
+}
