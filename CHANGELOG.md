@@ -1,8 +1,24 @@
 # Changelog
 
-## 0.0.1
+## 0.0.2
 
-Initial version:
+First public release, combining the initial 0.0.1 capability set with the release and
+observability work delivered for 0.0.2.
+
+Release and observability:
+
+- One canonical pack version, synchronized capability/runtime metadata and versioned bundles.
+- Manual GitHub release validation, tags, adapter archives, provenance and SHA-256 checksums.
+  Version and changelog changes are reviewed through PRs; release publication does not update main.
+- Private structured local telemetry with bounded retention, scoped correlation,
+  meaningful operation/child traces and stable failure diagnostics.
+- Explicit opt-in, bounded OTLP export with local export/loss diagnostics and no added model calls.
+- Standalone lifecycle observations, Codex hook discovery repairs and nonblocking observational hooks.
+- Bounded telemetry lock retries, portable contention tests and nested publication-command checks.
+- First-use setup guidance and infrastructure/CI engineering guidance.
+- Nested consumer telemetry stays outside Git history and does not dirty release checkouts.
+
+Initial capabilities:
 
 - Portable engineering, craft-delivery, craft-review and story-authoring capabilities.
 - Selective workflow, practice, language, runtime, framework, layer and provider guidance.

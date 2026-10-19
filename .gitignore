@@ -13,4 +13,4 @@ node_modules/
 dist/
 .eval-results/
 
-.capabilities/state/
+**/.capabilities/state/
