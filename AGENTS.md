@@ -53,6 +53,12 @@ This repository authors portable AI Capability Packages. Canonical content lives
 
 ## Rules
 
+- Before implementation edits, inspect Git state, preserve unrelated work and establish a safe
+  change boundary under consumer branching/workspace policy and repository protection.
+- Follow consumer commit policy and existing authorization; implementation alone does not
+  authorize commits. Keep authorized commits coherent and verified, and internal plans/session
+  records untracked and out of shipped references. Add prose only for an unmet reader need.
+
 - Preserve project-specific configuration in the consumer. Do not assume a language, UI
   framework, cloud, tracker, repository layout or architecture.
 - Load common principles, language, application layer and provider guidance independently.

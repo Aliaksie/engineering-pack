@@ -1,12 +1,42 @@
 {
   "id": "session-efficiency",
-  "prompt": "Continue the current repository fix. You have already located Foo and need the known independent Bar and Baz symbols. The host exposes no reliable occupancy counter; selected pack guidance is estimated at 12k tokens. Two attempts on the current revision made no progress; a third repeats the same failure. Explain the next action and preserve continuation if context replacement is needed. Compare this with a fresh host observation of 90% occupancy during a useful bounded step, then at a safe boundary after compaction with persistent rediscovery. Use only configured model profiles and preserve permission boundaries.",
+  "prompt": "Continue the current repository fix. You have already located Foo and need the known independent Bar and Baz symbols. The host exposes no reliable occupancy counter; selected pack guidance is estimated at 12k tokens. Two attempts on the current revision made no progress; a third repeats the same failure. Explain the next action and preserve continuation if context replacement is needed. Compare this with a fresh host observation of 90% occupancy during a useful bounded step, then at a safe boundary after compaction with persistent rediscovery. Use only configured model profiles and preserve permission boundaries. Expand lookup to eight known symbols: five packets include fresh and stale identities, remaining independent symbols can be batched, and one search is truncated. A framework question depends on those results. Compare an authorized narrow document worker with conflicting citations, unavailable worker/model mappings, a tiny coupled task and a missing credential. Compare reliable native auto-compaction, compaction before a semantic save, and persistent rediscovery afterward. Resume against actual changed files and pending acceptance. Cached cumulative input is high but model identity, billing rates and occupancy are unknown.",
   "criteria": [
-    { "id": "c1", "description": "Keep pack estimates, host occupancy and declared activity separate; report occupancy unknown without fresh session-bound telemetry." },
-    { "id": "c2", "description": "Reuse still-valid Foo evidence, batch bounded independent Bar/Baz lookup, and state invalidation dependencies rather than replaying discovery." },
-    { "id": "c3", "description": "Change approach after no progress and return control at budget exhaustion; capability escalation requires current-target evidence and cannot bypass permission or tool failures." },
-    { "id": "c4", "description": "Finish the bounded step before context action; at a safe boundary distinguish reliable compaction from a fresh session after persistent degradation." },
-    { "id": "c5", "description": "Preserve a small fresh continuation checkpoint before context replacement and resume from checkpoint, repository diff and necessary guidance without copying conversation." },
-    { "id": "c6", "description": "Do not claim measured cost, token, latency or turn savings without matched actual model evidence." }
+    {
+      "id": "c1",
+      "description": "Keep pack estimates, host occupancy and declared activity separate; report occupancy unknown without fresh session-bound telemetry."
+    },
+    {
+      "id": "c2",
+      "description": "Validate all eight symbol packets by identity, reuse fresh evidence, rescan affected stale/remaining independent symbols together, inspect truncation and stage the dependent framework question after results."
+    },
+    {
+      "id": "c3",
+      "description": "Change approach after no progress and return control at budget exhaustion; capability escalation requires current-target evidence and cannot bypass permission or tool failures."
+    },
+    {
+      "id": "c4",
+      "description": "Finish the bounded step before context action; at a safe boundary distinguish reliable compaction from a fresh session after persistent degradation."
+    },
+    {
+      "id": "c5",
+      "description": "Preserve a small fresh continuation checkpoint before context replacement and resume from checkpoint, repository diff and necessary guidance without copying conversation."
+    },
+    {
+      "id": "c6",
+      "description": "Do not claim measured cost, token, latency or turn savings without matched actual model evidence. Separate prompt caching, lookup reuse, routing deduplication and checkpoints. Judge accepted quality before efficiency; include coordinator/worker work, retries, misses and observed rehydration, and leave money unknown without actual identity and dated rates or billing. High cached input proves neither low cost nor saturation."
+    },
+    {
+      "id": "c7",
+      "description": "For authorized narrow interpretation send outcome, paths/base, limits, allowed effects and checks; require cited facts, uncertainty and compact returns, resolve conflicting critical citations, and name one integration owner for overlapping assignments. Do not request unsolicited edits or full transcripts."
+    },
+    {
+      "id": "c8",
+      "description": "Keep tiny coupled work with one owner; distinguish main-model switching from worker context transfer, fall back honestly when mappings are unavailable, and resolve missing credentials as a prerequisite rather than escalating models."
+    },
+    {
+      "id": "c9",
+      "description": "Treat automatic compaction as supported host behavior without claiming Pack control or changing settings; recover and semantically review the last checkpoint if no fresh save exists, compare Git/index/worktree and pending checks, surface gaps and preserve authorization. Recommend fresh-session handoff after persistent rediscovery while leaving incomplete work and next action explicit."
+    }
   ]
 }
