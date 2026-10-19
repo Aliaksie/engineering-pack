@@ -47,7 +47,8 @@ test('disabled and malformed configuration never write or queue network work', a
   for (const config of [{local:false}, {remote:{enabled:false}}, {local:'secret'}, {remote:{enabled:true,endpoint:'https://user:secret@example.test'}}, {remote:{enabled:true,endpoint:'http://remote.test'}}]) {
     const root = fixture(t,config);
     createTelemetry(root).emit('session.observed');
-    if (config.local !== undefined || config.remote?.enabled) assert.equal(fs.existsSync(path.join(root,'.capabilities/state')),false);
+    if (config.local === false) assert.equal(fs.existsSync(path.join(root,'.capabilities/state')),false);
+    else if (typeof config.local === 'string' || config.remote?.enabled) assert.ok(readTelemetry(root).some(event => event.reasonCode === 'TELEMETRY_CONFIG_INVALID'));
   }
   let calls=0; await flushTelemetry(async () => { calls++; }); assert.equal(calls,0);
   assert.equal(telemetryOptions().remote,undefined);
@@ -140,7 +141,7 @@ test('opt-in export reaches a local collector; rejection and timeouts stay advis
   createTelemetry(root,{session:'private'}).emit('session.observed',{prompt:'secret'});
   await flushTelemetry(); assert.equal(bodies.length,1); assert.equal(JSON.stringify(bodies).includes('private'),false);
   const payload=otlpTraces([telemetryEvent(envelope)]);
-  assert.equal(await postTelemetry(`${base}/reject`,payload),false);
-  assert.equal(await postTelemetry(`${base}/timeout`,payload,30),false);
+  assert.equal((await postTelemetry(`${base}/reject`,payload)).ok,false);
+  assert.equal((await postTelemetry(`${base}/timeout`,payload,30)).failure,'timeout');
   await flushTelemetry(() => { throw new Error('secret'); });
 });

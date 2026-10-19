@@ -1,4 +1,4 @@
-import { observe, emitTelemetry, withTelemetry } from '../telemetry/observe.mjs';
+import { observe, emitTelemetry, withTelemetry, diagnostic } from '../telemetry/observe.mjs';
 import { catalog } from '../routing/catalog.mjs';
 import { bundleRoot, clock, runtimeVersion } from '../../platform/index.mjs';
 import { decide } from '../engine-client.mjs';
@@ -15,26 +15,32 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
   const observations = {};
   if (sessionId && taskId) {
     try { observations.state = readSessionState(root, sessionId, taskId); }
-    catch (error) { observations.stateError = error.message; }
+    catch (error) { observations.stateError = error.message; diagnostic('state','STATE_UNAVAILABLE'); }
   }
   if (sessionId) {
     try { observations.saved = readCheckpoint(root, sessionId); }
-    catch (error) { observations.checkpointError = error.message; }
+    catch (error) { observations.checkpointError = error.message; diagnostic('checkpoint','CHECKPOINT_UNAVAILABLE'); }
   }
   const needed = decide('session-observation-plan', { input, project, catalog, state: observations.state, saved: observations.saved });
   if (needed.recover) {
     try { observations.recovered = recoverCheckpoint(root, sessionId); observations.repository = observations.recovered.current; }
-    catch (error) { observations.checkpointError = error.message; }
+    catch (error) { observations.checkpointError = error.message; diagnostic('checkpoint','CHECKPOINT_UNAVAILABLE'); }
   }
   if (needed.repository && !observations.repository) observations.repository = gitState(root);
-  if (needed.packError) observations.packError = needed.packError;
+  if (needed.packError) { observations.packError = needed.packError; diagnostic('context','CONTEXT_UNAVAILABLE'); }
   if (needed.plan) {
+    for (const skill of [...new Set(needed.plan.skills)].slice(0,32)) emitTelemetry('guidance.selected',{ skill });
     try {
       observations.plan = needed.plan;
       observations.pack = contextReport(bundle ?? bundleRoot(), needed.plan);
-    } catch (error) { observations.packError = error.message; }
+    } catch (error) { observations.packError = error.message; diagnostic('context','CONTEXT_UNAVAILABLE'); }
   }
   const result = decide('session-status', { input, project, catalog, options: { session: sessionId, task: taskId, now, observations } });
+  if (result.checkpoint?.status === 'stale-or-incomplete') diagnostic('checkpoint','CHECKPOINT_STALE');
+  if (result.usage.status !== 'observed') diagnostic('host','HOST_OBSERVATION_UNAVAILABLE');
+  if (result.recommendation?.action === 'return-control') diagnostic('attempt','ATTEMPT_BUDGET_EXHAUSTED');
+  emitTelemetry('model.advice',{ capabilityClass:result.capability?.class, decision:result.modelAdvice?.decision });
+  if (result.modelAdvice?.decision === 'unavailable') diagnostic('model','MODEL_ADVICE_UNAVAILABLE');
   emitTelemetry('session.advice', { decision: result.recommendation?.action, reason: result.activity.maxAttempts != null && result.activity.attempts >= result.activity.maxAttempts ? 'budget-exhausted' : 'observed' });
   emitTelemetry('host.observed', { occupancyKnown: result.usage?.status === 'observed', reason: result.usage?.status === 'observed' ? 'observed' : 'unavailable' });
   let version = null;

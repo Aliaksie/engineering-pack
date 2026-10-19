@@ -1,4 +1,4 @@
-import { withTelemetry, flushTelemetry, emitTelemetry } from '../telemetry/observe.mjs';
+import { withTelemetry, flushTelemetry, emitTelemetry, observe, diagnostic } from '../telemetry/observe.mjs';
 export { flushTelemetry };
 import { projectRoot, relativePath } from '../../platform/index.mjs';
 import { readProject } from '../project/configuration.mjs';
@@ -9,11 +9,17 @@ import { readCheckpoint, recoverCheckpoint, saveCheckpoint } from '../checkpoint
 import { invalidateRoutingHint } from './hints.mjs';
 export { reuseRoutingHint, commitRoutingHint } from './hints.mjs';
 
+export const hookDiagnostic = reasonCode => diagnostic('host',reasonCode);
+export const observeHook = (event, callback) => withTelemetry(projectRoot(event.cwd), { session:event.session, host:event.host },
+  () => observe('host.hook', callback, result => ({ lifecycle:event.event, decision:result?.decision }),
+    { failureCode:'HOOK_FAILED', outcome:result => result?.failed ? 'failure' : 'success' }));
+export const observeNativeSession = (root, host, callback) => withTelemetry(root, { host },
+  () => observe('host.session', callback, () => ({}), { failureCode:'INVALID_INPUT', outcome:result => result?.failed ? 'failure' : 'success' }));
 export function prepareEvent(event) {
   return withTelemetry(projectRoot(event.cwd), { session: event.session, host: event.host }, () => prepare(event));
 }
 function prepare(event) {
-  emitTelemetry('host.observed', { lifecycle: event.event });
+  emitTelemetry('host.observed', { lifecycle:event.event, contextSupported:event.contextSupported });
   const root = projectRoot(event.cwd);
   const project = readProject(root);
   const result = { ...event, project, routingRoot: root };
@@ -24,11 +30,12 @@ function prepare(event) {
   const plan = decide('context-delivery-plan', { facts, project });
   if (plan.invalidateHint) {
     try { invalidateRoutingHint(root, event.session, event.host); }
-    catch { /* Reuse is advisory; unavailable state never authorizes or blocks work. */ }
+    catch { diagnostic('cache','CACHE_UNAVAILABLE'); }
   }
   const intent = plan.intent;
   if (plan.services) result.services = prepareServices(project);
   if (intent) {
+    if (event.contextSupported === false) diagnostic('host','HOST_CAPABILITY_UNAVAILABLE');
     const file = relativePath(root, event.file);
     result.routing = route({ intent, files: file ? [file] : [], project, host: event.host });
   }

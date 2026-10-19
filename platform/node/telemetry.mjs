@@ -3,9 +3,16 @@ import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
 import { randomBytes, createHmac } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { stateFile, lockState, releaseState, readState } from './state-files.mjs';
 
 export const TELEMETRY_MAX_BYTES = 1048576;
+const contexts = new AsyncLocalStorage();
+export const telemetryContext = () => contexts.getStore();
+export const runTelemetryContext = (context, callback) => contexts.run(context, callback);
+export function telemetryRoot(root) {
+  try { return fs.realpathSync(root); } catch { return path.resolve(root); }
+}
 export function telemetryConfiguration(root) {
   const directory = path.resolve(root, '.capabilities');
   if (fs.lstatSync(directory, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('invalid telemetry directory');
@@ -68,7 +75,7 @@ export function readTelemetry(root) {
 // Transport only: payload construction and policy remain outside the platform.
 export async function postTelemetry(endpoint, payload, timeoutMs = 300) {
   const body = JSON.stringify(payload);
-  if (Buffer.byteLength(body) > 262144) return false;
+  if (Buffer.byteLength(body) > 262144) return { ok:false, failure:'request-too-large' };
   return new Promise(resolve => {
     let finished = false;
     const done = value => { if (!finished) { finished = true; clearTimeout(timer); resolve(value); } };
@@ -78,18 +85,18 @@ export async function postTelemetry(endpoint, payload, timeoutMs = 300) {
       let bytes = 0, chunks = [];
       response.on('data', chunk => {
         bytes += chunk.length;
-        if (bytes > 16384) { response.destroy(); done(false); } else chunks.push(chunk);
+        if (bytes > 16384) { response.destroy(); done({ ok:false, failure:'response-too-large' }); } else chunks.push(chunk);
       });
-      response.on('error', () => done(false));
+      response.on('error', () => done({ ok:false, failure:'transport' }));
       response.on('end', () => {
         try {
           const result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-          done(response.statusCode === 200 && !result.partialSuccess?.rejectedSpans && !result.partialSuccess?.errorMessage);
-        } catch { done(false); }
+          done({ ok:response.statusCode === 200, statusCode:response.statusCode, json:result });
+        } catch { done({ ok:false, statusCode:response.statusCode, failure:'invalid-response' }); }
       });
     });
-    const timer = setTimeout(() => { request.destroy(); done(false); }, timeoutMs);
-    request.on('error', () => done(false));
+    const timer = setTimeout(() => { request.destroy(); done({ ok:false, failure:'timeout' }); }, timeoutMs);
+    request.on('error', () => done({ ok:false, failure:'transport' }));
     request.end(body);
   });
 }

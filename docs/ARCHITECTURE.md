@@ -122,3 +122,9 @@ remain under `platform/node/`. `integrations/otel/` maps sanitized envelopes to 
 The engine imports neither telemetry runtime nor providers. Provider objects never cross
 its JSON boundary or enter the application event contract. No separate top-level telemetry
 subsystem or event bus is needed. See [observability and privacy](OBSERVABILITY.md).
+
+Telemetry trace scopes use public platform context ports; Node implements async context
+isolation in its existing telemetry module. The portable event/context contract remains
+plain JSON. Application boundaries own spans and reason codes; transport mappings own
+OTLP serialization. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
+for diagnostics, bounded loss behavior and the zero-model-cost contract.

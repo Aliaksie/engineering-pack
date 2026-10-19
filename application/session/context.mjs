@@ -6,4 +6,4 @@ function contextReportOperation(bundleRoot, plan, { budgetBytes } = {}) {
   return decide('context-summary', { ...contextFiles(bundleRoot, requests), budgetBytes });
 }
 
-export const contextReport = (...args) => observe('context.observed', () => contextReportOperation(...args), result => ({ guidanceFiles: result.totals.files, guidanceBytes: result.totals.bytes, estimatedTokens: result.totals.estimatedTokens }));
+export const contextReport = (...args) => observe('context.observed', () => contextReportOperation(...args), result => ({ guidanceFiles: result.totals.files, guidanceBytes: result.totals.bytes, estimatedTokens: result.totals.estimatedTokens }), { failureCode:'CONTEXT_UNAVAILABLE' });

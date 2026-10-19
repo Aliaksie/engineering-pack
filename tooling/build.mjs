@@ -49,7 +49,7 @@ export function build(repo, target) {
         if (source !== relocated) fs.writeFileSync(file,relocated);
       }
       write(destination, 'platform-runtime/session.mjs', fs.readFileSync(path.join(repo, 'hosts/session.mjs'), 'utf8'));
-      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { readSessionInput } from './platform/node/resources/session-input.mjs';\nimport { sessionStatus } from './application/session/status.mjs';\nimport { flushTelemetry } from './application/telemetry/observe.mjs';\nimport { readProject } from './application/project/configuration.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readSessionInput, readProject, ${JSON.stringify(target)});\nawait flushTelemetry();\n`);
+      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { sessionStatus } from './application/session/status.mjs';\nimport { flushTelemetry } from './application/telemetry/observe.mjs';\nimport { readProject, readInput } from './application/project/configuration.mjs';\nimport { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readInput, readProject, ${JSON.stringify(target)}, { run:observeNativeSession, diagnostic:hookDiagnostic });\nawait flushTelemetry();\n`);
     }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {

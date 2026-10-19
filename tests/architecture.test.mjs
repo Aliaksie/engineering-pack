@@ -79,7 +79,7 @@ test('only the application engine client imports engine implementation entry poi
 test('portable telemetry contracts cannot depend on providers or runtime implementations', () => {
   const contract = fs.readFileSync(path.join(root,'application/telemetry/events.mjs'),'utf8');
   assert.deepEqual(imports(contract),[]);
-  assert.doesNotMatch(contract,/resourceSpans|scopeSpans|spanId|traceId|OTLP|OpenTelemetry|node:|process\./);
+  assert.doesNotMatch(contract,/AsyncLocalStorage|resourceSpans|scopeSpans|spanId|OTLP|OpenTelemetry|node:|process\./);
   for (const directory of ['engine','application']) for (const file of modules(path.join(root,directory))) {
     const source = fs.readFileSync(file,'utf8');
     assert.doesNotMatch(source,/@opentelemetry\//,file);

@@ -140,7 +140,7 @@ better model results. Broader paired workflow evaluation remains pending; see th
 See [routing](docs/ROUTING.md), [integrations](docs/INTEGRATIONS.md),
 [hook support](docs/ADAPTERS.md) and [review bots](docs/REVIEW.md).
 [AGENTS.md](AGENTS.md) holds contributor instructions; [documentation](docs/README.md)
-indexes the full design. The initial version stays **0.0.1**.
+indexes the full design. The canonical pack version is **0.0.2**.
 
 ## Contributing and optional tools
 

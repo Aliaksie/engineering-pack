@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-import { withTelemetry, flushTelemetry } from '../../../application/telemetry/observe.mjs';
+import { withTelemetry, flushTelemetry, observe } from '../../../application/telemetry/observe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { snapshot } from '../../../application/review.mjs';
+const argv = process.argv.slice(2), rootIndex = argv.indexOf('--root');
+const rootHint = rootIndex >= 0 && argv[rootIndex+1] && !argv[rootIndex+1].startsWith('--') ? argv[rootIndex+1] : '.';
 try {
+  withTelemetry(path.resolve(rootHint), {}, () => observe('review.command', () => {
   const options = {};
   const allowed = ['root', 'base', 'head', 'provider', 'repository', 'change-id', 'output'];
   const args = process.argv.slice(2);
@@ -13,9 +16,10 @@ try {
     options[key] = args[index + 1];
   }
   if (!options.output) throw new Error('--output is required; keep the diff in an artifact rather than the model transcript');
-  const result = withTelemetry(path.resolve(options.root ?? '.'), {}, () => snapshot({ root: path.resolve(options.root ?? '.'), base: options.base, head: options.head, provider: options.provider, repository: options.repository, changeId: options['change-id'] ?? null }));
+  const result = snapshot({ root: path.resolve(options.root ?? '.'), base: options.base, head: options.head, provider: options.provider, repository: options.repository, changeId: options['change-id'] ?? null });
   const text = `${JSON.stringify(result, null, 2)}\n`;
   fs.writeFileSync(path.resolve(options.output), text, { flag: 'wx', mode: 0o600 });
   process.stdout.write(`${JSON.stringify({ artifact: path.resolve(options.output), baseSha: result.baseSha, headSha: result.headSha, files: result.files.length })}\n`);
+  }, () => ({ phase:'prepared' }), { failureCode:'REVIEW_INVALID' }));
 } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }
 finally { await flushTelemetry(); }
