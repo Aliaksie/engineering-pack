@@ -9,9 +9,12 @@ Read the shared [package instructions](../../AGENTS.md) when using this capabili
 
 # Deliver the requested behavior
 
-Establish what the user expects to change and inspect the existing working tree before
-editing. Preserve unrelated edits and follow the target repository's instructions, installed
-versions and actual build configuration. Local request text is sufficient; a tracker is optional.
+Establish what the user expects to change. Before implementation edits, inspect branch, index,
+working tree and relevant existing changes; establish a safe change boundary under consumer
+branching/workspace policy and repository protection. Preserve unrelated work. Use a task branch
+or worktree when policy, protection, isolation or concurrency requires it. Follow the target
+repository's instructions, installed versions and actual build configuration. Local request
+text is sufficient; a tracker is optional.
 
 Use the current acceptance criteria as the implementation boundary. For a defect, compare the
 expected and observed behavior and reproduce the failure when practical. If reproduction is
@@ -35,7 +38,9 @@ Reuse already-read content when its source and scope remain current. Repository 
 authoritative for project choices. If a suggested
 package is absent, work from available project standards and report the gap.
 
-Implement a coherent change, then exercise the behavior it could break. Prefer existing
+Implement a coherent change, then exercise the behavior it could break. Keep internal plans,
+checklists and session records out of the staged diff and shipped references. Code and tests
+already explain mechanics and contracts; add prose only for a reader need they do not meet. Prefer existing
 checks; add a regression when it demonstrates a meaningful failure or contract. Test-first
 work is useful when it clarifies behavior, not a required artifact for every edit. Choose
 failure, permission, compatibility or concurrency cases when those risks actually change.
@@ -50,5 +55,8 @@ unrelated full campaign.
 
 Finish with the behavior delivered, acceptance evidence, files or interfaces affected and
 remaining limits. If interrupted, preserve a compact progress note and verify the checkout
-before resuming. Remote updates, commits and deployment require the action's existing user
-scope; implementation alone does not authorize them.
+before resuming. Follow consumer commit strategy and existing user authorization or standing
+consumer policy; implementation alone does not authorize commits. When commits are authorized
+and useful, keep them coherent and verified and record their IDs privately. Otherwise preserve
+a reviewable diff. Use `craft-engineering:foundations` for Git/workspace and commit detail.
+Push, force-push, history rewriting, merge and deployment require their own existing scope.

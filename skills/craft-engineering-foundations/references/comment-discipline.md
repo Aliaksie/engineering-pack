@@ -24,4 +24,9 @@ and its condition or owner when known; avoid promises that no maintained process
 Use canonical project documentation for cross-cutting decisions and link to it from local
 code when needed. An ADR is useful for a consequential choice with durable alternatives or
 constraints; ordinary code mechanics rarely need a separate record. Keep prose human-readable
-and proportionate. Do not duplicate a large function or copy the same policy across pages.
+and proportionate. Code and tests already document mechanics and observable contracts; avoid
+prose that restates them. Internal planning paths, task IDs and execution checklists do not
+belong in shipped comments or documentation. Explain the durable constraint in domain terms.
+Update an existing canonical page before creating another, and add a document only when a
+specific reader need remains unmet. Do not duplicate a large function or copy the same policy
+across pages.

@@ -23,10 +23,17 @@ where a reader needs them. Do not impose a new documentation hierarchy or settin
 Choose the lightest useful home: code for structure, tests for observable contracts, a nearby
 comment for local rationale, and maintained docs for setup or cross-cutting explanations.
 Use `craft-delivery-write-adr` when a consequential choice needs a separate rationale record.
-A change that leaves documented facts accurate does not require a prose edit.
+Code and tests are already documentation of mechanics and observable contracts. Add a page
+only for an unmet reader need; update an existing canonical explanation before creating another.
+Do not generate task completion reports, per-step summaries or a parallel description of the
+implementation as repository deliverables. A change that leaves documented facts accurate
+does not require a prose edit.
 
 Check the revised paths and commands against the actual project, distinguish a command that
-was inspected from one that ran, and keep temporary planning notes out of public navigation.
+was inspected from one that ran. Keep internal planning notes and session records out of
+version control and shipped references, not just out of public navigation. Remove stale
+plan-path/task-ID references from affected artifacts; preserve necessary rationale in domain
+terms without copying the plan. Explicitly requested versioned plans are an exception.
 Write for people: make the changed instruction easy to find, use short explanations and avoid
 repeating implementation detail that will drift.
 
