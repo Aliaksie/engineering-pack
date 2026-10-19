@@ -46,7 +46,50 @@
     "evals/ci-cd-boundaries.json"
   ],
   "tools": [],
-  "hooks": [],
+  "hooks": [
+    {
+      "name": "observe-session-start",
+      "event": "session-start",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-prompt",
+      "event": "before-prompt",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-tool",
+      "event": "before-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-tool",
+      "event": "after-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-compact",
+      "event": "before-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-compact",
+      "event": "after-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-turn-end",
+      "event": "turn-end",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    }
+  ],
   "mcp": [],
   "optionalDependencies": [
     "craft-delivery"

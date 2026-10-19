@@ -138,7 +138,9 @@ test('MCP exports retain external credentials and map transport names without ac
   writeJson(path.join(packageRoot, 'capability.json'), manifest);
   for (const target of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) build(repo, target);
   const claude = json(path.join(repo, 'dist/claude/plugins/craft-review/.mcp.json'));
-  const codex = json(path.join(repo, 'dist/codex/packages/craft-review/mcp.json'));
+  const codexRoot = path.join(repo, 'dist/codex/packages/craft-review');
+  const codexManifest = json(path.join(codexRoot, '.codex-plugin/plugin.json'));
+  const codex = json(path.resolve(codexRoot, codexManifest.mcpServers));
   assert.equal(claude.mcpServers.docs.type, 'http');
   assert.equal(codex.mcpServers.docs.type, 'streamable-http');
   assert.equal(codex.mcpServers.local.env.SERVICE_TOKEN, '${SERVICE_TOKEN}');

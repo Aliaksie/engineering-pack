@@ -69,6 +69,16 @@ Tests cover argument boundaries, pagination, partial failures, staleness, locks,
 working directories and relocated exports. They establish deterministic behavior on the
 runner, not model benefit or live-host compatibility.
 
+Hook handlers export `evaluate`; an optional `prepare` export replaces delivery-specific
+event preparation. An `observational = true` export marks telemetry-only execution:
+the host runner emits no permission decisions or context and treats bounded-input or
+execution failures as nonblocking. Existing policy hooks retain their failure behavior.
+Observational handlers use the shared telemetry lifecycle preparation
+so logging does not trigger routing, service discovery or checkpoints. Native registration
+tests resolve the generated configuration and execute its commands in standalone fixtures.
+The optional Codex discovery check in [contributing](../CONTRIBUTING.md) separately exercises
+the host loader without granting hook trust or making model requests.
+
 `npm run hooks:report -- --output <new-file>` checks exported source hashes, samples a fresh
 Node wrapper process and records a bounded hand-labeled policy corpus. It does not execute
 the corpus commands or install hooks. Exit 0 means report collection succeeded, even if

@@ -58,7 +58,7 @@ CLI and hook wrappers. Local Git operations also require Git. No npm install is 
 | Host | Generated directory | How to adopt it |
 |---|---|---|
 | Claude Code | `dist/claude` | Add this directory as a marketplace, then install the desired plugins |
-| Codex | `dist/codex/packages/<package>` | Use each directory as a local portable plugin through your host's manual plugin installation flow |
+| Codex | `dist/codex/packages/<package>` | Use each directory as a native Codex plugin through your host's local plugin installation flow |
 | Cursor | `dist/cursor` | Merge `.cursor/skills`, hook configuration and supporting resources into the target project |
 | Copilot | `dist/copilot` | Merge `.github/skills`, instructions, hook configuration and supporting resources |
 | Gemini CLI | `dist/gemini` | Merge `.gemini/skills`, settings, GEMINI.md and supporting resources |
@@ -83,13 +83,21 @@ a task tracker or enable automatic checkpoints.
 
 ### Codex
 
-Each package has a root `plugin.json`, namespaced skills and its own runtime. Hook-bearing
-packages declare their hook file through `extensions.com.openai`. The output is a portable
-plugin directory, accompanied by a generated local Codex marketplace. Follow the current host's manual local
-installation flow in [OpenAI's packaging guide](https://developers.openai.com/plugins/build/plugins).
-Review and trust hooks separately using the host's controls; host support and settings determine
-whether they run. Packages containing lifecycle hooks are intended for manual installation;
-the current public plugin directory does not accept hook-bearing plugins.
+Each package has a generated `.codex-plugin/plugin.json`, namespaced skills and its
+own runtime. Hook files are declared through the native manifest's `hooks` field;
+optional MCP servers use `.mcp.json`. The exporter deliberately omits a root
+Agent Plugins 1.0 `plugin.json`: Codex 0.163.0 skips hook loading for that format,
+even when a native fallback is present ([upstream issue](https://github.com/openai/codex/issues/47925)).
+Canonical portable source remains in `packages/`; the native manifest is generated,
+not maintained as another version copy.
+
+The output includes a local Codex marketplace. Install or update the selected packages
+through the host's local plugin installation flow, then review and trust hooks separately.
+Rebuilding the marketplace does not replace already cached plugin installations, even
+when the package version is unchanged. Refresh/reinstall each installed package from the
+rebuilt marketplace, reopen the session, and inspect hook discovery before reviewing trust.
+Packages containing lifecycle hooks are intended for manual installation; the public
+plugin directory does not accept hook-bearing plugins.
 
 ### Project overlays and plain Agent Skills
 
@@ -125,7 +133,7 @@ have local fixture coverage; live installation has not been certified for any ho
 | Target | Export layout | Before-tool policy | Compaction / recovery |
 |---|---|---|---|
 | Claude Code | Generated marketplace/plugins | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact restores context |
-| Codex | Local portable plugin | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact restores context |
+| Codex | Native plugin | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact restores context |
 | Cursor | `.cursor/skills` and hook overlay | preToolUse permission response | preCompact is observational; explicit recovery fallback |
 | Copilot | `.github/skills`, instructions and hook overlay | preToolUse decision response | preCompact is notification; explicit recovery fallback |
 | Gemini CLI | `.gemini/skills`, GEMINI.md and settings overlay | BeforeTool denial | PreCompress is asynchronous/advisory; explicit recovery fallback |
@@ -163,7 +171,9 @@ application use cases collect observations and translate lifecycle facts for por
 decisions. Hosts render those decisions into native responses. State snapshots are opt-in.
 A context-handler failure remains advisory; a valid before-shell policy call that cannot
 evaluate returns a denial with a configuration error. Malformed or non-object JSON receives
-the default allow decision. Inputs over 64 KiB fail the runner before evaluation. Host
+the default allow decision. Inputs over 64 KiB are rejected before evaluation. Purely
+observational handlers return silently with exit 0 on input/runtime failure; policy
+handlers retain their existing failure behavior. Host
 timeout, trust and process-failure behavior still applies and differs by platform.
 
 Claude/Codex exports include native MCP configuration when declared. Workspace overlays and

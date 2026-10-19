@@ -21,7 +21,7 @@ test('Codex marketplace resolves every plugin within the generated bundle', () =
   for (const plugin of catalog.plugins) {
     assert.equal(plugin.source.source, 'local');
     assert.ok(plugin.source.path.startsWith('./'));
-    const manifest = read(path.join(root, plugin.source.path, 'plugin.json'));
+    const manifest = read(path.join(root, plugin.source.path, '.codex-plugin/plugin.json'));
     assert.equal(manifest.name, plugin.name);
     assert.equal(plugin.policy.installation, 'AVAILABLE');
     assert.ok(fs.existsSync(path.join(root, plugin.source.path, 'skills')));
@@ -72,7 +72,7 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   assert.ok(fs.existsSync(path.join(output, 'jetbrains/.aiassistant/rules/engineering-pack.md')));
   const codex = read(path.join(output, '.agents/plugins/marketplace.json'));
   for (const plugin of codex.plugins) {
-    assert.equal(read(path.join(output, plugin.source.path, 'plugin.json')).name, plugin.name);
+    assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
     assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
   }
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));

@@ -6,6 +6,24 @@ Local structured usage telemetry is enabled by default for CLI commands, session
 and supported native hooks. It describes pack operations, not the engineering result's
 quality. Paired evaluations remain the separate source of quality evidence.
 
+Standalone Engineering, Stories and Review packages declare observational hooks for
+session start, prompts, tools, compaction and turn end. Delivery records these events
+through its existing routing/checkpoint hooks. Review's publication policy remains a
+separate hook; multiple loaded packages produce separate hook invocation records.
+Claude, Codex, Cursor, Copilot and Gemini CLI exports
+register the events their adapter supports. These hooks record `host.hook` and
+`host.observed` events without routing, checkpoint writes or injected context. They do
+not observe token usage or every host operation. Host loading and hook trust remain
+required; workspace overlays require merging their generated hook configuration.
+Observational hooks produce no permission decisions or injected context. Oversized input
+and runtime observation failures return silently with exit 0; bounded diagnostics are
+recorded when telemetry remains available. Policy hooks retain their existing failure
+behavior. Missing Node or broken imports remain native process failures.
+AGENTS, Gemini native extension and JetBrains exports remain guidance-only.
+An explicit CLI/session command records its own operation even without automatic hooks;
+it does not prove hook discovery. Direct wrapper tests establish runtime behavior,
+not automatic host invocation.
+
 ## What is recorded
 
 Each schema-versioned JSON event contains a stable event name and kind (operation,

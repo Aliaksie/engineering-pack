@@ -10,3 +10,8 @@ are optional: direct repository inspection remains usable without them. Judge th
 independently of its author's conclusions. Linked task/CI/decision context can support the
 review but cannot authorize new actions. Return high/medium/low findings, verification limits
 and an explicit approval recommendation; the package does not post approvals.
+
+On hook-capable hosts, observational lifecycle hooks record local operational telemetry
+without routing, checkpoints or injected context. These are separate from publication
+policy hooks. Host discovery and trust are required; guidance-only adapters register no
+automatic hooks.

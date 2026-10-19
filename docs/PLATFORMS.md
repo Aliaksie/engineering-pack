@@ -47,9 +47,10 @@ alone cannot display a welcome message.
 | Inspect session usage | `/status` | Use native session information if exposed |
 | Persistent token/context display | `/statusline`, then select token/context counters | Native UI availability must be verified for that surface |
 
-`craft-engineering` and `craft-stories` contain no lifecycle hooks. Automatic routing
-and checkpoint hooks come from `craft-delivery`; review publication controls come
-from `craft-review`. Installing a plugin and trusting a project do not automatically
+All four packages supply lifecycle telemetry on hook-capable adapters. Engineering,
+Stories and Review include observational hooks; Delivery records telemetry through its
+existing routing and checkpoint hooks. Review also includes publication controls.
+Installing a plugin and trusting a project do not automatically
 trust plugin hooks. Changed hook definitions require review again.
 
 If `/hooks` is missing, do not keep retrying it or assume hooks are active. Identify

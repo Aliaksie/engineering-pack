@@ -62,3 +62,16 @@ Each successful matrix job also runs `npm run hooks:report` and uploads a separa
 identified hook diagnostic artifact. Its hand-labeled corpus can report false/missed blocks;
 collection success is not a policy-enforcement pass. See the
 [tool/hook audit](authoring/TOOLS.md) for the measured scope and current matcher limitations.
+
+With a local Codex executable available, run the optional discovery regression after building:
+
+```sh
+CRAFT_CODEX_SMOKE=1 node --test tests/codex-hook-discovery.test.mjs
+```
+
+It installs all four generated packages into a temporary, isolated Codex home and checks
+the real host's hook inventory. It makes no model requests and neither trusts nor executes
+hooks. Codex 0.163.0 discovered 29 hooks with the native manifest export; the portable
+Agent Plugins 1.0 manifest export returned zero. Default checks skip this optional host
+test; registration/runtime tests run for every hook-capable adapter. Actual automatic
+dispatch in other hosts still needs a trusted live session and fresh telemetry.

@@ -120,7 +120,7 @@ export function emitHooks(item, destination, platform, adapterRoot) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
     const wrapper = `platform-hooks/${definition.name}.mjs`;
-    write(destination, wrapper, `#!/usr/bin/env node\nimport { evaluate } from '../${definition.handler}';\nimport { runHook } from '../platform-runtime/hook.mjs';\nimport { prepareEvent, reuseRoutingHint, commitRoutingHint, hookFailure, hookDefault, flushTelemetry, observeHook, hookDiagnostic } from '../support/application/context-delivery/prepare.mjs';\nawait runHook(evaluate, '${platform}', ${JSON.stringify(definition)}, prepareEvent, { reuse: reuseRoutingHint, commit: commitRoutingHint, failure: hookFailure, default: hookDefault, flush: flushTelemetry, run: observeHook, diagnostic: hookDiagnostic });\n`);
+    write(destination, wrapper, `#!/usr/bin/env node\nimport * as handler from '../${definition.handler}';\nimport { runHook } from '../platform-runtime/hook.mjs';\nimport { prepareEvent, reuseRoutingHint, commitRoutingHint, hookFailure, hookDefault, flushTelemetry, observeHook, hookDiagnostic } from '../support/application/context-delivery/prepare.mjs';\nawait runHook(handler.evaluate, '${platform}', ${JSON.stringify(definition)}, handler.prepare ?? prepareEvent, { observational: handler.observational === true, reuse: reuseRoutingHint, commit: commitRoutingHint, failure: hookFailure, default: hookDefault, flush: flushTelemetry, run: observeHook, diagnostic: hookDiagnostic });\n`);
     fs.chmodSync(path.join(destination, wrapper), 0o755);
     const hooks = [{ type: 'command', command: `node "${rootVariable}/${wrapper}"` }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);

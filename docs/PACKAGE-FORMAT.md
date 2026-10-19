@@ -47,6 +47,11 @@ belong in `engine/`; application use cases translate lifecycle events into facts
 observations. `hosts/` owns native parsing, execution and serialization. The bundled package
 handlers delegate to these shared use cases rather than reimplementing policy.
 
+A handler can export `prepare` to replace delivery-specific preparation. Telemetry-only
+handlers also export `observational = true`: their runner produces no host decision or
+context and remains nonblocking on input or execution failure. This does not change the
+input size bound or the failure behavior of policy handlers.
+
 The shipped bin/hook entry points import shared application modules. `tooling/export/`
 rebases those imports into the installed package's `support/` tree, which includes the engine,
 application, platform, integrations and CLI. Installed packages remain self-contained; do not
