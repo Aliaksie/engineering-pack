@@ -59,40 +59,49 @@ branch manually. The build contains the [MIT license](../LICENSE).
 
 ## Manual versioned release
 
-After merging the PR, choose **Release → Run workflow** on `main`. Select `current`
-to publish `v0.0.2` from the merged version without incrementing it again. Later releases
-may use `patch`, `minor` or `major` to prepare and commit the next stable SemVer version,
-or `current` after a reviewed version change has already merged. Locally,
-`npm run version:sync -- 0.0.2` synchronizes required projections; do not edit copies
-independently. Format/schema versions are separate from the pack release version.
+After merging the PR, choose **Release → Run workflow** on `main` to publish the
+already-reviewed version, initially `v0.0.2`. Releases remain manual, independent of
+ordinary PR merges. The workflow does not bump versions, create source commits or
+push changes to main. Source changes reach main only through the repository's PR
+merge process using its squash/fast-forward policy; tags identify the resulting merged SHA without depending on individual
+feature-branch commits or merge-commit ancestry.
 
-The workflow validates the selected main SHA, checks tag absence, synchronizes metadata,
-commits only version files when needed, and runs `npm run check` again before publication.
+For later releases, prepare the next version and its `CHANGELOG.md` entry in a PR.
+`npm run version:sync -- patch` (or `minor`, `major`, or an explicit stable version)
+synchronizes required projections locally; do not edit copies independently.
+Format/schema versions are separate from the pack release version.
+
+The workflow validates the selected main SHA, checks version consistency, requires one
+nonempty matching changelog section, checks tag absence, and runs `npm run check` again
+before publication. Nested consumer telemetry is ignored so these checks do not leave
+generated state that would violate the clean-checkout guard.
 It archives all eight adapter bundles plus the combined distribution, preserving hidden
-files, and records source/release SHAs and SHA-256 checksums. An atomic normal Git push
-publishes the version commit and `vX.Y.Z` tag together. An advanced main, existing tag,
-version mismatch, failed check or rejected push blocks publication; refs are never forced.
+files, and records source/release SHAs and SHA-256 checksums. A normal Git push publishes
+only the `vX.Y.Z` tag at the reviewed main revision. An advanced main detected by the
+pre-publication guard, existing tag, version mismatch, failed check or rejected push
+blocks publication; refs are never forced.
 
 The release and rolling distribution publisher share a concurrency group. The release
 explicitly refreshes the installation branch at the validated release revision because
-GitHub token-authored commits may not trigger another CI run. A draft GitHub Release is
-created, all eleven assets (nine archives, provenance and checksums) are uploaded and
+tag publication does not replace installation-branch verification. A draft GitHub Release
+uses the selected changelog section plus source provenance as its notes. All eleven
+assets (nine archives, provenance and checksums) are uploaded and
 counted, and only then is the release published. Archive names include the pack version;
 build reports, native manifests, distribution marker and runtime metadata carry it too.
 No npm publication, hosted analytics setup or semantic model certification occurs.
 
-The repository must allow GitHub Actions to write main, release tags, releases and the
-installation branch using the workflow token. If main requires reviewed changes, prepare
-the version with a version PR and use `current` after merge; the unchanged main ref and
-new tag still need the repository's allowed Git push policy. Never bypass branch rules.
+The repository must allow GitHub Actions to write release tags, releases and the
+installation branch using the workflow token. Main retains its PR-only update policy;
+the release workflow does not require permission to update it. Never bypass branch rules.
 If those rules forbid the workflow push, arrange an approved repository policy before
 running a real release. Local tests do not establish these remote permissions.
 
 ### Partial failure and recovery
 
-Before the atomic push, failed validation leaves remote refs unchanged. After the push,
+Before the tag push, failed validation leaves remote refs unchanged. After the push,
 a failed installation update, asset upload or release publication does not roll back the
-tag. Recovery artifacts are retained for 14 days. Do not rerun a bump to recover the same
+tag. Recovery artifacts, including generated release notes, are retained for 14 days.
+Do not change the version to recover the same
 release, delete tags or move an existing tag. Verify that the remote tag resolves to the
 recorded release revision and that the version and checksums agree with retained artifacts.
 Then retry only the missing installation/publication step against that revision, using
