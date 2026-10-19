@@ -2,12 +2,29 @@
 
 Inspect the branch, index and working tree before changing Git state. Identify pre-existing
 work and the paths belonging to the task. Follow the consumer's branching, commit and merge
-policy. Use the user's existing authorization: completing an implementation does not by
-itself request a commit, push or history rewrite.
+policy. Carry forward the user's existing authorization and standing consumer commit policy;
+do not ask again for each completed unit. A package cannot grant Git permissions. Respect
+explicit no-commit scope; without commit authorization preserve a reviewable diff. Local
+commit scope does not authorize push or history rewrite.
+
+Before the first implementation edit, inspect the current branch and consumer-protected/default
+branches. Create or select a task branch from the intended base; do not implement or commit
+on a protected/default branch without an explicit task-specific exception. Carry existing
+uncommitted work deliberately and never reset it to obtain a clean base. Detached HEAD needs
+an intentional task branch before implementation. For isolated or concurrent work use a
+worktree; ordinary single-owner work can use a task branch in the current checkout.
+
+Use existing consumer branch guards and server-side protection where available. When asked
+to establish enforcement, inspect existing hooks before installing or composing guards; never
+overwrite them silently. Git pre-commit/pre-push hooks guard Git actions, not file edits, and
+can be bypassed; host pre-tool enforcement applies only to supported tools/events. Report
+coverage honestly. Builds and package installation must not silently activate policy hooks.
 
 ## Commit a coherent outcome
 
-When commits are requested, aim for one coherent, verified change per completed task. Include
+When local commits are authorized, commit each completed, verified coherent work unit so it
+can be reviewed and selectively reverted. Do this at useful completion boundaries during a
+long task rather than leaving every outcome in one final diff. Include
 its implementation, meaningful tests and necessary documentation together. A large task may
 need several independently reviewable commits; several tightly coupled subtasks may belong
 in one. Do not create a commit per file, tool call or worker, or package unrelated tasks
@@ -15,7 +32,11 @@ merely because they finished together. Follow the consumer's squash policy where
 
 Stage only the intended paths or hunks and inspect the actual staged diff. Preserve unrelated
 staged work; never include it just to obtain a clean status. Check generated files, secrets,
-private evidence and accidental deletions. Verify the version being committed, and distinguish
+private evidence and accidental deletions. Internal plans/checklists/session records must
+remain untracked unless explicitly requested as versioned deliverables. Verify ignored status
+before using checkout-local plan storage; otherwise keep it outside the checkout. Never use
+force-add for internal notes. Inspect shipped code, docs and commit messages for references to
+private plan paths or task tracking; explain durable rationale without those references. Verify the version being committed, and distinguish
 pre-existing failures from regressions. Do not amend or squash another person's work without
 the applicable authorization.
 
@@ -77,4 +98,7 @@ removal or broad pruning to hide unfinished work.
 Confirm destination, branch and included revisions before a remote action. Do not force-push,
 reset, clean or discard changes as a routine repair. Resolve conflicts with affected contracts
 in mind and rerun checks justified by the resolution. Report the resulting commit identifiers,
-actual verification and remaining work; distinguish local checks from hosted CI.
+actual verification and remaining work; distinguish local checks from hosted CI. Record commit
+IDs, acceptance evidence and remaining work in the existing private task record. Coherent
+commits provide rollback boundaries; reverting an external effect still needs its own recovery
+and authorization.

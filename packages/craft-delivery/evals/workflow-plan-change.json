@@ -1,6 +1,6 @@
 {
   "id": "workflow-plan-change",
-  "prompt": "Plan only a substantial mixed-stack compatibility change from supplied local code and requirements. Some ownership evidence is missing. Use synthetic inputs: a data-only profile repository delegates generation, dependencies, tests and CI to a separate engine. Some ownership is supplied and some is unknown; a later source addition changes the generation boundary. The proposed artifact can pass schema checks yet fail its declared usefulness criteria, and a provider receives confidential fields. Also contrast a simple local text correction. For substantial work compare exact-symbol lookup, narrow document interpretation, routine debugging and ambiguous architecture; a requested worker/model mapping is unavailable.",
+  "prompt": "Plan only a substantial mixed-stack compatibility change from supplied local code and requirements. Some ownership evidence is missing. Use synthetic inputs: a data-only profile repository delegates generation, dependencies, tests and CI to a separate engine. Some ownership is supplied and some is unknown; a later source addition changes the generation boundary. The proposed artifact can pass schema checks yet fail its declared usefulness criteria, and a provider receives confidential fields. Also contrast a simple local text correction. For substantial work compare exact-symbol lookup, narrow document interpretation, routine debugging and ambiguous architecture; a requested worker/model mapping is unavailable. The user requests local planning notes but does not request a versioned plan; an existing private task store is available. Code and tests already explain the mechanics.",
   "criteria": [
     {
       "id": "c1",
@@ -29,6 +29,10 @@
     {
       "id": "c7",
       "description": "Distinguish model switching from bounded delegation, account for transfer/integration overhead, and use a truthful fallback for unavailable mappings; keep the simple local correction with one owner and no invented architecture stage, service, remote operation or extra skill loading."
+    },
+    {
+      "id": "c8",
+      "description": "Keep one private progress record with decisions, checks, completed/remaining work and authorized commit IDs; do not interpret a local plan path as permission to version it. Avoid per-step reports and duplicate implementation prose; identify only unmet documentation needs."
     }
   ]
 }

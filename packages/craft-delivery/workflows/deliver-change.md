@@ -11,7 +11,9 @@ verification does not by itself authorize implementing or repairing the product.
 
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
-current paths/revision and verification evidence. Do not repeat discovery or create a new
+current paths/revision and verification evidence. Keep this record private by default; use
+conversation, existing task state or verified ignored/outside-checkout storage. Do not stage
+internal plans or leak their references into shipped artifacts. Do not repeat discovery or create a new
 document for every stage. For cross-repository work, retain ownership of facts, generation,
 dependencies, tests, CI and outputs before adding infrastructure. Resolve missing ownership
 through `craft-delivery:inspect-architecture`; reassess when later evidence changes scope.
@@ -21,6 +23,10 @@ Use `craft-delivery:inspect-architecture` for a boundary that affects the soluti
 `craft-delivery:route-work` to select independent practices and stack guidance when needed,
 then `craft-delivery:apply-change` for the authorized implementation. Local work remains usable
 without a remote tracker or model worker.
+
+Before implementation edits, establish a task branch from the intended base and inspect the
+index/worktree. Do not work directly on consumer-protected/default branches without an explicit
+task-specific exception; use a worktree when isolation is needed. Preserve existing edits.
 
 Before implementation, carry forward the applicable accepted decisions and read the selected
 engineering detail for the affected behavior. Select security/testing detail by the actual
@@ -35,7 +41,10 @@ lookup can share source; concurrent writers should use separate branches/worktre
 supported. Coordinate overlapping paths and shared test resources. Review returned changes
 and verify the combined state before calling the task complete; worker success is not an
 integration result. If commits are in scope, group changes by coherent task outcome rather
-than by worker, and follow the consumer's message and merge conventions.
+than by worker, and follow the consumer's message and merge conventions. Commit each completed,
+verified unit under existing user authorization or standing consumer policy; retain its ID in
+the internal record for review and selective rollback. Respect explicit no-commit scope.
+Use worktrees when isolation is needed, not as a mandatory stage for a single owner.
 
 Carry the chosen evidence/execution approach and checkpoint boundary from planning. Reassess
 when risk, evidence or phase changes; do not poll model/session advice every turn. Use

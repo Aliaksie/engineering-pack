@@ -42,7 +42,8 @@ Write only the detail needed for execution:
 When parallel work is worthwhile and authorized, separate independent assignments by outcome
 and owned paths, name their dependencies and integration owner, and choose isolated workspaces
 for concurrent writers. Keep overlapping changes sequential. Plan coherent commit boundaries
-only when committing is requested; worker count does not determine commit count. Use the
+using existing user authorization or standing consumer policy; worker count does not determine
+commit count. Track completed units by their resulting commits when authorized. Use the
 available engineering Git/context references for worktree and handoff details.
 
 For persisted data or public interfaces, account for old and new consumers during transition,
@@ -50,7 +51,14 @@ change ordering and the limits of recovery. Distinguish undoing a code edit from
 external effect. Preserve durable rationale in `craft-delivery:write-adr` only when it needs
 its own maintained record.
 
-Keep a small plan in the conversation when sufficient. Use the requested file location;
-otherwise `.plan/<slug>.md` can hold working notes, without linking them from shipped docs.
+Keep the plan internal by default: use the conversation or an existing private task/checkpoint
+store. Track scope, acceptance, decisions, completed/remaining units, checks and commit IDs in
+one compact record. Use a requested file location when supplied; a checkout-local `.plan/`
+requires verified exclusion from version control, or use storage outside the checkout.
+Do not change shared ignore policy merely to store a plan. Internal notes are not repository
+deliverables: never stage them or reference their paths, task IDs or checklists from shipped
+code, tests, comments, docs or commit messages. Express necessary rationale in durable domain
+terms. Only an explicit request to version a plan makes it a repository artifact; a requested
+local path alone does not. Do not create per-step reports or duplicate code explanations.
 If the request authorizes implementation, proceed with `craft-delivery:apply-change` once
 its dependencies are understood. A planning-only request ends with a reviewable plan.

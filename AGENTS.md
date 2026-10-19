@@ -53,6 +53,15 @@ This repository authors portable AI Capability Packages. Canonical content lives
 
 ## Rules
 
+- Before implementation edits, create or select a task branch. Do not implement or commit on
+  `main` or `master`, or in detached HEAD. Use a worktree when isolation is needed.
+- Commit completed, verified coherent units under the user's authorization; keep internal
+  plans and session records untracked and out of shipped references. Code and tests already
+  document mechanics; add prose only for an unmet reader need.
+- Install this repository's local guards with `npm run hooks:install` after inspecting any
+  existing `core.hooksPath`. Hooks reject protected-branch commits/pushes and staged internal
+  plans; they do not prevent file edits or replace remote branch protection.
+
 - Preserve project-specific configuration in the consumer. Do not assume a language, UI
   framework, cloud, tracker, repository layout or architecture.
 - Load common principles, language, application layer and provider guidance independently.
