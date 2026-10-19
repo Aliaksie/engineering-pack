@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
 import { telemetryEvent } from '../application/telemetry/events.mjs';
 import { createTelemetry, telemetryOptions, withTelemetry, observe, flushTelemetry } from '../application/telemetry/observe.mjs';
 import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEMETRY_MAX_BYTES } from '../platform/node/telemetry.mjs';
@@ -77,13 +78,22 @@ test('local files rotate, skip malformed records and reject symlinks and oversiz
 });
 test('concurrent processes append complete JSONL events within the shared bound', async t => {
   const root=fixture(t), module=new URL('../platform/node/telemetry.mjs',import.meta.url).href;
-  const script=`import {appendTelemetry} from ${JSON.stringify(module)}; for(let i=0;i<40;i++) if (!appendTelemetry(process.argv[1],${JSON.stringify(telemetryEvent(envelope))})) throw new Error('lost concurrent event');`;
-  await Promise.all(Array.from({length:4},() => new Promise((resolve,reject) => {
+  const script=`import {appendTelemetry} from ${JSON.stringify(module)}; let accepted=0; for(let i=0;i<40;i++) if (appendTelemetry(process.argv[1],${JSON.stringify(telemetryEvent(envelope))})) accepted++; process.stdout.write(JSON.stringify({accepted,dropped:40-accepted}));`;
+  const writers=await Promise.all(Array.from({length:4},() => new Promise((resolve,reject) => {
     const child=spawn(process.execPath,['--input-type=module','-e',script,root],{stdio:'pipe'});
-    let errors=''; child.stderr.on('data',data => errors+=data); child.on('error',reject); child.on('exit',code => code ? reject(new Error(errors)) : resolve());
+    let errors='', output=''; child.stderr.on('data',data => errors+=data); child.stdout.on('data',data => output+=data);
+    child.on('error',reject); child.on('close',code => {
+      if (code) { reject(new Error(errors)); return; }
+      try { resolve(JSON.parse(output)); } catch (error) { reject(error); }
+    });
   })));
+  const accepted=writers.reduce((sum,writer)=>sum+writer.accepted,0);
+  const dropped=writers.reduce((sum,writer)=>sum+writer.dropped,0);
+  assert.equal(accepted+dropped,160);
+  assert.ok(accepted>0);
   const lines=fs.readFileSync(path.join(root,'.capabilities/state/telemetry.jsonl'),'utf8').trim().split('\n');
-  assert.equal(lines.length,160); for(const line of lines) assert.equal(JSON.parse(line).schemaVersion,1);
+  assert.equal(lines.length,accepted);
+  for(const line of lines) assert.deepEqual(JSON.parse(line),telemetryEvent(envelope));
 });
 test('denied telemetry lock acquisition skips the event without touching another writer or weakening shared locks', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
@@ -113,6 +123,9 @@ test('telemetry retries transient contention and preserves events after the writ
   const root=fixture(t), event=telemetryEvent(envelope);
   const open=fs.openSync;
   let attempts=0;
+  let now=0;
+  const clock=t.mock.method(performance,'now',()=>now);
+  const wait=t.mock.method(Atomics,'wait',(_array,_index,_value,milliseconds)=>{ now+=milliseconds; return 'timed-out'; });
   const mock=t.mock.method(fs,'openSync',(name,...args) => {
     if (String(name).endsWith('telemetry.jsonl.lock') && ++attempts <= 3) {
       throw Object.assign(new Error('busy writer'),{code:'EEXIST'});
@@ -120,9 +133,24 @@ test('telemetry retries transient contention and preserves events after the writ
     return open(name,...args);
   });
   try { assert.equal(appendTelemetry(root,event),true); }
-  finally { mock.mock.restore(); }
+  finally { mock.mock.restore(); wait.mock.restore(); clock.mock.restore(); }
   assert.equal(attempts,4);
+  assert.equal(now,6);
   assert.deepEqual(readTelemetry(root),[event]);
+});
+test('telemetry stops retrying when a wait overshoots the deadline without removing the active lock', t => {
+  const root=fixture(t), event=telemetryEvent(envelope);
+  const directory=path.join(root,'.capabilities/state'); fs.mkdirSync(directory,{recursive:true});
+  const file=path.join(directory,'telemetry.jsonl'), lock=`${file}.lock`;
+  fs.writeFileSync(lock,'active writer');
+  let now=0, waits=0;
+  const clock=t.mock.method(performance,'now',()=>now);
+  const wait=t.mock.method(Atomics,'wait',()=>{ waits++; now+=30; return 'timed-out'; });
+  try { assert.equal(appendTelemetry(root,event),false); }
+  finally { wait.mock.restore(); clock.mock.restore(); }
+  assert.equal(waits,1);
+  assert.equal(fs.readFileSync(lock,'utf8'),'active writer');
+  assert.equal(fs.existsSync(file),false);
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {
   const root=fixture(t), options={intent:'implement',file:[],risk:[],host:'codex',session:'session',task:'task'};
