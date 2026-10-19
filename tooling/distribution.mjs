@@ -6,12 +6,14 @@ import { build } from './build.mjs';
 import { copy, rewriteLinks, write, writeJson } from './export/export.mjs';
 import { files } from './lib/capabilities.mjs';
 import { validateMarketplace } from './validate-marketplace.mjs';
+import { packVersion } from './version.mjs';
 
 const targets = ['gemini-extension', 'claude', 'codex', 'jetbrains'];
 const marker = '.engineering-distribution.json';
 
 // One branch exposes native entry points while preserving each adapter's resource layout.
 export function assembleDistribution(repo) {
+  const version = packVersion(repo);
   const dist = path.join(repo, 'dist');
   const output = path.join(dist, 'distribution');
   if (fs.lstatSync(dist).isSymbolicLink()) throw new Error('dist must not be a symlink');
@@ -20,6 +22,7 @@ export function assembleDistribution(repo) {
     files(directory); // Reject symlinks before copying any generated content.
     const metadata = JSON.parse(fs.readFileSync(path.join(directory, '.capability-build.json'), 'utf8'));
     if (metadata.adapter !== target) throw new Error(`invalid ${target} build`);
+    if (metadata.version !== version) throw new Error(`stale ${target} version`);
   }
   if (fs.existsSync(output)) {
     if (fs.lstatSync(output).isSymbolicLink()) throw new Error('distribution must not be a symlink');
@@ -52,7 +55,7 @@ export function assembleDistribution(repo) {
       }
     }
 
-    writeJson(stage, marker, { formatVersion: 1, generatedFrom: 'packages/', targets });
+    writeJson(stage, marker, { formatVersion: 1, version, generatedFrom: 'packages/', targets });
     write(stage, 'README.md', '# Engineering Pack distribution\n\nGenerated from the portable source; do not edit this branch.\n\nSee [installation and updates](docs/PLATFORMS.md).\nFor JetBrains native chat, use the complete [JetBrains bundle](jetbrains/AGENTS.md).\n');
     const errors = validateMarketplace(stage);
     if (errors.length) throw new Error(errors.join('\n'));

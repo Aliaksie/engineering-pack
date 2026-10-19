@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-engineering",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance.",
   "instructions": "AGENTS.md",
   "skills": [

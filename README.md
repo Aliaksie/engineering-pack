@@ -157,6 +157,10 @@ matrix succeeds. See [sharing and releasing](docs/RELEASING.md) for artifact acc
 The optional [personal review inbox](tools/craft-review-inbox/README.md) provides a GitHub
 watch list, local review state and posted-text evidence. It is excluded from default exports.
 
+Engineering Pack does not send telemetry remotely by default. Bounded local usage metadata
+is enabled by default; see [observability and privacy](docs/OBSERVABILITY.md) to inspect
+what is collected, disable it, or opt into OTLP export.
+
 ## License
 
 [MIT](LICENSE).

@@ -109,10 +109,10 @@ Users refresh the Codex marketplace with
 `claude plugin update craft-engineering@craft-capabilities` (repeat for installed packages).
 For Gemini use `gemini extensions update engineering-pack`, then restart the session.
 For project overlays, review and merge regenerated files; preserve consumer changes.
-Verify the new skills in a fresh session. Package versions remain at the initial `0.0.1`;
-if a host skips an unchanged version, uninstall/reinstall the affected plugin through its
-native UI/CLI to refresh the cached copy. Publishing new code is not a version bump. Normal
-versioned releases can be introduced when a release/version change is requested.
+Verify the new skills in a fresh session. Pack versions are synchronized from the canonical
+root version; see [versioned releases](RELEASING.md#manual-versioned-release). Rolling
+updates between releases can retain a version. If a host skips an unchanged version,
+uninstall/reinstall the affected plugin through its native UI/CLI to refresh its cache.
 
 ## Local development and publication
 

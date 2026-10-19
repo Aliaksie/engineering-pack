@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { flushTelemetry } from '../application/telemetry/observe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,4 +45,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(proces
     process.stdout.write(process.argv[2] === 'session' && !process.argv.includes('--json') && !process.argv.includes('--help') ? renderSessionStatus(result) : `${JSON.stringify(result, null, process.argv[2] === 'locate' ? undefined : 2)}\n`);
   }
   catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 2; }
+  finally { await flushTelemetry(); }
 }

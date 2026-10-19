@@ -1,0 +1,82 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Publish current version (first release: 0.0.2), or increment before releasing'
+        type: choice
+        default: current
+        options: [current, patch, minor, major]
+permissions:
+  contents: read
+concurrency:
+  group: engineering-pack-distribution
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Validate selected main
+        run: npm run check
+      - name: Prepare version
+        id: version
+        run: node tooling/release.mjs prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BUMP: ${{ inputs.bump }}
+      - name: Validate release revision and build artifacts
+        run: npm run check
+      - name: Archive validated distributions
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_REVISION: ${{ steps.version.outputs.revision }}
+        run: |
+          mkdir -p .eval-results/release
+          for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
+            tar -czf ".eval-results/release/engineering-pack-${RELEASE_VERSION}-${target}.tar.gz" -C "dist/${target}" .
+          done
+          printf 'Version: %s\nSource: %s\nRelease revision: %s\n' "$RELEASE_VERSION" "$GITHUB_SHA" "$RELEASE_REVISION" > .eval-results/release/PROVENANCE.txt
+          cd .eval-results/release
+          sha256sum ./*.tar.gz PROVENANCE.txt > SHA256SUMS
+      - name: Publish version commit and tag atomically
+        run: node tooling/release.mjs publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_REVISION: ${{ steps.version.outputs.revision }}
+      - name: Refresh installation branch at release revision
+        run: node tooling/publish-distribution.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_REVISION: ${{ steps.version.outputs.revision }}
+      - name: Create draft, upload artifacts, publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_REVISION: ${{ steps.version.outputs.revision }}
+        run: |
+          gh release create "v${RELEASE_VERSION}" --verify-tag --draft --title "Engineering Pack ${RELEASE_VERSION}" --notes-file .eval-results/release/PROVENANCE.txt
+          gh release upload "v${RELEASE_VERSION}" .eval-results/release/*
+          gh release view "v${RELEASE_VERSION}" --json assets --jq '.assets | length' > .eval-results/release-asset-count
+          test "$(cat .eval-results/release-asset-count)" = 11
+          gh release edit "v${RELEASE_VERSION}" --draft=false
+      - name: Retain recovery artifacts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-recovery-${{ github.sha }}
+          path: .eval-results/release/
+          if-no-files-found: ignore
+          retention-days: 14

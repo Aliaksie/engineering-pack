@@ -24,6 +24,7 @@ function fixture(t) {
   copy(path.join(root, 'hosts'), path.join(repo, 'hosts'));
   copy(path.join(root, 'docs'), path.join(repo, 'docs'));
   for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(root, folder), path.join(repo, folder));
+  fs.copyFileSync(path.join(root,'package.json'),path.join(repo,'package.json'));
   const source = byName('craft-review');
   const packageRoot = path.join(repo, 'packages', source.manifest.name);
   copy(source.root, packageRoot);

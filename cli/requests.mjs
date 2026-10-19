@@ -1,3 +1,4 @@
+import { withTelemetry } from '../application/telemetry/observe.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
 import { planOperation } from '../application/services.mjs';
@@ -12,6 +13,9 @@ import { modelAdvice } from '../application/session/models.mjs';
 
 
 export function execute(action, options, root) {
+  return withTelemetry(root, { session: options.session, host: options.host }, () => executeRequest(action,options,root));
+}
+function executeRequest(action, options, root) {
 
   if (action === 'locate') {
     const limits = {};

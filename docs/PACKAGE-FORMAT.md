@@ -68,3 +68,8 @@ values refer to external variables. HTTP endpoints reject credentials, query str
 fragments. V1 deliberately omits host-specific OAuth/header configuration; unsupported fields
 fail instead of being silently discarded. Claude/Codex emit native connection files;
 the AGENTS export includes declarations for a future host adapter to register.
+
+In this repository, `package.json.version` owns the pack release version. Required
+capability `version` fields remain explicit for standalone portability, but are synchronized
+by `npm run version:sync` and checked for drift before builds. Native exports and installed
+runtime metadata use that same value.

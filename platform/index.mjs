@@ -9,3 +9,5 @@ export { projectData } from './node/resources/project.mjs';
 export { readSessionInput } from './node/resources/session-input.mjs';
 export { realRoot, relativePath, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
 export { reviewSnapshot } from './node/repository/review.mjs';
+export { runtimeVersion } from './node/environment.mjs';
+export { telemetryConfiguration, telemetryIdentity, appendTelemetry, readTelemetry, postTelemetry } from './node/telemetry.mjs';

@@ -1,3 +1,4 @@
+import { withTelemetry, emitTelemetry } from '../telemetry/observe.mjs';
 import { decide } from '../engine-client.mjs';
 import { stateFile, readState, lockState, releaseState, writeState, clock, uniqueId, sourceIdentity } from '../../platform/index.mjs';
 
@@ -16,6 +17,9 @@ export function invalidateRoutingHint(root, session, host) {
   return true;
 }
 export function reuseRoutingHint(event, result, now = clock().ms) {
+  return withTelemetry(event.routingRoot ?? event.cwd ?? '.', { session: event.session, host: event.host }, () => reuseHint(event,result,now));
+}
+function reuseHint(event, result, now) {
   if (!decide('hint-eligible', { event, result })) return { result };
   try {
     const file = cacheFile(event.routingRoot,event.session,event.host);
@@ -27,10 +31,12 @@ export function reuseRoutingHint(event, result, now = clock().ms) {
       source ??= hash(sourceIdentity(['engine/routing/route.mjs','engine/routing/guidance.mjs','engine/routing/catalog.json']));
       const key = hash(JSON.stringify({ sourceIdentity: source, generation, project: event.project, context: result.context }));
       if (decide('hint-valid', { previous, key, now })) {
+        emitTelemetry('cache.observed', { reused: true, cacheHits: 1, cacheMisses: 0 });
         const { context, ...quiet } = result;
         releaseState(ticket);
         return { result: quiet, suppressed: true };
       }
+      emitTelemetry('cache.observed', { reused: false, cacheHits: 0, cacheMisses: 1 });
       return { result, ticket, state: { formatVersion: 1, key, emittedAt: now } };
     } catch (error) { releaseState(ticket); throw error; }
   } catch (error) { return { result, diagnostic: `Routing hint reuse unavailable: ${error.message}` }; }

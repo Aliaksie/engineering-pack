@@ -1,6 +1,6 @@
 {
   "name": "craft-capabilities",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "Portable AI capability packages: workflows, standards, skills, evals, tools and MCP with host adapters",
@@ -39,7 +39,9 @@
     "session:attempt": "node cli/main.mjs session-attempt",
     "session:advice": "node cli/main.mjs session-advice",
     "eval:pair": "node tooling/paired-eval.mjs",
-    "model:advice": "node cli/main.mjs model-advice"
+    "model:advice": "node cli/main.mjs model-advice",
+    "version:sync": "node tooling/version.mjs",
+    "version:check": "node tooling/version.mjs --check"
   },
   "license": "MIT"
 }

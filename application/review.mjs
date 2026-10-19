@@ -1,8 +1,9 @@
+import { observe } from './telemetry/observe.mjs';
 import { publishingCommand } from '../integrations/review-commands.mjs';
 import { decide } from './engine-client.mjs';
 import { reviewSnapshot } from '../platform/index.mjs';
-export const snapshot = request => decide('review-snapshot', { snapshot: reviewSnapshot(request) });
-export const validateReview = (snapshot, review) => decide('review-validate', { snapshot, review });
+export const snapshot = request => observe('review.completed', () => decide('review-snapshot', { snapshot: reviewSnapshot(request) }), () => ({ phase: 'prepared' }));
+export const validateReview = (snapshot, review) => observe('review.completed', () => decide('review-validate', { snapshot, review }), () => ({ phase: 'validated' }));
 export const publicationPlan = (snapshot, review, target) => decide('review-publication', { snapshot, review, target });
 
 export const evaluateReviewPublication = event => decide('review-publication-policy', {

@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-stories",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Code grounding, specification audits and local user-story drafts.",
   "instructions": "AGENTS.md",
   "skills": [

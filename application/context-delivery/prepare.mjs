@@ -1,3 +1,5 @@
+import { withTelemetry, flushTelemetry, emitTelemetry } from '../telemetry/observe.mjs';
+export { flushTelemetry };
 import { projectRoot, relativePath } from '../../platform/index.mjs';
 import { readProject } from '../project/configuration.mjs';
 import { route } from '../routing/select.mjs';
@@ -8,6 +10,10 @@ import { invalidateRoutingHint } from './hints.mjs';
 export { reuseRoutingHint, commitRoutingHint } from './hints.mjs';
 
 export function prepareEvent(event) {
+  return withTelemetry(projectRoot(event.cwd), { session: event.session, host: event.host }, () => prepare(event));
+}
+function prepare(event) {
+  emitTelemetry('host.observed', { lifecycle: event.event });
   const root = projectRoot(event.cwd);
   const project = readProject(root);
   const result = { ...event, project, routingRoot: root };

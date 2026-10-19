@@ -90,5 +90,6 @@ export async function runHook(evaluate, platform, definition = { name: 'policy',
     try { delivery.commit(pending, Boolean(wire.output && result.context && hookMapping(platform, definition)?.context)); }
     catch (error) { process.stderr.write(`Routing hint reuse unavailable: ${error.message}\n`); }
   }
+  if (delivery.flush) { try { await delivery.flush(); } catch { /* Advisory export. */ } }
   process.exitCode = wire.exitCode;
 }

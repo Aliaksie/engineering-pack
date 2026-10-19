@@ -1,3 +1,4 @@
+import { observe } from './telemetry/observe.mjs';
 import { decide } from './engine-client.mjs';
 import { stateFile, readState, lockState, releaseState, writeState, repositoryState, clock } from '../platform/index.mjs';
 
@@ -6,7 +7,7 @@ export function readCheckpoint(root, session) {
   const state = readState(filename(root, session), 65536);
   return decide('checkpoint-validate', { state });
 }
-export function saveCheckpoint(root, session, metadata = {}) {
+function saveCheckpointOperation(root, session, metadata = {}) {
   decide('checkpoint-metadata', { metadata });
   const file = filename(root, session, true);
   const ticket = lockState(file);
@@ -18,6 +19,10 @@ export function saveCheckpoint(root, session, metadata = {}) {
   } finally { releaseState(ticket); }
 }
 export const gitState = root => repositoryState(root);
-export function recoverCheckpoint(root, session) {
+function recoverCheckpointOperation(root, session) {
   return decide('checkpoint-compare', { saved: readCheckpoint(root, session), current: repositoryState(root) });
 }
+
+export const saveCheckpoint = (...args) => observe('checkpoint.saved', () => saveCheckpointOperation(...args), () => ({ checkpoints: 1 }));
+
+export const recoverCheckpoint = (...args) => observe('checkpoint.recovered', () => recoverCheckpointOperation(...args), () => ({}));

@@ -76,3 +76,8 @@ policy cases expose misses. Process wall time includes startup and serialization
 host dispatch, model calls and network. Neither sample latency nor corpus counts establish
 production rates. CI uploads runner-specific reports; hosted/native-host verification and
 representative production measurements remain pending until actual evidence is collected.
+
+Pack CLI and native hook entry points also emit bounded supporting local usage telemetry
+by default. This is separate from opt-in checkpoint, routing-cache and session-receipt
+state. Remote export requires explicit configuration; see
+[observability and privacy](../OBSERVABILITY.md) for fields, retention and disabling it.

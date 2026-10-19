@@ -1,3 +1,4 @@
+import { observe } from '../telemetry/observe.mjs';
 import { decide, digest } from '../engine-client.mjs';
 import { stateFile, readState, lockState, releaseState, writeState, repositoryState, clock, uniqueId } from '../../platform/index.mjs';
 
@@ -20,9 +21,11 @@ export function updateSessionState(root, session, task, update) {
   } finally { releaseState(ticket); }
 }
 export const addActivity = (state, values) => Object.assign(state, decide('activity-update', { state, values }));
-export function recordAttempt(root, session, task, attempt) {
+function recordAttemptOperation(root, session, task, attempt) {
   const receipt = decide('attempt-receipt', { attempt, repository: repositoryState(root), id: uniqueId(), at: clock().iso });
   return updateSessionState(root, session, task, state => Object.assign(state, decide('attempt-append', { state, receipt })));
 }
 
 export const attemptStatus = (records, operation) => decide('attempt-status', { records, operation });
+
+export const recordAttempt = (...args) => observe('attempt.recorded', () => recordAttemptOperation(...args), result => ({ attemptNumber: result.attempts.length, reason: 'recorded' }));

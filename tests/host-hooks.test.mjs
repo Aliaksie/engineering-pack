@@ -103,7 +103,7 @@ test('opted-in native hooks reuse only emitted hints and re-emit after compactio
     const capable = HOSTS[host].events['before-prompt'].context;
     assert.equal(first.stdout.includes('Routing hints'), capable, host);
     assert.ok(!next.stdout.includes('Routing hints'), host);
-    if (!capable) assert.ok(!fs.existsSync(path.join(dir, '.capabilities/state')), host);
+    if (!capable) assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))), host);
     else assert.ok(Buffer.byteLength(next.stdout) < Buffer.byteLength(first.stdout));
     const compact = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session' }, dir);
     assert.equal(compact.status, 0, compact.stderr);
@@ -119,7 +119,7 @@ test('session service preparation reads metadata without probing executable avai
     assert.equal(result.status, 0, result.stderr);
     assert.ok(result.stdout.includes('never-execute-this-command'), host);
     assert.ok(result.stdout.includes('unverified'), host);
-    assert.ok(!fs.existsSync(path.join(dir, '.capabilities/state')), 'metadata preparation creates no cache/authorization state');
+    assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))), 'metadata preparation creates no cache/authorization state');
   }
 });
 
@@ -141,7 +141,7 @@ test('checkpoint state is not written without explicit consumer opt-in', (t) => 
     const result = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'fixture-session' }, dir);
     assert.equal(result.status, 0, result.stderr);
   }
-  assert.ok(!fs.existsSync(path.join(dir, '.capabilities/state')));
+  assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))));
 });
 
 test('unsupported lifecycle mappings are reported and no fake wrapper is installed', () => {
