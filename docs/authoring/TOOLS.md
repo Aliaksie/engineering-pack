@@ -45,9 +45,11 @@ report whether each mapped event can inject context or deny a tool call. Observi
 does not imply enforcement. Installation enables neither delegation nor checkpoint writes.
 
 The read-only review guard recognizes simple direct publishing commands, quoted arguments,
-command separators and Git global options. It is a limited guardrail. Indirect execution
-such as `sh -c`, command substitution, aliases, executable paths and shell-specific expansion
-are outside its recognizer. Use host tool permissions and isolation for actual read-only
+command separators, Git global options, literal scripts passed to supported shells with
+`-c` and active `$()`/backtick substitutions. Nested inspection stops at 16 levels and
+denies deeper scripts in read-only sessions. It is a limited guardrail: aliases, arbitrary
+interpreters, other executable paths and variable expansion remain outside its recognizer.
+Use host tool permissions and isolation for actual read-only
 enforcement. Malformed-input and unsupported-host behavior must remain visible in adapters.
 
 ## Optional review inbox
@@ -86,6 +88,8 @@ policy cases expose misses. Process wall time includes startup and serialization
 host dispatch, model calls and network. Neither sample latency nor corpus counts establish
 production rates. CI uploads runner-specific reports; hosted/native-host verification and
 representative production measurements remain pending until actual evidence is collected.
+The report counts outcomes outside `allow` and `deny` as `unexpectedDecisions`, separately
+from false and missed blocks, so an unknown decision cannot look like a clean corpus.
 
 Pack CLI and native hook entry points also emit bounded supporting local usage telemetry
 by default. This is separate from opt-in checkpoint, routing-cache and session-receipt

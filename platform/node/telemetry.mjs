@@ -4,10 +4,12 @@ import http from 'node:http';
 import https from 'node:https';
 import { randomBytes, createHmac } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { performance } from 'node:perf_hooks';
 import { stateFile, lockState, releaseState, readState } from './state-files.mjs';
 
 export const TELEMETRY_MAX_BYTES = 1048576;
 const contexts = new AsyncLocalStorage();
+const lockWait = new Int32Array(new SharedArrayBuffer(4));
 export const telemetryContext = () => contexts.getStore();
 export const runTelemetryContext = (context, callback) => contexts.run(context, callback);
 export function telemetryRoot(root) {
@@ -39,7 +41,18 @@ export function appendTelemetry(root, event) {
   if (Buffer.byteLength(text) > 8192) throw new Error('telemetry event too large');
   const file = stateFile(root, 'telemetry.jsonl', true);
   let ticket;
-  try { ticket = lockState(file); }
+  try {
+    // Native packages can write concurrently. Briefly wait for an active writer,
+    // but never remove its lock or let stale locks block engineering work.
+    const deadline = performance.now() + 25;
+    do {
+      ticket = lockState(file);
+      if (ticket) break;
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) break;
+      Atomics.wait(lockWait, 0, 0, Math.min(2, remaining));
+    } while (performance.now() < deadline);
+  }
   catch (error) {
     // Windows can deny reopening a lock while another writer deletes it. A
     // denied/busy telemetry lock drops this event; never write without ownership.

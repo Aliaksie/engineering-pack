@@ -77,13 +77,13 @@ test('local files rotate, skip malformed records and reject symlinks and oversiz
 });
 test('concurrent processes append complete JSONL events within the shared bound', async t => {
   const root=fixture(t), module=new URL('../platform/node/telemetry.mjs',import.meta.url).href;
-  const script=`import {appendTelemetry} from ${JSON.stringify(module)}; for(let i=0;i<40;i++) appendTelemetry(process.argv[1],${JSON.stringify(telemetryEvent(envelope))});`;
+  const script=`import {appendTelemetry} from ${JSON.stringify(module)}; for(let i=0;i<40;i++) if (!appendTelemetry(process.argv[1],${JSON.stringify(telemetryEvent(envelope))})) throw new Error('lost concurrent event');`;
   await Promise.all(Array.from({length:4},() => new Promise((resolve,reject) => {
     const child=spawn(process.execPath,['--input-type=module','-e',script,root],{stdio:'pipe'});
     let errors=''; child.stderr.on('data',data => errors+=data); child.on('error',reject); child.on('exit',code => code ? reject(new Error(errors)) : resolve());
   })));
   const lines=fs.readFileSync(path.join(root,'.capabilities/state/telemetry.jsonl'),'utf8').trim().split('\n');
-  assert.ok(lines.length>0 && lines.length<=160); for(const line of lines) assert.equal(JSON.parse(line).schemaVersion,1);
+  assert.equal(lines.length,160); for(const line of lines) assert.equal(JSON.parse(line).schemaVersion,1);
 });
 test('denied telemetry lock acquisition skips the event without touching another writer or weakening shared locks', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
@@ -107,6 +107,21 @@ test('denied telemetry lock acquisition skips the event without touching another
   }
   fs.unlinkSync(lock);
   assert.equal(appendTelemetry(root,event),true);
+  assert.deepEqual(readTelemetry(root),[event]);
+});
+test('telemetry retries transient contention and preserves events after the writer releases its lock', t => {
+  const root=fixture(t), event=telemetryEvent(envelope);
+  const open=fs.openSync;
+  let attempts=0;
+  const mock=t.mock.method(fs,'openSync',(name,...args) => {
+    if (String(name).endsWith('telemetry.jsonl.lock') && ++attempts <= 3) {
+      throw Object.assign(new Error('busy writer'),{code:'EEXIST'});
+    }
+    return open(name,...args);
+  });
+  try { assert.equal(appendTelemetry(root,event),true); }
+  finally { mock.mock.restore(); }
+  assert.equal(attempts,4);
   assert.deepEqual(readTelemetry(root),[event]);
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {

@@ -78,7 +78,8 @@ The correlation key is `.capabilities/state/telemetry-key.json`. Do not commit t
 add `.capabilities/state/` to the consumer's ignore rules. Deleting the key resets future
 correlation; delete both JSONL files to remove retained local events.
 
-Writers use an exclusive lock and skip a busy writer. Readers skip malformed lines and
+Writers use an exclusive lock and retry contention for up to 25 ms per append before
+skipping a busy writer. Permission-denied locks are skipped immediately. Readers skip malformed lines and
 unknown schema versions within bounded files. Symlinked and oversized files are rejected.
 Telemetry may drop events on concurrency, invalid configuration, permission, full disk
 or exporter failure. A stale `telemetry.jsonl.lock` suppresses writes; remove it only when
