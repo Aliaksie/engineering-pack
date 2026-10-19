@@ -31,6 +31,16 @@ fixtures. Service planning tests must never contact a real tracker or codehost.
 
 ## GitHub Actions
 
+Install [actionlint](https://github.com/rhysd/actionlint/blob/main/docs/install.md)
+1.7.12 locally, then run `npm run lint:workflows` and `npm run test:workflows`.
+Install ShellCheck to lint embedded shell scripts and run the integration smoke test. These are separate from
+`npm run check`, so normal Node development needs no additional tools.
+CI runs both commands in a dedicated job with checksum-verified actionlint and
+ShellCheck. The smoke tests verify valid workflows pass and malformed YAML,
+invalid expression contexts, missing job dependencies and unsafe shell expansion fail. Packaging and
+publication depend on this job passing. When updating actionlint, update its
+version and archive checksum together in `ci.yml`.
+
 CI runs on push, pull request and manual dispatch. It validates manifests, catalog and source targets,
 checks generated guidance, lints portable scripts, builds eight host exports and the GitHub distribution, validates exports
 and runs tests on Linux/macOS/Windows with Node 24, plus Linux with the Node 20 minimum.
