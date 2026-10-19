@@ -75,3 +75,20 @@ test('only the application engine client imports engine implementation entry poi
   const client = fs.readFileSync(path.join(root,'application/engine-client.mjs'),'utf8');
   assert.deepEqual(imports(client),['../engine/index.mjs']);
 });
+
+test('portable telemetry contracts cannot depend on providers or runtime implementations', () => {
+  const contract = fs.readFileSync(path.join(root,'application/telemetry/events.mjs'),'utf8');
+  assert.deepEqual(imports(contract),[]);
+  assert.doesNotMatch(contract,/AsyncLocalStorage|resourceSpans|scopeSpans|spanId|OTLP|OpenTelemetry|node:|process\./);
+  for (const directory of ['engine','application']) for (const file of modules(path.join(root,directory))) {
+    const source = fs.readFileSync(file,'utf8');
+    assert.doesNotMatch(source,/@opentelemetry\//,file);
+    if (file !== path.join(root,'application/telemetry/observe.mjs')) for (const specifier of imports(source)) {
+      assert.ok(!specifier.includes('integrations/otel/'),`${file}: bypasses telemetry boundary`);
+    }
+    assert.doesNotMatch(source,/resourceSpans|scopeSpans|startTimeUnixNano/,file);
+  }
+  for (const file of modules(path.join(root,'integrations/otel'))) for (const specifier of imports(fs.readFileSync(file,'utf8'))) {
+    assert.ok(inDirectory(path.resolve(path.dirname(file),specifier),'integrations/otel'),`${file}: provider mapping depends on core contract implementation`);
+  }
+});

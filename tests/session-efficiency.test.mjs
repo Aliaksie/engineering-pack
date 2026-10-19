@@ -146,10 +146,11 @@ test('classes use deterministic economical discovery and allow directly requeste
   assert.equal(result.attemptsRemaining, 1);
 });
 
-test('opt-in CLI receipts aggregate routing, discovery and checkpoint events without writing in normal mode', t => {
+test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {
   const { root } = fixture(t);
   run(['route', '--root', root, '--intent', 'locate']);
-  assert.equal(fs.existsSync(path.join(root, '.capabilities/state')), false);
+  assert.ok(fs.readdirSync(path.join(root, '.capabilities/state')).every(name => name.startsWith('telemetry')));
+  assert.equal(readSessionState(root, scope.session, scope.task).activity.routingDecisions, undefined);
   run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
   run(['locate', '--root', root, '--term', 'Symbol0', '--path', 'src', '--session', scope.session, '--task', scope.task]);
   const status = run(['session', '--root', root, '--session', scope.session, '--task', scope.task]);

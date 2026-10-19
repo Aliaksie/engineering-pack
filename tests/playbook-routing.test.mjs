@@ -4,8 +4,44 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { route } from '../application/routing/select.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
+import { route as engineRoute } from '../engine/routing/route.mjs';
 
 const select = (file, config = {}, intent = 'implement', risks = []) => route({ intent, files: [file], project: { formatVersion: 1, ...config }, risks });
+
+test('CI/CD guidance uses pipeline paths or explicit risks, never the Git host', () => {
+  const skill='craft-engineering:infrastructure-engineering';
+  const shared=`${skill}/references/ci-cd.md`, github=`${skill}/references/github-actions.md`;
+  const hosted={ services:{ codehost:{ provider:'github', transport:'cli', command:'gh', repository:'owner/repo' } } };
+  for (const file of ['src/main.py','docs/github-actions.md','.github/CODEOWNERS','.github/workflows-old/ci.yml']) {
+    const plain=select(file,hosted);
+    assert.ok(!plain.skills.includes(skill),file);
+    assert.ok(!plain.references.includes(github),file);
+  }
+  const pipeline=select('.github/workflows/release.yml',{},'review');
+  assert.ok(pipeline.skills.includes(skill));
+  assert.ok(pipeline.references.includes(shared));
+  assert.ok(pipeline.references.includes(github));
+  const selection=pipeline.loading.selections.find(entry=>entry.id==='practice:github-actions-path');
+  assert.ok(selection.evidence.some(entry=>entry.dimension==='paths' && entry.values.includes('.github/workflows/release.yml')));
+  const other=select('.gitlab-ci.yml',hosted,'implement',['ci-cd']);
+  assert.ok(other.skills.includes(skill)); assert.ok(other.references.includes(shared));
+  assert.ok(!other.references.includes(github));
+  assert.ok(select('automation/release.config',{},'plan',['github-actions']).references.includes(github));
+  for (const intent of ['story','locate','run-check']) {
+    const result=select('.github/workflows/ci.yml',{},intent,['ci-cd','github-actions']);
+    assert.ok(!result.skills.includes(skill)); assert.ok(!result.references.includes(github));
+  }
+  assert.ok(!route({intent:'verify',files:['.github/workflows/ci.yml'],verificationMode:'manual'}).skills.includes(skill));
+});
+
+test('path selectors cannot borrow provider evidence from another affected module', () => {
+  const configured=structuredClone(catalog);
+  const entry=configured.entries.find(entry=>entry.id==='practice:github-actions-path');
+  entry.when.providers=['bedrock'];
+  const result=engineRoute({intent:'review',files:['.github/workflows/ci.yml','agent/main.py'],catalog:configured,
+    project:{formatVersion:1,modules:[{name:'ci',path:'.github',providers:[]},{name:'agent',path:'agent',providers:['bedrock']}]}});
+  assert.ok(!result.loading.practices.includes(entry.id));
+});
 
 test('verification uses reasoning while declared check execution is a minimal tool plan', () => {
   const project = { formatVersion: 1, frameworks: ['react'], layers: ['ui'],

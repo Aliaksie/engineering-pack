@@ -1,6 +1,6 @@
 {
   "name": "craft-capabilities",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "description": "Portable AI capability packages: workflows, standards, skills, evals, tools and MCP with host adapters",
@@ -11,6 +11,8 @@
     "validate": "node tooling/validate-capabilities.mjs",
     "validate:claude": "claude plugin validate ./dist/claude --strict",
     "lint:scripts": "node tooling/lint-plugin-scripts.mjs",
+    "lint:workflows": "actionlint",
+    "test:workflows": "node --test tooling/workflow-lint.test.mjs",
     "test": "node tooling/run-tests.mjs",
     "sync:craft-bar": "node tooling/sync-craft-bar.mjs",
     "check": "npm run validate && npm run check:craft-bar && npm run build && npm run build:distribution && npm run validate:exports && npm run lint:scripts && npm run test:unit",
@@ -39,7 +41,9 @@
     "session:attempt": "node cli/main.mjs session-attempt",
     "session:advice": "node cli/main.mjs session-advice",
     "eval:pair": "node tooling/paired-eval.mjs",
-    "model:advice": "node cli/main.mjs model-advice"
+    "model:advice": "node cli/main.mjs model-advice",
+    "version:sync": "node tooling/version.mjs",
+    "version:check": "node tooling/version.mjs --check"
   },
   "license": "MIT"
 }

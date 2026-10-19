@@ -1,0 +1,6 @@
+{
+  "local": true,
+  "remote": {
+    "enabled": false
+  }
+}

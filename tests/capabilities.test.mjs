@@ -24,6 +24,7 @@ function fixture(t) {
   copy(path.join(root, 'hosts'), path.join(repo, 'hosts'));
   copy(path.join(root, 'docs'), path.join(repo, 'docs'));
   for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(root, folder), path.join(repo, folder));
+  fs.copyFileSync(path.join(root,'package.json'),path.join(repo,'package.json'));
   const source = byName('craft-review');
   const packageRoot = path.join(repo, 'packages', source.manifest.name);
   copy(source.root, packageRoot);
@@ -79,6 +80,13 @@ test('all adapters preserve resources, separate names, and report actual feature
       const directory = path.join(exportRoot, target === 'claude' ? 'plugins' : 'packages', manifest.name);
       assert.equal(fs.readFileSync(path.join(directory, 'LICENSE'), 'utf8'), license);
       assert.equal(entry.evals, 'included-not-executed');
+      const setup = json(path.join(directory, 'SETUP.json'));
+      assert.equal(setup.adapter, target);
+      assert.equal(setup.hooks, entry.hooks);
+      assert.ok(fs.existsSync(path.join(directory, setup.sessionAdvice.entry)));
+      assert.equal(fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8'),
+        fs.readFileSync(path.join(root, 'packages/craft-engineering/standards/session-setup.md'), 'utf8'));
+      if (target !== 'codex') assert.deepEqual(setup.controls.commands, {});
       for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.path)]) {
         assert.ok(fs.existsSync(path.join(directory, asset)), `${target}: missing ${asset}`);
       }
@@ -110,6 +118,10 @@ test('generated host exports run after relocation without source-tree imports', 
     build(repo, target);
     const moved = path.join(repo, `relocated ${target}`);
     fs.renameSync(path.join(repo, 'dist', target), moved);
+    const standalone = path.join(moved, target === 'claude' ? 'plugins' : 'packages', 'craft-review');
+    const setup = json(path.join(standalone, 'SETUP.json'));
+    assert.ok(fs.existsSync(path.join(standalone, 'SETUP.md')));
+    assert.ok(fs.existsSync(path.join(standalone, setup.sessionAdvice.entry)));
     const hook = path.join(moved, target === 'claude' ? 'plugins' : 'packages', 'craft-review', 'platform-hooks/read-only.mjs');
     const result = spawnSync(process.execPath, [hook], { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }), encoding: 'utf8' });
     if (target === 'claude') { assert.equal(result.status, 2); assert.match(result.stderr, /read-only review/); }
@@ -126,7 +138,9 @@ test('MCP exports retain external credentials and map transport names without ac
   writeJson(path.join(packageRoot, 'capability.json'), manifest);
   for (const target of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) build(repo, target);
   const claude = json(path.join(repo, 'dist/claude/plugins/craft-review/.mcp.json'));
-  const codex = json(path.join(repo, 'dist/codex/packages/craft-review/mcp.json'));
+  const codexRoot = path.join(repo, 'dist/codex/packages/craft-review');
+  const codexManifest = json(path.join(codexRoot, '.codex-plugin/plugin.json'));
+  const codex = json(path.resolve(codexRoot, codexManifest.mcpServers));
   assert.equal(claude.mcpServers.docs.type, 'http');
   assert.equal(codex.mcpServers.docs.type, 'streamable-http');
   assert.equal(codex.mcpServers.local.env.SERVICE_TOKEN, '${SERVICE_TOKEN}');

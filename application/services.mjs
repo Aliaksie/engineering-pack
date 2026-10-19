@@ -1,4 +1,14 @@
+import { observe, diagnostic } from './telemetry/observe.mjs';
 import { decide } from './engine-client.mjs';
 import { serviceBindings } from '../integrations/services.mjs';
-export const planOperation = (project, operation, params = {}) => decide('operation', { project, operation, params, bindings: serviceBindings(project, { [operation]: params }) });
-export const prepareServices = (project, options) => decide('services', { project, options, bindings: serviceBindings(project) });
+export const planOperation = (project, operation, params = {}) => observe('integration.planned', () => {
+  const result = decide('operation', { project, operation, params, bindings: serviceBindings(project, { [operation]: params }) });
+  if (result.missing) diagnostic('integration','INTEGRATION_UNAVAILABLE');
+  return result;
+}, () => ({ operation }), { failureCode:'INTEGRATION_UNAVAILABLE' });
+export const prepareServices = (project, options) => observe('integration.prepared', () => {
+  const result = decide('services', { project, options, bindings: serviceBindings(project) });
+  const unavailable = result.services.flatMap(service => service.operations).filter(operation => operation.availability === 'not-observed').length;
+  if (unavailable) diagnostic('integration','INTEGRATION_UNAVAILABLE',{ unavailableCapabilities:unavailable });
+  return result;
+}, () => ({}), { failureCode:'INTEGRATION_UNAVAILABLE' });

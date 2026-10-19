@@ -48,6 +48,13 @@ Download the [distribution ZIP](https://github.com/Aliaksie/engineering-pack/arc
 and follow the [project-rule setup](docs/PLATFORMS.md#jetbrains-native-ai-chat). External agents
 inside JetBrains use their native integration above.
 
+## First use
+
+After installing any adapter, ask **"Check Engineering Pack setup, hook activity and session usage."**
+The first-use notice explains supported features, activation that remains unverified,
+and available session controls. See [setup and session visibility](docs/ADAPTERS.md#first-use-setup-and-session-visibility)
+for manual fallbacks when your host does not expose hooks or token counters.
+
 ## Philosophy
 
 Keep vendor-neutral knowledge in one core and platform packaging thin. Prefer deterministic
@@ -140,7 +147,7 @@ better model results. Broader paired workflow evaluation remains pending; see th
 See [routing](docs/ROUTING.md), [integrations](docs/INTEGRATIONS.md),
 [hook support](docs/ADAPTERS.md) and [review bots](docs/REVIEW.md).
 [AGENTS.md](AGENTS.md) holds contributor instructions; [documentation](docs/README.md)
-indexes the full design. The initial version stays **0.0.1**.
+indexes the full design. The canonical pack version is **0.0.2**.
 
 ## Contributing and optional tools
 
@@ -156,6 +163,10 @@ matrix succeeds. See [sharing and releasing](docs/RELEASING.md) for artifact acc
 
 The optional [personal review inbox](tools/craft-review-inbox/README.md) provides a GitHub
 watch list, local review state and posted-text evidence. It is excluded from default exports.
+
+Engineering Pack does not send telemetry remotely by default. Bounded local usage metadata
+is enabled by default; see [observability and privacy](docs/OBSERVABILITY.md) to inspect
+what is collected, disable it, or opt into OTLP export.
 
 ## License
 

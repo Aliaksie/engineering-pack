@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { loadCapabilities } from './lib/capabilities.mjs';
 import { validateCatalogSources } from './lib/playbook-catalog.mjs';
+import { synchronizeVersion } from './version.mjs';
 
 function inspectRepository(repository) {
+  synchronizeVersion(repository, undefined, true);
   const packages = loadCapabilities(repository);
   if (packages.length === 0) throw new Error('no capability packages');
   const playbooks = validateCatalogSources(repository, packages);

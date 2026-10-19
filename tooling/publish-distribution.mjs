@@ -39,7 +39,7 @@ export function publishDistribution(directory, remote, revision, environment = p
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const repo = fileURLToPath(new URL('../', import.meta.url));
   const repository = process.env.GITHUB_REPOSITORY;
-  const revision = process.env.GITHUB_SHA;
+  const revision = process.env.PUBLISH_REVISION ?? process.env.GITHUB_SHA;
   const token = process.env.GH_TOKEN;
   if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REF !== 'refs/heads/main'
     || !['push', 'workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME)

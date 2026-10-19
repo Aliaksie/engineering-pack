@@ -13,7 +13,33 @@ test('hook report exposes false and missed blocks without treating its corpus as
   assert.equal(result.missedBlocks, 0);
   const permissive = policyReport(() => ({ decision: 'allow' }), cases);
   assert.equal(permissive.missedBlocks, 1);
+  assert.equal(permissive.unexpectedDecisions, 0);
   assert.match(result.limitation, /not a sampled production/);
+});
+
+test('policy report counts unexpected decisions separately from false and missed blocks', () => {
+  for (const decision of [undefined, null, 'ask']) {
+    const report = policyReport(() => ({ decision }));
+    assert.equal(report.unexpectedDecisions, report.cases.length);
+    assert.equal(report.falseBlocks, 0);
+    assert.equal(report.missedBlocks, 0);
+  }
+});
+
+test('read-only review catches literal shell scripts and active command substitutions', async () => {
+  const { evaluateReviewPublication } = await import('../application/review.mjs');
+  const decision = command => evaluateReviewPublication({ tool: 'shell', command, project: { review: { readOnly: true } } }).decision;
+  for (const command of [
+    'sh -c "git push"', "bash -lc 'git status; git push'", '/bin/sh -c "gh pr comment 1 --body review"',
+    'echo "$(git push)"', 'echo `git push`', 'echo "$(echo $(git push))"',
+    'echo "$(echo \'safe)\'; git push)"', 'sh -c \'echo "$(git push)"\''
+  ]) assert.equal(decision(command), 'deny', command);
+  for (const command of [
+    'sh -c "git status"', 'echo "$(git status)"', "echo '$(git push)'", "echo '`git push`'",
+    'echo "\\$(git push)"', 'echo "git push"', 'echo "$(echo \'git push\')"'
+  ]) assert.equal(decision(command), 'allow', command);
+  assert.equal(policyReport().missedBlocks, 0);
+  assert.equal(evaluateReviewPublication({ tool:'shell', command:'sh -c "git push"', project:{} }).decision, 'allow');
 });
 
 test('local measurement observes generated allow/deny processes and bounds its workload', () => {

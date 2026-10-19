@@ -21,7 +21,7 @@ test('Codex marketplace resolves every plugin within the generated bundle', () =
   for (const plugin of catalog.plugins) {
     assert.equal(plugin.source.source, 'local');
     assert.ok(plugin.source.path.startsWith('./'));
-    const manifest = read(path.join(root, plugin.source.path, 'plugin.json'));
+    const manifest = read(path.join(root, plugin.source.path, '.codex-plugin/plugin.json'));
     assert.equal(manifest.name, plugin.name);
     assert.equal(plugin.policy.installation, 'AVAILABLE');
     assert.ok(fs.existsSync(path.join(root, plugin.source.path, 'skills')));
@@ -32,6 +32,7 @@ test('new distributions are reproducible and do not activate hooks or MCP', t =>
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'engineering-distributions-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
   for (const directory of ['packages', 'hosts', 'tooling/export', 'engine', 'application', 'platform', 'integrations', 'cli', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
+  fs.copyFileSync(path.join(repo,'package.json'), path.join(fixture,'package.json'));
   for (const host of ['gemini-extension', 'jetbrains']) {
     build(fixture, host);
     const root = path.join(fixture, 'dist', host);
@@ -47,7 +48,7 @@ test('new distributions are reproducible and do not activate hooks or MCP', t =>
   const gemini = path.join(repo, 'dist/gemini-extension');
   const manifest = read(path.join(gemini, 'gemini-extension.json'));
   assert.equal(manifest.name, 'engineering-pack');
-  assert.equal(manifest.version, '0.0.1');
+  assert.equal(manifest.version, read(path.join(repo,'package.json')).version);
   assert.ok(fs.existsSync(path.join(gemini, manifest.contextFileName)));
   const skills = fs.readdirSync(path.join(gemini, 'skills'));
   assert.equal(skills.length, loadCapabilities(repo).reduce((sum, p) => sum + p.manifest.skills.length + p.manifest.workflows.length, 0));
@@ -60,6 +61,7 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'github-distribution-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
   for (const host of ['gemini-extension', 'claude', 'codex', 'jetbrains']) copy(path.join(repo, 'dist', host), path.join(fixture, 'dist', host));
+  fs.copyFileSync(path.join(repo,'package.json'),path.join(fixture,'package.json'));
   const output = assembleDistribution(fixture);
   const snapshot = () => files(output).map(file => [path.relative(output, file), fs.readFileSync(file, 'utf8')]);
   const before = snapshot();
@@ -70,7 +72,7 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   assert.ok(fs.existsSync(path.join(output, 'jetbrains/.aiassistant/rules/engineering-pack.md')));
   const codex = read(path.join(output, '.agents/plugins/marketplace.json'));
   for (const plugin of codex.plugins) {
-    assert.equal(read(path.join(output, plugin.source.path, 'plugin.json')).name, plugin.name);
+    assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
     assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
   }
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));

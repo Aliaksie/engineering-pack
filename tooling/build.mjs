@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePlaybookCatalog } from '../application/routing/catalog.mjs';
+import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
+import { setupControls } from '../hosts/onboarding.mjs';
 import { copy, rewriteLinks, runtimeImports, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
 import * as codex from './export/codex/index.mjs';
@@ -18,6 +20,7 @@ export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents, 'gemin
 const MARKER = '.capability-build.json';
 
 export function build(repo, target) {
+  const version = synchronizeVersion(repo, undefined, true);
   if (!Object.hasOwn(ADAPTERS, target)) throw new Error(`unknown adapter ${target}`);
   const packages = loadCapabilities(repo);
   validatePlaybookCatalog(JSON.parse(fs.readFileSync(path.join(repo, 'engine/routing/catalog.json'), 'utf8')));
@@ -38,6 +41,14 @@ export function build(repo, target) {
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
     for (const { manifest } of packages) {
       const destination = path.join(stage, packageFolder, manifest.name);
+      // Copy the canonical portable setup policy into every standalone package.
+      write(destination, 'SETUP.md', fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8'));
+      fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.\n');
+      const adapter = reports.find(entry => entry.package === manifest.name);
+      writeJson(destination, 'SETUP.json', {
+        formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
+        controls: setupControls(target)
+      });
       for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
       // Canonical package entry points import shared runtime source. Installed packages
       // resolve that same implementation locally, without fallback loaders or siblings.
@@ -47,7 +58,7 @@ export function build(repo, target) {
         if (source !== relocated) fs.writeFileSync(file,relocated);
       }
       write(destination, 'platform-runtime/session.mjs', fs.readFileSync(path.join(repo, 'hosts/session.mjs'), 'utf8'));
-      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { readSessionInput } from './platform/node/resources/session-input.mjs';\nimport { sessionStatus } from './application/session/status.mjs';\nimport { readProject } from './application/project/configuration.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readSessionInput, readProject, ${JSON.stringify(target)});\n`);
+      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { sessionStatus } from './application/session/status.mjs';\nimport { flushTelemetry } from './application/telemetry/observe.mjs';\nimport { readProject, readInput } from './application/project/configuration.mjs';\nimport { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readInput, readProject, ${JSON.stringify(target)}, { run:observeNativeSession, diagnostic:hookDiagnostic });\nawait flushTelemetry();\n`);
     }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {
@@ -75,8 +86,8 @@ export function build(repo, target) {
     }
     if (fs.existsSync(path.join(repo, 'schemas'))) copy(path.join(repo, 'schemas'), path.join(stage, 'schemas'));
     write(stage, 'AGENTS.md', `# AI Capability Packages\n\nRead the target repository's own instructions before using these optional capabilities.\n\n${reports.map((entry) => `- ${entry.package}: ${target === 'claude' ? 'plugins' : 'packages'}/${entry.package}/AGENTS.md`).join('\n')}\n\nSee adapter-report.json for feature support and limitations.\n`);
-    writeJson(stage, 'adapter-report.json', { formatVersion: 1, adapter: target, packages: reports });
-    writeJson(stage, MARKER, { formatVersion: 1, adapter: target });
+    writeJson(stage, 'adapter-report.json', { formatVersion: 1, version, adapter: target, packages: reports });
+    writeJson(stage, MARKER, { formatVersion: 1, version, adapter: target });
     fs.rmSync(output, { recursive: true, force: true });
     fs.renameSync(stage, output);
     return reports;

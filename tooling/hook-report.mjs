@@ -36,6 +36,7 @@ export function policyReport(policy = evaluate, cases = CASES) {
     cases: results,
     falseBlocks: results.filter((entry) => entry.expected === 'allow' && entry.observed === 'deny').length,
     missedBlocks: results.filter((entry) => entry.expected === 'deny' && entry.observed === 'allow').length,
+    unexpectedDecisions: results.filter((entry) => !['allow', 'deny'].includes(entry.observed)).length,
     limitation: 'Hand-labeled diagnostic examples, not a sampled production distribution or complete shell grammar.'
   };
 }
