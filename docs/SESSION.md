@@ -16,7 +16,7 @@ switches models, starts workers or invokes arbitrary side effects.
 |---|---|---|
 | Pack context | `context:report` and the current routed selection: paths, hashes, skills/references, bytes and estimated tokens | Selection does not prove the host loaded a file. Estimates are not occupancy. Missing resources make totals a lower bound. |
 | Current occupancy | Fresh `current-context` observation with counts, capacity, source, timestamp and matching session identity | Cumulative/billing tokens and file reads cannot establish occupancy. Unsupported telemetry stays unknown. |
-| Pack activity | Opt-in command receipts under `.capabilities/state/`, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
+| Pack activity | Identity-bound command receipts in private runtime state, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
 
 A task record can begin small:
 
@@ -45,8 +45,12 @@ With an explicit `--session` and `--task`, `route`, `context-report`, `locate` a
 retain their ordinary behavior without activity writes. `session` reads existing records;
 it does not increment counters simply for displaying status. Recorded counts take precedence
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
-Ignore `.capabilities/state/` in the consumer repository. Neither activity nor lookup packets
-belong in commits. Checkpoint state is excluded from repository-content comparison and lookup.
+Git repositories store runtime state under worktree-specific Git metadata, namespaced by
+canonical project root. `settings` shows the directory. Non-Git folders use
+`.capabilities/state/` with private directory/file modes where supported; exclude this
+directory before importing that folder into Git. Neither activity nor lookup packets
+belong in commits. Older workspace-local state is left untouched and is not automatically
+imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
 
 ## Pressure and continuation policy
 
@@ -206,8 +210,8 @@ a recommendation alone does not.
 Use native host indicators first. The pack does not replace the host runtime or configure
 statusline settings automatically. Builds copy the same runtime into every standalone package.
 Unsupported lifecycle enforcement remains visible in adapter reports. Default `mode` is
-`recommend`; deterministic read-only lookup and explicitly requested local receipts/checkpoints
-are the only actions introduced here. No provider/account changes, cost increases, context
+`recommend`; deterministic lookup, evidence reuse and local milestone snapshots can run
+under the effective settings. Acceptance receipts still require explicitly supplied evidence. No provider/account changes, cost increases, context
 destruction or unsafe side effects are silently executed.
 
 ## Evaluation and limits
@@ -225,13 +229,15 @@ enabled by default and independent of session counters and host occupancy; see
 [observability and privacy](OBSERVABILITY.md) for content, limits, disable configuration
 and explicit remote opt-in. Telemetry volume never estimates host context usage.
 
-## Default policy preview
+## Effective default policy
 
-`node cli/main.mjs settings --root <project>` previews the candidate default policy,
-with the origin of each leaf value. This is a configuration foundation: `runtimeApplied`
-is currently false. Existing hook and command behavior continues to use project settings;
-the preview does not activate automatic efficiency actions. Lifecycle integration and
-private-state checks must pass before these defaults become the runtime policy.
+`node cli/main.mjs settings --root <project>` shows the effective policy,
+with the origin of each leaf value and the private state directory. CLI and hooks share
+the same resolver. Routing hints, hint deduplication, milestone snapshots and lookup reuse
+are enabled by default; explicit false disables the respective automatic behavior.
+`runtimeApplied` lists connected controls and `prerequisites` identifies integration limits.
+Semantic acceptance and continuation still require agent-supplied evidence; settings never
+start workers, review or native compaction.
 
 Precedence is bundled defaults, personal preferences, project settings, then task overrides.
 Personal preferences live at `~/.config/craft/preferences.json`; `--preferences <file>`
@@ -246,10 +252,10 @@ the preference file. For a project override, add
 `"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
 Use `--data <file>` for a task override with the same restricted preference shape.
 Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
-Worker ceilings accept integers from zero through 64 and do not establish host capacity
+Worker ceilings are configuration declarations pending host dispatch integration. They accept integers from zero through 64 and do not establish host capacity
 or authorization. Review, delegation and context actions default to recommendation.
 
-A manual policy preview can use:
+A manual policy can use:
 
 ```json
 {

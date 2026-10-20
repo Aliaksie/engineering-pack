@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -149,7 +150,7 @@ test('classes use deterministic economical discovery and allow directly requeste
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {
   const { root } = fixture(t);
   run(['route', '--root', root, '--intent', 'locate']);
-  assert.ok(fs.readdirSync(path.join(root, '.capabilities/state')).every(name => name.startsWith('telemetry')));
+  assert.ok(fs.readdirSync(path.dirname(stateFile(root, 'probe.json'))).every(name => name.startsWith('telemetry')));
   assert.equal(readSessionState(root, scope.session, scope.task).activity.routingDecisions, undefined);
   run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
   run(['locate', '--root', root, '--term', 'Symbol0', '--path', 'src', '--session', scope.session, '--task', scope.task]);
@@ -185,7 +186,7 @@ test('configured quality escalation is offered, access failures stop, and escala
 test('corrupt or symlinked activity state cannot validate reuse or permit context reset', t => {
   const { root } = fixture(t);
   discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
-  const directory = path.join(root, '.capabilities/state');
+  const directory = path.dirname(stateFile(root, 'probe.json'));
   const file = fs.readdirSync(directory).find(name => name.startsWith('session-'));
   fs.writeFileSync(path.join(directory, file), '{broken');
   const result = discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
@@ -251,7 +252,9 @@ test('known host mappings identify an unnecessarily strong profile for mechanica
 
 test('unavailable optional activity storage does not suppress the routing plan', t => {
   const { root, write } = fixture(t);
-  write('.capabilities/state', 'not a directory');
+  const directory = path.dirname(stateFile(root, 'probe.json'));
+  fs.mkdirSync(path.dirname(directory), { recursive: true });
+  fs.writeFileSync(directory, 'not a directory');
   const result = run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
   assert.equal(result.intent, 'locate');
   assert.ok(result.activityDiagnostic);

@@ -1,19 +1,24 @@
 import { observe, emitTelemetry, withTelemetry, diagnostic as diagnosticError } from '../telemetry/observe.mjs';
-import { decide } from '../engine-client.mjs';
+import { readProject } from '../project/configuration.mjs';
+import { decide, digest } from '../engine-client.mjs';
 import { locate } from './locate.mjs';
 import { inventoryIdentity, realRoot } from '../../platform/index.mjs';
 import { readSessionState, updateSessionState } from '../session/activity.mjs';
 
-function discoverOperation(root, input = {}, { session, task } = {}) {
+function discoverOperation(root, input = {}, { session, task, preferencesFile } = {}) {
   const request = decide('discovery-request', { input });
   const { options, terms, paths } = request;
   if (!terms.length) return decide('discovery-deferred', { request });
   root = realRoot(root);
-  let state, identity, diagnostic;
-  if (session && task) {
+  const project = readProject(root, { preferencesFile });
+  const policyIdentity = digest(project);
+  const enabled = Boolean(session && task && project.efficiency.lookup.enabled && project.efficiency.lookup.reuse);
+  let state, identity, inventory, diagnostic;
+  if (enabled) {
     try {
       state = readSessionState(root, session, task);
-      identity = inventoryIdentity(root, paths, options.maxFiles ?? 500);
+      inventory = inventoryIdentity(root, paths, options.maxFiles ?? 500);
+      identity = inventory ? digest([inventory, policyIdentity]) : undefined;
     } catch (error) { diagnosticError('state','STATE_UNAVAILABLE'); diagnostic = error.message; }
   }
   const { reused, fresh } = observe('cache.lookup', () => decide('lookup-reuse', { terms, paths, identity, state }), result => ({ available:Boolean(identity), ...(identity ? { cacheHits:result.reused.length, cacheMisses:result.fresh.length } : {}) }));
@@ -24,15 +29,15 @@ function discoverOperation(root, input = {}, { session, task } = {}) {
     limitations: ['Reused literal navigation evidence; not semantic definitions or proof of absence.']
   };
   // Recheck versions after the scan: a concurrent edit must not certify a reusable packet.
-  const stable = identity && inventoryIdentity(root, paths, options.maxFiles ?? 500) === identity;
-  if (session && task) {
+  const stable = identity && inventoryIdentity(root, paths, options.maxFiles ?? 500) === inventory && digest(readProject(root, { preferencesFile })) === policyIdentity;
+  if (enabled) {
     try {
       updateSessionState(root, session, task, current => {
         Object.assign(current, decide('discovery-state', { current, input: { request, state, identity, reused, fresh, stable, scanned } }));
       });
     } catch (error) { diagnosticError('state','STATE_UNAVAILABLE'); diagnostic = error.message; }
   }
-  return decide('discovery-result', { request, scanned, state, identity, reused, fresh, stable: Boolean(stable), diagnostic, enabled: Boolean(session && task) });
+  return decide('discovery-result', { request, scanned, state, identity, reused, fresh, stable: Boolean(stable), diagnostic, enabled });
 }
 
 export const discover = (...args) => withTelemetry(args[0], { session:args[2]?.session }, () => observe('discovery.completed', () => discoverOperation(...args), result => ({ batchSize: result.discovery?.fresh, evidenceCount: result.matches?.length, reason: result.terms?.length === 0 ? 'deferred' : 'observed' }), { failureCode:'SEARCH_FAILED' }));

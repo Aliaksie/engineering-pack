@@ -54,5 +54,5 @@ export function effectiveSettings({ project, preferences = {}, overrides = {} })
   merge(settings, overrides, 'task', origins);
   const { elevatedAt, compactAt, restartAt } = settings.efficiency.context;
   if (!(elevatedAt < compactAt && compactAt < restartAt)) throw new Error('context thresholds must satisfy elevatedAt < compactAt < restartAt');
-  return { settings, origins, runtimeApplied: false, prerequisites: ['Automatic runtime integration and private-state verification are pending; existing runtime behavior remains active.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
+  return { settings, origins, runtimeApplied: ['routing', 'checkpoint', 'efficiency.lookup', 'efficiency.attempts.maxAttempts', 'efficiency.context.thresholds'], prerequisites: ['Automatic semantic acceptance and continuation require agent-supplied task evidence.', 'Batching, review and delegation settings require workflow and host integration; preferences never dispatch actions.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
 }

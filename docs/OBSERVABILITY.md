@@ -71,11 +71,13 @@ Disable local telemetry:
 {"local": false}
 ```
 
-Default events are appended to `.capabilities/state/telemetry.jsonl` under the project
-root selected by the CLI/hook. The file rotates at 1 MiB with one 1 MiB backup named
+Default events are appended to `telemetry.jsonl` in private runtime state for the project
+root selected by the CLI/hook. Run `settings` to inspect the directory: Git repositories use
+worktree-specific Git metadata; non-Git folders use `.capabilities/state/`. The file rotates at 1 MiB with one 1 MiB backup named
 `telemetry.jsonl.1`; events are limited to 8 KiB. New files use mode 0600 where supported.
-The correlation key is `.capabilities/state/telemetry-key.json`. Do not commit this state;
-add `.capabilities/state/` to the consumer's ignore rules. Deleting the key resets future
+The correlation key is `telemetry-key.json` in the same directory. Git metadata keeps
+state out of commits without generated configuration or ignore edits. Exclude the non-Git
+fallback directory before importing that folder into Git. Deleting the key resets future
 correlation; delete both JSONL files to remove retained local events.
 
 Writers use an exclusive lock and retry contention for up to 25 ms per append before

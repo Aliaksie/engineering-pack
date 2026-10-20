@@ -6,8 +6,8 @@ and local files work without a tracker; remote operations need explicit service 
 
 The shared runtime is copied into exported packages at `support/{engine,application,platform,integrations,cli}/`. It produces
 routing/tool plans without executing work. Optional lifecycle hooks provide routing hints
-and opt-in checkpoint snapshots; they do not force skills to load on every host.
-Edit hints are opt-in; session service metadata and bounded lookup results can be reused
+and default milestone checkpoint snapshots; they do not force skills to load on every host.
+Edit hints and hint deduplication default to enabled and can be disabled; session service metadata and bounded lookup results can be reused
 across turns instead of repeating discovery and large context dumps.
 
 Use the bundled CLI's `session` command for context occupancy, selected-guidance estimates,

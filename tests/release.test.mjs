@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -76,7 +77,7 @@ test('telemetry from a nested consumer leaves release preparation clean without 
   git(root,'push','origin','main');
   const source=git(root,'rev-parse','HEAD');
   readProject(consumer);
-  assert.ok(fs.existsSync(path.join(consumer,'.capabilities/state/telemetry.jsonl')));
+  assert.ok(fs.existsSync(stateFile(consumer,'telemetry.jsonl')));
   assert.equal(git(root,'status','--porcelain'),'');
   assert.equal(prepareRelease(root,source,'current').revision,source);
   fs.appendFileSync(path.join(consumer,'.capabilities/project.json'),'\n');

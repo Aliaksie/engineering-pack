@@ -11,7 +11,7 @@ import { prepareServices } from './routing/services.mjs';
 import { modelAdvice, capabilityAdvice } from './policy/models.mjs';
 import { sessionAdvice } from './session/advice.mjs';
 import { sessionStatus, sessionObservationPlan } from './session/status.mjs';
-import { validateMetadata, validateCheckpoint, checkpointState, compareCheckpoint } from './checkpoint.mjs';
+import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchanged, compareCheckpoint } from './checkpoint.mjs';
 import { activityUpdate, appendAttempt, attemptReceipt, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
 import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
@@ -49,6 +49,7 @@ const operations = {
   'session-status': a => sessionStatus(a.input, a.project, { ...a.options, catalog: a.catalog }),
   'session-observation-plan': a => sessionObservationPlan(a.input, a.project, a.state, a.saved, a.catalog),
   'checkpoint-metadata': a => validateMetadata(a.metadata),
+  'checkpoint-unchanged': a => checkpointUnchanged(a.previous, a.state),
   'checkpoint-state': a => checkpointState(a.previous, a.metadata, a.repository, a.updated),
   'checkpoint-compare': a => compareCheckpoint(a.saved, a.current),
   'activity-update': a => activityUpdate(a.state, a.values),

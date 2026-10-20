@@ -17,12 +17,13 @@ export function validateMetadata(metadata) {
 }
 export function checkpointState(previous, metadata, repository, updated) {
   validateMetadata(metadata);
-  const retained = Object.fromEntries(FIELDS.filter((key) => previous[key] !== undefined).map((key) => [key, previous[key]]));
+  const sameTask = metadata.taskId === undefined || metadata.taskId === previous.taskId;
+  const retained = Object.fromEntries(FIELDS.filter((key) => sameTask && previous[key] !== undefined).map((key) => [key, previous[key]]));
   const state = { formatVersion: 1, updated, ...retained, ...metadata, ...repository };
   if (metadata.continuation !== undefined) {
     state.continuationSource = { taskId: state.taskId ?? null, head: state.head,
       index: state.fingerprints.index, workingTree: state.fingerprints.workingTree, complete: state.fingerprints.complete };
-  } else if (previous.continuationSource !== undefined) {
+  } else if (sameTask && previous.continuationSource !== undefined) {
     // Automatic snapshots must not renew the source binding of older semantic notes.
     state.continuationSource = previous.continuationSource;
   }
@@ -40,4 +41,16 @@ export function compareCheckpoint(saved, current) {
 export function validateCheckpoint(state) {
   if (state && (state.formatVersion !== 1 || typeof state.head !== 'string' && state.head !== null || !Array.isArray(state.status))) throw new Error('invalid checkpoint data');
   return state;
+}
+
+export function checkpointUnchanged(previous, state) {
+  if (!previous?.fingerprints?.complete || !state.fingerprints?.complete) return false;
+  const { updated: previousTime, ...before } = previous;
+  const { updated: currentTime, ...after } = state;
+  const canonical = value => {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+    return value;
+  };
+  return JSON.stringify(canonical(before)) === JSON.stringify(canonical(after));
 }

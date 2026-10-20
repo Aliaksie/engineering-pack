@@ -33,8 +33,8 @@ test('fresh settings preview reads private preferences and creates no repository
   fs.writeFileSync(preferencesFile,JSON.stringify({routing:{editHints:false}}),{mode:0o600});
   assert.equal(readEffectiveSettings(root,{preferencesFile}).settings.routing.editHints,false);
   assert.equal(fs.existsSync(path.join(root,'.capabilities','project.json')),false);
-  // Runtime activation is a separate integration gate; preview cannot change hooks.
-  assert.deepEqual(readProject(root),{formatVersion:1});
+  assert.deepEqual(readProject(root, { preferencesFile }), readEffectiveSettings(root, { preferencesFile }).settings);
+  assert.equal(readProject(root, { preferencesFile }).routing.editHints, false);
   fs.chmodSync(preferencesFile,0o666);
   assert.throws(()=>readEffectiveSettings(root,{preferencesFile}), /writable/);
 });

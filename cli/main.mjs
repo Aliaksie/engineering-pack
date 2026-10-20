@@ -7,7 +7,7 @@ import { execute } from './requests.mjs';
 import { renderSessionStatus } from './render.mjs';
 
 const help = {
-  settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json]', mode: 'effective policy preview; does not activate automatic actions' },
+  settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json]', mode: 'effective settings, value origins, applied controls and private state location; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks'], mode: 'recommendation-only' },
   locate: { usage: 'locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]',

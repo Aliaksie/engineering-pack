@@ -11,7 +11,8 @@ function keys(value, allowed, label) {
 export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now, catalog } = {}) {
   keys(input, ['sessionId', 'task', 'usage', 'policy', 'previous', 'host', 'activity', 'packContext'], 'session input');
   if (input.sessionId !== undefined && !text(input.sessionId)) throw new Error('invalid sessionId');
-  const policy = { elevatedAt: 0.6, compactAt: 0.75, restartAt: 0.85, maxAgeMs: 300000, cooldownMs: 300000, ...input.policy };
+  const context = project.efficiency?.context ?? {};
+  const policy = { elevatedAt: context.elevatedAt ?? 0.6, compactAt: context.compactAt ?? 0.75, restartAt: context.restartAt ?? 0.85, maxAgeMs: 300000, cooldownMs: 300000, ...input.policy };
   if (input.policy !== undefined) keys(input.policy, ['elevatedAt', 'compactAt', 'restartAt', 'maxAgeMs', 'cooldownMs'], 'session policy');
   if (!Number.isFinite(policy.elevatedAt) || !Number.isFinite(policy.compactAt) || !Number.isFinite(policy.restartAt) || !(policy.elevatedAt > 0 && policy.elevatedAt < policy.compactAt && policy.compactAt < policy.restartAt && policy.restartAt <= 1)
     || !count(policy.maxAgeMs) || !count(policy.cooldownMs) || !Number.isFinite(now)) throw new Error('invalid session thresholds');
@@ -103,6 +104,8 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
     if (!text(input.previous.key) || !Number.isFinite(Date.parse(input.previous.at))) throw new Error('invalid previous suggestion');
     previous = input.previous;
   }
+  if (project.efficiency?.advice?.enabled === false || project.efficiency?.advice?.nextStep === false) suggestion = null;
+  if (project.efficiency?.context?.action === 'manual' && ['compact', 'start-new-session', 'save-handoff'].includes(suggestion?.action)) suggestion = null;
   const key = suggestion ? digest({ session: input.sessionId, task, suggestion }) : null;
   const suppressed = Boolean(key && previous?.key === key && now >= Date.parse(previous.at) && now - Date.parse(previous.at) < policy.cooldownMs);
   return { formatVersion: 1, mode: 'recommend', usage, pressure, operation: task.operation ?? task.stage ?? 'unknown', host: { name: host.name ?? 'unknown', model: host.model ?? 'unknown', reliableCompaction: host.reliableCompaction ?? null },

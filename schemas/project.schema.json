@@ -774,7 +774,8 @@
       "type": "object",
       "properties": {
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": true
         }
       },
       "additionalProperties": false,
@@ -808,12 +809,12 @@
       "properties": {
         "editHints": {
           "type": "boolean",
-          "default": false
+          "default": true
         },
         "dedupeHints": {
           "type": "boolean",
-          "default": false,
-          "description": "Opt in to session-scoped routing hint hash state; no prompts or evidence are stored."
+          "default": true,
+          "description": "Session-scoped routing hint hash state; no prompts or evidence are stored. Set false to disable."
         }
       }
     },

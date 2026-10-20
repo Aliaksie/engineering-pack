@@ -24,13 +24,13 @@ function executeRequest(action, options, root) {
       if (options[flag] !== undefined) limits[field] = Number(options[flag]);
     }
     const request = options.data ? readInput(options.data) : { terms: options.term, paths: options.path, ...limits };
-    return discover(root, request, { session: options.session, task: options.task });
+    return discover(root, request, { session: options.session, task: options.task, preferencesFile: options.preferences });
   }
-  if (action === 'prepare-services') return prepareServices(readProject(root), { availableCommands: options['available-command'], availableMcpTools: options['available-mcp-tool'] });
-  if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root), { root, session: options.session, task: options.task, bundle: options.bundle });
+  if (action === 'prepare-services') return prepareServices(readProject(root, { preferencesFile: options.preferences }), { availableCommands: options['available-command'], availableMcpTools: options['available-mcp-tool'] });
+  if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
   if (action === 'session-attempt') {
     if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');
-    const state = recordAttempt(root, options.session, options.task, readInput(options.data));
+    const state = recordAttempt(root, options.session, options.task, readInput(options.data), { preferencesFile: options.preferences });
     return { recorded: state.attempts.at(-1), authorization: 'local receipt only; no retry, model switch or command was executed' };
   }
   const activity = (result, values) => {
@@ -42,20 +42,20 @@ function executeRequest(action, options, root) {
   };
   if (action === 'model-advice') {
     if (!options.data) throw new Error('model-advice requires --data <request.json>');
-    return modelAdvice(readInput(options.data), readProject(root));
+    return modelAdvice(readInput(options.data), readProject(root, { preferencesFile: options.preferences }));
   }
-  if (action === 'lookup') return lookup(readProject(root), { file: options.file[0], module: options.module });
+  if (action === 'lookup') return lookup(readProject(root, { preferencesFile: options.preferences }), { file: options.file[0], module: options.module });
   if (action === 'context-report') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root), host: options.host, verificationMode: options['verification-mode'] });
+    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, verificationMode: options['verification-mode'] });
     const bundle = options.bundle ?? bundleRoot();
     const report = contextReport(bundle, plan, { budgetBytes: options['budget-bytes'] === undefined ? undefined : Number(options['budget-bytes']) });
     return activity(report, { filesRequested: report.totals.files, referencesRequested: plan.references.length });
   }
   if (action === 'route') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root), host: options.host, delegate: options.delegate, task: options.task, verificationMode: options['verification-mode'] });
+    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, delegate: options.delegate, task: options.task, verificationMode: options['verification-mode'] });
     return activity(plan, { routingDecisions: 1 });
   }
-  if (action === 'operation') return planOperation(readProject(root), options.operation, JSON.parse(options.params ?? '{}'));
+  if (action === 'operation') return planOperation(readProject(root, { preferencesFile: options.preferences }), options.operation, JSON.parse(options.params ?? '{}'));
   if (action === 'checkpoint-save') {
     const metadata = options.data ? readInput(options.data) : {};
     const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.task ? { taskId: options.task } : {}) });

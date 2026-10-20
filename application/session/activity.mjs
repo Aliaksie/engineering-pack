@@ -1,3 +1,4 @@
+import { readProject } from '../project/configuration.mjs';
 import { observe, diagnostic, withTelemetry } from '../telemetry/observe.mjs';
 import { decide, digest } from '../engine-client.mjs';
 import { stateFile, readState, lockState, releaseState, writeState, repositoryState, clock, uniqueId } from '../../platform/index.mjs';
@@ -21,8 +22,11 @@ function updateState(root, session, task, update) {
   } finally { releaseState(ticket); }
 }
 export const addActivity = (state, values) => Object.assign(state, decide('activity-update', { state, values }));
-function recordAttemptOperation(root, session, task, attempt) {
-  const receipt = decide('attempt-receipt', { attempt, repository: repositoryState(root), id: uniqueId(), at: clock().iso });
+function recordAttemptOperation(root, session, task, attempt, { preferencesFile } = {}) {
+  const project = readProject(root, { preferencesFile });
+  const profileLimit = project.execution?.profiles?.[attempt.profile]?.maxAttempts;
+  const boundedAttempt = { maxAttempts: profileLimit ?? project.efficiency.attempts.maxAttempts, ...attempt };
+  const receipt = decide('attempt-receipt', { attempt: boundedAttempt, repository: repositoryState(root), id: uniqueId(), at: clock().iso });
   return updateSessionState(root, session, task, state => Object.assign(state, decide('attempt-append', { state, receipt })));
 }
 
