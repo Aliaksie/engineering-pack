@@ -25,9 +25,10 @@ function regular(file, maximum) {
   if (stat && (!stat.isFile() || stat.isSymbolicLink() || stat.size > maximum)) throw new Error('invalid telemetry file');
   return stat;
 }
-export function telemetryIdentity(root, session) {
-  const file = stateFile(root, 'telemetry-key.json', true);
+export function telemetryIdentity(root, session, create = true) {
+  const file = stateFile(root, 'telemetry-key.json', create);
   let data = readState(file, 256);
+  if (!data && !create) return null;
   if (!data) {
     try { fs.writeFileSync(file, `${JSON.stringify({ key: randomBytes(32).toString('hex') })}\n`, { flag: 'wx', mode: 0o600 }); }
     catch (error) { if (error.code !== 'EEXIST') throw error; }
@@ -73,16 +74,26 @@ export function appendTelemetry(root, event) {
   } finally { releaseState(ticket); }
 }
 export function readTelemetry(root) {
+  return readTelemetrySnapshot(root).events;
+}
+export function readTelemetrySnapshot(root) {
   const file = stateFile(root, 'telemetry.jsonl');
   const events = [];
+  const storage = { files: 0, bytes: 0, backupPresent: false, malformedLines: 0, unsupportedRecords: 0, oversizedLines: 0,
+    maxFileBytes: TELEMETRY_MAX_BYTES, backupCount: 1, completeHistory: false, concurrentSnapshot: true };
   for (const name of [`${file}.1`, file]) {
-    if (!regular(name, TELEMETRY_MAX_BYTES)) continue;
+    const stat = regular(name, TELEMETRY_MAX_BYTES);
+    if (!stat) continue;
+    storage.files++; storage.bytes += stat.size;
+    if (name.endsWith('.1')) storage.backupPresent = true;
     for (const line of fs.readFileSync(name, 'utf8').split('\n')) {
-      if (Buffer.byteLength(line) > 8192) continue;
-      try { const event = JSON.parse(line); if (event.schemaVersion === 1) events.push(event); } catch { /* Skip incomplete/malformed lines. */ }
+      if (!line) continue;
+      if (Buffer.byteLength(line) > 8192) { storage.oversizedLines++; continue; }
+      try { const event = JSON.parse(line); if (event?.schemaVersion === 1) events.push(event); else storage.unsupportedRecords++; }
+      catch { storage.malformedLines++; }
     }
   }
-  return events;
+  return { events, storage };
 }
 
 // Transport only: payload construction and policy remain outside the platform.

@@ -10,5 +10,5 @@ export { readSessionInput } from './node/resources/session-input.mjs';
 export { realRoot, relativePath, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
 export { reviewSnapshot } from './node/repository/review.mjs';
 export { runtimeVersion } from './node/environment.mjs';
-export { telemetryConfiguration, telemetryIdentity, appendTelemetry, readTelemetry, postTelemetry,
+export { telemetryConfiguration, telemetryIdentity, appendTelemetry, readTelemetry, readTelemetrySnapshot, postTelemetry,
   telemetryContext, runTelemetryContext, telemetryRoot } from './node/telemetry.mjs';

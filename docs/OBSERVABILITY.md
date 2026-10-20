@@ -141,7 +141,33 @@ safe failure code and known acceptance/rejection counts. Failed exports do not c
 that events were delivered. Local retention and
 remote backend retention are separate; the collector/backend owner controls the latter.
 
-## Session view and future analysis
+## Retained observation report
+
+Run `npm run telemetry:report -- --root <project> [--session <id>]`, or use
+`node <package>/support/cli/main.mjs telemetry-report` in a standalone export.
+The bounded report counts retained feature observations and their failure/deferred outcomes,
+reported local/queue drops and failed exports. It exposes retained file bytes, backup presence,
+skipped malformed/unsupported/oversized records and invalid event envelopes. Session filtering
+uses the existing project correlation key; the application report never creates a key or state.
+Like other CLI commands, the CLI invocation itself records ordinary operational telemetry
+after reading the report. The report does not replay events to a collector.
+
+Storage and invalid-record counts describe the project files even with a session filter.
+The retained event window describes the selected valid events. Invocation-scoped observations
+cannot be attributed to a requested session and are excluded from its report. The report emits
+no raw event bodies or session identifiers. It reads at most the current file and its backup;
+concurrent writers are not locked, so the result is a best-effort snapshot.
+
+`observed` means a retained operational event exists; `unobserved` leaves applicability,
+enablement and support unknown. These counts cannot establish semantic acceptance, guidance
+loading, task attribution, worker dispatch or compaction execution. Attempt observations are
+counted individually; cumulative attempt attributes are never added together. Complete history
+is always false and total lost events stays unknown: rotation/deletion, disabled sinks and
+failures before a diagnostic can be retained cannot be reconstructed. Backup presence proves
+retained backup data, not a count of rotations or lost events. Keep campaign artifacts separately
+when a complete evaluation record is required.
+
+## Session view
 
 `npm run session -- --root <project> --session <id> --task <id>` includes the pack version
 and reuses existing session activity receipts. It does not reconstruct counters from
@@ -149,7 +175,7 @@ telemetry or treat selected guidance estimates as native occupancy. Native occup
 remains unknown unless an actual supported session-bound observation is supplied.
 
 Stable names, catalog IDs, scoped correlation, reason codes and schema versions support
-future bounded aggregations of selection frequency, batching, cache reuse and escalation.
+bounded retained-observation reports.
 No dashboard or analytics service is installed. Telemetry cannot establish a percentage
 improvement in engineering quality.
 

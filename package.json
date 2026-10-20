@@ -38,6 +38,7 @@
     "build:distribution": "node tooling/distribution.mjs",
     "context:report": "node cli/main.mjs context-report",
     "session": "node cli/main.mjs session",
+    "telemetry:report": "node cli/main.mjs telemetry-report",
     "session:attempt": "node cli/main.mjs session-attempt",
     "session:advice": "node cli/main.mjs session-advice",
     "eval:pair": "node tooling/paired-eval.mjs",
