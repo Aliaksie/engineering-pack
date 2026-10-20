@@ -133,8 +133,9 @@ Every action response distinguishes the offer, decision, current prerequisites a
 permission grant or evidence of native execution. Verify decision references against the real
 conversation/standing policy, then let the supported host perform and observe the action.
 The CLI does not dispatch workers, switch models or invoke compaction. Explicit application
-controllers accept trusted host callbacks for workers, review and compaction; no native
-transport is installed by project settings. See the [host controller contract](HOST-CONTROL.md).
+controllers accept trusted host callbacks for workers, review and compaction. The explicit
+Codex App Server adapter connects those controls for an owning client; project settings
+do not activate it. See the [host controller contract](HOST-CONTROL.md).
 Native lifecycle, actual concurrency and model round trips still require isolated integration evaluation.
 Worker success does not close main acceptance. Keep independent authorized work moving while
 an optional action is pending, and never repeat a permission/tool failure through a stronger model.

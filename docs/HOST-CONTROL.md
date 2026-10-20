@@ -4,7 +4,8 @@ The standalone runtime exports `application/session/workers.mjs` and
 `application/session/actions.mjs` under each package's `support/` directory. These explicit
 JavaScript APIs accept trusted adapter functions. Project JSON cannot load adapters or
 grant permission. CLI recommendations remain advice; the shipped hooks supply no native
-worker, review or compaction transport. Model switching remains a host/manual operation.
+worker, review or compaction transport. An explicit Codex App Server adapter is provided
+below. Model switching remains a host/manual operation.
 
 An adapter must verify real conversation/standing authorization, native capability and
 current policy before effects. It must atomically enforce native capacity and permission
@@ -79,3 +80,67 @@ it never repeats a native action. `reconcile(offerId)` calls `lookup` with the o
 key/source/checkpoint. A lookup must use durable native receipts or a fence, not inference
 from an absent response. Neither controller makes native integration verified: exercise
 actual host round trips in an isolated installation and retain the resulting evidence.
+
+## Codex App Server adapter
+
+`hosts/codex/control.mjs` (installed as `support/hosts/codex/control.mjs`) implements the
+callback contracts above against the [official Codex App Server protocol](https://developers.openai.com/codex/app-server/).
+It uses native thread/turn, inline review, interrupt and compaction operations. This is an
+explicit client integration, not a hook that controls an already-running desktop or CLI.
+Other hosts expose advice/manual execution and report the missing transport in export metadata.
+
+An integration calls `createCodexControls({ root, session, task, threadId, capacity, client,
+authorize, observations, verifyResume })` with an initialized, exclusively owned client.
+`client` supplies `request(method, params)` and `subscribe(listener)` returning an unsubscribe
+function. `openCodexControls` instead accepts explicit `processOptions: { command, args,
+cwd, env, timeoutMs, onRequest }`, starts the configured executable with `app-server --listen
+stdio://`, initializes it and resumes only the supplied coordinator thread. It never
+discovers an active UI thread. The real coordinator's session ID must match `session`.
+
+The owner supplies an isolated native profile/environment and existing authentication;
+neither entry point installs a plugin, grants trust or edits user settings. The stdio
+process inherits the caller's environment when `env` is omitted. Supply the intended
+environment explicitly to avoid falling back to active configuration. The owner must
+control enabled MCP servers, plugins, hooks and network tools as well as filesystem
+permissions: a read-only filesystem sandbox alone does not authorize external effects.
+Native server approval/input requests are rejected unless `onRequest` explicitly handles
+them through the actual host authorization mechanism. No approval is inferred from a
+Craft offer, native timeout or missing callback.
+
+`capacity` allocates the exclusive client's total lane, including one coordinator slot;
+it is not a discovered provider/account limit. The adapter inventories loaded threads,
+counts other loaded work conservatively and shares the existing task-tree admission ledger.
+Nested assignments must use the same controller object. The worker lane starts independent
+read-only threads with exact configured models, bounded briefs and native subagent tools
+disabled. It supports read-only extraction/review workers; implementation workers that need
+write access remain unsupported. This avoids inheriting the coordinator transcript or
+silently widening permissions. Model observations identify native thread configuration,
+not per-token execution or billing telemetry.
+
+The returned object exposes `workers`, `actions`, `nativeStatus()`, `output(key, cursor?)`,
+`release(workerId)` and `close()`. `output` reads bounded pages of the actual native turn
+items; the caller retains those outputs for review/evaluation. It does not interpret findings
+as acceptance. `release` unsubscribes only settled work; the slot remains occupied until a
+native observation establishes the thread is unloaded. Acknowledged interruption likewise
+holds capacity until the matching native turn settles. `close` releases local ownership;
+it does not certify workers stopped or delete their native history.
+
+`authorize` must verify current scoped authority and return `{ allowed, evidence }` for
+each native effect, including cancellation/release. `observations` supplies the fresh
+session-bound action facts expected by the generic controller. Cumulative native token
+notifications do not supply current context occupancy. Compaction is available only with
+`verifyResume`, which checks the supplied source/checkpoint after native completion and
+returns a real `acceptanceEvidence` reference. The adapter waits for the compaction item
+and matching completed turn, resumes the exact coordinator, then asks for that evidence.
+An RPC acknowledgement alone remains a started action.
+
+Native operation intent is retained in bounded private storage before each effect. One
+exclusive owner lock prevents competing clients for the same task tree. There is no
+automatic stale-lock takeover after a crash: verify the former owner/native work stopped
+before explicit local recovery. Operation records are not evicted, retries are not automatic,
+and absent native history never becomes a negative fence. Losing a start acknowledgement
+before its native identity is persisted can leave an unresolved reservation requiring manual
+reconciliation. This conservative failure mode avoids duplicate model work.
+
+The protocol mappings have deterministic process/adapter tests. Actual installed-version,
+profile, authorization and model round trips still require the separate integration campaign.

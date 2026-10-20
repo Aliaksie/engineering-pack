@@ -102,7 +102,7 @@ Host lifecycle controls belong to `hosts/`; external service mappings belong to
 ## Packages and exports
 
 Package names, manifests and useful bin/hook entry points remain external interfaces.
-The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/` and `cli/` into
+The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/`, `hosts/` and `cli/` into
 each package's `support/`, and rebases shared imports in package entry points. Installed
 packages run after relocation without authoring scripts or sibling package dependencies.
 Full bundles also expose these directories at their root. No legacy runtime paths or
