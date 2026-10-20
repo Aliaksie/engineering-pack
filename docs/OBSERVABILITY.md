@@ -85,6 +85,14 @@ Default events are appended to `telemetry.jsonl` in private runtime state for th
 root selected by the CLI/hook. Run `settings` to inspect the directory: Git repositories use
 worktree-specific Git metadata; non-Git folders use `.capabilities/state/`. The file rotates at 1 MiB with one 1 MiB backup named
 `telemetry.jsonl.1`; events are limited to 8 KiB. New files use mode 0600 where supported.
+CLI/hook application scopes collect at most 32 local events, then append that group under
+one lock/open/write/close sequence. A partial group flushes synchronously when its scope
+finishes, including operation exceptions and rejected promises; changing project, session,
+host or package scope flushes earlier pending records first. Direct `createTelemetry` callers
+retain immediate append behavior unless they explicitly select `batchLocal` and own `finish()`.
+Diagnostics remain immediate and never enter the remote export queue through this path.
+Groups rotate together when necessary, so rotation can occur up to one group earlier than
+with individual appends. The same two-file/1 MiB-per-file bounds still apply.
 The correlation key is `telemetry-key.json` in the same directory. Git metadata keeps
 state out of commits without generated configuration or ignore edits. Exclude the non-Git
 fallback directory before importing that folder into Git. Deleting the key resets future
@@ -103,6 +111,11 @@ more export work or diagnose their own failure. The bounded in-memory count is c
 after its diagnostic append succeeds; later emissions or finish calls can retry an unsuccessful
 diagnostic. Export queue drops likewise accumulate until their local diagnostic succeeds.
 These are process-local observations, not durable loss counters across process exit.
+A failed group append counts its member events, not just one failed write. Abrupt termination
+can lose a partially buffered group; reads inside an unfinished scope may not yet see its
+pending events. Explicit captures read the already-flushed log snapshot. Normal shipped
+entry points finish their scopes before returning. Batching reduces repeated filesystem and
+lock work; it does not turn this best-effort stream into a durable audit log.
 
 ## Optional OpenTelemetry export
 

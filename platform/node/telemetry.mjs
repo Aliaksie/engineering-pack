@@ -8,6 +8,7 @@ import { performance } from 'node:perf_hooks';
 import { stateFile, lockState, releaseState, readState } from './state-files.mjs';
 
 export const TELEMETRY_MAX_BYTES = 1048576;
+export const TELEMETRY_BATCH_EVENTS = 32;
 const contexts = new AsyncLocalStorage();
 const lockWait = new Int32Array(new SharedArrayBuffer(4));
 export const telemetryContext = () => contexts.getStore();
@@ -38,8 +39,15 @@ export function telemetryIdentity(root, session, create = true) {
   return createHmac('sha256', data.key).update(session).digest('hex').slice(0,32);
 }
 export function appendTelemetry(root, event) {
-  const text = `${JSON.stringify(event)}\n`;
-  if (Buffer.byteLength(text) > 8192) throw new Error('telemetry event too large');
+  return appendTelemetryBatch(root, [event]);
+}
+export function appendTelemetryBatch(root, events) {
+  if (!Array.isArray(events) || events.length < 1 || events.length > TELEMETRY_BATCH_EVENTS) throw new Error('invalid telemetry batch');
+  const text = events.map(event => {
+    const line = `${JSON.stringify(event)}\n`;
+    if (Buffer.byteLength(line) > 8192) throw new Error('telemetry event too large');
+    return line;
+  }).join('');
   const file = stateFile(root, 'telemetry.jsonl', true);
   let ticket;
   try {

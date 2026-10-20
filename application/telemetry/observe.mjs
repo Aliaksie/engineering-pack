@@ -1,4 +1,4 @@
-import { clock, uniqueId, runtimeVersion, telemetryConfiguration, telemetryIdentity, appendTelemetry, postTelemetry,
+import { clock, uniqueId, runtimeVersion, telemetryConfiguration, telemetryIdentity, appendTelemetry, appendTelemetryBatch, TELEMETRY_BATCH_EVENTS, postTelemetry,
   telemetryContext, runTelemetryContext, telemetryRoot } from '../../platform/index.mjs';
 import { otlpTraces, otlpExportOutcome } from '../../integrations/otel/traces.mjs';
 import { telemetryEvent } from './events.mjs';
@@ -6,7 +6,7 @@ import { catalog } from '../routing/catalog.mjs';
 
 const pending = [];
 const identifiers = catalog.entries.flatMap(entry => entry.skills);
-const noop = { enabled: false, emit() {}, finish() {}, enrich() {}, trace: () => undefined };
+const noop = { enabled: false, emit() {}, finish() {}, flushLocal() {}, enrich() {}, trace: () => undefined };
 const validSession = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const validPackage = value => ['craft-delivery','craft-engineering','craft-review','craft-stories'].includes(value);
 export function telemetryOptions(value = {}) {
@@ -24,8 +24,9 @@ export function telemetryOptions(value = {}) {
   }
   return { local: value.local !== false, remote };
 }
-export function createTelemetry(root, { session, host, packageName } = {}, ports = {}) {
-  const io = { clock, uniqueId, runtimeVersion, telemetryConfiguration, telemetryIdentity, appendTelemetry, ...ports };
+export function createTelemetry(root, { session, host, packageName } = {}, ports = {}, { batchLocal = false } = {}) {
+  const io = { clock, uniqueId, runtimeVersion, telemetryConfiguration, telemetryIdentity, appendTelemetry, appendTelemetryBatch, ...ports };
+  const local = [];
   let config, options, invalidConfig = false, version = null;
   try { config = io.telemetryConfiguration(root); options = telemetryOptions(config); }
   catch { invalidConfig = true; options = { local: config?.local !== false }; }
@@ -57,8 +58,16 @@ export function createTelemetry(root, { session, host, packageName } = {}, ports
   const reportQueueDrops = context => {
     if (queueDrops && localDiagnostic('EXPORT_QUEUE_FULL', { droppedEvents:queueDrops }, context)) queueDrops = 0;
   };
+  const flushLocal = () => {
+    if (!local.length) return;
+    const events = local.splice(0, TELEMETRY_BATCH_EVENTS);
+    let stored = false;
+    try { stored = io.appendTelemetryBatch(root, events) !== false; } catch { /* Advisory only. */ }
+    if (!stored) localDrops = Math.min(1e9, localDrops + events.length);
+    else if (localDrops && localDiagnostic('TELEMETRY_EVENTS_DROPPED', { droppedEvents:localDrops })) localDrops = 0;
+  };
   const handle = {
-    enabled: true, trace,
+    enabled: true, trace, flushLocal,
     enrich(identity) {
       if (!validSession(session) && validSession(identity.session)) { session = identity.session; sessionId = undefined; identityUnavailable = false; initialIdentityDiagnostic = false; }
       host ??= identity.host;
@@ -72,7 +81,8 @@ export function createTelemetry(root, { session, host, packageName } = {}, ports
         if (metadataDiagnostic) { metadataDiagnostic = false; localDiagnostic('TELEMETRY_METADATA_UNAVAILABLE',{},diagnosticContext); }
         if (initialIdentityDiagnostic) { initialIdentityDiagnostic = false; localDiagnostic('TELEMETRY_IDENTITY_UNAVAILABLE',{},diagnosticContext); }
         if (options.local) {
-          if (!write(event)) localDrops = Math.min(1e9, localDrops + 1);
+          if (batchLocal) { local.push(event); if (local.length >= TELEMETRY_BATCH_EVENTS) flushLocal(); }
+          else if (!write(event)) localDrops = Math.min(1e9, localDrops + 1);
           else if (localDrops) {
             if (localDiagnostic('TELEMETRY_EVENTS_DROPPED',{ droppedEvents:localDrops },diagnosticContext)) localDrops = 0;
           }
@@ -96,6 +106,7 @@ export function createTelemetry(root, { session, host, packageName } = {}, ports
       } catch { localDiagnostic('TELEMETRY_EVENT_INVALID',{},context); }
     },
     finish(context = {}) {
+      flushLocal();
       if (localDrops && localDiagnostic('TELEMETRY_EVENTS_DROPPED',{ droppedEvents:localDrops },context)) localDrops = 0;
       reportQueueDrops(context);
     }
@@ -122,7 +133,9 @@ export function withTelemetry(root, identity = {}, callback) {
     identity.host ??= previous.identity.host;
   }
   let handle;
-  try { handle = createTelemetry(normalized,identity); } catch { handle = noop; }
+  // Complete earlier records before entering a different project/session/package scope.
+  try { previous?.handle.flushLocal(); } catch { /* Advisory only. */ }
+  try { handle = createTelemetry(normalized,identity,{}, { batchLocal:true }); } catch { handle = noop; }
   const frame = { root:normalized, identity:{...identity}, handle };
   return runTelemetryContext(frame, () => {
     const finish = () => { try { handle.finish(); } catch { /* Advisory only. */ } };
