@@ -4,6 +4,12 @@ The exporters in `tooling/export/` construct host bundles; `hosts/` owns native 
 controls and wire formats. Service bindings separately
 choose Git/codehost/tracker tools. Build output is not automatically installed or trusted.
 
+All exports include the portable runtime and a per-feature support matrix in
+`SETUP.json`/`adapter-report.json`. The [native controller entry](HOST-CONTROL.md#common-entry-and-other-native-hosts)
+binds Codex App Server, Claude SDK and Cursor/Copilot/Gemini ACP clients. JetBrains and
+AGENTS can bind an explicit underlying agent; guidance layouts alone provide no native
+execution. Missing protocol capabilities remain unsupported, not simulated.
+
 See [current target-platform installation and support](PLATFORMS.md) for Codex, Claude,
 Gemini extensions and JetBrains, including update instructions and official sources.
 

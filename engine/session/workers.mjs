@@ -127,8 +127,8 @@ export function workerAdmission({ state, input, checked, snapshot, project, sess
     if (!known || !worker?.occupiesSlot || worker.status !== 'idle' || worker.model !== offer.model
       || state.requests.some(value => value.workerId === input.reuseWorker && ['reserved', 'dispatching', 'cancelling', 'uncertain'].includes(value.state))) throw new Error('reuse requires an observed idle mapped worker without pending assignments');
   } else if (budget.available < 1) throw new Error('worker capacity is reserved or occupied');
-  const busy = state.requests.filter(value => value.offer === offer.id && value.occupied && (value.status === 'running' || value.state !== 'observed'));
-  if (busy.length >= (offer.proposedWorkers ?? 0)) throw new Error('approved concurrent assignment scope is full');
+  const busy = new Set(state.requests.filter(value => value.offer === offer.id && value.occupied && (value.status === 'running' || value.state !== 'observed')).map(slotKey));
+  if (busy.size >= (offer.proposedWorkers ?? 0)) throw new Error('approved concurrent assignment scope is full');
   if (state.requests.length >= 64) throw new Error('worker evidence capacity reached; no records were evicted');
   const request = { id: input.id, key: digest([state.tree, input.id]), inputHash, offer: offer.id, scope: input.scope,
     source: offer.source, policy: offer.policy, host: offer.host, model: offer.model, role: offer.role, profile: offer.profile, revision: revision ?? null,

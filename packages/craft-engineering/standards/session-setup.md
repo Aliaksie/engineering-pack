@@ -45,6 +45,8 @@ Worker/review/compaction recommendations do not install native execution transpo
 Trusted application controller callbacks require a separately connected host adapter;
 settings and hook activity alone do not establish that connection. Keep main work usable
 when these controls are unavailable and report actual adapter observations separately.
+Each export's `SETUP.json` includes per-feature support and native binding requirements.
+Inspect these for the actual host; copied runtime files are not connected native controls.
 
 For bounded retained evidence, the bundled CLI's `telemetry-report --root <project-root>`
 reports feature observations, package/input attribution, reported drops and retention limits.

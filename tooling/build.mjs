@@ -6,6 +6,7 @@ import { validatePlaybookCatalog } from '../application/routing/catalog.mjs';
 import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
 import { setupControls } from '../hosts/onboarding.mjs';
+import { featureSupport } from '../hosts/capabilities.mjs';
 import { copy, rewriteLinks, runtimeImports, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
 import * as codex from './export/codex/index.mjs';
@@ -47,7 +48,7 @@ export function build(repo, target) {
       const adapter = reports.find(entry => entry.package === manifest.name);
       writeJson(destination, 'SETUP.json', {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
-        controls: setupControls(target)
+        controls: setupControls(target), featureSupport: featureSupport(target)
       });
       for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
       // Canonical package entry points import shared runtime source. Installed packages

@@ -231,6 +231,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   return { workers: workerController(root, { session, task, preferencesFile }, workerHost),
     actions: actionController(root, { session, task, preferencesFile, bundle }, actionHost), workerHost, actionHost,
     nativeStatus: () => copy(journal),
+    capabilities: () => ({ workers: true, review: true, compaction: typeof verifyResume === 'function', cancellation: true, release: true, protocol: 'Codex App Server' }),
     async output(key, cursor = null) {
       const op = journal.operations.find(value => value.key === key);
       if (!op?.threadId || !op.turnId || (cursor !== null && (typeof cursor !== 'string' || cursor.length > 4096))) throw new Error('known native turn and bounded cursor required');

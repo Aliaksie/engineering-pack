@@ -4,8 +4,8 @@ The standalone runtime exports `application/session/workers.mjs` and
 `application/session/actions.mjs` under each package's `support/` directory. These explicit
 JavaScript APIs accept trusted adapter functions. Project JSON cannot load adapters or
 grant permission. CLI recommendations remain advice; the shipped hooks supply no native
-worker, review or compaction transport. An explicit Codex App Server adapter is provided
-below. Model switching remains a host/manual operation.
+worker, review or compaction transport. Explicit native bindings are provided for Codex
+App Server, Claude Agent SDK and ACP agents. Model switching remains a host/manual operation.
 
 An adapter must verify real conversation/standing authorization, native capability and
 current policy before effects. It must atomically enforce native capacity and permission
@@ -87,7 +87,7 @@ actual host round trips in an isolated installation and retain the resulting evi
 callback contracts above against the [official Codex App Server protocol](https://developers.openai.com/codex/app-server/).
 It uses native thread/turn, inline review, interrupt and compaction operations. This is an
 explicit client integration, not a hook that controls an already-running desktop or CLI.
-Other hosts expose advice/manual execution and report the missing transport in export metadata.
+Other native bindings use the same portable controllers through the common entry below.
 
 An integration calls `createCodexControls({ root, session, task, threadId, capacity, client,
 authorize, observations, verifyResume })` with an initialized, exclusively owned client.
@@ -144,3 +144,76 @@ reconciliation. This conservative failure mode avoids duplicate model work.
 
 The protocol mappings have deterministic process/adapter tests. Actual installed-version,
 profile, authorization and model round trips still require the separate integration campaign.
+
+## Common entry and other native hosts
+
+Every standalone export ships `support/hosts/control.mjs`. Use
+`createHostControls(adapter, options)` with a verified existing client, or
+`await openHostControls(adapter, options)` to explicitly start a configured native process.
+Both expose worker/action controllers, capability inspection, native output, status and
+cleanup. Construction never installs packages or changes trust.
+
+| Export | Native binding | Limits |
+|---|---|---|
+| Codex | Owned App Server client | Exact coordinator/session and fresh native inventory |
+| Claude | Consumer-supplied official SDK `query` | Actual session/model/result stream; read-only tools |
+| Cursor | ACP v1 via `agent acp` | Advertised exact model and verified read-only mode |
+| Copilot | ACP v1 via `copilot --acp --stdio` | Optional capabilities/commands must be advertised |
+| Gemini overlay / extension | ACP v1 via `gemini --acp` | Same controls; extension still registers no hooks |
+| JetBrains | Explicit `underlyingHost` | Native AI Chat rules provide no execution API |
+| AGENTS | Explicit `underlyingHost` | Guidance provides no universal execution protocol |
+
+JetBrains and AGENTS return unsupported manual controllers without `underlyingHost`.
+With one, the actual native host owns mappings, session identity, authorization and controls.
+A JetBrains client using Claude binds `underlyingHost: "claude"`; it does not invent a
+JetBrains native chat dispatcher.
+
+ACP creation requires an initialized `client`, `protocolVersion: 1`, actual
+`agentCapabilities`, native `coordinatorState` and matching real `coordinatorId`/`session`.
+Set `readOnlyMode` from the host's verified read-only modes. Workers start fresh sessions,
+apply advertised mode/model options and verify acknowledgements. Legacy advertised modes
+are supported; missing model configuration fails closed. The owner must enforce tool
+authority and prevent native delegation outside the shared controller.
+
+Opening ACP additionally requires explicit `processOptions`: executable, optional argv/env,
+cwd, deadlines and native request handling. It advertises no client filesystem/terminal
+tools. Optional `authenticate` selects an advertised method; it does not create credentials
+or perform interactive login. Coordinator resume/load requires the advertised capability.
+No active editor session is discovered. Omitted environments inherit caller configuration;
+use an explicitly isolated profile and review its hooks, plugins and MCP connections.
+
+ACP prompt promises and startup waits have owners and bounds. Cancellation is a notification;
+the matching prompt result settles it. Optional native close must acknowledge slot release.
+Compaction sends only advertised `compact`/`compress`, requires a completed compaction entity
+and successful prompt result, then native resume/load and checkpoint-bound acceptance.
+Historical replay cannot prove a new compaction. Missing commands are never sent as model
+prompts. Fresh native `usage_update` occupancy stays separate from cumulative billing.
+
+Claude receives the installed official SDK `query` function; the package has no npm
+dependency and never searches for or installs an SDK. `sdkOptions` allow explicit environment,
+executable, plugin/settings sources, budgets and diagnostics, with permission/tool controls
+fixed to the bounded read-only lane. Follow-up work resumes only an observed idle mapped
+worker. Interrupt acknowledgement and final result settlement stay separate. Review resumes
+the exact coordinator with the approved scope. Compaction checks `supportedCommands()`
+before releasing `/compact` through streaming input, requires a compact boundary and
+successful result, then runs a separate resumed query carrying source/checkpoint. The owner
+supplies real `verifyResume` acceptance evidence; model text alone never establishes it.
+
+These bindings share bounded private intent storage, exclusive ownership and no automatic
+effect retries or stale-lock takeover. An unresolved coordinator action blocks another
+native coordinator action even after restart. Output is bounded and marks truncation;
+missing native usage/cost fields stay unknown. Native success is not delivery acceptance.
+
+Every `SETUP.json` and adapter report describes all 18 planned feature paths, activation
+requirements and evidence limits. Portable commands remain available where Node/shell
+execution exists. Hooks retain each export's actual mappings. Metadata and protocol tests
+do not establish installed activation, ordinary-work adoption or model quality.
+
+Sources: [Claude sessions](https://code.claude.com/docs/en/agent-sdk/sessions),
+[permissions](https://code.claude.com/docs/en/agent-sdk/permissions),
+[Cursor ACP](https://cursor.com/docs/cli/acp),
+[Copilot ACP](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server),
+[Gemini ACP](https://geminicli.com/docs/cli/acp-mode/),
+[ACP setup](https://agentclientprotocol.com/protocol/v1/session-setup),
+[configuration](https://agentclientprotocol.com/protocol/v1/session-config-options) and
+[prompt lifecycle](https://agentclientprotocol.com/protocol/v1/prompt-turn).

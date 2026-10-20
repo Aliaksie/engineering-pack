@@ -134,8 +134,9 @@ permission grant or evidence of native execution. Verify decision references aga
 conversation/standing policy, then let the supported host perform and observe the action.
 The CLI does not dispatch workers, switch models or invoke compaction. Explicit application
 controllers accept trusted host callbacks for workers, review and compaction. The explicit
-Codex App Server adapter connects those controls for an owning client; project settings
-do not activate it. See the [host controller contract](HOST-CONTROL.md).
+native bindings connect those controls through Codex App Server, Claude SDK or ACP for an
+owning client; JetBrains/AGENTS require an explicit underlying host. Project settings do
+not activate clients. See the [host controller contract](HOST-CONTROL.md).
 Native lifecycle, actual concurrency and model round trips still require isolated integration evaluation.
 Worker success does not close main acceptance. Keep independent authorized work moving while
 an optional action is pending, and never repeat a permission/tool failure through a stronger model.

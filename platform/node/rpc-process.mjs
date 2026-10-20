@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 
 // Bounded newline-delimited JSON RPC. Protocol interpretation belongs to the host.
-export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, onRequest } = {}) {
+export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, onRequest, jsonrpc = false } = {}) {
   if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(arg => typeof arg !== 'string')
     || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) throw new Error('invalid RPC process options');
   const child = spawn(command, args, { cwd, env, shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -17,12 +17,13 @@ export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, on
   };
   const send = value => {
     if (closed || !child.stdin.writable) throw failure();
-    const line = `${JSON.stringify(value)}\n`;
+    const line = `${JSON.stringify(jsonrpc ? { jsonrpc: '2.0', ...value } : value)}\n`;
     if (Buffer.byteLength(line) > 1024 * 1024 || child.stdin.writableLength > 2 * 1024 * 1024) throw new Error('RPC output exceeds bound');
     child.stdin.write(line);
   };
   const message = value => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid RPC envelope');
+    if (jsonrpc && value.jsonrpc !== '2.0') throw new Error('invalid JSON-RPC version');
     if (typeof value.method === 'string') {
       if (Object.hasOwn(value, 'id')) {
         if (++serverRequests > 128) throw new Error('native request capacity reached');

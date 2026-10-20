@@ -4,6 +4,7 @@ import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { hookMapping } from '../../hosts/registry.mjs';
 import { sessionCapabilities } from '../../hosts/session.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
+import { featureSupport } from '../../hosts/capabilities.mjs';
 
 export function write(root, file, text) {
   const target = path.join(root, file);
@@ -145,6 +146,7 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     hookMappings: manifest.hooks.map((definition) => ({ id: definition.name, normalizedEvent: definition.event, ...(hookMapping(platform, definition) ?? { supported: false }) })),
     runtime: 'support/cli/main.mjs',
     executionControls: setupControls(platform).execution,
+    featureSupport: featureSupport(platform),
     sessionAdvice: { entry: 'support/session.mjs', ...sessionCapabilities(platform), activation: 'explicit-only; no statusline settings or hooks changed' },
     limitations: platform === 'agents' ? ['Lifecycle hooks are not installed.', 'MCP declarations require host-specific registration.']
       : platform === 'codex' ? ['Local plugin export; hooks require host support and trust. Live host loading has not been tested.']
