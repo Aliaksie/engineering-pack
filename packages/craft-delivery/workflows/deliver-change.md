@@ -107,11 +107,9 @@ coordinator root, session and task ledger. Reuse observed idle workers where use
 completed worker still occupies capacity until the host reports release. An unknown dispatch
 outcome requires reconciliation of its operation key before another attempt.
 
-At delivery or evaluation boundaries, inspect `task-features`. Use `task-feature` to record
-applicable features as used, eligible-but-skipped, disabled, unsupported, not-applicable or
-failed, with a short reason and real evidence reference. These are agent declarations;
-runtime receipts and source freshness remain distinct. Missing outcomes stay unknown.
-Do not add a receipt after every tool call or classify missing evidence as success.
+Feature usage comes from runtime receipts and controller observations. Normal delivery does
+not inspect or classify feature usage; missing evidence stays unknown. Use `task-features`
+and `task-feature` only when an explicit evaluation requests inspection or semantic classification.
 
 Complete local delivery with the changed behavior, acceptance-to-check results and material
 limits. Record generation/check results, relevant presentation review, local revision/commit

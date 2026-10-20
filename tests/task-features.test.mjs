@@ -59,7 +59,7 @@ test('relocated standalone runtime exposes controllers and persists feature outc
   assert.equal(workerController(root, options).supported, false);
   assert.equal(actionController(root, options).supported, false);
   const invoke = (...args) => {
-    const result = spawnSync(process.execPath, [path.join(support, 'cli/main.mjs'), ...args, '--root', root, '--session', options.session], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [path.join(support, 'cli/main.mjs'), ...args, '--root', root, '--session', options.session, '--json'], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', options.task, '--goal', 'Inspect portable controls');

@@ -7,8 +7,13 @@ npm run session -- --root <project> --session <id> --task <task-id> --data <task
 
 Installed bundles expose `node support/cli/main.mjs session`. The default is a small
 status and recommendation; `--json` includes evidence, diagnostics and the selected guidance
-report. `session:advice` retains JSON output. No command automatically compacts, resets,
+report. `session:advice` uses the same display. No command automatically compacts, resets,
 switches models, starts workers or invokes arbitrary side effects.
+
+Routine `task-start`, `task-step`, `session-attempt`, `checkpoint-save`, `task-offer`,
+`task-decision` and `task-action-check` commands print compact receipts, next actions and
+diagnostics. Use `--json` or `--verbose` for the full structured result, including checkpoint
+state and guidance reports. Programmatic callers still receive the complete object.
 
 ## Normal task lifecycle
 
@@ -157,8 +162,10 @@ an optional action is pending, and never repeat a permission/tool failure throug
 
 ## Three separate measurements
 
-`task-features --session <id>` shows the bound task's feature outcomes, provenance and
-source freshness. Missing outcomes stay unknown. At a delivery/evaluation boundary, use
+Runtime receipts and host controllers record observable feature use without model
+classification. Normal delivery requires no feature inspection or bookkeeping; missing
+evidence and semantic judgments stay unknown. For an explicitly requested evaluation,
+`task-features --session <id>` shows outcomes, provenance and source freshness. Use
 `task-feature --session <id> --feature review --feature-status used --reason <reason>
 --evidence <reference>` to retain a bounded declaration. Supported statuses are `used`,
 `eligible-but-skipped`, `disabled`, `unsupported`, `not-applicable` and `failed`.

@@ -71,6 +71,10 @@ test('host transport and scoped decision are required; successful dispatch sends
   await f.offer('approved');
   const result = await f.controller.dispatch(input);
   assert.equal(result.executionObserved, true); assert.equal(result.modelMatches, true);
+  const observed = readSessionState(f.root, 's1', 'T1').featureOutcomes.delegation;
+  assert.equal(observed.status, 'used');
+  assert.equal(observed.provenance, 'runtime-observed');
+  assert.equal(observed.evidence, 'host:started');
   assert.equal(f.calls[0].model, 'consumer-worker');
   assert.deepEqual(f.calls[0].brief, brief);
   assert.equal(Object.hasOwn(f.calls[0], 'transcript'), false);

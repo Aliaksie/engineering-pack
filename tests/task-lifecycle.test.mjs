@@ -160,7 +160,7 @@ test('standalone exported CLI retains a binding across independent processes', t
   const { root } = fixture(t);
   const cli = path.resolve('dist/codex/packages/craft-delivery/support/cli/main.mjs');
   const invoke = (action, ...args) => {
-    const result = spawnSync(process.execPath, [cli, action, '--root', root, '--session', 'export-session', ...args], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [cli, action, '--root', root, '--session', 'export-session', ...args, ...(args.includes('--json') ? [] : ['--json'])], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', 'export-task', '--goal', 'Correct the exported fixture', '--file', 'value.mjs');

@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
 import { actionController } from '../application/session/actions.mjs';
 import { decide } from '../application/engine-client.mjs';
+import { readSessionState } from '../application/session/activity.mjs';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-action-')));
@@ -33,8 +34,13 @@ test('explicit host action execution requires a real decision and keeps one dura
   await assert.rejects(f.controller.execute(f.id), /pending|approval/);
   f.decideOffer('declined'); await assert.rejects(f.controller.execute(f.id), /declined/);
   assert.equal(f.calls.length, 0);
+  assert.equal(decide('feature-report', { state: readSessionState(f.root, 's1', 'T1'), repository: {} }).features.review.status, 'unknown');
   f.decideOffer('approved');
   assert.equal((await f.controller.execute(f.id)).executed, true);
+  const observed = readSessionState(f.root, 's1', 'T1').featureOutcomes.review;
+  assert.equal(observed.status, 'used');
+  assert.equal(observed.provenance, 'runtime-observed');
+  assert.equal(observed.evidence, 'host:review-current-source');
   assert.equal((await f.controller.execute(f.id)).duplicate, true);
   assert.equal(f.calls.length, 1);
 });
