@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { decide } from '../application/engine-client.mjs';
+import { readEffectiveSettings, readProject } from '../application/project/configuration.mjs';
+const resolve = input => decide('effective-settings', { project: {formatVersion:1}, ...input });
+test('nested precedence retains false, zero and sibling defaults without mutation', () => {
+  const input = { project: {formatVersion:1, routing:{editHints:false}}, preferences:{efficiency:{delegation:{maxWorkers:1}}}, overrides:{efficiency:{delegation:{maxWorkers:0}}} };
+  const before = structuredClone(input);
+  const result = resolve(input);
+  assert.equal(result.settings.routing.editHints,false);
+  assert.equal(result.settings.routing.dedupeHints,true);
+  assert.equal(result.settings.efficiency.delegation.maxWorkers,0);
+  assert.equal(result.settings.efficiency.delegation.mode,'recommend');
+  assert.equal(result.origins['efficiency.delegation.maxWorkers'],'task');
+  assert.equal(result.origins['routing.editHints'],'project');
+  assert.deepEqual(input,before);
+});
+test('invalid limits, unknown fields, permission preferences and thresholds fail', () => {
+  for (const maxWorkers of [-1,1.5,'3',null,65]) assert.throws(()=>resolve({overrides:{efficiency:{delegation:{maxWorkers}}}}), /maxWorkers/);
+  assert.throws(()=>resolve({preferences:{permissions:{writeOperations:['git.push']}}}), /unknown/);
+  assert.throws(()=>resolve({overrides:{efficiency:{context:{compactAt:0.9}}}}), /thresholds/);
+  assert.throws(()=>resolve({project:{formatVersion:1,efficiency:{unknown:true}}}), /unknown/);
+});
+test('fresh settings preview reads private preferences and creates no repository config', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(),'craft-settings-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const preferencesFile = path.join(root,'preferences.json');
+  const defaults = readEffectiveSettings(root,{preferencesFile});
+  assert.equal(defaults.settings.efficiency.delegation.maxWorkers,3);
+  fs.writeFileSync(preferencesFile,JSON.stringify({routing:{editHints:false}}),{mode:0o600});
+  assert.equal(readEffectiveSettings(root,{preferencesFile}).settings.routing.editHints,false);
+  assert.equal(fs.existsSync(path.join(root,'.capabilities','project.json')),false);
+  // Runtime activation is a separate integration gate; preview cannot change hooks.
+  assert.deepEqual(readProject(root),{formatVersion:1});
+  fs.chmodSync(preferencesFile,0o666);
+  assert.throws(()=>readEffectiveSettings(root,{preferencesFile}), /writable/);
+});
+test('symlink and oversized preference inputs are rejected before parsing', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(),'craft-settings-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const target = path.join(root,'target.json');
+  const link = path.join(root,'link.json');
+  fs.writeFileSync(target,'{}',{mode:0o600}); fs.symlinkSync(target,link);
+  assert.throws(()=>readEffectiveSettings(root,{preferencesFile:link}), /symlink/);
+  fs.writeFileSync(target,' '.repeat(65537));
+  assert.throws(()=>readEffectiveSettings(root,{preferencesFile:target}), /bounded/);
+});

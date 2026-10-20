@@ -816,6 +816,144 @@
           "description": "Opt in to session-scoped routing hint hash state; no prompts or evidence are stored."
         }
       }
+    },
+    "efficiency": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lookup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "reuse": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "batching": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "maxConcurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64,
+              "default": 3
+            }
+          }
+        },
+        "attempts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "default": 3
+            }
+          }
+        },
+        "advice": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "at": {
+              "enum": [
+                "meaningful-boundaries"
+              ],
+              "default": "meaningful-boundaries"
+            },
+            "nextStep": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend"
+            }
+          }
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "elevatedAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.6
+            },
+            "compactAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.75
+            },
+            "restartAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.85
+            },
+            "action": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend"
+            }
+          }
+        },
+        "delegation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend"
+            },
+            "maxWorkers": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64,
+              "default": 3
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": false,

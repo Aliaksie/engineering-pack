@@ -1,5 +1,5 @@
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
-import { readProject, readInput } from '../application/project/configuration.mjs';
+import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
 import { planOperation } from '../application/services.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
@@ -17,6 +17,7 @@ export function execute(action, options, root) {
 }
 function executeRequest(action, options, root) {
 
+  if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {} });
   if (action === 'locate') {
     const limits = {};
     for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {

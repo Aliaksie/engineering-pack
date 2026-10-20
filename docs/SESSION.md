@@ -224,3 +224,48 @@ The operational view includes the canonical pack version. Supporting local telem
 enabled by default and independent of session counters and host occupancy; see
 [observability and privacy](OBSERVABILITY.md) for content, limits, disable configuration
 and explicit remote opt-in. Telemetry volume never estimates host context usage.
+
+## Default policy preview
+
+`node cli/main.mjs settings --root <project>` previews the candidate default policy,
+with the origin of each leaf value. This is a configuration foundation: `runtimeApplied`
+is currently false. Existing hook and command behavior continues to use project settings;
+the preview does not activate automatic efficiency actions. Lifecycle integration and
+private-state checks must pass before these defaults become the runtime policy.
+
+Precedence is bundled defaults, personal preferences, project settings, then task overrides.
+Personal preferences live at `~/.config/craft/preferences.json`; `--preferences <file>`
+selects an explicit file for reproducible inspection. Missing files contribute no values.
+The preference file and its parent must be user-owned, cannot be symlinks and cannot be
+writable by others. Files are limited to 64 KiB. Preferences and task overrides accept
+only `routing`, `checkpoint` and `efficiency`; they cannot declare permissions, services
+or host model mappings. No configuration file is generated in the project.
+
+For a personal override, save `{"efficiency":{"delegation":{"maxWorkers":0}}}` in
+the preference file. For a project override, add
+`"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
+Use `--data <file>` for a task override with the same restricted preference shape.
+Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
+Worker ceilings accept integers from zero through 64 and do not establish host capacity
+or authorization. Review, delegation and context actions default to recommendation.
+
+A manual policy preview can use:
+
+```json
+{
+  "routing": { "editHints": false, "dedupeHints": false },
+  "checkpoint": { "enabled": false },
+  "efficiency": {
+    "lookup": { "enabled": false, "reuse": false },
+    "batching": { "enabled": false },
+    "attempts": { "enabled": false },
+    "advice": { "enabled": false, "nextStep": false },
+    "review": { "mode": "manual" },
+    "context": { "action": "manual" },
+    "delegation": { "mode": "manual", "maxWorkers": 0 }
+  }
+}
+```
+
+Explicit commands remain available. A preference is never execution permission, a
+model mapping, a hook trust decision or evidence of observed feature use.
