@@ -1,4 +1,5 @@
 import { decide, digest } from '../../application/engine-client.mjs';
+import { withTaskAdmission } from '../../application/session/admission.mjs';
 import { workerController } from '../../application/session/workers.mjs';
 import { actionController } from '../../application/session/actions.mjs';
 import { clock, realRoot, repositoryState, rpcProcess, runtimeVersion, stateFile, readState, writeState, lockState, releaseState } from '../../platform/index.mjs';
@@ -151,33 +152,37 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       const snapshot = await inventory(input);
       if (!input.reuseWorker && snapshot.occupiedSlots >= snapshot.capacity) throw new Error('native lane has no available slot');
       if (input.reuseWorker && !snapshot.workers.some(worker => worker.id === input.reuseWorker && worker.status === 'idle' && worker.model === input.model)) throw new Error('native worker is not reusable');
-      const op = begin(input, 'worker', input.reuseWorker ?? null);
-      if (!input.reuseWorker) {
-        // A fresh thread avoids inheriting the coordinator transcript. Permission escalation
-        // and built-in unmetered subagents are disabled for this adapter's worker lane.
-        const result = await native('thread/start', { cwd: root, model: input.model, sandbox: 'read-only', approvalPolicy: 'never',
-          config: { 'features.multi_agent': false, 'features.multi_agent_v2': false }, developerInstructions: 'Perform only the supplied bounded assignment. Do not delegate, write files, or perform remote writes.' });
-        if (!text(result?.thread?.id) || !text(result.model)) throw new Error('native worker/model acknowledgement is unavailable');
-        op.threadId = result.thread.id; op.model = result.model; persist();
-        if (result.model !== input.model) throw new Error('native worker model differs from the approved mapping');
-        if (result.sandbox?.type !== 'readOnly' || result.sandbox.networkAccess === true || result.approvalPolicy !== 'never') throw new Error('native worker permissions differ from the read-only lane');
-      }
-      if (decide('task-source', { repository: repositoryState(root) }) !== input.source) throw new Error('source changed before native turn start');
-      const response = await native('turn/start', { threadId: op.threadId, model: input.model,
-        input: [{ type: 'text', text: JSON.stringify({ goal: input.brief.goal, scope: input.scope, sources: input.brief.sources,
-          revision: input.revision, acceptance: input.brief.acceptance, restrictions: input.brief.restrictions, returnShape: input.brief.returnShape }) }] });
-      acknowledge(op, response.turn);
-      return workerValue(op, await readThread(op.threadId));
+      return withTaskAdmission(input, async assertCurrent => {
+        const op = begin(input, 'worker', input.reuseWorker ?? null);
+        if (!input.reuseWorker) {
+          // A fresh thread avoids inheriting the coordinator transcript. Permission escalation
+          // and built-in unmetered subagents are disabled for this adapter's worker lane.
+          const result = await native('thread/start', { cwd: root, model: input.model, sandbox: 'read-only', approvalPolicy: 'never',
+            config: { 'features.multi_agent': false, 'features.multi_agent_v2': false }, developerInstructions: 'Perform only the supplied bounded assignment. Do not delegate, write files, or perform remote writes.' });
+          if (!text(result?.thread?.id) || !text(result.model)) throw new Error('native worker/model acknowledgement is unavailable');
+          op.threadId = result.thread.id; op.model = result.model; persist();
+          if (result.model !== input.model) throw new Error('native worker model differs from the approved mapping');
+          if (result.sandbox?.type !== 'readOnly' || result.sandbox.networkAccess === true || result.approvalPolicy !== 'never') throw new Error('native worker permissions differ from the read-only lane');
+        }
+        assertCurrent();
+        const response = await native('turn/start', { threadId: op.threadId, model: input.model,
+          input: [{ type: 'text', text: JSON.stringify({ goal: input.brief.goal, scope: input.scope, sources: input.brief.sources,
+            revision: input.revision, acceptance: input.brief.acceptance, restrictions: input.brief.restrictions, returnShape: input.brief.returnShape }) }] });
+        acknowledge(op, response.turn);
+        return workerValue(op, await readThread(op.threadId));
+      });
     },
     async cancel(input) {
       await guard({ ...input, action: 'cancel' });
       const worker = latestWorker(input.workerId);
       if (!worker?.turnId) throw new Error('native cancellation needs a known turn');
-      const op = begin(input, 'cancel', input.workerId); op.turnId = worker.turnId; persist();
-      await native('turn/interrupt', { threadId: op.threadId, turnId: op.turnId });
-      op.phase = 'acknowledged'; persist(); await refresh(op);
-      if (!terminal(op.outcome)) throw new Error('native cancellation is acknowledged but its turn has not settled');
-      return workerValue(op, await readThread(op.threadId));
+      return withTaskAdmission(input, async () => {
+        const op = begin(input, 'cancel', input.workerId); op.turnId = worker.turnId; persist();
+        await native('turn/interrupt', { threadId: op.threadId, turnId: op.turnId });
+        op.phase = 'acknowledged'; persist(); await refresh(op);
+        if (!terminal(op.outcome)) throw new Error('native cancellation is acknowledged but its turn has not settled');
+        return workerValue(op, await readThread(op.threadId));
+      });
     }
   };
   const actionResult = op => ({ state: op.outcome === 'completed' && op.kind === 'review' ? 'completed' : op.phase === 'intent' || ['failed', 'interrupted'].includes(op.outcome) ? 'uncertain' : 'started',
@@ -195,17 +200,19 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       if (!['review', 'compact'].includes(input.action) || (input.action === 'compact' && typeof verifyResume !== 'function')) throw new Error('native action is unsupported');
       if ((await readThread(threadId)).status.type !== 'idle') throw new Error('native coordinator must be idle before review/compaction');
       if (journal.operations.some(op => ['review', 'compact'].includes(op.kind) && !(op.kind === 'review' ? terminal(op.outcome) : op.phase === 'resumed'))) throw new Error('an unresolved coordinator action requires reconciliation');
-      const op = begin(input, input.action, threadId);
-      if (input.action === 'review') {
-        const result = await native('review/start', { threadId, delivery: 'inline', target: { type: 'custom', instructions: `Review only this authorized scope: ${input.scope}. Source identity: ${input.source}. Report findings; do not change files or publish.` } });
-        if (result.reviewThreadId !== threadId) throw new Error('native review returned a different thread');
-        acknowledge(op, result.turn);
-      } else {
-        await native('thread/compact/start', { threadId }); op.phase = 'acknowledged';
-        for (const [key, message] of early) if (message.params?.threadId === threadId) { apply(op, message); early.delete(key); }
-        persist();
-      }
-      return actionResult(op);
+      return withTaskAdmission(input, async () => {
+        const op = begin(input, input.action, threadId);
+        if (input.action === 'review') {
+          const result = await native('review/start', { threadId, delivery: 'inline', target: { type: 'custom', instructions: `Review only this authorized scope: ${input.scope}. Source identity: ${input.source}. Report findings; do not change files or publish.` } });
+          if (result.reviewThreadId !== threadId) throw new Error('native review returned a different thread');
+          acknowledge(op, result.turn);
+        } else {
+          await native('thread/compact/start', { threadId }); op.phase = 'acknowledged';
+          for (const [key, message] of early) if (message.params?.threadId === threadId) { apply(op, message); early.delete(key); }
+          persist();
+        }
+        return actionResult(op);
+      });
     },
     async lookup(input) {
       checkContext(input); usable();
@@ -214,10 +221,13 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       await refresh(op);
       if (op.kind === 'compact' && op.compacted && op.outcome === 'completed') {
         if (op.phase === 'acknowledged') {
-          op.phase = 'resume-intent'; persist();
-          const result = await native('thread/resume', { threadId, excludeTurns: true });
-          if (result?.thread?.id !== threadId || result.thread.status?.type !== 'idle') throw new Error('native resume could not be verified');
-          op.phase = 'resumed'; persist();
+          await guard({ ...input, action: 'resume' });
+          await withTaskAdmission(input, async () => {
+            op.phase = 'resume-intent'; persist();
+            const result = await native('thread/resume', { threadId, excludeTurns: true });
+            if (result?.thread?.id !== threadId || result.thread.status?.type !== 'idle') throw new Error('native resume could not be verified');
+            op.phase = 'resumed'; persist();
+          });
         }
         if (op.phase === 'resumed' && typeof verifyResume === 'function') {
           const verified = await verifyResume(copy({ ...context, threadId, source: op.source, checkpoint: op.checkpoint }));
@@ -244,7 +254,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       if (!op) throw new Error('unknown native worker');
       await guard({ ...context, action: 'release', workerId }); await refresh(op);
       if (!terminal(op.outcome)) throw new Error('native work must settle before unsubscribing');
-      return native('thread/unsubscribe', { threadId: workerId });
+      return withTaskAdmission(context, () => native('thread/unsubscribe', { threadId: workerId }));
     },
     close() { if (closed) return; closed = true; try { unsubscribe(); } finally { releaseState(owner); } }
   };
@@ -262,6 +272,6 @@ export async function openCodexControls({ processOptions, ...options } = {}) {
     // Attach only the explicitly supplied coordinator; never discover the user's active UI.
     const result = await client.request('thread/resume', { threadId: options.threadId, excludeTurns: true });
     if (result?.thread?.id !== options.threadId || result.thread.sessionId !== options.session) throw new Error('coordinator resume identity mismatch');
-    return { ...controls, close() { controls.close(); client.close(); } };
-  } catch (error) { controls?.close(); client.close(); throw error; }
+    return { ...controls, async close() { try { controls.close(); } finally { await client.close(); } } };
+  } catch (error) { controls?.close(); await client.close(); throw error; }
 }

@@ -1,7 +1,7 @@
 import { readProject } from '../project/configuration.mjs';
 import { observe, diagnostic, withTelemetry } from '../telemetry/observe.mjs';
 import { decide, digest } from '../engine-client.mjs';
-import { stateFile, readState, lockState, releaseState, writeState, repositoryState, clock, uniqueId } from '../../platform/index.mjs';
+import { stateFile, readState, lockState, releaseState, writeState, repositoryState, repositoryCheckout, clock, uniqueId } from '../../platform/index.mjs';
 
 function filename(root, session, task, create = false) {
   decide('activity-identity', { session, task });
@@ -42,5 +42,5 @@ export function bindingFile(root, session, create = false) {
 }
 export function activeTask(root, session) {
   if (!session) return undefined;
-  return decide('task-binding', { state: readState(bindingFile(root, session), 2048) })?.task;
+  return decide('task-binding', { state: readState(bindingFile(root, session), 2048), repository: { checkout: repositoryCheckout(root) } })?.task;
 }

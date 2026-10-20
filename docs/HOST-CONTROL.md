@@ -123,7 +123,9 @@ items; the caller retains those outputs for review/evaluation. It does not inter
 as acceptance. `release` unsubscribes only settled work; the slot remains occupied until a
 native observation establishes the thread is unloaded. Acknowledged interruption likewise
 holds capacity until the matching native turn settles. `close` releases local ownership;
-it does not certify workers stopped or delete their native history.
+it does not certify workers stopped or delete their native history. Owned stdio entries return
+a promise from `close()`; await it before deleting the process working directory. Shutdown
+has a deadline and reports unverified closure if that deadline expires.
 
 `authorize` must verify current scoped authority and return `{ allowed, evidence }` for
 each native effect, including cancellation/release. `observations` supplies the fresh
@@ -198,6 +200,15 @@ the exact coordinator with the approved scope. Compaction checks `supportedComma
 before releasing `/compact` through streaming input, requires a compact boundary and
 successful result, then runs a separate resumed query carrying source/checkpoint. The owner
 supplies real `verifyResume` acceptance evidence; model text alone never establishes it.
+
+Native admission rechecks the persisted active task, checkout binding and source after asynchronous
+prerequisites, under the same binding lock used by task-start. Compaction reconciliation checks
+fresh authority again before submitting resume; reading a receipt does not authorize another query.
+
+Managed bindings check release prerequisites before persisting release intent. A premature
+release can be retried after completion. `reconcileRelease(workerId)` inspects driver observations
+for an attempted release and never repeats the effect. If the native transport cannot establish
+release after a lost acknowledgement, the slot remains uncertain and occupied.
 
 These bindings share bounded private intent storage, exclusive ownership and no automatic
 effect retries or stale-lock takeover. An unresolved coordinator action blocks another

@@ -22,7 +22,9 @@ node cli/main.mjs session --root <project> --session <host-id>
 ```
 
 Installed bundles use `support/cli/main.mjs`. `task-start` routes relevant guidance and binds
-one active task to the session using private runtime state. Read the selected resources;
+one active task to the session using private runtime state. The binding includes the Git
+symbolic ref or detached state; after changing it, rerun task-start explicitly. Older bindings
+without that checkout identity also require task-start. No branch name is prohibited. Read the selected resources;
 routing is a selection receipt, not proof they were loaded. Repeating the same id and goal
 preserves attempts and lookup evidence; use a new task id for a new outcome. A material stage
 or file-scope change can rerun `task-start` with the same goal and updated `--stage`/`--file`.
@@ -191,6 +193,10 @@ canonical project root. `settings` shows the directory. Non-Git folders use
 directory before importing that folder into Git. Neither activity nor lookup packets
 belong in commits. Older workspace-local state is left untouched and is not automatically
 imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
+
+Changing a task's stage, files, risks or checkout invalidates completed acceptance and verification.
+Continuation freshness also requires the saved task contract to match; an automatic snapshot
+cannot renew a continuation written for earlier scope.
 
 ## Pressure and continuation policy
 

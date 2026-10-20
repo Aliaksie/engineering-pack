@@ -1,4 +1,5 @@
 import { decide, digest } from '../application/engine-client.mjs';
+import { withTaskAdmission } from '../application/session/admission.mjs';
 import { workerController } from '../application/session/workers.mjs';
 import { actionController } from '../application/session/actions.mjs';
 import { clock, realRoot, repositoryState, stateFile, readState, writeState, lockState, releaseState } from '../platform/index.mjs';
@@ -81,18 +82,22 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
       await guard({ ...input, action: 'dispatch' });
       const view = await snapshot(input);
       if (view.allowed !== true || (!input.reuseWorker && view.occupiedSlots >= capacity)) throw new Error('native lane capacity or policy prohibits dispatch');
-      const op = begin(input, 'worker', input.reuseWorker ?? null);
-      const result = await driver.start(nativeCopy(input), remember(op));
-      return acknowledged(op, result);
+      return withTaskAdmission(input, async assertCurrent => {
+        const op = begin(input, 'worker', input.reuseWorker ?? null);
+        const result = await driver.start(nativeCopy(input), remember(op), assertCurrent);
+        return acknowledged(op, result);
+      });
     },
     async cancel(input) {
       await guard({ ...input, action: 'cancel' });
-      const op = begin(input, 'cancel', input.workerId);
-      // A cancellation acknowledgement does not settle the original prompt.
-      acknowledged(op, await driver.cancel(nativeCopy(input)));
-      const view = await snapshot(input), result = view.workers.find(worker => worker.id === input.workerId);
-      if (!view.requests.some(request => request.key === input.key) || !result) throw new Error('native cancellation has not settled');
-      const { id, ...value } = result; return { workerId: id, ...value };
+      return withTaskAdmission(input, async () => {
+        const op = begin(input, 'cancel', input.workerId);
+        // A cancellation acknowledgement does not settle the original prompt.
+        acknowledged(op, await driver.cancel(nativeCopy(input)));
+        const view = await snapshot(input), result = view.workers.find(worker => worker.id === input.workerId);
+        if (!view.requests.some(request => request.key === input.key) || !result) throw new Error('native cancellation has not settled');
+        const { id, ...value } = result; return { workerId: id, ...value };
+      });
     }
   };
   const actionHost = { authorize: authority,
@@ -110,9 +115,11 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
       const support = driver.capabilities();
       if (!(input.action === 'compact' ? support.compaction && typeof verifyResume === 'function' : input.action === 'review' && support.review)) throw new Error('native action unsupported');
       if (journal.operations.some(op => ['review', 'compact'].includes(op.kind) && op.phase !== 'completed')) throw new Error('unresolved coordinator action must be reconciled before another native action');
-      const op = begin(input, input.action, coordinatorId);
-      const result = await driver.act(nativeCopy(input)); acknowledged(op, result);
-      return { state: 'started', source: op.source, evidence: `${host}:${op.key}` };
+      return withTaskAdmission(input, async assertCurrent => {
+        const op = begin(input, input.action, coordinatorId);
+        const result = await driver.act(nativeCopy(input), assertCurrent); acknowledged(op, result);
+        return { state: 'started', source: op.source, evidence: `${host}:${op.key}` };
+      });
     },
     async lookup(input) {
       binding(input);
@@ -125,8 +132,13 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
       if (op.kind === 'review') { op.phase = 'completed'; persist(); return { state: 'completed', source: op.source, evidence: `${host}:${op.key}` }; }
       if (result.compacted !== true) return { state: 'uncertain' };
       if (op.phase === 'acknowledged') {
-        op.phase = 'resume-intent'; persist();
-        if ((await driver.resume(nativeCopy(op)))?.resumed !== true) return { state: 'uncertain' };
+        await guard({ ...input, action: 'resume' });
+        const { completion } = await withTaskAdmission(input, assertCurrent => {
+          op.phase = 'resume-intent'; persist();
+          // The driver submits resume synchronously; model completion must not hold the binding lock.
+          return { completion: driver.resume(nativeCopy(op), assertCurrent) };
+        });
+        if ((await completion)?.resumed !== true) return { state: 'uncertain' };
         op.phase = 'resumed'; persist();
       }
       if (op.phase !== 'resumed' || typeof verifyResume !== 'function') return { state: 'uncertain' };
@@ -138,15 +150,39 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
       return { state: 'started', source: op.source, evidence: `${host}:${op.key}` };
     }
   };
+  const reconcileRelease = async workerId => {
+    binding(context);
+    const op = journal.operations.find(value => value.kind === 'release' && value.nativeId === workerId);
+    if (!op) throw new Error('native release has no recorded attempt');
+    if (op.released) return { released: true, duplicate: true };
+    // Query the driver directly: the journal itself is not proof of native release.
+    const actual = await driver.snapshot([workerId]);
+    if (actual.workers?.some(worker => worker.id === workerId && worker.status === 'released' && worker.occupiesSlot === false)) {
+      op.phase = 'acknowledged'; op.released = true; persist(); return { released: true };
+    }
+    return { released: false, uncertain: true };
+  };
   return { workers: workerController(root, { session, task, preferencesFile }, workerHost),
     actions: actionController(root, { session, task, preferencesFile, bundle }, actionHost), workerHost, actionHost,
     capabilities: () => driver.capabilities(), nativeStatus: () => nativeCopy(journal),
     output: key => driver.output(key),
+    reconcileRelease,
     async release(workerId) {
       await guard({ ...context, action: 'release', workerId });
-      const op = begin({ ...context, key: digest([context.tree, 'release', workerId]) }, 'release', workerId);
-      if ((await driver.release(workerId))?.released !== true) throw new Error('native slot release unverified');
-      op.phase = 'acknowledged'; op.released = true; persist(); return { released: true };
+      const prior = journal.operations.find(op => op.kind === 'release' && op.nativeId === workerId);
+      if (prior) return reconcileRelease(workerId);
+      return withTaskAdmission(context, async () => {
+        if (driver.capabilities().release !== true || driver.canRelease?.(workerId) !== true) throw new Error('native work must settle and support release before recording intent');
+        const op = begin({ ...context, key: digest([context.tree, 'release', workerId]) }, 'release', workerId);
+        const result = await driver.release(workerId);
+        if (result?.released === false) {
+          // Drivers return false only when no release effect was submitted.
+          journal.operations.splice(journal.operations.indexOf(op), 1); persist();
+          throw new Error('native slot release prerequisites changed');
+        }
+        if (result?.released !== true) throw new Error('native slot release unverified; reconcile before retry');
+        op.phase = 'acknowledged'; op.released = true; persist(); return { released: true };
+      });
     },
     close() { if (closed) return; closed = true; try { driver.close(); } finally { releaseState(owner); } }
   };

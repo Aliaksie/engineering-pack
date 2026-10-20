@@ -6,6 +6,7 @@ const program = `
 let buffer='';process.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>{buffer+=chunk;let end;
 while((end=buffer.indexOf('\\n'))>=0){const m=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);
 const send=v=>process.stdout.write(JSON.stringify(v)+'\\n');
+if(m.method==='pid')send({id:m.id,result:process.pid});
 if(m.method==='echo'){send({method:'fixture/event',params:{observed:true}});send({id:m.id,result:m.params});}
 if(m.method==='approval'){send({id:'server-request',method:'item/commandExecution/requestApproval',params:{}});globalThis.waiting=m.id;}
 if(m.id==='server-request'){send({id:globalThis.waiting,result:m});}
@@ -41,4 +42,24 @@ test('malformed or oversized native streams close the connection and reject all 
     assert.ok(results.every(result => result.status === 'rejected' && result.reason.code === 'RPC_CLOSED'));
     await assert.rejects(client.request('echo'), error => error.code === 'RPC_CLOSED');
   }
+});
+
+
+test('owned RPC shutdown resolves only after exit, rejects pending work and is repeatable', async t => {
+  const client = fixture(t);
+  const pid = await client.request('pid');
+  const pending = assert.rejects(client.request('no-response'), error => error.code === 'RPC_CLOSED');
+  const closing = client.close();
+  assert.equal(client.close(), closing);
+  await closing; await pending;
+  assert.throws(() => process.kill(pid, 0), error => error.code === 'ESRCH');
+  await client.close();
+});
+
+
+test('shutdown deadline reports an unverified exit instead of claiming successful closure', { skip: process.platform === 'win32' }, async () => {
+  // Windows terminates on kill(); POSIX processes can deliberately ignore SIGTERM.
+  const client = rpcProcess({ command: process.execPath, args: ['-e', `process.on('SIGTERM', () => {});setInterval(() => {}, 1000);${program}`], shutdownTimeoutMs: 50 });
+  await client.request('pid');
+  await assert.rejects(client.close(), error => error.code === 'RPC_SHUTDOWN_TIMEOUT');
 });

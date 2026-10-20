@@ -13,7 +13,7 @@ export function createClaudeControls({ query, coordinatorId, sdkOptions = {}, st
     || Object.keys(sdkOptions).some(key => !['env', 'pathToClaudeCodeExecutable', 'plugins', 'settingSources', 'maxTurns', 'maxBudgetUsd', 'stderr'].includes(key))) throw new Error('explicit Claude SDK query, real session identity and bounded startup configuration required');
   options.root = realRoot(options.root);
   const sessions = new Map(), jobs = new Map(), cancellations = new Map(); let closed = false;
-  const launch = (input, { resume, prompt, remember = () => {}, kind }) => {
+  const launch = (input, { resume, prompt, remember = () => {}, kind, assertCurrent = () => {} }) => {
     if (closed || (resume && sessions.get(resume)?.job && !sessions.get(resume).job.settled)) throw new Error('Claude native session is busy or unavailable');
     const job = { key: input.key, kind, settled: false, uncertain: false, status: 'running', compacted: false, chunks: [], bytes: 0, truncated: false };
     jobs.set(input.key, job);
@@ -37,6 +37,7 @@ export function createClaudeControls({ query, coordinatorId, sdkOptions = {}, st
     job.done = (async () => {
       if (kind === 'compact') {
         if (typeof stream.supportedCommands !== 'function' || !(await stream.supportedCommands()).some(command => command.name === 'compact')) throw new Error('Claude does not advertise native compaction');
+        assertCurrent();
         assertNativeSource(options.root, input.source);
         permit(true);
       }
@@ -99,10 +100,10 @@ export function createClaudeControls({ query, coordinatorId, sdkOptions = {}, st
       if (!state?.job || state.job.settled || typeof state.job.stream.interrupt !== 'function') throw new Error('Claude native interrupt is unavailable for this active worker');
       cancellations.set(input.key, state.id); await state.job.stream.interrupt(); return value(state);
     },
-    async act(input) {
-      launch(input, { resume: coordinatorId, kind: input.action, prompt: input.action === 'compact' ? '/compact'
+    async act(input, assertCurrent) {
+      const { started } = launch(input, { assertCurrent, resume: coordinatorId, kind: input.action, prompt: input.action === 'compact' ? '/compact'
         : `Review only this authorized scope: ${input.scope}. Source identity: ${input.source}. Return findings and evidence. Do not write, delegate or publish.` });
-      return {};
+      await started; return {};
     },
     async lookup(op) {
       const job = jobs.get(op.key);
@@ -119,6 +120,7 @@ export function createClaudeControls({ query, coordinatorId, sdkOptions = {}, st
       const job = jobs.get(key);
       return job ? { chunks: copy(job.chunks), truncated: job.truncated, nativeResult: copy(job.result ?? null), semanticVerdict: 'not-judged' } : { unavailable: true };
     },
+    canRelease: id => Boolean(sessions.get(id)?.job?.settled && !sessions.get(id).job.uncertain && typeof sessions.get(id).job.stream.close === 'function'),
     async release(id) {
       const state = sessions.get(id);
       if (!state?.job?.settled || state.job.uncertain || typeof state.job.stream.close !== 'function') return { released: false };

@@ -89,3 +89,20 @@ test('queue loss diagnostics retain dropped counts across a failing local sink w
   });
   assert.equal(exported, 32);
 });
+
+test('introducing a child package never attributes later events in an unknown parent', async t => {
+  const root = fixture(t);
+  await withTelemetry(root, { session: 'private' }, async () => {
+    emitTelemetry('session.observed');
+    await withTelemetry(root, { packageName: 'craft-review' }, async () => {
+      await Promise.resolve(); emitTelemetry('review.completed');
+      withTelemetry(root, {}, () => emitTelemetry('session.advice'));
+    });
+    emitTelemetry('session.observed');
+  });
+  const events = readTelemetry(root);
+  assert.deepEqual(events.map(event => event.attributes.package), [undefined, 'craft-review', 'craft-review', undefined]);
+  assert.equal(events[0].traceId, events[3].traceId);
+  assert.notEqual(events[0].traceId, events[1].traceId);
+  assert.equal(events[1].traceId, events[2].traceId);
+});

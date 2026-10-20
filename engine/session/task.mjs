@@ -9,12 +9,16 @@ function stage(value) { if (!Object.hasOwn(taskIntents, value)) throw new Error(
 function keys(value, allowed, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) throw new Error(`invalid ${label}`);
 }
-export function taskBinding(value) {
+export function taskBinding(value, repository) {
   if (value === null) return null;
-  keys(value, ['formatVersion', 'task'], 'task binding');
+  keys(value, ['formatVersion', 'task', 'checkout'], 'task binding');
   if (value.formatVersion !== 1) throw new Error('invalid task binding version');
   activityIdentity('binding', value.task);
-  return value;
+  if (value.checkout !== undefined && value.checkout !== null && (typeof value.checkout !== 'string' || value.checkout.length > 1024)) throw new Error('invalid task checkout binding');
+  return repository && (value.checkout === undefined || value.checkout !== (repository.checkout ?? null)) ? null : value;
+}
+export function taskContract(record) {
+  return record ? digest([record.id, record.goal, record.stage, record.files ?? [], record.risks ?? [], record.checkout ?? null]) : null;
 }
 export function taskSource(repository) {
   return repository?.gitAvailable && repository.fingerprints?.complete
@@ -32,11 +36,17 @@ export function startTask(state, input, repository) {
   if (input.risks !== undefined && (!Array.isArray(input.risks) || input.risks.length > 16 || input.risks.some(value => !text(value)))) throw new Error('invalid task risks');
   if (input.reviewAuthorization !== undefined && !text(input.reviewAuthorization)) throw new Error('invalid review authorization evidence');
   state.taskRecord ??= { id: input.id, goal: input.goal, status: 'working', goalComplete: false };
-  if (state.taskRecord.stage && state.taskRecord.stage !== selected) {
+  const risks = input.risks ?? state.taskRecord.risks ?? [];
+  const changed = state.taskRecord.stage && (state.taskRecord.stage !== selected
+    || JSON.stringify(state.taskRecord.files ?? []) !== JSON.stringify(files)
+    || JSON.stringify(state.taskRecord.risks ?? []) !== JSON.stringify(risks)
+    || state.taskRecord.checkout !== (repository.checkout ?? null));
+  if (changed) {
     Object.assign(state.taskRecord, { status: 'working', goalComplete: false });
     delete state.taskRecord.verification; delete state.taskRecord.verificationRevision;
+    delete state.taskRecord.completed; state.taskRecord.safeBoundary = false;
   }
-  Object.assign(state.taskRecord, { stage: selected, files, ...(input.risks ? { risks: input.risks } : {}), ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
+  Object.assign(state.taskRecord, { stage: selected, files, risks, checkout: repository.checkout ?? null, ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
   return { state, intent: taskIntents[selected], context: taskContext(state, repository) };
 }
 export function taskContext(state, repository) {
@@ -45,9 +55,10 @@ export function taskContext(state, repository) {
   if (!text(record.id) || !text(record.goal)) throw new Error('invalid saved task record');
   stage(record.stage);
   const source = taskSource(repository);
-  const stale = Boolean(record.summary && (!source || record.source !== source));
+  const stale = Boolean(record.summary && (!source || record.source !== source
+    || record.acceptedContract !== taskContract(record) || record.checkout !== (repository.checkout ?? null)));
   const task = Object.fromEntries(['id', 'stage', 'status', 'goalComplete', 'files', 'revision', 'verification', 'verificationRevision', 'safeBoundary', 'nextStep', 'risks', 'reviewRequested'].filter(key => record[key] !== undefined && record[key] !== null).map(key => [key, record[key]]));
-  if (stale) Object.assign(task, { status: 'working', goalComplete: false, verification: 'unknown', verificationRevision: undefined });
+  if (stale) Object.assign(task, { status: 'working', goalComplete: false, verification: 'unknown', verificationRevision: undefined, safeBoundary: false });
   return { task, stale, summary: record.summary ?? null, nextStep: record.nextStep ?? null };
 }
 export function recordTaskStep(state, input, repository, id, at) {
@@ -68,6 +79,7 @@ export function recordTaskStep(state, input, repository, id, at) {
     summary: input.result, nextStep: input.nextStep });
   if (selected === 'verify') Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
   else { delete record.verification; delete record.verificationRevision; }
+  record.acceptedContract = taskContract(record);
   if (input.outcome === 'passed' && !record.completed?.endsWith(input.result)) record.completed = [record.completed, input.result].filter(Boolean).join('\n').slice(-1024);
   const continuation = { goal: record.goal, currentState: input.result,
     completed: record.completed ?? '', approach: input.approach, evidence: input.evidence,

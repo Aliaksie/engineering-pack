@@ -8,7 +8,7 @@ import { writeState, lockState, releaseState, repositoryState, clock, uniqueId }
 
 function checkpoint(root, session, task, project, continuation, expectedSource) {
   if (!project.checkpoint.enabled) return { status: 'disabled' };
-  try { return saveCheckpoint(root, session, { taskId: task, ...(continuation ? { continuation } : {}) }, { expectedSource }); }
+  try { return saveCheckpoint(root, session, { taskId: task, taskContract: decide('task-contract', { record: readSessionState(root, session, task).taskRecord }), ...(continuation ? { continuation } : {}) }, { expectedSource }); }
   catch (error) { return { status: 'unavailable', reason: error.message }; }
 }
 export function startTask(root, session, task, input, { host, preferencesFile } = {}) {
@@ -31,7 +31,7 @@ export function startTask(root, session, task, input, { host, preferencesFile } 
       const current = decide('task-start', { state, input: { ...input, id: task }, repository });
       Object.assign(state, current.state); addActivity(state, { routingDecisions: 1 });
     });
-    writeState(file, { formatVersion: 1, task }, 2048);
+    writeState(file, { formatVersion: 1, task, checkout: repository.checkout }, 2048);
     return { session, task, routing, modelAdvice: model, checkpoint: checkpoint(root, session, task, project),
       authorization: 'Local task binding and snapshot only; no acceptance, worker, model switch or remote action was inferred.' };
   } finally { releaseState(ticket); }

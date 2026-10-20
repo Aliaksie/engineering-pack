@@ -1,6 +1,7 @@
 import { sessionAdvice } from './advice.mjs';
 import { attemptStatus } from './activity.mjs';
 import { capabilityAdvice, modelAdvice } from '../policy/models.mjs';
+import { taskContract } from './task.mjs';
 import { digest } from '../cache/identity.mjs';
 import { route } from '../routing/route.mjs';
 
@@ -43,7 +44,9 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
       const recovered = continuation && sameTask ? observations.recovered
         : { saved, changed: null, changeDetection: { complete: false } };
       repositoryEvidence = recovered.current;
-      const continuationUnchanged = binding?.complete === true && recovered.current?.head === binding.head
+      const continuationUnchanged = binding?.complete === true
+        && (!state?.taskRecord || (binding.taskContract === taskContract(state.taskRecord) && state.taskRecord.checkout === recovered.current?.checkout))
+        && (binding.checkout ?? null) === (recovered.current?.checkout ?? null) && recovered.current?.head === binding.head
         && recovered.current?.fingerprints.index === binding.index && recovered.current?.fingerprints.workingTree === binding.workingTree;
       const fresh = Boolean(continuation && sameTask && continuationUnchanged && recovered.changed === false && recovered.changeDetection.complete);
       normalized.task.handoffSaved = Boolean(continuation && sameTask);

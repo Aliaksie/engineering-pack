@@ -172,3 +172,47 @@ test('explicit task data and notice inputs take precedence over the session bind
   assert.equal(command('checkpoint-save', '--data', data).state.taskId, 'fix-value');
   assert.equal(activeTask(root, 'host-session'), 'another-task');
 });
+
+test('scope and risk changes invalidate completed acceptance and continuation without source edits', t => {
+  const { root, command, start } = fixture(t); start();
+  command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  assert.equal(command('session').checkpoint.status, 'fresh');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', 'value.mjs', '--file', 'another.mjs', '--risk', 'security');
+  const status = command('session');
+  assert.equal(status.task.goalComplete, false);
+  assert.notEqual(status.task.verification, 'passed');
+  assert.equal(status.taskEvidenceStale, true);
+  assert.equal(status.checkpoint.status, 'stale-or-incomplete');
+  assert.equal(readCheckpoint(root, 'host-session').continuation.currentState, 'Acceptance checked');
+});
+
+test('same-SHA branch and detached transitions require rebinding and new acceptance', t => {
+  const { root, git, command, start } = fixture(t); start();
+  const complete = () => command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  complete();
+  const original = git('rev-parse', 'HEAD');
+  for (const transition of [['switch', '-c', 'consumer-trunk'], ['switch', '--detach', original]]) {
+    git(...transition);
+    assert.equal(git('rev-parse', 'HEAD'), original);
+    assert.equal(activeTask(root, 'host-session'), undefined);
+    assert.throws(() => complete(), /task-start binding/);
+    const stale = command('session', '--task', 'fix-value');
+    assert.equal(stale.task.goalComplete, false);
+    assert.equal(stale.checkpoint.status, 'stale-or-incomplete');
+    command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify');
+    assert.equal(activeTask(root, 'host-session'), 'fix-value');
+    assert.equal(command('session').task.goalComplete, false);
+    assert.equal(complete().status.checkpoint.status, 'fresh');
+  }
+});
+
+
+test('risk-only changes invalidate verification and continuation for unchanged files', t => {
+  const { command, start } = fixture(t); start();
+  command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', 'value.mjs', '--risk', 'security');
+  const status = command('session');
+  assert.equal(status.task.goalComplete, false);
+  assert.notEqual(status.task.verification, 'passed');
+  assert.equal(status.checkpoint.status, 'stale-or-incomplete');
+});

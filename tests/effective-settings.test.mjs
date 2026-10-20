@@ -35,8 +35,10 @@ test('fresh settings preview reads private preferences and creates no repository
   assert.equal(fs.existsSync(path.join(root,'.capabilities','project.json')),false);
   assert.deepEqual(readProject(root, { preferencesFile }), readEffectiveSettings(root, { preferencesFile }).settings);
   assert.equal(readProject(root, { preferencesFile }).routing.editHints, false);
-  fs.chmodSync(preferencesFile,0o666);
-  assert.throws(()=>readEffectiveSettings(root,{preferencesFile}), /writable/);
+  if (process.platform !== 'win32') {
+    fs.chmodSync(preferencesFile,0o666);
+    assert.throws(()=>readEffectiveSettings(root,{preferencesFile}), /writable/);
+  }
 });
 test('symlink and oversized preference inputs are rejected before parsing', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'craft-settings-'));

@@ -1,7 +1,7 @@
 // Composition root for concrete runtime ports. Use cases depend on these
 // bounded operations; Node implementation details stay in node/.
 export { stateFile, stateLocation, readState, lockState, releaseState, writeState } from './node/state-files.mjs';
-export { gitState as repositoryState } from './node/repository/snapshot.mjs';
+export { gitState as repositoryState, gitCheckout as repositoryCheckout } from './node/repository/snapshot.mjs';
 export { scan } from './node/search.mjs';
 export { inventoryIdentity } from './node/repository/inventory.mjs';
 export { contextFiles } from './node/resources/context.mjs';

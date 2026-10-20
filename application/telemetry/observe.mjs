@@ -121,7 +121,7 @@ export function withTelemetry(root, identity = {}, callback) {
   try { normalized = telemetryRoot(root); } catch { return callback(); }
   const sameSession = identity.session === undefined || identity.session === previous?.identity.session || !validSession(previous?.identity.session);
   const sameHost = identity.host === undefined || previous?.identity.host === undefined || identity.host === previous.identity.host;
-  const samePackage = identity.packageName === undefined || previous?.identity.packageName === undefined || identity.packageName === previous.identity.packageName;
+  const samePackage = identity.packageName === undefined || identity.packageName === previous?.identity.packageName;
   if (previous?.root === normalized && sameSession && sameHost && samePackage) {
     previous.handle.enrich(identity);
     previous.identity.session ??= identity.session; previous.identity.host ??= identity.host;

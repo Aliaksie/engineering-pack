@@ -1,10 +1,12 @@
 import { spawn } from 'node:child_process';
 
 // Bounded newline-delimited JSON RPC. Protocol interpretation belongs to the host.
-export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, onRequest, jsonrpc = false } = {}) {
+export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, shutdownTimeoutMs = 5000, onRequest, jsonrpc = false } = {}) {
   if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(arg => typeof arg !== 'string')
-    || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) throw new Error('invalid RPC process options');
+    || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000 || !Number.isSafeInteger(shutdownTimeoutMs) || shutdownTimeoutMs < 1 || shutdownTimeoutMs > 30000) throw new Error('invalid RPC process options');
   const child = spawn(command, args, { cwd, env, shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
+  let shutdown;
+  const terminated = new Promise(resolve => child.once('close', resolve));
   const pending = new Map(), listeners = new Set();
   let sequence = 0, buffer = '', closed = false, diagnostic = '', serverRequests = 0;
   const failure = () => Object.assign(new Error('Native RPC connection closed; effect outcome may be unknown'), { code: 'RPC_CLOSED' });
@@ -75,7 +77,18 @@ export function rpcProcess({ command, args = [], cwd, env, timeoutMs = 30000, on
     },
     notify: (method, params = {}) => send({ method, params }),
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    close() { fail(); child.stdin.destroy(); child.kill(); },
+    close() {
+      if (shutdown) return shutdown;
+      fail(); child.stdin.destroy(); child.kill();
+      shutdown = new Promise((resolve, reject) => {
+        const deadline = setTimeout(() => {
+          child.kill('SIGKILL');
+          reject(Object.assign(new Error('Native RPC shutdown deadline exceeded; process closure is unverified'), { code: 'RPC_SHUTDOWN_TIMEOUT' }));
+        }, shutdownTimeoutMs);
+        terminated.then(() => { clearTimeout(deadline); resolve(); });
+      });
+      return shutdown;
+    },
     // Explicit local diagnostics only; never forwarded into telemetry or task records.
     diagnostic: () => diagnostic
   };

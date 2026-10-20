@@ -2,7 +2,7 @@ import { actionFacts, proposeAction, decideAction, checkAction, claimAction, fin
 import { workerBudget } from './routing/worker-budget.mjs';
 import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers } from './session/workers.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
-import { taskBinding, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
+import { taskBinding, taskContract, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
@@ -48,7 +48,8 @@ const operations = {
   'action-check': a => checkAction(a),
   'action-claim': a => claimAction(a),
   'action-finish': a => finishAction(a),
-  'task-binding': a => taskBinding(a.state),
+  'task-binding': a => taskBinding(a.state, a.repository),
+  'task-contract': a => taskContract(a.record),
   'task-start': a => startTask(a.state, a.input, a.repository),
   'task-source': a => taskSource(a.repository),
   'task-context': a => taskContext(a.state, a.repository),

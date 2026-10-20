@@ -11,13 +11,15 @@ export function projectData(root) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-// Only an explicitly selected or private, user-owned preference file is trusted.
+// Reject unsafe filesystem inputs everywhere; POSIX also enforces ownership and mode privacy.
 export function preferenceData(file) {
   const stat = fs.lstatSync(file, { throwIfNoEntry: false });
   if (!stat) return {};
   const parent = fs.lstatSync(path.dirname(file));
+  // Windows stat mode bits do not describe ACL ownership or write access.
+  const posixPermissions = process.platform !== 'win32';
   for (const entry of [parent, stat]) {
-    if (entry.isSymbolicLink() || (process.getuid && entry.uid !== process.getuid()) || (entry.mode & 0o022)) throw new Error('preferences must be user-owned, non-symlink and not writable by others');
+    if (entry.isSymbolicLink() || (posixPermissions && ((process.getuid && entry.uid !== process.getuid()) || (entry.mode & 0o022)))) throw new Error('preferences must be user-owned, non-symlink and not writable by others');
   }
   if (!stat.isFile() || stat.size > 65536) throw new Error('preferences must be a bounded JSON file');
   const fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));

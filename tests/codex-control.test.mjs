@@ -171,7 +171,7 @@ test('native compaction acknowledgements cannot substitute for resume acceptance
 test('owned stdio entry initializes and resumes only the explicit coordinator without model execution', async t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-codex-owned-')));
   let controls;
-  t.after(() => { controls?.close(); fs.rmSync(root, { recursive: true, force: true }); });
+  t.after(async () => { await controls?.close(); fs.rmSync(root, { recursive: true, force: true }); });
   const code = `let initialized=false,buffer='';process.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>{buffer+=chunk;let end;
 while((end=buffer.indexOf('\\n'))>=0){const m=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);let result;
 if(m.method==='initialize')result={userAgent:'fixture'};
@@ -208,4 +208,62 @@ test('relocated standalone export ships the concrete Codex adapter with local ru
   const module = await import(pathToFileURL(path.join(root, 'support/hosts/codex/control.mjs')));
   const f = fixture(t, module.createCodexControls); f.client.completeEarly = true;
   assert.equal((await f.controls.workers.dispatch(f.assignment(await f.offer('delegate')))).executionObserved, true);
+});
+
+test('Codex rejects review, compaction and dispatch when authorization switches the active task', async t => {
+  for (const kind of ['review', 'compact', 'delegate']) {
+    const f = fixture(t);
+    if (kind === 'compact') stepTask(f.root, 'session', 'task', { stage: 'verify', target: 'acceptance:source', approach: 'bounded-check', evidence: 'checks:source', outcome: 'passed', result: 'Source checked', nextStep: 'Continue inspection' });
+    const id = await f.offer(kind);
+    const controls = f.reopen({ authorize: async input => {
+      if (input.key && input.action === (kind === 'delegate' ? 'dispatch' : kind)) startTask(f.root, 'session', 'new-task', { goal: 'A new active task' });
+      return { allowed: true, evidence: 'user:scoped-work' };
+    } });
+    if (kind === 'delegate') await controls.workers.dispatch(f.assignment(id));
+    else await controls.actions.execute(id);
+    assert.equal(f.calls.some(call => ['thread/start', 'turn/start', 'review/start', 'thread/compact/start'].includes(call.method)), false, kind);
+  }
+});
+
+test('Codex rechecks the binding after metadata prerequisites and fences switches during native effects', async t => {
+  const f = fixture(t), id = await f.offer('review');
+  const request = f.client.request;
+  let switched = false;
+  f.client.request = async (method, params) => {
+    if (method === 'thread/read' && !switched) {
+      switched = true; startTask(f.root, 'session', 'new-task', { goal: 'A new active task' });
+    }
+    return request(method, params);
+  };
+  await f.controls.actions.execute(id);
+  assert.equal(switched, true);
+  assert.equal(f.calls.some(call => call.method === 'review/start'), false);
+});
+
+test('Codex compaction resume requires fresh authority and unchanged source', async t => {
+  for (const revoked of [true, false]) {
+    const f = fixture(t);
+    stepTask(f.root, 'session', 'task', { stage: 'verify', target: 'acceptance:source', approach: 'bounded-check', evidence: 'checks:source', outcome: 'passed', result: 'Source checked', nextStep: 'Continue inspection' });
+    const id = await f.offer('compact'); await f.controls.actions.execute(id);
+    if (revoked) f.allowed(false);
+    else fs.appendFileSync(path.join(f.root, 'value.mjs'), '// newer source');
+    await assert.rejects(f.controls.actions.reconcile(id), /authority|source/);
+    assert.equal(f.calls.some(call => call.method === 'thread/resume'), false);
+  }
+});
+
+test('native worker submission holds the active binding fence until its prerequisites finish', async t => {
+  const f = fixture(t), input = f.assignment(await f.offer('delegate'));
+  const request = f.client.request; let fenced = false;
+  f.client.request = async (method, params) => {
+    if (method === 'thread/start') {
+      assert.throws(() => startTask(f.root, 'session', 'new-task', { goal: 'A new active task' }), /writer is busy/);
+      fenced = true;
+    }
+    return request(method, params);
+  };
+  assert.equal((await f.controls.workers.dispatch(input)).executionObserved, true);
+  assert.equal(fenced, true);
+  // The fence is released after submission, so ordinary task switching still works.
+  startTask(f.root, 'session', 'new-task', { goal: 'A new active task' });
 });

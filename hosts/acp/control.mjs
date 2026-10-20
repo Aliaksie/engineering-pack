@@ -62,7 +62,7 @@ export function createAcpControls({ host, client, protocolVersion, agentCapabili
       return { allowed: connected, workers: ids.flatMap(id => sessions.has(id) ? [{ id, ...Object.fromEntries(Object.entries(value(sessions.get(id))).filter(([k]) => k !== 'workerId')) }] : []),
         settledCancellations: [...cancellations].filter(([, id]) => sessions.get(id)?.job?.settled).map(([key]) => key) };
     },
-    async start(input, remember) {
+    async start(input, remember, assertCurrent) {
       if (!text(readOnlyMode)) throw new Error('a verified read-only ACP mode must be configured');
       let state = input.reuseWorker ? sessions.get(input.reuseWorker) : null;
       if (input.reuseWorker && (!state || state.released || state.job?.status !== 'idle' || !state.job.settled || currentModel(state) !== input.model)) throw new Error('ACP worker is not an observed idle mapped session');
@@ -79,6 +79,7 @@ export function createAcpControls({ host, client, protocolVersion, agentCapabili
       }
       await select(state, 'model', input.model);
       if ((selected(state, 'mode')?.currentValue ?? state.modes?.currentModeId) !== readOnlyMode) throw new Error('ACP mode changed while mapping the worker model');
+      assertCurrent();
       assertNativeSource(options.root, input.source);
       const { started } = launch(state, input, capsule(input), 'worker');
       await started; return value(state);
@@ -113,6 +114,7 @@ export function createAcpControls({ host, client, protocolVersion, agentCapabili
       const job = jobs.get(key);
       return job ? { chunks: copy(job.chunks), truncated: job.truncated, stopReason: job.stopReason ?? null, semanticVerdict: 'not-judged' } : { unavailable: true };
     },
+    canRelease: id => Boolean(agentCapabilities.sessionCapabilities?.close && sessions.get(id)?.job?.settled && !sessions.get(id).job.uncertain),
     async release(id) {
       const state = sessions.get(id);
       if (!agentCapabilities.sessionCapabilities?.close || !state?.job?.settled) return { released: false };
@@ -171,6 +173,6 @@ export async function openAcpControls({ processOptions, host, authenticate, ...o
     if (init.agentCapabilities?.loadSession !== true && !init.agentCapabilities?.sessionCapabilities?.resume) throw new Error('ACP coordinator resume/load unsupported; use an already owned initialized client');
     controls = createAcpControls({ ...options, host, client, protocolVersion: init.protocolVersion, agentCapabilities: init.agentCapabilities });
     await controls.restoreCoordinator();
-    return { ...controls, close() { try { controls.close(); } finally { client.close(); } } };
-  } catch (error) { try { controls?.close(); } finally { client.close(); } throw error; }
+    return { ...controls, async close() { try { controls.close(); } finally { await client.close(); } } };
+  } catch (error) { try { controls?.close(); } finally { await client.close(); } throw error; }
 }

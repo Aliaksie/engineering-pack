@@ -49,3 +49,8 @@ Engineering Pack does not send telemetry remotely by default. Local metadata exc
 prompts, transcripts, code, file contents, commands, raw session IDs and credentials.
 See [observability and privacy](OBSERVABILITY.md) for exact fields, scoped correlation,
 retention, failure behavior, opt-out and optional OTLP export.
+
+Personal preferences reject symlinks, non-files, oversized data and replacement during opening
+on every platform. POSIX additionally requires the current user to own both the file and its
+parent, with no group/other write bits. On Windows, preferences rely on the consumer's account
+and directory ACLs; Node mode bits do not validate ACL privacy or ownership.

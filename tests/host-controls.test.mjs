@@ -24,7 +24,7 @@ function repository(t, host) {
   git('add', '.'); git('commit', '-qm', 'fixture');
   startTask(root, 'main-native', 'task', { goal: 'Inspect scoped source' });
   let controls;
-  t.after(() => { controls?.close(); fs.rmSync(root, { recursive: true, force: true }); });
+  t.after(async () => { await controls?.close(); fs.rmSync(root, { recursive: true, force: true }); });
   const options = { root, session: 'main-native', task: 'task', coordinatorId: 'main-native', capacity: 2,
     authorize: async () => ({ allowed: true, evidence: 'user:scoped-work' }),
     observations: async () => ({ sessionId: 'main-native', observedAt: new Date().toISOString(), facts: { allowed: true, supported: true,
@@ -234,7 +234,7 @@ test('Claude unsupported compaction is rejected before command input is consumed
   const id = await f.offer('compact'); await controls.actions.execute(id); await new Promise(resolve => setImmediate(resolve));
   assert.equal((await controls.actions.reconcile(id)).executed, false);
   assert.equal(p.calls.length, 1);
-  assert.equal(controls.nativeStatus().operations[0].phase, 'acknowledged');
+  assert.equal(controls.nativeStatus().operations[0].phase, 'intent');
   assert.equal(controls.output(controls.nativeStatus().operations[0].key).nativeResult, null);
   assert.throws(() => createHostControls('claude', { ...f.options, query: p.query, sdkOptions: { permissionMode: 'bypassPermissions' } }), /startup configuration/);
 });
@@ -266,4 +266,69 @@ test('all adapter exports describe every feature and ship the same relocatable c
     const module = await import(pathToFileURL(path.join(directory, 'support/hosts/control.mjs')));
     assert.equal(typeof module.createHostControls, 'function'); assert.equal(typeof module.openHostControls, 'function');
   }
+});
+
+for (const host of ['cursor', 'claude']) test(`${host}: native admission rejects task switches during authorization for every work effect`, async t => {
+  for (const kind of ['review', 'compact', 'delegate']) {
+    const f = repository(t, host), p = host === 'claude' ? claude() : acp();
+    const config = host === 'claude' ? { query: p.query } : { client: p.client, protocolVersion: 1, coordinatorState: p.state, agentCapabilities: { loadSession: true }, readOnlyMode: 'ask' };
+    const controls = f.install(createHostControls(host, { ...f.options, ...config, authorize: async input => {
+      if (input.key && input.action === (kind === 'delegate' ? 'dispatch' : kind)) startTask(f.root, 'main-native', 'new-task', { goal: 'A new active task' });
+      return { allowed: true, evidence: 'user:scoped-work' };
+    } }));
+    const id = await f.offer(kind);
+    if (kind === 'delegate') await controls.workers.dispatch(f.assignment(id));
+    else await controls.actions.execute(id);
+    assert.equal(p.calls.some(call => host === 'claude' || ['session/new', 'session/prompt', 'session/load'].includes(call.method)), false, kind);
+  }
+});
+
+for (const host of ['cursor', 'claude']) test(`${host}: compaction reconciliation cannot resume after authority, source or active task changes`, async t => {
+  for (const change of ['authority', 'source', 'task']) {
+    const f = repository(t, host), p = host === 'claude' ? claude() : acp();
+    let allowed = true, checks = 0;
+    const config = host === 'claude' ? { query: p.query } : { client: p.client, protocolVersion: 1, coordinatorState: p.state, agentCapabilities: { loadSession: true }, readOnlyMode: 'ask' };
+    if (host === 'claude') p.query.autoComplete = true; else p.client.autoComplete = true;
+    const controls = f.install(createHostControls(host, { ...f.options, ...config, authorize: async () => { checks++; return { allowed, evidence: 'user:scoped-work' }; } }));
+    const id = await f.offer('compact'); await controls.actions.execute(id);
+    await new Promise(resolve => setImmediate(resolve));
+    if (change === 'authority') allowed = false;
+    if (change === 'source') fs.appendFileSync(path.join(f.root, 'value.mjs'), '// changed source');
+    if (change === 'task') startTask(f.root, 'main-native', 'new-task', { goal: 'A new active task' });
+    const before = checks, calls = p.calls.length;
+    await assert.rejects(controls.actions.reconcile(id), /authority|source|active task binding/);
+    assert.equal(checks, before + 1);
+    assert.equal(p.calls.length, calls, change);
+  }
+});
+
+for (const host of ['cursor', 'claude']) test(`${host}: premature release creates no intent and can succeed after completion`, async t => {
+  const f = repository(t, host), p = host === 'claude' ? claude() : acp();
+  const config = host === 'claude' ? { query: p.query } : { client: p.client, protocolVersion: 1, coordinatorState: p.state, agentCapabilities: { loadSession: true, sessionCapabilities: { close: {} } }, readOnlyMode: 'ask' };
+  const controls = f.install(createHostControls(host, { ...f.options, ...config }));
+  const result = await controls.workers.dispatch(f.assignment(await f.offer('delegate'))), id = result.request.workerId;
+  await assert.rejects(controls.release(id), /settle/);
+  assert.equal(controls.nativeStatus().operations.some(op => op.kind === 'release'), false);
+  p.complete(id); await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await controls.release(id)).released, true);
+  assert.equal((await controls.reconcileRelease(id)).released, true);
+  assert.equal((await controls.release(id)).duplicate, true);
+});
+
+test('uncertain ACP release reconciles actual metadata without replaying the effect', async t => {
+  const f = repository(t, 'cursor'), p = acp();
+  const controls = f.install(createHostControls('cursor', { ...f.options, client: p.client, protocolVersion: 1, coordinatorState: p.state,
+    agentCapabilities: { loadSession: true, sessionCapabilities: { close: {} } }, readOnlyMode: 'ask' }));
+  const result = await controls.workers.dispatch(f.assignment(await f.offer('delegate'))), id = result.request.workerId;
+  p.complete(id); await new Promise(resolve => setImmediate(resolve));
+  const request = p.client.request;
+  p.client.request = async (method, params) => {
+    const result = await request(method, params);
+    if (method === 'session/close') throw new Error('lost release acknowledgement');
+    return result;
+  };
+  await assert.rejects(controls.release(id), /lost release/);
+  assert.equal((await controls.reconcileRelease(id)).uncertain, true);
+  assert.equal((await controls.release(id)).uncertain, true);
+  assert.equal(p.calls.filter(call => call.method === 'session/close').length, 1);
 });
