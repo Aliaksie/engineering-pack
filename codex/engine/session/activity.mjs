@@ -1,5 +1,7 @@
 import { digest } from '../cache/identity.mjs';
+import { validateFeatures } from './features.mjs';
 const identity = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
+const blockerOutcomes = ['permission-denied', 'tool-unavailable', 'blocked'];
 export function addActivity(state, values) {
   for (const [key, value] of Object.entries(values)) {
     const next = (state.activity[key] ?? 0) + value;
@@ -12,7 +14,7 @@ export function attemptReceipt(attempt, repository, id, at) {
   const fields = ['operation', 'target', 'approach', 'evidence', 'outcome', 'profile', 'maxAttempts', 'escalationReason'];
   if (!attempt || typeof attempt !== 'object' || Array.isArray(attempt) || Object.keys(attempt).some(key => !fields.includes(key))
     || !['operation', 'target', 'approach', 'evidence'].every(key => identity(attempt[key]))
-    || !['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked'].includes(attempt.outcome)
+    || !['passed', 'quality-failure', ...blockerOutcomes, 'prerequisite-resolved'].includes(attempt.outcome)
     || (attempt.escalationReason !== undefined && (!identity(attempt.escalationReason) || !identity(attempt.profile)))
     || (attempt.profile !== undefined && !identity(attempt.profile))
     || (attempt.maxAttempts !== undefined && (!Number.isSafeInteger(attempt.maxAttempts) || attempt.maxAttempts < 1 || attempt.maxAttempts > 5))) throw new Error('invalid meaningful attempt receipt');
@@ -21,29 +23,41 @@ export function attemptReceipt(attempt, repository, id, at) {
   const signature = source ? digest([attempt.operation, attempt.target, attempt.approach, source]) : null;
   return { ...attempt, id, source, signature, revision: repository.head, at };
 }
+export function unresolvedAttempts(records) {
+  const lastPass = new Map(), lastResolution = new Map();
+  const key = record => JSON.stringify([record.operation, record.target]);
+  records.forEach((record, index) => {
+    if (record.outcome === 'passed') lastPass.set(key(record), index);
+    if (record.outcome === 'prerequisite-resolved') lastResolution.set(key(record), index);
+  });
+  return records.filter((record, index) => !['passed', 'prerequisite-resolved'].includes(record.outcome)
+    && index > Math.max(lastPass.get(key(record)) ?? -1, blockerOutcomes.includes(record.outcome) ? lastResolution.get(key(record)) ?? -1 : -1));
+}
 export function attemptStatus(records, operation) {
   const current = records.filter(record => record.operation === operation);
-  const lastPass = current.findLastIndex(record => record.outcome === 'passed');
-  const last = current.at(-1);
-  const series = current.slice(lastPass + 1);
+  const active = unresolvedAttempts(current);
+  const blocker = active.findLast(record => blockerOutcomes.includes(record.outcome));
+  const selected = blocker ?? active.at(-1) ?? current.at(-1);
+  const target = current.filter(record => record.target === selected?.target);
+  const series = active.filter(record => record.target === selected?.target);
+  const last = series.at(-1) ?? target.at(-1);
   const failures = series.filter(record => !last?.profile || record.profile === last.profile);
   const equivalent = last?.signature ? failures.filter(record => record.signature === last.signature).length : 0;
   return { attempts: failures.length, maxAttempts: last?.maxAttempts ?? 3,
     noProgressAttempts: equivalent, retries: Math.max(0, failures.length - 1),
-    blocked: series.some(record => ['permission-denied', 'tool-unavailable', 'blocked'].includes(record.outcome)),
-    evidence: failures.map(record => record.evidence), records: series.length ? series : current.slice(-1) };
+    blocked: series.some(record => blockerOutcomes.includes(record.outcome)),
+    evidence: failures.map(record => record.evidence), records: series.length ? series : target.slice(-1) };
 }
 
 export function activityUpdate(state, values) { addActivity(state, values); return state; }
 export function appendAttempt(state, receipt) {
+  if (receipt.outcome === 'prerequisite-resolved' && !unresolvedAttempts(state.attempts).some(record =>
+    record.operation === receipt.operation && record.target === receipt.target && blockerOutcomes.includes(record.outcome))) throw new Error('prerequisite resolution requires a matching unresolved blocker');
   const records = [...state.attempts, receipt];
   // Successful operations close their series. Only closed history may be evicted;
   // unrelated work must never erase an unresolved blocker or retry budget.
-  const lastPass = new Map();
-  records.forEach((record, index) => {
-    if (record.outcome === 'passed') lastPass.set(record.operation, index);
-  });
-  const active = records.map((record, index) => record.outcome !== 'passed' && index > (lastPass.get(record.operation) ?? -1));
+  const unresolved = new Set(unresolvedAttempts(records));
+  const active = records.map(record => unresolved.has(record));
   const activeCount = active.filter(Boolean).length;
   if (activeCount > 24) throw new Error('session attempt capacity reached: preserve evidence and resolve an active operation before recording more attempts');
   addActivity(state, { operationsAttempted: 1, ...(receipt.escalationReason ? { modelEscalations: 1 } : {}) });
@@ -56,6 +70,21 @@ export function appendAttempt(state, receipt) {
 }
 
 export function validateActivityState(state) {
+  validateFeatures(state.featureOutcomes);
+  if (state.recommendations !== undefined) {
+    if (!state.recommendations || typeof state.recommendations !== 'object' || Array.isArray(state.recommendations)
+      || Object.keys(state.recommendations).length > 16) throw new Error('invalid recommendation state');
+    for (const [id, offer] of Object.entries(state.recommendations)) {
+      if (!/^[a-f0-9]{64}$/.test(id) || !offer || offer.id !== id) throw new Error('invalid recommendation identity');
+      const receipt = offer.executionReceipt;
+      if (receipt !== undefined && (!receipt || Object.keys(receipt).some(key => !['key', 'state', 'source', 'checkpoint', 'generation', 'evidence', 'acceptanceEvidence'].includes(key))
+        || receipt.key !== digest([id, 'execute']) || receipt.source !== offer.source
+        || !['dispatching', 'started', 'completed', 'not-started', 'uncertain'].includes(receipt.state)
+        || (receipt.checkpoint !== null && !/^[a-f0-9]{64}$/.test(receipt.checkpoint ?? ''))
+        || !Number.isSafeInteger(receipt.generation) || receipt.generation < 0
+        || [receipt.evidence, receipt.acceptanceEvidence].some(value => value !== null && !identity(value)))) throw new Error('invalid native action receipt');
+    }
+  }
   if (state.formatVersion !== 1 || !state.activity || typeof state.activity !== 'object' || Array.isArray(state.activity)
     || !state.lookups || typeof state.lookups !== 'object' || Array.isArray(state.lookups)
     || !Array.isArray(state.attempts) || state.attempts.length > 24

@@ -104,6 +104,126 @@
         }
       ],
       "runtime": "support/cli/main.mjs",
+      "executionControls": {
+        "surface": "owned Codex App Server client",
+        "entry": "support/hosts/control.mjs",
+        "nativeHost": "codex",
+        "workers": "bounded read-only native sessions; exact model and supported mode required",
+        "review": "scoped native review/task; no semantic verdict inferred",
+        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "liveVerification": "not-established-by-export-or-protocol-tests"
+      },
+      "featureSupport": {
+        "formatVersion": 1,
+        "adapter": "codex",
+        "features": {
+          "routing": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "hint-deduplication": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "lookup": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "batching": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "services": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "attempts": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "loop-detection": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "model-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "delegation": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "checkpoints": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "continuation": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "context-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "next-step": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "compaction": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+          },
+          "context-accounting": {
+            "support": "portable-estimate-and-native-observation",
+            "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+            "evidence": "unknown when current occupancy is unavailable"
+          },
+          "review": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "telemetry": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "evaluation": {
+            "support": "explicit-frozen-pair-collector",
+            "activation": "caller-owned isolated native runner and acceptance judgments",
+            "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+          }
+        },
+        "execution": {
+          "surface": "owned Codex App Server client",
+          "entry": "support/hosts/control.mjs",
+          "nativeHost": "codex",
+          "workers": "bounded read-only native sessions; exact model and supported mode required",
+          "review": "scoped native review/task; no semantic verdict inferred",
+          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "liveVerification": "not-established-by-export-or-protocol-tests"
+        },
+        "limitations": [
+          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
+          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+        ]
+      },
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "native-ui-only; no stable usage field in mapped hooks",
@@ -224,6 +344,126 @@
         }
       ],
       "runtime": "support/cli/main.mjs",
+      "executionControls": {
+        "surface": "owned Codex App Server client",
+        "entry": "support/hosts/control.mjs",
+        "nativeHost": "codex",
+        "workers": "bounded read-only native sessions; exact model and supported mode required",
+        "review": "scoped native review/task; no semantic verdict inferred",
+        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "liveVerification": "not-established-by-export-or-protocol-tests"
+      },
+      "featureSupport": {
+        "formatVersion": 1,
+        "adapter": "codex",
+        "features": {
+          "routing": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "hint-deduplication": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "lookup": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "batching": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "services": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "attempts": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "loop-detection": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "model-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "delegation": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "checkpoints": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "continuation": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "context-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "next-step": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "compaction": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+          },
+          "context-accounting": {
+            "support": "portable-estimate-and-native-observation",
+            "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+            "evidence": "unknown when current occupancy is unavailable"
+          },
+          "review": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "telemetry": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "evaluation": {
+            "support": "explicit-frozen-pair-collector",
+            "activation": "caller-owned isolated native runner and acceptance judgments",
+            "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+          }
+        },
+        "execution": {
+          "surface": "owned Codex App Server client",
+          "entry": "support/hosts/control.mjs",
+          "nativeHost": "codex",
+          "workers": "bounded read-only native sessions; exact model and supported mode required",
+          "review": "scoped native review/task; no semantic verdict inferred",
+          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "liveVerification": "not-established-by-export-or-protocol-tests"
+        },
+        "limitations": [
+          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
+          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+        ]
+      },
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "native-ui-only; no stable usage field in mapped hooks",
@@ -340,6 +580,126 @@
         }
       ],
       "runtime": "support/cli/main.mjs",
+      "executionControls": {
+        "surface": "owned Codex App Server client",
+        "entry": "support/hosts/control.mjs",
+        "nativeHost": "codex",
+        "workers": "bounded read-only native sessions; exact model and supported mode required",
+        "review": "scoped native review/task; no semantic verdict inferred",
+        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "liveVerification": "not-established-by-export-or-protocol-tests"
+      },
+      "featureSupport": {
+        "formatVersion": 1,
+        "adapter": "codex",
+        "features": {
+          "routing": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "hint-deduplication": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "lookup": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "batching": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "services": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "attempts": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "loop-detection": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "model-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "delegation": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "checkpoints": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "continuation": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "context-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "next-step": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "compaction": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+          },
+          "context-accounting": {
+            "support": "portable-estimate-and-native-observation",
+            "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+            "evidence": "unknown when current occupancy is unavailable"
+          },
+          "review": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "telemetry": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "evaluation": {
+            "support": "explicit-frozen-pair-collector",
+            "activation": "caller-owned isolated native runner and acceptance judgments",
+            "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+          }
+        },
+        "execution": {
+          "surface": "owned Codex App Server client",
+          "entry": "support/hosts/control.mjs",
+          "nativeHost": "codex",
+          "workers": "bounded read-only native sessions; exact model and supported mode required",
+          "review": "scoped native review/task; no semantic verdict inferred",
+          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "liveVerification": "not-established-by-export-or-protocol-tests"
+        },
+        "limitations": [
+          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
+          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+        ]
+      },
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "native-ui-only; no stable usage field in mapped hooks",
@@ -448,6 +808,126 @@
         }
       ],
       "runtime": "support/cli/main.mjs",
+      "executionControls": {
+        "surface": "owned Codex App Server client",
+        "entry": "support/hosts/control.mjs",
+        "nativeHost": "codex",
+        "workers": "bounded read-only native sessions; exact model and supported mode required",
+        "review": "scoped native review/task; no semantic verdict inferred",
+        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "liveVerification": "not-established-by-export-or-protocol-tests"
+      },
+      "featureSupport": {
+        "formatVersion": 1,
+        "adapter": "codex",
+        "features": {
+          "routing": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "hint-deduplication": {
+            "support": "mapped-hooks-and-portable-command",
+            "activation": "native hook discovery/trust required; explicit CLI fallback",
+            "evidence": "actual delivered/reused context; selection alone is insufficient"
+          },
+          "lookup": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "batching": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "services": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "attempts": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "loop-detection": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "model-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "delegation": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "checkpoints": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "continuation": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "context-advice": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "next-step": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "compaction": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+          },
+          "context-accounting": {
+            "support": "portable-estimate-and-native-observation",
+            "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+            "evidence": "unknown when current occupancy is unavailable"
+          },
+          "review": {
+            "support": "explicit-native-binding",
+            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+          },
+          "telemetry": {
+            "support": "portable-command-and-guidance",
+            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+          },
+          "evaluation": {
+            "support": "explicit-frozen-pair-collector",
+            "activation": "caller-owned isolated native runner and acceptance judgments",
+            "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+          }
+        },
+        "execution": {
+          "surface": "owned Codex App Server client",
+          "entry": "support/hosts/control.mjs",
+          "nativeHost": "codex",
+          "workers": "bounded read-only native sessions; exact model and supported mode required",
+          "review": "scoped native review/task; no semantic verdict inferred",
+          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
+          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "liveVerification": "not-established-by-export-or-protocol-tests"
+        },
+        "limitations": [
+          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
+          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+        ]
+      },
       "sessionAdvice": {
         "entry": "support/session.mjs",
         "observation": "native-ui-only; no stable usage field in mapped hooks",

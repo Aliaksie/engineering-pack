@@ -58,8 +58,8 @@ the host surface and version first. A separately installed CLI does not establis
 the desktop/IDE runtime's capabilities or share verified activation with it.
 
 With default local telemetry enabled, observe a normal edit/tool action and look
-for fresh `host.hook` events in the target project's
-`.capabilities/state/telemetry.jsonl`. Direct wrapper execution and explicit CLI
+for fresh `host.hook` events in runtime `telemetry.jsonl`; `settings --root <project>`
+shows its directory. Direct wrapper execution and explicit CLI
 events establish only those invocation paths. Missing events do not by themselves
 distinguish missing discovery, trust, disabled telemetry or a storage failure.
 

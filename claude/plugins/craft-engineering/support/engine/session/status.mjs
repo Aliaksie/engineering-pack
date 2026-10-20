@@ -1,6 +1,7 @@
 import { sessionAdvice } from './advice.mjs';
 import { attemptStatus } from './activity.mjs';
 import { capabilityAdvice, modelAdvice } from '../policy/models.mjs';
+import { taskContract } from './task.mjs';
 import { digest } from '../cache/identity.mjs';
 import { route } from '../routing/route.mjs';
 
@@ -43,7 +44,9 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
       const recovered = continuation && sameTask ? observations.recovered
         : { saved, changed: null, changeDetection: { complete: false } };
       repositoryEvidence = recovered.current;
-      const continuationUnchanged = binding?.complete === true && recovered.current?.head === binding.head
+      const continuationUnchanged = binding?.complete === true
+        && (!state?.taskRecord || (binding.taskContract === taskContract(state.taskRecord) && state.taskRecord.checkout === recovered.current?.checkout))
+        && (binding.checkout ?? null) === (recovered.current?.checkout ?? null) && recovered.current?.head === binding.head
         && recovered.current?.fingerprints.index === binding.index && recovered.current?.fingerprints.workingTree === binding.workingTree;
       const fresh = Boolean(continuation && sameTask && continuationUnchanged && recovered.changed === false && recovered.changeDetection.complete);
       normalized.task.handoffSaved = Boolean(continuation && sameTask);
@@ -89,7 +92,7 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
       if (repositoryEvidence?.gitAvailable && repositoryEvidence.fingerprints.complete) currentSource = digest([repositoryEvidence.head, repositoryEvidence.fingerprints.index, repositoryEvidence.fingerprints.workingTree]);
     }
     const recordedAttempts = records.filter(record => record.profile && currentSource && record.source === currentSource && record.revision === normalized.task.revision
-      && record.outcome !== 'blocked').map(record => ({ id: record.id, profile: record.profile, task: taskId,
+      && !['blocked', 'prerequisite-resolved'].includes(record.outcome)).map(record => ({ id: record.id, profile: record.profile, task: taskId,
       revision: record.revision, outcome: record.outcome, evidence: record.evidence }));
     model = modelAdvice({ host: normalized.host.name, role, task: taskId, revision: normalized.task.revision,
       capabilityClass: capability.class, ...(currentProfile ? { currentProfile } : {}), attempts: recordedAttempts }, project);
@@ -99,7 +102,8 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
   } else if (model?.decision === 'stop' && (attempts?.attempts ?? 0) > 0) {
     status.recommendation = { action: 'return-control', reason: model.reasons.join(' '), effect: 'read', prerequisites: ['Configured quality/escalation limits are exhausted; preserve evidence and return control.'] };
   } else if (['return-control', 'retry-differently'].includes(status.recommendation?.action) && model?.decision === 'recommend'
-    && attempts?.records.at(-1)?.profile && model.profile !== attempts.records.at(-1).profile) {
+    && attempts?.records.at(-1)?.profile && model.profile !== attempts.records.at(-1).profile
+    && (model.mainModel?.switchSupported === true || model.workerMappingAvailable === true)) {
     status.recommendation = { action: 'escalate-model', reason: model.reasons.join(' '), effect: 'recommendation-only', prerequisites: ['Use only the configured host mapping and existing authorization; no switch was performed.'] };
   }
   if (['stop-blocked', 'escalate-model'].includes(status.recommendation?.action) || (model?.decision === 'stop' && (attempts?.attempts ?? 0) > 0)) {
@@ -108,6 +112,17 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
     const previousAt = Date.parse(input.previous?.at);
     status.suppressed = input.previous?.key === key && at >= previousAt && at - previousAt < (input.policy?.cooldownMs ?? 300000);
     status.notice = status.suppressed ? input.previous : { key, at: new Date(at).toISOString() };
+  }
+  if (['review', 'compact'].includes(status.recommendation?.action) && state?.recommendations) {
+    repositoryEvidence ??= observations.repository;
+    const source = repositoryEvidence?.gitAvailable && repositoryEvidence.fingerprints?.complete
+      ? digest([repositoryEvidence.head, repositoryEvidence.fingerprints.index, repositoryEvidence.fingerprints.workingTree]) : null;
+    const offer = Object.values(state.recommendations).findLast(value => value.action === status.recommendation.action && (value.action !== 'review' || value.scope === 'review:current-source') && value.source === source && value.policy === digest(project) && (value.action !== 'review' || JSON.stringify(value.risks ?? []) === JSON.stringify([...new Set(normalized.task.risks ?? [])].sort())));
+    if (offer) {
+      status.actionOffer = offer;
+      status.suppressed = true;
+      status.recommendation = { ...status.recommendation, approvalRequired: !['approved', 'already-authorized'].includes(offer.decision), decision: offer.decision, execution: offer.execution ?? 'not-observed' };
+    }
   }
   status.suggestion = status.suppressed ? null : status.recommendation;
   return { ...status, checkpoint, capability, modelAdvice: model, discovery: state ? {

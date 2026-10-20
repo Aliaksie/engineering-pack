@@ -1,3 +1,4 @@
+import { effectiveSettings } from './effective-settings.mjs';
 import { delegation } from '../routing/execution.mjs';
 import { validateProject } from '../contracts/project.mjs';
 
@@ -5,10 +6,10 @@ const ROLE_INTENTS = { locator: 'locate', researcher: 'research', implementer: '
 const text = (value) => typeof value === 'string' && value.trim().length > 0 && value.length <= 1024;
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-// Profile declarations and cited acceptance failures support a recommendation, not a model
-// call or a claim of measured capability. The host mapping/delegation plan remains in route().
+// Main-model and worker advice uses declared capabilities and cited acceptance evidence.
+// It never calls a model, grants permission or establishes measured capability.
 export function modelAdvice(input, project = { formatVersion: 1 }) {
-  validateProject(project);
+  project = effectiveSettings({ project: validateProject(project) }).settings;
   if (!object(input) || Object.keys(input).some((key) => !['host', 'role', 'task', 'revision', 'requiredCapabilities', 'attempts', 'capabilityClass', 'currentProfile'].includes(key))) throw new Error('invalid model advice input');
   for (const field of ['host', 'task', 'revision']) if (!text(input[field])) throw new Error(`model advice ${field} required`);
   if (!Object.hasOwn(ROLE_INTENTS, input.role)) throw new Error('unknown model advice role');
@@ -36,7 +37,7 @@ export function modelAdvice(input, project = { formatVersion: 1 }) {
   let profile = project.execution?.roles?.[input.role]?.profile;
   if (!profile) return { ...base, decision: 'unavailable', reasons: ['Role has no configured logical profile.'] };
   for (let step = 0; step < 16; step++) {
-    const definition = profiles[profile];
+    const definition = Object.hasOwn(profiles, profile) ? profiles[profile] : undefined;
     if (!definition) return { ...base, decision: 'unavailable', profile, reasons: [...reasons, 'Profile capability metadata is undeclared.'] };
     const evidence = applicable.filter((attempt) => attempt.profile === profile);
     if (evidence.some((attempt) => attempt.outcome === 'passed')) return { ...base, decision: 'completed', profile, reasons: [...reasons, 'Current-target acceptance is recorded passed; no escalation needed.'], evidence: evidence.filter((attempt) => attempt.outcome === 'passed').map((attempt) => attempt.evidence) };
@@ -45,7 +46,7 @@ export function modelAdvice(input, project = { formatVersion: 1 }) {
     const classMissing = input.capabilityClass !== undefined && definition.class !== undefined
       && classes.indexOf(definition.class) < classes.indexOf(input.capabilityClass);
     const missing = required.filter((capability) => !definition.capabilities.includes(capability));
-    const exhausted = evidence.filter((attempt) => attempt.outcome === 'quality-failure').length >= (definition.maxAttempts ?? 1);
+    const exhausted = evidence.filter((attempt) => attempt.outcome === 'quality-failure').length >= (definition.maxAttempts ?? project.efficiency.attempts.maxAttempts);
     if (missing.length || exhausted || classMissing) {
       reasons.push(classMissing ? `Profile ${profile} is below the requested ${input.capabilityClass} capability class.` : missing.length ? `Profile ${profile} lacks declared capabilities: ${missing.join(', ')}.` : `Profile ${profile} reached its configured quality-attempt limit; cited evidence: ${evidence.map((attempt) => attempt.evidence).join(', ')}.`);
       if (!definition.escalateTo) return { ...base, decision: 'stop', profile, reasons: [...reasons, 'No further escalation is configured.'] };
@@ -53,12 +54,24 @@ export function modelAdvice(input, project = { formatVersion: 1 }) {
       continue;
     }
     const execution = delegation(project, input.role, input.host, profile);
-    return { ...base, decision: execution.mode === 'delegate' ? 'recommend' : 'unavailable', profile,
-      execution, capabilityClass: definition.class ?? 'unknown',
+    const mapping = project.execution?.hosts?.[input.host];
+    const model = mapping?.models && Object.hasOwn(mapping.models, profile) ? mapping.models[profile] : null;
+    const workerMappingAvailable = execution.mode === 'delegate' && project.efficiency.delegation.mode !== 'manual';
+    const current = input.currentProfile !== undefined && Object.hasOwn(profiles, input.currentProfile) ? profiles[input.currentProfile] : undefined;
+    const currentSufficient = current && required.every(value => current.capabilities.includes(value))
+      && (!definition.class || (current.class && classes.indexOf(current.class) >= classes.indexOf(definition.class)))
+      && applicable.filter(value => value.profile === input.currentProfile && value.outcome === 'quality-failure').length < (current.maxAttempts ?? project.efficiency.attempts.maxAttempts);
+    const mainModel = { profile, model, evidence: 'Consumer-declared model mapping/support; native switching and authorization must be verified separately.', switchSupported: mapping?.mainModelSwitch === true && model !== null,
+      decision: currentSufficient ? 'keep-current' : 'retain-current-until-authorized',
+      limitation: !model ? 'Exact host model mapping is unavailable; keep current execution.' : mapping?.mainModelSwitch !== true ? 'Main-model switching is unsupported or unverified; keep current execution.' : null };
+    return { ...base, decision: 'recommend', profile,
+      execution: workerMappingAvailable ? { ...execution, dispatchStatus: 'requires-approval-and-fresh-capacity', approvalRequired: true, requestedWorkerLimit: project.efficiency.delegation.maxWorkers } : { mode: project.execution.roles?.[input.role]?.mode === 'tool' ? 'tool' : 'main', role: input.role },
+      mainModel, workerMappingAvailable, capabilityClass: definition.class ?? 'unknown',
       currentProfile: input.currentProfile ?? null,
       comparison: input.currentProfile === undefined ? 'unknown' : input.currentProfile === profile ? 'already-selected' : 'configured-profile-recommended; prices and actual capability are not measured',
-      attemptsRemaining: (definition.maxAttempts ?? 1) - evidence.length,
-      reasons: [...reasons, ...(execution.mode !== 'delegate' ? ['Role and host must explicitly support delegation and an exact model mapping.'] : [])] };
+      attemptsRemaining: (definition.maxAttempts ?? project.efficiency.attempts.maxAttempts) - evidence.length,
+      reasons: [...reasons, ...(!workerMappingAvailable ? ['Continue in main; a worker requires supported role/model mapping, positive capacity and scoped authorization.'] : []), ...(mainModel.limitation ? [mainModel.limitation] : [])] };
+
   }
   return { ...base, decision: 'stop', reasons: [...reasons, 'Profile chain limit reached.'] };
 }

@@ -20,13 +20,22 @@ export function inventoryIdentity(root, paths, maxFiles) {
   if (names.length > maxFiles) return null;
   // Config/manifest changes outside a narrow symbol scope still reconsider routing/runtime facts.
   names.push('.capabilities/project.json');
-  const prefixes = new Set(['']);
-  for (const scope of paths) {
-    const parts = scope.split('/');
-    for (let length = 1; length <= parts.length; length++) prefixes.add(`${parts.slice(0, length).join('/')}/`);
-  }
-  for (const prefix of prefixes) for (const manifest of ['package.json', 'pyproject.toml', 'go.mod', 'pom.xml', 'build.gradle', 'build.gradle.kts']) names.push(`${prefix}${manifest}`);
   try {
+    const prefixes = new Set(['']);
+    for (const scope of paths) {
+      let directory = root, prefix = '';
+      for (const part of scope.split('/')) {
+        if (part === '..' || path.isAbsolute(scope)) throw new Error('unsafe inventory path');
+        directory = path.join(directory, part);
+        const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
+        if (stat?.isSymbolicLink()) throw new Error('symlink inventory');
+        // File scopes contribute their parent manifests, never file/package.json.
+        if (!stat?.isDirectory()) break;
+        prefix += `${part}/`;
+        prefixes.add(prefix);
+      }
+    }
+    for (const prefix of prefixes) for (const manifest of ['package.json', 'pyproject.toml', 'go.mod', 'pom.xml', 'build.gradle', 'build.gradle.kts']) names.push(`${prefix}${manifest}`);
     return digest([locatorVersion, head.stdout.trim(), names.map(name => {
       let file = root;
       for (const part of name.split('/')) {

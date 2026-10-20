@@ -1,6 +1,7 @@
+import { readProject } from '../project/configuration.mjs';
 import { observe, diagnostic, withTelemetry } from '../telemetry/observe.mjs';
 import { decide, digest } from '../engine-client.mjs';
-import { stateFile, readState, lockState, releaseState, writeState, repositoryState, clock, uniqueId } from '../../platform/index.mjs';
+import { stateFile, readState, lockState, releaseState, writeState, repositoryState, repositoryCheckout, clock, uniqueId } from '../../platform/index.mjs';
 
 function filename(root, session, task, create = false) {
   decide('activity-identity', { session, task });
@@ -21,8 +22,11 @@ function updateState(root, session, task, update) {
   } finally { releaseState(ticket); }
 }
 export const addActivity = (state, values) => Object.assign(state, decide('activity-update', { state, values }));
-function recordAttemptOperation(root, session, task, attempt) {
-  const receipt = decide('attempt-receipt', { attempt, repository: repositoryState(root), id: uniqueId(), at: clock().iso });
+function recordAttemptOperation(root, session, task, attempt, { preferencesFile } = {}) {
+  const project = readProject(root, { preferencesFile });
+  const profileLimit = project.execution?.profiles?.[attempt.profile]?.maxAttempts;
+  const boundedAttempt = { maxAttempts: profileLimit ?? project.efficiency.attempts.maxAttempts, ...attempt };
+  const receipt = decide('attempt-receipt', { attempt: boundedAttempt, repository: repositoryState(root), id: uniqueId(), at: clock().iso });
   return updateSessionState(root, session, task, state => Object.assign(state, decide('attempt-append', { state, receipt })));
 }
 
@@ -31,3 +35,12 @@ export const attemptStatus = (records, operation) => decide('attempt-status', { 
 export const recordAttempt = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('attempt.recorded', () => recordAttemptOperation(...args), result => ({ recordedAttempts: result.activity.operationsAttempted, reason: 'recorded' }), { failureCode:'VALIDATION_FAILED' }));
 
 export const updateSessionState = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('state.updated', () => updateState(...args), () => ({ area:'session' }), { failureCode:'STATE_UNAVAILABLE' }));
+
+export function bindingFile(root, session, create = false) {
+  decide('activity-identity', { session, task: 'active-binding' });
+  return stateFile(root, `active-${digest(session).slice(0, 24)}.json`, create);
+}
+export function activeTask(root, session) {
+  if (!session) return undefined;
+  return decide('task-binding', { state: readState(bindingFile(root, session), 2048), repository: { checkout: repositoryCheckout(root) } })?.task;
+}

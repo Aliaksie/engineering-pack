@@ -1,19 +1,21 @@
 const hosts = ['claude','codex','cursor','copilot','gemini','agents','jetbrains','gemini-extension'];
 const counts = ['guidanceFiles','guidanceBytes','estimatedTokens','evidenceCount','batchSize','cacheHits','cacheMisses','recordedAttempts','selectedSkills','checkpoints','unavailableCapabilities','droppedEvents','exportedEvents','rejectedEvents','statusCode'];
 const enums = {
+  package: ['craft-delivery','craft-engineering','craft-review','craft-stories'],
+  inputStatus: ['complete','invalid','oversized','read-failure'],
   area: ['cli','host','project','routing','guidance','discovery','cache','context','session','model','attempt','checkpoint','review','integration','state','telemetry'],
-  command: ['route','context-report','session','session-advice','session-attempt','model-advice','lookup','locate','prepare-services','operation','checkpoint-save','checkpoint-read','unknown'],
+  command: ['worker-status','task-feature','task-features','telemetry-capture','telemetry-forget','telemetry-report','task-offer','task-decision','task-action-check','settings','task-start','task-step','route','context-report','session','session-advice','session-attempt','model-advice','lookup','locate','prepare-services','operation','checkpoint-save','checkpoint-read','unknown'],
   operation: ['git.status','git.diff','git.commit','git.push','change.read','change.diff','change.publish','task.read','task.search','task.transition','task.comment'],
   phase: ['prepared','validated','publication-planned'],
   intent: ['implement','review','plan','verify','inspect','deliver','ship','fix','test','architecture','investigate','locate','status','run-check','configure-service','maintain-context'],
-  decision: ['allow','deny','continue','compact','checkpoint','new','start-new-session','escalate','defer','reuse','fresh','unknown','unavailable','checkpoint-and-reset','continue-and-reassess','checkpoint-then-compact','save-handoff','retry-differently','run-check','design-verification','review','summarize-evidence','stop-blocked','return-control','escalate-model','recommend','stop','completed','inspect-failure','resolve-blocker','continue-bounded-step'],
+  decision: ['continue-task','allow','deny','continue','compact','checkpoint','new','start-new-session','escalate','defer','reuse','fresh','unknown','unavailable','checkpoint-and-reset','continue-and-reassess','checkpoint-then-compact','save-handoff','retry-differently','run-check','design-verification','review','summarize-evidence','stop-blocked','return-control','escalate-model','recommend','stop','completed','inspect-failure','resolve-blocker','continue-bounded-step'],
   pressure: ['unknown','low','normal','moderate','high','critical','elevated','saturated','healthy'],
   capabilityClass: ['economical','standard','strong'],
   identityScope: ['session','invocation'],
   reason: ['observed','unavailable','stale','busy','invalid','disabled','budget-exhausted','deferred','recorded','missing','incomplete'],
   lifecycle: ['session-start','before-prompt','before-tool','after-tool','before-compact','after-compact','turn-end']
 };
-export const eventNames = ['cli.command','host.hook','host.session','project.loaded','input.loaded','search.completed','cache.lookup','cache.invalidated','state.read','state.updated','checkpoint.read','review.command','review.publication-planned','integration.prepared','integration.planned','integration.observed','integration.inbox','telemetry.export','diagnostic','session.observed','routing.completed','guidance.selected','discovery.completed','cache.observed','context.observed','session.advice','model.advice','attempt.recorded','checkpoint.saved','checkpoint.recovered','review.completed','host.observed'];
+export const eventNames = ['worker.dispatch','cli.command','host.hook','host.session','project.loaded','input.loaded','search.completed','cache.lookup','cache.invalidated','state.read','state.updated','checkpoint.read','review.command','review.publication-planned','integration.prepared','integration.planned','integration.observed','integration.inbox','telemetry.export','diagnostic','session.observed','routing.completed','guidance.selected','discovery.completed','cache.observed','context.observed','session.advice','model.advice','attempt.recorded','checkpoint.saved','checkpoint.recovered','review.completed','host.observed'];
 
 // This JSON contract has no runtime, host SDK, or provider dependencies. Legacy
 // schema-1 events without trace fields remain readable; new producers supply them.

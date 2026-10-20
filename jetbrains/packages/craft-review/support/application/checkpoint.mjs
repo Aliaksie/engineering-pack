@@ -7,15 +7,19 @@ function readSavedCheckpoint(root, session) {
   const state = readState(filename(root, session), 65536);
   return decide('checkpoint-validate', { state });
 }
-function saveCheckpointOperation(root, session, metadata = {}) {
+function saveCheckpointOperation(root, session, metadata = {}, { expectedSource } = {}) {
   decide('checkpoint-metadata', { metadata });
   const file = filename(root, session, true);
   const ticket = lockState(file);
   if (!ticket) { diagnostic('checkpoint','STATE_BUSY'); throw new Error('checkpoint writer is busy; retry at the next milestone'); }
   try {
-    const state = decide('checkpoint-state', { previous: readCheckpoint(root, session) ?? {}, metadata, repository: repositoryState(root), updated: clock().iso });
+    const previous = readCheckpoint(root, session);
+    const repository = repositoryState(root);
+    if (expectedSource !== undefined && decide('task-source', { repository }) !== expectedSource) throw new Error('Source changed after acceptance; continuation was not rebound to newer source');
+    const state = decide('checkpoint-state', { previous: previous ?? {}, metadata, repository, updated: clock().iso });
+    if (decide('checkpoint-unchanged', { previous, state })) return { file, state: previous, unchanged: true };
     writeState(file, state, 65536, true);
-    return { file, state };
+    return { file, state, unchanged: false };
   } finally { releaseState(ticket); }
 }
 export const gitState = root => repositoryState(root);
@@ -23,7 +27,7 @@ function recoverCheckpointOperation(root, session) {
   return decide('checkpoint-compare', { saved: readCheckpoint(root, session), current: repositoryState(root) });
 }
 
-export const saveCheckpoint = (...args) => withTelemetry(args[0], {}, () => observe('checkpoint.saved', () => saveCheckpointOperation(...args), () => ({ checkpoints: 1 }), { failureCode:'CHECKPOINT_UNAVAILABLE' }));
+export const saveCheckpoint = (...args) => withTelemetry(args[0], {}, () => observe('checkpoint.saved', () => saveCheckpointOperation(...args), result => ({ checkpoints: result.unchanged ? 0 : 1 }), { failureCode:'CHECKPOINT_UNAVAILABLE' }));
 
 export const recoverCheckpoint = (...args) => withTelemetry(args[0], {}, () => observe('checkpoint.recovered', () => recoverCheckpointOperation(...args), result => ({ available:Boolean(result.saved), complete:result.changeDetection?.complete }), { failureCode:'CHECKPOINT_UNAVAILABLE' }));
 

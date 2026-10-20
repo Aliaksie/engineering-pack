@@ -66,8 +66,9 @@ export function route({ intent, files = [], project = { formatVersion: 1 }, host
   const rule = project.execution?.roles?.[role];
   if (delegate) {
     const hostRule = project.execution?.hosts?.[host];
-    if (rule?.mode === 'delegate' && hostRule?.delegation === true) {
-      const model = rule.profile ? hostRule.models?.[rule.profile] : undefined;
+    if (project.efficiency?.delegation?.maxWorkers === 0) reasons.push('Delegation is disabled by the effective zero worker limit.');
+    else if (rule?.mode === 'delegate' && hostRule?.delegation === true) {
+      const model = rule.profile && hostRule.models && Object.hasOwn(hostRule.models, rule.profile) ? hostRule.models[rule.profile] : undefined;
       if (rule.profile && !model) missing.push(`host ${host} has no model mapping for profile ${rule.profile}`);
       else execution = delegation(project, role, host, rule.profile, execution);
     } else reasons.push('Delegation was not selected: the role and host must both explicitly support it.');

@@ -4,12 +4,14 @@ Plan, implement, verify and maintain project context. Use `route-work` for modul
 routing and `resolve-service` for Git, codehost or task-tracker tool selection. Pasted tasks
 and local files work without a tracker; remote operations need explicit service bindings.
 
-The shared runtime is copied into exported packages at `support/{engine,application,platform,integrations,cli}/`. It produces
+The shared runtime is copied into exported packages at `support/{engine,application,platform,integrations,hosts,cli}/`. It produces
 routing/tool plans without executing work. Optional lifecycle hooks provide routing hints
-and opt-in checkpoint snapshots; they do not force skills to load on every host.
-Edit hints are opt-in; session service metadata and bounded lookup results can be reused
-across turns instead of repeating discovery and large context dumps.
+and default milestone checkpoint snapshots; they do not force skills to load on every host.
+Edit hints and hint deduplication default to enabled and can be disabled. Service metadata
+and bounded lookup results can be reused across turns.
 
+Use `task-start` once for a multi-step task and `task-step` at semantic acceptance boundaries;
+ordinary discovery/status calls reuse the session binding without per-feature task JSON.
 Use the bundled CLI's `session` command for context occupancy, selected-guidance estimates,
 pack activity and next-step advice; `session-attempt` records explicit acceptance outcomes.
 Missing host telemetry stays unknown. Neither command compacts a session or switches models.

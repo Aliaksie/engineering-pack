@@ -1,8 +1,9 @@
 import { byteLength } from './contracts/paths.mjs';
-const FIELDS = ['task', 'authorization', 'nextStep', 'sources', 'continuation', 'taskId'];
+const FIELDS = ['task', 'authorization', 'nextStep', 'sources', 'continuation', 'taskId', 'taskContract'];
 export function validateMetadata(metadata) {
   for (const key of Object.keys(metadata)) if (!FIELDS.includes(key)) throw new Error(`unknown checkpoint metadata: ${key}`);
   for (const key of ['task', 'authorization', 'nextStep', 'taskId']) if (metadata[key] !== undefined && (typeof metadata[key] !== 'string' || metadata[key].length > 4096)) throw new Error(`invalid checkpoint ${key}`);
+  if (metadata.taskContract !== undefined && metadata.taskContract !== null && !/^[a-f0-9]{64}$/.test(metadata.taskContract)) throw new Error('invalid checkpoint task contract');
   if (metadata.sources !== undefined && (!Array.isArray(metadata.sources) || metadata.sources.length > 100 || metadata.sources.some((entry) => typeof entry !== 'string' || entry.length > 1024))) throw new Error('invalid checkpoint sources');
   if (metadata.continuation !== undefined) {
     const continuation = metadata.continuation;
@@ -17,12 +18,13 @@ export function validateMetadata(metadata) {
 }
 export function checkpointState(previous, metadata, repository, updated) {
   validateMetadata(metadata);
-  const retained = Object.fromEntries(FIELDS.filter((key) => previous[key] !== undefined).map((key) => [key, previous[key]]));
+  const sameTask = metadata.taskId === undefined || metadata.taskId === previous.taskId;
+  const retained = Object.fromEntries(FIELDS.filter((key) => sameTask && previous[key] !== undefined).map((key) => [key, previous[key]]));
   const state = { formatVersion: 1, updated, ...retained, ...metadata, ...repository };
   if (metadata.continuation !== undefined) {
-    state.continuationSource = { taskId: state.taskId ?? null, head: state.head,
+    state.continuationSource = { taskId: state.taskId ?? null, taskContract: state.taskContract ?? null, checkout: state.checkout ?? null, head: state.head,
       index: state.fingerprints.index, workingTree: state.fingerprints.workingTree, complete: state.fingerprints.complete };
-  } else if (previous.continuationSource !== undefined) {
+  } else if (sameTask && previous.continuationSource !== undefined) {
     // Automatic snapshots must not renew the source binding of older semantic notes.
     state.continuationSource = previous.continuationSource;
   }
@@ -30,7 +32,7 @@ export function checkpointState(previous, metadata, repository, updated) {
 }
 export function compareCheckpoint(saved, current) {
   const complete = Boolean(saved?.fingerprints?.complete && current.fingerprints.complete);
-  const differs = saved && (saved.head !== current.head || JSON.stringify(saved.status) !== JSON.stringify(current.status)
+  const differs = saved && (saved.head !== current.head || saved.checkout !== current.checkout || JSON.stringify(saved.status) !== JSON.stringify(current.status)
     || saved.fingerprints?.index !== current.fingerprints.index || saved.fingerprints?.workingTree !== current.fingerprints.workingTree);
   return { saved, current, changed: saved ? (differs ? true : complete ? false : null) : false,
     changeDetection: { complete, reason: complete ? null : 'Content inspection is incomplete; unchanged state cannot be established.' },
@@ -40,4 +42,16 @@ export function compareCheckpoint(saved, current) {
 export function validateCheckpoint(state) {
   if (state && (state.formatVersion !== 1 || typeof state.head !== 'string' && state.head !== null || !Array.isArray(state.status))) throw new Error('invalid checkpoint data');
   return state;
+}
+
+export function checkpointUnchanged(previous, state) {
+  if (!previous?.fingerprints?.complete || !state.fingerprints?.complete) return false;
+  const { updated: previousTime, ...before } = previous;
+  const { updated: currentTime, ...after } = state;
+  const canonical = value => {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+    return value;
+  };
+  return JSON.stringify(canonical(before)) === JSON.stringify(canonical(after));
 }

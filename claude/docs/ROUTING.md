@@ -78,13 +78,13 @@ no runtime command here creates worktrees or commits. See
 and [worker handoffs](../plugins/craft-engineering/skills/foundations/references/context-discipline.md#assign-work-that-can-finish-independently).
 
 Prompt hooks return compact loading hints rather than full catalog evidence. Per-edit hints
-are off by default; a consumer can opt in with `routing: { "editHints": true }`. Full routing
+are on by default; a consumer can disable them with `routing: { "editHints": false }`. Full routing
 data stays available through the CLI. Configured service metadata is prepared on supported
 session-start/resume hooks; this is local metadata, not live discovery or authentication.
 
-Optional `routing: { "dedupeHints": true }` stores only the last emitted hint's hash and
-timestamp under `.capabilities/state/`, scoped by session and host. Ignore this directory in
-Git. Identical hints are suppressed for at most 15 minutes; changed hint text, project
+Default `routing: { "dedupeHints": true }` stores only the last emitted hint's hash and
+timestamp in private runtime state, scoped by project, session and host. Use `settings`
+to inspect the storage directory. Identical hints are suppressed for at most 15 minutes; changed hint text, project
 configuration or router/catalog source causes emission again. Session start/resume and
 compaction events invalidate reuse through a small generation marker, including when an older
 hint is still being emitted. Scope changes that produce the same routing text need
@@ -95,7 +95,7 @@ Unsupported delivery, missing session identity, busy state, malformed state and 
 errors never justify suppressing a fresh hint or blocking work. State paths reject symlinks,
 use a writer lock and atomic replacement. A busy or abandoned lock can cause repeated hints;
 it cannot turn a permission denial into an allow. This setting does not enable checkpoints,
-cache tool schemas, save prompts or change authorization. It remains off by default.
+cache tool schemas, save prompts or change authorization. Disable hint deduplication with `routing: { "dedupeHints": false }`.
 
 ## Guidance size without a live token meter
 
@@ -148,9 +148,11 @@ Inspect `changeDetection.complete` before relying on the comparison. `changed: n
 unchanged state cannot be established. Inspection limits, read failures, submodules and older
 checkpoints without fingerprints leave coverage incomplete; they do not establish freshness.
 
-Automatic snapshots require `checkpoint.enabled: true` in trusted project configuration.
-They run at supported tool/milestone/compaction events. Writes are atomic and reject symlinked
-state paths; concurrent writers are reported as busy. Ignore `.capabilities/state/` in Git.
+Automatic snapshots default to enabled in trusted installations; set `checkpoint.enabled`
+to false to disable them. They run at supported turn-completion and context-transition
+boundaries, rather than after every tool call. Unchanged complete snapshots are deduplicated.
+Writes are atomic and reject symlinked state paths; concurrent writers are reported as busy.
+State lives under Git metadata when available; `settings` shows the actual directory.
 Because some hosts expose asynchronous/observational compaction hooks, persist semantic
 metadata at milestones rather than relying on a final callback. Read recovery state explicitly
 on hosts with no after-compaction injection. This preserves continuity; it does not replace
@@ -183,3 +185,11 @@ names are declarations, and cited outcomes are caller records, not independent m
 Current-target `permission-denied` or `tool-unavailable` stops advice across all profiles;
 resolve that prerequisite before supplying a fresh attempt set. No chain means stop rather
 than invent a stronger model. A configured host mapping alone establishes no quality benefit.
+
+Logical profile advice is available for main execution even when delegation is disabled or
+unmapped. Default logical classes carry no vendor model names or measured capability ranking.
+Exact host model mappings remain consumer declarations; native switch support and authorization
+are separate. `efficiency.delegation.maxWorkers: 0` suppresses delegated route plans and worker
+offers. Positive limits are ceilings, with fresh host capacity and one shared task-tree budget
+required before dispatch. See [scoped action recommendations](SESSION.md#scoped-action-recommendations)
+for decision receipts, observed slot accounting and explicit unsupported native execution.

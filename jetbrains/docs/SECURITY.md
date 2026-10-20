@@ -37,9 +37,10 @@ base/head revisions and explicit authorization; comment API line applicability s
 
 Checkpoint metadata stores explicit task/authorization/next-step data and Git state, not full
 transcripts or tool output. It is historical evidence, not a new authorization source. State paths
-reject symlinks and use bounded, locked atomic writes; ignore `.capabilities/state/` in
-consumer projects. Session activity, retry receipts and lookup packets use that same ignored
-directory and are not provider telemetry. Context occupancy requires fresh session-bound
+reject symlinks and use bounded, locked atomic writes. Runtime state uses Git metadata
+when available; exclude the non-Git fallback `.capabilities/state/` before importing a folder
+into Git. Session activity, retry receipts and lookup packets share this private storage
+and are not provider telemetry. Context occupancy requires fresh session-bound
 host observations; file reads and billing totals cannot establish it. Automatic snapshots
 do not refresh the source binding of older continuation notes.
 
@@ -49,3 +50,8 @@ Engineering Pack does not send telemetry remotely by default. Local metadata exc
 prompts, transcripts, code, file contents, commands, raw session IDs and credentials.
 See [observability and privacy](OBSERVABILITY.md) for exact fields, scoped correlation,
 retention, failure behavior, opt-out and optional OTLP export.
+
+Personal preferences reject symlinks, non-files, oversized data and replacement during opening
+on every platform. POSIX additionally requires the current user to own both the file and its
+parent, with no group/other write bits. On Windows, preferences rely on the consumer's account
+and directory ACLs; Node mode bits do not validate ACL privacy or ownership.

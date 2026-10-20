@@ -4,5 +4,5 @@ import { flushTelemetry } from './application/telemetry/observe.mjs';
 import { readProject, readInput } from './application/project/configuration.mjs';
 import { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';
 import { runSession } from '../platform-runtime/session.mjs';
-await runSession(sessionStatus, readInput, readProject, "claude", { run:observeNativeSession, diagnostic:hookDiagnostic });
+await runSession(sessionStatus, readInput, readProject, "claude", { run:(root, host, callback) => observeNativeSession(root, host, callback, "craft-engineering"), diagnostic:hookDiagnostic });
 await flushTelemetry();

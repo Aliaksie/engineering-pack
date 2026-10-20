@@ -1,4 +1,68 @@
 // The CLI uses the same normalized result as adapters; unknown telemetry stays visible.
+export function renderCommand(action, result, { json = false, verbose = false, help = false } = {}) {
+  if (!json && !verbose && !help) {
+    if (action === 'session' || action === 'session-advice') return renderSessionStatus(result);
+    const compact = renderReceipt(action, result);
+    if (compact !== null) return compact;
+  }
+  return `${JSON.stringify(result, null, action === 'locate' ? undefined : 2)}\n`;
+}
+
+function checkpointLine(checkpoint) {
+  if (!checkpoint) return 'Checkpoint: unknown';
+  if (checkpoint.status) return `Checkpoint: ${checkpoint.status}${checkpoint.reason ? ` — ${checkpoint.reason}` : ''}`;
+  return `Checkpoint: ${checkpoint.unchanged ? 'unchanged' : 'saved'}${checkpoint.file ? ` — ${checkpoint.file}` : ''}`;
+}
+
+function offerLines(result) {
+  const offer = result.offer;
+  if (!offer) return [`Offer: unavailable — ${result.applicability?.reason ?? 'No action proposed.'}`];
+  return [`Offer: ${offer.id}`, `Action: ${offer.action} | Scope: ${offer.scope}`,
+    `Decision: ${offer.decision}${result.suppressed ? ' (unchanged; suppressed)' : ''}`,
+    `Execution: ${offer.execution ?? 'not-observed'}`];
+}
+
+function renderReceipt(action, result) {
+  let lines;
+  if (action === 'task-step') {
+    const receipt = result.recorded;
+    lines = [`Step recorded: ${receipt.operation} / ${receipt.target} — ${receipt.outcome}`,
+      checkpointLine(result.checkpoint)];
+    if (receipt.outcome !== 'passed') lines.push(`Result: ${result.result}`);
+    if (result.complete) lines.push('Task: complete (agent-declared)');
+    const next = result.nextStep;
+    if (next) {
+      lines.push(`Next: ${next.action}${next.reason ? ` — ${next.reason}` : ''}`);
+      for (const check of next.checks ?? []) lines.push(`Check: ${check.cwd} ${JSON.stringify([check.command, ...(check.args ?? [])])}`);
+      if (next.afterCheckpoint) lines.push(`After checkpoint: ${next.afterCheckpoint}`);
+    }
+    if (result.actionOffer && !result.actionOffer.suppressed) lines.push(...offerLines(result.actionOffer));
+  } else if (action === 'task-start') {
+    lines = [`Task bound: ${result.task}`, `Execution: ${result.routing.execution.mode} / ${result.routing.execution.role}`];
+    if (result.routing.skills.length) lines.push(`Skills: ${result.routing.skills.join(', ')}`);
+    if (result.routing.references.length) lines.push(`References: ${result.routing.references.join(', ')}`);
+    lines.push(checkpointLine(result.checkpoint));
+    const model = result.modelAdvice;
+    if (model) lines.push(`Model advice: ${model.decision}${model.profile ? ` / ${model.profile}` : ''}${model.mainModel?.limitation ? ` — ${model.mainModel.limitation}` : ' (recommendation only)'}`);
+    for (const missing of result.routing.missing) lines.push(`Missing: ${missing}`);
+  } else if (action === 'checkpoint-save') {
+    lines = [checkpointLine(result)];
+  } else if (action === 'session-attempt') {
+    const receipt = result.recorded;
+    lines = [`Attempt recorded: ${receipt.operation} / ${receipt.target} — ${receipt.outcome}`];
+  } else if (['task-offer', 'task-decision', 'task-action-check'].includes(action)) {
+    lines = offerLines(result);
+    if (action === 'task-action-check') lines.push(`Ready: ${result.ready === true}`, result.reason,
+      'Readiness is not execution or a permission grant.');
+    else lines.push('No action dispatched.');
+  } else return null;
+  const status = result.status;
+  if (status?.taskEvidenceStale) lines.push('Warning: task evidence is stale.');
+  const warnings = [result.activityDiagnostic, status?.diagnostic, status?.actionDiagnostic, status?.noticeDiagnostic, ...(status?.diagnostics ?? [])];
+  for (const warning of warnings.filter(Boolean)) lines.push(`Warning: ${warning}`);
+  return `${lines.filter(Boolean).join('\n')}\n`;
+}
+
 export function renderSessionStatus(status) {
   const value = (item) => item === null || item === undefined ? 'unknown' : String(item);
   const { usage, host, packContext, activity } = status;

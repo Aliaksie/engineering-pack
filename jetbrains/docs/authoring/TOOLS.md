@@ -15,7 +15,7 @@ that need them. A routing or publication plan grants no permission to execute it
 | Service preparation | Configured bindings and optional host-observed tool names → compact operation map | Pure metadata preparation; no discovery/probes, credentials, persistent cache or invocation |
 | Catalog validator | Catalog and optional target set → validated contract or error | Pure validation; source validation checks registered files |
 | Service bindings | Operation, parameters and binding → CLI argv or MCP plan | No subprocess or network call |
-| Checkpoints | Session metadata and Git state → saved state or comparison | Local Git reads and atomic state writes; opt-in, locked and size-bounded |
+| Checkpoints | Session metadata and Git state → saved state or comparison | Local Git reads and atomic state writes; milestone snapshots enabled by default, locked and size-bounded |
 | Review snapshot | Explicit committed base/head → immutable identities and diff | Bounded local Git reads; excludes working-tree changes |
 | Review result checker | Snapshot and result → structural verdict | Reads artifacts; does not judge findings or publish them |
 
@@ -37,12 +37,12 @@ snapshot tooling must not be represented as covering uncommitted edits.
 
 ## Hooks and enforcement limits
 
-Delivery hooks supply compact hints for explicit prompt routing; edit hints require the
-consumer's `routing.editHints` opt-in. Session-start hooks can prepare configured service
-metadata without live discovery. Optional
-checkpoint events save explicit metadata and flag changed trees after recovery. Host adapters
-report whether each mapped event can inject context or deny a tool call. Observing an event
-does not imply enforcement. Installation enables neither delegation nor checkpoint writes.
+Delivery hooks supply compact routing hints; edit hints and milestone snapshots default to
+enabled and can be disabled in project settings. Session-start hooks can prepare configured
+service metadata without live discovery. Checkpoint events save explicit metadata and flag
+changed trees after recovery. Host adapters report whether each mapped event can inject
+context or deny a tool call. Automatic behavior requires loaded, trusted hooks; observing
+an event does not imply enforcement or authorize delegation.
 
 The read-only review guard recognizes simple direct publishing commands, quoted arguments,
 command separators, Git global options, literal scripts passed to supported shells with
@@ -92,6 +92,6 @@ The report counts outcomes outside `allow` and `deny` as `unexpectedDecisions`, 
 from false and missed blocks, so an unknown decision cannot look like a clean corpus.
 
 Pack CLI and native hook entry points also emit bounded supporting local usage telemetry
-by default. This is separate from opt-in checkpoint, routing-cache and session-receipt
+by default. This is separate from checkpoint, lookup-reuse and explicit acceptance-receipt
 state. Remote export requires explicit configuration; see
 [observability and privacy](../OBSERVABILITY.md) for fields, retention and disabling it.

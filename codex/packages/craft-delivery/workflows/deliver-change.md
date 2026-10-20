@@ -18,6 +18,22 @@ document for every stage. For cross-repository work, retain ownership of facts, 
 dependencies, tests, CI and outputs before adding infrastructure. Resolve missing ownership
 through `craft-delivery-inspect-architecture`; reassess when later evidence changes scope.
 
+For multi-step work with the bundled local runtime, bind the task once with `task-start`
+using the verified host session id, a stable task id, goal and relevant paths. Honor effective
+disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
+Explicitly requested receipt commands remain available. Normal
+`route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.
+Keep the same task id across corrections and continuation; start a new id for a new outcome.
+Rerun `task-start` with the same goal when stage or scope materially changes. Missing session
+identity means limited operation: use bounded tools and a compact private handoff without
+inventing an id or claiming reuse. Guidance-only hosts follow the same evidence discipline.
+
+When selected guidance spans separately installed packages, derive their verified roots from
+the loaded skill resources and repeat `--bundle <root>` on `context-report`, `task-step` and
+session advice calls. Retain this root selection with the task; do not ask the user to locate
+cache directories or search private host caches. A full export needs only its bundle root.
+Missing or ambiguous installations remain explicit; accounting does not prove resource loading.
+
 Use `craft-delivery-inspect-architecture` for a boundary that affects the solution and
 `craft-delivery-plan-change` for material unresolved implementation choices. Use
 `craft-delivery-route-work` to select independent practices and stack guidance when needed,
@@ -63,10 +79,37 @@ pass or retrying without a stopping condition. After an environment failure, dia
 missing prerequisite once; retry only when evidence or conditions change. Continue independent
 authorized work without adding unrelated network/browser preflights.
 
-At a completed stage, use the bundled `session-advice` action when a next-step suggestion
-would help. Supply the current task/revision and observed verification, not a guessed status
-from tool success. Continue necessary authorized work; a suggestion is not an extra approval
+After correcting a recorded permission/tool/prerequisite blocker, use `task-step` with
+`--outcome prerequisite-resolved` against its original stage and target, citing the actual
+correction. This clears that blocker without claiming acceptance passed or granting new
+authority. Preserve quality failures and other unresolved targets, then resume the checks.
+
+At a meaningful acceptance boundary, use `task-step` to supply the stage, acceptance target,
+approach, evidence identifier, observed outcome, brief result and next step. It records a
+semantic receipt, maintains one bounded continuation and returns session advice. A shell exit
+code alone does not establish acceptance; tool hooks never create these semantic receipts.
+Use `--complete` only when the requested outcome is accepted and unresolved failures are closed.
+This is a stage boundary, not a command to run after every tool call. Existing `session-advice`
+and explicit receipt/checkpoint commands remain available for more detailed observations. Continue necessary authorized work; a suggestion is not an extra approval
 gate. Use native context indicators; file-size estimates do not establish session occupancy.
+
+For an optional action offer, explain its trigger, expected benefit and bounded scope, then
+use the host-supported question mechanism. Continue independent authorized work while pending.
+Record the real answer through `task-decision`; silence/timeout is not approval. Use an exact
+existing user/standing authorization reference instead of asking again when scope is covered.
+Declined/unchanged proposals stay suppressed. Immediately before an approved action, use
+`task-action-check` with fresh source, policy and host observations. Its readiness is based on
+caller declarations, never a permission grant or execution receipt. Use actual host controls
+only when supported and authorized, then observe the result and verify integrated acceptance.
+Missing native dispatch/capacity is an explicit limitation; finish useful work in main.
+When a trusted controller adapter is connected, route nested assignments through the same
+coordinator root, session and task ledger. Reuse observed idle workers where useful; a
+completed worker still occupies capacity until the host reports release. An unknown dispatch
+outcome requires reconciliation of its operation key before another attempt.
+
+Feature usage comes from runtime receipts and controller observations. Normal delivery does
+not inspect or classify feature usage; missing evidence stays unknown. Use `task-features`
+and `task-feature` only when an explicit evaluation requests inspection or semantic classification.
 
 Complete local delivery with the changed behavior, acceptance-to-check results and material
 limits. Record generation/check results, relevant presentation review, local revision/commit

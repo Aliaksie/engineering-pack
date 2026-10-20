@@ -10,7 +10,7 @@ export function contextDeliveryPlan({ session, request = {}, lifecycle = {} }, p
   return { intent,
     invalidateHint: Boolean(session && project.routing?.dedupeHints === true && (lifecycle.started || lifecycle.contextChanging || lifecycle.contextRestored)),
     services: Boolean(lifecycle.started && Object.keys(project.services ?? {}).length),
-    saveCheckpoint: Boolean(checkpoint && (lifecycle.operationFinished || lifecycle.turnFinished || lifecycle.contextChanging)),
+    saveCheckpoint: Boolean(checkpoint && (lifecycle.milestone || lifecycle.turnFinished || lifecycle.contextChanging)),
     recoverCheckpoint: Boolean(checkpoint && (lifecycle.started || lifecycle.contextRestored)),
     readCheckpoint: Boolean(checkpoint && lifecycle.contextChanging) };
 }

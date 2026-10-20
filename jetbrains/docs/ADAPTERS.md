@@ -4,6 +4,12 @@ The exporters in `tooling/export/` construct host bundles; `hosts/` owns native 
 controls and wire formats. Service bindings separately
 choose Git/codehost/tracker tools. Build output is not automatically installed or trusted.
 
+All exports include the portable runtime and a per-feature support matrix in
+`SETUP.json`/`adapter-report.json`. The [native controller entry](HOST-CONTROL.md#common-entry-and-other-native-hosts)
+binds Codex App Server, Claude SDK and Cursor/Copilot/Gemini ACP clients. JetBrains and
+AGENTS can bind an explicit underlying agent; guidance layouts alone provide no native
+execution. Missing protocol capabilities remain unsupported, not simulated.
+
 See [current target-platform installation and support](PLATFORMS.md) for Codex, Claude,
 Gemini extensions and JetBrains, including update instructions and official sources.
 
@@ -13,8 +19,10 @@ After installing any adapter, ask: **"Check Engineering Pack setup, hook activit
 and session usage."** Each exported package includes a self-contained `SETUP.md`
 and `SETUP.json`, linked from its package instructions. The shared policy lives in
 `packages/craft-engineering/standards/session-setup.md`; native controls stay in
-`hosts/`. The builder copies the policy into every package without a runtime
-dependency on craft-engineering or another installed package.
+`hosts/`. The builder copies the policy and compact adapter facts into every package
+without a runtime dependency on craft-engineering or another installed package.
+The first-use notice uses that page; the full `SETUP.json` feature matrix is reserved
+for explicit setup and capability inspection.
 
 On first skill use in a conversation, the agent is instructed to give one short
 notice: what the actual host supports, what activation remains unverified, and
@@ -27,9 +35,9 @@ commands. Missing UI controls require a documented fallback, not invented comman
 Guidance-only adapters must explain that automatic hooks are not registered.
 An enabled plugin, trusted project or generated hook file does not prove automatic
 hook invocation. With local telemetry enabled, observe ordinary work for fresh
-`host.hook` events in `.capabilities/state/telemetry.jsonl`; explicit CLI calls and
-direct wrapper runs verify different paths. Missing events alone do not diagnose
-the cause.
+`host.hook` events in runtime `telemetry.jsonl` (`settings --root <project>` shows its
+directory). Explicit CLI calls and direct wrapper runs verify different paths.
+Missing events alone do not diagnose the cause.
 
 Where shell execution and Node 20+ are available, an explicit status read works
 without hooks:
@@ -168,7 +176,8 @@ and marks unsupported events. Native skill names are added to routing hints by t
 
 Package hook entry points use no LLM calls. Host wrappers normalize native events;
 application use cases collect observations and translate lifecycle facts for portable engine
-decisions. Hosts render those decisions into native responses. State snapshots are opt-in.
+decisions. Hosts render those decisions into native responses. Milestone snapshots default
+to enabled; set `checkpoint.enabled` to false to disable them.
 A context-handler failure remains advisory; a valid before-shell policy call that cannot
 evaluate returns a denial with a configuration error. Malformed or non-object JSON receives
 the default allow decision. Inputs over 64 KiB are rejected before evaluation. Purely

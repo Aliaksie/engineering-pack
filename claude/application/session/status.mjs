@@ -4,18 +4,29 @@ import { bundleRoot, clock, runtimeVersion } from '../../platform/index.mjs';
 import { decide } from '../engine-client.mjs';
 import { contextReport } from './context.mjs';
 import { readCheckpoint, recoverCheckpoint, gitState } from '../checkpoint.mjs';
-import { readSessionState } from './activity.mjs';
+import { readSessionState, activeTask } from './activity.mjs';
 
 // Gather bounded observations; the engine owns identity, freshness and action decisions.
 function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { root = '.', session, task, bundle, now = clock().ms } = {}) {
   if (session && input.sessionId && session !== input.sessionId) throw new Error('session input identity mismatch');
   if (task && input.task?.id && task !== input.task.id) throw new Error('task input identity mismatch');
-  const sessionId = session ?? input.sessionId, taskId = task ?? input.task?.id;
+  const sessionId = session ?? input.sessionId;
+  let taskId = task ?? input.task?.id, bindingError;
+  if (!taskId && sessionId) {
+    try { taskId = activeTask(root, sessionId); }
+    catch (error) { bindingError = error.message; diagnostic('state', 'STATE_UNAVAILABLE'); }
+  }
   input = { ...input, ...(sessionId ? { sessionId } : {}), task: { ...input.task, ...(taskId ? { id: taskId } : {}) } };
   const observations = {};
   if (sessionId && taskId) {
     try { observations.state = readSessionState(root, sessionId, taskId); }
     catch (error) { observations.stateError = error.message; diagnostic('state','STATE_UNAVAILABLE'); }
+  }
+  if (observations.state?.taskRecord) {
+    observations.repository = gitState(root);
+    const context = decide('task-context', { state: observations.state, repository: observations.repository });
+    input = { ...input, ...(observations.state.notice && input.previous === undefined ? { previous: observations.state.notice } : {}), task: { ...context.task, ...input.task } };
+    observations.taskStale = context.stale;
   }
   if (sessionId) {
     try { observations.saved = readCheckpoint(root, sessionId); }
@@ -23,7 +34,12 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
   }
   const needed = decide('session-observation-plan', { input, project, catalog, state: observations.state, saved: observations.saved });
   if (needed.recover) {
-    try { observations.recovered = recoverCheckpoint(root, sessionId); observations.repository = observations.recovered.current; }
+    try {
+      observations.recovered = observations.repository
+        ? decide('checkpoint-compare', { saved: observations.saved, current: observations.repository })
+        : recoverCheckpoint(root, sessionId);
+      observations.repository = observations.recovered.current;
+    }
     catch (error) { observations.checkpointError = error.message; diagnostic('checkpoint','CHECKPOINT_UNAVAILABLE'); }
   }
   if (needed.repository && !observations.repository) observations.repository = gitState(root);
@@ -45,7 +61,8 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
   emitTelemetry('host.observed', { occupancyKnown: result.usage?.status === 'observed', reason: result.usage?.status === 'observed' ? 'observed' : 'unavailable' });
   let version = null;
   try { version = runtimeVersion(); } catch { /* Missing supporting metadata cannot break the view. */ }
-  return { ...result, packVersion: version };
+  const features = observations.state ? decide('feature-report', { state: observations.state, repository: observations.repository ?? {} }) : null;
+  return { ...result, ...(bindingError ? { diagnostics: [...result.diagnostics, `Task binding unavailable: ${bindingError}`] } : {}), task: input.task, featureOutcomes: features, ...(observations.taskStale ? { taskEvidenceStale: true } : {}), packVersion: version };
 }
 
 export const sessionStatus = (...args) => withTelemetry(args[2]?.root ?? '.', { session: args[2]?.session ?? args[0]?.sessionId, host: args[0]?.host?.name }, () => observe('session.observed', () => sessionStatusOperation(...args), result => ({ decision: result.recommendation?.action, pressure: result.pressure, occupancyKnown: result.usage?.status === 'observed' })));

@@ -85,6 +85,13 @@ Checkpoint, activity and hint state share bounded, symlink-checked, atomic file 
 with separate formats and lifecycles. Automatic Git snapshots cannot renew the source
 binding of older continuation notes. A reset recommendation requires a fresh continuation.
 
+Worker reservations use one bounded private ledger per coordinator root/session/task across
+processes. Application controllers persist intent and release locks before calling trusted
+host functions; the engine decides admission and reconciliation from explicit JSON facts.
+Review/compaction execution receipts live with their existing action proposals and survive
+proposal cleanup. No executable adapter is loaded from project configuration. See the
+[host controller contract](HOST-CONTROL.md) for operation keys, fencing and native limits.
+
 The engine returns plans and advice. It does not call models, switch profiles, execute
 remote operations, compact a host session or publish findings. Context-delivery policy
 receives lifecycle facts, not hook event names. Application code
@@ -95,7 +102,7 @@ Host lifecycle controls belong to `hosts/`; external service mappings belong to
 ## Packages and exports
 
 Package names, manifests and useful bin/hook entry points remain external interfaces.
-The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/` and `cli/` into
+The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/`, `hosts/` and `cli/` into
 each package's `support/`, and rebases shared imports in package entry points. Installed
 packages run after relocation without authoring scripts or sibling package dependencies.
 Full bundles also expose these directories at their root. No legacy runtime paths or

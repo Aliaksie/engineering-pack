@@ -1,3 +1,4 @@
+import { validateEfficiency } from '../policy/effective-settings.mjs';
 export const LAYERS = ['ui', 'backend', 'agent'];
 export const LANGUAGES = ['javascript', 'typescript', 'python', 'java', 'kotlin', 'jvm', 'csharp', 'go'];
 export const READ_OPERATIONS = ['git.status', 'git.diff', 'change.read', 'change.diff', 'task.read', 'task.search'];
@@ -17,7 +18,7 @@ function keys(object, allowed, label) {
   for (const key of Object.keys(object)) if (!allowed.includes(key)) throw new Error(`unknown ${label} field: ${key}`);
 }
 export function validateProject(project) {
-  keys(project, ['formatVersion', 'languages', 'layers', 'runtimes', 'frameworks', 'providers', 'modules', 'services', 'execution', 'permissions', 'checkpoint', 'review', 'routing'], 'project');
+  keys(project, ['formatVersion', 'languages', 'layers', 'runtimes', 'frameworks', 'providers', 'modules', 'services', 'execution', 'permissions', 'checkpoint', 'review', 'routing', 'efficiency'], 'project');
   if (project.formatVersion !== 1) throw new Error('unsupported project formatVersion');
   for (const [field, allowed] of [['languages', LANGUAGES], ['layers', LAYERS], ['runtimes'], ['frameworks'], ['providers']]) {
     if (project[field] !== undefined) strings(project[field], field, allowed);
@@ -73,8 +74,9 @@ export function validateProject(project) {
     }
     if (project.execution.hosts !== undefined && !plain(project.execution.hosts)) throw new Error('execution hosts must be an object');
     for (const host of Object.values(project.execution.hosts ?? {})) {
-      keys(host, ['delegation', 'models'], 'execution host');
+      keys(host, ['delegation', 'models', 'mainModelSwitch'], 'execution host');
       if (host.delegation !== undefined && typeof host.delegation !== 'boolean') throw new Error('delegation must be boolean');
+      if (host.mainModelSwitch !== undefined && typeof host.mainModelSwitch !== 'boolean') throw new Error('mainModelSwitch must be boolean');
       if (host.models !== undefined && (!plain(host.models) || Object.values(host.models).some((model) => typeof model !== 'string' || !model))) throw new Error('model profiles must map to explicit host model names');
     }
     if (project.execution.profiles !== undefined) {
@@ -110,6 +112,7 @@ export function validateProject(project) {
     keys(project.routing, ['editHints', 'dedupeHints'], 'routing');
     for (const field of ['editHints', 'dedupeHints']) if (project.routing[field] !== undefined && typeof project.routing[field] !== 'boolean') throw new Error(`routing ${field} must be boolean`);
   }
+  if (project.efficiency !== undefined) validateEfficiency(project.efficiency);
   return project;
 }
 

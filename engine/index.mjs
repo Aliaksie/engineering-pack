@@ -1,3 +1,9 @@
+import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
+import { workerBudget } from './routing/worker-budget.mjs';
+import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers } from './session/workers.mjs';
+import { recordFeature, featureReport } from './session/features.mjs';
+import { taskBinding, taskContract, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
+import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
 import { discoveryRequest, discoveryResult, discoveryState, deferredDiscovery } from './discovery/plan.mjs';
@@ -10,7 +16,7 @@ import { prepareServices } from './routing/services.mjs';
 import { modelAdvice, capabilityAdvice } from './policy/models.mjs';
 import { sessionAdvice } from './session/advice.mjs';
 import { sessionStatus, sessionObservationPlan } from './session/status.mjs';
-import { validateMetadata, validateCheckpoint, checkpointState, compareCheckpoint } from './checkpoint.mjs';
+import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchanged, compareCheckpoint } from './checkpoint.mjs';
 import { activityUpdate, appendAttempt, attemptReceipt, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
 import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
@@ -27,6 +33,27 @@ const operations = {
   'review-snapshot': a => validateSnapshot(a.snapshot),
   'review-validate': a => validateReview(a.snapshot, a.review),
   'review-publication': a => publicationPlan(a.snapshot, a.review, a.target),
+  'worker-budget': a => workerBudget(a.project, a.facts, a.options),
+  'feature-record': a => recordFeature(a.state, a.input, Object.hasOwn(a, 'source') ? a.source : taskSource(a.repository), a.at, a.provenance),
+  'feature-report': a => featureReport(a.state, taskSource(a.repository)),
+  'worker-input': a => workerInput(a.input),
+  'worker-state': a => workerState(a.state, a.tree),
+  'worker-snapshot': a => workerSnapshot(a.snapshot, a.session, a.now),
+  'worker-admit': a => workerAdmission(a),
+  'worker-transition': a => workerTransition(a.state, a.id, a.result),
+  'worker-reconcile': a => reconcileWorkers(a.state, a.snapshot, a.targets),
+  'action-facts': a => actionFacts(a.facts),
+  'action-propose': a => proposeAction(a),
+  'action-decide': a => decideAction(a),
+  'action-check': a => checkAction(a),
+  'action-claim': a => claimAction(a),
+  'action-finish': a => finishAction(a),
+  'task-binding': a => taskBinding(a.state, a.repository),
+  'task-contract': a => taskContract(a.record),
+  'task-start': a => startTask(a.state, a.input, a.repository),
+  'task-source': a => taskSource(a.repository),
+  'task-context': a => taskContext(a.state, a.repository),
+  'task-step': a => recordTaskStep(a.state, a.input, a.repository, a.id, a.at),
   'activity-validate': a => validateActivityState(a.state),
   'activity-identity': a => activityIdentity(a.session, a.task),
   'discovery-request': a => discoveryRequest(a.input),
@@ -37,6 +64,7 @@ const operations = {
   'locate-match': a => matchLines(a.content, a.file, a.terms, a.maxMatches),
   route: a => route({ ...a, catalog: a.catalog }),
   lookup: a => lookup(a.project, a.options),
+  'effective-settings': a => effectiveSettings({ ...a, project: validateProject(a.project) }),
   'validate-project': a => validateProject(a.project),
   'validate-catalog': a => validatePlaybookCatalog(a.catalog),
   operation: a => planOperation(a.project, a.operation, a.params, a.bindings),
@@ -47,6 +75,7 @@ const operations = {
   'session-status': a => sessionStatus(a.input, a.project, { ...a.options, catalog: a.catalog }),
   'session-observation-plan': a => sessionObservationPlan(a.input, a.project, a.state, a.saved, a.catalog),
   'checkpoint-metadata': a => validateMetadata(a.metadata),
+  'checkpoint-unchanged': a => checkpointUnchanged(a.previous, a.state),
   'checkpoint-state': a => checkpointState(a.previous, a.metadata, a.repository, a.updated),
   'checkpoint-compare': a => compareCheckpoint(a.saved, a.current),
   'activity-update': a => activityUpdate(a.state, a.values),

@@ -7,16 +7,188 @@ npm run session -- --root <project> --session <id> --task <task-id> --data <task
 
 Installed bundles expose `node support/cli/main.mjs session`. The default is a small
 status and recommendation; `--json` includes evidence, diagnostics and the selected guidance
-report. `session:advice` retains JSON output. No command automatically compacts, resets,
+report. `session:advice` uses the same display. No command automatically compacts, resets,
 switches models, starts workers or invokes arbitrary side effects.
 
+Routine `task-start`, `task-step`, `session-attempt`, `checkpoint-save`, `task-offer`,
+`task-decision` and `task-action-check` commands print compact receipts, next actions and
+diagnostics. Use `--json` or `--verbose` for the full structured result, including checkpoint
+state and guidance reports. Programmatic callers still receive the complete object.
+
+## Normal task lifecycle
+
+For multi-step work, establish a task once using the host-provided session identity:
+
+```sh
+node cli/main.mjs task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
+node cli/main.mjs locate --root <project> --session <host-id> --term SymbolValue
+node cli/main.mjs task-step --root <project> --session <host-id> --stage implement --target acceptance:value --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
+node cli/main.mjs session --root <project> --session <host-id>
+```
+
+Installed bundles use `support/cli/main.mjs`. `task-start` routes relevant guidance and binds
+one active task to the session using private runtime state. The binding includes the Git
+symbolic ref or detached state; after changing it, rerun task-start explicitly. Older bindings
+without that checkout identity also require task-start. No branch name is prohibited. Read the selected resources;
+routing is a selection receipt, not proof they were loaded. Repeating the same id and goal
+preserves attempts and lookup evidence; use a new task id for a new outcome. A material stage
+or file-scope change can rerun `task-start` with the same goal and updated `--stage`/`--file`.
+Explicit task flags on existing commands retain their meaning. `task-step` must target the
+active binding; switch with `task-start` before recording a step for a different task.
+
+The existing `route`, `locate`, `context-report`, `session`, `session-attempt` and
+`checkpoint-save` commands can adopt this binding when `--session` is supplied without
+`--task`. Missing identity, invalid binding or unavailable storage never establishes a cache
+hit. Direct commands and guidance-only hosts remain usable without the lifecycle. A tiny
+one-off task need not create a record. No undocumented host session discovery is attempted.
+
+In Git repositories, runtime state lives under `.git/craft-state` (the worktree Git
+directory for linked worktrees). Sandboxes that deny Git-metadata writes cannot record
+task progress or acceptance directly. The installed Codex exercise used a trusted external
+harness for those writes; independent sandboxed lifecycle recording remains unverified.
+
+At an acceptance boundary, `task-step` requires an agent-declared target, approach, evidence
+identifier, outcome, result and next step. Outcomes are `passed`, `quality-failure`,
+`permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. It records
+the receipt and updates a compact continuation through the existing checkpoint mechanism when enabled. It does not
+read or judge the evidence artifact. Goal/result/next-step text is bounded to 512 characters.
+No prompt, transcript or tool output is automatically captured. Shell success never creates
+an acceptance receipt. Unchanged repository snapshots cannot renew older semantic evidence.
+
+Use `--complete` only for accepted overall completion. A failed receipt or unresolved
+acceptance target prevents that declaration. Success closes only the matching operation and
+target; unrelated success cannot erase a failure series. Source edits invalidate stored
+completion and verification when status is read, even if HEAD did not change. Context
+occupancy remains unknown unless a supported observation supplies it.
+
+After actually correcting a permission, tool or prerequisite issue, record
+`prerequisite-resolved` against the same stage/operation and target, with evidence of
+the correction. This closes only matching blocker receipts; quality failures and other
+targets stay open. It returns the task to working state without marking acceptance or
+verification passed, and cannot be combined with `--complete`. It grants no permission,
+dispatches no retry and does not bypass fresh host/action checks. Run acceptance afterward.
+
+The step response separates recorded acceptance, checkpoint result, next-step suggestion
+and status. A checkpoint failure does not undo a recorded receipt or invent a saved handoff.
+Explicitly disabled checkpoints leave receipts usable. Advice is a recommendation; no test,
+review, worker, model switch, compaction or remote operation is dispatched. A stored notice
+suppresses unchanged repeated step offers during its cooldown; an explicit status query still
+shows the underlying recommendation for inspection. Continue already-authorized work;
+request a new decision only for an additional action that lacks authorization.
+
+## Scoped action recommendations
+
+`task-start` returns logical model advice with the route. It keeps the current execution
+when exact mappings or native switch controls are unavailable. Economical/standard/strong
+profiles are bundled when no profile catalog is supplied; a supplied catalog remains
+consumer-owned. Named capabilities are never invented. Default quality budget is three;
+explicit profile limits override it. Main-model advice works without worker configuration.
+`mainModelSwitch: true` in an execution host is a support declaration, not permission or
+proof of a native switch. Inspect `mainModel` limitations separately from worker mappings.
+
+A verified risk-sensitive step can create an additional review offer automatically.
+Declare applicable risks with `task-start --risk security`. If the exact review scope is
+already authorized, `--review-authorization <user-or-standing-scope-reference>` records that
+fact and avoids a new approval request. A recommendation and an accepted check are separate
+records. Manual review settings suppress optional offers while explicit review work remains usable.
+
+Use the same local task record for optional review, delegation and compaction:
+
+```sh
+node cli/main.mjs task-offer --session <id> --root <project> --action review --scope review:current-source --benefit "Check the verified change risks" --evidence checks/current --data facts.json
+node cli/main.mjs task-decision --session <id> --root <project> --offer <proposal-id> --decision approved --evidence user-message:12
+node cli/main.mjs task-action-check --session <id> --root <project> --offer <proposal-id> --data facts.json
+```
+
+An offer explains trigger, benefit and scope. Present its question through the actual host's
+supported question mechanism. Record `approved` or `declined` only from an actual scoped
+answer; pending, silence and timeout never become approval. `--prior-authorization <reference>`
+can declare existing authorization for an exact offer scope. Existing decisions are preserved;
+use `task-decision` for a later explicit change of decision. Unchanged pending/declined offers
+are suppressed. Source, policy, scope, host/model or material risk changes require re-evaluation.
+
+Facts are **caller-supplied observations**, never preference grants. A review preflight can
+use `{"allowed":true,"supported":true}` after verifying current session/consumer policy and
+actual host capability. `observations` accepts the existing session input shape. Requested
+review or current verified source plus declared risks supports a review recommendation.
+Compaction additionally needs a safe boundary, fresh matching occupancy, a fresh continuation
+and declared reliable compaction support. Unknown/cumulative usage, stale handoffs,
+almost-complete/completed work and unsupported controls cannot justify compaction.
+
+Worker offers require an exact configured role/profile/model mapping, `independentTasks`
+greater than one, and a fresh `workers` observation:
+
+```json
+{
+  "observations": { "host": { "name": "consumer-host" } },
+  "independentTasks": 3,
+  "allowed": true,
+  "supported": true,
+  "workers": {
+    "capacity": 4,
+    "occupiedSlots": 1,
+    "taskWorkers": 0,
+    "allowed": true,
+    "sessionId": "actual-session-id",
+    "observedAt": "actual-current-ISO-time",
+    "source": "verified-host-slot-observation"
+  }
+}
+```
+
+Replace observations with actual values; this example is not live evidence. Capacity is total
+host slots. Occupied slots include main, other tasks and every current task worker that still
+occupies a slot, including idle/reusable/nested workers. All roles/models share one task-tree
+ceiling. Do not subtract failed/cancelled/completed workers until the actual host releases
+their slots. Observations expire after 30 seconds and must match the session. A preflight is not a slot reservation; a native controller must serialize/reobserve admission
+before dispatch, with nested workers sharing the same controller. The ceiling is
+the lesser of configured workers and host capacity after main/other occupied slots. A reduction
+stops new assignments without cancelling existing work. Explicit zero suppresses worker plans
+and offers; deterministic tool batching remains independent. `settings --session <id> --facts
+<workers.json>` shows requested/effective/available limits and missing prerequisites.
+
+Every action response distinguishes the offer, decision, current prerequisites and execution.
+`ready: true` means the **declared** decision and prerequisites passed revalidation; it is not a
+permission grant or evidence of native execution. Verify decision references against the real
+conversation/standing policy, then let the supported host perform and observe the action.
+The CLI does not dispatch workers, switch models or invoke compaction. Explicit application
+controllers accept trusted host callbacks for workers, review and compaction. The explicit
+native bindings connect those controls through Codex App Server, Claude SDK or ACP for an
+owning client; JetBrains/AGENTS require an explicit underlying host. Project settings do
+not activate clients. See the [host controller contract](HOST-CONTROL.md).
+Native lifecycle, actual concurrency and model round trips still require isolated integration evaluation.
+Worker success does not close main acceptance. Keep independent authorized work moving while
+an optional action is pending, and never repeat a permission/tool failure through a stronger model.
+
 ## Three separate measurements
+
+Runtime receipts and host controllers record observable feature use without model
+classification. Normal delivery requires no feature inspection or bookkeeping; missing
+evidence and semantic judgments stay unknown. For an explicitly requested evaluation,
+`task-features --session <id>` shows outcomes, provenance and source freshness. Use
+`task-feature --session <id> --feature review --feature-status used --reason <reason>
+--evidence <reference>` to retain a bounded declaration. Supported statuses are `used`,
+`eligible-but-skipped`, `disabled`, `unsupported`, `not-applicable` and `failed`.
+CLI declarations are marked `agent-declared`; observed controller results and historical
+command counters remain separate. A complete classification is no semantic success verdict.
+`worker-status --session <id>` reads the shared task-tree reservations without dispatching.
 
 | Measure | Evidence | Unknowns and limits |
 |---|---|---|
 | Pack context | `context:report` and the current routed selection: paths, hashes, skills/references, bytes and estimated tokens | Selection does not prove the host loaded a file. Estimates are not occupancy. Missing resources make totals a lower bound. |
 | Current occupancy | Fresh `current-context` observation with counts, capacity, source, timestamp and matching session identity | Cumulative/billing tokens and file reads cannot establish occupancy. Unsupported telemetry stays unknown. |
-| Pack activity | Opt-in command receipts under `.capabilities/state/`, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
+| Pack activity | Identity-bound command receipts in private runtime state, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
+
+For separately installed packages, repeat `--bundle <verified-package-root>` on
+`context-report`, `session`, `session-advice`, `task-step` and action advice commands.
+Agents derive these roots from the loaded skill resources; users need not know cache layouts.
+The API also accepts an array of roots. A single root still works for source trees, complete
+exports and standalone packages. At most 16 explicitly supplied roots are inspected; no host
+cache discovery or sibling imports occur. Manifests identify each package. Multiple distinct
+installations of the same selected package are reported as ambiguous rather than choosing a
+version. Multi-root file entries include `bundleRoot` alongside their relative `path` and hash;
+repeated physical roots and files are counted once. Missing packages keep totals incomplete.
+This measures selected resources, not observed host loads or current context occupancy.
 
 A task record can begin small:
 
@@ -41,12 +213,20 @@ integer `currentTokens` and `capacityTokens`, `source`, ISO `observedAt`, and ma
 other-session counts remain unknown. No private transcript or undocumented host API is read.
 
 With an explicit `--session` and `--task`, `route`, `context-report`, `locate` and
-`checkpoint-save` record their own bounded activity. Without both flags, these operations
-retain their ordinary behavior without activity writes. `session` reads existing records;
+`checkpoint-save` record their own bounded activity. Without a complete explicit or bound identity, these operations
+retain their ordinary behavior without task activity writes. `session` reads existing records;
 it does not increment counters simply for displaying status. Recorded counts take precedence
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
-Ignore `.capabilities/state/` in the consumer repository. Neither activity nor lookup packets
-belong in commits. Checkpoint state is excluded from repository-content comparison and lookup.
+Git repositories store runtime state under worktree-specific Git metadata, namespaced by
+canonical project root. `settings` shows the directory. Non-Git folders use
+`.capabilities/state/` with private directory/file modes where supported; exclude this
+directory before importing that folder into Git. Neither activity nor lookup packets
+belong in commits. Older workspace-local state is left untouched and is not automatically
+imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
+
+Changing a task's stage, files, risks or checkout invalidates completed acceptance and verification.
+Continuation freshness also requires the saved task contract to match; an automatic snapshot
+cannot renew a continuation written for earlier scope.
 
 ## Pressure and continuation policy
 
@@ -154,7 +334,7 @@ npm run session:attempt -- --root <project> --session <id> --task <task-id> --da
 ```
 
 The receipt requires `operation`, `target`, `approach`, `evidence` and `outcome`. Outcomes are
-`passed`, `quality-failure`, `permission-denied`, `tool-unavailable`, `blocked`. Use bounded
+`passed`, `quality-failure`, `permission-denied`, `tool-unavailable`, `blocked`, `prerequisite-resolved`. Use bounded
 identifiers/paths, never raw output. Optional `profile`, `maxAttempts` (1–5) and
 `escalationReason` preserve actual model-profile changes and their explanation.
 
@@ -190,7 +370,8 @@ tiers. Configure optional `execution.profiles.<name>.class` alongside existing c
 quality budgets and `escalateTo` chains. Host model names remain in consumer mappings.
 `model:advice` accepts an optional required `capabilityClass` and `currentProfile`. Unified
 status connects current-task/current-revision failed-attempt evidence to those configured
-profiles. Undeclared classes/mappings remain unavailable, not guessed. Capability classes
+profiles. Undeclared capability classes remain unavailable; missing exact model mappings retain
+main execution with an explicit limitation rather than blocking logical advice. Capability classes
 are recommendations, not measured price rankings or proof that a named model is cheaper.
 No actual model switch or delegation occurs. A recorded escalation receipt counts the event;
 a recommendation alone does not.
@@ -206,8 +387,8 @@ a recommendation alone does not.
 Use native host indicators first. The pack does not replace the host runtime or configure
 statusline settings automatically. Builds copy the same runtime into every standalone package.
 Unsupported lifecycle enforcement remains visible in adapter reports. Default `mode` is
-`recommend`; deterministic read-only lookup and explicitly requested local receipts/checkpoints
-are the only actions introduced here. No provider/account changes, cost increases, context
+`recommend`; deterministic lookup, evidence reuse and local milestone snapshots can run
+under the effective settings. Acceptance receipts still require explicitly supplied evidence. No provider/account changes, cost increases, context
 destruction or unsafe side effects are silently executed.
 
 ## Evaluation and limits
@@ -224,3 +405,51 @@ The operational view includes the canonical pack version. Supporting local telem
 enabled by default and independent of session counters and host occupancy; see
 [observability and privacy](OBSERVABILITY.md) for content, limits, disable configuration
 and explicit remote opt-in. Telemetry volume never estimates host context usage.
+
+## Effective default policy
+
+`node cli/main.mjs settings --root <project>` shows the effective policy,
+with the origin of each leaf value and the private state directory. CLI and hooks share
+the same resolver. Routing hints, hint deduplication, milestone snapshots and lookup reuse
+are enabled by default; explicit false disables the respective automatic behavior.
+`runtimeApplied` lists connected controls and `prerequisites` identifies integration limits.
+Semantic acceptance and continuation still require agent-supplied evidence; settings never
+start workers, review or native compaction.
+
+Precedence is bundled defaults, personal preferences, project settings, then task overrides.
+Personal preferences live at `~/.config/craft/preferences.json`; `--preferences <file>`
+selects an explicit file for reproducible inspection. Missing files contribute no values.
+Preference paths reject symlinks; on POSIX, the file and its parent must also be user-owned
+and not writable by others. Windows relies on consumer-managed ACLs. Files are limited to 64 KiB. Preferences and task overrides accept
+only `routing`, `checkpoint` and `efficiency`; they cannot declare permissions, services
+or host model mappings. No configuration file is generated in the project.
+
+For a personal override, save `{"efficiency":{"delegation":{"maxWorkers":0}}}` in
+the preference file. For a project override, add
+`"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
+Use `--data <file>` for a task override with the same restricted preference shape.
+Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
+Worker ceilings apply to the shared reservation ledger when a trusted controller adapter is
+connected. They accept nonnegative safe integers and do not establish host capacity
+or authorization. Review, delegation and context actions default to recommendation.
+
+A manual policy can use:
+
+```json
+{
+  "routing": { "editHints": false, "dedupeHints": false },
+  "checkpoint": { "enabled": false },
+  "efficiency": {
+    "lookup": { "enabled": false, "reuse": false },
+    "batching": { "enabled": false },
+    "attempts": { "enabled": false },
+    "advice": { "enabled": false, "nextStep": false },
+    "review": { "mode": "manual" },
+    "context": { "action": "manual" },
+    "delegation": { "mode": "manual", "maxWorkers": 0 }
+  }
+}
+```
+
+Explicit commands remain available. A preference is never execution permission, a
+model mapping, a hook trust decision or evidence of observed feature use.
