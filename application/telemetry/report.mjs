@@ -16,11 +16,18 @@ export function summarizeTelemetry(records, storage, sessionId) {
   const counts = Object.fromEntries(Object.keys(features).map(name => [name, { status: 'unobserved', events: 0, failures: 0, deferred: 0 }]));
   let retainedEvents = 0, invalidRecords = 0, invocationEvents = 0, sessionEvents = 0;
   let first = null, last = null, reportedLocalDrops = 0, reportedQueueDrops = 0, exportFailures = 0;
+  const packages = {}, hookInputs = {};
   for (const record of records) {
     let event;
     try { event = telemetryEvent(record); } catch { invalidRecords++; continue; }
     if (sessionId !== undefined && (event.sessionId !== sessionId || event.attributes.identityScope !== 'session')) continue;
     retainedEvents++;
+    const packageName = event.attributes.package ?? 'unknown';
+    packages[packageName] = (packages[packageName] ?? 0) + 1;
+    if (event.name === 'host.hook') {
+      const status = event.attributes.inputStatus ?? 'unknown';
+      hookInputs[status] = (hookInputs[status] ?? 0) + 1;
+    }
     if (event.attributes.identityScope === 'session') sessionEvents++;
     else invocationEvents++;
     if (first === null || event.timestamp < first) first = event.timestamp;
@@ -38,6 +45,7 @@ export function summarizeTelemetry(records, storage, sessionId) {
   return {
     formatVersion: 1, scope: sessionId === undefined ? 'retained-project' : 'retained-session',
     retainedEvents, identity: { sessionEvents, invocationOrUnknownEvents: invocationEvents },
+    attribution: { packages, hookInputs },
     window: { first, last }, storage: { ...storage, invalidRecords },
     loss: { reportedLocalDrops, reportedQueueDrops, exportFailures, totalLostEvents: null },
     features: counts,

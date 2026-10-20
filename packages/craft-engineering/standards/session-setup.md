@@ -41,6 +41,11 @@ and direct wrapper calls do not prove automatic host dispatch. Missing events
 alone do not distinguish discovery, trust, disabled telemetry or storage failures.
 Report unsupported, unverified and observed behavior separately.
 
+For bounded retained evidence, the bundled CLI's `telemetry-report --root <project-root>`
+reports feature observations, package/input attribution, reported drops and retention limits.
+Use `--session <id>` only with a known real session identity. Missing observations do not
+establish disabled hooks, and rotation/loss prevents complete-history claims.
+
 Offer native usage inspection or display controls when the adapter and actual
 surface support them. Distinguish cumulative session tokens, current context
 occupancy and selected-guidance estimates. Keep unavailable counts unknown; a

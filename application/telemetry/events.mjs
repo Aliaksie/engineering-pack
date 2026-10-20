@@ -1,6 +1,8 @@
 const hosts = ['claude','codex','cursor','copilot','gemini','agents','jetbrains','gemini-extension'];
 const counts = ['guidanceFiles','guidanceBytes','estimatedTokens','evidenceCount','batchSize','cacheHits','cacheMisses','recordedAttempts','selectedSkills','checkpoints','unavailableCapabilities','droppedEvents','exportedEvents','rejectedEvents','statusCode'];
 const enums = {
+  package: ['craft-delivery','craft-engineering','craft-review','craft-stories'],
+  inputStatus: ['complete','invalid','oversized','read-failure'],
   area: ['cli','host','project','routing','guidance','discovery','cache','context','session','model','attempt','checkpoint','review','integration','state','telemetry'],
   command: ['telemetry-report','task-offer','task-decision','task-action-check','settings','task-start','task-step','route','context-report','session','session-advice','session-attempt','model-advice','lookup','locate','prepare-services','operation','checkpoint-save','checkpoint-read','unknown'],
   operation: ['git.status','git.diff','git.commit','git.push','change.read','change.diff','change.publish','task.read','task.search','task.transition','task.comment'],

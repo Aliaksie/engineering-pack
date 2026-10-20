@@ -11,11 +11,11 @@ import { readCheckpoint, recoverCheckpoint, saveCheckpoint } from '../checkpoint
 import { invalidateRoutingHint } from './hints.mjs';
 export { reuseRoutingHint, commitRoutingHint } from './hints.mjs';
 
-export const hookDiagnostic = reasonCode => diagnostic('host',reasonCode);
-export const observeHook = (event, callback) => withTelemetry(projectRoot(event.cwd), { session:event.session, host:event.host },
-  () => observe('host.hook', callback, result => ({ lifecycle:event.event, decision:result?.decision }),
+export const hookDiagnostic = (reasonCode, attributes) => diagnostic('host',reasonCode,attributes);
+export const observeHook = (event, callback) => withTelemetry(projectRoot(event.cwd), { session:event.session, host:event.host, packageName:event.packageName },
+  () => observe('host.hook', callback, result => ({ lifecycle:event.event, inputStatus:event.inputStatus, decision:result?.decision }),
     { failureCode:'HOOK_FAILED', outcome:result => result?.failed ? 'failure' : 'success' }));
-export const observeNativeSession = (root, host, callback) => withTelemetry(root, { host },
+export const observeNativeSession = (root, host, callback, packageName) => withTelemetry(root, { host, packageName },
   () => observe('host.session', callback, () => ({}), { failureCode:'INVALID_INPUT', outcome:result => result?.failed ? 'failure' : 'success' }));
 export function prepareEvent(event) {
   return withTelemetry(projectRoot(event.cwd), { session: event.session, host: event.host }, () => prepare(event));

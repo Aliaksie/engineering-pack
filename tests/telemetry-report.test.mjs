@@ -47,6 +47,7 @@ test('report filters real scoped identities and keeps loss counts separate from 
   const all = telemetryReport(root);
   assert.equal(all.features.discovery.failures, 1);
   assert.equal(all.identity.invocationOrUnknownEvents, 1);
+  assert.deepEqual(all.attribution, { packages: { unknown: 8 }, hookInputs: { unknown: 1 } });
   assert.equal(telemetryReport(root, { session: 'absent' }).retainedEvents, 0);
   assert.equal(JSON.stringify(result).includes('private-one'), false);
 });

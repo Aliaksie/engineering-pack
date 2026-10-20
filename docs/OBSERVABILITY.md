@@ -37,6 +37,16 @@ batch/evidence counts, cache reuse, cumulative recorded-attempt counts, session 
 review validation provide operational evidence. Unknown observations are omitted or
 explicitly unknown. A guidance selection does not prove the agent loaded or followed it.
 
+Generated hook/session entry points attach the canonical package name from their export,
+using an allowlist of the four bundled packages. Nested package scopes keep separate traces;
+compatible project/session/host identity remains correlated. Generic CLI/API callers without
+a package declaration remain unattributed to a package. Hook root observations include
+`inputStatus=complete|invalid|oversized|read-failure`. Invalid, interrupted and oversized input
+uses the process working directory and invocation correlation; no partial payload is parsed
+to recover a session or project. Input diagnostics retain package, lifecycle and input status
+when their telemetry scope is available. This identifies the entry point, not verified native
+host dispatch. Raw task identities remain excluded; existing session/task state owns them.
+
 Event families are `routing.completed`, `guidance.selected`, `discovery.completed`,
 `cache.observed`, `context.observed`, `session.observed`, `session.advice`, `model.advice`,
 `attempt.recorded`, `checkpoint.saved`, `checkpoint.recovered`, `review.completed` and
@@ -89,7 +99,10 @@ no writer is active. Telemetry is supporting diagnostics, not a required audit l
 Failures do not change an engineering operation's result, permission or original error.
 Skipped/failed local appends are counted in memory and reported by a local
 `TELEMETRY_EVENTS_DROPPED` diagnostic when storage recovers. These reports never enqueue
-more export work or diagnose their own failure.
+more export work or diagnose their own failure. The bounded in-memory count is cleared only
+after its diagnostic append succeeds; later emissions or finish calls can retry an unsuccessful
+diagnostic. Export queue drops likewise accumulate until their local diagnostic succeeds.
+These are process-local observations, not durable loss counters across process exit.
 
 ## Optional OpenTelemetry export
 
@@ -157,6 +170,8 @@ The retained event window describes the selected valid events. Invocation-scoped
 cannot be attributed to a requested session and are excluded from its report. The report emits
 no raw event bodies or session identifiers. It reads at most the current file and its backup;
 concurrent writers are not locked, so the result is a best-effort snapshot.
+Package counts and hook input-status counts expose available attribution; legacy or undeclared
+metadata appears as `unknown`. Missing package metadata is never inferred from event names.
 
 `observed` means a retained operational event exists; `unobserved` leaves applicability,
 enablement and support unknown. These counts cannot establish semantic acceptance, guidance

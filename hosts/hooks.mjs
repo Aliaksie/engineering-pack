@@ -65,17 +65,18 @@ export async function runHook(evaluate, platform, definition = { name: 'policy',
     for await (const chunk of process.stdin) { bytes += chunk.length; if (bytes > 65536) throw new Error('hook input exceeds 64 KiB'); chunks.push(chunk); }
   } catch (error) { inputError = error; }
   let payload;
-  try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
+  try { payload = inputError ? null : JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
   const valid = Boolean(payload && typeof payload === 'object' && !Array.isArray(payload));
   const event = normalize(valid ? payload : {}, platform, definition);
+  event.inputStatus = bytes > 65536 ? 'oversized' : inputError ? 'read-failure' : valid ? 'complete' : 'invalid';
   const invoke = () => {
     if (inputError) {
-      delivery.diagnostic?.(bytes > 65536 ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT');
+      delivery.diagnostic?.(bytes > 65536 ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
       if (!observational) throw inputError;
       process.exitCode = 0;
       return { failed: true };
     }
-    if (!valid) delivery.diagnostic?.('INVALID_INPUT');
+    if (!valid) delivery.diagnostic?.('INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
     let result = delivery.default(), pending, failed = false;
     if (valid && (definition.tool !== 'shell' || event.tool === 'shell')) {
       try {
