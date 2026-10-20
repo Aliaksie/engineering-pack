@@ -45,6 +45,11 @@ For bounded retained evidence, the bundled CLI's `telemetry-report --root <proje
 reports feature observations, package/input attribution, reported drops and retention limits.
 Use `--session <id>` only with a known real session identity. Missing observations do not
 establish disabled hooks, and rotation/loss prevents complete-history claims.
+For an explicit audit/evaluation milestone, `telemetry-capture --root <project-root> --session <id>`
+retains the available report in bounded private storage and returns a capture ID. Read it with
+`telemetry-report --capture <id>`; remove it only through an explicit `telemetry-forget --capture <id>`.
+Capacity refuses new captures rather than evicting existing evidence. Captures retain the
+report's unknown-history limits and do not replace the separate evaluation artifacts.
 
 Offer native usage inspection or display controls when the adapter and actual
 surface support them. Distinguish cumulative session tokens, current context

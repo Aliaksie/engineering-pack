@@ -182,6 +182,45 @@ failures before a diagnostic can be retained cannot be reconstructed. Backup pre
 retained backup data, not a count of rotations or lost events. Keep campaign artifacts separately
 when a complete evaluation record is required.
 
+## Explicit bounded report retention
+
+At an evaluation or audit milestone, retain the current report for a known real session:
+
+```sh
+npm run telemetry:capture -- --root <project> --session <id>
+npm run telemetry:report -- --root <project> --capture <returned-capture-id>
+npm run telemetry:forget -- --root <project> --capture <returned-capture-id>
+```
+
+Standalone packages expose the same `telemetry-capture`, `telemetry-report --capture` and
+`telemetry-forget` commands through `support/cli/main.mjs`. Report reading accepts either a
+live session filter or a retained capture ID. A capture requires existing session-attributed
+observations and an existing correlation key; it never invents a session for invocation-only data.
+
+Captures live in `telemetry-captures.json` in the existing private runtime directory. The
+store is bounded to eight immutable report snapshots and 64 KiB total, with exclusive writer
+locking and atomic replacement. Unchanged snapshots deduplicate. New snapshots never replace
+old ones automatically: capacity or contention produces an explicit error. Use the returned
+capture IDs to read or explicitly forget selected snapshots; forgetting changes only the
+capture store at the application boundary. As with other CLI commands, these invocations also
+record ordinary operational telemetry when enabled. Capture is an explicit local write and can
+preserve already-retained data even when automatic local telemetry has since been disabled.
+
+Snapshots contain bounded report counts, windows, storage/loss metadata, capture time and a
+project-scoped session pseudonym. They exclude raw events, raw session/task identities, code
+and output bodies. Report observations stay unchanged when rolling logs rotate or the
+correlation key is removed; explanatory limitation text comes from the reading runtime. The
+store validates its versioned shape and content-derived IDs before use. Those IDs detect
+accidental corruption; they do not authenticate evidence against the filesystem owner.
+
+Capture is manual, does not add a hook-time scan or automatic archive, and does not launch a
+model or replay data to a collector. It preserves only the observations still retained at
+capture time, with the original unknown total-loss/complete-history status. It cannot restore
+earlier rotation losses or substitute for frozen tasks, source/export identities, actual model
+outputs and judgments in the separate evaluation campaign. Preserve required campaign
+artifacts outside this bounded store before explicitly removing captures. Deleting the capture
+store removes all captured reports; deleting logs or the correlation key alone does not.
+
 ## Session view
 
 `npm run session -- --root <project> --session <id> --task <id>` includes the pack version

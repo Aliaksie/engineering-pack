@@ -7,7 +7,9 @@ import { execute } from './requests.mjs';
 import { renderSessionStatus } from './render.mjs';
 
 const help = {
-  'telemetry-report': { usage: 'telemetry-report [--root project] [--session id]', mode: 'bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims' },
+  'telemetry-capture': { usage: 'telemetry-capture --root project --session id', mode: 'explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction' },
+  'telemetry-forget': { usage: 'telemetry-forget --root project --capture id', mode: 'explicitly remove one retained report; ordinary CLI telemetry still applies' },
+  'telemetry-report': { usage: 'telemetry-report [--root project] [--session id | --capture id]', mode: 'bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims' },
   'task-offer': { usage: 'task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]', mode: 'evaluate and record a recommendation; no dispatch' },
   'task-decision': { usage: 'task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id', mode: 'record an explicit scoped user decision; no action execution' },
   'task-action-check': { usage: 'task-action-check --session id --offer proposal-id --data fresh-observations.json', mode: 'revalidate source, approval, policy, support and capacity; no dispatch' },
@@ -28,13 +30,13 @@ const help = {
 
 export function run(argv) {
   const [action, ...args] = argv;
-  if (action === 'help' || action === '--help' || args.includes('--help')) return help[action] ?? { commands: ['telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' };
+  if (action === 'help' || action === '--help' || args.includes('--help')) return help[action] ?? { commands: ['telemetry-capture', 'telemetry-forget', 'telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
   return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },
     () => observe('cli.command', () => parse(action,args), () => ({ command:action }), { failureCode:'INVALID_INPUT' }));
 }
 function parse(action,args) {
-  const allowed = ['review-authorization', 'action', 'scope', 'benefit', 'offer', 'decision', 'role', 'prior-authorization', 'facts', 'goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
+  const allowed = ['capture', 'review-authorization', 'action', 'scope', 'benefit', 'offer', 'decision', 'role', 'prior-authorization', 'facts', 'goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
   const options = { file: [], risk: [], term: [], path: [] };
   const repeat = ['file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool'];
   for (let index = 0; index < args.length; index++) {

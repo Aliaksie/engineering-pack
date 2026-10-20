@@ -1,5 +1,6 @@
 import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
+import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
@@ -18,7 +19,12 @@ export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
 function executeRequest(action, options, root) {
-  if (action === 'telemetry-report') return telemetryReport(root, { session: options.session });
+  if (action === 'telemetry-capture') return captureTelemetry(root, { session: options.session });
+  if (action === 'telemetry-forget') return forgetTelemetryCapture(root, options.capture);
+  if (action === 'telemetry-report') {
+    if (options.capture && options.session) throw new Error('choose --capture or --session for telemetry-report');
+    return options.capture ? readTelemetryCapture(root, options.capture) : telemetryReport(root, { session: options.session });
+  }
   if (options.session && !options.task && ['route', 'context-report', 'locate', 'session-attempt', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
     try { options = { ...options, task: activeTask(root, options.session) }; }
     catch (error) {
@@ -95,5 +101,5 @@ function executeRequest(action, options, root) {
     return activity(saved, { checkpoints: 1 });
   }
   if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]');
 }
