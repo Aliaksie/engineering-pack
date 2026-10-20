@@ -99,7 +99,8 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
   } else if (model?.decision === 'stop' && (attempts?.attempts ?? 0) > 0) {
     status.recommendation = { action: 'return-control', reason: model.reasons.join(' '), effect: 'read', prerequisites: ['Configured quality/escalation limits are exhausted; preserve evidence and return control.'] };
   } else if (['return-control', 'retry-differently'].includes(status.recommendation?.action) && model?.decision === 'recommend'
-    && attempts?.records.at(-1)?.profile && model.profile !== attempts.records.at(-1).profile) {
+    && attempts?.records.at(-1)?.profile && model.profile !== attempts.records.at(-1).profile
+    && (model.mainModel?.switchSupported === true || model.workerMappingAvailable === true)) {
     status.recommendation = { action: 'escalate-model', reason: model.reasons.join(' '), effect: 'recommendation-only', prerequisites: ['Use only the configured host mapping and existing authorization; no switch was performed.'] };
   }
   if (['stop-blocked', 'escalate-model'].includes(status.recommendation?.action) || (model?.decision === 'stop' && (attempts?.attempts ?? 0) > 0)) {
@@ -108,6 +109,17 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
     const previousAt = Date.parse(input.previous?.at);
     status.suppressed = input.previous?.key === key && at >= previousAt && at - previousAt < (input.policy?.cooldownMs ?? 300000);
     status.notice = status.suppressed ? input.previous : { key, at: new Date(at).toISOString() };
+  }
+  if (['review', 'compact'].includes(status.recommendation?.action) && state?.recommendations) {
+    repositoryEvidence ??= observations.repository;
+    const source = repositoryEvidence?.gitAvailable && repositoryEvidence.fingerprints?.complete
+      ? digest([repositoryEvidence.head, repositoryEvidence.fingerprints.index, repositoryEvidence.fingerprints.workingTree]) : null;
+    const offer = Object.values(state.recommendations).findLast(value => value.action === status.recommendation.action && (value.action !== 'review' || value.scope === 'review:current-source') && value.source === source && value.policy === digest(project) && (value.action !== 'review' || JSON.stringify(value.risks ?? []) === JSON.stringify([...new Set(normalized.task.risks ?? [])].sort())));
+    if (offer) {
+      status.actionOffer = offer;
+      status.suppressed = true;
+      status.recommendation = { ...status.recommendation, approvalRequired: !['approved', 'already-authorized'].includes(offer.decision), decision: offer.decision, execution: 'not-observed' };
+    }
   }
   status.suggestion = status.suppressed ? null : status.recommendation;
   return { ...status, checkpoint, capability, modelAdvice: model, discovery: state ? {

@@ -185,3 +185,12 @@ names are declarations, and cited outcomes are caller records, not independent m
 Current-target `permission-denied` or `tool-unavailable` stops advice across all profiles;
 resolve that prerequisite before supplying a fresh attempt set. No chain means stop rather
 than invent a stronger model. A configured host mapping alone establishes no quality benefit.
+
+
+Logical profile advice is available for main execution even when delegation is disabled or
+unmapped. Default logical classes carry no vendor model names or measured capability ranking.
+Exact host model mappings remain consumer declarations; native switch support and authorization
+are separate. `efficiency.delegation.maxWorkers: 0` suppresses delegated route plans and worker
+offers. Positive limits are ceilings, with fresh host capacity and one shared task-tree budget
+required before dispatch. See [scoped action recommendations](SESSION.md#scoped-action-recommendations)
+for decision receipts, observed slot accounting and explicit unsupported native execution.

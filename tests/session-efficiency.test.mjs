@@ -144,7 +144,7 @@ test('classes use deterministic economical discovery and allow directly requeste
   } };
   const result = modelAdvice({ host: 'fixture', role: 'planner', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
   assert.equal(result.profile, 'deep');
-  assert.equal(result.attemptsRemaining, 1);
+  assert.equal(result.attemptsRemaining, 3);
 });
 
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {

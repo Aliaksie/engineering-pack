@@ -21,7 +21,7 @@ export function taskSource(repository) {
     ? digest([repository.head, repository.fingerprints.index, repository.fingerprints.workingTree]) : null;
 }
 export function startTask(state, input, repository) {
-  keys(input, ['id', 'goal', 'stage', 'files'], 'task start');
+  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization'], 'task start');
   activityIdentity('task', input.id);
   if (!text(input.goal)) throw new Error('task goal must be 1..512 characters without control characters');
   if (state.taskRecord && (state.taskRecord.id !== input.id || state.taskRecord.goal !== input.goal)) throw new Error('task identity already has a different goal; use a new task id');
@@ -29,12 +29,14 @@ export function startTask(state, input, repository) {
   const files = input.files ?? state.taskRecord?.files ?? [];
   if (!Array.isArray(files) || files.length > 32) throw new Error('task files must be a bounded array');
   files.forEach(relativeFile);
+  if (input.risks !== undefined && (!Array.isArray(input.risks) || input.risks.length > 16 || input.risks.some(value => !text(value)))) throw new Error('invalid task risks');
+  if (input.reviewAuthorization !== undefined && !text(input.reviewAuthorization)) throw new Error('invalid review authorization evidence');
   state.taskRecord ??= { id: input.id, goal: input.goal, status: 'working', goalComplete: false };
   if (state.taskRecord.stage && state.taskRecord.stage !== selected) {
     Object.assign(state.taskRecord, { status: 'working', goalComplete: false });
     delete state.taskRecord.verification; delete state.taskRecord.verificationRevision;
   }
-  Object.assign(state.taskRecord, { stage: selected, files });
+  Object.assign(state.taskRecord, { stage: selected, files, ...(input.risks ? { risks: input.risks } : {}), ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
   return { state, intent: taskIntents[selected], context: taskContext(state, repository) };
 }
 export function taskContext(state, repository) {
@@ -44,7 +46,7 @@ export function taskContext(state, repository) {
   stage(record.stage);
   const source = taskSource(repository);
   const stale = Boolean(record.summary && (!source || record.source !== source));
-  const task = Object.fromEntries(['id', 'stage', 'status', 'goalComplete', 'files', 'revision', 'verification', 'verificationRevision', 'safeBoundary', 'nextStep'].filter(key => record[key] !== undefined && record[key] !== null).map(key => [key, record[key]]));
+  const task = Object.fromEntries(['id', 'stage', 'status', 'goalComplete', 'files', 'revision', 'verification', 'verificationRevision', 'safeBoundary', 'nextStep', 'risks', 'reviewRequested'].filter(key => record[key] !== undefined && record[key] !== null).map(key => [key, record[key]]));
   if (stale) Object.assign(task, { status: 'working', goalComplete: false, verification: 'unknown', verificationRevision: undefined });
   return { task, stale, summary: record.summary ?? null, nextStep: record.nextStep ?? null };
 }

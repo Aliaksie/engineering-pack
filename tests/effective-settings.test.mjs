@@ -19,7 +19,7 @@ test('nested precedence retains false, zero and sibling defaults without mutatio
   assert.deepEqual(input,before);
 });
 test('invalid limits, unknown fields, permission preferences and thresholds fail', () => {
-  for (const maxWorkers of [-1,1.5,'3',null,65]) assert.throws(()=>resolve({overrides:{efficiency:{delegation:{maxWorkers}}}}), /maxWorkers/);
+  for (const maxWorkers of [-1,1.5,'3',null,Number.MAX_SAFE_INTEGER + 1]) assert.throws(()=>resolve({overrides:{efficiency:{delegation:{maxWorkers}}}}), /maxWorkers/);
   assert.throws(()=>resolve({preferences:{permissions:{writeOperations:['git.push']}}}), /unknown/);
   assert.throws(()=>resolve({overrides:{efficiency:{context:{compactAt:0.9}}}}), /thresholds/);
   assert.throws(()=>resolve({project:{formatVersion:1,efficiency:{unknown:true}}}), /unknown/);

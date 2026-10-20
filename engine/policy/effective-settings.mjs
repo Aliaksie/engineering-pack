@@ -1,3 +1,4 @@
+import { DEFAULT_MODEL_PROFILES, DEFAULT_MODEL_ROLES } from './model-profiles.mjs';
 // Preferences select behavior; authorization and host support remain separate facts.
 export const DEFAULT_SETTINGS = {
   routing: { editHints: true, dedupeHints: true },
@@ -26,7 +27,7 @@ function validate(value, template, label) {
       if (!enums[key].includes(item)) throw new Error(`invalid ${field}`);
     } else if (key.endsWith('At')) {
       if (!Number.isFinite(item) || item <= 0 || item > 1) throw new Error(`${field} must be greater than zero and at most one`);
-    } else if (!Number.isSafeInteger(item) || item < (key === 'maxWorkers' ? 0 : 1) || item > (key === 'maxAttempts' ? 5 : 64)) {
+    } else if (!Number.isSafeInteger(item) || item < (key === 'maxWorkers' ? 0 : 1) || item > (key === 'maxWorkers' ? Number.MAX_SAFE_INTEGER : key === 'maxAttempts' ? 5 : 64)) {
       throw new Error(`invalid ${field}`);
     }
   }
@@ -49,10 +50,13 @@ export function effectiveSettings({ project, preferences = {}, overrides = {} })
   validatePreferences(preferences); validatePreferences(overrides);
   const settings = {}, origins = {};
   merge(settings, DEFAULT_SETTINGS, 'bundled', origins);
+  if (project.execution?.profiles === undefined) {
+    merge(settings, { execution: { profiles: DEFAULT_MODEL_PROFILES, roles: DEFAULT_MODEL_ROLES } }, 'bundled', origins);
+  }
   merge(settings, preferences, 'user', origins);
   merge(settings, project, 'project', origins);
   merge(settings, overrides, 'task', origins);
   const { elevatedAt, compactAt, restartAt } = settings.efficiency.context;
   if (!(elevatedAt < compactAt && compactAt < restartAt)) throw new Error('context thresholds must satisfy elevatedAt < compactAt < restartAt');
-  return { settings, origins, runtimeApplied: ['routing', 'checkpoint', 'efficiency.lookup', 'efficiency.attempts.maxAttempts', 'efficiency.context.thresholds'], prerequisites: ['Automatic semantic acceptance and continuation require agent-supplied task evidence.', 'Batching, review and delegation settings require workflow and host integration; preferences never dispatch actions.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
+  return { settings, origins, runtimeApplied: ['routing', 'checkpoint', 'efficiency.lookup', 'efficiency.attempts.maxAttempts', 'efficiency.context.thresholds', 'efficiency.context.action', 'efficiency.review.mode', 'efficiency.delegation.maxWorkers', 'efficiency.delegation.mode'], prerequisites: ['Automatic semantic acceptance and continuation require agent-supplied task evidence.', 'Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.', 'Independent tool batching remains a workflow instruction; preferences never dispatch actions.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
 }

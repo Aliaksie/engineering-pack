@@ -720,6 +720,10 @@
                   "type": "string",
                   "minLength": 1
                 }
+              },
+              "mainModelSwitch": {
+                "type": "boolean",
+                "description": "Explicit host support declaration; never grants permission to switch models."
               }
             },
             "additionalProperties": false,
@@ -949,7 +953,7 @@
             "maxWorkers": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 64,
+              "maximum": 9007199254740991,
               "default": 3
             }
           }

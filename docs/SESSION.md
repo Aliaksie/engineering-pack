@@ -57,6 +57,86 @@ suppresses unchanged repeated step offers during its cooldown; an explicit statu
 shows the underlying recommendation for inspection. Continue already-authorized work;
 request a new decision only for an additional action that lacks authorization.
 
+## Scoped action recommendations
+
+`task-start` returns logical model advice with the route. It keeps the current execution
+when exact mappings or native switch controls are unavailable. Economical/standard/strong
+profiles are bundled when no profile catalog is supplied; a supplied catalog remains
+consumer-owned. Named capabilities are never invented. Default quality budget is three;
+explicit profile limits override it. Main-model advice works without worker configuration.
+`mainModelSwitch: true` in an execution host is a support declaration, not permission or
+proof of a native switch. Inspect `mainModel` limitations separately from worker mappings.
+
+A verified risk-sensitive step can create an additional review offer automatically.
+Declare applicable risks with `task-start --risk security`. If the exact review scope is
+already authorized, `--review-authorization <user-or-standing-scope-reference>` records that
+fact and avoids a new approval request. A recommendation and an accepted check are separate
+records. Manual review settings suppress optional offers while explicit review work remains usable.
+
+Use the same local task record for optional review, delegation and compaction:
+
+```sh
+node cli/main.mjs task-offer --session <id> --root <project> --action review --scope review:current-source --benefit "Check the verified change risks" --evidence checks/current --data facts.json
+node cli/main.mjs task-decision --session <id> --root <project> --offer <proposal-id> --decision approved --evidence user-message:12
+node cli/main.mjs task-action-check --session <id> --root <project> --offer <proposal-id> --data facts.json
+```
+
+An offer explains trigger, benefit and scope. Present its question through the actual host's
+supported question mechanism. Record `approved` or `declined` only from an actual scoped
+answer; pending, silence and timeout never become approval. `--prior-authorization <reference>`
+can declare existing authorization for an exact offer scope. Existing decisions are preserved;
+use `task-decision` for a later explicit change of decision. Unchanged pending/declined offers
+are suppressed. Source, policy, scope, host/model or material risk changes require re-evaluation.
+
+Facts are **caller-supplied observations**, never preference grants. A review preflight can
+use `{"allowed":true,"supported":true}` after verifying current session/consumer policy and
+actual host capability. `observations` accepts the existing session input shape. Requested
+review or current verified source plus declared risks supports a review recommendation.
+Compaction additionally needs a safe boundary, fresh matching occupancy, a fresh continuation
+and declared reliable compaction support. Unknown/cumulative usage, stale handoffs,
+almost-complete/completed work and unsupported controls cannot justify compaction.
+
+Worker offers require an exact configured role/profile/model mapping, `independentTasks`
+greater than one, and a fresh `workers` observation:
+
+```json
+{
+  "observations": { "host": { "name": "consumer-host" } },
+  "independentTasks": 3,
+  "allowed": true,
+  "supported": true,
+  "workers": {
+    "capacity": 4,
+    "occupiedSlots": 1,
+    "taskWorkers": 0,
+    "allowed": true,
+    "sessionId": "actual-session-id",
+    "observedAt": "actual-current-ISO-time",
+    "source": "verified-host-slot-observation"
+  }
+}
+```
+
+Replace observations with actual values; this example is not live evidence. Capacity is total
+host slots. Occupied slots include main, other tasks and every current task worker that still
+occupies a slot, including idle/reusable/nested workers. All roles/models share one task-tree
+ceiling. Do not subtract failed/cancelled/completed workers until the actual host releases
+their slots. Observations expire after 30 seconds and must match the session. A preflight is not a slot reservation; a native controller must serialize/reobserve admission
+before dispatch, with nested workers sharing the same controller. The ceiling is
+the lesser of configured workers and host capacity after main/other occupied slots. A reduction
+stops new assignments without cancelling existing work. Explicit zero suppresses worker plans
+and offers; deterministic tool batching remains independent. `settings --session <id> --facts
+<workers.json>` shows requested/effective/available limits and missing prerequisites.
+
+Every action response distinguishes the offer, decision, current prerequisites and execution.
+`ready: true` means the **declared** decision and prerequisites passed revalidation; it is not a
+permission grant or evidence of native execution. Verify decision references against the real
+conversation/standing policy, then let the supported host perform and observe the action.
+This runtime does not dispatch workers, switch models or invoke compaction. Native lifecycle,
+actual concurrency and model round trips still require isolated integration evaluation.
+Worker success does not close main acceptance. Keep independent authorized work moving while
+an optional action is pending, and never repeat a permission/tool failure through a stronger model.
+
 ## Three separate measurements
 
 | Measure | Evidence | Unknowns and limits |
@@ -241,7 +321,8 @@ tiers. Configure optional `execution.profiles.<name>.class` alongside existing c
 quality budgets and `escalateTo` chains. Host model names remain in consumer mappings.
 `model:advice` accepts an optional required `capabilityClass` and `currentProfile`. Unified
 status connects current-task/current-revision failed-attempt evidence to those configured
-profiles. Undeclared classes/mappings remain unavailable, not guessed. Capability classes
+profiles. Undeclared capability classes remain unavailable; missing exact model mappings retain
+main execution with an explicit limitation rather than blocking logical advice. Capability classes
 are recommendations, not measured price rankings or proof that a named model is cheaper.
 No actual model switch or delegation occurs. A recorded escalation receipt counts the event;
 a recommendation alone does not.
@@ -299,7 +380,7 @@ the preference file. For a project override, add
 `"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
 Use `--data <file>` for a task override with the same restricted preference shape.
 Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
-Worker ceilings are configuration declarations pending host dispatch integration. They accept integers from zero through 64 and do not establish host capacity
+Worker ceilings are configuration declarations pending host dispatch integration. They accept nonnegative safe integers and do not establish host capacity
 or authorization. Review, delegation and context actions default to recommendation.
 
 A manual policy can use:

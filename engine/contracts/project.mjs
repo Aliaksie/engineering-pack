@@ -74,8 +74,9 @@ export function validateProject(project) {
     }
     if (project.execution.hosts !== undefined && !plain(project.execution.hosts)) throw new Error('execution hosts must be an object');
     for (const host of Object.values(project.execution.hosts ?? {})) {
-      keys(host, ['delegation', 'models'], 'execution host');
+      keys(host, ['delegation', 'models', 'mainModelSwitch'], 'execution host');
       if (host.delegation !== undefined && typeof host.delegation !== 'boolean') throw new Error('delegation must be boolean');
+      if (host.mainModelSwitch !== undefined && typeof host.mainModelSwitch !== 'boolean') throw new Error('mainModelSwitch must be boolean');
       if (host.models !== undefined && (!plain(host.models) || Object.values(host.models).some((model) => typeof model !== 'string' || !model))) throw new Error('model profiles must map to explicit host model names');
     }
     if (project.execution.profiles !== undefined) {

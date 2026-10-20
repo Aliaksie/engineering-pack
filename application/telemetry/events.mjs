@@ -2,7 +2,7 @@ const hosts = ['claude','codex','cursor','copilot','gemini','agents','jetbrains'
 const counts = ['guidanceFiles','guidanceBytes','estimatedTokens','evidenceCount','batchSize','cacheHits','cacheMisses','recordedAttempts','selectedSkills','checkpoints','unavailableCapabilities','droppedEvents','exportedEvents','rejectedEvents','statusCode'];
 const enums = {
   area: ['cli','host','project','routing','guidance','discovery','cache','context','session','model','attempt','checkpoint','review','integration','state','telemetry'],
-  command: ['settings','task-start','task-step','route','context-report','session','session-advice','session-attempt','model-advice','lookup','locate','prepare-services','operation','checkpoint-save','checkpoint-read','unknown'],
+  command: ['task-offer','task-decision','task-action-check','settings','task-start','task-step','route','context-report','session','session-advice','session-attempt','model-advice','lookup','locate','prepare-services','operation','checkpoint-save','checkpoint-read','unknown'],
   operation: ['git.status','git.diff','git.commit','git.push','change.read','change.diff','change.publish','task.read','task.search','task.transition','task.comment'],
   phase: ['prepared','validated','publication-planned'],
   intent: ['implement','review','plan','verify','inspect','deliver','ship','fix','test','architecture','investigate','locate','status','run-check','configure-service','maintain-context'],

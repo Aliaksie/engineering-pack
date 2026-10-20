@@ -1,4 +1,4 @@
-import { startTask, stepTask } from '../application/session/task.mjs';
+import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
@@ -17,16 +17,25 @@ export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
 function executeRequest(action, options, root) {
-  if (options.session && !options.task && ['route', 'context-report', 'locate', 'session-attempt', 'task-step'].includes(action)) {
+  if (options.session && !options.task && ['route', 'context-report', 'locate', 'session-attempt', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
     try { options = { ...options, task: activeTask(root, options.session) }; }
     catch (error) {
-      if (['task-step', 'session-attempt'].includes(action)) throw error;
+      if (['task-step', 'session-attempt', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) throw error;
       diagnostic('state', 'STATE_UNAVAILABLE');
     }
   }
+  if (['task-offer', 'task-decision', 'task-action-check'].includes(action)) {
+    if (!options.session || !options.task) throw new Error('action recommendation requires --session and a task-start binding');
+    const input = action === 'task-offer' ? { action: options.action, scope: options.scope, benefit: options.benefit, evidence: options.evidence,
+      ...(options.role !== undefined ? { role: options.role } : {}), ...(options.profile !== undefined ? { profile: options.profile } : {}),
+      ...(options['prior-authorization'] ? { priorAuthorization: options['prior-authorization'] } : {}) }
+      : { id: options.offer, ...(action === 'task-decision' ? { decision: options.decision, evidence: options.evidence } : {}) };
+    return taskAction(root, options.session, options.task, { 'task-offer': 'action-propose', 'task-decision': 'action-decide', 'task-action-check': 'action-check' }[action], input,
+      options.data ? readInput(options.data) : {}, { preferencesFile: options.preferences, bundle: options.bundle });
+  }
   if (action === 'task-start') {
     if (!options.session || !options.task || !options.goal) throw new Error('task-start requires --session, --task and --goal');
-    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
+    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
   }
   if (action === 'task-step') {
     if (!options.session || !options.task) throw new Error('task-step requires --session and an explicit --task or a task-start binding');
@@ -34,7 +43,7 @@ function executeRequest(action, options, root) {
       ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
   }
 
-  if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {} });
+  if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {}, ...(options.facts ? { workerFacts: readInput(options.facts), session: options.session } : {}) });
   if (action === 'locate') {
     const limits = {};
     for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {

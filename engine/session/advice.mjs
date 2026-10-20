@@ -57,12 +57,12 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
   const exhausted = activity.maxAttempts !== undefined && (activity.attempts ?? 0) >= activity.maxAttempts;
   const repeatedDiscovery = Math.max(0, (activity.repeatedLookups ?? 0) - (activity.reuseHits ?? 0));
   const looping = (activity.noProgressAttempts ?? 0) >= 3;
-  const boundary = task.safeBoundary === true || task.status === 'completed';
+  const boundary = task.safeBoundary === true || (task.safeBoundary === undefined && task.status === 'completed');
   const checkpointReady = task.handoffSaved === true && task.checkpointFresh === true;
   let suggestion = null;
   const suggest = (action, reason, effect, prerequisites = [], extra = {}) => ({ action, reason, effect, prerequisites, ...extra });
   const reset = () => checkpointReady
-    ? suggest('start-new-session', 'A fresh continuation checkpoint is declared saved; resume from it and current repository evidence.', 'session-reset', ['Read checkpoint, inspect current diff and route only necessary guidance.'])
+    ? suggest('start-new-session', 'A fresh continuation checkpoint is declared saved; resume from it and current repository evidence.', 'session-reset', ['Read checkpoint, inspect current diff and route only necessary guidance.'], { approvalRequired: true, execution: 'not-observed' })
     : suggest('save-handoff', 'Preserve a small continuation checkpoint before replacing session context.', 'local-state-write', ['Save goal, state, completed work, approach, evidence identifiers, changed paths, validation, remaining work, blockers and next step.'], { afterCheckpoint: 'start-new-session' });
   if (exhausted || looping) {
     suggestion = suggest('return-control', 'The declared attempt budget is exhausted or three attempts made no progress.', 'read', ['Preserve failure evidence. Use model-advice for evidence-bound escalation; do not repeat the same attempt.']);
@@ -79,7 +79,7 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
       suggestion = reset();
     } else if (host.reliableCompaction === true) {
       suggestion = checkpointReady
-        ? suggest('compact', 'Context pressure is high and a safe task boundary is available.', 'session-context-change', ['Use the host compaction control; retain the continuation checkpoint.'])
+        ? suggest('compact', 'Context pressure is high and a safe task boundary is available.', 'session-context-change', ['Use the host compaction control; retain the continuation checkpoint.'], { approvalRequired: true, execution: 'not-observed' })
         : suggest('save-handoff', 'Save continuation evidence at this boundary before compaction.', 'local-state-write', [], { afterCheckpoint: 'compact' });
     } else {
       suggestion = reset();
@@ -94,6 +94,8 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
         : suggest('design-verification', 'Verification for the current target still needs an appropriate check or observation.', 'read', [], { skill: 'craft-engineering:workflow-verify-feature' });
     } else if (['implement', 'verify'].includes(task.stage) && verified && task.reviewRequested === true) {
       suggestion = suggest('review', 'Verification is recorded passed and review was explicitly requested.', 'read', ['Review the same revision covered by the evidence.'], { skill: 'craft-review:review-change' });
+    } else if (['implement', 'verify'].includes(task.stage) && verified && task.risks?.length && project.efficiency?.review?.mode !== 'manual') {
+      suggestion = suggest('review', 'Current acceptance is verified and declared change risks justify an additional review.', 'recommendation-only', ['Ask through the supported user-question mechanism unless the exact review scope is already authorized.'], { approvalRequired: true, execution: 'not-observed' });
     } else if (task.nextStep) {
       suggestion = suggest('continue-task', task.nextStep, 'recommendation-only', ['Continue only within existing task scope and authorization.']);
     } else if (task.stage !== 'plan') {

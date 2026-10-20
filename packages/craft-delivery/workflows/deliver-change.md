@@ -82,6 +82,16 @@ This is a stage boundary, not a command to run after every tool call. Existing `
 and explicit receipt/checkpoint commands remain available for more detailed observations. Continue necessary authorized work; a suggestion is not an extra approval
 gate. Use native context indicators; file-size estimates do not establish session occupancy.
 
+For an optional action offer, explain its trigger, expected benefit and bounded scope, then
+use the host-supported question mechanism. Continue independent authorized work while pending.
+Record the real answer through `task-decision`; silence/timeout is not approval. Use an exact
+existing user/standing authorization reference instead of asking again when scope is covered.
+Declined/unchanged proposals stay suppressed. Immediately before an approved action, use
+`task-action-check` with fresh source, policy and host observations. Its readiness is based on
+caller declarations, never a permission grant or execution receipt. Use actual host controls
+only when supported and authorized, then observe the result and verify integrated acceptance.
+Missing native dispatch/capacity is an explicit limitation; finish useful work in main.
+
 Complete local delivery with the changed behavior, acceptance-to-check results and material
 limits. Record generation/check results, relevant presentation review, local revision/commit
 and remote delivery independently. Mark unavailable checks with the missing prerequisite;

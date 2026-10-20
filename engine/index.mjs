@@ -1,3 +1,5 @@
+import { actionFacts, proposeAction, decideAction, checkAction } from './session/recommendations.mjs';
+import { workerBudget } from './routing/worker-budget.mjs';
 import { taskBinding, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
@@ -29,6 +31,11 @@ const operations = {
   'review-snapshot': a => validateSnapshot(a.snapshot),
   'review-validate': a => validateReview(a.snapshot, a.review),
   'review-publication': a => publicationPlan(a.snapshot, a.review, a.target),
+  'worker-budget': a => workerBudget(a.project, a.facts, a.options),
+  'action-facts': a => actionFacts(a.facts),
+  'action-propose': a => proposeAction(a),
+  'action-decide': a => decideAction(a),
+  'action-check': a => checkAction(a),
   'task-binding': a => taskBinding(a.state),
   'task-start': a => startTask(a.state, a.input, a.repository),
   'task-source': a => taskSource(a.repository),

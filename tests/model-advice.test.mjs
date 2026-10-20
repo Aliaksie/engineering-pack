@@ -22,9 +22,11 @@ test('model advice selects declared capabilities through existing host/role rout
   assert.equal(capable.profile, 'deep');
   assert.equal(capable.execution.model, 'consumer-model-b');
   assert.match(capable.reasons[0], /lacks declared/);
-  assert.equal(modelAdvice(request({ host: 'unknown' }), project).decision, 'unavailable');
+  assert.equal(modelAdvice(request({ host: 'unknown' }), project).execution.mode, 'main');
+  assert.equal(modelAdvice(request({ host: 'unknown' }), project).mainModel.model, null);
   project.execution.hosts.codex.delegation = false;
-  assert.equal(modelAdvice(request(), project).decision, 'unavailable');
+  assert.equal(modelAdvice(request(), project).decision, 'recommend');
+  assert.equal(modelAdvice(request(), project).execution.mode, 'main');
 });
 
 test('quality escalation needs current-target evidence and stops at configured limits or access blockers', () => {
@@ -46,7 +48,8 @@ test('quality escalation needs current-target evidence and stops at configured l
   assert.equal(exhausted.decision, 'stop');
   assert.match(exhausted.reasons.at(-1), /No further escalation/);
   const missing = config(); delete missing.execution.hosts.codex.models.deep;
-  assert.equal(modelAdvice(request({ requiredCapabilities: ['cross-system'] }), missing).decision, 'unavailable');
+  assert.equal(modelAdvice(request({ requiredCapabilities: ['cross-system'] }), missing).decision, 'recommend');
+  assert.equal(modelAdvice(request({ requiredCapabilities: ['cross-system'] }), missing).mainModel.model, null);
 });
 
 test('invalid profile graphs, unbounded attempts and uncited or duplicate failures are rejected', () => {
@@ -60,4 +63,20 @@ test('invalid profile graphs, unbounded attempts and uncited or duplicate failur
   assert.throws(() => modelAdvice(request({ attempts: [attempt(), attempt()] }), config()), /unique/);
   const undeclared = config(); delete undeclared.execution.profiles;
   assert.equal(modelAdvice(request(), undeclared).decision, 'unavailable');
+});
+
+test('inherited object properties never satisfy explicit profile or exact model mappings', () => {
+  const project = { formatVersion: 1, execution: {
+    roles: { verifier: { mode: 'delegate', profile: 'constructor' } },
+    profiles: { constructor: { class: 'standard', capabilities: [] } },
+    hosts: { codex: { delegation: true, mainModelSwitch: true, models: {} } }
+  } };
+  const advice = modelAdvice(request({ requiredCapabilities: [] }), project);
+  assert.equal(advice.mainModel.model, null);
+  assert.equal(advice.mainModel.switchSupported, false);
+  assert.equal(advice.execution.mode, 'main');
+  project.execution.profiles.undefined = { class: 'standard', capabilities: [] };
+  assert.equal(modelAdvice(request({ requiredCapabilities: [] }), project).mainModel.decision, 'retain-current-until-authorized');
+  delete project.execution.profiles;
+  assert.equal(modelAdvice(request({ requiredCapabilities: [] }), project).decision, 'unavailable');
 });
