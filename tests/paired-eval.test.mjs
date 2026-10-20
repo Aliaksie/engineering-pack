@@ -100,3 +100,78 @@ test('relative output paths pass an absolute workspace argv matching the runner 
     assert.equal(result.cwd, fs.realpathSync(result.workspace));
   }
 });
+
+function integratedFixture(t) {
+  const f = fixture(t, `const fs=require('node:fs'),path=require('node:path');
+const [bundle,profile]=process.argv.slice(1);
+const runtime=fs.readFileSync(path.join(bundle,'runtime.txt'),'utf8');
+const setting=fs.readFileSync(path.join(profile,'settings.json'),'utf8');
+fs.writeFileSync(path.join(profile,'observed.txt'),runtime);
+process.stdout.write(JSON.stringify({runtime,setting,bundle,profile}));`);
+  const config = JSON.parse(fs.readFileSync(f.file, 'utf8')); delete config.guidance;
+  config.bundles = { baseline: 'baseline-runtime', candidate: 'candidate-runtime' };
+  for (const arm of ['baseline', 'candidate']) {
+    fs.mkdirSync(path.join(f.root, `${arm}-runtime`));
+    fs.writeFileSync(path.join(f.root, `${arm}-runtime/runtime.txt`), `${arm} actual bundle`);
+    fs.writeFileSync(path.join(f.root, `${arm}-settings.json`), JSON.stringify({ arm }));
+  }
+  config.profileFiles = Object.fromEntries(['baseline', 'candidate'].map(arm => [arm, { 'settings.json': `${arm}-settings.json` }]));
+  config.runner.args.push('{bundle}', '{profile}');
+  fs.writeFileSync(f.file, JSON.stringify(config)); return f;
+}
+
+test('isolated mode freezes each actual bundle/profile and delivers identical natural-task prompts', t => {
+  const { root, file, output } = integratedFixture(t);
+  const record = preparePair(file, output, root);
+  assert.equal(record.formatVersion, 2); assert.equal(record.mode, 'isolated-bundles');
+  assert.equal(record.arms.baseline.promptSha256, record.arms.candidate.promptSha256);
+  assert.notEqual(record.arms.baseline.bundleIdentity, record.arms.candidate.bundleIdentity);
+  const result = runPair(output);
+  assert.equal(result.collectionComplete, true);
+  for (const arm of ['baseline', 'candidate']) {
+    const observed = JSON.parse(fs.readFileSync(path.join(output, arm, 'stdout.txt'), 'utf8'));
+    assert.equal(observed.runtime, `${arm} actual bundle`);
+    assert.equal(JSON.parse(observed.setting).arm, arm);
+    assert.equal(observed.profile, path.join(output, arm, 'profile'));
+    assert.ok(result.results[arm].profileAfter.some(entry => entry.path === 'observed.txt'));
+    assert.equal(result.results[arm].semanticVerdict, 'not-judged');
+    assert.match(result.results[arm].nativeInstallation, /not established/);
+  }
+});
+
+test('bundle/profile mutation in either arm is rejected before any runner; traversal and implicit profiles fail', t => {
+  for (const target of ['candidate/bundle/runtime.txt', 'baseline/profile/settings.json']) {
+    const { root, file, output } = integratedFixture(t);
+    preparePair(file, output, root); fs.appendFileSync(path.join(output, target), 'tamper');
+    assert.throws(() => runPair(output), /bundle\/profile changed/);
+    assert.equal(fs.existsSync(path.join(output, 'baseline/stdout.txt')), false);
+  }
+  const { root, file, output } = integratedFixture(t);
+  const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  config.profileFiles.baseline = { '../escape.json': 'baseline-settings.json' };
+  fs.writeFileSync(file, JSON.stringify(config));
+  assert.throws(() => preparePair(file, output, root), /profile path/);
+  delete config.profileFiles; config.runner.args = ['-e', 'process.stdout.write("unused")'];
+  fs.writeFileSync(file, JSON.stringify(config));
+  assert.throws(() => preparePair(file, output, root), /explicitly consume/);
+});
+
+test('the first runner cannot change the next frozen bundle or profile without detection', t => {
+  const { root, file, output } = integratedFixture(t), config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  config.runner.args[1] = `const fs=require('node:fs'),path=require('node:path');fs.appendFileSync(path.resolve(process.cwd(),'../../candidate/bundle/runtime.txt'),'tamper');process.stdout.write('baseline completed');`;
+  fs.writeFileSync(file, JSON.stringify(config)); preparePair(file, output, root);
+  assert.throws(() => runPair(output), /bundle\/profile changed/);
+  assert.equal(fs.existsSync(path.join(output, 'baseline/result.json')), true);
+  assert.equal(fs.existsSync(path.join(output, 'candidate/stdout.txt')), false);
+});
+
+test('changing the executing bundle retains evidence and stops collection before the next arm', t => {
+  const { root, file, output } = integratedFixture(t), config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  config.runner.args[1] = `const fs=require('node:fs'),path=require('node:path');fs.appendFileSync(path.join(process.argv[1],'runtime.txt'),'tamper');process.stdout.write('runtime changed');`;
+  fs.writeFileSync(file, JSON.stringify(config)); preparePair(file, output, root);
+  const result = runPair(output);
+  assert.equal(result.collectionComplete, false);
+  assert.match(result.results.baseline.inspectionError, /frozen runtime bundle/);
+  assert.ok(result.results.baseline.bundleAfter.length);
+  assert.equal(fs.existsSync(path.join(output, 'candidate/stdout.txt')), false);
+});

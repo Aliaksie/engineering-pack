@@ -85,6 +85,13 @@ Checkpoint, activity and hint state share bounded, symlink-checked, atomic file 
 with separate formats and lifecycles. Automatic Git snapshots cannot renew the source
 binding of older continuation notes. A reset recommendation requires a fresh continuation.
 
+Worker reservations use one bounded private ledger per coordinator root/session/task across
+processes. Application controllers persist intent and release locks before calling trusted
+host functions; the engine decides admission and reconciliation from explicit JSON facts.
+Review/compaction execution receipts live with their existing action proposals and survive
+proposal cleanup. No executable adapter is loaded from project configuration. See the
+[host controller contract](HOST-CONTROL.md) for operation keys, fencing and native limits.
+
 The engine returns plans and advice. It does not call models, switch profiles, execute
 remote operations, compact a host session or publish findings. Context-delivery policy
 receives lifecycle facts, not hook event names. Application code

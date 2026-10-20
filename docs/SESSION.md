@@ -132,12 +132,23 @@ Every action response distinguishes the offer, decision, current prerequisites a
 `ready: true` means the **declared** decision and prerequisites passed revalidation; it is not a
 permission grant or evidence of native execution. Verify decision references against the real
 conversation/standing policy, then let the supported host perform and observe the action.
-This runtime does not dispatch workers, switch models or invoke compaction. Native lifecycle,
-actual concurrency and model round trips still require isolated integration evaluation.
+The CLI does not dispatch workers, switch models or invoke compaction. Explicit application
+controllers accept trusted host callbacks for workers, review and compaction; no native
+transport is installed by project settings. See the [host controller contract](HOST-CONTROL.md).
+Native lifecycle, actual concurrency and model round trips still require isolated integration evaluation.
 Worker success does not close main acceptance. Keep independent authorized work moving while
 an optional action is pending, and never repeat a permission/tool failure through a stronger model.
 
 ## Three separate measurements
+
+`task-features --session <id>` shows the bound task's feature outcomes, provenance and
+source freshness. Missing outcomes stay unknown. At a delivery/evaluation boundary, use
+`task-feature --session <id> --feature review --feature-status used --reason <reason>
+--evidence <reference>` to retain a bounded declaration. Supported statuses are `used`,
+`eligible-but-skipped`, `disabled`, `unsupported`, `not-applicable` and `failed`.
+CLI declarations are marked `agent-declared`; observed controller results and historical
+command counters remain separate. A complete classification is no semantic success verdict.
+`worker-status --session <id>` reads the shared task-tree reservations without dispatching.
 
 | Measure | Evidence | Unknowns and limits |
 |---|---|---|
@@ -380,7 +391,8 @@ the preference file. For a project override, add
 `"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
 Use `--data <file>` for a task override with the same restricted preference shape.
 Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
-Worker ceilings are configuration declarations pending host dispatch integration. They accept nonnegative safe integers and do not establish host capacity
+Worker ceilings apply to the shared reservation ledger when a trusted controller adapter is
+connected. They accept nonnegative safe integers and do not establish host capacity
 or authorization. Review, delegation and context actions default to recommendation.
 
 A manual policy can use:

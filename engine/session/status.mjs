@@ -118,7 +118,7 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
     if (offer) {
       status.actionOffer = offer;
       status.suppressed = true;
-      status.recommendation = { ...status.recommendation, approvalRequired: !['approved', 'already-authorized'].includes(offer.decision), decision: offer.decision, execution: 'not-observed' };
+      status.recommendation = { ...status.recommendation, approvalRequired: !['approved', 'already-authorized'].includes(offer.decision), decision: offer.decision, execution: offer.execution ?? 'not-observed' };
     }
   }
   status.suggestion = status.suppressed ? null : status.recommendation;

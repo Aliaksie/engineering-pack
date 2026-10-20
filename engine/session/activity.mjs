@@ -1,4 +1,5 @@
 import { digest } from '../cache/identity.mjs';
+import { validateFeatures } from './features.mjs';
 const identity = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 export function addActivity(state, values) {
   for (const [key, value] of Object.entries(values)) {
@@ -63,6 +64,21 @@ export function appendAttempt(state, receipt) {
 }
 
 export function validateActivityState(state) {
+  validateFeatures(state.featureOutcomes);
+  if (state.recommendations !== undefined) {
+    if (!state.recommendations || typeof state.recommendations !== 'object' || Array.isArray(state.recommendations)
+      || Object.keys(state.recommendations).length > 16) throw new Error('invalid recommendation state');
+    for (const [id, offer] of Object.entries(state.recommendations)) {
+      if (!/^[a-f0-9]{64}$/.test(id) || !offer || offer.id !== id) throw new Error('invalid recommendation identity');
+      const receipt = offer.executionReceipt;
+      if (receipt !== undefined && (!receipt || Object.keys(receipt).some(key => !['key', 'state', 'source', 'checkpoint', 'generation', 'evidence', 'acceptanceEvidence'].includes(key))
+        || receipt.key !== digest([id, 'execute']) || receipt.source !== offer.source
+        || !['dispatching', 'started', 'completed', 'not-started', 'uncertain'].includes(receipt.state)
+        || (receipt.checkpoint !== null && !/^[a-f0-9]{64}$/.test(receipt.checkpoint ?? ''))
+        || !Number.isSafeInteger(receipt.generation) || receipt.generation < 0
+        || [receipt.evidence, receipt.acceptanceEvidence].some(value => value !== null && !identity(value)))) throw new Error('invalid native action receipt');
+    }
+  }
   if (state.formatVersion !== 1 || !state.activity || typeof state.activity !== 'object' || Array.isArray(state.activity)
     || !state.lookups || typeof state.lookups !== 'object' || Array.isArray(state.lookups)
     || !Array.isArray(state.attempts) || state.attempts.length > 24

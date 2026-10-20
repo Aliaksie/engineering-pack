@@ -41,6 +41,11 @@ and direct wrapper calls do not prove automatic host dispatch. Missing events
 alone do not distinguish discovery, trust, disabled telemetry or storage failures.
 Report unsupported, unverified and observed behavior separately.
 
+Worker/review/compaction recommendations do not install native execution transports.
+Trusted application controller callbacks require a separately connected host adapter;
+settings and hook activity alone do not establish that connection. Keep main work usable
+when these controls are unavailable and report actual adapter observations separately.
+
 For bounded retained evidence, the bundled CLI's `telemetry-report --root <project-root>`
 reports feature observations, package/input attribution, reported drops and retention limits.
 Use `--session <id>` only with a known real session identity. Missing observations do not

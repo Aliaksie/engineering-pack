@@ -1,5 +1,7 @@
-import { actionFacts, proposeAction, decideAction, checkAction } from './session/recommendations.mjs';
+import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
+import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers } from './session/workers.mjs';
+import { recordFeature, featureReport } from './session/features.mjs';
 import { taskBinding, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
@@ -32,10 +34,20 @@ const operations = {
   'review-validate': a => validateReview(a.snapshot, a.review),
   'review-publication': a => publicationPlan(a.snapshot, a.review, a.target),
   'worker-budget': a => workerBudget(a.project, a.facts, a.options),
+  'feature-record': a => recordFeature(a.state, a.input, Object.hasOwn(a, 'source') ? a.source : taskSource(a.repository), a.at, a.provenance),
+  'feature-report': a => featureReport(a.state, taskSource(a.repository)),
+  'worker-input': a => workerInput(a.input),
+  'worker-state': a => workerState(a.state, a.tree),
+  'worker-snapshot': a => workerSnapshot(a.snapshot, a.session, a.now),
+  'worker-admit': a => workerAdmission(a),
+  'worker-transition': a => workerTransition(a.state, a.id, a.result),
+  'worker-reconcile': a => reconcileWorkers(a.state, a.snapshot, a.targets),
   'action-facts': a => actionFacts(a.facts),
   'action-propose': a => proposeAction(a),
   'action-decide': a => decideAction(a),
   'action-check': a => checkAction(a),
+  'action-claim': a => claimAction(a),
+  'action-finish': a => finishAction(a),
   'task-binding': a => taskBinding(a.state),
   'task-start': a => startTask(a.state, a.input, a.repository),
   'task-source': a => taskSource(a.repository),

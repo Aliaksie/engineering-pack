@@ -61,7 +61,8 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
   emitTelemetry('host.observed', { occupancyKnown: result.usage?.status === 'observed', reason: result.usage?.status === 'observed' ? 'observed' : 'unavailable' });
   let version = null;
   try { version = runtimeVersion(); } catch { /* Missing supporting metadata cannot break the view. */ }
-  return { ...result, ...(bindingError ? { diagnostics: [...result.diagnostics, `Task binding unavailable: ${bindingError}`] } : {}), task: input.task, ...(observations.taskStale ? { taskEvidenceStale: true } : {}), packVersion: version };
+  const features = observations.state ? decide('feature-report', { state: observations.state, repository: observations.repository ?? {} }) : null;
+  return { ...result, ...(bindingError ? { diagnostics: [...result.diagnostics, `Task binding unavailable: ${bindingError}`] } : {}), task: input.task, featureOutcomes: features, ...(observations.taskStale ? { taskEvidenceStale: true } : {}), packVersion: version };
 }
 
 export const sessionStatus = (...args) => withTelemetry(args[2]?.root ?? '.', { session: args[2]?.session ?? args[0]?.sessionId, host: args[0]?.host?.name }, () => observe('session.observed', () => sessionStatusOperation(...args), result => ({ decision: result.recommendation?.action, pressure: result.pressure, occupancyKnown: result.usage?.status === 'observed' })));

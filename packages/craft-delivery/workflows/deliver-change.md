@@ -91,6 +91,16 @@ Declined/unchanged proposals stay suppressed. Immediately before an approved act
 caller declarations, never a permission grant or execution receipt. Use actual host controls
 only when supported and authorized, then observe the result and verify integrated acceptance.
 Missing native dispatch/capacity is an explicit limitation; finish useful work in main.
+When a trusted controller adapter is connected, route nested assignments through the same
+coordinator root, session and task ledger. Reuse observed idle workers where useful; a
+completed worker still occupies capacity until the host reports release. An unknown dispatch
+outcome requires reconciliation of its operation key before another attempt.
+
+At delivery or evaluation boundaries, inspect `task-features`. Use `task-feature` to record
+applicable features as used, eligible-but-skipped, disabled, unsupported, not-applicable or
+failed, with a short reason and real evidence reference. These are agent declarations;
+runtime receipts and source freshness remain distinct. Missing outcomes stay unknown.
+Do not add a receipt after every tool call or classify missing evidence as success.
 
 Complete local delivery with the changed behavior, acceptance-to-check results and material
 limits. Record generation/check results, relevant presentation review, local revision/commit

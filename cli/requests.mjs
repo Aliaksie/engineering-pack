@@ -1,6 +1,8 @@
 import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
+import { taskFeatures } from '../application/session/features.mjs';
+import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
@@ -25,12 +27,18 @@ function executeRequest(action, options, root) {
     if (options.capture && options.session) throw new Error('choose --capture or --session for telemetry-report');
     return options.capture ? readTelemetryCapture(root, options.capture) : telemetryReport(root, { session: options.session });
   }
-  if (options.session && !options.task && ['route', 'context-report', 'locate', 'session-attempt', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
+  if (options.session && !options.task && ['worker-status', 'task-features', 'task-feature', 'route', 'context-report', 'locate', 'session-attempt', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
     try { options = { ...options, task: activeTask(root, options.session) }; }
     catch (error) {
       if (['task-step', 'session-attempt', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) throw error;
       diagnostic('state', 'STATE_UNAVAILABLE');
     }
+  }
+  if (['task-features', 'task-feature', 'worker-status'].includes(action)) {
+    if (!options.session || !options.task) throw new Error('task outcome/worker view requires --session and a task binding or explicit --task');
+    if (action === 'worker-status') return workerStatus(root, options.session, options.task);
+    return taskFeatures(root, options.session, options.task, action === 'task-feature'
+      ? { feature: options.feature, status: options['feature-status'], reason: options.reason, evidence: options.evidence } : undefined);
   }
   if (['task-offer', 'task-decision', 'task-action-check'].includes(action)) {
     if (!options.session || !options.task) throw new Error('action recommendation requires --session and a task-start binding');
