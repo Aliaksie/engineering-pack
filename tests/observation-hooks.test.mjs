@@ -62,6 +62,8 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       const hook = events(root).filter(event => event.name === 'host.hook').at(-1);
       assert.equal(hook.attributes.lifecycle, definition.event);
       assert.equal(hook.host, host);
+      assert.equal(hook.attributes.package, pkg);
+      assert.equal(hook.attributes.inputStatus, 'complete');
       assert.equal(hook.outcome, 'success');
     }
     const recorded = events(root);
@@ -85,6 +87,13 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     }
     const failures = events(root);
     assert.ok(failures.some(event => event.reasonCode === 'INPUT_TOO_LARGE'));
+    const oversized = failures.find(event => event.reasonCode === 'INPUT_TOO_LARGE');
+    assert.equal(oversized.attributes.package, pkg);
+    assert.equal(oversized.attributes.lifecycle, 'before-tool');
+    assert.equal(oversized.attributes.inputStatus, 'oversized');
+    assert.equal(oversized.attributes.identityScope, 'invocation');
+    assert.ok(failures.some(event => event.name === 'host.hook' && event.attributes.inputStatus === 'oversized'
+      && event.attributes.identityScope === 'invocation'));
     assert.ok(failures.some(event => event.reasonCode === 'INVALID_INPUT'));
     assert.ok(failures.some(event => event.name === 'host.hook' && event.outcome === 'failure'));
     assert.ok(!JSON.stringify(failures).includes('PRIVATE_'));

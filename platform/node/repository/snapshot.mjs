@@ -4,6 +4,12 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
 const CONTENT_LIMITS = { files: 2000, bytes: 16 * 1024 * 1024, fileBytes: 2 * 1024 * 1024, milliseconds: 5000 };
+export function gitCheckout(root) {
+  const result = spawnSync('git', ['-C', root, 'rev-parse', '--symbolic-full-name', 'HEAD'], {
+    encoding: 'utf8', timeout: 5000, maxBuffer: 16384, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
+  });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
 export function gitState(root) {
   const issues = [];
   const git = (...args) => {
@@ -13,6 +19,7 @@ export function gitState(root) {
     return result.status === 0 ? result.stdout : null;
   };
   const head = git('rev-parse', '--verify', 'HEAD');
+  const checkout = gitCheckout(root);
   const status = git('status', '--porcelain=v1', '-z', '--untracked-files=all');
   const index = git('ls-files', '--stage', '-z');
   const inventory = git('ls-files', '--cached', '--others', '--exclude-standard', '-z');
@@ -73,6 +80,7 @@ export function gitState(root) {
     }
   }
   return {
+    checkout,
     head: head?.trim() ?? null, status: status === null ? [] : status.split('\0').filter(entry => entry && !/^(?:.. )?\.capabilities\/state(?:\/|$)/.test(entry)),
     gitAvailable: status !== null && index !== null,
     fingerprints: {

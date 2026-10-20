@@ -11,13 +11,14 @@ function keys(value, allowed, label) {
 export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now, catalog } = {}) {
   keys(input, ['sessionId', 'task', 'usage', 'policy', 'previous', 'host', 'activity', 'packContext'], 'session input');
   if (input.sessionId !== undefined && !text(input.sessionId)) throw new Error('invalid sessionId');
-  const policy = { elevatedAt: 0.6, compactAt: 0.75, restartAt: 0.85, maxAgeMs: 300000, cooldownMs: 300000, ...input.policy };
+  const context = project.efficiency?.context ?? {};
+  const policy = { elevatedAt: context.elevatedAt ?? 0.6, compactAt: context.compactAt ?? 0.75, restartAt: context.restartAt ?? 0.85, maxAgeMs: 300000, cooldownMs: 300000, ...input.policy };
   if (input.policy !== undefined) keys(input.policy, ['elevatedAt', 'compactAt', 'restartAt', 'maxAgeMs', 'cooldownMs'], 'session policy');
   if (!Number.isFinite(policy.elevatedAt) || !Number.isFinite(policy.compactAt) || !Number.isFinite(policy.restartAt) || !(policy.elevatedAt > 0 && policy.elevatedAt < policy.compactAt && policy.compactAt < policy.restartAt && policy.restartAt <= 1)
     || !count(policy.maxAgeMs) || !count(policy.cooldownMs) || !Number.isFinite(now)) throw new Error('invalid session thresholds');
   const task = input.task ?? {};
-  keys(task, ['id', 'revision', 'verificationRevision', 'verificationMode', 'stage', 'status', 'verification', 'goalComplete', 'reviewRequested', 'files', 'handoffSaved', 'safeBoundary', 'phaseChanged', 'staleAssumptions', 'compacted', 'almostComplete', 'checkpointFresh', 'risks', 'operation'], 'task');
-  for (const field of ['id', 'revision', 'verificationRevision', 'operation']) if (task[field] !== undefined && !text(task[field])) throw new Error(`invalid task ${field}`);
+  keys(task, ['id', 'revision', 'verificationRevision', 'verificationMode', 'stage', 'status', 'verification', 'goalComplete', 'reviewRequested', 'files', 'handoffSaved', 'safeBoundary', 'phaseChanged', 'staleAssumptions', 'compacted', 'almostComplete', 'checkpointFresh', 'risks', 'operation', 'nextStep'], 'task');
+  for (const field of ['id', 'revision', 'verificationRevision', 'operation', 'nextStep']) if (task[field] !== undefined && !text(task[field])) throw new Error(`invalid task ${field}`);
   if (task.stage !== undefined && !['plan', 'implement', 'verify', 'review', 'explore', 'story', 'architecture', 'locate', 'discover'].includes(task.stage)) throw new Error('invalid task stage');
   if (task.verificationMode !== undefined && (task.stage !== 'verify' || !['manual', 'automation', 'test-code'].includes(task.verificationMode))) throw new Error('invalid task verificationMode');
   if (task.status !== undefined && !['working', 'completed', 'failed', 'blocked', 'unknown'].includes(task.status)) throw new Error('invalid task status');
@@ -56,12 +57,12 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
   const exhausted = activity.maxAttempts !== undefined && (activity.attempts ?? 0) >= activity.maxAttempts;
   const repeatedDiscovery = Math.max(0, (activity.repeatedLookups ?? 0) - (activity.reuseHits ?? 0));
   const looping = (activity.noProgressAttempts ?? 0) >= 3;
-  const boundary = task.safeBoundary === true || task.status === 'completed';
+  const boundary = task.safeBoundary === true || (task.safeBoundary === undefined && task.status === 'completed');
   const checkpointReady = task.handoffSaved === true && task.checkpointFresh === true;
   let suggestion = null;
   const suggest = (action, reason, effect, prerequisites = [], extra = {}) => ({ action, reason, effect, prerequisites, ...extra });
   const reset = () => checkpointReady
-    ? suggest('start-new-session', 'A fresh continuation checkpoint is declared saved; resume from it and current repository evidence.', 'session-reset', ['Read checkpoint, inspect current diff and route only necessary guidance.'])
+    ? suggest('start-new-session', 'A fresh continuation checkpoint is declared saved; resume from it and current repository evidence.', 'session-reset', ['Read checkpoint, inspect current diff and route only necessary guidance.'], { approvalRequired: true, execution: 'not-observed' })
     : suggest('save-handoff', 'Preserve a small continuation checkpoint before replacing session context.', 'local-state-write', ['Save goal, state, completed work, approach, evidence identifiers, changed paths, validation, remaining work, blockers and next step.'], { afterCheckpoint: 'start-new-session' });
   if (exhausted || looping) {
     suggestion = suggest('return-control', 'The declared attempt budget is exhausted or three attempts made no progress.', 'read', ['Preserve failure evidence. Use model-advice for evidence-bound escalation; do not repeat the same attempt.']);
@@ -78,7 +79,7 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
       suggestion = reset();
     } else if (host.reliableCompaction === true) {
       suggestion = checkpointReady
-        ? suggest('compact', 'Context pressure is high and a safe task boundary is available.', 'session-context-change', ['Use the host compaction control; retain the continuation checkpoint.'])
+        ? suggest('compact', 'Context pressure is high and a safe task boundary is available.', 'session-context-change', ['Use the host compaction control; retain the continuation checkpoint.'], { approvalRequired: true, execution: 'not-observed' })
         : suggest('save-handoff', 'Save continuation evidence at this boundary before compaction.', 'local-state-write', [], { afterCheckpoint: 'compact' });
     } else {
       suggestion = reset();
@@ -93,6 +94,10 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
         : suggest('design-verification', 'Verification for the current target still needs an appropriate check or observation.', 'read', [], { skill: 'craft-engineering:workflow-verify-feature' });
     } else if (['implement', 'verify'].includes(task.stage) && verified && task.reviewRequested === true) {
       suggestion = suggest('review', 'Verification is recorded passed and review was explicitly requested.', 'read', ['Review the same revision covered by the evidence.'], { skill: 'craft-review:review-change' });
+    } else if (['implement', 'verify'].includes(task.stage) && verified && task.risks?.length && project.efficiency?.review?.mode !== 'manual') {
+      suggestion = suggest('review', 'Current acceptance is verified and declared change risks justify an additional review.', 'recommendation-only', ['Ask through the supported user-question mechanism unless the exact review scope is already authorized.'], { approvalRequired: true, execution: 'not-observed' });
+    } else if (task.nextStep) {
+      suggestion = suggest('continue-task', task.nextStep, 'recommendation-only', ['Continue only within existing task scope and authorization.']);
     } else if (task.stage !== 'plan') {
       suggestion = suggest('summarize-evidence', 'Return the completed outcome, acceptance evidence and remaining limits.', 'read');
     }
@@ -103,6 +108,8 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
     if (!text(input.previous.key) || !Number.isFinite(Date.parse(input.previous.at))) throw new Error('invalid previous suggestion');
     previous = input.previous;
   }
+  if (project.efficiency?.advice?.enabled === false || project.efficiency?.advice?.nextStep === false) suggestion = null;
+  if (project.efficiency?.context?.action === 'manual' && ['compact', 'start-new-session', 'save-handoff'].includes(suggestion?.action)) suggestion = null;
   const key = suggestion ? digest({ session: input.sessionId, task, suggestion }) : null;
   const suppressed = Boolean(key && previous?.key === key && now >= Date.parse(previous.at) && now - Date.parse(previous.at) < policy.cooldownMs);
   return { formatVersion: 1, mode: 'recommend', usage, pressure, operation: task.operation ?? task.stage ?? 'unknown', host: { name: host.name ?? 'unknown', model: host.model ?? 'unknown', reliableCompaction: host.reliableCompaction ?? null },

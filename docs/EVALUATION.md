@@ -90,3 +90,27 @@ their precise meaning separately. Inspect observable tool effects, not just file
 Run acceptance checks and assess the original criteria against actual outputs. Record who
 judged, blinding limitations, tuning overlap and failures. One baseline-first pair is a pilot,
 not statistical evidence; vary order/repetitions for decisions about retaining guidance.
+
+## Compare actual runtime bundles
+
+For integration evaluation, replace `guidance` with
+`bundles: { baseline: "path/to/frozen-baseline", candidate: "path/to/frozen-candidate" }`.
+Both prompts stay identical. The runner must explicitly consume `{bundle}` and `{profile}`
+arguments using the target host's supported controls. Preparation copies and hashes both
+actual bundles, creates fresh profile directories and never reads an active user profile.
+Optional `profileFiles: { baseline: { "settings.json": "baseline-settings.json" },
+candidate: { "settings.json": "candidate-settings.json" } }` copies only those explicit,
+bounded files. Paths resolve relative to the config; do not include credentials.
+
+The runner owns isolated installation, trust, authentication and native startup. Copying
+files and a successful process exit do not prove a plugin was loaded. Retain native startup,
+actual model, worker and action receipts with the outputs. The collector inherits its
+environment, so a profile argument alone does not isolate ambient host settings or credentials.
+Use a runner that actually directs the host to the fresh profile and prevents unintended
+fallback to the active installation.
+
+Both bundle/profile inventories are checked before execution and at each arm boundary.
+Post-run inventories retain profile changes and detect mutations of the frozen bundle;
+inspection failures stop collection. These checks are evidence collection, not a sandbox.
+Token usage, cost and semantic verdict remain unknown until supplied by actual native
+measurements and acceptance review. Test runners establish the collector contract only.

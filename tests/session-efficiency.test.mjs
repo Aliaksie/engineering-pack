@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -62,6 +63,34 @@ test('file, inventory, HEAD, config, manifest and task changes invalidate litera
   prime(); git('commit', '--allow-empty', '-qm', 'new revision'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
   prime(); assert.equal(discover(root, request, { ...scope, task: 'T2' }).discovery.fresh, 1);
   assert.equal(discover(root, request, { ...scope, session: 's2' }).discovery.fresh, 1);
+});
+
+test('file-scoped lookup reuses evidence and invalidates on file and ancestor manifest changes', t => {
+  const { root, write } = fixture(t);
+  for (const file of ['src/names.txt', 'root.txt']) {
+    write(file, 'FileScopedSymbol\n');
+    const request = { terms: ['FileScopedSymbol'], paths: [file] };
+    const prime = () => {
+      const first = discover(root, request, scope);
+      assert.equal(first.discovery.fresh, 1);
+      assert.equal(first.reuse.validated, true);
+      const repeated = discover(root, request, scope);
+      assert.equal(repeated.discovery.reused, 1);
+      assert.equal(repeated.filesScanned, 0);
+      assert.equal(repeated.bytesRead, 0);
+    };
+    prime();
+    write(file, 'FileScopedSymbol changed\n');
+    prime();
+    write('package.json', JSON.stringify({ changed: file }));
+    prime();
+    if (file.startsWith('src/')) {
+      write('src/pyproject.toml', '[project]\nname = "fixture"\n');
+      prime();
+    }
+    fs.unlinkSync(path.join(root, file));
+    assert.throws(() => discover(root, request, scope), { code: 'ENOENT' }, 'a deleted scope must not return cached evidence');
+  }
 });
 
 test('dependent lookup stays staged; arbitrary actions and side effects cannot enter a lookup batch', t => {
@@ -143,13 +172,13 @@ test('classes use deterministic economical discovery and allow directly requeste
   } };
   const result = modelAdvice({ host: 'fixture', role: 'planner', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
   assert.equal(result.profile, 'deep');
-  assert.equal(result.attemptsRemaining, 1);
+  assert.equal(result.attemptsRemaining, 3);
 });
 
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {
   const { root } = fixture(t);
   run(['route', '--root', root, '--intent', 'locate']);
-  assert.ok(fs.readdirSync(path.join(root, '.capabilities/state')).every(name => name.startsWith('telemetry')));
+  assert.ok(fs.readdirSync(path.dirname(stateFile(root, 'probe.json'))).every(name => name.startsWith('telemetry')));
   assert.equal(readSessionState(root, scope.session, scope.task).activity.routingDecisions, undefined);
   run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
   run(['locate', '--root', root, '--term', 'Symbol0', '--path', 'src', '--session', scope.session, '--task', scope.task]);
@@ -185,7 +214,7 @@ test('configured quality escalation is offered, access failures stop, and escala
 test('corrupt or symlinked activity state cannot validate reuse or permit context reset', t => {
   const { root } = fixture(t);
   discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
-  const directory = path.join(root, '.capabilities/state');
+  const directory = path.dirname(stateFile(root, 'probe.json'));
   const file = fs.readdirSync(directory).find(name => name.startsWith('session-'));
   fs.writeFileSync(path.join(directory, file), '{broken');
   const result = discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
@@ -251,7 +280,9 @@ test('known host mappings identify an unnecessarily strong profile for mechanica
 
 test('unavailable optional activity storage does not suppress the routing plan', t => {
   const { root, write } = fixture(t);
-  write('.capabilities/state', 'not a directory');
+  const directory = path.dirname(stateFile(root, 'probe.json'));
+  fs.mkdirSync(path.dirname(directory), { recursive: true });
+  fs.writeFileSync(directory, 'not a directory');
   const result = run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
   assert.equal(result.intent, 'locate');
   assert.ok(result.activityDiagnostic);

@@ -37,6 +37,16 @@ batch/evidence counts, cache reuse, cumulative recorded-attempt counts, session 
 review validation provide operational evidence. Unknown observations are omitted or
 explicitly unknown. A guidance selection does not prove the agent loaded or followed it.
 
+Generated hook/session entry points attach the canonical package name from their export,
+using an allowlist of the four bundled packages. Nested package scopes keep separate traces;
+compatible project/session/host identity remains correlated. Generic CLI/API callers without
+a package declaration remain unattributed to a package. Hook root observations include
+`inputStatus=complete|invalid|oversized|read-failure`. Invalid, interrupted and oversized input
+uses the process working directory and invocation correlation; no partial payload is parsed
+to recover a session or project. Input diagnostics retain package, lifecycle and input status
+when their telemetry scope is available. This identifies the entry point, not verified native
+host dispatch. Raw task identities remain excluded; existing session/task state owns them.
+
 Event families are `routing.completed`, `guidance.selected`, `discovery.completed`,
 `cache.observed`, `context.observed`, `session.observed`, `session.advice`, `model.advice`,
 `attempt.recorded`, `checkpoint.saved`, `checkpoint.recovered`, `review.completed` and
@@ -71,11 +81,21 @@ Disable local telemetry:
 {"local": false}
 ```
 
-Default events are appended to `.capabilities/state/telemetry.jsonl` under the project
-root selected by the CLI/hook. The file rotates at 1 MiB with one 1 MiB backup named
+Default events are appended to `telemetry.jsonl` in private runtime state for the project
+root selected by the CLI/hook. Run `settings` to inspect the directory: Git repositories use
+worktree-specific Git metadata; non-Git folders use `.capabilities/state/`. The file rotates at 1 MiB with one 1 MiB backup named
 `telemetry.jsonl.1`; events are limited to 8 KiB. New files use mode 0600 where supported.
-The correlation key is `.capabilities/state/telemetry-key.json`. Do not commit this state;
-add `.capabilities/state/` to the consumer's ignore rules. Deleting the key resets future
+CLI/hook application scopes collect at most 32 local events, then append that group under
+one lock/open/write/close sequence. A partial group flushes synchronously when its scope
+finishes, including operation exceptions and rejected promises; changing project, session,
+host or package scope flushes earlier pending records first. Direct `createTelemetry` callers
+retain immediate append behavior unless they explicitly select `batchLocal` and own `finish()`.
+Diagnostics remain immediate and never enter the remote export queue through this path.
+Groups rotate together when necessary, so rotation can occur up to one group earlier than
+with individual appends. The same two-file/1 MiB-per-file bounds still apply.
+The correlation key is `telemetry-key.json` in the same directory. Git metadata keeps
+state out of commits without generated configuration or ignore edits. Exclude the non-Git
+fallback directory before importing that folder into Git. Deleting the key resets future
 correlation; delete both JSONL files to remove retained local events.
 
 Writers use an exclusive lock and retry contention for up to 25 ms per append before
@@ -87,7 +107,15 @@ no writer is active. Telemetry is supporting diagnostics, not a required audit l
 Failures do not change an engineering operation's result, permission or original error.
 Skipped/failed local appends are counted in memory and reported by a local
 `TELEMETRY_EVENTS_DROPPED` diagnostic when storage recovers. These reports never enqueue
-more export work or diagnose their own failure.
+more export work or diagnose their own failure. The bounded in-memory count is cleared only
+after its diagnostic append succeeds; later emissions or finish calls can retry an unsuccessful
+diagnostic. Export queue drops likewise accumulate until their local diagnostic succeeds.
+These are process-local observations, not durable loss counters across process exit.
+A failed group append counts its member events, not just one failed write. Abrupt termination
+can lose a partially buffered group; reads inside an unfinished scope may not yet see its
+pending events. Explicit captures read the already-flushed log snapshot. Normal shipped
+entry points finish their scopes before returning. Batching reduces repeated filesystem and
+lock work; it does not turn this best-effort stream into a durable audit log.
 
 ## Optional OpenTelemetry export
 
@@ -139,7 +167,74 @@ safe failure code and known acceptance/rejection counts. Failed exports do not c
 that events were delivered. Local retention and
 remote backend retention are separate; the collector/backend owner controls the latter.
 
-## Session view and future analysis
+## Retained observation report
+
+Run `npm run telemetry:report -- --root <project> [--session <id>]`, or use
+`node <package>/support/cli/main.mjs telemetry-report` in a standalone export.
+The bounded report counts retained feature observations and their failure/deferred outcomes,
+reported local/queue drops and failed exports. It exposes retained file bytes, backup presence,
+skipped malformed/unsupported/oversized records and invalid event envelopes. Session filtering
+uses the existing project correlation key; the application report never creates a key or state.
+Like other CLI commands, the CLI invocation itself records ordinary operational telemetry
+after reading the report. The report does not replay events to a collector.
+
+Storage and invalid-record counts describe the project files even with a session filter.
+The retained event window describes the selected valid events. Invocation-scoped observations
+cannot be attributed to a requested session and are excluded from its report. The report emits
+no raw event bodies or session identifiers. It reads at most the current file and its backup;
+concurrent writers are not locked, so the result is a best-effort snapshot.
+Package counts and hook input-status counts expose available attribution; legacy or undeclared
+metadata appears as `unknown`. Missing package metadata is never inferred from event names.
+
+`observed` means a retained operational event exists; `unobserved` leaves applicability,
+enablement and support unknown. These counts cannot establish semantic acceptance, guidance
+loading, task attribution, worker dispatch or compaction execution. Attempt observations are
+counted individually; cumulative attempt attributes are never added together. Complete history
+is always false and total lost events stays unknown: rotation/deletion, disabled sinks and
+failures before a diagnostic can be retained cannot be reconstructed. Backup presence proves
+retained backup data, not a count of rotations or lost events. Keep campaign artifacts separately
+when a complete evaluation record is required.
+
+## Explicit bounded report retention
+
+At an evaluation or audit milestone, retain the current report for a known real session:
+
+```sh
+npm run telemetry:capture -- --root <project> --session <id>
+npm run telemetry:report -- --root <project> --capture <returned-capture-id>
+npm run telemetry:forget -- --root <project> --capture <returned-capture-id>
+```
+
+Standalone packages expose the same `telemetry-capture`, `telemetry-report --capture` and
+`telemetry-forget` commands through `support/cli/main.mjs`. Report reading accepts either a
+live session filter or a retained capture ID. A capture requires existing session-attributed
+observations and an existing correlation key; it never invents a session for invocation-only data.
+
+Captures live in `telemetry-captures.json` in the existing private runtime directory. The
+store is bounded to eight immutable report snapshots and 64 KiB total, with exclusive writer
+locking and atomic replacement. Unchanged snapshots deduplicate. New snapshots never replace
+old ones automatically: capacity or contention produces an explicit error. Use the returned
+capture IDs to read or explicitly forget selected snapshots; forgetting changes only the
+capture store at the application boundary. As with other CLI commands, these invocations also
+record ordinary operational telemetry when enabled. Capture is an explicit local write and can
+preserve already-retained data even when automatic local telemetry has since been disabled.
+
+Snapshots contain bounded report counts, windows, storage/loss metadata, capture time and a
+project-scoped session pseudonym. They exclude raw events, raw session/task identities, code
+and output bodies. Report observations stay unchanged when rolling logs rotate or the
+correlation key is removed; explanatory limitation text comes from the reading runtime. The
+store validates its versioned shape and content-derived IDs before use. Those IDs detect
+accidental corruption; they do not authenticate evidence against the filesystem owner.
+
+Capture is manual, does not add a hook-time scan or automatic archive, and does not launch a
+model or replay data to a collector. It preserves only the observations still retained at
+capture time, with the original unknown total-loss/complete-history status. It cannot restore
+earlier rotation losses or substitute for frozen tasks, source/export identities, actual model
+outputs and judgments in the separate evaluation campaign. Preserve required campaign
+artifacts outside this bounded store before explicitly removing captures. Deleting the capture
+store removes all captured reports; deleting logs or the correlation key alone does not.
+
+## Session view
 
 `npm run session -- --root <project> --session <id> --task <id>` includes the pack version
 and reuses existing session activity receipts. It does not reconstruct counters from
@@ -147,7 +242,7 @@ telemetry or treat selected guidance estimates as native occupancy. Native occup
 remains unknown unless an actual supported session-bound observation is supplied.
 
 Stable names, catalog IDs, scoped correlation, reason codes and schema versions support
-future bounded aggregations of selection frequency, batching, cache reuse and escalation.
+bounded retained-observation reports.
 No dashboard or analytics service is installed. Telemetry cannot establish a percentage
 improvement in engineering quality.
 

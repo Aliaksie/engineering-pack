@@ -6,6 +6,7 @@ import { validatePlaybookCatalog } from '../application/routing/catalog.mjs';
 import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
 import { setupControls } from '../hosts/onboarding.mjs';
+import { featureSupport } from '../hosts/capabilities.mjs';
 import { copy, rewriteLinks, runtimeImports, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
 import * as codex from './export/codex/index.mjs';
@@ -41,15 +42,19 @@ export function build(repo, target) {
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
     for (const { manifest } of packages) {
       const destination = path.join(stage, packageFolder, manifest.name);
-      // Copy the canonical portable setup policy into every standalone package.
-      write(destination, 'SETUP.md', fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8'));
       fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.\n');
       const adapter = reports.find(entry => entry.package === manifest.name);
-      writeJson(destination, 'SETUP.json', {
+      const setup = {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
-        controls: setupControls(target)
-      });
-      for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
+        controls: setupControls(target), featureSupport: featureSupport(target)
+      };
+      writeJson(destination, 'SETUP.json', setup);
+      // First-use notices need small adapter facts, not the full feature support matrix.
+      const notice = { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
+        controls: { surface: setup.controls.surface, commands: setup.controls.commands } };
+      const policy = fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8');
+      write(destination, 'SETUP.md', `${policy}\n## Export facts\n\n\`\`\`json\n${JSON.stringify(notice, null, 2)}\n\`\`\`\n`);
+      for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
       // Canonical package entry points import shared runtime source. Installed packages
       // resolve that same implementation locally, without fallback loaders or siblings.
       for (const file of files(destination).filter(file => file.endsWith('.mjs') && !path.relative(destination,file).startsWith(`support${path.sep}`))) {
@@ -58,14 +63,14 @@ export function build(repo, target) {
         if (source !== relocated) fs.writeFileSync(file,relocated);
       }
       write(destination, 'platform-runtime/session.mjs', fs.readFileSync(path.join(repo, 'hosts/session.mjs'), 'utf8'));
-      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { sessionStatus } from './application/session/status.mjs';\nimport { flushTelemetry } from './application/telemetry/observe.mjs';\nimport { readProject, readInput } from './application/project/configuration.mjs';\nimport { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readInput, readProject, ${JSON.stringify(target)}, { run:observeNativeSession, diagnostic:hookDiagnostic });\nawait flushTelemetry();\n`);
+      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { sessionStatus } from './application/session/status.mjs';\nimport { flushTelemetry } from './application/telemetry/observe.mjs';\nimport { readProject, readInput } from './application/project/configuration.mjs';\nimport { observeNativeSession, hookDiagnostic } from './application/context-delivery/prepare.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nawait runSession(sessionStatus, readInput, readProject, ${JSON.stringify(target)}, { run:(root, host, callback) => observeNativeSession(root, host, callback, ${JSON.stringify(manifest.name)}), diagnostic:hookDiagnostic });\nawait flushTelemetry();\n`);
     }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {
       fs.copyFileSync(license, path.join(stage, 'LICENSE'));
       for (const { manifest } of packages) fs.copyFileSync(license, path.join(stage, packageFolder, manifest.name, 'LICENSE'));
     }
-    for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(repo, folder), path.join(stage, folder));
+    for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(stage, folder));
     copy(path.join(repo, 'docs'), path.join(stage, 'docs'));
     // Shared documentation can link into any package. Rebase those links to the
     // adapter's package folder and native skill names, just as package docs do.

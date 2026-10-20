@@ -77,9 +77,9 @@ test('explicit verify prompts select testing-only context rather than feature im
   }
 });
 
-test('edit routing is opt-in and prompt hints omit the full catalog evidence', (t) => {
-  const quiet = fixture(t);
-  const enabled = fixture(t, { routing: { editHints: true } });
+test('edit routing defaults on and can be disabled and prompt hints omit the full catalog evidence', (t) => {
+  const quiet = fixture(t, { routing: { editHints: false } });
+  const enabled = fixture(t);
   for (const host of native) {
     const ordinary = invoke(host, 'craft-delivery', 'routing', payload(host, quiet, '', 'edit'), quiet);
     assert.equal(ordinary.status, 0, ordinary.stderr);
@@ -119,7 +119,8 @@ test('session service preparation reads metadata without probing executable avai
     assert.equal(result.status, 0, result.stderr);
     assert.ok(result.stdout.includes('never-execute-this-command'), host);
     assert.ok(result.stdout.includes('unverified'), host);
-    assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))), 'metadata preparation creates no cache/authorization state');
+    assert.equal(readCheckpoint(dir, 'fixture-session'), null, 'metadata preparation creates no checkpoint');
+    assert.ok(fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => /^(?:telemetry|routing-)/.test(name)), 'only telemetry and routing invalidation state are allowed');
   }
 });
 
@@ -135,13 +136,14 @@ test('compaction observers save checkpoints without claiming to control compress
   }
 });
 
-test('checkpoint state is not written without explicit consumer opt-in', (t) => {
-  const dir = fixture(t);
+test('checkpoint state can be explicitly disabled', (t) => {
+  const dir = fixture(t, { checkpoint: { enabled: false } });
   for (const host of native) {
     const result = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'fixture-session' }, dir);
     assert.equal(result.status, 0, result.stderr);
   }
-  assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))));
+  assert.equal(readCheckpoint(dir, 'fixture-session'), null);
+  assert.ok(fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => /^(?:telemetry|routing-)/.test(name)));
 });
 
 test('unsupported lifecycle mappings are reported and no fake wrapper is installed', () => {
