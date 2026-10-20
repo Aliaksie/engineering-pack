@@ -1,3 +1,4 @@
+import { startTask, stepTask } from '../application/session/task.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
@@ -5,7 +6,7 @@ import { planOperation } from '../application/services.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
 import { discover } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
-import { updateSessionState, addActivity, recordAttempt } from '../application/session/activity.mjs';
+import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
 import { prepareServices } from '../application/services.mjs';
 import { contextReport } from '../application/session/context.mjs';
 import { bundleRoot } from '../platform/index.mjs';
@@ -16,6 +17,22 @@ export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
 function executeRequest(action, options, root) {
+  if (options.session && !options.task && ['route', 'context-report', 'locate', 'session-attempt', 'task-step'].includes(action)) {
+    try { options = { ...options, task: activeTask(root, options.session) }; }
+    catch (error) {
+      if (['task-step', 'session-attempt'].includes(action)) throw error;
+      diagnostic('state', 'STATE_UNAVAILABLE');
+    }
+  }
+  if (action === 'task-start') {
+    if (!options.session || !options.task || !options.goal) throw new Error('task-start requires --session, --task and --goal');
+    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
+  }
+  if (action === 'task-step') {
+    if (!options.session || !options.task) throw new Error('task-step requires --session and an explicit --task or a task-start binding');
+    return stepTask(root, options.session, options.task, { stage: options.stage, target: options.target, approach: options.approach, evidence: options.evidence, outcome: options.outcome, result: options.result, nextStep: options.next,
+      ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
+  }
 
   if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {} });
   if (action === 'locate') {
@@ -58,6 +75,11 @@ function executeRequest(action, options, root) {
   if (action === 'operation') return planOperation(readProject(root, { preferencesFile: options.preferences }), options.operation, JSON.parse(options.params ?? '{}'));
   if (action === 'checkpoint-save') {
     const metadata = options.data ? readInput(options.data) : {};
+    let task = options.task ?? metadata.taskId;
+    if (!task && options.session) {
+      try { task = activeTask(root, options.session); } catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
+    }
+    options = { ...options, task };
     const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.task ? { taskId: options.task } : {}) });
     return activity(saved, { checkpoints: 1 });
   }

@@ -14,6 +14,10 @@ node <package-root>/support/cli/main.mjs locate --root <project> --path src --te
 
 From the source checkout, use `npm run locate -- ...` or `node cli/main.mjs locate ...`.
 Standalone packages carry `support/cli/main.mjs`; full exports also expose `cli/main.mjs`.
+With a task already bound by `task-start`, pass the verified `--session` id to reuse
+current packets; no per-lookup task JSON is needed. Without a binding, use explicit session
+and task identities when known, or perform a bounded fresh lookup and report reuse unavailable.
+Do not fabricate session identity or create a new task for each search.
 Configure file, match and byte budgets for the
 question. Inspect truncation, skipped files and searched scope before treating no match as absence.
 Literal evidence does not by itself identify the authoritative implementation.

@@ -10,6 +10,53 @@ status and recommendation; `--json` includes evidence, diagnostics and the selec
 report. `session:advice` retains JSON output. No command automatically compacts, resets,
 switches models, starts workers or invokes arbitrary side effects.
 
+## Normal task lifecycle
+
+For multi-step work, establish a task once using the host-provided session identity:
+
+```sh
+node cli/main.mjs task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
+node cli/main.mjs locate --root <project> --session <host-id> --term SymbolValue
+node cli/main.mjs task-step --root <project> --session <host-id> --stage implement --target acceptance:value --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
+node cli/main.mjs session --root <project> --session <host-id>
+```
+
+Installed bundles use `support/cli/main.mjs`. `task-start` routes relevant guidance and binds
+one active task to the session using private runtime state. Read the selected resources;
+routing is a selection receipt, not proof they were loaded. Repeating the same id and goal
+preserves attempts and lookup evidence; use a new task id for a new outcome. A material stage
+or file-scope change can rerun `task-start` with the same goal and updated `--stage`/`--file`.
+Explicit task flags on existing commands retain their meaning. `task-step` must target the
+active binding; switch with `task-start` before recording a step for a different task.
+
+The existing `route`, `locate`, `context-report`, `session`, `session-attempt` and
+`checkpoint-save` commands can adopt this binding when `--session` is supplied without
+`--task`. Missing identity, invalid binding or unavailable storage never establishes a cache
+hit. Direct commands and guidance-only hosts remain usable without the lifecycle. A tiny
+one-off task need not create a record. No undocumented host session discovery is attempted.
+
+At an acceptance boundary, `task-step` requires an agent-declared target, approach, evidence
+identifier, outcome, result and next step. Outcomes are `passed`, `quality-failure`,
+`permission-denied`, `tool-unavailable` and `blocked`. It records the receipt and updates a
+compact continuation through the existing checkpoint mechanism when enabled. It does not
+read or judge the evidence artifact. Goal/result/next-step text is bounded to 512 characters.
+No prompt, transcript or tool output is automatically captured. Shell success never creates
+an acceptance receipt. Unchanged repository snapshots cannot renew older semantic evidence.
+
+Use `--complete` only for accepted overall completion. A failed receipt or unresolved
+acceptance target prevents that declaration. Success closes only the matching operation and
+target; unrelated success cannot erase a failure series. Source edits invalidate stored
+completion and verification when status is read, even if HEAD did not change. Context
+occupancy remains unknown unless a supported observation supplies it.
+
+The step response separates recorded acceptance, checkpoint result, next-step suggestion
+and status. A checkpoint failure does not undo a recorded receipt or invent a saved handoff.
+Explicitly disabled checkpoints leave receipts usable. Advice is a recommendation; no test,
+review, worker, model switch, compaction or remote operation is dispatched. A stored notice
+suppresses unchanged repeated step offers during its cooldown; an explicit status query still
+shows the underlying recommendation for inspection. Continue already-authorized work;
+request a new decision only for an additional action that lacks authorization.
+
 ## Three separate measurements
 
 | Measure | Evidence | Unknowns and limits |
@@ -41,8 +88,8 @@ integer `currentTokens` and `capacityTokens`, `source`, ISO `observedAt`, and ma
 other-session counts remain unknown. No private transcript or undocumented host API is read.
 
 With an explicit `--session` and `--task`, `route`, `context-report`, `locate` and
-`checkpoint-save` record their own bounded activity. Without both flags, these operations
-retain their ordinary behavior without activity writes. `session` reads existing records;
+`checkpoint-save` record their own bounded activity. Without a complete explicit or bound identity, these operations
+retain their ordinary behavior without task activity writes. `session` reads existing records;
 it does not increment counters simply for displaying status. Recorded counts take precedence
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
 Git repositories store runtime state under worktree-specific Git metadata, namespaced by

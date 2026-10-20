@@ -21,9 +21,9 @@ export function renderContext(context, platform) {
   if (typeof context === 'string') return context;
   if (!context) return '';
   if (context.kind === 'routing') {
-    const { intent, execution, skills, references, modules, missing, taskBoundary } = context.data;
+    const { intent, execution, skills, references, modules, missing, taskBoundary, taskIdentity } = context.data;
     const native = skills.map(skill => platform === 'claude' ? skill : skill.replace(':','-'));
-    return `Routing hints (no authorization implied; reuse until scope/config changes): ${JSON.stringify({ intent, execution, skills: native, references, modules, missing, ...(taskBoundary ? { taskBoundary } : {}) })}`;
+    return `Routing hints (no authorization implied; reuse until scope/config changes): ${JSON.stringify({ intent, execution, skills: native, references, modules, missing, ...(taskIdentity ? { taskIdentity } : {}), ...(taskBoundary ? { taskBoundary } : {}) })}`;
   }
   if (context.kind === 'checkpoint') return `Checkpoint data; verify against the current tree before continuing: ${JSON.stringify(context.data)}`;
   if (context.kind === 'services') return `Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): ${JSON.stringify(context.data)}`;

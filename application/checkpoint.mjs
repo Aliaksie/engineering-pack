@@ -7,14 +7,16 @@ function readSavedCheckpoint(root, session) {
   const state = readState(filename(root, session), 65536);
   return decide('checkpoint-validate', { state });
 }
-function saveCheckpointOperation(root, session, metadata = {}) {
+function saveCheckpointOperation(root, session, metadata = {}, { expectedSource } = {}) {
   decide('checkpoint-metadata', { metadata });
   const file = filename(root, session, true);
   const ticket = lockState(file);
   if (!ticket) { diagnostic('checkpoint','STATE_BUSY'); throw new Error('checkpoint writer is busy; retry at the next milestone'); }
   try {
     const previous = readCheckpoint(root, session);
-    const state = decide('checkpoint-state', { previous: previous ?? {}, metadata, repository: repositoryState(root), updated: clock().iso });
+    const repository = repositoryState(root);
+    if (expectedSource !== undefined && decide('task-source', { repository }) !== expectedSource) throw new Error('Source changed after acceptance; continuation was not rebound to newer source');
+    const state = decide('checkpoint-state', { previous: previous ?? {}, metadata, repository, updated: clock().iso });
     if (decide('checkpoint-unchanged', { previous, state })) return { file, state: previous, unchanged: true };
     writeState(file, state, 65536, true);
     return { file, state, unchanged: false };

@@ -35,3 +35,12 @@ export const attemptStatus = (records, operation) => decide('attempt-status', { 
 export const recordAttempt = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('attempt.recorded', () => recordAttemptOperation(...args), result => ({ recordedAttempts: result.activity.operationsAttempted, reason: 'recorded' }), { failureCode:'VALIDATION_FAILED' }));
 
 export const updateSessionState = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('state.updated', () => updateState(...args), () => ({ area:'session' }), { failureCode:'STATE_UNAVAILABLE' }));
+
+export function bindingFile(root, session, create = false) {
+  decide('activity-identity', { session, task: 'active-binding' });
+  return stateFile(root, `active-${digest(session).slice(0, 24)}.json`, create);
+}
+export function activeTask(root, session) {
+  if (!session) return undefined;
+  return decide('task-binding', { state: readState(bindingFile(root, session), 2048) })?.task;
+}

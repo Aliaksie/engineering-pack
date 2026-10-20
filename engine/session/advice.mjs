@@ -17,8 +17,8 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
   if (!Number.isFinite(policy.elevatedAt) || !Number.isFinite(policy.compactAt) || !Number.isFinite(policy.restartAt) || !(policy.elevatedAt > 0 && policy.elevatedAt < policy.compactAt && policy.compactAt < policy.restartAt && policy.restartAt <= 1)
     || !count(policy.maxAgeMs) || !count(policy.cooldownMs) || !Number.isFinite(now)) throw new Error('invalid session thresholds');
   const task = input.task ?? {};
-  keys(task, ['id', 'revision', 'verificationRevision', 'verificationMode', 'stage', 'status', 'verification', 'goalComplete', 'reviewRequested', 'files', 'handoffSaved', 'safeBoundary', 'phaseChanged', 'staleAssumptions', 'compacted', 'almostComplete', 'checkpointFresh', 'risks', 'operation'], 'task');
-  for (const field of ['id', 'revision', 'verificationRevision', 'operation']) if (task[field] !== undefined && !text(task[field])) throw new Error(`invalid task ${field}`);
+  keys(task, ['id', 'revision', 'verificationRevision', 'verificationMode', 'stage', 'status', 'verification', 'goalComplete', 'reviewRequested', 'files', 'handoffSaved', 'safeBoundary', 'phaseChanged', 'staleAssumptions', 'compacted', 'almostComplete', 'checkpointFresh', 'risks', 'operation', 'nextStep'], 'task');
+  for (const field of ['id', 'revision', 'verificationRevision', 'operation', 'nextStep']) if (task[field] !== undefined && !text(task[field])) throw new Error(`invalid task ${field}`);
   if (task.stage !== undefined && !['plan', 'implement', 'verify', 'review', 'explore', 'story', 'architecture', 'locate', 'discover'].includes(task.stage)) throw new Error('invalid task stage');
   if (task.verificationMode !== undefined && (task.stage !== 'verify' || !['manual', 'automation', 'test-code'].includes(task.verificationMode))) throw new Error('invalid task verificationMode');
   if (task.status !== undefined && !['working', 'completed', 'failed', 'blocked', 'unknown'].includes(task.status)) throw new Error('invalid task status');
@@ -94,6 +94,8 @@ export function sessionAdvice(input = {}, project = { formatVersion: 1 }, { now,
         : suggest('design-verification', 'Verification for the current target still needs an appropriate check or observation.', 'read', [], { skill: 'craft-engineering:workflow-verify-feature' });
     } else if (['implement', 'verify'].includes(task.stage) && verified && task.reviewRequested === true) {
       suggestion = suggest('review', 'Verification is recorded passed and review was explicitly requested.', 'read', ['Review the same revision covered by the evidence.'], { skill: 'craft-review:review-change' });
+    } else if (task.nextStep) {
+      suggestion = suggest('continue-task', task.nextStep, 'recommendation-only', ['Continue only within existing task scope and authorization.']);
     } else if (task.stage !== 'plan') {
       suggestion = suggest('summarize-evidence', 'Return the completed outcome, acceptance evidence and remaining limits.', 'read');
     }

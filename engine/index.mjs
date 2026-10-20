@@ -1,3 +1,4 @@
+import { taskBinding, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
@@ -28,6 +29,11 @@ const operations = {
   'review-snapshot': a => validateSnapshot(a.snapshot),
   'review-validate': a => validateReview(a.snapshot, a.review),
   'review-publication': a => publicationPlan(a.snapshot, a.review, a.target),
+  'task-binding': a => taskBinding(a.state),
+  'task-start': a => startTask(a.state, a.input, a.repository),
+  'task-source': a => taskSource(a.repository),
+  'task-context': a => taskContext(a.state, a.repository),
+  'task-step': a => recordTaskStep(a.state, a.input, a.repository, a.id, a.at),
   'activity-validate': a => validateActivityState(a.state),
   'activity-identity': a => activityIdentity(a.session, a.task),
   'discovery-request': a => discoveryRequest(a.input),

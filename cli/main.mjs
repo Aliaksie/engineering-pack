@@ -7,9 +7,11 @@ import { execute } from './requests.mjs';
 import { renderSessionStatus } from './render.mjs';
 
 const help = {
+  'task-start': { usage: 'task-start --session id --task stable-id --goal "outcome" [--stage implement] [--file src/path]', mode: 'bind task identity; route relevant guidance; optional local snapshot' },
+  'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
   settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json]', mode: 'effective settings, value origins, applied controls and private state location; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
-    taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks'], mode: 'recommendation-only' },
+    taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
   locate: { usage: 'locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]',
     data: 'Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes', mode: 'bounded literal scan; optional local reuse receipts' },
   'session-attempt': { usage: 'session-attempt --root project --session id --task task-id --data attempt.json',
@@ -22,20 +24,20 @@ const help = {
 
 export function run(argv) {
   const [action, ...args] = argv;
-  if (action === 'help' || action === '--help' || args.includes('--help')) return help[action] ?? { commands: ['settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' };
+  if (action === 'help' || action === '--help' || args.includes('--help')) return help[action] ?? { commands: ['task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
   return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },
     () => observe('cli.command', () => parse(action,args), () => ({ command:action }), { failureCode:'INVALID_INPUT' }));
 }
 function parse(action,args) {
-  const allowed = ['preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
+  const allowed = ['goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
   const options = { file: [], risk: [], term: [], path: [] };
   const repeat = ['file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool'];
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (!arg.startsWith('--') || !allowed.includes(arg.slice(2))) throw new Error(`unknown argument: ${arg}`);
     const name = arg.slice(2);
-    if (['delegate', 'json'].includes(name)) { if (options[name]) throw new Error(`duplicate option --${name}`); options[name] = true; continue; }
+    if (['delegate', 'json', 'complete'].includes(name)) { if (options[name]) throw new Error(`duplicate option --${name}`); options[name] = true; continue; }
     const value = args[++index];
     if (value === undefined || value.startsWith('--')) throw new Error(`missing value for ${arg}`);
     if (repeat.includes(name)) (options[name] ??= []).push(value);

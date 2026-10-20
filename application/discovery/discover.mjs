@@ -3,9 +3,13 @@ import { readProject } from '../project/configuration.mjs';
 import { decide, digest } from '../engine-client.mjs';
 import { locate } from './locate.mjs';
 import { inventoryIdentity, realRoot } from '../../platform/index.mjs';
-import { readSessionState, updateSessionState } from '../session/activity.mjs';
+import { readSessionState, updateSessionState, activeTask } from '../session/activity.mjs';
 
 function discoverOperation(root, input = {}, { session, task, preferencesFile } = {}) {
+  if (session && !task) {
+    try { task = activeTask(root, session); }
+    catch { diagnosticError('state', 'STATE_UNAVAILABLE'); }
+  }
   const request = decide('discovery-request', { input });
   const { options, terms, paths } = request;
   if (!terms.length) return decide('discovery-deferred', { request });
