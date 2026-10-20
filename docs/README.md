@@ -10,7 +10,8 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | [Naming](NAMING.md) | Repository, package, skill, workflow and tool conventions |
 | [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
-| [Session status](SESSION.md) | Context occupancy, pack estimates, activity and execution budgets |
+| [Session status](SESSION.md) | Task lifecycle, context, activity and execution budgets |
+| [Host controls](HOST-CONTROL.md) | Native worker, review and compaction bindings and limits |
 | [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |
 | [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
 | [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |

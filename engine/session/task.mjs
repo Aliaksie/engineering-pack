@@ -74,10 +74,10 @@ export function recordTaskStep(state, input, repository, id, at) {
     ...(input.profile !== undefined ? { profile: input.profile } : {}), ...(input.maxAttempts !== undefined ? { maxAttempts: input.maxAttempts } : {}) }, repository, id, at);
   appendAttempt(state, receipt);
   if (input.complete && unresolvedAttempts(state.attempts).length) throw new Error('task completion has unresolved acceptance failures or blockers');
-  Object.assign(record, { stage: selected, status: input.outcome === 'passed' ? 'completed' : input.outcome === 'quality-failure' ? 'failed' : 'blocked',
+  Object.assign(record, { stage: selected, status: input.outcome === 'passed' ? 'completed' : input.outcome === 'quality-failure' ? 'failed' : input.outcome === 'prerequisite-resolved' ? 'working' : 'blocked',
     goalComplete: input.complete === true, revision: repository.head, source: receipt.source, safeBoundary: true,
     summary: input.result, nextStep: input.nextStep });
-  if (selected === 'verify') Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
+  if (selected === 'verify' && input.outcome !== 'prerequisite-resolved') Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
   else { delete record.verification; delete record.verificationRevision; }
   record.acceptedContract = taskContract(record);
   if (input.outcome === 'passed' && !record.completed?.endsWith(input.result)) record.completed = [record.completed, input.result].filter(Boolean).join('\n').slice(-1024);

@@ -92,7 +92,7 @@ export function sessionStatus(input = {}, project = { formatVersion: 1 }, { sess
       if (repositoryEvidence?.gitAvailable && repositoryEvidence.fingerprints.complete) currentSource = digest([repositoryEvidence.head, repositoryEvidence.fingerprints.index, repositoryEvidence.fingerprints.workingTree]);
     }
     const recordedAttempts = records.filter(record => record.profile && currentSource && record.source === currentSource && record.revision === normalized.task.revision
-      && record.outcome !== 'blocked').map(record => ({ id: record.id, profile: record.profile, task: taskId,
+      && !['blocked', 'prerequisite-resolved'].includes(record.outcome)).map(record => ({ id: record.id, profile: record.profile, task: taskId,
       revision: record.revision, outcome: record.outcome, evidence: record.evidence }));
     model = modelAdvice({ host: normalized.host.name, role, task: taskId, revision: normalized.task.revision,
       capabilityClass: capability.class, ...(currentProfile ? { currentProfile } : {}), attempts: recordedAttempts }, project);

@@ -21,7 +21,10 @@ function protocol() {
     async request(method, params) {
       calls.push({ method, params });
       if (method === 'thread/loaded/list') return { data: [...threads.values()].filter(t => t.status.type !== 'notLoaded').map(t => t.id), nextCursor: null };
-      if (method === 'thread/read' || method === 'thread/resume') return { thread: { ...threads.get(params.threadId) } };
+      if (method === 'thread/read' || method === 'thread/resume') {
+        if (client.workerReadUnavailable && params.threadId !== 'main') throw new Error('worker history is not available for hydration yet');
+        return { thread: { ...threads.get(params.threadId) } };
+      }
       if (method === 'thread/start') {
         const id = `worker-${++sequence}`;
         const thread = { id, model: params.model, status: { type: 'idle' } }; threads.set(id, thread);
@@ -97,11 +100,29 @@ test('Codex adapter translates admitted work to fresh read-only native threads a
   await assert.rejects(f.controls.workers.dispatch({ ...input, id: 'two' }), /capacity|approval|ceiling/);
   const reused = await f.controls.workers.dispatch({ ...input, id: 'follow-up', reuseWorker: result.request.workerId });
   assert.equal(reused.executionObserved, true);
+  assert.equal(reused.modelMatches, true);
+  assert.equal(f.controls.nativeStatus().operations.findLast(op => op.kind === 'worker').model, 'consumer-worker');
   assert.equal(f.calls.filter(call => call.method === 'thread/start').length, 1);
   await f.controls.release(result.request.workerId);
   assert.equal((await f.controls.workers.reconcile()).requests[0].occupied, true);
   f.threads.get(result.request.workerId).status = { type: 'notLoaded' };
   assert.equal((await f.controls.workers.reconcile()).requests[0].occupied, false);
+});
+
+test('acknowledged worker startup stays observed before thread history can be read', async t => {
+  const f = fixture(t), offer = await f.offer('delegate');
+  f.client.workerReadUnavailable = true;
+  const result = await f.controls.workers.dispatch(f.assignment(offer));
+  assert.equal(result.executionObserved, true);
+  assert.equal(result.modelMatches, true);
+  assert.equal(result.request.status, 'running');
+  assert.equal(result.request.occupied, true);
+  assert.equal(f.calls.filter(call => call.method === 'turn/start').length, 1);
+  f.client.workerReadUnavailable = false;
+  f.complete(result.request.workerId);
+  const reconciled = await f.controls.workers.reconcile();
+  assert.equal(reconciled.requests[0].status, 'idle');
+  assert.equal(reconciled.requests[0].occupied, true, 'completion alone does not release the native slot');
 });
 
 test('lost acknowledgements survive adapter restart without replay or invented negative lookup', async t => {

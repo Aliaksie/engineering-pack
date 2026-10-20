@@ -35,9 +35,9 @@ commands. Missing UI controls require a documented fallback, not invented comman
 Guidance-only adapters must explain that automatic hooks are not registered.
 An enabled plugin, trusted project or generated hook file does not prove automatic
 hook invocation. With local telemetry enabled, observe ordinary work for fresh
-`host.hook` events in `.capabilities/state/telemetry.jsonl`; explicit CLI calls and
-direct wrapper runs verify different paths. Missing events alone do not diagnose
-the cause.
+`host.hook` events in runtime `telemetry.jsonl` (`settings --root <project>` shows its
+directory). Explicit CLI calls and direct wrapper runs verify different paths.
+Missing events alone do not diagnose the cause.
 
 Where shell execution and Node 20+ are available, an explicit status read works
 without hooks:
@@ -176,7 +176,8 @@ and marks unsupported events. Native skill names are added to routing hints by t
 
 Package hook entry points use no LLM calls. Host wrappers normalize native events;
 application use cases collect observations and translate lifecycle facts for portable engine
-decisions. Hosts render those decisions into native responses. State snapshots are opt-in.
+decisions. Hosts render those decisions into native responses. Milestone snapshots default
+to enabled; set `checkpoint.enabled` to false to disable them.
 A context-handler failure remains advisory; a valid before-shell policy call that cannot
 evaluate returns a denial with a configuration error. Malformed or non-object JSON receives
 the default allow decision. Inputs over 64 KiB are rejected before evaluation. Purely

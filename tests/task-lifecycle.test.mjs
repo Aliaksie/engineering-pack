@@ -102,6 +102,30 @@ test('unrelated acceptance success cannot erase a failure or complete the task',
   assert.equal(receipt('acceptance:primary', 'passed', ['--complete']).complete, true);
 });
 
+test('prerequisite resolution clears only matching blockers without certifying acceptance or clearing quality failures', async t => {
+  const { root, command, start } = fixture(t); start();
+  const receipt = (target, outcome, extra = []) => command('task-step', '--stage', 'verify', '--target', target,
+    '--approach', 'bounded-check', '--evidence', 'checks/prerequisite', '--outcome', outcome,
+    '--result', 'Observed prerequisite state', '--next', 'Continue acceptance', ...extra);
+  receipt('acceptance:scope', 'quality-failure');
+  receipt('acceptance:scope', 'tool-unavailable');
+  receipt('acceptance:other', 'blocked');
+  assert.throws(() => receipt('acceptance:missing', 'prerequisite-resolved'), /matching unresolved blocker/);
+  assert.throws(() => receipt('acceptance:scope', 'prerequisite-resolved', ['--complete']), /passed acceptance/);
+  const resolved = receipt('acceptance:scope', 'prerequisite-resolved', ['--profile', 'standard', '--host', 'codex']);
+  assert.equal(resolved.complete, false);
+  assert.equal(resolved.status.task.verification, undefined);
+  const state = readSessionState(root, 'host-session', 'fix-value');
+  const { unresolvedAttempts } = (await import('../engine/session/activity.mjs'));
+  assert.deepEqual(unresolvedAttempts(state.attempts).map(item => [item.target, item.outcome]),
+    [['acceptance:scope', 'quality-failure'], ['acceptance:other', 'blocked']]);
+  assert.throws(() => receipt('acceptance:scope', 'prerequisite-resolved'), /matching unresolved blocker/);
+  assert.throws(() => receipt('acceptance:scope', 'passed', ['--complete']), /unresolved/);
+  receipt('acceptance:other', 'prerequisite-resolved');
+  const accepted = receipt('acceptance:scope', 'passed', ['--complete']);
+  assert.equal(accepted.complete, true);
+});
+
 test('missing or corrupt identity stays limited; disabled snapshots do not disable task receipts', t => {
   const { root, command, start, step } = fixture(t);
   assert.throws(() => step(), /task-start binding/);

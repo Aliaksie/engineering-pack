@@ -154,6 +154,10 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       if (input.reuseWorker && !snapshot.workers.some(worker => worker.id === input.reuseWorker && worker.status === 'idle' && worker.model === input.model)) throw new Error('native worker is not reusable');
       return withTaskAdmission(input, async assertCurrent => {
         const op = begin(input, 'worker', input.reuseWorker ?? null);
+        if (input.reuseWorker) {
+          op.model = snapshot.workers.find(worker => worker.id === input.reuseWorker).model;
+          persist();
+        }
         if (!input.reuseWorker) {
           // A fresh thread avoids inheriting the coordinator transcript. Permission escalation
           // and built-in unmetered subagents are disabled for this adapter's worker lane.
@@ -169,7 +173,12 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
           input: [{ type: 'text', text: JSON.stringify({ goal: input.brief.goal, scope: input.scope, sources: input.brief.sources,
             revision: input.revision, acceptance: input.brief.acceptance, restrictions: input.brief.restrictions, returnShape: input.brief.returnShape }) }] });
         acknowledge(op, response.turn);
-        return workerValue(op, await readThread(op.threadId));
+        // Startup is observed through the persisted thread/model and turn acknowledgements.
+        // An immediate history read is not required to certify that native effect. Keep the
+        // slot occupied; reconciliation still verifies current thread metadata before reuse.
+        return { workerId: op.threadId, model: op.model,
+          status: op.outcome === 'completed' ? 'idle' : op.outcome === 'failed' ? 'failed' : op.outcome === 'interrupted' ? 'cancelled' : 'running',
+          occupiesSlot: true, evidence: receipt(op) };
       });
     },
     async cancel(input) {

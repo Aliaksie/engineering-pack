@@ -79,6 +79,11 @@ pass or retrying without a stopping condition. After an environment failure, dia
 missing prerequisite once; retry only when evidence or conditions change. Continue independent
 authorized work without adding unrelated network/browser preflights.
 
+After correcting a recorded permission/tool/prerequisite blocker, use `task-step` with
+`--outcome prerequisite-resolved` against its original stage and target, citing the actual
+correction. This clears that blocker without claiming acceptance passed or granting new
+authority. Preserve quality failures and other unresolved targets, then resume the checks.
+
 At a meaningful acceptance boundary, use `task-step` to supply the stage, acceptance target,
 approach, evidence identifier, observed outcome, brief result and next step. It records a
 semantic receipt, maintains one bounded continuation and returns session advice. A shell exit

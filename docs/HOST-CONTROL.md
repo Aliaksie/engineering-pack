@@ -215,8 +215,8 @@ effect retries or stale-lock takeover. An unresolved coordinator action blocks a
 native coordinator action even after restart. Output is bounded and marks truncation;
 missing native usage/cost fields stay unknown. Native success is not delivery acceptance.
 
-Every `SETUP.json` and adapter report describes all 18 planned feature paths, activation
-requirements and evidence limits. Portable commands remain available where Node/shell
+Each `SETUP.json` and adapter report describes feature support, activation requirements
+and evidence limits. Portable commands remain available where Node/shell
 execution exists. Hooks retain each export's actual mappings. Metadata and protocol tests
 do not establish installed activation, ordinary-work adoption or model quality.
 

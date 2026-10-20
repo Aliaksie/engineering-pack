@@ -157,6 +157,25 @@ test('a worker proposal cannot bypass a recorded permission or tool prerequisite
   assert.match(offered.applicability.reason, /prerequisite/);
 });
 
+test('resolved prerequisites permit a fresh scoped worker offer while host prohibitions still apply', t => {
+  const { command, start, facts } = fixture(t, { execution: { roles: { researcher: { mode: 'delegate', profile: 'standard' } },
+    hosts: { fixture: { delegation: true, models: { standard: 'explicit-worker-model' } } } } });
+  start();
+  const receipt = outcome => command('task-step', '--stage', 'verify', '--target', 'acceptance:worker',
+    '--approach', 'prerequisite-check', '--evidence', 'checks/tool-access', '--outcome', outcome,
+    '--result', 'Observed prerequisite state', '--next', 'Continue independent inspection');
+  receipt('tool-unavailable');
+  const offer = allowed => command('task-offer', '--action', 'delegate', '--scope', 'source-inspection', '--role', 'researcher',
+    '--benefit', 'Inspect independent sources', '--evidence', 'scope:independent', '--data',
+    facts({ allowed, supported: true, independentTasks: 2, observations: { host: { name: 'fixture' } }, workers: capacity() }));
+  assert.equal(offer(true).offer, null);
+  const resolved = receipt('prerequisite-resolved');
+  assert.equal(resolved.complete, false);
+  assert.equal(resolved.status.task.verification, undefined);
+  assert.ok(offer(true).offer);
+  assert.equal(offer(false).offer, null, 'a resolution receipt never grants current host permission');
+});
+
 test('declining compaction suppresses the repeated session offer without inventing approval', t => {
   const { command, facts, start, verify } = fixture(t); start(); verify();
   const observations = { host: { name: 'fixture', reliableCompaction: true }, task: { safeBoundary: true },

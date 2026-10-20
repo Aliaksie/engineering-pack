@@ -37,10 +37,15 @@ The existing `route`, `locate`, `context-report`, `session`, `session-attempt` a
 hit. Direct commands and guidance-only hosts remain usable without the lifecycle. A tiny
 one-off task need not create a record. No undocumented host session discovery is attempted.
 
+In Git repositories, runtime state lives under `.git/craft-state` (the worktree Git
+directory for linked worktrees). Sandboxes that deny Git-metadata writes cannot record
+task progress or acceptance directly. The installed Codex exercise used a trusted external
+harness for those writes; independent sandboxed lifecycle recording remains unverified.
+
 At an acceptance boundary, `task-step` requires an agent-declared target, approach, evidence
 identifier, outcome, result and next step. Outcomes are `passed`, `quality-failure`,
-`permission-denied`, `tool-unavailable` and `blocked`. It records the receipt and updates a
-compact continuation through the existing checkpoint mechanism when enabled. It does not
+`permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. It records
+the receipt and updates a compact continuation through the existing checkpoint mechanism when enabled. It does not
 read or judge the evidence artifact. Goal/result/next-step text is bounded to 512 characters.
 No prompt, transcript or tool output is automatically captured. Shell success never creates
 an acceptance receipt. Unchanged repository snapshots cannot renew older semantic evidence.
@@ -50,6 +55,13 @@ acceptance target prevents that declaration. Success closes only the matching op
 target; unrelated success cannot erase a failure series. Source edits invalidate stored
 completion and verification when status is read, even if HEAD did not change. Context
 occupancy remains unknown unless a supported observation supplies it.
+
+After actually correcting a permission, tool or prerequisite issue, record
+`prerequisite-resolved` against the same stage/operation and target, with evidence of
+the correction. This closes only matching blocker receipts; quality failures and other
+targets stay open. It returns the task to working state without marking acceptance or
+verification passed, and cannot be combined with `--complete`. It grants no permission,
+dispatches no retry and does not bypass fresh host/action checks. Run acceptance afterward.
 
 The step response separates recorded acceptance, checkpoint result, next-step suggestion
 and status. A checkpoint failure does not undo a recorded receipt or invent a saved handoff.
@@ -315,7 +327,7 @@ npm run session:attempt -- --root <project> --session <id> --task <task-id> --da
 ```
 
 The receipt requires `operation`, `target`, `approach`, `evidence` and `outcome`. Outcomes are
-`passed`, `quality-failure`, `permission-denied`, `tool-unavailable`, `blocked`. Use bounded
+`passed`, `quality-failure`, `permission-denied`, `tool-unavailable`, `blocked`, `prerequisite-resolved`. Use bounded
 identifiers/paths, never raw output. Optional `profile`, `maxAttempts` (1–5) and
 `escalationReason` preserve actual model-profile changes and their explanation.
 
@@ -400,8 +412,8 @@ start workers, review or native compaction.
 Precedence is bundled defaults, personal preferences, project settings, then task overrides.
 Personal preferences live at `~/.config/craft/preferences.json`; `--preferences <file>`
 selects an explicit file for reproducible inspection. Missing files contribute no values.
-The preference file and its parent must be user-owned, cannot be symlinks and cannot be
-writable by others. Files are limited to 64 KiB. Preferences and task overrides accept
+Preference paths reject symlinks; on POSIX, the file and its parent must also be user-owned
+and not writable by others. Windows relies on consumer-managed ACLs. Files are limited to 64 KiB. Preferences and task overrides accept
 only `routing`, `checkpoint` and `efficiency`; they cannot declare permissions, services
 or host model mappings. No configuration file is generated in the project.
 

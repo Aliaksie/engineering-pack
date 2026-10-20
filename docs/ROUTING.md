@@ -186,7 +186,6 @@ Current-target `permission-denied` or `tool-unavailable` stops advice across all
 resolve that prerequisite before supplying a fresh attempt set. No chain means stop rather
 than invent a stronger model. A configured host mapping alone establishes no quality benefit.
 
-
 Logical profile advice is available for main execution even when delegation is disabled or
 unmapped. Default logical classes carry no vendor model names or measured capability ranking.
 Exact host model mappings remain consumer declarations; native switch support and authorization

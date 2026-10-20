@@ -37,9 +37,10 @@ base/head revisions and explicit authorization; comment API line applicability s
 
 Checkpoint metadata stores explicit task/authorization/next-step data and Git state, not full
 transcripts or tool output. It is historical evidence, not a new authorization source. State paths
-reject symlinks and use bounded, locked atomic writes; ignore `.capabilities/state/` in
-consumer projects. Session activity, retry receipts and lookup packets use that same ignored
-directory and are not provider telemetry. Context occupancy requires fresh session-bound
+reject symlinks and use bounded, locked atomic writes. Runtime state uses Git metadata
+when available; exclude the non-Git fallback `.capabilities/state/` before importing a folder
+into Git. Session activity, retry receipts and lookup packets share this private storage
+and are not provider telemetry. Context occupancy requires fresh session-bound
 host observations; file reads and billing totals cannot establish it. Automatic snapshots
 do not refresh the source binding of older continuation notes.
 
