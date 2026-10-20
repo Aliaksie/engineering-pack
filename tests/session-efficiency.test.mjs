@@ -65,6 +65,34 @@ test('file, inventory, HEAD, config, manifest and task changes invalidate litera
   assert.equal(discover(root, request, { ...scope, session: 's2' }).discovery.fresh, 1);
 });
 
+test('file-scoped lookup reuses evidence and invalidates on file and ancestor manifest changes', t => {
+  const { root, write } = fixture(t);
+  for (const file of ['src/names.txt', 'root.txt']) {
+    write(file, 'FileScopedSymbol\n');
+    const request = { terms: ['FileScopedSymbol'], paths: [file] };
+    const prime = () => {
+      const first = discover(root, request, scope);
+      assert.equal(first.discovery.fresh, 1);
+      assert.equal(first.reuse.validated, true);
+      const repeated = discover(root, request, scope);
+      assert.equal(repeated.discovery.reused, 1);
+      assert.equal(repeated.filesScanned, 0);
+      assert.equal(repeated.bytesRead, 0);
+    };
+    prime();
+    write(file, 'FileScopedSymbol changed\n');
+    prime();
+    write('package.json', JSON.stringify({ changed: file }));
+    prime();
+    if (file.startsWith('src/')) {
+      write('src/pyproject.toml', '[project]\nname = "fixture"\n');
+      prime();
+    }
+    fs.unlinkSync(path.join(root, file));
+    assert.throws(() => discover(root, request, scope), { code: 'ENOENT' }, 'a deleted scope must not return cached evidence');
+  }
+});
+
 test('dependent lookup stays staged; arbitrary actions and side effects cannot enter a lookup batch', t => {
   const { root } = fixture(t);
   const result = discover(root, { requests: [{ id: 'framework', term: 'Symbol0' }, { id: 'guidance', term: 'Symbol1', dependsOn: ['framework'] }], paths: ['src'] });

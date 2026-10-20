@@ -160,6 +160,17 @@ command counters remain separate. A complete classification is no semantic succe
 | Current occupancy | Fresh `current-context` observation with counts, capacity, source, timestamp and matching session identity | Cumulative/billing tokens and file reads cannot establish occupancy. Unsupported telemetry stays unknown. |
 | Pack activity | Identity-bound command receipts in private runtime state, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
 
+For separately installed packages, repeat `--bundle <verified-package-root>` on
+`context-report`, `session`, `session-advice`, `task-step` and action advice commands.
+Agents derive these roots from the loaded skill resources; users need not know cache layouts.
+The API also accepts an array of roots. A single root still works for source trees, complete
+exports and standalone packages. At most 16 explicitly supplied roots are inspected; no host
+cache discovery or sibling imports occur. Manifests identify each package. Multiple distinct
+installations of the same selected package are reported as ambiguous rather than choosing a
+version. Multi-root file entries include `bundleRoot` alongside their relative `path` and hash;
+repeated physical roots and files are counted once. Missing packages keep totals incomplete.
+This measures selected resources, not observed host loads or current context occupancy.
+
 A task record can begin small:
 
 ```json

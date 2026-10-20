@@ -28,6 +28,12 @@ Rerun `task-start` with the same goal when stage or scope materially changes. Mi
 identity means limited operation: use bounded tools and a compact private handoff without
 inventing an id or claiming reuse. Guidance-only hosts follow the same evidence discipline.
 
+When selected guidance spans separately installed packages, derive their verified roots from
+the loaded skill resources and repeat `--bundle <root>` on `context-report`, `task-step` and
+session advice calls. Retain this root selection with the task; do not ask the user to locate
+cache directories or search private host caches. A full export needs only its bundle root.
+Missing or ambiguous installations remain explicit; accounting does not prove resource loading.
+
 Use `craft-delivery:inspect-architecture` for a boundary that affects the solution and
 `craft-delivery:plan-change` for material unresolved implementation choices. Use
 `craft-delivery:route-work` to select independent practices and stack guidance when needed,

@@ -19,8 +19,10 @@ After installing any adapter, ask: **"Check Engineering Pack setup, hook activit
 and session usage."** Each exported package includes a self-contained `SETUP.md`
 and `SETUP.json`, linked from its package instructions. The shared policy lives in
 `packages/craft-engineering/standards/session-setup.md`; native controls stay in
-`hosts/`. The builder copies the policy into every package without a runtime
-dependency on craft-engineering or another installed package.
+`hosts/`. The builder copies the policy and compact adapter facts into every package
+without a runtime dependency on craft-engineering or another installed package.
+The first-use notice uses that page; the full `SETUP.json` feature matrix is reserved
+for explicit setup and capability inspection.
 
 On first skill use in a conversation, the agent is instructed to give one short
 notice: what the actual host supports, what activation remains unverified, and

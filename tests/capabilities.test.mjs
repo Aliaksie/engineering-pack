@@ -84,8 +84,11 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.equal(setup.adapter, target);
       assert.equal(setup.hooks, entry.hooks);
       assert.ok(fs.existsSync(path.join(directory, setup.sessionAdvice.entry)));
-      assert.equal(fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8'),
-        fs.readFileSync(path.join(root, 'packages/craft-engineering/standards/session-setup.md'), 'utf8'));
+      const setupPage = fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8');
+      assert.ok(setupPage.startsWith(fs.readFileSync(path.join(root, 'packages/craft-engineering/standards/session-setup.md'), 'utf8')));
+      const notice = JSON.parse(setupPage.match(/```json\n([\s\S]+?)\n```/)[1]);
+      assert.deepEqual(notice, { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
+        controls: { surface: setup.controls.surface, commands: setup.controls.commands } });
       if (target !== 'codex') assert.deepEqual(setup.controls.commands, {});
       for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.path)]) {
         assert.ok(fs.existsSync(path.join(directory, asset)), `${target}: missing ${asset}`);

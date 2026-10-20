@@ -88,6 +88,43 @@ test('context report rejects traversal, symlinked resources, oversized files and
   assert.throws(() => run(['context-report', '--intent', 'verify', '--budget-bytes', 'invalid']), /positive safe integer/);
 });
 
+test('separately installed packages are accounted through explicit roots without cache discovery', t => {
+  const directory = temporary(t);
+  const roots = ['craft-delivery', 'craft-engineering'].map(pkg => {
+    const destination = path.join(directory, pkg, 'installed-version');
+    fs.cpSync(path.join(root, 'dist/codex/packages', pkg), destination, { recursive: true });
+    return destination;
+  });
+  const plan = route({ intent: 'implement', files: ['tasks.py'] });
+  assert.equal(contextReport(roots[0], plan).complete, false);
+  const report = contextReport(roots, plan);
+  assert.equal(report.complete, true);
+  assert.ok(report.files.some(entry => entry.target.endsWith('/languages/python.md')));
+  for (const entry of report.files) {
+    const content = fs.readFileSync(path.join(entry.bundleRoot, entry.path));
+    assert.equal(entry.sha256, createHash('sha256').update(content).digest('hex'));
+  }
+  assert.deepEqual(contextReport([...roots, roots[1]], plan), report, 'repeated physical roots do not double count');
+  const cli = spawnSync(process.execPath, [path.join(roots[0], 'support/cli/main.mjs'),
+    'context-report', '--root', directory, '--intent', 'implement', '--file', 'tasks.py',
+    '--bundle', roots[0], '--bundle', roots[1]], { encoding: 'utf8' });
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.equal(JSON.parse(cli.stdout).complete, true);
+  const duplicate = path.join(directory, 'other-engineering');
+  fs.cpSync(roots[1], duplicate, { recursive: true });
+  const ambiguous = contextReport([...roots, duplicate], plan);
+  assert.equal(ambiguous.complete, false);
+  assert.ok(ambiguous.missing.some(entry => /multiple supplied roots/.test(entry.reason)));
+  assert.ok(ambiguous.files.every(entry => !entry.target.startsWith('craft-engineering:')));
+  assert.throws(() => contextReport([], plan), /1 to 16/);
+  assert.throws(() => contextReport(Array(17).fill(roots[0]), plan), /1 to 16/);
+  fs.symlinkSync(path.join(root, 'packages/craft-engineering/skills'), path.join(roots[1], 'linked-skills'), 'dir');
+  // The explicit-root path still uses the existing no-symlink resource boundary.
+  fs.rmSync(path.join(roots[1], 'skills'), { recursive: true });
+  fs.renameSync(path.join(roots[1], 'linked-skills'), path.join(roots[1], 'skills'));
+  assert.throws(() => contextReport(roots, plan), /symlink/);
+});
+
 test('story and exploration context stay independent of configured stack and risks', () => {
   const config = { formatVersion: 1, languages: ['typescript'], frameworks: ['react'],
     layers: ['agent', 'ui'], providers: ['bedrock'], runtimes: ['node'] };

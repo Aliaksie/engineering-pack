@@ -6,8 +6,9 @@ changes or the user asks. This guidance works when a skill loads the package
 instructions; installation alone cannot guarantee a welcome message. Never rely
 on an unverified hook to deliver the notice explaining how to activate hooks.
 
-Read the colocated `SETUP.json` for this export's hook support, native controls,
-usage observation and portable status entry point. Establish the actual host surface
+Use the compact export facts on this page for hook support, native controls,
+usage observation and the portable status entry point. Reserve the full `SETUP.json`
+feature matrix for an explicit setup or capability inspection. Establish the actual host surface
 and version before giving UI commands. An installed binary does not establish which
 app runs this session. If the surface is unclear, ask once while continuing work.
 

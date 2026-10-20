@@ -42,14 +42,18 @@ export function build(repo, target) {
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
     for (const { manifest } of packages) {
       const destination = path.join(stage, packageFolder, manifest.name);
-      // Copy the canonical portable setup policy into every standalone package.
-      write(destination, 'SETUP.md', fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8'));
       fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.\n');
       const adapter = reports.find(entry => entry.package === manifest.name);
-      writeJson(destination, 'SETUP.json', {
+      const setup = {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
         controls: setupControls(target), featureSupport: featureSupport(target)
-      });
+      };
+      writeJson(destination, 'SETUP.json', setup);
+      // First-use notices need small adapter facts, not the full feature support matrix.
+      const notice = { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
+        controls: { surface: setup.controls.surface, commands: setup.controls.commands } };
+      const policy = fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8');
+      write(destination, 'SETUP.md', `${policy}\n## Export facts\n\n\`\`\`json\n${JSON.stringify(notice, null, 2)}\n\`\`\`\n`);
       for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
       // Canonical package entry points import shared runtime source. Installed packages
       // resolve that same implementation locally, without fallback loaders or siblings.

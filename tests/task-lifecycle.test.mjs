@@ -64,6 +64,19 @@ test('source edits invalidate stored acceptance and native tool success never cr
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
 });
 
+test('task-step accounts separately installed guidance with verified bundle roots', t => {
+  const { command, start } = fixture(t); start();
+  const delivery = path.resolve('dist/codex/packages/craft-delivery');
+  const engineering = path.resolve('dist/codex/packages/craft-engineering');
+  const result = command('task-step', '--stage', 'verify', '--target', 'acceptance:value',
+    '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed',
+    '--result', 'Acceptance checked', '--next', 'Return evidence', '--complete',
+    '--bundle', delivery, '--bundle', engineering);
+  assert.equal(result.status.packReport.complete, true);
+  assert.ok(result.status.packReport.totals.bytes > 0);
+  assert.equal(command('session', '--bundle', delivery, '--bundle', engineering).packReport.complete, true);
+});
+
 test('task transitions isolate attempts and reuse, clear continuation, and preserve the previous task', t => {
   const { root, command, start, step } = fixture(t);
   start(); step(); command('locate', '--term', 'SymbolValue');

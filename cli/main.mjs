@@ -21,6 +21,7 @@ const help = {
   settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]', mode: 'effective settings, value origins, applied controls and private state location; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
+  'context-report': { usage: 'context-report --intent implement [--file src/main.py] [--bundle package-root ...]', mode: 'selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading' },
   locate: { usage: 'locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]',
     data: 'Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes', mode: 'bounded literal scan; optional local reuse receipts' },
   'session-attempt': { usage: 'session-attempt --root project --session id --task task-id --data attempt.json',
@@ -41,7 +42,7 @@ export function run(argv) {
 function parse(action,args) {
   const allowed = ['feature', 'feature-status', 'reason', 'capture', 'review-authorization', 'action', 'scope', 'benefit', 'offer', 'decision', 'role', 'prior-authorization', 'facts', 'goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'max-output-bytes'];
   const options = { file: [], risk: [], term: [], path: [] };
-  const repeat = ['file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool'];
+  const repeat = ['file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool', 'bundle'];
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (!arg.startsWith('--') || !allowed.includes(arg.slice(2))) throw new Error(`unknown argument: ${arg}`);
