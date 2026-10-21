@@ -18,8 +18,8 @@ function fixture(t, config = {}) {
   };
   git('init', '-q'); fs.writeFileSync(path.join(root, 'value.mjs'), 'export const value = 1;\n');
   if (Object.keys(config).length) {
-    fs.mkdirSync(path.join(root, '.capabilities'));
-    fs.writeFileSync(path.join(root, '.capabilities/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
+    fs.mkdirSync(path.join(root, '.craft'));
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
   }
   git('add', '.'); git('commit', '-qm', 'fixture');
   const command = (name, ...args) => run([name, '--root', root, '--session', 's1', ...args]);

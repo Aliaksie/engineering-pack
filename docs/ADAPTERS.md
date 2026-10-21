@@ -130,7 +130,7 @@ Use your host's skill picker or invocation syntax. A source checkout alone does 
 these skills in the host's discovery directory.
 
 Consumer routing configuration is optional. For module ownership, service bindings or
-checkpoints, create `.capabilities/project.json` in the target project; see
+checkpoints, create `.craft/project.json` in the target project; see
 [routing](ROUTING.md) and [integrations](INTEGRATIONS.md).
 
 ## Hook support

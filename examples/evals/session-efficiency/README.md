@@ -10,12 +10,12 @@ symbols can be gathered in one bounded lookup; dependent interpretation still re
 Use the existing [paired collector](../../../docs/EVALUATION.md#collect-one-frozen-pair).
 Prepare a local fixture under ignored `.eval-results/`: copy `fixture/`, copy the canonical
 `engine/`, `application/`, `platform/`, `integrations/` and `cli/` into `support/`, initialize a disposable Git repository and commit its inputs.
-Create `.capabilities/task.json` with sessionId `eval-session` and task id `retry-fix`, stage
+Create `.craft/task.json` with sessionId `eval-session` and task id `retry-fix`, stage
 `implement`, status `working` and its actual revision. Use `locate --session eval-session
 --task retry-fix --path src` to prime the first five symbols listed in `prompt.txt`. Record two
 `quality-failure` acceptance attempts with the same operation/target/approach using
 `session-attempt`. Save all ten continuation fields with `checkpoint-save --session eval-session
---task retry-fix`. Ignore `.capabilities/state/` before creating any local receipts.
+--task retry-fix`. Ignore `.craft/state/` before creating any local receipts.
 
 Point the collector config's `fixture` to that prepared copy, `prompt` to `prompt.txt`, and
 `guidance` to `docs/SESSION.md` and the canonical foundations `context-discipline.md` reference.

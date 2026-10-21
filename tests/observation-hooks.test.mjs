@@ -10,7 +10,7 @@ import { HOSTS } from '../hosts/registry.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const events = root => {
-  const file = path.join(root, '.capabilities/state/telemetry.jsonl');
+  const file = path.join(root, '.craft/state/telemetry.jsonl');
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map(JSON.parse) : [];
 };
 
@@ -22,8 +22,8 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     const packageRoot = path.join(root, `packages/${pkg}`);
     copy(path.join(output, host === 'claude' ? 'plugins' : 'packages', pkg), packageRoot);
     // Observation must work independently of delivery configuration and sibling packages.
-    fs.mkdirSync(path.join(root, '.capabilities'));
-    fs.writeFileSync(path.join(root, '.capabilities/project.json'), 'INVALID_PROJECT_MARKER');
+    fs.mkdirSync(path.join(root, '.craft'));
+    fs.writeFileSync(path.join(root, '.craft/project.json'), 'INVALID_PROJECT_MARKER');
     let config;
     if (host === 'claude') {
       const manifest = read(path.join(packageRoot, '.claude-plugin/plugin.json'));
@@ -73,7 +73,7 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.ok(recorded.every(event => ['host.hook', 'host.observed'].includes(event.name)));
     assert.ok(!JSON.stringify(recorded).includes('PRIVATE_'));
     assert.ok(!JSON.stringify(recorded).includes('INVALID_PROJECT_MARKER'));
-    assert.deepEqual(fs.readdirSync(path.join(root, '.capabilities/state')).sort(),
+    assert.deepEqual(fs.readdirSync(path.join(root, '.craft/state')).sort(),
       ['telemetry-key.json', 'telemetry.jsonl']);
     const beforeTool = path.join(packageRoot, 'platform-hooks/observe-before-tool.mjs');
     for (const input of ['INVALID_JSON_MARKER', JSON.stringify({
@@ -98,14 +98,14 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.ok(failures.some(event => event.name === 'host.hook' && event.outcome === 'failure'));
     assert.ok(!JSON.stringify(failures).includes('PRIVATE_'));
     assert.ok(!JSON.stringify(failures).includes('INVALID_JSON_MARKER'));
-    fs.writeFileSync(path.join(root, '.capabilities/telemetry.json'), '{"local":false}');
+    fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
     const first = definitions[0];
-    const before = fs.readFileSync(path.join(root, '.capabilities/state/telemetry.jsonl'), 'utf8');
+    const before = fs.readFileSync(path.join(root, '.craft/state/telemetry.jsonl'), 'utf8');
     const off = spawnSync(process.execPath, [path.join(packageRoot, `platform-hooks/${first.name}.mjs`)], {
       cwd: root, encoding: 'utf8', input: JSON.stringify({ cwd: root, session_id: 'PRIVATE_SESSION_MARKER' })
     });
     assert.equal(off.status, 0, off.stderr);
-    assert.equal(fs.readFileSync(path.join(root, '.capabilities/state/telemetry.jsonl'), 'utf8'), before);
+    assert.equal(fs.readFileSync(path.join(root, '.craft/state/telemetry.jsonl'), 'utf8'), before);
   });
 }
 

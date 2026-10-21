@@ -18,7 +18,7 @@ const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z
 function fixture(t, config) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'pack-telemetry-'));
   t.after(() => fs.rmSync(root,{recursive:true,force:true}));
-  if (config !== undefined) { fs.mkdirSync(path.join(root,'.capabilities')); fs.writeFileSync(path.join(root,'.capabilities/telemetry.json'),JSON.stringify(config)); }
+  if (config !== undefined) { fs.mkdirSync(path.join(root,'.craft')); fs.writeFileSync(path.join(root,'.craft/telemetry.json'),JSON.stringify(config)); }
   return root;
 }
 test('telemetry accepts only bounded safe metadata and a valid envelope', () => {
@@ -48,14 +48,14 @@ test('disabled and malformed configuration never write or queue network work', a
   for (const config of [{local:false}, {remote:{enabled:false}}, {local:'secret'}, {remote:{enabled:true,endpoint:'https://user:secret@example.test'}}, {remote:{enabled:true,endpoint:'http://remote.test'}}]) {
     const root = fixture(t,config);
     createTelemetry(root).emit('session.observed');
-    if (config.local === false) assert.equal(fs.existsSync(path.join(root,'.capabilities/state')),false);
+    if (config.local === false) assert.equal(fs.existsSync(path.join(root,'.craft/state')),false);
     else if (typeof config.local === 'string' || config.remote?.enabled) assert.ok(readTelemetry(root).some(event => event.reasonCode === 'TELEMETRY_CONFIG_INVALID'));
   }
   let calls=0; await flushTelemetry(async () => { calls++; }); assert.equal(calls,0);
   assert.equal(telemetryOptions().remote,undefined);
 });
 test('storage and projection failures preserve operation results and original exceptions', t => {
-  const root = fixture(t); fs.mkdirSync(path.join(root,'.capabilities')); fs.writeFileSync(path.join(root,'.capabilities/state'),'blocked');
+  const root = fixture(t); fs.mkdirSync(path.join(root,'.craft')); fs.writeFileSync(path.join(root,'.craft/state'),'blocked');
   const expected = {value:1}, failure = new Error('private failure');
   assert.equal(withTelemetry(root,{},() => observe('routing.completed',() => expected)),expected);
   assert.throws(() => withTelemetry(root,{},() => observe('routing.completed',() => {throw failure;})),error => error === failure);
@@ -66,7 +66,7 @@ test('storage and projection failures preserve operation results and original ex
 test('local files rotate, skip malformed records and reject symlinks and oversize input', t => {
   const root=fixture(t); const event=telemetryEvent(envelope);
   appendTelemetry(root,event);
-  const file=path.join(root,'.capabilities/state/telemetry.jsonl');
+  const file=path.join(root,'.craft/state/telemetry.jsonl');
   fs.writeFileSync(file,' '.repeat(TELEMETRY_MAX_BYTES)); appendTelemetry(root,event);
   assert.equal(fs.statSync(`${file}.1`).size,TELEMETRY_MAX_BYTES);
   assert.equal(readTelemetry(root).length,1);
@@ -91,13 +91,13 @@ test('concurrent processes append complete JSONL events within the shared bound'
   const dropped=writers.reduce((sum,writer)=>sum+writer.dropped,0);
   assert.equal(accepted+dropped,160);
   assert.ok(accepted>0);
-  const lines=fs.readFileSync(path.join(root,'.capabilities/state/telemetry.jsonl'),'utf8').trim().split('\n');
+  const lines=fs.readFileSync(path.join(root,'.craft/state/telemetry.jsonl'),'utf8').trim().split('\n');
   assert.equal(lines.length,accepted);
   for(const line of lines) assert.deepEqual(JSON.parse(line),telemetryEvent(envelope));
 });
 test('denied telemetry lock acquisition skips the event without touching another writer or weakening shared locks', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
-  const directory=path.join(root,'.capabilities/state'); fs.mkdirSync(directory,{recursive:true});
+  const directory=path.join(root,'.craft/state'); fs.mkdirSync(directory,{recursive:true});
   const file=stateFile(root,'telemetry.jsonl'), lock=`${file}.lock`;
   fs.writeFileSync(lock,'another writer');
   const open=fs.openSync;
@@ -140,7 +140,7 @@ test('telemetry retries transient contention and preserves events after the writ
 });
 test('telemetry stops retrying when a wait overshoots the deadline without removing the active lock', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
-  const directory=path.join(root,'.capabilities/state'); fs.mkdirSync(directory,{recursive:true});
+  const directory=path.join(root,'.craft/state'); fs.mkdirSync(directory,{recursive:true});
   const file=stateFile(root,'telemetry.jsonl'), lock=`${file}.lock`;
   fs.writeFileSync(lock,'active writer');
   let now=0, waits=0;

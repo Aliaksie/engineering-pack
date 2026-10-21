@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { activeTask } from '../application/session/activity.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
@@ -100,7 +100,7 @@ test('a corrupt activity ledger keeps fresh lookup inside the separately saved r
 test('workspace is lazy, isolated by session/task/operation, promotes selective evidence and cleans on completion', t => {
   const { root, command, start, accept } = fixture(t);
   start();
-  assert.equal(fs.existsSync(path.join(root, '.capabilities/state/sessions')), false);
+  assert.equal(fs.existsSync(path.join(root, '.craft/state/sessions')), false);
   assert.equal(command('session').workspace.status, 'absent');
   const first = workspace(root, 'session', 'task', 'write', { name: 'result.json', content: '{"verified":true}' });
   const other = workspace(root, 'session', 'task', 'open', { operation: 'worker-1' });
@@ -152,9 +152,9 @@ test('stale cleanup retains live owners and reclaims abandoned scratch and aged 
   assert.equal(fs.existsSync(opened.directory), false);
 });
 
-test('private source-like artifacts are excluded from lookup, routing, snapshots, review and export without ignores', t => {
+for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirectory} artifacts are excluded from lookup, routing, snapshots, review and export without ignores`, t => {
   const { root, git } = fixture(t);
-  const repo = path.join(root, 'kit'), secret = path.join(repo, 'nested/.capabilities/state/sessions/task/scratch/tempting.py');
+  const repo = path.join(root, 'kit'), secret = path.join(repo, `nested/${privateDirectory}/state/sessions/task/scratch/tempting.py`);
   fs.mkdirSync(path.dirname(secret), { recursive: true }); fs.writeFileSync(secret, 'PRIVATE_NEEDLE\n');
   const before = repositoryState(repo);
   fs.appendFileSync(secret, 'more private content\n');
@@ -164,12 +164,12 @@ test('private source-like artifacts are excluded from lookup, routing, snapshots
   const result = scan(repo, { terms: ['PRIVATE_NEEDLE'], scopes: ['.'], maxFiles: 100, maxMatches: 10, maxBytes: 10000, maxFileBytes: 10000, maxSnippetCharacters: 100 }, ({ content }) => { assert.equal(content.includes('PRIVATE_NEEDLE'), false); return []; });
   assert.equal(result.filesScanned, 1);
   const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url)));
-  assert.deepEqual(decide('route', { intent: 'implement', files: ['nested/.capabilities/state/tempting.py'], project: { formatVersion: 1 }, catalog }).files, []);
+  assert.deepEqual(decide('route', { intent: 'implement', files: [`nested/${privateDirectory}/state/tempting.py`], project: { formatVersion: 1 }, catalog }).files, []);
   const head = git('kit', 'rev-parse', 'HEAD'); git('kit', 'add', '.'); git('kit', 'commit', '-qm', 'private fixture');
   const review = reviewSnapshot({ root: repo, base: head, head: 'HEAD' });
   assert.deepEqual(review.files, []); assert.equal(review.diff, '');
   const output = path.join(root, 'export'); copy(repo, output);
-  assert.equal(fs.existsSync(path.join(output, 'nested/.capabilities/state')), false);
+  assert.equal(fs.existsSync(path.join(output, `nested/${privateDirectory}/state`)), false);
   assert.equal(fs.existsSync(path.join(output, '.git')), false);
 });
 
@@ -180,13 +180,16 @@ test('workspace operations retain other owners, recover only dead owned locks an
   const opened = workspaceOperation(root, identity, policy, 'open');
   const ownerFile = path.join(opened.directory, 'owner.json');
   const owner = JSON.parse(fs.readFileSync(ownerFile));
-  owner.operations[digest('other-worker')] = { pid: process.pid, closed: false };
+  owner.operations[digest('other-worker')] = { pid: process.ppid, closed: false };
   fs.writeFileSync(ownerFile, JSON.stringify(owner));
   assert.equal(workspaceOperation(root, identity, policy, 'complete').scratch, 'retained');
   assert.ok(fs.existsSync(opened.scratchDirectory));
   assert.throws(() => workspaceOperation(root, { ...identity, operation: digest('other-worker') }, policy, 'write', { name: 'collision', content: 'x' }), /another active owner/);
   assert.throws(() => workspaceOperation(root, { ...identity, task: digest('another') }, policy, 'open'), /capacity/);
   const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
+  fs.writeFileSync(lock, ''); // Another writer has created but not yet published its lock.
+  assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'retained');
+  assert.equal(fs.existsSync(lock), true);
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: process.pid }));
   assert.equal(workspaceOperation(root, identity, policy, 'complete').status, 'retained');
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
@@ -209,5 +212,51 @@ test('linked worktree selection and relocated exported workspace commands preser
   assert.equal(opened.status, 'available');
   assert.equal(invoke('session').workspace.directory, opened.directory);
   assert.equal(invoke('session').repositories[0], 'linked');
-  assert.equal(fs.existsSync(path.join(root, 'linked/.capabilities')), false);
+  assert.equal(fs.existsSync(path.join(root, 'linked/.craft')), false);
+});
+
+test('an exited workspace writer is reclaimable while its parent stays alive', t => {
+  const { root } = fixture(t);
+  const identity = { session: digest('child'), task: digest('task'), operation: digest('main') };
+  const policy = DEFAULT_SETTINGS.workspace, now = Date.now();
+  const module = new URL('../platform/node/workspace.mjs', import.meta.url).href;
+  const script = `import { workspaceOperation } from ${JSON.stringify(module)};
+    console.log(JSON.stringify(workspaceOperation(${JSON.stringify(root)}, ${JSON.stringify(identity)}, ${JSON.stringify(policy)}, 'write', { name: 'note', content: 'abandoned' }, ${now})));`;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' });
+  assert.equal(child.status, 0, child.stderr);
+  const opened = JSON.parse(child.stdout);
+  const owner = JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
+  assert.notEqual(owner.operations[identity.operation].pid, process.pid);
+  const result = workspaceOperation(root, null, policy, 'maintain', {}, now + 2 * 86400000);
+  assert.equal(result.cleaned[0].scratch, 'cleaned');
+  assert.equal(fs.existsSync(opened.scratchDirectory), false);
+});
+
+test('concurrent independent workspace writers serialize without corrupting ownership', async t => {
+  const { root } = fixture(t);
+  const module = new URL('../platform/node/workspace.mjs', import.meta.url).href;
+  const policy = DEFAULT_SETTINGS.workspace;
+  const session = digest('concurrent'), task = digest('task');
+  const started = Date.now();
+  const results = await Promise.all(Array.from({ length: 4 }, (_, worker) => new Promise((resolve, reject) => {
+    const identity = { session, task, operation: digest(`worker-${worker}`) };
+    const script = `import { workspaceOperation } from ${JSON.stringify(module)};
+      const results = [];
+      for (let i = 0; i < 8; i++) results.push(workspaceOperation(${JSON.stringify(root)}, ${JSON.stringify(identity)}, ${JSON.stringify(policy)}, 'write', { name: 'note-' + i, content: 'worker-${worker}' }));
+      console.log(JSON.stringify(results.map(value => ({ status: value.status, directory: value.directory }))));`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script]);
+    let output = '', error = '';
+    child.stdout.on('data', data => output += data); child.stderr.on('data', data => error += data);
+    child.on('error', reject); child.on('close', code => code === 0 ? resolve(JSON.parse(output)) : reject(new Error(error)));
+  })));
+  const all = results.flat(), accepted = all.filter(value => value.status === 'available');
+  t.diagnostic(`${all.length} attempts: ${accepted.length} writes, ${all.length - accepted.length} busy deferrals in ${Date.now() - started} ms`);
+  assert.ok(accepted.length > 0);
+  assert.ok(all.every(value => ['available', 'retained'].includes(value.status)));
+  const directory = accepted[0].directory;
+  const owner = JSON.parse(fs.readFileSync(path.join(directory, 'owner.json')));
+  assert.ok(Object.keys(owner.operations).length > 0);
+  const files = fs.readdirSync(path.join(directory, 'scratch'), { recursive: true }).filter(file => file.includes('note-'));
+  assert.equal(files.length, accepted.length);
+  assert.equal(workspaceOperation(root, null, policy, 'maintain', {}, Date.now() + 2 * 86400000).cleaned[0].scratch, 'cleaned');
 });

@@ -21,8 +21,8 @@ const uuid = '12345678-1234-4234-a234-123456789abc';
 function fixture(t, telemetry) {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'pack-observe-'));
   t.after(() => fs.rmSync(root,{recursive:true,force:true}));
-  fs.mkdirSync(path.join(root,'.capabilities'));
-  if (telemetry !== undefined) fs.writeFileSync(path.join(root,'.capabilities/telemetry.json'),JSON.stringify(telemetry));
+  fs.mkdirSync(path.join(root,'.craft'));
+  if (telemetry !== undefined) fs.writeFileSync(path.join(root,'.craft/telemetry.json'),JSON.stringify(telemetry));
   return root;
 }
 function command(root, name, ...args) { return run([name,'--root',root,'--session','private-session',...args]); }
@@ -96,14 +96,14 @@ test('discovery correlates cache/search and records bounded failures without inp
 });
 test('invalid configuration, state and arguments retain original failures and structured reasons',t=>{
   const root=fixture(t);
-  fs.writeFileSync(path.join(root,'.capabilities/project.json'),'PRIVATE_INVALID_JSON');
+  fs.writeFileSync(path.join(root,'.craft/project.json'),'PRIVATE_INVALID_JSON');
   assert.throws(()=>command(root,'route','--intent','implement'));
   let events=readTelemetry(root); const {top}=tree(events,'cli.command'); assert.equal(top.outcome,'failure');
   assert.ok(events.some(event=>event.name==='project.loaded' && event.reasonCode==='CONFIG_INVALID'));
   assert.ok(!JSON.stringify(events).includes('PRIVATE_INVALID_JSON'));
-  fs.unlinkSync(path.join(root,'.capabilities/project.json'));
+  fs.unlinkSync(path.join(root,'.craft/project.json'));
   fs.writeFileSync(path.join(root,'request.json'),JSON.stringify({sessionId:'private-session',task:{id:'task'}}));
-  const state=path.join(root,'.capabilities/state');
+  const state=path.join(root,'.craft/state');
   // A malformed session receipt must remain advisory for the session view.
   command(root,'route','--intent','implement','--task','task');
   const sessionFile=fs.readdirSync(state).find(name=>name.startsWith('session-')); fs.writeFileSync(path.join(state,sessionFile),'PRIVATE_BAD_STATE');
@@ -192,7 +192,7 @@ test('generated native hooks trace success, malformed input and configuration fa
   assert.ok(!JSON.stringify(trace).includes('PRIVATE_PROMPT_MARKER')); assert.deepEqual(readTelemetry(disabled),[]);
   assert.equal(invoke(enabled,'PRIVATE_MALFORMED_PAYLOAD').status,0);
   assert.ok(readTelemetry(enabled).some(event=>event.reasonCode==='INVALID_INPUT'));
-  fs.writeFileSync(path.join(enabled,'.capabilities/project.json'),'PRIVATE_CONFIG_BODY');
+  fs.writeFileSync(path.join(enabled,'.craft/project.json'),'PRIVATE_CONFIG_BODY');
   assert.equal(invoke(enabled,payload(enabled)).status,0);
   const failures=readTelemetry(enabled);
   assert.ok(failures.some(event=>event.reasonCode==='CONFIG_INVALID'));
@@ -201,8 +201,8 @@ test('generated native hooks trace success, malformed input and configuration fa
 });
 
 test('unavailable correlation key and version metadata yield explicit unknowns and safe local diagnostics',t=>{
-  const root=fixture(t); fs.mkdirSync(path.join(root,'.capabilities/state'));
-  fs.writeFileSync(path.join(root,'.capabilities/state/telemetry-key.json'),'PRIVATE_CORRUPT_KEY');
+  const root=fixture(t); fs.mkdirSync(path.join(root,'.craft/state'));
+  fs.writeFileSync(path.join(root,'.craft/state/telemetry-key.json'),'PRIVATE_CORRUPT_KEY');
   const handle=createTelemetry(root,{session:'PRIVATE_RAW_SESSION'},{runtimeVersion:()=>{throw new Error('PRIVATE_METADATA_ERROR');}});
   handle.emit('session.observed');
   const events=readTelemetry(root);

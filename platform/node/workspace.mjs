@@ -56,8 +56,14 @@ function removeTree(file) {
 function workspaceLock(anchor) {
   let ticket = lockState(anchor);
   if (!ticket) {
-    const file = `${anchor}.lock`, stat = fs.lstatSync(file);
-    const owner = readState(file, 1024);
+    const file = `${anchor}.lock`;
+    let stat, owner;
+    try { stat = fs.lstatSync(file); owner = readState(file, 1024); }
+    catch (error) {
+      // The holder may be publishing or releasing its lock. Defer this attempt.
+      if (error.code === 'ENOENT' || error instanceof SyntaxError) return null;
+      throw error;
+    }
     if (owner?.owner !== 'craft-workspace-lock' || owner.formatVersion !== 1 || !Number.isSafeInteger(owner.pid) || owner.pid < 1 || live(owner.pid)) return null;
     const current = fs.lstatSync(file);
     if (stat.ino !== current.ino || stat.dev !== current.dev) return null;
@@ -137,11 +143,11 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
     const scope = path.join(scratch, identity.operation);
     const currentOwner = value.operations[identity.operation];
     if (['open', 'write', 'promote', 'release'].includes(action) && currentOwner && !currentOwner.closed
-      && currentOwner.pid !== process.ppid && live(currentOwner.pid)) throw new Error('workspace operation belongs to another active owner');
+      && currentOwner.pid !== process.pid && live(currentOwner.pid)) throw new Error('workspace operation belongs to another active owner');
     if (['open', 'write'].includes(action)) {
       if (!Object.hasOwn(value.operations, identity.operation) && Object.keys(value.operations).length >= 64) throw new Error('workspace operation capacity reached');
       directory(scratch, true); directory(scope, true);
-      value.operations[identity.operation] = { pid: process.ppid, closed: false };
+      value.operations[identity.operation] = { pid: process.pid, closed: false };
       value.closed = false;
     }
     if (action === 'write') {
@@ -171,12 +177,12 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
     }
     if (action === 'release') {
       const operation = value.operations[identity.operation];
-      if (operation && operation.pid !== process.ppid && live(operation.pid)) throw new Error('workspace operation belongs to another active owner');
+      if (operation && operation.pid !== process.pid && live(operation.pid)) throw new Error('workspace operation belongs to another active owner');
       if (operation) operation.closed = true;
     }
     if (action === 'complete') {
       value.closed = true;
-      for (const op of Object.values(value.operations)) if (op.pid === process.ppid) op.closed = true;
+      for (const op of Object.values(value.operations)) if (op.pid === process.pid) op.closed = true;
     }
     if (action === 'touch' && !value.closed) value.updated = now;
     let cleanup = 'retained';

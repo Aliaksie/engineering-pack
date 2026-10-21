@@ -115,8 +115,8 @@ test('all adapters preserve resources, separate names, and report actual feature
 
 test('generated host exports run after relocation without source-tree imports', (t) => {
   const { repo } = fixture(t);
-  fs.mkdirSync(path.join(repo, '.capabilities'));
-  writeJson(path.join(repo, '.capabilities/project.json'), { formatVersion: 1, review: { readOnly: true } });
+  fs.mkdirSync(path.join(repo, '.craft'));
+  writeJson(path.join(repo, '.craft/project.json'), { formatVersion: 1, review: { readOnly: true } });
   for (const target of ['claude', 'codex']) {
     build(repo, target);
     const moved = path.join(repo, `relocated ${target}`);

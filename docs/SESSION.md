@@ -82,7 +82,7 @@ Use `workspace-open` only when a task needs filesystem-backed intermediate mater
 The result supplies a private scratch directory for the session, task and optional
 `--operation` scope. No scratch directory is created by ordinary task binding or inspection.
 The workspace sits beneath the existing private state location: worktree-specific Git
-metadata in Git projects, or `.capabilities/state/` in a non-Git coordination folder. Raw
+metadata in Git projects, or `.craft/state/` in a non-Git coordination folder. Raw
 session/task names are hashed in directory names. Existing checkpoints, receipts, caches
 and telemetry keep their existing stores; there is no duplicate state tree or new `.pack` root.
 Repository selection also participates in workspace identity, so rebinding a task to other
@@ -125,7 +125,7 @@ data. Settings preview creates no workspace. Session JSON exposes paths, actual 
 cleanup outcomes and retention reasons; compact output shows workspace details only when
 present or exceptional.
 
-Private state is excluded at source boundaries, including nested `.capabilities/state/`
+Private state is excluded at source boundaries, including nested `.craft/state/`
 paths: lookup, routing, content/index snapshots, review diffs, guidance roots and package
 copying. No `.gitignore`, host `TMPDIR`, host storage, IDE cache or third-party cache is
 rewritten. Standalone build/release/test staging keeps its already-owned command lifecycle;
@@ -308,7 +308,7 @@ it does not increment counters simply for displaying status. Recorded counts tak
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
 Git repositories store runtime state under worktree-specific Git metadata, namespaced by
 canonical project root. `settings` shows the directory. Non-Git folders use
-`.capabilities/state/` with private directory/file modes where supported; exclude this
+`.craft/state/` with private directory/file modes where supported; exclude this
 directory before importing that folder into Git. Neither activity nor lookup packets
 belong in commits. Older workspace-local state is left untouched and is not automatically
 imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
@@ -515,7 +515,7 @@ or host model mappings. No configuration file is generated in the project.
 
 For a personal override, save `{"efficiency":{"delegation":{"maxWorkers":0}}}` in
 the preference file. For a project override, add
-`"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
+`"efficiency":{"batching":{"maxConcurrency":2}}` to `.craft/project.json`.
 Use `--data <file>` for a task override with the same restricted preference shape.
 Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
 Worker ceilings apply to the shared reservation ledger when a trusted controller adapter is

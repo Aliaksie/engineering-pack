@@ -44,7 +44,7 @@ test('ordinary lifecycle binds discovery, records semantic acceptance, saves con
   assert.equal(accepted.status.usage.status, 'unknown');
   assert.equal(command('session').suppressed, true);
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
-  assert.equal(fs.existsSync(path.join(root, '.capabilities')), false);
+  assert.equal(fs.existsSync(path.join(root, '.craft')), false);
   assert.equal(git('status', '--porcelain'), '');
 });
 

@@ -130,7 +130,7 @@ This returns an explicit invocation plan for the example task tool; it does not 
 The JSON quoting shown is for a POSIX shell; adapt it to your shell. In an exported standalone package the CLI is at
 `support/cli/main.mjs`; a full bundle also has `cli/main.mjs`.
 
-Consumer `.capabilities/project.json` configures modules, Git/codehost/task tools, execution
+Consumer `.craft/project.json` configures modules, Git/codehost/task tools, execution
 profiles and checkpoint behavior. Inspect defaults and overrides with `node cli/main.mjs
 settings --root <project>`; see [effective policy](docs/SESSION.md#effective-default-policy).
 Declare runtime/framework/provider evidence independently

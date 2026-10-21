@@ -21,7 +21,7 @@ export function inventoryIdentity(root, paths, maxFiles) {
     && (!paths.length || paths.some(scope => scope === '.' || name === scope || name.startsWith(`${scope}/`)))))].sort();
   if (names.length > maxFiles) return null;
   // Config/manifest changes outside a narrow symbol scope still reconsider routing/runtime facts.
-  names.push('.capabilities/project.json');
+  names.push('.craft/project.json');
   try {
     const prefixes = new Set(['']);
     for (const scope of paths) {

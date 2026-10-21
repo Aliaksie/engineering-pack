@@ -9,4 +9,4 @@ export const normalizeScope = value => {
   return value.split('/').filter(part => part && part !== '.').join('/') || '.';
 };
 export const byteLength = value => new TextEncoder().encode(value).length;
-export const privatePath = value => /(^|\/)\.capabilities\/state(?:\/|$)|(^|\/)\.git(?:\/|$)/.test(value);
+export const privatePath = value => /(^|\/)\.(?:craft|capabilities)\/state(?:\/|$)|(^|\/)\.git(?:\/|$)/.test(value);

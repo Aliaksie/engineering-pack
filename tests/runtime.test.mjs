@@ -30,7 +30,7 @@ function git(root, ...args) {
 function repository(t) {
   const dir = temp(t);
   git(dir, 'init', '-q');
-  fs.writeFileSync(path.join(dir, '.gitignore'), '.capabilities/state/\n');
+  fs.writeFileSync(path.join(dir, '.gitignore'), '.craft/state/\n');
   fs.writeFileSync(path.join(dir, 'orders.py'), 'value = 1\n');
   git(dir, 'add', '--', '.gitignore', 'orders.py'); git(dir, 'commit', '-qm', 'base');
   const base = git(dir, 'rev-parse', 'HEAD');
@@ -186,9 +186,9 @@ test('invalid configuration is rejected without silently selecting another integ
     { formatVersion: 1, services: { tasks: { provider: 'tracker', transport: 'mcp', operations: { 'task.read': { tool: 'guess' } } } } },
     { formatVersion: 1, checkpoint: { enabled: 'yes' } }
   ]) assert.throws(() => validateProject(config));
-  const dir = temp(t); fs.mkdirSync(path.join(dir, '.capabilities'));
+  const dir = temp(t); fs.mkdirSync(path.join(dir, '.craft'));
   const source = path.join(dir, 'outside.json'); fs.writeFileSync(source, '{"formatVersion":1}');
-  fs.symlinkSync(source, path.join(dir, '.capabilities/project.json'));
+  fs.symlinkSync(source, path.join(dir, '.craft/project.json'));
   assert.throws(() => readProject(dir), /symlink/);
   fs.unlinkSync(source);
   assert.throws(() => readProject(dir), /symlink/, 'a broken symlink must not silently disable configuration');
@@ -212,9 +212,9 @@ test('checkpoints preserve explicit task metadata and detect changed working tre
 
 test('checkpoint writes reject symlinked paths and concurrent writers', (t) => {
   const dir = temp(t); const outside = temp(t);
-  fs.symlinkSync(outside, path.join(dir, '.capabilities'), process.platform === 'win32' ? 'junction' : 'dir');
+  fs.symlinkSync(outside, path.join(dir, '.craft'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => saveCheckpoint(dir, 's'), /symlink/);
-  fs.unlinkSync(path.join(dir, '.capabilities'));
+  fs.unlinkSync(path.join(dir, '.craft'));
   const saved = saveCheckpoint(dir, 's');
   fs.writeFileSync(`${saved.file}.lock`, 'fixture lock');
   assert.throws(() => saveCheckpoint(dir, 's'), /busy/);
