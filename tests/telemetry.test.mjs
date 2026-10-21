@@ -66,7 +66,7 @@ test('storage and projection failures preserve operation results and original ex
 test('local files rotate, skip malformed records and reject symlinks and oversize input', t => {
   const root=fixture(t); const event=telemetryEvent(envelope);
   appendTelemetry(root,event);
-  const file=path.join(root,'.craft/state/telemetry.jsonl');
+  const file=stateFile(root, 'telemetry.jsonl');
   fs.writeFileSync(file,' '.repeat(TELEMETRY_MAX_BYTES)); appendTelemetry(root,event);
   assert.equal(fs.statSync(`${file}.1`).size,TELEMETRY_MAX_BYTES);
   assert.equal(readTelemetry(root).length,1);
@@ -91,13 +91,13 @@ test('concurrent processes append complete JSONL events within the shared bound'
   const dropped=writers.reduce((sum,writer)=>sum+writer.dropped,0);
   assert.equal(accepted+dropped,160);
   assert.ok(accepted>0);
-  const lines=fs.readFileSync(path.join(root,'.craft/state/telemetry.jsonl'),'utf8').trim().split('\n');
+  const lines=fs.readFileSync(stateFile(root, 'telemetry.jsonl'),'utf8').trim().split('\n');
   assert.equal(lines.length,accepted);
   for(const line of lines) assert.deepEqual(JSON.parse(line),telemetryEvent(envelope));
 });
 test('denied telemetry lock acquisition skips the event without touching another writer or weakening shared locks', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
-  const directory=path.join(root,'.craft/state'); fs.mkdirSync(directory,{recursive:true});
+  const directory=path.dirname(stateFile(root, 'probe.json')); fs.mkdirSync(directory,{recursive:true});
   const file=stateFile(root,'telemetry.jsonl'), lock=`${file}.lock`;
   fs.writeFileSync(lock,'another writer');
   const open=fs.openSync;
@@ -140,7 +140,7 @@ test('telemetry retries transient contention and preserves events after the writ
 });
 test('telemetry stops retrying when a wait overshoots the deadline without removing the active lock', t => {
   const root=fixture(t), event=telemetryEvent(envelope);
-  const directory=path.join(root,'.craft/state'); fs.mkdirSync(directory,{recursive:true});
+  const directory=path.dirname(stateFile(root, 'probe.json')); fs.mkdirSync(directory,{recursive:true});
   const file=stateFile(root,'telemetry.jsonl'), lock=`${file}.lock`;
   fs.writeFileSync(lock,'active writer');
   let now=0, waits=0;

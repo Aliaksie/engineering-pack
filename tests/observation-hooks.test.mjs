@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import { HOSTS } from '../hosts/registry.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const events = root => {
-  const file = path.join(root, '.craft/state/telemetry.jsonl');
+  const file = stateFile(root, 'telemetry.jsonl');
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map(JSON.parse) : [];
 };
 
@@ -73,7 +74,7 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.ok(recorded.every(event => ['host.hook', 'host.observed'].includes(event.name)));
     assert.ok(!JSON.stringify(recorded).includes('PRIVATE_'));
     assert.ok(!JSON.stringify(recorded).includes('INVALID_PROJECT_MARKER'));
-    assert.deepEqual(fs.readdirSync(path.join(root, '.craft/state')).sort(),
+    assert.deepEqual(fs.readdirSync(path.dirname(stateFile(root, 'probe.json'))).sort(),
       ['telemetry-key.json', 'telemetry.jsonl']);
     const beforeTool = path.join(packageRoot, 'platform-hooks/observe-before-tool.mjs');
     for (const input of ['INVALID_JSON_MARKER', JSON.stringify({
@@ -100,12 +101,12 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.ok(!JSON.stringify(failures).includes('INVALID_JSON_MARKER'));
     fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
     const first = definitions[0];
-    const before = fs.readFileSync(path.join(root, '.craft/state/telemetry.jsonl'), 'utf8');
+    const before = fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8');
     const off = spawnSync(process.execPath, [path.join(packageRoot, `platform-hooks/${first.name}.mjs`)], {
       cwd: root, encoding: 'utf8', input: JSON.stringify({ cwd: root, session_id: 'PRIVATE_SESSION_MARKER' })
     });
     assert.equal(off.status, 0, off.stderr);
-    assert.equal(fs.readFileSync(path.join(root, '.craft/state/telemetry.jsonl'), 'utf8'), before);
+    assert.equal(fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8'), before);
   });
 }
 

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { stateFile, projectRoot } from '../platform/index.mjs';
+import { stateFile, stateLocation, readState, writeState, projectRoot } from '../platform/index.mjs';
 import { prepareEvent } from '../application/context-delivery/prepare.mjs';
 import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
 import { discover } from '../application/discovery/discover.mjs';
@@ -24,7 +25,7 @@ function fixture(t) {
 }
 const continuation = Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, key]));
 
-test('default lifecycle and discovery stay private in a fresh repository without config or ignores', t => {
+test('default lifecycle and discovery use excluded local state without editing consumer ignores', t => {
   const { root, git } = fixture(t);
   const nested = path.join(root, 'src');
   assert.equal(projectRoot(nested), root);
@@ -39,9 +40,10 @@ test('default lifecycle and discovery stay private in a fresh repository without
   assert.equal(discover(root, { terms: ['SymbolValue'] }, { ...scope, task: 'task-2' }).discovery.reused, 0);
   fs.appendFileSync(path.join(nested, 'value.mjs'), '// source change\n');
   assert.equal(discover(root, { terms: ['SymbolValue'] }, scope).discovery.reused, 0);
-  assert.match(stateFile(root, 'probe.json'), /\.git[/\\]craft-state[/\\]/);
-  assert.equal(fs.existsSync(path.join(root, '.craft')), false);
-  assert.equal(git('status', '--porcelain'), 'M src/value.mjs');
+  assert.match(stateFile(root, 'probe.json'), /\.craft[/\\]state[/\\][a-f0-9]{24}[/\\]shared[/\\]/);
+  assert.equal(fs.existsSync(path.join(root, '.git', 'craft-state')), false);
+  assert.match(git('status', '--porcelain'), /M src\/value.mjs/);
+  assert.match(git('status', '--porcelain'), /\?\? \.craft\//);
 });
 
 test('unchanged snapshots are deduplicated and task transitions discard old continuation', t => {
@@ -65,7 +67,8 @@ test('linked worktrees isolate session state and metadata symlinks are rejected'
   const first = saveCheckpoint(root, 'same-session');
   const second = saveCheckpoint(linked, 'same-session');
   assert.notEqual(first.file, second.file);
-  assert.ok(second.file.includes(`${path.sep}worktrees${path.sep}`));
+  assert.ok(second.file.startsWith(path.join(linked, '.craft', 'state') + path.sep));
+  assert.notEqual(path.basename(path.dirname(path.dirname(first.file))), path.basename(path.dirname(path.dirname(second.file))));
   const directory = path.dirname(stateFile(root, 'probe.json'));
   fs.rmSync(directory, { recursive: true });
   fs.symlinkSync(path.join(root, 'src'), directory, process.platform === 'win32' ? 'junction' : 'dir');
@@ -88,4 +91,148 @@ test('personal reuse controls affect CLI discovery and preference changes invali
   assert.equal(discover(root, request, scope).discovery.reused, 0);
   assert.equal(discover(root, request, scope).discovery.reused, 1);
   assert.throws(() => stateFile(root, '..', true), /filename/);
+});
+
+// These storage tests exercise real files/Git worktrees rather than mocked paths.
+const rootId = root => createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 24);
+function metadata(root) {
+  const result = {};
+  const walk = directory => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(file);
+      else result[path.relative(root, file)] = [fs.statSync(file).mtimeMs, fs.readFileSync(file).toString('base64')];
+    }
+  };
+  walk(path.join(root, '.git')); return result;
+}
+
+test('explicit root and session IDs give Git and non-Git roots the same storage model', t => {
+  const { root, git } = fixture(t);
+  const plain = path.join(root, 'coordination'); fs.mkdirSync(plain);
+  for (const selected of [root, plain]) {
+    const a = stateFile(selected, 'record.json', true, 'a');
+    const b = stateFile(selected, 'record.json', true, 'b');
+    assert.notEqual(a, b);
+    assert.equal(path.basename(path.dirname(path.dirname(a))), rootId(selected));
+    assert.match(path.basename(path.dirname(a)), /^[a-f0-9]{24}$/);
+    assert.equal(stateLocation(selected).scope, 'workspace-local');
+    assert.equal(stateLocation(selected).formatVersion, 2);
+    assert.equal(a.includes(`${path.sep}.git${path.sep}`), false);
+    writeState(a, { session: 'a' }, 1024);
+    assert.equal(readState(b, 1024), null);
+  }
+  fs.writeFileSync(path.join(root, '.gitignore'), '**/.craft/state/\n');
+  assert.equal(git('check-ignore', path.relative(root, stateFile(root, 'record.json'))).includes('.craft/state/'), true);
+});
+
+for (const legacy of ['git', 'craft', 'capabilities']) test(`${legacy} legacy records migrate without Git metadata or configuration writes`, t => {
+  const { root } = fixture(t);
+  fs.mkdirSync(path.join(root, '.craft'));
+  const config = path.join(root, '.craft', 'project.json');
+  const telemetryConfig = path.join(root, '.craft', 'telemetry.json');
+  fs.writeFileSync(config, '{"consumer":"preserve"}'); fs.writeFileSync(telemetryConfig, '{"local":false}');
+  const old = legacy === 'git' ? path.join(root, '.git', 'craft-state', rootId(root)) : path.join(root, legacy === 'craft' ? '.craft' : '.capabilities', 'state');
+  fs.mkdirSync(old, { recursive: true });
+  fs.writeFileSync(path.join(old, 'record.json'), '{"history":[1,2]}\n');
+  fs.writeFileSync(path.join(old, 'telemetry.jsonl'), '{"schemaVersion":1}\n');
+  fs.writeFileSync(path.join(old, 'telemetry.jsonl.1'), '{"schemaVersion":1,"older":true}\n');
+  fs.mkdirSync(path.join(old, 'sessions', 'owned', 'evidence'), { recursive: true });
+  fs.writeFileSync(path.join(old, 'sessions', 'owned', 'evidence', 'artifact.txt'), 'retained evidence');
+  const before = metadata(root);
+  const file = stateFile(root, 'record.json', false, 'existing-session');
+  assert.deepEqual(readState(file, 1024), { history: [1, 2] });
+  writeState(file, { history: [1, 2, 3] }, 1024);
+  assert.equal(stateFile(root, 'record.json', false, 'existing-session'), file);
+  const log = stateFile(root, 'telemetry.jsonl');
+  assert.equal(fs.readFileSync(`${log}.1`, 'utf8'), '{"schemaVersion":1,"older":true}\n');
+  const workspace = stateFile(root, 'workspace-guard.json');
+  assert.equal(fs.readFileSync(path.join(path.dirname(workspace), 'sessions/owned/evidence/artifact.txt'), 'utf8'), 'retained evidence');
+  assert.deepEqual(metadata(root), before);
+  assert.equal(fs.readFileSync(path.join(old, 'record.json'), 'utf8'), '{"history":[1,2]}\n');
+  assert.equal(fs.readFileSync(config, 'utf8'), '{"consumer":"preserve"}');
+  assert.equal(fs.readFileSync(telemetryConfig, 'utf8'), '{"local":false}');
+  fs.writeFileSync(path.join(old, 'record.json'), '{"history":[4]}');
+  assert.throws(() => stateFile(root, 'record.json', false, 'existing-session'), /changed after migration/);
+  assert.deepEqual(readState(file, 1024), { history: [1, 2, 3] });
+});
+
+test('migration refuses old locks, malformed records, symlinks and destination conflicts', t => {
+  const { root } = fixture(t);
+  const legacy = path.join(root, '.craft', 'state'); fs.mkdirSync(legacy, { recursive: true });
+  const old = path.join(legacy, 'record.json');
+  const target = stateFile(root, 'record.json', true, 'session');
+  fs.writeFileSync(old, '{"value":1}');
+  fs.writeFileSync(`${old}.lock`, '');
+  assert.throws(() => stateFile(root, 'record.json', true, 'session'), /legacy state writer is busy/);
+  fs.unlinkSync(`${old}.lock`);
+  fs.writeFileSync(old, 'broken');
+  assert.throws(() => stateFile(root, 'record.json', true, 'session'), SyntaxError);
+  fs.unlinkSync(old); fs.symlinkSync(target, old);
+  assert.throws(() => stateFile(root, 'record.json', true, 'session'), /unsafe/);
+  fs.unlinkSync(old); fs.writeFileSync(old, '{"value":1}'); fs.writeFileSync(target, '{"value":2}');
+  assert.throws(() => stateFile(root, 'record.json', true, 'session'), /destination conflict/);
+  assert.equal(fs.readFileSync(target, 'utf8'), '{"value":2}');
+  // A matching file without a published receipt represents an interrupted copy.
+  fs.writeFileSync(target, '{"value":1}');
+  assert.equal(stateFile(root, 'record.json', true, 'session'), target);
+  assert.deepEqual(readState(target, 1024), { value: 1 });
+});
+
+test('fresh runtime writes never create or change Git metadata', t => {
+  const { root } = fixture(t);
+  const before = metadata(root);
+  const file = stateFile(root, 'record.json', true, 'session');
+  writeState(file, { value: 1 }, 1024);
+  assert.deepEqual(metadata(root), before);
+});
+
+test('interrupted migration retries identical copies and excludes overlapping migration writers', t => {
+  const { root } = fixture(t);
+  const legacy = path.join(root, '.craft', 'state'); fs.mkdirSync(legacy, { recursive: true });
+  fs.writeFileSync(path.join(legacy, 'record.json'), '{"history":[1]}');
+  const rename = fs.renameSync, link = fs.linkSync;
+  let interrupted = false, overlapped = false;
+  t.mock.method(fs, 'linkSync', (source, target) => {
+    overlapped = true;
+    assert.throws(() => stateFile(root, 'record.json', true, 'session'), /migration is busy/);
+    return link(source, target);
+  });
+  t.mock.method(fs, 'renameSync', (source, target) => {
+    if (path.basename(target).startsWith('migration-') && !interrupted) {
+      interrupted = true; throw new Error('injected interruption before receipt');
+    }
+    return rename(source, target);
+  });
+  assert.throws(() => stateFile(root, 'record.json', true, 'session'), /injected interruption/);
+  const file = stateFile(root, 'record.json', true, 'session');
+  assert.equal(overlapped, true);
+  assert.deepEqual(readState(file, 1024), { history: [1] });
+  assert.ok(fs.readdirSync(path.dirname(file)).every(name => !name.endsWith('.tmp') && !name.endsWith('.lock')));
+});
+
+test('a migrated checkpoint retains its session history and remains writable', t => {
+  const { root } = fixture(t);
+  const saved = saveCheckpoint(root, 'migrated-session', { taskId: 'task', continuation });
+  const old = path.join(root, '.git', 'craft-state', rootId(root)); fs.mkdirSync(old, { recursive: true });
+  const legacyFile = path.join(old, path.basename(saved.file));
+  fs.copyFileSync(saved.file, legacyFile); fs.unlinkSync(saved.file);
+  assert.deepEqual(readCheckpoint(root, 'migrated-session'), saved.state);
+  const updated = saveCheckpoint(root, 'migrated-session', { taskId: 'next-task' });
+  assert.equal(updated.state.taskId, 'next-task');
+  assert.equal(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).taskId, 'task');
+  assert.equal(readCheckpoint(root, 'other-session'), null);
+});
+
+test('linked-worktree migration reads its own legacy Git directory and leaves it unchanged', t => {
+  const { root, git } = fixture(t);
+  const linked = path.join(root, 'linked'); git('worktree', 'add', '--detach', linked, 'HEAD');
+  const gitDirectory = path.resolve(linked, fs.readFileSync(path.join(linked, '.git'), 'utf8').trim().slice(8));
+  const legacy = path.join(gitDirectory, 'craft-state', rootId(linked)); fs.mkdirSync(legacy, { recursive: true });
+  fs.writeFileSync(path.join(legacy, 'record.json'), '{"worktree":"linked"}');
+  const before = metadata(root);
+  const file = stateFile(linked, 'record.json', false, 'linked-session');
+  assert.deepEqual(readState(file, 1024), { worktree: 'linked' });
+  assert.equal(readState(stateFile(root, 'record.json', false, 'linked-session'), 1024), null);
+  assert.deepEqual(metadata(root), before);
 });

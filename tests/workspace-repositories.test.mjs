@@ -100,7 +100,7 @@ test('explicit repository roots reject traversal, aliases, nonroots and out-of-s
 
 test('a corrupt activity ledger keeps fresh lookup inside the separately saved repository selection', t => {
   const { root, start, command } = fixture(t); start(['kit']);
-  const file = stateFile(root, `session-${digest(['session', 'task']).slice(0, 24)}.json`);
+  const file = stateFile(root, `session-${digest(['session', 'task']).slice(0, 24)}.json`, false, 'session');
   fs.writeFileSync(file, '{broken');
   const result = command('locate', '--term', 'value');
   assert.equal(result.discovery.reused, 0);
@@ -114,7 +114,7 @@ test('a corrupt activity ledger keeps fresh lookup inside the separately saved r
 test('workspace is lazy, isolated by session/task/operation, promotes selective evidence and cleans on completion', t => {
   const { root, command, start, accept } = fixture(t);
   start();
-  assert.equal(fs.existsSync(path.join(root, '.craft/state/sessions')), false);
+  assert.equal(fs.existsSync(stateFile(root, 'sessions')), false);
   assert.equal(command('session').workspace.status, 'absent');
   const first = workspace(root, 'session', 'task', 'write', { name: 'result.json', content: '{"verified":true}' });
   const other = workspace(root, 'session', 'task', 'open', { operation: 'worker-1' });
@@ -248,7 +248,7 @@ test('an exited workspace writer is reclaimable while its parent stays alive', t
 
 for (const collision of ['directory', 'file']) test(`workspace creation rechecks a concurrent ${collision}`, t => {
   const { root } = fixture(t);
-  const sessions = path.join(root, '.craft/state/sessions');
+  const sessions = stateFile(root, 'sessions');
   const mkdir = fs.mkdirSync;
   let collided = false;
   t.mock.method(fs, 'mkdirSync', (file, options) => {

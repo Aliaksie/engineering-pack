@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -103,7 +104,7 @@ test('invalid configuration, state and arguments retain original failures and st
   assert.ok(!JSON.stringify(events).includes('PRIVATE_INVALID_JSON'));
   fs.unlinkSync(path.join(root,'.craft/project.json'));
   fs.writeFileSync(path.join(root,'request.json'),JSON.stringify({sessionId:'private-session',task:{id:'task'}}));
-  const state=path.join(root,'.craft/state');
+  const state=path.dirname(stateFile(root, 'probe.json', false, 'private-session'));
   // A malformed session receipt must remain advisory for the session view.
   command(root,'route','--intent','implement','--task','task');
   const sessionFile=fs.readdirSync(state).find(name=>name.startsWith('session-')); fs.writeFileSync(path.join(state,sessionFile),'PRIVATE_BAD_STATE');
@@ -201,8 +202,8 @@ test('generated native hooks trace success, malformed input and configuration fa
 });
 
 test('unavailable correlation key and version metadata yield explicit unknowns and safe local diagnostics',t=>{
-  const root=fixture(t); fs.mkdirSync(path.join(root,'.craft/state'));
-  fs.writeFileSync(path.join(root,'.craft/state/telemetry-key.json'),'PRIVATE_CORRUPT_KEY');
+  const root=fixture(t); fs.mkdirSync(path.dirname(stateFile(root, 'probe.json')), { recursive: true });
+  fs.writeFileSync(stateFile(root, 'telemetry-key.json'),'PRIVATE_CORRUPT_KEY');
   const handle=createTelemetry(root,{session:'PRIVATE_RAW_SESSION'},{runtimeVersion:()=>{throw new Error('PRIVATE_METADATA_ERROR');}});
   handle.emit('session.observed');
   const events=readTelemetry(root);

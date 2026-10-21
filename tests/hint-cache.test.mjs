@@ -1,3 +1,4 @@
+import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -25,8 +26,8 @@ test('only emitted routing context is reused; scope/config/age/resume invalidate
   assert.equal(quiet.suppressed, true);
   assert.equal(quiet.result.context, undefined);
   assert.equal(quiet.result.decision, 'allow');
-  const file = fs.readdirSync(path.join(event.routingRoot, '.craft/state')).find((file) => file.endsWith('.json'));
-  const stored = fs.readFileSync(path.join(event.routingRoot, '.craft/state', file), 'utf8');
+  const file = fs.readdirSync(path.dirname(stateFile(event.routingRoot, 'probe.json', false, event.session))).find((file) => file.endsWith('.json'));
+  const stored = fs.readFileSync(path.join(path.dirname(stateFile(event.routingRoot, 'probe.json', false, event.session)), file), 'utf8');
   assert.equal(stored.includes('Selected routing hint'), false);
   assert.deepEqual(Object.keys(JSON.parse(stored)).sort(), ['emittedAt', 'formatVersion', 'key']);
   for (const [changed, output, now] of [
@@ -56,7 +57,7 @@ test('reuse is opt-in and never suppresses unsupported, unrelated, or busy deliv
     { ...event, project: { formatVersion: 1 } }, { ...event, routing: undefined }]) {
     assert.deepEqual(reuseRoutingHint(changed, result), { result });
   }
-  assert.ok(!fs.existsSync(path.join(event.routingRoot, '.craft/state')));
+  assert.ok(!fs.existsSync(path.dirname(stateFile(event.routingRoot, 'probe.json', false, event.session))));
   const first = reuseRoutingHint(event, result, 100);
   const busy = reuseRoutingHint(event, result, 101);
   assert.equal(busy.result.context, result.context);
@@ -69,7 +70,7 @@ test('reuse is opt-in and never suppresses unsupported, unrelated, or busy deliv
 test('malformed/symlinked state emits the original advisory hint and releases owned locks', (t) => {
   const event = fixture(t);
   const first = reuseRoutingHint(event, result, 100); commitRoutingHint(first, true);
-  const dir = path.join(event.routingRoot, '.craft/state');
+  const dir = path.dirname(stateFile(event.routingRoot, 'probe.json', false, event.session));
   const file = path.join(dir, fs.readdirSync(dir).find((file) => file.endsWith('.json')));
   fs.writeFileSync(file, 'invalid');
   const malformed = reuseRoutingHint(event, result, 101);
