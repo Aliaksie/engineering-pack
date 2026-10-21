@@ -13,8 +13,9 @@ export function reviewSnapshot({ root, base, head, provider = 'local', repositor
   const baseSha = git(root, ['rev-parse', '--verify', '--end-of-options', `${base}^{commit}`]).trim();
   const headSha = git(root, ['rev-parse', '--verify', '--end-of-options', `${head}^{commit}`]).trim();
   const mergeBase = git(root, ['merge-base', baseSha, headSha]).trim();
-  const files = git(root, ['diff', '--name-only', '-z', '--no-renames', mergeBase, headSha, '--']).split('\0').filter(Boolean);
-  const diff = git(root, ['diff', '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--unified=3', mergeBase, headSha, '--']);
+  const scope = ['--', '.', ':(exclude,glob)**/.capabilities/state/**', ':(exclude,glob)**/.capabilities/state'];
+  const files = git(root, ['diff', '--name-only', '-z', '--no-renames', mergeBase, headSha, ...scope]).split('\0').filter(Boolean);
+  const diff = git(root, ['diff', '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--unified=3', mergeBase, headSha, ...scope]);
   return { formatVersion: 1, provider, repository, changeId, baseSha, headSha, mergeBase, files, diff,
     verification: 'source snapshot only; no project code, tests or model executed' };
 }

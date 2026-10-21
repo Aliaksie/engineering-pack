@@ -1,4 +1,5 @@
 import { activeTask } from '../session/activity.mjs';
+import { workspaceBoundary } from '../workspace.mjs';
 import { withTelemetry, flushTelemetry, observe, diagnostic } from '../telemetry/observe.mjs';
 import { prepare as prepareLifecycleObservation } from '../telemetry/lifecycle.mjs';
 export { flushTelemetry };
@@ -29,6 +30,8 @@ function prepare(event) {
   catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
   const taskIdentity = { session: event.session ?? null, task: task ?? null, source: task ? 'session-binding' : 'unavailable' };
   const result = { ...event, project, routingRoot: root, taskIdentity };
+  if (event.event === 'session-start') result.workspace = workspaceBoundary(root, event.session, task, 'maintain', project);
+  else if (task && event.event === 'before-prompt') result.workspace = workspaceBoundary(root, event.session, task, 'touch', project);
   const facts = { session: event.session,
     request: { edit: event.tool === 'edit', ...(event.event === 'before-prompt' ? { prompt: event.prompt ?? '' } : {}) },
     lifecycle: { started: event.event === 'session-start', contextChanging: event.event === 'before-compact',

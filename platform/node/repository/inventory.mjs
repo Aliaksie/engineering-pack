@@ -2,11 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { privatePath } from '../private-path.mjs';
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const locatorVersion = digest(['../search.mjs', './inventory.mjs', '../../../engine/discovery/match.mjs', '../../../engine/discovery/plan.mjs'].map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')));
 
 // Locator-only reuse: one stat inventory validates the narrow packet. No arbitrary executor.
 export function inventoryIdentity(root, paths, maxFiles) {
+  if (paths.some(privatePath)) return null;
   const git = args => spawnSync('git', ['-c', 'core.fsmonitor=false', '-C', root, ...args], {
     encoding: 'utf8', timeout: 5000, maxBuffer: 2_097_152, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
   });
@@ -14,7 +16,7 @@ export function inventoryIdentity(root, paths, maxFiles) {
   const head = git(['rev-parse', '--verify', 'HEAD']);
   if (inventory.status !== 0 || head.status !== 0) return null;
   const names = [...new Set(inventory.stdout.split('\0').filter(name => name
-    && !name.startsWith('.capabilities/state/')
+    && !privatePath(name)
     && !name.split('/').some(part => ['.git', 'node_modules', 'dist'].includes(part))
     && (!paths.length || paths.some(scope => scope === '.' || name === scope || name.startsWith(`${scope}/`)))))].sort();
   if (names.length > maxFiles) return null;
