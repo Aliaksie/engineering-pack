@@ -123,7 +123,9 @@ test('explicit root and session IDs give Git and non-Git roots the same storage 
     assert.equal(readState(b, 1024), null);
   }
   fs.writeFileSync(path.join(root, '.gitignore'), '**/.craft/state/\n');
-  assert.equal(git('check-ignore', path.relative(root, stateFile(root, 'record.json'))).includes('.craft/state/'), true);
+  for (const selected of [root, plain]) {
+    git('check-ignore', '--quiet', path.relative(root, stateFile(selected, 'record.json')));
+  }
 });
 
 for (const legacy of ['git', 'craft', 'capabilities']) test(`${legacy} legacy records migrate without Git metadata or configuration writes`, t => {
