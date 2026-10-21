@@ -34,7 +34,7 @@ function fixture(t) {
 test('Windows short and expanded workspace paths select the same Git root', { skip: process.platform !== 'win32' }, t => {
   const { root } = fixture(t);
   const expanded = fs.realpathSync.native(root);
-  const result = spawnSync('cmd.exe', ['/d', '/c', `for %I in ("${expanded}") do @echo %~sI`], { encoding: 'utf8' });
+  const result = spawnSync('cmd.exe', ['/d', '/c', `for %I in ("${expanded}") do @echo %~sI`], { encoding: 'utf8', windowsVerbatimArguments: true });
   assert.equal(result.status, 0, result.stderr);
   const short = result.stdout.trim();
   if (path.relative(short, expanded) === '') return t.skip('Windows short names are unavailable on this volume');
