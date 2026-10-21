@@ -8,7 +8,7 @@ import { run } from '../cli/main.mjs';
 import { activeTask } from '../application/session/activity.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { workspace, workspaceBoundary } from '../application/workspace.mjs';
-import { workspaceOperation, repositoryState, scan, reviewSnapshot, stateFile } from '../platform/index.mjs';
+import { workspaceOperation, repositoryRoots, repositoryState, scan, reviewSnapshot, stateFile } from '../platform/index.mjs';
 import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
 import { decide, digest } from '../application/engine-client.mjs';
 import { copy } from '../tooling/export/export.mjs';
@@ -30,6 +30,20 @@ function fixture(t) {
   const accept = () => command('task-step', '--stage', 'verify', '--target', 'acceptance:scope', '--approach', 'fixture', '--evidence', 'checks/scope', '--outcome', 'passed', '--result', 'Selected source verified', '--next', 'Return verified result', '--complete');
   return { root, git, command, start, accept };
 }
+
+test('Windows short and expanded workspace paths select the same Git root', { skip: process.platform !== 'win32' }, t => {
+  const { root } = fixture(t);
+  const expanded = fs.realpathSync.native(root);
+  const result = spawnSync('cmd.exe', ['/d', '/c', `for %I in ("${expanded}") do @echo %~sI`], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const short = result.stdout.trim();
+  if (path.relative(short, expanded) === '') return t.skip('Windows short names are unavailable on this volume');
+  for (const workspace of [short, expanded]) {
+    const [selected] = repositoryRoots(workspace, ['kit']);
+    assert.equal(path.relative(fs.realpathSync.native(selected.root), fs.realpathSync.native(path.join(expanded, 'kit'))), '');
+    assert.throws(() => repositoryRoots(workspace, ['kit/.git']), /Git worktree root/);
+  }
+});
 
 test('a non-Git workspace binds one repository and ignores changes in unselected siblings', t => {
   const { root, command, start, accept } = fixture(t);
