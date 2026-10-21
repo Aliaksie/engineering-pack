@@ -4,7 +4,7 @@ A local GitHub watch list, review ledger and posted-text corpus. Excluded from d
 capability exports; run it from this repository checkout so shared engine and integration
 modules are available. Headless review uses `packages/craft-review` instead.
 
-Node 20+, Git and GitHub CLI (`gh`) are the only runtime prerequisites. No Bash, jq,
+Node 22+, Git and GitHub CLI (`gh`) are the only runtime prerequisites. No Bash, jq,
 Unix pipelines, OS clipboard or platform scheduler is required. Run:
 
 ```text

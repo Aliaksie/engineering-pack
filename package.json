@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Portable AI capability packages: workflows, standards, skills, evals, tools and MCP with host adapters",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "validate": "node tooling/validate-capabilities.mjs",

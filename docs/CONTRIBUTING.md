@@ -1,6 +1,6 @@
 # Contributing
 
-Run `npm run check` with Node 20+. No npm install is needed. `npm test` builds exports first.
+Use Node 24 for development and run `npm run check`. The minimum supported runtime is Node 22; CI also checks Node 26 for forward compatibility. No npm install is needed. `npm test` builds exports first.
 Review skill changes for useful decision criteria, selective references and clear scope.
 Keep examples portable and verify any executable behavior affected by the change.
 
@@ -43,7 +43,7 @@ version and archive checksum together in `ci.yml`.
 
 CI runs on push, pull request and manual dispatch. It validates manifests, catalog and source targets,
 checks generated guidance, lints portable scripts, builds eight host exports and the GitHub distribution, validates exports
-and runs tests on Linux/macOS/Windows with Node 24, plus Linux with the Node 20 minimum.
+and runs tests on Linux/macOS/Windows with primary Node 24, plus Linux with the Node 22 minimum and Node 26 forward check.
 No dependency installation, cloud credentials or model runner is required.
 
 After every matrix check succeeds, the packaging job rebuilds and uploads `dist/` as

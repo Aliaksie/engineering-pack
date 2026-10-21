@@ -1,6 +1,6 @@
 # Review inbox setup
 
-Use Node 20+, Git and `gh` on Windows, macOS or Linux. Configure GitHub CLI credentials using
+Use Node 22+, Git and `gh` on Windows, macOS or Linux. Configure GitHub CLI credentials using
 your existing project/account policy. The tool never prompts for credentials or reads a
 shell token file. Noninteractive credentials may be supplied through gh's supported process
 environment; keep them out of config, logs and committed artifacts.

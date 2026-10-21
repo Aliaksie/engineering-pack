@@ -1,7 +1,7 @@
 # Craft Capabilities
 
 This repository authors portable AI Capability Packages. Canonical content lives in
-`packages/`; native host translation belongs to `hosts/` and export construction to `tooling/export/`. Node 20+, ESM, no npm dependencies.
+`packages/`; native host translation belongs to `hosts/` and export construction to `tooling/export/`. Node 22+ minimum; Node 24 for development and primary CI, Node 26 for forward checks. ESM, no npm dependencies.
 
 ## Commands
 
