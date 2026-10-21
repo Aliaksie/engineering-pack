@@ -16,7 +16,7 @@ export function repositoryRoots(root, scopes) {
     const result = spawnSync('git', ['-C', canonical, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8', timeout: 5000, maxBuffer: 16384, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
     });
-    if (result.status !== 0 || fs.realpathSync(result.stdout.trim()) !== canonical) throw new Error(`repository scope is not a Git worktree root: ${scope}`);
+    if (result.status !== 0 || path.relative(canonical, fs.realpathSync(result.stdout.trim())) !== '') throw new Error(`repository scope is not a Git worktree root: ${scope}`);
     if (seen.has(canonical)) throw new Error('duplicate repository root');
     seen.add(canonical);
     return { path: scope, root: canonical };

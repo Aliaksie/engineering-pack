@@ -12,7 +12,11 @@ const live = pid => {
 };
 function directory(file, create = false) {
   let stat = fs.lstatSync(file, { throwIfNoEntry: false });
-  if (!stat && create) { fs.mkdirSync(file, { mode: 0o700 }); stat = fs.lstatSync(file); }
+  if (!stat && create) {
+    try { fs.mkdirSync(file, { mode: 0o700 }); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+    stat = fs.lstatSync(file);
+  }
   if (stat && (!stat.isDirectory() || stat.isSymbolicLink())) throw new Error('workspace directory must not be a symlink');
   return Boolean(stat);
 }

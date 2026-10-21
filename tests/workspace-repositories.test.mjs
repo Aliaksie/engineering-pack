@@ -232,6 +232,26 @@ test('an exited workspace writer is reclaimable while its parent stays alive', t
   assert.equal(fs.existsSync(opened.scratchDirectory), false);
 });
 
+for (const collision of ['directory', 'file']) test(`workspace creation rechecks a concurrent ${collision}`, t => {
+  const { root } = fixture(t);
+  const sessions = path.join(root, '.craft/state/sessions');
+  const mkdir = fs.mkdirSync;
+  let collided = false;
+  t.mock.method(fs, 'mkdirSync', (file, options) => {
+    if (file === sessions && !collided) {
+      collided = true;
+      if (collision === 'directory') mkdir(file, options);
+      else fs.writeFileSync(file, 'unowned');
+    }
+    return mkdir(file, options);
+  });
+  const identity = { session: digest('race'), task: digest('task'), operation: digest('main') };
+  const open = () => workspaceOperation(root, identity, DEFAULT_SETTINGS.workspace, 'open');
+  if (collision === 'directory') assert.equal(open().status, 'available');
+  else assert.throws(open, /workspace directory must not be a symlink/);
+  assert.equal(collided, true);
+});
+
 test('concurrent independent workspace writers serialize without corrupting ownership', async t => {
   const { root } = fixture(t);
   const module = new URL('../platform/node/workspace.mjs', import.meta.url).href;
