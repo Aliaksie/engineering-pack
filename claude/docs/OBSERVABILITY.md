@@ -82,8 +82,8 @@ Disable local telemetry:
 ```
 
 Default events are appended to `telemetry.jsonl` in private runtime state for the project
-root selected by the CLI/hook. Run `settings` to inspect the directory: Git repositories use
-worktree-specific Git metadata; non-Git folders use `.craft/state/`. The file rotates at 1 MiB with one 1 MiB backup named
+root selected by the CLI/hook, under `.craft/state/<worktree-id>/shared/` for both Git
+and non-Git roots. Run `settings` to inspect the directory. The file rotates at 1 MiB with one 1 MiB backup named
 `telemetry.jsonl.1`; events are limited to 8 KiB. New files use mode 0600 where supported.
 CLI/hook application scopes collect at most 32 local events, then append that group under
 one lock/open/write/close sequence. A partial group flushes synchronously when its scope
@@ -93,9 +93,8 @@ retain immediate append behavior unless they explicitly select `batchLocal` and 
 Diagnostics remain immediate and never enter the remote export queue through this path.
 Groups rotate together when necessary, so rotation can occur up to one group earlier than
 with individual appends. The same two-file/1 MiB-per-file bounds still apply.
-The correlation key is `telemetry-key.json` in the same directory. Git metadata keeps
-state out of commits without generated configuration or ignore edits. Exclude the non-Git
-fallback directory before importing that folder into Git. Deleting the key resets future
+The correlation key is `telemetry-key.json` in the same directory. Add `.craft/state/` to
+the consumer’s Git ignore rules; Craft never edits those rules or writes Git metadata. Deleting the key resets future
 correlation; delete both JSONL files to remove retained local events.
 
 Writers use an exclusive lock and retry contention for up to 25 ms per append before
@@ -174,7 +173,8 @@ Run `npm run telemetry:report -- --root <project> [--session <id>]`, or use
 The bounded report counts retained feature observations and their failure/deferred outcomes,
 reported local/queue drops and failed exports. It exposes retained file bytes, backup presence,
 skipped malformed/unsupported/oversized records and invalid event envelopes. Session filtering
-uses the existing project correlation key; the application report never creates a key or state.
+uses the existing project correlation key; the application report never creates a key.
+Accessing legacy storage may copy retained records through the normal state migration.
 Like other CLI commands, the CLI invocation itself records ordinary operational telemetry
 after reading the report. The report does not replay events to a collector.
 

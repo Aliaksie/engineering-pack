@@ -32,7 +32,9 @@ by feature at shallow depth; keep a single small responsibility as a file until 
 has useful components. Internal plans and local evaluation artifacts stay ignored.
 
 Consumer configuration lives in `.craft/project.json` and `.craft/telemetry.json`.
-Non-Git coordination folders keep private operational data in `.craft/state/`; Git
-worktrees use their private Git metadata. To upgrade, move existing configuration
-from `.capabilities/` to `.craft/`. Old `.capabilities/state/` remains excluded from
-source lookup, review and exports; it is not automatically moved or deleted.
+Git worktrees and non-Git coordination roots both keep generated operational data in
+`.craft/state/<worktree-id>/<session-id>/`, with a reserved `shared/` scope for project-wide
+records. Ignore `.craft/state/` in Git. See [session storage and migration](SESSION.md)
+for identities and legacy-copy behavior. To upgrade configuration, move `.capabilities/`
+configuration to `.craft/`; runtime migration never overwrites consumer configuration.
+Old `.capabilities/state/` remains excluded from source lookup, review and exports.

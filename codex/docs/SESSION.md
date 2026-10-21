@@ -81,8 +81,8 @@ reports incomplete repository inspection. Standalone checkpoint-save also accept
 Use `workspace-open` only when a task needs filesystem-backed intermediate material.
 The result supplies a private scratch directory for the session, task and optional
 `--operation` scope. No scratch directory is created by ordinary task binding or inspection.
-The workspace sits beneath the existing private state location: worktree-specific Git
-metadata in Git projects, or `.craft/state/` in a non-Git coordination folder. Raw
+The workspace sits beneath `.craft/state/<worktree-id>/shared/` in the selected
+coordination root, for both Git and non-Git folders. Raw
 session/task names are hashed in directory names. Existing checkpoints, receipts, caches
 and telemetry keep their existing stores; there is no duplicate state tree or new `.pack` root.
 Repository selection also participates in workspace identity, so rebinding a task to other
@@ -131,10 +131,8 @@ copying. No `.gitignore`, host `TMPDIR`, host storage, IDE cache or third-party 
 rewritten. Standalone build/release/test staging keeps its already-owned command lifecycle;
 this runtime does not migrate unrelated stores for directory consistency.
 
-In Git repositories, runtime state lives under `.git/craft-state` (the worktree Git
-directory for linked worktrees). Sandboxes that deny Git-metadata writes cannot record
-task progress or acceptance directly. The installed Codex exercise used a trusted external
-harness for those writes; independent sandboxed lifecycle recording remains unverified.
+Runtime state stays beneath the selected root’s `.craft/state/`; Craft storage never
+writes Git metadata. This also applies to linked worktrees and non-Git coordination roots.
 
 At an acceptance boundary, `task-step` requires an agent-declared target, approach, evidence
 identifier, outcome, result and next step. Outcomes are `passed`, `quality-failure`,
@@ -306,12 +304,50 @@ With an explicit `--session` and `--task`, `route`, `context-report`, `locate` a
 retain their ordinary behavior without task activity writes. `session` reads existing records;
 it does not increment counters simply for displaying status. Recorded counts take precedence
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
-Git repositories store runtime state under worktree-specific Git metadata, namespaced by
-canonical project root. `settings` shows the directory. Non-Git folders use
-`.craft/state/` with private directory/file modes where supported; exclude this
-directory before importing that folder into Git. Neither activity nor lookup packets
-belong in commits. Older workspace-local state is left untouched and is not automatically
-imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
+Git and non-Git roots use the same version 2 storage layout:
+
+```text
+.craft/
+  project.json
+  telemetry.json
+  state/
+    <worktree-id>/
+      <session-id>/       # checkpoints, bindings, activity, workers, hint/control journals
+      shared/             # telemetry/key/captures and workspace maintenance
+```
+
+The platform resolver hashes the canonical selected root into a 24-character worktree ID
+and an explicit session identity into a 24-character session ID. IDs, rather than Git
+metadata location, isolate roots and sessions. Callers resolve invocation subdirectories
+through the normal project-root resolver before accessing state; explicitly selected nested
+or coordination roots keep their own identities. Linked worktrees have distinct root IDs.
+Project-wide records use the reserved `shared` scope; scratch/evidence beneath it retain
+explicit hashed session/task/operation ownership and their existing cleanup policies.
+`settings` shows this shared directory and layout version. Raw session names never become
+path components. File schemas and retention limits remain unchanged. Directories/files use
+0700/0600 where supported; symlinks, unsafe paths and bounded-file violations are refused.
+
+Add `.craft/state/` to the consumer's `.gitignore` before use (this repository already
+ignores it at every depth). Craft does not edit consumer ignores or Git metadata. Source
+lookup, snapshots, review and package export exclude state independently of Git ignores;
+consumer-authored configuration remains visible. Runtime cleanup owns only its existing
+bounded scratch, evidence and telemetry lifecycles, never project/telemetry configuration.
+
+On access, the resolver copies matching legacy records from `.git/craft-state/<root-id>/`
+(or a linked worktree's Git directory), flat `.craft/state/`, and `.capabilities/state/`.
+Session records go to the explicit session scope; project-wide records go to `shared`.
+Workspace scratch/evidence ownership trees, telemetry backups and hint generations are
+preserved. Sources are never deleted or written, and configuration is never migrated.
+Copies are bounded (4 MiB/file, 16 MiB and 4096 entries per record tree, depth 16), reject
+symlinks and hard-linked files, and retain existing record validators. A source fingerprint
+receipt is published after copying; identical interrupted copies can be retried, differing
+destination files are refused. Unused legacy records remain available for later access.
+
+Stop older installed plugins before upgrading. Legacy locks block migration; source
+fingerprints are checked again on access and changed sources cause an explicit reconciliation
+error. Old plugins cannot honor new locks, so simultaneous old/new writers are unsupported.
+Do not clear a lock or conflict without verifying the old writer has stopped and reconciling
+records. Retained legacy sources may be removed only through separately authorized cleanup.
 
 Changing a task's stage, files, risks or checkout invalidates completed acceptance and verification.
 Continuation freshness also requires the saved task contract to match; an automatic snapshot

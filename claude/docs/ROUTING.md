@@ -152,7 +152,8 @@ Automatic snapshots default to enabled in trusted installations; set `checkpoint
 to false to disable them. They run at supported turn-completion and context-transition
 boundaries, rather than after every tool call. Unchanged complete snapshots are deduplicated.
 Writes are atomic and reject symlinked state paths; concurrent writers are reported as busy.
-State lives under Git metadata when available; `settings` shows the actual directory.
+State lives under `.craft/state/<worktree-id>/<session-id>/` for Git and non-Git roots;
+`settings` shows the shared project directory. Ignore `.craft/state/` in Git.
 Because some hosts expose asynchronous/observational compaction hooks, persist semantic
 metadata at milestones rather than relying on a final callback. Read recovery state explicitly
 on hosts with no after-compaction injection. This preserves continuity; it does not replace

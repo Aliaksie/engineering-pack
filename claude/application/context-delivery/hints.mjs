@@ -3,7 +3,7 @@ import { decide } from '../engine-client.mjs';
 import { stateFile, readState, lockState, releaseState, writeState, clock, uniqueId, sourceIdentity } from '../../platform/index.mjs';
 
 const hash = text => decide('hash', { text });
-const cacheFile = (root, session, host) => stateFile(root, `routing-${hash(JSON.stringify([host,session])).slice(0,24)}.json`, true);
+const cacheFile = (root, session, host) => stateFile(root, `routing-${hash(JSON.stringify([host,session])).slice(0,24)}.json`, true, session);
 function read(file) {
   const state = readState(file, 2048);
   return decide('hint-validate', { state });

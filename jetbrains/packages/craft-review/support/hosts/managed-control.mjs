@@ -22,7 +22,7 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
   if (!nativeText(host) || !nativeText(coordinatorId) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 64
     || typeof authorize !== 'function' || !driver || !['snapshot', 'start', 'cancel', 'act', 'lookup', 'capabilities', 'output', 'close'].every(key => typeof driver[key] === 'function')) throw new Error('explicit native driver, identity, capacity and authority verifier required');
   const context = { root, session, task, tree: digest([root, session, task]) };
-  const file = stateFile(root, `native-control-${digest([host, context.tree]).slice(0, 24)}.json`, true);
+  const file = stateFile(root, `native-control-${digest([host, context.tree]).slice(0, 24)}.json`, true, session);
   const owner = lockState(file);
   if (!owner) throw new Error('native task control already has an owner; reconcile unresolved ownership first');
   let journal, closed = false, broken = false;

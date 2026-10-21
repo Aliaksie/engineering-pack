@@ -10,10 +10,10 @@ const executionKnown = request => request.state === 'observed' && request.worker
 function storage(root, session, task) {
   decide('activity-identity', { session, task });
   const tree = digest([realRoot(root), session, task]);
-  const file = stateFile(root, `workers-${tree.slice(0, 24)}.json`);
+  const file = stateFile(root, `workers-${tree.slice(0, 24)}.json`, false, session);
   const read = () => decide('worker-state', { state: readState(file, MAX_BYTES), tree });
   const update = callback => {
-    stateFile(root, `workers-${tree.slice(0, 24)}.json`, true);
+    stateFile(root, `workers-${tree.slice(0, 24)}.json`, true, session);
     const ticket = lockState(file);
     if (!ticket) throw new Error('worker tree writer is busy');
     try {

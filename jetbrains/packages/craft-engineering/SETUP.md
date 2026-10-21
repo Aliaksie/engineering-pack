@@ -35,8 +35,10 @@ and continue with guidance. Do not run commands merely to show the setup notice.
 
 With default local telemetry enabled, compare events before and after an ordinary
 edit/tool action in the target project's runtime `telemetry.jsonl`; the bundled CLI's
-`settings --root <project-root>` reports its private state directory. Older exports may
-use `.craft/state/telemetry.jsonl`.
+`settings --root <project-root>` reports its private state directory. Current exports use
+`.craft/state/<worktree-id>/shared/telemetry.jsonl`; older exports may use Git-private or
+flat workspace-local storage. Stop older writers before upgrading; see the runtime storage
+migration documentation.
 Fresh `host.hook` events establish observed hook invocation; explicit CLI events
 and direct wrapper calls do not prove automatic host dispatch. Missing events
 alone do not distinguish discovery, trust, disabled telemetry or storage failures.

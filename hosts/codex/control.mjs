@@ -19,7 +19,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   if (![session, task, threadId].every(text) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 64
     || !client || !['request', 'subscribe'].every(name => typeof client[name] === 'function') || typeof authorize !== 'function') throw new Error('explicit Codex client, coordinator identity, lane capacity and authority verifier are required');
   const tree = digest([root, session, task]);
-  const file = stateFile(root, `codex-control-${tree.slice(0, 24)}.json`, true);
+  const file = stateFile(root, `codex-control-${tree.slice(0, 24)}.json`, true, session);
   const owner = lockState(file);
   if (!owner) throw new Error('Codex task control already has an owner; do not bypass an unresolved owner lock');
   let journal, closed = false, broken = false, unsubscribe;

@@ -6,7 +6,7 @@ import { repositorySnapshot } from '../repositories.mjs';
 
 function filename(root, session, task, create = false) {
   decide('activity-identity', { session, task });
-  return stateFile(root, `session-${digest([session,task]).slice(0,24)}.json`, create);
+  return stateFile(root, `session-${digest([session,task]).slice(0,24)}.json`, create, session);
 }
 function read(file) {
   return decide('activity-validate', { state: readState(file, 131072) ?? { formatVersion: 1, activity: {}, lookups: {}, attempts: [] } });
@@ -39,7 +39,7 @@ export const updateSessionState = (...args) => withTelemetry(args[0], { session:
 
 export function bindingFile(root, session, create = false) {
   decide('activity-identity', { session, task: 'active-binding' });
-  return stateFile(root, `active-${digest(session).slice(0, 24)}.json`, create);
+  return stateFile(root, `active-${digest(session).slice(0, 24)}.json`, create, session);
 }
 export function activeTask(root, session) {
   if (!session) return undefined;
