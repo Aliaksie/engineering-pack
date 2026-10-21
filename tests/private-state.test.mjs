@@ -19,6 +19,9 @@ function fixture(t) {
     assert.equal(result.status, 0, result.stderr); return result.stdout.trim();
   };
   git('init', '-q');
+  // Keep Git's background writers out of before/after storage observations.
+  git('config', 'gc.auto', '0');
+  git('config', 'maintenance.auto', 'false');
   fs.mkdirSync(path.join(root, 'src')); fs.writeFileSync(path.join(root, 'src/value.mjs'), 'export const SymbolValue = 1;\n');
   git('add', '.'); git('commit', '-qm', 'fixture');
   return { root, git };
