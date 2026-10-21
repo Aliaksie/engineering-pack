@@ -4,7 +4,7 @@ import { stateFile, readState, lockState, releaseState, writeState, clock } from
 import { activeTask, readSessionState, taskRepository } from './session/activity.mjs';
 import { repositorySnapshot } from './repositories.mjs';
 
-const filename = (root, session, create) => stateFile(root, `${decide('hash', { text: String(session) }).slice(0,24)}.json`, create);
+const filename = (root, session, create) => stateFile(root, `${decide('hash', { text: String(session) }).slice(0,24)}.json`, create, session);
 function readSavedCheckpoint(root, session) {
   const state = readState(filename(root, session), 65536);
   return decide('checkpoint-validate', { state });

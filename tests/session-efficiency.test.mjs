@@ -214,7 +214,7 @@ test('configured quality escalation is offered, access failures stop, and escala
 test('corrupt or symlinked activity state cannot validate reuse or permit context reset', t => {
   const { root } = fixture(t);
   discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
-  const directory = path.dirname(stateFile(root, 'probe.json'));
+  const directory = path.dirname(stateFile(root, 'probe.json', false, scope.session));
   const file = fs.readdirSync(directory).find(name => name.startsWith('session-'));
   fs.writeFileSync(path.join(directory, file), '{broken');
   const result = discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
@@ -280,7 +280,7 @@ test('known host mappings identify an unnecessarily strong profile for mechanica
 
 test('unavailable optional activity storage does not suppress the routing plan', t => {
   const { root, write } = fixture(t);
-  const directory = path.dirname(stateFile(root, 'probe.json'));
+  const directory = path.dirname(stateFile(root, 'probe.json', false, scope.session));
   fs.mkdirSync(path.dirname(directory), { recursive: true });
   fs.writeFileSync(directory, 'not a directory');
   const result = run(['route', '--root', root, '--intent', 'locate', '--session', scope.session, '--task', scope.task]);
