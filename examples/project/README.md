@@ -18,7 +18,7 @@ lists configured commands and parameter names; availability and authentication r
 The example application files and Gradle wrapper are not supplied, so its declared checks
 cannot be run as an application test suite.
 
-For your own project, start with `.capabilities/project.json` containing:
+For your own project, start with `.craft/project.json` containing:
 
 ```json
 { "formatVersion": 1 }

@@ -13,8 +13,8 @@ const native = ['claude', 'codex', 'cursor', 'copilot', 'gemini'];
 function fixture(t, config = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'host hooks '));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  fs.mkdirSync(path.join(dir, '.capabilities'));
-  fs.writeFileSync(path.join(dir, '.capabilities/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
+  fs.mkdirSync(path.join(dir, '.craft'));
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
   return dir;
 }
 function payload(host, cwd, command, tool = 'shell') {
@@ -103,7 +103,7 @@ test('opted-in native hooks reuse only emitted hints and re-emit after compactio
     const capable = HOSTS[host].events['before-prompt'].context;
     assert.equal(first.stdout.includes('Routing hints'), capable, host);
     assert.ok(!next.stdout.includes('Routing hints'), host);
-    if (!capable) assert.ok((!fs.existsSync(path.join(dir, '.capabilities/state')) || fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => name.startsWith('telemetry'))), host);
+    if (!capable) assert.ok((!fs.existsSync(path.join(dir, '.craft/state')) || fs.readdirSync(path.join(dir, '.craft/state')).every(name => name.startsWith('telemetry'))), host);
     else assert.ok(Buffer.byteLength(next.stdout) < Buffer.byteLength(first.stdout));
     const compact = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session' }, dir);
     assert.equal(compact.status, 0, compact.stderr);
@@ -120,7 +120,7 @@ test('session service preparation reads metadata without probing executable avai
     assert.ok(result.stdout.includes('never-execute-this-command'), host);
     assert.ok(result.stdout.includes('unverified'), host);
     assert.equal(readCheckpoint(dir, 'fixture-session'), null, 'metadata preparation creates no checkpoint');
-    assert.ok(fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => /^(?:telemetry|routing-)/.test(name)), 'only telemetry and routing invalidation state are allowed');
+    assert.ok(fs.readdirSync(path.join(dir, '.craft/state')).every(name => /^(?:telemetry|routing-)/.test(name)), 'only telemetry and routing invalidation state are allowed');
   }
 });
 
@@ -143,7 +143,7 @@ test('checkpoint state can be explicitly disabled', (t) => {
     assert.equal(result.status, 0, result.stderr);
   }
   assert.equal(readCheckpoint(dir, 'fixture-session'), null);
-  assert.ok(fs.readdirSync(path.join(dir, '.capabilities/state')).every(name => /^(?:telemetry|routing-)/.test(name)));
+  assert.ok(fs.readdirSync(path.join(dir, '.craft/state')).every(name => /^(?:telemetry|routing-)/.test(name)));
 });
 
 test('unsupported lifecycle mappings are reported and no fake wrapper is installed', () => {

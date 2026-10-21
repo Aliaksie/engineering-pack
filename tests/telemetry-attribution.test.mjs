@@ -66,8 +66,8 @@ test('a valid JSON prefix followed by oversized whitespace never claims a sessio
 
 test('queue loss diagnostics retain dropped counts across a failing local sink without recursive export', async t => {
   const root = fixture(t), stored = [];
-  fs.mkdirSync(path.join(root, '.capabilities'));
-  fs.writeFileSync(path.join(root, '.capabilities/telemetry.json'), JSON.stringify({ remote: { enabled: true, endpoint: 'https://collector.example/v1/traces' } }));
+  fs.mkdirSync(path.join(root, '.craft'));
+  fs.writeFileSync(path.join(root, '.craft/telemetry.json'), JSON.stringify({ remote: { enabled: true, endpoint: 'https://collector.example/v1/traces' } }));
   let recovering = false;
   const handle = createTelemetry(root, {}, { appendTelemetry: (_root, event) => {
     if (event.reasonCode === 'EXPORT_QUEUE_FULL' && !recovering) return false;

@@ -11,7 +11,7 @@ locations supplied by the user and explicitly linked project sources. Do not sea
 checkouts or assume an organization's repository layout.
 
 Consult applicable instructions and the nearest maintained architecture entry point.
-If `.capabilities/project.json` declares a relevant module, treat its owner, dependencies
+If `.craft/project.json` declares a relevant module, treat its owner, dependencies
 and checks as leads to verify against the current tree. Follow the actual call, data or
 ownership boundary only as far as the question requires.
 

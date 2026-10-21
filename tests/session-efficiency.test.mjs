@@ -59,7 +59,7 @@ test('file, inventory, HEAD, config, manifest and task changes invalidate litera
   prime(); write('src/names.txt', 'Symbol0 changed\n'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
   prime(); write('src/new.txt', 'Symbol0 added\n'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
   prime(); write('package.json', '{"type":"module"}'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
-  prime(); write('.capabilities/project.json', '{"formatVersion":1}'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
+  prime(); write('.craft/project.json', '{"formatVersion":1}'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
   prime(); git('commit', '--allow-empty', '-qm', 'new revision'); assert.equal(discover(root, request, scope).discovery.fresh, 1);
   prime(); assert.equal(discover(root, request, { ...scope, task: 'T2' }).discovery.fresh, 1);
   assert.equal(discover(root, request, { ...scope, session: 's2' }).discovery.fresh, 1);
@@ -195,7 +195,7 @@ test('configured quality escalation is offered, access failures stop, and escala
     profiles: { routine: { capabilities: [], class: 'standard', maxAttempts: 3, escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong' } },
     hosts: { fixture: { delegation: true, models: { routine: 'consumer-a', deep: 'consumer-b' } } }
   } };
-  write('.capabilities/project.json', JSON.stringify(project));
+  write('.craft/project.json', JSON.stringify(project));
   const revision = git('rev-parse', 'HEAD');
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision } };
   for (let index = 0; index < 3; index++) recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
@@ -301,7 +301,7 @@ test('escalation starts the new tier budget and configured terminal limits stop 
     profiles: { routine: { capabilities: [], class: 'standard', maxAttempts: 1, escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong', maxAttempts: 2 } },
     hosts: { fixture: { delegation: true, models: { routine: 'consumer-a', deep: 'consumer-b' } } }
   } };
-  write('.capabilities/project.json', JSON.stringify(project));
+  write('.craft/project.json', JSON.stringify(project));
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision: git('rev-parse', 'HEAD') } };
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
   assert.equal(sessionStatus(input, project, { root }).recommendation.action, 'escalate-model');

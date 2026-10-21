@@ -32,7 +32,7 @@ test('fresh settings preview reads private preferences and creates no repository
   assert.equal(defaults.settings.efficiency.delegation.maxWorkers,3);
   fs.writeFileSync(preferencesFile,JSON.stringify({routing:{editHints:false}}),{mode:0o600});
   assert.equal(readEffectiveSettings(root,{preferencesFile}).settings.routing.editHints,false);
-  assert.equal(fs.existsSync(path.join(root,'.capabilities','project.json')),false);
+  assert.equal(fs.existsSync(path.join(root,'.craft','project.json')),false);
   assert.deepEqual(readProject(root, { preferencesFile }), readEffectiveSettings(root, { preferencesFile }).settings);
   assert.equal(readProject(root, { preferencesFile }).routing.editHints, false);
   if (process.platform !== 'win32') {

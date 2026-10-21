@@ -13,6 +13,7 @@ export function files(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
     .flatMap((entry) => {
       const full = path.join(dir, entry.name);
+      if (/(^|\/)\.(?:craft|capabilities)\/state(?:\/|$)|(^|\/)\.git(?:\/|$)/.test(full.split(path.sep).join('/'))) return [];
       if (entry.isSymbolicLink()) throw new Error(`symlinks are not distributable: ${full}`);
       return entry.isDirectory() ? files(full) : [full];
     });
@@ -24,6 +25,7 @@ export function localPath(root, value, directory = false) {
     throw new Error(`invalid package path: ${String(value)}`);
   }
   const target = path.resolve(root, value);
+  if (/(^|\/)\.(?:craft|capabilities)\/state(?:\/|$)/.test(value)) throw new Error('private workspace is not package content');
   // Reject symlinks at every component, not only the final file.
   let current = root;
   for (const part of value.split('/')) {

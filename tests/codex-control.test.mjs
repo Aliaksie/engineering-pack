@@ -56,8 +56,8 @@ function fixture(t, factory = createCodexControls) {
     assert.equal(result.status, 0, result.stderr);
   };
   git('init', '-q'); fs.writeFileSync(path.join(root, 'value.mjs'), 'export const value = 1;');
-  fs.mkdirSync(path.join(root, '.capabilities'));
-  fs.writeFileSync(path.join(root, '.capabilities/project.json'), JSON.stringify({ formatVersion: 1,
+  fs.mkdirSync(path.join(root, '.craft'));
+  fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1,
     execution: { roles: { researcher: { mode: 'delegate', profile: 'standard' } }, hosts: { codex: { delegation: true, models: { standard: 'consumer-worker' } } } } }));
   git('add', '.'); git('commit', '-qm', 'fixture');
   startTask(root, 'session', 'task', { goal: 'Inspect bounded source' });

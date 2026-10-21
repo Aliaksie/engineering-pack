@@ -40,7 +40,7 @@ test('default lifecycle and discovery stay private in a fresh repository without
   fs.appendFileSync(path.join(nested, 'value.mjs'), '// source change\n');
   assert.equal(discover(root, { terms: ['SymbolValue'] }, scope).discovery.reused, 0);
   assert.match(stateFile(root, 'probe.json'), /\.git[/\\]craft-state[/\\]/);
-  assert.equal(fs.existsSync(path.join(root, '.capabilities')), false);
+  assert.equal(fs.existsSync(path.join(root, '.craft')), false);
   assert.equal(git('status', '--porcelain'), 'M src/value.mjs');
 });
 

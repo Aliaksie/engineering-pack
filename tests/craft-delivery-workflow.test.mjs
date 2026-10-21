@@ -21,11 +21,11 @@ function fixture(t) {
     assert.equal(result.status, 0, result.stderr); return result.stdout.trim();
   };
   git('init', '-q');
-  write('.gitignore', '.capabilities/state/\n');
+  write('.gitignore', '.craft/state/\n');
   write('AGENTS.md', 'Use Node built-in checks. Local implementation only; no publication.\n');
   write('src/total.mjs', 'export const total = (price, quantity) => price + quantity;\n');
   write('checks/total.mjs', "import assert from 'node:assert/strict';\nimport { total } from '../src/total.mjs';\nassert.equal(total(3, 4), 12);\n");
-  write('.capabilities/project.json', JSON.stringify({ formatVersion: 1, modules: [{ name: 'billing', path: 'src', languages: ['javascript'], runtimes: ['node'], layers: ['backend'], checks: [{ command: process.execPath, args: ['../checks/total.mjs'] }] }] }));
+  write('.craft/project.json', JSON.stringify({ formatVersion: 1, modules: [{ name: 'billing', path: 'src', languages: ['javascript'], runtimes: ['node'], layers: ['backend'], checks: [{ command: process.execPath, args: ['../checks/total.mjs'] }] }] }));
   git('add', '--', '.'); git('commit', '-qm', 'baseline');
   return { root, write, git, base: git('rev-parse', 'HEAD') };
 }

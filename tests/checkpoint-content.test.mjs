@@ -16,7 +16,7 @@ function fixture(t) {
   };
   const write = (name, text) => fs.writeFileSync(path.join(root, name), text);
   git('init', '-q');
-  write('.gitignore', '.capabilities/state/\n');
+  write('.gitignore', '.craft/state/\n');
   write('tracked.txt', 'base\n');
   git('add', '.'); git('commit', '-qm', 'fixture');
   return { root, git, write };

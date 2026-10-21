@@ -59,8 +59,8 @@ export function localHookReport(repo, iterations = 12) {
   artifactHashes[path.relative(repo, wrapper).split(path.sep).join('/')] = digest(wrapper);
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hook measurement ')));
   try {
-    fs.mkdirSync(path.join(directory, '.capabilities'));
-    fs.writeFileSync(path.join(directory, '.capabilities/project.json'), JSON.stringify({ formatVersion: 1, review: { readOnly: true } }));
+    fs.mkdirSync(path.join(directory, '.craft'));
+    fs.writeFileSync(path.join(directory, '.craft/project.json'), JSON.stringify({ formatVersion: 1, review: { readOnly: true } }));
     const samples = [];
     for (let index = 0; index < iterations; index++) {
       const deny = index % 2 === 1;

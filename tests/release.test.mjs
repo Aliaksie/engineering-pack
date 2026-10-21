@@ -71,8 +71,8 @@ test('telemetry from a nested consumer leaves release preparation clean without 
   const {root}=fixture(t);
   fs.writeFileSync(path.join(root,'.gitignore'),fs.readFileSync(new URL('../.gitignore',import.meta.url)));
   const consumer=path.join(root,'examples/project');
-  fs.mkdirSync(path.join(consumer,'.capabilities'),{recursive:true});
-  fs.writeFileSync(path.join(consumer,'.capabilities/project.json'),'{"formatVersion":1}');
+  fs.mkdirSync(path.join(consumer,'.craft'),{recursive:true});
+  fs.writeFileSync(path.join(consumer,'.craft/project.json'),'{"formatVersion":1}');
   git(root,'add','.'); git(root,'commit','-m','Add consumer fixture and repository ignore rules');
   git(root,'push','origin','main');
   const source=git(root,'rev-parse','HEAD');
@@ -80,7 +80,7 @@ test('telemetry from a nested consumer leaves release preparation clean without 
   assert.ok(fs.existsSync(stateFile(consumer,'telemetry.jsonl')));
   assert.equal(git(root,'status','--porcelain'),'');
   assert.equal(prepareRelease(root,source,'current').revision,source);
-  fs.appendFileSync(path.join(consumer,'.capabilities/project.json'),'\n');
+  fs.appendFileSync(path.join(consumer,'.craft/project.json'),'\n');
   assert.match(git(root,'status','--porcelain'),/project\.json/);
   assert.throws(()=>prepareRelease(root,source,'current'),/clean checkout/);
 });
