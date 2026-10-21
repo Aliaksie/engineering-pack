@@ -32,6 +32,23 @@ Rerun `task-start` with the same goal when stage or scope materially changes. Mi
 identity means limited operation: use bounded tools and a compact private handoff without
 inventing an id or claiming reuse. Guidance-only hosts follow the same evidence discipline.
 
+Distinguish the coordination workspace from the repositories involved. A workspace may be
+one Git worktree or a non-Git folder containing several repositories. From a parent folder,
+bind only the task's selected worktree roots with repeated `--repository <relative-path>`;
+do not enroll every sibling. Keep one coordinator record, preserve each repository's
+instructions and change boundary, and run its commands from that repository. Rebind when
+repository scope changes. Combined workspace revisions identify a set of snapshots, not a
+Git commit. Unavailable selected roots remain explicit.
+
+When intermediate files are needed, use the bundled `workspace-open`/`workspace-write`
+operations with the same session/task and a bounded operation scope. Reuse the returned
+private scratch path instead of scattering Craft-owned files in arbitrary temp directories.
+Keep scratch disposable; intentionally promote only useful bounded nonsecret evidence with
+`workspace-promote`. Existing receipts/state need no duplicate files. Workers release their
+own scopes with `workspace-release`; task completion cleans scratch when other owners are
+inactive. Inspect retained/failed cleanup through session status. Never relocate host/tool
+caches, infer authority from a path, or report cleanup without an observed result.
+
 When selected guidance spans separately installed packages, derive their verified roots from
 the loaded skill resources and repeat `--bundle <root>` on `context-report`, `task-step` and
 session advice calls. Retain this root selection with the task; do not ask the user to locate

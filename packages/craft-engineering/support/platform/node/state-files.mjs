@@ -30,7 +30,7 @@ export function stateFile(root, name, create = false) {
   let directory = git ?? canonical;
   const namespace = createHash('sha256').update(canonical).digest('hex').slice(0, 24);
   // Worktree-specific metadata is excluded by Git without editing consumer ignores.
-  const parts = git ? ['craft-state', namespace] : ['.capabilities', 'state'];
+  const parts = git ? ['craft-state', namespace] : ['.craft', 'state'];
   for (const part of parts) {
     directory = path.join(directory, part);
     const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
@@ -46,7 +46,7 @@ export function stateFile(root, name, create = false) {
 }
 export function stateLocation(root) {
   const canonical = fs.realpathSync(root);
-  return { directory: path.dirname(stateFile(canonical, 'location.json')), scope: gitDirectory(canonical) ? 'git-private' : 'workspace-local', legacyDirectory: path.join(canonical, '.capabilities', 'state') };
+  return { directory: path.dirname(stateFile(canonical, 'location.json')), scope: gitDirectory(canonical) ? 'git-private' : 'workspace-local', legacyDirectory: path.join(canonical, '.craft', 'state') };
 }
 export function readState(file, maxBytes) {
   const stat = fs.lstatSync(file, { throwIfNoEntry: false });

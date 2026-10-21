@@ -1,8 +1,9 @@
 import { decide, digest } from '../../application/engine-client.mjs';
+import { taskRepository } from '../../application/session/activity.mjs';
 import { withTaskAdmission } from '../../application/session/admission.mjs';
 import { workerController } from '../../application/session/workers.mjs';
 import { actionController } from '../../application/session/actions.mjs';
-import { clock, realRoot, repositoryState, rpcProcess, runtimeVersion, stateFile, readState, writeState, lockState, releaseState } from '../../platform/index.mjs';
+import { clock, realRoot, rpcProcess, runtimeVersion, stateFile, readState, writeState, lockState, releaseState } from '../../platform/index.mjs';
 
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -48,7 +49,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   const guard = async input => {
     const value = await authority(input);
     if (value?.allowed !== true || !text(value.evidence)) throw new Error('native effect requires freshly verified scoped authority');
-    if (input.source !== undefined && decide('task-source', { repository: repositoryState(root) }) !== input.source) throw new Error('native effect source changed after admission');
+    if (input.source !== undefined && decide('task-source', { repository: taskRepository(root, session, task) }) !== input.source) throw new Error('native effect source changed after admission');
   };
   const begin = (input, kind, nativeThread = null) => {
     usable(); checkContext(input);

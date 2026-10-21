@@ -2,6 +2,8 @@ import { activityIdentity, appendAttempt, attemptReceipt, unresolvedAttempts } f
 import { validateMetadata } from '../checkpoint.mjs';
 import { relativeFile } from '../contracts/project.mjs';
 import { digest } from '../cache/identity.mjs';
+import { repositoryScopes } from '../repositories.mjs';
+import { privatePath } from '../contracts/paths.mjs';
 
 export const taskIntents = { plan: 'plan', implement: 'implement', verify: 'verify', review: 'review', locate: 'locate', explore: 'verify', architecture: 'investigate', story: 'story' };
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
@@ -11,21 +13,22 @@ function keys(value, allowed, label) {
 }
 export function taskBinding(value, repository) {
   if (value === null) return null;
-  keys(value, ['formatVersion', 'task', 'checkout'], 'task binding');
+  keys(value, ['formatVersion', 'task', 'checkout', 'repositories'], 'task binding');
   if (value.formatVersion !== 1) throw new Error('invalid task binding version');
   activityIdentity('binding', value.task);
+  if (value.repositories !== undefined) repositoryScopes(value.repositories);
   if (value.checkout !== undefined && value.checkout !== null && (typeof value.checkout !== 'string' || value.checkout.length > 1024)) throw new Error('invalid task checkout binding');
   return repository && (value.checkout === undefined || value.checkout !== (repository.checkout ?? null)) ? null : value;
 }
 export function taskContract(record) {
-  return record ? digest([record.id, record.goal, record.stage, record.files ?? [], record.risks ?? [], record.checkout ?? null]) : null;
+  return record ? digest([record.id, record.goal, record.stage, record.files ?? [], record.risks ?? [], record.checkout ?? null, ...(record.repositories ? [record.repositories] : [])]) : null;
 }
 export function taskSource(repository) {
   return repository?.gitAvailable && repository.fingerprints?.complete
     ? digest([repository.head, repository.fingerprints.index, repository.fingerprints.workingTree]) : null;
 }
 export function startTask(state, input, repository) {
-  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization'], 'task start');
+  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization', 'repositories'], 'task start');
   activityIdentity('task', input.id);
   if (!text(input.goal)) throw new Error('task goal must be 1..512 characters without control characters');
   if (state.taskRecord && (state.taskRecord.id !== input.id || state.taskRecord.goal !== input.goal)) throw new Error('task identity already has a different goal; use a new task id');
@@ -33,6 +36,9 @@ export function startTask(state, input, repository) {
   const files = input.files ?? state.taskRecord?.files ?? [];
   if (!Array.isArray(files) || files.length > 32) throw new Error('task files must be a bounded array');
   files.forEach(relativeFile);
+  if (files.some(privatePath)) throw new Error('private workspace files are not task source');
+  const repositories = input.repositories === undefined ? state.taskRecord?.repositories : repositoryScopes(input.repositories);
+  if (repositories && files.some(file => !repositories.some(scope => scope === '.' || file === scope || file.startsWith(`${scope}/`)))) throw new Error('task files must belong to a selected repository');
   if (input.risks !== undefined && (!Array.isArray(input.risks) || input.risks.length > 16 || input.risks.some(value => !text(value)))) throw new Error('invalid task risks');
   if (input.reviewAuthorization !== undefined && !text(input.reviewAuthorization)) throw new Error('invalid review authorization evidence');
   state.taskRecord ??= { id: input.id, goal: input.goal, status: 'working', goalComplete: false };
@@ -40,6 +46,7 @@ export function startTask(state, input, repository) {
   const changed = state.taskRecord.stage && (state.taskRecord.stage !== selected
     || JSON.stringify(state.taskRecord.files ?? []) !== JSON.stringify(files)
     || JSON.stringify(state.taskRecord.risks ?? []) !== JSON.stringify(risks)
+    || JSON.stringify(state.taskRecord.repositories) !== JSON.stringify(repositories)
     || state.taskRecord.checkout !== (repository.checkout ?? null));
   if (changed) {
     Object.assign(state.taskRecord, { status: 'working', goalComplete: false });
@@ -47,6 +54,7 @@ export function startTask(state, input, repository) {
     delete state.taskRecord.completed; state.taskRecord.safeBoundary = false;
   }
   Object.assign(state.taskRecord, { stage: selected, files, risks, checkout: repository.checkout ?? null, ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
+  if (repositories !== undefined) state.taskRecord.repositories = repositories;
   return { state, intent: taskIntents[selected], context: taskContext(state, repository) };
 }
 export function taskContext(state, repository) {

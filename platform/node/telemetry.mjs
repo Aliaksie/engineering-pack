@@ -17,7 +17,7 @@ export function telemetryRoot(root) {
   try { return fs.realpathSync(root); } catch { return path.resolve(root); }
 }
 export function telemetryConfiguration(root) {
-  const directory = path.resolve(root, '.capabilities');
+  const directory = path.resolve(root, '.craft');
   if (fs.lstatSync(directory, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('invalid telemetry directory');
   return readState(path.join(directory, 'telemetry.json'), 4096) ?? {};
 }

@@ -1,7 +1,7 @@
 import { decide, digest } from '../engine-client.mjs';
 import { readProject } from '../project/configuration.mjs';
-import { activeTask, bindingFile, readSessionState, updateSessionState } from './activity.mjs';
-import { stateFile, realRoot, readState, writeState, lockState, releaseState, repositoryState, clock } from '../../platform/index.mjs';
+import { taskRepository, activeTask, bindingFile, readSessionState, updateSessionState } from './activity.mjs';
+import { stateFile, realRoot, readState, writeState, lockState, releaseState, clock } from '../../platform/index.mjs';
 import { withTelemetry, observe } from '../telemetry/observe.mjs';
 
 const MAX_BYTES = 262144;
@@ -86,7 +86,7 @@ export function workerController(root, { session, task, preferencesFile } = {}, 
     let admitted;
     try {
       if (activeTask(root, session) !== task) throw new Error('worker dispatch requires the active coordinator task binding');
-      const project = readProject(root, { preferencesFile }), repository = repositoryState(root);
+      const project = readProject(root, { preferencesFile }), repository = taskRepository(root, session, task);
       admitted = store.update(state => {
         Object.assign(state, decide('worker-reconcile', { state, snapshot: observed, targets: targets(before) }));
         const facts = { observations: { host: { name: observed.host } }, allowed: observed.allowed, supported: true,

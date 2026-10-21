@@ -2,6 +2,7 @@ import { readTelemetrySnapshot, telemetryIdentity } from '../../platform/index.m
 import { telemetryEvent } from './events.mjs';
 
 const features = {
+  workspace: ['workspace.observed'],
   routing: ['routing.completed'], guidanceSelection: ['guidance.selected'],
   discovery: ['discovery.completed'], lookupCache: ['cache.observed'],
   attempts: ['attempt.recorded'], modelAdvice: ['model.advice'],

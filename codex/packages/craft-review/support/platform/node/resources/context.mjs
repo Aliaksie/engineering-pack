@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { privatePath } from '../private-path.mjs';
 
 const slug = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const targetPattern = new RegExp(`^(${slug}):(${slug})(/references/(?:${slug}/)*${slug}\\.md)?$`);
@@ -24,6 +25,7 @@ export function contextFiles(bundleRoot, requests) {
   const supplied = Array.isArray(bundleRoot) ? bundleRoot : [bundleRoot];
   if (supplied.length < 1 || supplied.length > 16 || supplied.some(root => typeof root !== 'string' || !root.trim())) throw new Error('context reporting requires 1 to 16 explicit bundle roots');
   const roots = [...new Set(supplied.map(root => fs.realpathSync(root)))];
+  if (roots.some(root => privatePath(root.split(path.sep).join('/')))) throw new Error('private workspace cannot supply guidance');
   const files = new Map();
   const missing = [];
   const packages = new Map();

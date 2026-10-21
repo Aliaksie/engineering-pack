@@ -959,6 +959,65 @@
           }
         }
       }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "maxSessions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "scratch": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "staleAfterHours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8760
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 67108864
+            },
+            "maxFiles": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "retentionDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "maxArtifacts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 67108864
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": false,

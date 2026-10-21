@@ -1,5 +1,5 @@
 import { delegation } from './execution.mjs';
-import { extension } from '../contracts/paths.mjs';
+import { extension, privatePath } from '../contracts/paths.mjs';
 import { capabilityAdvice } from '../policy/capability.mjs';
 import { loadingPlan } from './guidance.mjs';
 import { relativeFile, validateProject } from '../contracts/project.mjs';
@@ -22,6 +22,7 @@ export function matchingModules(project, files) {
 export function lookup(project, { file, module } = {}) {
   validateProject(project);
   if (file !== undefined) file = relativeFile(file);
+  if (file !== undefined && privatePath(file)) return { modules: [], availability: 'private workspace excluded', execution: 'deterministic-lookup' };
   const selected = module ? (project.modules ?? []).filter((entry) => entry.name === module)
     : file ? matchingModules(project, [file]) : project.modules ?? [];
   if (module && !selected.length) throw new Error(`unknown module: ${module}`);
@@ -32,7 +33,7 @@ export function route({ intent, files = [], project = { formatVersion: 1 }, host
   validateProject(project);
   if (!catalog.intents.includes(intent)) throw new Error(`unknown intent: ${intent}`);
   if (verificationMode !== undefined && (intent !== 'verify' || !['manual', 'automation', 'test-code'].includes(verificationMode))) throw new Error('verificationMode requires verify intent and manual, automation or test-code');
-  const changed = [...new Set(files.map(relativeFile))];
+  const changed = [...new Set(files.map(relativeFile))].filter(file => !privatePath(file));
   const modules = matchingModules(project, changed);
   // An explicit module is a useful fallback when a task targets its root but has no file list.
   const languages = new Set(changed.map((file) => (legacyLanguages[extension(file)] ?? catalog.extensions[extension(file)])).filter(Boolean));

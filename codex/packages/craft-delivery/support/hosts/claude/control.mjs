@@ -38,7 +38,7 @@ export function createClaudeControls({ query, coordinatorId, sdkOptions = {}, st
       if (kind === 'compact') {
         if (typeof stream.supportedCommands !== 'function' || !(await stream.supportedCommands()).some(command => command.name === 'compact')) throw new Error('Claude does not advertise native compaction');
         assertCurrent();
-        assertNativeSource(options.root, input.source);
+        assertNativeSource(options.root, input.source, options.session, options.task);
         permit(true);
       }
       let state;

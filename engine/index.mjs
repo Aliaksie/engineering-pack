@@ -23,8 +23,12 @@ import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/
 import { hintValid, validateHint, hintEligible, lookupReuse } from './cache/reuse.mjs';
 import { digest, hash } from './cache/identity.mjs';
 import { normalizeScope } from './contracts/paths.mjs';
+import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
+  'repository-scopes': a => repositoryScopes(a.repositories),
+  'repository-snapshot': a => repositorySnapshot(a.repositories),
+  'repository-checkout': a => repositoryCheckout(a.repositories),
   'checkpoint-validate': a => validateCheckpoint(a.state),
   'hint-validate': a => validateHint(a.state),
   'delivery-default': () => ({ decision: 'allow' }),

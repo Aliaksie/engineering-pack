@@ -3,6 +3,11 @@ import { DEFAULT_MODEL_PROFILES, DEFAULT_MODEL_ROLES } from './model-profiles.mj
 export const DEFAULT_SETTINGS = {
   routing: { editHints: true, dedupeHints: true },
   checkpoint: { enabled: true },
+  workspace: {
+    enabled: true, maxSessions: 20,
+    scratch: { staleAfterHours: 24, maxBytes: 8388608, maxFiles: 64 },
+    evidence: { enabled: true, retentionDays: 7, maxArtifacts: 16, maxBytes: 1048576 }
+  },
   efficiency: {
     lookup: { enabled: true, reuse: true },
     batching: { enabled: true, maxConcurrency: 3 },
@@ -27,12 +32,13 @@ function validate(value, template, label) {
       if (!enums[key].includes(item)) throw new Error(`invalid ${field}`);
     } else if (key.endsWith('At')) {
       if (!Number.isFinite(item) || item <= 0 || item > 1) throw new Error(`${field} must be greater than zero and at most one`);
-    } else if (!Number.isSafeInteger(item) || item < (key === 'maxWorkers' ? 0 : 1) || item > (key === 'maxWorkers' ? Number.MAX_SAFE_INTEGER : key === 'maxAttempts' ? 5 : 64)) {
+    } else if (!Number.isSafeInteger(item) || item < (key === 'maxWorkers' ? 0 : 1) || item > ({ maxBytes: 67108864, maxFiles: 1024, staleAfterHours: 8760, retentionDays: 365 }[key] ?? (key === 'maxWorkers' ? Number.MAX_SAFE_INTEGER : key === 'maxAttempts' ? 5 : 64))) {
       throw new Error(`invalid ${field}`);
     }
   }
 }
 export function validateEfficiency(value) { validate(value, DEFAULT_SETTINGS.efficiency, 'efficiency'); }
+export function validateWorkspace(value) { validate(value, DEFAULT_SETTINGS.workspace, 'workspace'); }
 export function validatePreferences(value) { validate(value, DEFAULT_SETTINGS, 'preferences'); }
 function merge(target, source, origin, origins, prefix = '') {
   for (const [key, value] of Object.entries(source)) {
@@ -58,5 +64,5 @@ export function effectiveSettings({ project, preferences = {}, overrides = {} })
   merge(settings, overrides, 'task', origins);
   const { elevatedAt, compactAt, restartAt } = settings.efficiency.context;
   if (!(elevatedAt < compactAt && compactAt < restartAt)) throw new Error('context thresholds must satisfy elevatedAt < compactAt < restartAt');
-  return { settings, origins, runtimeApplied: ['routing', 'checkpoint', 'efficiency.lookup', 'efficiency.attempts.maxAttempts', 'efficiency.context.thresholds', 'efficiency.context.action', 'efficiency.review.mode', 'efficiency.delegation.maxWorkers', 'efficiency.delegation.mode'], prerequisites: ['Automatic semantic acceptance and continuation require agent-supplied task evidence.', 'Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.', 'Independent tool batching remains a workflow instruction; preferences never dispatch actions.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
+  return { settings, origins, runtimeApplied: ['routing', 'checkpoint', 'workspace', 'efficiency.lookup', 'efficiency.attempts.maxAttempts', 'efficiency.context.thresholds', 'efficiency.context.action', 'efficiency.review.mode', 'efficiency.delegation.maxWorkers', 'efficiency.delegation.mode'], prerequisites: ['Automatic semantic acceptance and continuation require agent-supplied task evidence.', 'Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.', 'Independent tool batching remains a workflow instruction; preferences never dispatch actions.'], authorization: 'Preferences do not grant permissions, host support, hook trust or execution authorization.' };
 }

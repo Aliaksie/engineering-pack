@@ -72,7 +72,7 @@ guarantee of anonymity; activity timing and selected skills are still local usag
 
 ## Local configuration and storage
 
-Configuration belongs to the consumer in `.capabilities/telemetry.json`, separately from
+Configuration belongs to the consumer in `.craft/telemetry.json`, separately from
 portable project decision configuration. No configuration file is required for defaults.
 
 Disable local telemetry:
@@ -83,7 +83,7 @@ Disable local telemetry:
 
 Default events are appended to `telemetry.jsonl` in private runtime state for the project
 root selected by the CLI/hook. Run `settings` to inspect the directory: Git repositories use
-worktree-specific Git metadata; non-Git folders use `.capabilities/state/`. The file rotates at 1 MiB with one 1 MiB backup named
+worktree-specific Git metadata; non-Git folders use `.craft/state/`. The file rotates at 1 MiB with one 1 MiB backup named
 `telemetry.jsonl.1`; events are limited to 8 KiB. New files use mode 0600 where supported.
 CLI/hook application scopes collect at most 32 local events, then append that group under
 one lock/open/write/close sequence. A partial group flushes synchronously when its scope

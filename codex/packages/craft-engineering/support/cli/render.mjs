@@ -11,7 +11,8 @@ export function renderCommand(action, result, { json = false, verbose = false, h
 function checkpointLine(checkpoint) {
   if (!checkpoint) return 'Checkpoint: unknown';
   if (checkpoint.status) return `Checkpoint: ${checkpoint.status}${checkpoint.reason ? ` — ${checkpoint.reason}` : ''}`;
-  return `Checkpoint: ${checkpoint.unchanged ? 'unchanged' : 'saved'}${checkpoint.file ? ` — ${checkpoint.file}` : ''}`;
+  const incomplete = checkpoint.state?.fingerprints?.complete === false;
+  return `Checkpoint: ${checkpoint.unchanged ? 'unchanged' : 'saved'}${incomplete ? ' (repository inspection incomplete)' : ''}${checkpoint.file ? ` — ${checkpoint.file}` : ''}`;
 }
 
 function offerLines(result) {
@@ -39,6 +40,7 @@ function renderReceipt(action, result) {
     if (result.actionOffer && !result.actionOffer.suppressed) lines.push(...offerLines(result.actionOffer));
   } else if (action === 'task-start') {
     lines = [`Task bound: ${result.task}`, `Execution: ${result.routing.execution.mode} / ${result.routing.execution.role}`];
+    if (result.repositories) lines.push(`Repositories: ${result.repositories.join(', ')}`);
     if (result.routing.skills.length) lines.push(`Skills: ${result.routing.skills.join(', ')}`);
     if (result.routing.references.length) lines.push(`References: ${result.routing.references.join(', ')}`);
     lines.push(checkpointLine(result.checkpoint));
@@ -57,6 +59,7 @@ function renderReceipt(action, result) {
     else lines.push('No action dispatched.');
   } else return null;
   const status = result.status;
+  if (result.workspace?.status === 'retained' && result.workspace.reason) lines.push(`Workspace retained: ${result.workspace.reason}`);
   if (status?.taskEvidenceStale) lines.push('Warning: task evidence is stale.');
   const warnings = [result.activityDiagnostic, status?.diagnostic, status?.actionDiagnostic, status?.noticeDiagnostic, ...(status?.diagnostics ?? [])];
   for (const warning of warnings.filter(Boolean)) lines.push(`Warning: ${warning}`);
@@ -84,6 +87,9 @@ export function renderSessionStatus(status) {
       : 'Continue useful work; no context change is indicated.')}`
   ];
   if (status.capability?.recommendation) lines.push(`Model advice: ${status.capability.recommendation}`);
+  if (status.repositories) lines.push(`Repositories: ${status.repositories.join(', ')}`);
+  if (status.workspace?.status === 'available') lines.push(`Workspace: scratch ${status.workspace.scratch}; ${status.workspace.evidence.artifacts} evidence artifacts; ${status.workspace.diskBytes} bytes`);
+  else if (status.workspace?.status === 'retained') lines.push(`Workspace: retained — ${status.workspace.reason}`);
   if (suggestion?.afterCheckpoint) lines.push(`After checkpoint: ${suggestion.afterCheckpoint}`);
   if (suggestion?.atBoundary) lines.push(`At boundary: ${suggestion.atBoundary}`);
   return `${lines.join('\n')}\n`;

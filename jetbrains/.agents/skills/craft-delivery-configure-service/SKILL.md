@@ -19,7 +19,7 @@ parameter and target map within that session. Refresh it when bindings, availabl
 connections or account scope change, or after a relevant access/schema failure. Avoid repeated
 per-turn discovery and eager authentication probes for unused services.
 
-Store a supported binding in the consumer's `.capabilities/project.json`. Use exact CLI argv
+Store a supported binding in the consumer's `.craft/project.json`. Use exact CLI argv
 templates or a named MCP tool with structured arguments. Keep secrets in the consumer's
 credential mechanism, never in the package, binding examples or report. Do not add broader
 write policy while enabling a read. If access is unavailable, leave a concrete proposed mapping

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { privatePath } from '../private-path.mjs';
 
 const CONTENT_LIMITS = { files: 2000, bytes: 16 * 1024 * 1024, fileBytes: 2 * 1024 * 1024, milliseconds: 5000 };
 export function gitCheckout(root) {
@@ -32,7 +33,7 @@ export function gitState(root) {
   const paths = [...new Set((inventory ?? '').split('\0').filter(Boolean))].sort();
   for (const relative of paths) {
     // Checkpoint output cannot be part of the state it describes.
-    if (relative === '.capabilities/state' || relative.startsWith('.capabilities/state/')) continue;
+    if (privatePath(relative)) continue;
     if (files >= CONTENT_LIMITS.files || Date.now() - started > CONTENT_LIMITS.milliseconds) {
       issues.push('Working-tree file or time limit reached'); break;
     }
@@ -81,10 +82,10 @@ export function gitState(root) {
   }
   return {
     checkout,
-    head: head?.trim() ?? null, status: status === null ? [] : status.split('\0').filter(entry => entry && !/^(?:.. )?\.capabilities\/state(?:\/|$)/.test(entry)),
+    head: head?.trim() ?? null, status: status === null ? [] : status.split('\0').filter(entry => entry && !privatePath(entry.slice(3))),
     gitAvailable: status !== null && index !== null,
     fingerprints: {
-      index: index === null ? null : createHash('sha256').update(index).digest('hex'),
+      index: index === null ? null : createHash('sha256').update(index.split('\0').filter(entry => entry && !privatePath(entry.slice(entry.indexOf('\t') + 1))).join('\0')).digest('hex'),
       workingTree: inventory === null ? null : digest.digest('hex'),
       complete: issues.length === 0, issues, files, bytes, limits: CONTENT_LIMITS
     }

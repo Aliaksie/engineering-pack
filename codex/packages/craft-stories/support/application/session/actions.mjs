@@ -1,9 +1,9 @@
 import { decide, digest } from '../engine-client.mjs';
 import { readProject } from '../project/configuration.mjs';
-import { activeTask, bindingFile, readSessionState, updateSessionState } from './activity.mjs';
+import { taskRepository, activeTask, bindingFile, readSessionState, updateSessionState } from './activity.mjs';
 import { sessionStatus } from './status.mjs';
 import { saveCheckpoint } from '../checkpoint.mjs';
-import { clock, repositoryState, lockState, releaseState } from '../../platform/index.mjs';
+import { clock, lockState, releaseState } from '../../platform/index.mjs';
 
 // This is an explicit application API, not an executable-adapter declaration in project JSON.
 export function actionController(root, { session, task, preferencesFile, bundle } = {}, host = {}) {
@@ -52,7 +52,7 @@ export function actionController(root, { session, task, preferencesFile, bundle 
     let claimed;
     try {
       if (activeTask(root, session) !== task) throw new Error('action execution requires the active coordinator task');
-      const project = readProject(root, { preferencesFile }), repository = repositoryState(root);
+      const project = readProject(root, { preferencesFile }), repository = taskRepository(root, session, task);
       const status = sessionStatus(observation.facts.observations ?? {}, project, { root, session, task, bundle });
       let checkpoint = null;
       if (offer.action === 'compact') {

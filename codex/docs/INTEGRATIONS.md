@@ -29,8 +29,8 @@ eager probes of unused services. Stable metadata can be reused; each operation s
 current project policy and actual authorization, and mutable remote results need their own
 freshness check. The runtime persists neither a credential cache nor a global discovery cache.
 
-`<project>/.capabilities/project.json` is trusted project configuration. See the configuration
-skeleton at `examples/project/.capabilities/project.json` and the
+`<project>/.craft/project.json` is trusted project configuration. See the configuration
+skeleton at `examples/project/.craft/project.json` and the
 [project schema](../schemas/project.schema.json). For bots, load bindings and permissions
 from trusted job/base configuration, never let an untrusted PR head replace privileged settings.
 

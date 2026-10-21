@@ -1,4 +1,4 @@
-import { validateEfficiency } from '../policy/effective-settings.mjs';
+import { validateEfficiency, validateWorkspace } from '../policy/effective-settings.mjs';
 export const LAYERS = ['ui', 'backend', 'agent'];
 export const LANGUAGES = ['javascript', 'typescript', 'python', 'java', 'kotlin', 'jvm', 'csharp', 'go'];
 export const READ_OPERATIONS = ['git.status', 'git.diff', 'change.read', 'change.diff', 'task.read', 'task.search'];
@@ -18,7 +18,8 @@ function keys(object, allowed, label) {
   for (const key of Object.keys(object)) if (!allowed.includes(key)) throw new Error(`unknown ${label} field: ${key}`);
 }
 export function validateProject(project) {
-  keys(project, ['formatVersion', 'languages', 'layers', 'runtimes', 'frameworks', 'providers', 'modules', 'services', 'execution', 'permissions', 'checkpoint', 'review', 'routing', 'efficiency'], 'project');
+  keys(project, ['formatVersion', 'languages', 'layers', 'runtimes', 'frameworks', 'providers', 'modules', 'services', 'execution', 'permissions', 'checkpoint', 'review', 'routing', 'efficiency', 'workspace'], 'project');
+  if (project.workspace !== undefined) validateWorkspace(project.workspace);
   if (project.formatVersion !== 1) throw new Error('unsupported project formatVersion');
   for (const [field, allowed] of [['languages', LANGUAGES], ['layers', LAYERS], ['runtimes'], ['frameworks'], ['providers']]) {
     if (project[field] !== undefined) strings(project[field], field, allowed);

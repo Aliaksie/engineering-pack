@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { privatePath } from './private-path.mjs';
+import { repositoryRoots } from './repository/roots.mjs';
 
 const OMIT = new Set(['.git', 'node_modules', 'dist']);
 function safeFile(root, relative) {
@@ -13,15 +15,20 @@ function safeFile(root, relative) {
 }
 
 // One bounded literal scan for all terms. No model, shell interpreter or network.
-export function scan(root, { terms, scopes, maxFiles, maxMatches, maxBytes, maxFileBytes, maxSnippetCharacters }, match) {
+export function scan(root, { terms, scopes, maxFiles, maxMatches, maxBytes, maxFileBytes, maxSnippetCharacters }, match, { repositories } = {}) {
   root = fs.realpathSync(root);
   for (const entry of scopes) {
     if (!safeFile(root, entry)) throw new Error(`Symlink scope is not supported: ${entry}`);
   }
-  const git = spawnSync('git', ['-c', 'core.fsmonitor=false', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
-    cwd: root, encoding: 'utf8', shell: false, timeout: 5000, maxBuffer: 2_097_152,
+  const inventory = directory => spawnSync('git', ['-c', 'core.fsmonitor=false', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
+    cwd: directory, encoding: 'utf8', shell: false, timeout: 5000, maxBuffer: 2_097_152,
     env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
   });
+  const git = repositories ? { status: 0, stdout: repositoryRoots(root, repositories).flatMap(entry => {
+    const selected = inventory(entry.root);
+    if (selected.status !== 0) throw new Error(`Selected repository inventory failed: ${entry.path}`);
+    return selected.stdout.split('\0').filter(Boolean).map(file => entry.path === '.' ? file : `${entry.path}/${file}`);
+  }).join('\0') } : inventory(root);
   if (git.error && git.error.code !== 'ENOENT') throw new Error(`Git inventory failed: ${git.error.code}`);
   if (git.signal) throw new Error('Git inventory did not complete');
   const gitInventory = git.status === 0;
@@ -32,7 +39,7 @@ export function scan(root, { terms, scopes, maxFiles, maxMatches, maxBytes, maxF
   let entries = 0;
   const inScope = name => !scopes.length || scopes.some(entry => entry === '.' || name === entry || name.startsWith(`${entry}/`));
   const add = name => {
-    if (name === '.capabilities/state' || name.startsWith('.capabilities/state/')) return;
+    if (privatePath(name)) return;
     if (!inScope(name) || name.split('/').some(part => OMIT.has(part))) return;
     if (files.size >= maxFiles && !files.has(name)) { truncation.add('maxFiles'); return; }
     files.add(name);
@@ -41,7 +48,7 @@ export function scan(root, { terms, scopes, maxFiles, maxMatches, maxBytes, maxF
     for (const name of git.stdout.split('\0').filter(Boolean).sort()) add(name);
   } else {
     function visit(name) {
-      if (name === '.capabilities/state' || name.startsWith('.capabilities/state/')) return;
+      if (privatePath(name)) return;
       if (++entries > maxFiles * 10) { truncation.add('traversalEntries'); return; }
       const absolute = safeFile(root, name);
       if (!absolute) { skipped.symlink++; return; }

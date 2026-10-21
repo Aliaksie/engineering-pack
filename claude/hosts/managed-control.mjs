@@ -1,15 +1,16 @@
 import { decide, digest } from '../application/engine-client.mjs';
+import { taskRepository } from '../application/session/activity.mjs';
 import { withTaskAdmission } from '../application/session/admission.mjs';
 import { workerController } from '../application/session/workers.mjs';
 import { actionController } from '../application/session/actions.mjs';
-import { clock, realRoot, repositoryState, stateFile, readState, writeState, lockState, releaseState } from '../platform/index.mjs';
+import { clock, realRoot, stateFile, readState, writeState, lockState, releaseState } from '../platform/index.mjs';
 
 export const nativeText = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 export const nativeCopy = value => JSON.parse(JSON.stringify(value));
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const bytes = 262144;
-export function assertNativeSource(root, source) {
-  if (!hash(source) || decide('task-source', { repository: repositoryState(root) }) !== source) throw new Error('native source changed after admission');
+export function assertNativeSource(root, source, session, task) {
+  if (!hash(source) || decide('task-source', { repository: taskRepository(root, session, task) }) !== source) throw new Error('native source changed after admission');
 }
 
 // Shared ownership and recovery for callback/stream hosts. Portable admission and approval
@@ -48,7 +49,7 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
   const guard = async input => {
     const decision = await authority(input);
     if (decision?.allowed !== true || !nativeText(decision.evidence)) throw new Error('fresh scoped native authority is required');
-    if (input.source !== undefined) assertNativeSource(root, input.source);
+    if (input.source !== undefined) assertNativeSource(root, input.source, session, task);
   };
   const begin = (input, kind, nativeId = null) => {
     binding(input);

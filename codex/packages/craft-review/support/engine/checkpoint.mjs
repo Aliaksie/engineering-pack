@@ -1,6 +1,8 @@
 import { byteLength } from './contracts/paths.mjs';
-const FIELDS = ['task', 'authorization', 'nextStep', 'sources', 'continuation', 'taskId', 'taskContract'];
+import { repositoryScopes } from './repositories.mjs';
+const FIELDS = ['task', 'authorization', 'nextStep', 'sources', 'continuation', 'taskId', 'taskContract', 'repositories'];
 export function validateMetadata(metadata) {
+  if (metadata.repositories !== undefined) repositoryScopes(metadata.repositories);
   for (const key of Object.keys(metadata)) if (!FIELDS.includes(key)) throw new Error(`unknown checkpoint metadata: ${key}`);
   for (const key of ['task', 'authorization', 'nextStep', 'taskId']) if (metadata[key] !== undefined && (typeof metadata[key] !== 'string' || metadata[key].length > 4096)) throw new Error(`invalid checkpoint ${key}`);
   if (metadata.taskContract !== undefined && metadata.taskContract !== null && !/^[a-f0-9]{64}$/.test(metadata.taskContract)) throw new Error('invalid checkpoint task contract');
@@ -20,7 +22,9 @@ export function checkpointState(previous, metadata, repository, updated) {
   validateMetadata(metadata);
   const sameTask = metadata.taskId === undefined || metadata.taskId === previous.taskId;
   const retained = Object.fromEntries(FIELDS.filter((key) => sameTask && previous[key] !== undefined).map((key) => [key, previous[key]]));
-  const state = { formatVersion: 1, updated, ...retained, ...metadata, ...repository };
+  const { repositories: snapshots, ...source } = repository;
+  const state = { formatVersion: 1, updated, ...retained, ...metadata, ...source,
+    ...(snapshots ? { repositorySnapshots: snapshots } : {}) };
   if (metadata.continuation !== undefined) {
     state.continuationSource = { taskId: state.taskId ?? null, taskContract: state.taskContract ?? null, checkout: state.checkout ?? null, head: state.head,
       index: state.fingerprints.index, workingTree: state.fingerprints.workingTree, complete: state.fingerprints.complete };

@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 export function projectRoot(cwd) {
   let directory = path.resolve(cwd);
   for (let depth = 0; depth < 30; depth++) {
-    if (fs.existsSync(path.join(directory, '.capabilities/project.json'))) return directory;
+    if (fs.existsSync(path.join(directory, '.craft/project.json'))) return directory;
     if (fs.existsSync(path.join(directory, '.git'))) return directory;
     const parent = path.dirname(directory);
     if (directory === parent) break;

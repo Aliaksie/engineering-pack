@@ -1,4 +1,5 @@
 import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
+import { workspace } from '../application/workspace.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { taskFeatures } from '../application/session/features.mjs';
@@ -21,6 +22,11 @@ export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
 function executeRequest(action, options, root) {
+  if (['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean'].includes(action)) {
+    const input = options.data ? readInput(options.data) : {};
+    if (options.operation) input.operation = options.operation;
+    return workspace(root, options.session, options.task, { 'workspace-open': 'open', 'workspace-write': 'write', 'workspace-promote': 'promote', 'workspace-release': 'release', 'workspace-clean': 'maintain' }[action], input, readProject(root, { preferencesFile: options.preferences }));
+  }
   if (action === 'telemetry-capture') return captureTelemetry(root, { session: options.session });
   if (action === 'telemetry-forget') return forgetTelemetryCapture(root, options.capture);
   if (action === 'telemetry-report') {
@@ -51,7 +57,7 @@ function executeRequest(action, options, root) {
   }
   if (action === 'task-start') {
     if (!options.session || !options.task || !options.goal) throw new Error('task-start requires --session, --task and --goal');
-    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
+    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.repository ? { repositories: options.repository } : {}), ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
   }
   if (action === 'task-step') {
     if (!options.session || !options.task) throw new Error('task-step requires --session and an explicit --task or a task-start binding');
@@ -105,7 +111,7 @@ function executeRequest(action, options, root) {
       try { task = activeTask(root, options.session); } catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
     }
     options = { ...options, task };
-    const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.task ? { taskId: options.task } : {}) });
+    const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.repository ? { repositories: options.repository } : {}), ...(options.task ? { taskId: options.task } : {}) });
     return activity(saved, { checkpoints: 1 });
   }
   if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');

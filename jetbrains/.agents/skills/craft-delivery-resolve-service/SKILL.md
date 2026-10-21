@@ -9,7 +9,7 @@ Read the shared [package instructions](../../../packages/craft-delivery/AGENTS.m
 
 # Resolve the invocation, then assess execution
 
-Match the requested action to the consumer's `.capabilities/project.json` bindings. Local
+Match the requested action to the consumer's `.craft/project.json` bindings. Local
 Git, the code host and the task tracker have different identities and permission boundaries.
 Do not choose an account, remote or project merely because a tool can reach it. Local story
 text needs no tracker connection.

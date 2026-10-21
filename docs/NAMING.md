@@ -30,3 +30,9 @@ Top-level directories name ownership rather than generic adapters or scripts. Fo
 [architecture map](ARCHITECTURE.md#ownership). Within each layer, group related responsibilities
 by feature at shallow depth; keep a single small responsibility as a file until a folder
 has useful components. Internal plans and local evaluation artifacts stay ignored.
+
+Consumer configuration lives in `.craft/project.json` and `.craft/telemetry.json`.
+Non-Git coordination folders keep private operational data in `.craft/state/`; Git
+worktrees use their private Git metadata. To upgrade, move existing configuration
+from `.capabilities/` to `.craft/`. Old `.capabilities/state/` remains excluded from
+source lookup, review and exports; it is not automatically moved or deleted.

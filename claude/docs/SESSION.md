@@ -42,6 +42,95 @@ The existing `route`, `locate`, `context-report`, `session`, `session-attempt` a
 hit. Direct commands and guidance-only hosts remain usable without the lifecycle. A tiny
 one-off task need not create a record. No undocumented host session discovery is attempted.
 
+### Workspace and repository scope
+
+The coordination root may be a Git repository or a plain folder containing several
+repositories. Existing single-repository calls need no new flags. From a parent workspace,
+select the task's Git worktree roots explicitly; selection never scans or enrolls siblings:
+
+```sh
+# One repository within a non-Git workspace.
+node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-kit --goal "Update the kit" --repository career-kit --file career-kit/src/main.mjs
+# One coordinated task across two repositories.
+node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-contract --goal "Update producer and consumer" --repository career-kit --repository career-profile
+```
+
+Repeat `--repository` for at most eight workspace-relative worktree roots, including `.`
+when applicable. Traversal, absolute paths, symlink aliases and subdirectories masquerading
+as repository roots are rejected. Linked Git worktrees are supported. Keep the coordination
+root/session stable across task steps. Repeating task-start retains its repository selection
+unless a new selection is supplied; a changed selection invalidates prior acceptance.
+Each selected repository retains its own revision, checkout, status and fingerprints in
+`repositorySnapshots`. The combined `workspace:…` revision is a collection identity, never
+a Git commit to pass to Git. Changes or checkout transitions in any selected repository
+invalidate evidence; an unselected sibling does not. Missing or inaccessible selected
+repositories remain unavailable rather than silently shrinking the scope.
+
+Bound lookup defaults to the selected paths and rejects paths outside them. Parent-folder
+lookup combines the selected repositories' Git inventories, honoring their ignores and
+global scan bounds, and currently does not claim lookup-cache reuse for explicit selections.
+Each repository's instructions, permissions, branch rules and build commands still
+apply independently; this binding does not merge child configuration into parent policy.
+Revision-bound Git operations and reviews still require an actual repository and its refs.
+Without explicit selection, a non-Git root remains limited and compact checkpoint output
+reports incomplete repository inspection. Standalone checkpoint-save also accepts repeated
+`--repository`; recovery reuses that saved selection.
+
+### Private scratch and retained evidence
+
+Use `workspace-open` only when a task needs filesystem-backed intermediate material.
+The result supplies a private scratch directory for the session, task and optional
+`--operation` scope. No scratch directory is created by ordinary task binding or inspection.
+The workspace sits beneath the existing private state location: worktree-specific Git
+metadata in Git projects, or `.craft/state/` in a non-Git coordination folder. Raw
+session/task names are hashed in directory names. Existing checkpoints, receipts, caches
+and telemetry keep their existing stores; there is no duplicate state tree or new `.pack` root.
+Repository selection also participates in workspace identity, so rebinding a task to other
+repositories cannot consume the prior selection's scratch. Prior scoped evidence remains private.
+
+```sh
+node cli/main.mjs workspace-open --root <workspace> --session <host-id> --operation investigation
+node cli/main.mjs workspace-write --root <workspace> --session <host-id> --operation investigation --data <artifact-input.json>
+node cli/main.mjs workspace-promote --root <workspace> --session <host-id> --operation investigation --data <promotion-input.json>
+node cli/main.mjs workspace-release --root <workspace> --session <host-id> --operation investigation
+```
+
+The write input is `{ "name": "result.json", "content": "small structured result" }`;
+promotion is `{ "name": "result.json", "purpose": "acceptance" }`. Managed writes enforce
+file/byte budgets and refuse overwrites. Direct tool writes to the supplied directory are
+cooperative: they must respect the same bounds; the pack cannot intercept arbitrary tools.
+Promotion copies only the named bounded regular file and records operation, time, source
+fingerprint and purpose. Never promote credentials, authorization material, full transcripts
+or complete prompts. Routine receipts often suffice; retaining an artifact is optional.
+The fingerprint is explicitly `sourceAtPromotion`; creation-time source identity is unknown
+for files produced by external tools and is never inferred from a later promotion.
+
+Task completion closes the coordinator's scopes and removes scratch when no other live owner
+remains. Workers release their own scopes after use. Startup/task boundaries and
+`workspace-clean --root <workspace>` reclaim verified closed or stale abandoned workspaces.
+Live process owners are retained regardless of age; uncertain ownership, symlinks, unsafe
+metadata, exhausted bounds or busy locks retain data and expose a reason. A dead managed lock
+can be reclaimed; unknown locks are preserved. Cleanup failure never blocks task acceptance.
+The lock serializes cooperating pack processes; these path checks are not an OS sandbox
+against a hostile same-user process swapping paths concurrently.
+
+Defaults need no configuration: workspace enabled, 20 session/task directories, 8 MiB/64
+scratch files per directory, stale scratch after 24 hours with no live owner, and 1 MiB/16
+intentionally retained evidence files for seven days after inactivity. Active owners are
+never evicted to make space; optional allocation fails at capacity. Effective user/project
+settings may override `workspace.enabled`, `maxSessions`, `scratch.staleAfterHours`,
+`scratch.maxBytes`, `scratch.maxFiles`, `evidence.enabled`, `evidence.retentionDays`,
+`evidence.maxArtifacts` and `evidence.maxBytes`. Disabling persistence does not delete prior
+data. Settings preview creates no workspace. Session JSON exposes paths, actual disk usage,
+cleanup outcomes and retention reasons; compact output shows workspace details only when
+present or exceptional.
+
+Private state is excluded at source boundaries, including nested `.craft/state/`
+paths: lookup, routing, content/index snapshots, review diffs, guidance roots and package
+copying. No `.gitignore`, host `TMPDIR`, host storage, IDE cache or third-party cache is
+rewritten. Standalone build/release/test staging keeps its already-owned command lifecycle;
+this runtime does not migrate unrelated stores for directory consistency.
+
 In Git repositories, runtime state lives under `.git/craft-state` (the worktree Git
 directory for linked worktrees). Sandboxes that deny Git-metadata writes cannot record
 task progress or acceptance directly. The installed Codex exercise used a trusted external
@@ -219,7 +308,7 @@ it does not increment counters simply for displaying status. Recorded counts tak
 over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
 Git repositories store runtime state under worktree-specific Git metadata, namespaced by
 canonical project root. `settings` shows the directory. Non-Git folders use
-`.capabilities/state/` with private directory/file modes where supported; exclude this
+`.craft/state/` with private directory/file modes where supported; exclude this
 directory before importing that folder into Git. Neither activity nor lookup packets
 belong in commits. Older workspace-local state is left untouched and is not automatically
 imported into the new Git-private namespace. Checkpoint state is excluded from repository-content comparison and lookup.
@@ -426,7 +515,7 @@ or host model mappings. No configuration file is generated in the project.
 
 For a personal override, save `{"efficiency":{"delegation":{"maxWorkers":0}}}` in
 the preference file. For a project override, add
-`"efficiency":{"batching":{"maxConcurrency":2}}` to `.capabilities/project.json`.
+`"efficiency":{"batching":{"maxConcurrency":2}}` to `.craft/project.json`.
 Use `--data <file>` for a task override with the same restricted preference shape.
 Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
 Worker ceilings apply to the shared reservation ledger when a trusted controller adapter is

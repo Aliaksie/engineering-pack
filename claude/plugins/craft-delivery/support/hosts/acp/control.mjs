@@ -80,7 +80,7 @@ export function createAcpControls({ host, client, protocolVersion, agentCapabili
       await select(state, 'model', input.model);
       if ((selected(state, 'mode')?.currentValue ?? state.modes?.currentModeId) !== readOnlyMode) throw new Error('ACP mode changed while mapping the worker model');
       assertCurrent();
-      assertNativeSource(options.root, input.source);
+      assertNativeSource(options.root, input.source, options.session, options.task);
       const { started } = launch(state, input, capsule(input), 'worker');
       await started; return value(state);
     },

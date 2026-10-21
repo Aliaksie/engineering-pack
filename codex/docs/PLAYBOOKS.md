@@ -83,7 +83,7 @@ For example, a consumer may declare:
 }
 ```
 
-Save that configuration as `<project>/.capabilities/project.json`. From this source checkout,
+Save that configuration as `<project>/.craft/project.json`. From this source checkout,
 run `npm run route -- --root <project> --intent implement --file worker/main.ts`, or invoke
 the exported `cli/main.mjs` with `--root` pointing to the same consumer project.
 
