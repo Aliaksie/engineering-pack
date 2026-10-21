@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
+import { gitState } from '../platform/node/repository/snapshot.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'checkpoint-content-'));
@@ -21,6 +22,48 @@ function fixture(t) {
   git('add', '.'); git('commit', '-qm', 'fixture');
   return { root, git, write };
 }
+
+test('repository snapshots preserve HEAD and checkout identities across branch and detached transitions', t => {
+  const { root, git } = fixture(t);
+  const head = git('rev-parse', '--verify', 'HEAD');
+  const branch = gitState(root);
+  assert.equal(branch.head, head);
+  assert.equal(branch.checkout, git('rev-parse', '--symbolic-full-name', 'HEAD'));
+  git('checkout', '-qb', 'other');
+  const other = gitState(root);
+  assert.equal(other.head, head);
+  assert.equal(other.checkout, 'refs/heads/other');
+  assert.deepEqual(other.fingerprints, branch.fingerprints);
+  git('checkout', '--detach', '-q');
+  const detached = gitState(root);
+  assert.equal(detached.head, head);
+  assert.equal(detached.checkout, 'HEAD');
+  assert.deepEqual(detached.fingerprints, branch.fingerprints);
+  git('update-ref', 'refs/tags/HEAD', head);
+  const ambiguous = gitState(root);
+  assert.equal(ambiguous.head, git('rev-parse', '--verify', 'HEAD'));
+  assert.equal(ambiguous.checkout, git('rev-parse', '--symbolic-full-name', 'HEAD'));
+  assert.deepEqual(ambiguous.fingerprints, branch.fingerprints);
+});
+
+test('repository snapshots retain null identities for unborn and unavailable Git repositories', t => {
+  const { root, git } = fixture(t);
+  const unborn = path.join(root, 'unborn');
+  git('init', '-q', unborn);
+  const empty = gitState(unborn);
+  assert.equal(empty.head, null);
+  assert.equal(empty.checkout, null);
+  assert.equal(empty.gitAvailable, true);
+  assert.equal(empty.fingerprints.complete, true);
+  // Stay outside the parent repository so Git cannot discover a different HEAD.
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'checkpoint-non-git-'));
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
+  const unavailable = gitState(outside);
+  assert.equal(unavailable.head, null);
+  assert.equal(unavailable.checkout, null);
+  assert.equal(unavailable.gitAvailable, false);
+  assert.equal(unavailable.fingerprints.complete, false);
+});
 
 test('checkpoint detects another edit to an already modified tracked file', (t) => {
   const { root, write } = fixture(t);
