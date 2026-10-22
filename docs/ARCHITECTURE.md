@@ -142,3 +142,14 @@ isolation in its existing telemetry module. The portable event/context contract 
 plain JSON. Application boundaries own spans and reason codes; transport mappings own
 OTLP serialization. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
 for diagnostics, bounded loss behavior and the zero-model-cost contract.
+
+## Developer acceptance flow
+
+The developer slice composes context through `application/session/grounding.mjs`,
+then uses existing task-start/step/status operations for contracts and evidence.
+The caller interprets constraints and assesses check adequacy/artifact availability;
+the engine projects attributed criterion coverage against the checked binding.
+No new scheduler, role store or check executor is introduced. The fixed
+developer pilot in source-checkout `examples/evals/developer-acceptance/README.md` exercises that
+composition with real behavior checks; guidance-only work retains the same evidence
+limits manually. Structured persistence stays opt-in.

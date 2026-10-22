@@ -9,6 +9,12 @@ Use this flow when the requested outcome includes changing product behavior thro
 For testing-only requests, use `craft-engineering:workflow-verify-feature` when available;
 verification does not by itself authorize implementing or repairing the product.
 
+Keep a tiny, understood correction direct: inspect the affected code and constraints,
+make the scoped edit, run an adequate check and report the result. Size alone does not
+require setup, a structured contract, an ADR, a worker or a tracker. For larger tasks,
+carry the existing criterion IDs and checked source through the flow below; a passing
+unrelated check cannot certify completion.
+
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
 current paths/revision and verification evidence. Keep this record private by default; use

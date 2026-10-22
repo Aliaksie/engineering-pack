@@ -1,0 +1,6 @@
+Correct receiptStore so retries using whitespace or letter-case variants of an event key
+apply only once. Preserve invalid-input rejection and receipt counts. Follow AGENTS.md;
+reuse the existing helper and add no dependency. Required criteria: retry (canonical identity
+and accurate totals), invalid (invalid keys do not change state). Check each separately and
+report the actual evidence, source checked and any gaps. Syntax alone is insufficient.
+No commits, remote actions or delegation. Keep the task proportionate.
