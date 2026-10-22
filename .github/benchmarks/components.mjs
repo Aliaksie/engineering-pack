@@ -40,7 +40,7 @@ const readScript="const fs=require('node:fs'),c=require('node:crypto');const h=c
 const operations={
   nodeEmpty:{command:process.execPath,args:['-e',''],check:r=>r.stdout===''},
   gitVersion:{command:'git',args:['--version'],check:r=>r.stdout.startsWith('git version ')},
-  gitIdentity:{command:'git',args:['rev-parse','--show-toplevel'],check:r=>path.resolve(r.stdout.trim())===fs.realpathSync(fixture)},
+  gitIdentity:{command:'git',args:['rev-parse','--show-toplevel'],check:r=>{const actual=fs.statSync(path.resolve(r.stdout.trim()),{bigint:true}),expected=fs.statSync(fixture,{bigint:true});return actual.isDirectory()&&actual.ino!==0n&&actual.dev===expected.dev&&actual.ino===expected.ino;}},
   gitTracked:{command:'git',args:['ls-files','-z'],check:r=>r.stdout.split('\0').filter(Boolean).length===100},
   gitStatus:{command:'git',args:['status','--porcelain=v1','--untracked-files=all'],check:r=>r.stdout===''},
   readHash:{command:process.execPath,args:['-e',readScript],check:r=>{const v=JSON.parse(r.stdout);return v.files===100&&v.bytes===Buffer.byteLength(content)*100&&v.digest===digest;}},
