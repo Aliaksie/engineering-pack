@@ -102,3 +102,35 @@ prove preservation by its writer. No structured fields are persisted in this inc
 Before enabling writers, introduce explicit compatible state validation and mixed-version
 write rejection; never assume old clients preserve new evidence or convert an old
 passing receipt into verified criteria. State storage remains behind platform ports.
+
+## Grounded context composition
+
+`application/session/grounding.mjs` exposes the opt-in, read-only
+`groundedContext(root, input, { preferencesFile })` use case. `input.scope` contains
+1–32 project-relative paths. Optional `sources`, `constraints`, `checks` and `questions`
+use the context shapes above; `discovery` may carry an existing bounded lookup result.
+The public engine operations are `grounding-request` and `task-context-compose`.
+Task command persistence is separate; composition does not change task state.
+
+The application hashes root and ancestor `AGENTS.md` files, the project configuration
+and explicitly cited local sources, checking observations again after configuration
+loading. It reuses routing's module selection for declared ownership, dependencies and
+check commands. Nested instructions retain their directory scope. Files are bounded
+regular files; missing explicit citations, symlinks and oversized reads remain visible.
+No instruction text or declared command is executed. Module checks remain declarations,
+not passing evidence. A source hash identifies bytes, not acceptance of its contents.
+
+Supply interpreted constraints with their citations and explicit status. Conflicts
+survive composition; unrelated module declarations and source interpretations are
+excluded. Request sources and authorized external observations retain caller-declared provenance without
+connecting a service or independently verifying their identity. Existing lookup output
+is returned unchanged without another search; truncation/skips make coverage incomplete,
+and literal matches never become constraints automatically.
+
+Composition never certifies complete semantic coverage: it returns `unknown` or
+`incomplete`. Changed/deleted citations lose identity and accepted status. A non-Git
+root has a null repository binding even when file hashes are available. These observations
+are a point-in-time packet; callers must recompose after source/configuration changes.
+Raw lookup results remain outside the 32 KiB validated context and must retain their
+original bounded discovery contract. No CLI writer or automatic completion behavior is
+introduced by this API.

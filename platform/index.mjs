@@ -6,7 +6,7 @@ export { repositoryRoots } from './node/repository/roots.mjs';
 export { workspaceOperation } from './node/workspace.mjs';
 export { scan } from './node/search.mjs';
 export { inventoryIdentity } from './node/repository/inventory.mjs';
-export { contextFiles } from './node/resources/context.mjs';
+export { contextFiles, groundingFiles } from './node/resources/context.mjs';
 export { projectData, preferenceData, preferenceFile } from './node/resources/project.mjs';
 export { readSessionInput } from './node/resources/session-input.mjs';
 export { realRoot, relativePath, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';

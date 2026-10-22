@@ -1,3 +1,4 @@
+import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
 import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
@@ -27,6 +28,8 @@ import { normalizeScope } from './contracts/paths.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
+  'grounding-request': a => groundingRequest(a),
+  'task-context-compose': a => composeTaskContext(a),
   'task-context-validate': a => validateTaskContext(a.context),
   'engineering-contract-validate': a => validateEngineeringContract(a.contract),
   'engineering-contract-digest': a => engineeringContractDigest(a.contract),

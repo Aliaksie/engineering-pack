@@ -40,3 +40,9 @@ applicable decision status, and any contradiction or missing evidence. Mark infe
 inference. A proposed record describes a candidate choice; implementation describes what
 exists. Neither establishes acceptance of the other. Missing documentation is a discovery
 limit, not a reason to invent a decision or create an ADR automatically.
+
+When carrying grounding into a structured task context, keep stable source IDs, source
+identity, observed time and affected scope with each interpreted constraint. Preserve
+explicit conflicts and unknown coverage. A source hash identifies inspected bytes;
+it does not accept an ADR, verify a declared check or authorize its execution.
+Reuse bounded lookup observations without promoting literal matches into requirements.
