@@ -84,6 +84,9 @@ test('engine runs after relocation without Node globals, ambient clock or other 
     globalThis.Buffer = undefined;
     Date.now = () => { throw new Error('ambient clock'); };
     const { evaluate } = await import('./engine/index.mjs');
+    const contract = ${fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url), 'utf8')};
+    const acceptance = evaluate({ formatVersion:1, operation:'engineering-contract-digest', input:{ contract } });
+    if (!acceptance.ok || !/^[a-f0-9]{64}$/.test(acceptance.result)) throw new Error('portable acceptance contract failed');
     const result = evaluate({ formatVersion:1, operation:'attempt-status', input:{ operation:'implement', records:[] } });
     output(JSON.stringify(result));
   `;

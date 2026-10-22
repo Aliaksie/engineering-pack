@@ -1,0 +1,80 @@
+{
+  "state": {
+    "formatVersion": 1,
+    "activity": {
+      "operationsAttempted": 1
+    },
+    "lookups": {},
+    "attempts": [
+      {
+        "operation": "verify",
+        "target": "acceptance:value",
+        "approach": "focused-check",
+        "evidence": "fixture/value-output",
+        "outcome": "passed",
+        "id": "legacy-pass",
+        "source": "b4c131164ca0468c9fa05ba8a882ce821beae446597e405954ed7f7d87ee019d",
+        "signature": "1c352c7c37cb46eab5498c04c0723c4667cad965ee2153188ca2c0d135ac6214",
+        "revision": "revision-a",
+        "at": "2026-10-22T00:00:00Z"
+      }
+    ],
+    "taskRecord": {
+      "id": "fix-value",
+      "goal": "Correct the value",
+      "status": "completed",
+      "goalComplete": true,
+      "stage": "verify",
+      "files": [
+        "src/value.mjs"
+      ],
+      "risks": [],
+      "checkout": "fixture-checkout",
+      "revision": "revision-a",
+      "source": "b4c131164ca0468c9fa05ba8a882ce821beae446597e405954ed7f7d87ee019d",
+      "safeBoundary": true,
+      "summary": "Value check passed",
+      "nextStep": "Report completion",
+      "verification": "passed",
+      "verificationRevision": "revision-a",
+      "acceptedContract": "75bba7a6e6b4a0ca6ba874f0b620fabf230d0c402dc43609ded1e433a75aa51c",
+      "completed": "Value check passed"
+    }
+  },
+  "checkpoint": {
+    "formatVersion": 1,
+    "updated": "2026-10-22T00:00:00Z",
+    "taskId": "fix-value",
+    "taskContract": "75bba7a6e6b4a0ca6ba874f0b620fabf230d0c402dc43609ded1e433a75aa51c",
+    "continuation": {
+      "goal": "Correct the value",
+      "currentState": "Value check passed",
+      "completed": "Value check passed",
+      "approach": "focused-check",
+      "evidence": "fixture/value-output",
+      "filesChanged": "src/value.mjs",
+      "validation": "passed: fixture/value-output",
+      "remainingWork": "",
+      "blockers": "",
+      "nextStep": "Report completion"
+    },
+    "gitAvailable": true,
+    "checkout": "fixture-checkout",
+    "head": "revision-a",
+    "status": [],
+    "fingerprints": {
+      "complete": true,
+      "index": "index-a",
+      "workingTree": "tree-a"
+    },
+    "continuationSource": {
+      "taskId": "fix-value",
+      "taskContract": "75bba7a6e6b4a0ca6ba874f0b620fabf230d0c402dc43609ded1e433a75aa51c",
+      "checkout": "fixture-checkout",
+      "head": "revision-a",
+      "index": "index-a",
+      "workingTree": "tree-a",
+      "complete": true
+    }
+  }
+}

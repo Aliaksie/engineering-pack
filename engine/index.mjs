@@ -1,4 +1,5 @@
 import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
+import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
 import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers } from './session/workers.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
@@ -26,6 +27,11 @@ import { normalizeScope } from './contracts/paths.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
+  'task-context-validate': a => validateTaskContext(a.context),
+  'engineering-contract-validate': a => validateEngineeringContract(a.contract),
+  'engineering-contract-digest': a => engineeringContractDigest(a.contract),
+  'acceptance-evidence-validate': a => validateAcceptanceEvidence(a.evidence),
+  'acceptance-coverage': a => acceptanceCoverage(a.contract, a.evidence, a.current, a.blockers),
   'repository-scopes': a => repositoryScopes(a.repositories),
   'repository-snapshot': a => repositorySnapshot(a.repositories),
   'repository-checkout': a => repositoryCheckout(a.repositories),
