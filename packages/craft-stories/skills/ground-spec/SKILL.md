@@ -30,3 +30,6 @@ identity, observed time and affected scope with each interpreted constraint. Pre
 explicit conflicts and unknown coverage. A source hash identifies inspected bytes;
 it does not accept an ADR, verify a declared check or authorize its execution.
 Reuse bounded lookup observations without promoting literal matches into requirements.
+Retain the same source and criterion IDs in the claim map and later story drafts. Cited
+dependencies must distinguish declared design from observed coupling; unsupported relationships
+stay inferred or not determined. A code path cannot decide a conflicting product requirement.

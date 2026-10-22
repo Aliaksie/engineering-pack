@@ -12,6 +12,8 @@ Existing tasks remain usable with agent-declared completion and unknown criterio
 | `acceptance-evidence-validate` | `evidence` | Validated evidence ledger |
 | `acceptance-coverage` | `contract`, `evidence`, `current`, optional boolean `blockers` | Applicability and per-criterion coverage |
 | `qa-projection` | `contract`, `evidence`, `current`, `probes`, optional boolean `blockers` | Read-only charter/probe view of the same coverage |
+| `product-projection` | `contract`, `evidence`, `current`, optional `focus` and boolean `blockers` | Acceptance gaps, unresolved choices and cited dependencies |
+| `architecture-projection` | Same as product projection | Boundaries, dependencies, consequences, ADR sources and evidence gaps |
 
 All use the existing version-1 engine envelope. Each payload independently uses
 `formatVersion: 1`; this is unrelated to package release versions. Unknown fields and
@@ -118,6 +120,34 @@ Stale or unknown records stay in the view without becoming a current disagreemen
 The source checkout contains executable fixtures and a requirements-only charter at
 `examples/evals/manual-qa/README.md` (excluded from installed bundles). Deterministic checks
 establish mechanics; usefulness and factual accuracy require a separate human assessment.
+
+## Product and architecture projections
+
+Both operations read the same contract and ledger through the public `evaluate` boundary.
+They retain identical source, criterion, decision and evidence IDs and use the existing
+coverage/freshness calculation. No role state, discovery, execution or publication occurs.
+Product readers receive `deliveryGaps` and `unresolvedDecisions`; architects receive
+`evidenceGaps` and `adrSources`, including proposed and superseded status. Neither a source
+status nor a successful check resolves a product choice or accepts an ADR.
+
+Optional `focus` selects existing constraint IDs in `boundaries`, `dependencies` and
+`consequences` arrays (at most 32 unique IDs each). Unknown fields, dangling IDs and duplicate
+IDs fail. These are reader selections, not new facts. Each selected constraint includes its
+cited `sources` with their original provenance and status: declared dependencies, observed
+coupling and inference remain distinguishable, even when one constraint cites several kinds.
+The engine does not classify prose, infer dependencies or discover operational consequences.
+Unselected constraints remain visible in `constraints`; selection does not change coverage.
+
+`discoveryCoverage` retains incomplete/unknown discovery separately from criterion coverage.
+Empty dependencies or ADR sources mean no supplied facts, not absence in the project.
+Questions, explicit constraint conflicts and unresolved decisions remain visible with no
+code or runtime access. Existing coverage does not judge source completeness or truth;
+readers must assess those limits before reporting readiness or architectural confidence.
+Guidance-only installations carry these same distinctions manually in the existing packet.
+
+The synthetic example at `examples/evals/product-views/README.md` demonstrates the two
+reader questions and their common factual basis. It is not real product validation or
+model-quality evidence.
 
 ## Compatibility boundary
 

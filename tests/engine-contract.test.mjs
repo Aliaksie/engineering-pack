@@ -90,6 +90,11 @@ test('engine runs after relocation without Node globals, ambient clock or other 
     const qa = evaluate({ formatVersion:1, operation:'qa-projection', input:{ contract,
       evidence:{ formatVersion:1, records:[] }, current:{ kind:'environment', identity:null }, probes:[] } });
     if (!qa.ok || qa.result.coverage.complete || qa.result.unexploredCriterionIds.length !== 2) throw new Error('portable QA projection failed');
+    for (const operation of ['product-projection', 'architecture-projection']) {
+      const view = evaluate({ formatVersion:1, operation, input:{ contract,
+        evidence:{ formatVersion:1, records:[] }, current:{ kind:'environment', identity:null } } });
+      if (!view.ok || view.result.coverage.complete || view.result.criteria.length !== 2) throw new Error('portable product projection failed');
+    }
     const result = evaluate({ formatVersion:1, operation:'attempt-status', input:{ operation:'implement', records:[] } });
     output(JSON.stringify(result));
   `;

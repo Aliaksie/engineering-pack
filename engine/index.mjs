@@ -1,5 +1,6 @@
 import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
 import { qaProjection } from './session/qa.mjs';
+import { productProjection } from './session/product.mjs';
 import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
@@ -29,6 +30,8 @@ import { normalizeScope } from './contracts/paths.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
+  'product-projection': a => productProjection(a, 'product'),
+  'architecture-projection': a => productProjection(a, 'architecture'),
   'qa-projection': a => qaProjection(a),
   'grounding-request': a => groundingRequest(a),
   'task-context-compose': a => composeTaskContext(a),
