@@ -16,7 +16,7 @@ Engineering practices → packages/ + portable engine/
 ## Install
 
 Use this repository's ready-built `distribution` branch. No source checkout or local build
-is required. Bundled CLI commands and hooks require Node 20+ on PATH; Git operations also
+is required. Bundled CLI commands and hooks require Node 22+ on PATH; Git operations also
 require Git. These commands work after the first successful CI publication from
 `main`; see [installation and updates](docs/PLATFORMS.md) for verification and limitations.
 
@@ -91,7 +91,7 @@ language, runtime, framework, layer and provider guidance independently. Java do
 Spring; TypeScript does not imply Node.js. Story authoring can run without implementation
 guidance. Installation does not load the whole collection into each request.
 
-Contributors use Node 20+ and `npm run check`. Use `npm run build` to regenerate all eight bundles without running checks. Building does
+Contributors use Node 24 and `npm run check`; the minimum supported runtime is Node 22, with Node 26 forward checks in CI. Use `npm run build` to regenerate all eight bundles without running checks. Building does
 not install plugins, trust hooks or connect services. For Cursor, Copilot and plain Agent
 Skills hosts, see [additional adapters](docs/ADAPTERS.md#installation-by-host).
 
