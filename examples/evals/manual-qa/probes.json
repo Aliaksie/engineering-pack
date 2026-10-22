@@ -1,0 +1,22 @@
+[
+  {
+    "id": "replay",
+    "criterionIds": [
+      "single-use"
+    ],
+    "risk": "A used link permits another password change",
+    "flows": [
+      "First redemption",
+      "Replay after success"
+    ],
+    "preconditions": [
+      "Synthetic account and isolated token; no email or real account access"
+    ],
+    "actions": [
+      "Redeem token once",
+      "Attempt redemption again and inspect account change count"
+    ],
+    "expectedBasis": "Agreed single-use requirement; first-use success is a fixture precondition",
+    "evidenceIds": []
+  }
+]

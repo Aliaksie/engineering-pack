@@ -11,6 +11,7 @@ Existing tasks remain usable with agent-declared completion and unknown criterio
 | `engineering-contract-digest` | `contract` | SHA-256 of recursively key-sorted JSON |
 | `acceptance-evidence-validate` | `evidence` | Validated evidence ledger |
 | `acceptance-coverage` | `contract`, `evidence`, `current`, optional boolean `blockers` | Applicability and per-criterion coverage |
+| `qa-projection` | `contract`, `evidence`, `current`, `probes`, optional boolean `blockers` | Read-only charter/probe view of the same coverage |
 
 All use the existing version-1 engine envelope. Each payload independently uses
 `formatVersion: 1`; this is unrelated to package release versions. Unknown fields and
@@ -81,6 +82,42 @@ Errors retain the engine's `INVALID_INPUT` code. Payload diagnostics use the pre
 `duplicate-id`, `invalid-scope`, `missing-scope`, `invalid-time`, `invalid-digest`,
 `unsupported-version`, `unknown-reference`, `missing-basis`, `invalid-conflict`,
 `missing-criteria`. Generic JSON/path validation can reject inputs before these checks.
+
+## QA projection
+
+`qa-projection` uses the same contract, criterion IDs, evidence and freshness calculation.
+Call it through `evaluate({formatVersion: 1, operation: 'qa-projection', input})` on the
+public engine boundary. It executes nothing and creates no state or new session format.
+Non-Git QA supplies `current: {kind: 'environment', identity: BUILD_AND_ENVIRONMENT}`;
+include configuration/test-data version when relevant. Null identity cannot verify freshness.
+This explicit environment path does not change the task CLI's repository binding policy.
+
+`probes` is a transient array of up to 32 entries within 32 KiB. Each entry has `id`
+(the check/probe ID), `criterionIds`, `risk`, `flows`, `preconditions`, `actions`,
+`expectedBasis` and `evidenceIds`. Collections contain at most 32 unique strings; strings
+are nonempty, control-free and at most 1024 characters. Preconditions and evidence IDs
+may be empty. Every linked record must name that probe and only its declared criteria.
+Observations, test-data detail and reproduction artifacts live at the existing ledger's
+artifact references. The engine cannot inspect or assess them. It rejects dangling links,
+unknown criteria, duplicate probes, extra fields and oversized detail.
+
+The result retains intent, exclusions, unanswered questions, declared checks, criteria,
+probes and the underlying `coverage`. A probe without records is `not-run`; a probe with
+records is `recorded`, which is not a pass. Inspect each record's execution, support and
+freshness. `unexploredCriterionIds` names criteria without a current executed linked probe;
+explored does not mean verified. Check descriptions are declarations, not proof that an
+automation suite asserts the criterion.
+
+Each criterion also exposes `conflict` when current evidence contains both passed and
+failed results, including disagreement between automation and manual QA. This is a
+conservative disagreement signal, even if one check is inadequate for acceptance. The
+original coverage rules still require the declared kind/check/scope; the QA view neither
+upgrades weaker evidence nor hides a failure. Both reporters and artifacts remain visible.
+Stale or unknown records stay in the view without becoming a current disagreement.
+
+The source checkout contains executable fixtures and a requirements-only charter at
+`examples/evals/manual-qa/README.md` (excluded from installed bundles). Deterministic checks
+establish mechanics; usefulness and factual accuracy require a separate human assessment.
 
 ## Compatibility boundary
 

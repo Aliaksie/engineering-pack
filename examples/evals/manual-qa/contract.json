@@ -1,0 +1,68 @@
+{
+  "formatVersion": 1,
+  "intent": "Verify single-use reset links without changing customer accounts",
+  "exclusions": [
+    "Product fixes",
+    "Real accounts, email delivery and remote mutations"
+  ],
+  "context": {
+    "formatVersion": 1,
+    "scope": [
+      "reset"
+    ],
+    "sources": [
+      {
+        "id": "request",
+        "kind": "request",
+        "reference": "Agreed requirement: a used reset link cannot be reused",
+        "identity": "reset-requirement-v1",
+        "observedAt": "2026-10-22T00:00:00Z",
+        "scope": [
+          "reset"
+        ],
+        "provenance": "declared",
+        "status": "accepted"
+      }
+    ],
+    "constraints": [],
+    "checks": [
+      {
+        "id": "replay",
+        "description": "Redeem an isolated synthetic link twice",
+        "sourceIds": [
+          "request"
+        ],
+        "scope": [
+          "reset"
+        ]
+      }
+    ],
+    "questions": [
+      "Expiry and concurrent redemption expectations are unspecified"
+    ],
+    "coverage": "unknown"
+  },
+  "criteria": [
+    {
+      "id": "single-use",
+      "description": "A used reset link cannot be reused",
+      "required": true,
+      "scope": [
+        "reset"
+      ],
+      "sourceIds": [
+        "request"
+      ],
+      "checkIds": [
+        "replay"
+      ],
+      "evidenceKind": "manual"
+    }
+  ],
+  "decisions": [],
+  "derivation": {
+    "reporter": "QA fixture author",
+    "method": "declared",
+    "observedAt": "2026-10-22T00:00:00Z"
+  }
+}

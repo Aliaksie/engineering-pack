@@ -314,7 +314,7 @@
       "id": "practice:accessibility",
       "skills": [],
       "references": [
-        "craft-engineering:react-engineering/references/accessibility.md"
+        "craft-engineering:ui-foundations/references/accessibility.md"
       ],
       "when": {
         "layers": [

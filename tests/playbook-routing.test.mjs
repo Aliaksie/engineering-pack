@@ -118,7 +118,14 @@ test('React accessibility review selects the risk reference and review workflow'
   const result = select('src/Main.tsx', { frameworks: ['react'] }, 'review', ['accessibility']);
   assert.equal(result.loading.workflow, 'workflow:review');
   assert.ok(result.loading.practices.includes('practice:accessibility'));
-  assert.ok(result.references.includes('craft-engineering:react-engineering/references/accessibility.md'));
+  assert.ok(result.references.includes('craft-engineering:ui-foundations/references/accessibility.md'));
+});
+
+test('framework-independent accessibility QA does not select React mechanics', () => {
+  const result = select('screens/reset.html', { layers: ['ui'] }, 'verify', ['accessibility']);
+  assert.ok(result.references.includes('craft-engineering:ui-foundations/references/accessibility.md'));
+  assert.ok(!result.skills.includes('craft-engineering:react-engineering'));
+  assert.ok(!result.references.some(reference => reference.includes('react-engineering/')));
 });
 
 test('Bedrock TypeScript agent loads its provider only; story loads no stack', () => {

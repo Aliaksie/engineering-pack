@@ -87,6 +87,9 @@ test('engine runs after relocation without Node globals, ambient clock or other 
     const contract = ${fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url), 'utf8')};
     const acceptance = evaluate({ formatVersion:1, operation:'engineering-contract-digest', input:{ contract } });
     if (!acceptance.ok || !/^[a-f0-9]{64}$/.test(acceptance.result)) throw new Error('portable acceptance contract failed');
+    const qa = evaluate({ formatVersion:1, operation:'qa-projection', input:{ contract,
+      evidence:{ formatVersion:1, records:[] }, current:{ kind:'environment', identity:null }, probes:[] } });
+    if (!qa.ok || qa.result.coverage.complete || qa.result.unexploredCriterionIds.length !== 2) throw new Error('portable QA projection failed');
     const result = evaluate({ formatVersion:1, operation:'attempt-status', input:{ operation:'implement', records:[] } });
     output(JSON.stringify(result));
   `;
