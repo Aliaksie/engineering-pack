@@ -4,7 +4,7 @@ import {assessReports, formatSummary} from '../.github/benchmarks/report.mjs';
 const revision='a'.repeat(40);
 function reports() {
   const base=()=>({revision,failures:0,protocol:{rounds:1},summary:{operation:{n:1,median:100,p95:120}},samples:[{correct:true}]});
-  return {components:base(),filesystem:base(),turn:{...base(),exportsUnchanged:true,reportedDrops:0,samples:[{wireMatches:true,stateMatches:true,telemetryMatches:true,dropped:0}]}};
+  return {components:base(),filesystem:base(),lifecycle:{...base(),samples:['cold','warm'].map(phase=>({phase,wallMs:100,correct:true}))},turn:{...base(),exportsUnchanged:true,reportedDrops:0,samples:[{wireMatches:true,stateMatches:true,telemetryMatches:true,dropped:0}]}};
 }
 test('timing variance and reported telemetry loss remain visible diagnostics',()=>{
   const r=reports();r.turn.summary.operation.median=100000;r.turn.summary.operation.p95=200000;
@@ -18,6 +18,8 @@ for(const [name,mutate,expected] of [
   ['state mismatch',r=>r.turn.samples[0].stateMatches=false,/task state/],
   ['process failure',r=>r.turn.failures=1,/process or assertion/],
   ['component failure',r=>r.components.samples[0].correct=false,/failed sample/],
+  ['lifecycle failure',r=>r.lifecycle.samples[0].correct=false,/lifecycle: failed sample/],
+  ['missing warm phase',r=>r.lifecycle.samples.pop(),/incomplete cold\/warm/],
   ['modified export',r=>r.turn.exportsUnchanged=false,/exported source/],
   ['wrong revision',r=>r.components.revision='b'.repeat(40),/unexpected measured revision/],
   ['partial measurement',r=>r.filesystem.summary.operation.n=0,/incomplete/],

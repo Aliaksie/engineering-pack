@@ -21,11 +21,11 @@ if(process.env.PERFORMANCE_REVISION&&revision.stdout.trim()!==process.env.PERFOR
 const rounds=Number(process.env.PERFORMANCE_ROUNDS??30);
 if(!Number.isInteger(rounds)||rounds<1)throw Error('PERFORMANCE_ROUNDS must be a positive integer');
 const keys=['RUNNER_OS','RUNNER_ARCH','RUNNER_NAME','RUNNER_ENVIRONMENT','ImageOS','ImageVersion','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_REF'];
-const evidence={startedAt:new Date().toISOString(),revision:revision.stdout.trim(),harnesses:Object.fromEntries(['run','report','components','filesystem','turn'].map(name=>[name,hash(path.join(scripts,`${name}.mjs`))])),environment:{node:process.version,os:os.platform(),release:os.release(),arch:os.arch(),cpu:os.cpus()[0]?.model,logicalCpus:os.cpus().length,totalMemoryBytes:os.totalmem(),runner:Object.fromEntries(keys.filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]])),filesystem:{source:fs.statfsSync(source),temporary:fs.statfsSync(os.tmpdir())},shell:'workflow runner default; measured subprocesses use direct spawn without shell',cache:'OS cache uncontrolled; no application cache configured',git:command('git',['--version']).stdout.trim()},commands:[]};
+const evidence={startedAt:new Date().toISOString(),revision:revision.stdout.trim(),harnesses:Object.fromEntries(['run','report','components','filesystem','turn','lifecycle'].map(name=>[name,hash(path.join(scripts,`${name}.mjs`))])),environment:{node:process.version,os:os.platform(),release:os.release(),arch:os.arch(),cpu:os.cpus()[0]?.model,logicalCpus:os.cpus().length,totalMemoryBytes:os.totalmem(),runner:Object.fromEntries(keys.filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]])),filesystem:{source:fs.statfsSync(source),temporary:fs.statfsSync(os.tmpdir())},shell:'workflow runner default; measured subprocesses use direct spawn without shell',cache:'OS cache uncontrolled; no application cache configured',git:command('git',['--version']).stdout.trim()},commands:[]};
 const save=()=>fs.writeFileSync(path.join(output,'environment.json'),JSON.stringify(evidence,null,2)+'\n');
 save();
 // Invoke Node directly: no npm.cmd or platform-specific shell argument handling.
-const commands=[['build',[path.join(source,'tooling/build.mjs'),'codex'],120000],...['components','filesystem','turn'].map(name=>[name,[path.join(scripts,`${name}.mjs`),path.join(output,`${name}.json`),String(rounds)],600000])];
+const commands=[['build',[path.join(source,'tooling/build.mjs'),'codex'],120000],...['components','filesystem','turn','lifecycle'].map(name=>[name,[path.join(scripts,`${name}.mjs`),path.join(output,`${name}.json`),String(rounds)],600000])];
 for(const [name,args,timeout] of commands){
  console.log(`Running ${name}`);
  const startedAt=new Date().toISOString(),r=command(process.execPath,args,timeout);
@@ -36,7 +36,7 @@ for(const [name,args,timeout] of commands){
 evidence.completedAt=new Date().toISOString();save();
 
 const reports={};
-for(const name of ['components','filesystem','turn']){
+for(const name of ['components','filesystem','turn','lifecycle']){
  try{reports[name]=JSON.parse(fs.readFileSync(path.join(output,`${name}.json`),'utf8'));}
  catch(error){reports[name]={loadError:error.message};}
 }

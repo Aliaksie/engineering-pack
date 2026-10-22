@@ -78,6 +78,15 @@ test('source mutation rejects execution and malformed completion does not claim 
   assert.equal(result.executed, false); assert.equal(result.uncertain, true);
 });
 
+test('amended task criteria invalidate an existing approval without a source edit', async t => {
+  const f = fixture(t); f.decideOffer('approved');
+  const contract = JSON.parse(fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url)));
+  startTask(f.root, 's1', 'T1', { goal: 'Verify the scoped change', engineeringContract: contract });
+  await assert.rejects(f.controller.execute(f.id), /stale.*contract/);
+  assert.equal(f.calls.length, 0);
+  assert.equal(readSessionState(f.root, 's1', 'T1').taskRecord.goalComplete, false);
+});
+
 test('compaction completion requires actual resume/acceptance references and negative action lookup requires fencing', () => {
   const id = 'a'.repeat(64), source = 'b'.repeat(64), key = 'c'.repeat(64), checkpoint = 'd'.repeat(64);
   const state = { recommendations: { [id]: { action: 'compact', executionReceipt: { key, source, checkpoint, generation: 0, state: 'dispatching' } } } };

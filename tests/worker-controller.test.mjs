@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { startTask, taskAction } from '../application/session/task.mjs';
 import { workerController } from '../application/session/workers.mjs';
 import { decide } from '../application/engine-client.mjs';
-import { readSessionState } from '../application/session/activity.mjs';
+import { readSessionState, updateSessionState } from '../application/session/activity.mjs';
 
 const brief = { goal: 'Inspect one independent source', sources: ['value.mjs'], acceptance: ['Return source evidence'], restrictions: ['Read only'], returnShape: 'Findings and evidence' };
 function fixture(t, maxWorkers = 3) {
@@ -147,6 +147,34 @@ test('a native model mismatch remains visible and worker completion never marks 
   assert.equal(result.request.occupied, true);
   await assert.rejects(f.controller.dispatch(f.assignment('child', offer, { parent: 'one' })), /parent/);
   assert.equal(readSessionState(f.root, 's1', 'T1').taskRecord.goalComplete, false);
+});
+
+test('worker evidence retains its task contract and becomes stale after source or task amendments', async t => {
+  const f = fixture(t), offer = await f.offer();
+  const spawned = await f.controller.dispatch(f.assignment('one', offer));
+  const bound = f.calls[0].taskContract;
+  assert.match(bound, /^[a-f0-9]{64}$/);
+  assert.equal(f.controller.status().requests[0].taskContract, bound);
+  assert.equal(f.controller.status().requests[0].freshness, 'current');
+  f.workers.get(spawned.request.workerId).status = 'completed';
+  fs.appendFileSync(path.join(f.root, 'value.mjs'), '// later source\n');
+  await f.controller.reconcile();
+  const stale = f.controller.status().requests[0];
+  assert.equal(stale.status, 'completed');
+  assert.equal(stale.freshness, 'stale');
+  assert.equal(readSessionState(f.root, 's1', 'T1').taskRecord.goalComplete, false);
+  fs.writeFileSync(path.join(f.root, 'value.mjs'), 'export const value = 1;\n');
+  startTask(f.root, 's1', 'T1', { goal: 'Deliver the scoped change', risks: ['new acceptance risk'] });
+  assert.equal(f.controller.status().requests[0].freshness, 'stale');
+  await assert.rejects(f.controller.dispatch(f.assignment('two', offer)), /stale.*contract/);
+  assert.equal(f.calls.length, 1);
+  updateSessionState(f.root, 's1', 'T1', state => { delete state.recommendations[offer]; });
+  const retained = f.controller.status();
+  assert.equal(retained.requests[0].taskContract, bound);
+  assert.equal(retained.requests[0].freshness, 'stale');
+  const requests = retained.requests.map(({ freshness, ...request }) => request);
+  assert.throws(() => decide('worker-state', { state: { formatVersion: 1, tree: retained.tree, requests }, tree: retained.tree }), /incompatible worker state version/);
+  assert.equal(decide('worker-state', { state: { formatVersion: 2, tree: retained.tree, requests }, tree: retained.tree }).requests[0].taskContract, bound);
 });
 
 test('simultaneous controllers share one tree ledger and never both pass a one-worker ceiling', async t => {

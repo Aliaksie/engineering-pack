@@ -83,6 +83,7 @@ export function validateActivityState(state) {
       || Object.keys(state.recommendations).length > 16) throw new Error('invalid recommendation state');
     for (const [id, offer] of Object.entries(state.recommendations)) {
       if (!/^[a-f0-9]{64}$/.test(id) || !offer || offer.id !== id) throw new Error('invalid recommendation identity');
+      if (offer.taskContract !== undefined && !/^[a-f0-9]{64}$/.test(offer.taskContract)) throw new Error('invalid recommendation task contract');
       const receipt = offer.executionReceipt;
       if (receipt !== undefined && (!receipt || Object.keys(receipt).some(key => !['key', 'state', 'source', 'checkpoint', 'generation', 'evidence', 'acceptanceEvidence'].includes(key))
         || receipt.key !== digest([id, 'execute']) || receipt.source !== offer.source
