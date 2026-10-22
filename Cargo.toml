@@ -1,0 +1,17 @@
+[workspace]
+members = ["engine/native", "platform/native", "application/native"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+rusqlite = { version = "=0.40.2", features = ["bundled"] }
+tree-sitter = "=0.27.1"
+tree-sitter-javascript = "=0.25.0"

@@ -1,0 +1,85 @@
+# Project evidence development preview
+
+The opt-in native prototype extracts JavaScript declarations and literal import/re-export
+specifiers from Git-listed `.js`, `.mjs`, `.jsx` and `.cjs` sources. It records dynamic
+imports as unresolved syntax. It does not yet resolve incoming dependencies, runtime
+calls, package exports or symbol references. Direct source search remains useful.
+
+## Build and run
+
+Development requires Rust/Cargo and a C compiler for bundled SQLite and Tree-sitter.
+The current native implementation has been exercised on Apple Silicon macOS only.
+Run from the checkout:
+
+```sh
+cargo build --workspace --locked
+node cli/project-evidence.mjs refresh --enable --root . --binary "$PWD/target/debug/craft-project-evidence"
+node cli/project-evidence.mjs query --enable --root . --binary "$PWD/target/debug/craft-project-evidence" --value stateFile --verify
+node cli/project-evidence.mjs status --enable --root . --binary "$PWD/target/debug/craft-project-evidence" --json
+```
+
+Omitting `--enable` disables native invocation and state access. No installation or
+automatic hook is provided yet. The wrapper never builds or downloads a binary.
+`version --enable --binary <absolute-path>` reports binary, schema and provider versions.
+
+Queries match an exact `name`, source `path`, or literal import `target` using `--field`
+and `--value`. Pages default to 30 rows, with a maximum of 200 and an explicit `--after`
+continuation. Continuations are for the same query and stored generation; restart after
+a refresh. `--json` exposes hashes, byte ranges, byte columns, provider and observation time
+(Unix milliseconds). Text output shows source citations.
+
+## Ownership and evidence lifecycle
+
+`engine/native` owns portable records and identities; `platform/native` owns SQLite,
+Git inventory and the Tree-sitter provider; `application/native` orchestrates operations.
+The Node platform bridge invokes a versioned JSON operation through `cli/native/main.rs`.
+The existing JavaScript engine remains in place for unaffected operations under
+[ADR 0001](adr/0001-rust-core-runtime.md).
+
+SQLite state lives in `.craft/state/<worktree-id>/shared/project-evidence.sqlite`.
+An OS lock serializes operations and releases on process exit. A successful extraction
+atomically replaces that source/provider's records, including empty success. Parse/read
+failure retains historical evidence but excludes it from query results. Only successful
+inventory completion retires deleted/excluded sources. Restarting refresh reuses successful
+unchanged extractions. Unsupported schema versions refuse writes.
+
+Hashes are SHA-256 over raw source bytes. Occurrence IDs hash a UTF-8 JSON string array
+of relative path, provider version, predicate, name and start byte. They replay across
+relocation and repeated extraction; an occurrence moved within a source can receive a
+new ID. Unknown predicate namespaces are preserved by storage.
+
+Query results describe stored snapshots. `--verify` hashes only selected sources and
+labels each row verified or stale/unavailable; it does not establish complete references
+or freeze a changing worktree. Inventory completion is not semantic completeness.
+Symlink sources and database paths are rejected. Path checks assume the local worktree
+is not being adversarially replaced between validation and file access.
+
+The initial bounds are 2 MiB per source, 20,000 extracted records per source, a two-second
+parser/extraction deadline and a 120-second wrapper operation deadline. The repository
+has no file-count limit. Inventory streams NUL-delimited Git output; generated state,
+build output, private plans and dependency directories are excluded. Cancellation can
+leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
+
+Resolved entity/relation queries, configurable extraction batches, richer diagnostics,
+provider retirement, consistent backup/rebuild and relocatable installation remain under
+development. Do not treat this preview as a completed migration or a packaged native release.
+
+## Verification
+
+```sh
+cargo test --workspace --locked
+cargo clippy --workspace --locked --all-targets -- -D warnings
+CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft-project-evidence" node --test tests/project-evidence.test.mjs
+CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft-project-evidence" CRAFT_EVIDENCE_LARGE_SMOKE=1 node --test tests/project-evidence.test.mjs
+```
+
+The large smoke creates 10,001 eligible files and a pathname listing larger than 2 MiB.
+It checks the tail query and unchanged reuse, without making comparative performance claims.
+The default Node test suite checks disabled behavior and skips native cases unless the
+binary is explicitly supplied. Native checks are therefore separate from `npm run check`.
+
+Storage uses [rusqlite](https://docs.rs/crate/rusqlite/0.40.2) with bundled SQLite;
+syntax extraction uses [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) and its
+[JavaScript grammar](https://docs.rs/crate/tree-sitter-javascript/0.25.0).
+`Cargo.lock` pins the dependency graph. These libraries use permissive licenses;
+native distribution must include the applicable dependency notices.

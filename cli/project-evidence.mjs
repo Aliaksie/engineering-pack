@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+import path from 'node:path';
+import { projectEvidence } from '../application/project-evidence.mjs';
+
+const args = process.argv.slice(2);
+if (!args.length || args.includes('--help')) {
+  console.log('project-evidence version|refresh|status|query --enable --root <repository> [--binary <absolute-path>] [--field name|path|target --value <exact-value> --limit 30 --after <id> --verify] [--json]');
+} else {
+  try {
+    const operation = args.shift(), options = {}, flags = new Set();
+    while (args.length) {
+      const key = args.shift();
+      if (['--enable', '--verify', '--json'].includes(key)) flags.add(key);
+      else if (['--root', '--binary', '--field', '--value', '--limit', '--after'].includes(key) && args.length) options[key.slice(2)] = args.shift();
+      else throw new Error(`unknown or incomplete option: ${key}`);
+    }
+    const limit = options.limit === undefined ? 30 : Number(options.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new Error('limit must be between 1 and 200');
+    const result = projectEvidence({ enabled: flags.has('--enable'), root: path.resolve(options.root ?? '.'), operation, binary: options.binary,
+      input: { field: options.field, value: options.value, limit, after: options.after, verify: flags.has('--verify') } });
+    if (flags.has('--json')) console.log(JSON.stringify(result));
+    else if (result.results) {
+      console.log(`${result.results.length} result(s); ${result.coverage.freshness}; inventory ${result.coverage.inventoryComplete ? 'complete' : 'partial'}`);
+      for (const row of result.results) console.log(`${row.path}:${row.evidence.line}:${row.evidence.column} ${row.evidence.kind} ${row.evidence.name} [${row.verification ?? 'stored-snapshot'}]`);
+      if (result.continuation) console.log(`Continue with --after ${result.continuation}`);
+    } else console.log(JSON.stringify(result, null, 2));
+  } catch (error) { console.error(`${error.code ?? 'PROJECT_EVIDENCE_ERROR'}: ${error.message}`); process.exitCode = 1; }
+}

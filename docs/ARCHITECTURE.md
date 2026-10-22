@@ -65,10 +65,15 @@ Node implementations do not import application logic or engine policy. Applicati
 imports only `platform/index.mjs`, never `platform/node/` details. The platform entry point
 wires the current Node implementation without introducing a second infrastructure layer. Port callbacks stay within application/Node orchestration; they never cross the JSON engine boundary.
 
-A future Rust implementation can replace `evaluate` while retaining observation collection,
-CLI output and host adapters. No native bridge, process protocol or second implementation
-is required now. JavaScript remains a supported long-term implementation. Contract replay
-and dependency tests enforce the useful boundary independently of implementation language.
+The target core runtime is Rust, as established by [ADR 0001](adr/0001-rust-core-runtime.md).
+This includes local orchestration, state, routing, telemetry, context, cache and persistence,
+as well as pure engine decisions and Project Intelligence. Existing JavaScript runtime
+components migrate when affected by feature work; a standalone rewrite is not required.
+New runtime capabilities belong in Rust. Host adapters and packaging may remain thin
+JS/TS where needed. The ownership map above describes the current layout, not a requirement
+to reproduce its folders or layers during migration. Simplify structure when useful while
+preserving public contracts and separation of pure decisions from I/O. Contract replay
+and dependency tests continue to protect those boundaries.
 
 ## Evidence and effects
 

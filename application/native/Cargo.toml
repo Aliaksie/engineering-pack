@@ -1,0 +1,15 @@
+[package]
+name = "craft-project-evidence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "craft-project-evidence"
+path = "../../cli/native/main.rs"
+
+[dependencies]
+craft-engine = { path = "../../engine/native" }
+craft-platform = { path = "../../platform/native" }
+serde_json.workspace = true
