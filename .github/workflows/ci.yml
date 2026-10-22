@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      performance:
+        description: Run only the frozen performance benchmark matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +20,7 @@ concurrency:
 
 jobs:
   workflows:
+    if: github.event.inputs.performance != 'true'
     name: Validate GitHub workflows
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -47,6 +53,7 @@ jobs:
           npm run test:workflows
 
   check:
+    if: github.event.inputs.performance != 'true'
     name: Check (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -128,7 +135,7 @@ jobs:
   publish:
     name: Publish GitHub installation branch
     needs: [check, package]
-    if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.event.inputs.performance != 'true' && github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -152,3 +159,40 @@ jobs:
         run: node tooling/publish-distribution.mjs
         env:
           GH_TOKEN: ${{ github.token }}
+
+  performance:
+    name: Performance (${{ matrix.os }}, Node 24)
+    if: github.event_name == 'workflow_dispatch' && inputs.performance
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Check out benchmark harnesses
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: benchmark
+      - name: Check out frozen runtime
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: 49fd3841e0bee5e76639c07078e3ccfd5d330b68
+          path: measured-source
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run frozen portable workloads
+        run: node benchmark/.github/benchmarks/run.mjs measured-source benchmark-results
+      - name: Upload raw benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: performance-${{ matrix.os }}-node-24-${{ github.sha }}
+          path: benchmark-results/
+          if-no-files-found: error
+          retention-days: 14
