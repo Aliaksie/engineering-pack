@@ -85,3 +85,22 @@ unknown. Mechanics passing leaves product validation pending until actual output
 independent judgments are retained. Delivery-only and engineering-only fallback behavior,
 review scope, story ambiguity and non-React cases remain required for broader content
 replacement; this small pilot cannot authorize wrapper retirement.
+
+
+## Real-repository task
+
+[career-kit-prompt.txt](career-kit-prompt.txt) supplies the same versioned prompt
+structure for a real offline CLI change: require a non-empty `person.name` and at
+least one `experiences` entry, preserve valid generation and add minimal tests.
+Inspect existing validation before editing; an already-enforced requirement needs
+regression coverage rather than another validator.
+
+Freeze the selected career-kit revision and its ordinary instructions in both arms.
+Use fictional v1/v2 inputs, no PDF or application-provider calls, and separate test
+branches without merging. Before either run, retain valid-output file hashes and
+cases for missing/blank names and missing/empty experiences; remove project-to-
+experience references in the empty case so a dangling reference cannot hide the
+missing minimum. Check both `validate` and offline `build`, then compare every valid
+output file against the pre-change inventory. Retain the actual diffs, native runner
+receipts, checks and judgments privately. A successful single pair establishes only
+this task's result; it cannot establish reduced-guidance benefit or general savings.
