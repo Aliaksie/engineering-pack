@@ -1,6 +1,6 @@
 # Contributing
 
-Run `npm run check` with Node 20+. No npm install is needed. `npm test` builds exports first.
+Use Node 24 for development and run `npm run check`. The minimum supported runtime is Node 22; CI also checks Node 26 for forward compatibility. No npm install is needed. `npm test` builds exports first.
 Review skill changes for useful decision criteria, selective references and clear scope.
 Keep examples portable and verify any executable behavior affected by the change.
 
@@ -43,7 +43,7 @@ version and archive checksum together in `ci.yml`.
 
 CI runs on push, pull request and manual dispatch. It validates manifests, catalog and source targets,
 checks generated guidance, lints portable scripts, builds eight host exports and the GitHub distribution, validates exports
-and runs tests on Linux/macOS/Windows with Node 24, plus Linux with the Node 20 minimum.
+and runs tests on Linux/macOS/Windows with primary Node 24, plus Linux with the Node 22 minimum and Node 26 forward check.
 No dependency installation, cloud credentials or model runner is required.
 
 After every matrix check succeeds, the packaging job rebuilds and uploads `dist/` as
@@ -62,6 +62,38 @@ Each successful matrix job also runs `npm run hooks:report` and uploads a separa
 identified hook diagnostic artifact. Its hand-labeled corpus can report false/missed blocks;
 collection success is not a policy-enforcement pass. See the
 [tool/hook audit](authoring/TOOLS.md) for the measured scope and current matcher limitations.
+
+### Performance diagnostics
+
+The separate **Performance** workflow runs on pushes to `main` and manual dispatch,
+with no pull-request trigger. For [manual dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow), select **Performance → Run workflow** and
+choose a branch when a focused run is needed. The workflow becomes available after
+its definition reaches the default branch. It measures the selected commit on native
+Ubuntu, macOS and Windows with the same pinned Node 24.21.0 patch; update that pin
+across the matrix together when refreshing the reference environment.
+
+Each platform retains raw JSON, environment and source/harness hashes, an assessment
+and a Markdown summary for 14 days. The job summary shows synthetic turn median/p95
+and telemetry diagnostics. Process/assertion failures, changed wire or selected task
+state, incomplete measurements and modified exports fail the benchmark job. Timing
+has no hard threshold: hosted hardware/cache variability and reported telemetry
+loss remain visible diagnostics. This workflow is independent of packaging and
+publication and is not a release prerequisite.
+
+For a local run against a clean checkout, use a new output directory outside that checkout:
+
+```sh
+node .github/benchmarks/run.mjs <clean-checkout> <new-results-directory>
+```
+
+The default is 30 repetitions plus a separate first sample. Set
+`PERFORMANCE_ROUNDS=1` only for a quick integration check, not a performance baseline.
+The suite measures process/Git operations, equal-byte file-count workloads, state
+primitives and synthetic parallel hook turns. It excludes actual tools/models and
+native host scheduling. Compare matching source/harness/runtime identities and retain
+runner differences; do not interpret a green job as lossless telemetry or a latency
+budget pass. The first telemetry reference can itself be lossy, inflating mismatch
+counts; reported dropped events and affected turns are shown separately.
 
 With a local Codex executable available, run the optional discovery regression after building:
 

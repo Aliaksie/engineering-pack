@@ -3,7 +3,7 @@
 Install directly from this GitHub repository's generated `distribution` branch. Users
 need Git and their chosen agent, without npm dependencies, a source checkout or a local build.
 Guidance-only use does not require Node. Bundled CLI commands and lifecycle hooks require
-Node 20+ on PATH; local Git operations also require Git.
+Node 22+ on PATH; local Git operations also require Git.
 The commands become available after the first successful publication by CI on `main`.
 No npm package or public gallery listing is required.
 
@@ -71,7 +71,7 @@ node "<package-root>/support/session.mjs" --root "<project-root>" --json
 ```
 
 Replace the placeholders with the actual installed package and target project.
-This command requires Node 20+, writes local operational telemetry by default,
+This command requires Node 22+, writes local operational telemetry by default,
 and does not activate hooks or configure a token display. The current pack adapter
 has no automatic Codex token-count input: unavailable counts stay unknown. Cumulative
 session tokens and current context occupancy are separate measurements.
@@ -164,7 +164,7 @@ uninstall/reinstall the affected plugin through its native UI/CLI to refresh its
 
 ## Local development and publication
 
-Contributors use Node 20+ and Git, without npm dependencies:
+Contributors use Node 22+ and Git, without npm dependencies:
 
 ```sh
 git clone https://github.com/Aliaksie/engineering-pack.git

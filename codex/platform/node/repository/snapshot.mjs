@@ -19,8 +19,11 @@ export function gitState(root) {
     });
     return result.status === 0 ? result.stdout : null;
   };
-  const head = git('rev-parse', '--verify', 'HEAD');
-  const checkout = gitCheckout(root);
+  const identity = git('rev-parse', 'HEAD', '--symbolic-full-name', 'HEAD')?.trimEnd().split('\n');
+  // Keep the original queries for failed or unexpected output (including unborn HEAD).
+  const combined = identity && identity.length <= 2 && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(identity[0]);
+  const head = combined ? identity[0] : git('rev-parse', '--verify', 'HEAD');
+  const checkout = combined ? identity[1] ?? '' : gitCheckout(root);
   const status = git('status', '--porcelain=v1', '-z', '--untracked-files=all');
   const index = git('ls-files', '--stage', '-z');
   const inventory = git('ls-files', '--cached', '--others', '--exclude-standard', '-z');

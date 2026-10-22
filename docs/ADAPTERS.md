@@ -39,7 +39,7 @@ hook invocation. With local telemetry enabled, observe ordinary work for fresh
 directory). Explicit CLI calls and direct wrapper runs verify different paths.
 Missing events alone do not diagnose the cause.
 
-Where shell execution and Node 20+ are available, an explicit status read works
+Where shell execution and Node 22+ are available, an explicit status read works
 without hooks:
 
 ```sh
@@ -59,7 +59,7 @@ for that specific surface. Other adapters retain their own native controls and l
 ## Installation by host
 
 For direct GitHub installation use the [platform guide](PLATFORMS.md). The following
-paths are for local development. Run `npm run build` from the source checkout with Node 20+. Each export is a separate
+paths are for local development. Run `npm run build` from the source checkout with Node 22+. Each export is a separate
 bundle; use the one for your host. Keep Node available on the host's PATH for the bundled
 CLI and hook wrappers. Local Git operations also require Git. No npm install is needed.
 

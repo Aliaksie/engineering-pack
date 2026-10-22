@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import http from 'node:http';
-import https from 'node:https';
 import { randomBytes, createHmac } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
@@ -108,11 +106,11 @@ export function readTelemetrySnapshot(root) {
 export async function postTelemetry(endpoint, payload, timeoutMs = 300) {
   const body = JSON.stringify(payload);
   if (Buffer.byteLength(body) > 262144) return { ok:false, failure:'request-too-large' };
+  const url = new URL(endpoint);
+  const transport = await import(url.protocol === 'https:' ? 'node:https' : 'node:http');
   return new Promise(resolve => {
     let finished = false;
     const done = value => { if (!finished) { finished = true; clearTimeout(timer); resolve(value); } };
-    const url = new URL(endpoint);
-    const transport = url.protocol === 'https:' ? https : http;
     const request = transport.request(url, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, response => {
       let bytes = 0, chunks = [];
       response.on('data', chunk => {

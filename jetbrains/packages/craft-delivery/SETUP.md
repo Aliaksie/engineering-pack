@@ -22,7 +22,7 @@ hook trust are separate facts. Never enable or trust hooks on the user's behalf.
 
 Users can ask: **"Check Engineering Pack setup, hook activity and session usage."**
 When asked, resolve the actual installed package root from the loaded skill's
-resource links and, where shell execution and Node 20+ are available, run:
+resource links and, where shell execution and Node 22+ are available, run:
 
 ```sh
 node "<package-root>/support/session.mjs" --root "<project-root>" --json
