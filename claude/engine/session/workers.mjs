@@ -1,5 +1,16 @@
 import { digest } from '../cache/identity.mjs';
 import { workerBudget } from '../routing/worker-budget.mjs';
+import { taskSource, taskContract } from './task.mjs';
+
+export function workerEvidence(state, taskState, repository) {
+  const source = taskSource(repository), contract = taskContract(taskState.taskRecord);
+  return state.requests.map(request => {
+    const bound = request.taskContract ?? taskState.recommendations?.[request.offer]?.taskContract;
+    const freshness = source && request.source !== source || bound && contract && bound !== contract ? 'stale'
+      : source && bound && contract ? 'current' : 'unknown';
+    return { ...request, taskContract: bound ?? null, freshness };
+  });
+}
 
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/.test(value);
@@ -23,11 +34,12 @@ export function workerState(state, tree) {
   if (!hash(tree)) throw new Error('invalid worker tree identity');
   if (state == null) return { formatVersion: 1, tree, requests: [] };
   keys(state, ['formatVersion', 'tree', 'requests'], 'worker state');
-  if (state.formatVersion !== 1 || !hash(tree) || state.tree !== tree || !Array.isArray(state.requests) || state.requests.length > 64) throw new Error('invalid worker tree state');
+  if (![1, 2].includes(state.formatVersion) || !hash(tree) || state.tree !== tree || !Array.isArray(state.requests) || state.requests.length > 64) throw new Error('invalid worker tree state');
   const seen = new Set();
   for (const request of state.requests) {
     keys(request, ['id', 'key', 'inputHash', 'offer', 'scope', 'source', 'policy', 'host', 'model', 'role', 'profile', 'parent', 'reuseWorker',
-      'state', 'status', 'workerId', 'occupied', 'generation', 'evidence', 'modelMatches', 'cancelKey', 'revision', 'at'], 'worker request state');
+      'state', 'status', 'workerId', 'occupied', 'generation', 'evidence', 'modelMatches', 'cancelKey', 'revision', 'at', 'taskContract'], 'worker request state');
+    if (request.taskContract !== undefined && (state.formatVersion !== 2 || !hash(request.taskContract))) throw new Error('invalid worker task contract or incompatible worker state version');
     if (!identifier(request.id) || seen.has(request.id) || !hash(request.key) || request.key !== digest([tree, request.id]) || !hash(request.inputHash)
       || !hash(request.offer) || !hash(request.source) || !hash(request.policy)
       || !['scope', 'host', 'model', 'role', 'profile', 'at'].every(field => text(request[field]))
@@ -134,6 +146,7 @@ export function workerAdmission({ state, input, checked, snapshot, project, sess
     source: offer.source, policy: offer.policy, host: offer.host, model: offer.model, role: offer.role, profile: offer.profile, revision: revision ?? null,
     parent: input.parent ?? null, reuseWorker: input.reuseWorker ?? null, state: 'reserved', status: 'unknown',
     workerId: input.reuseWorker ?? null, occupied: true, generation: 0, evidence: null, modelMatches: false, cancelKey: null, at };
+  if (offer.taskContract !== undefined) { request.taskContract = offer.taskContract; state.formatVersion = 2; }
   state.requests.push(request);
   return { state, request, duplicate: false, budget };
 }

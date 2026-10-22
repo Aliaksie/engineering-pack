@@ -53,6 +53,11 @@ Use `craft-delivery-maintain-context` where documentation became inaccurate and
 invalidates evidence for the affected earlier version; repeat the affected check, not an
 unrelated full campaign.
 
+When the task supplies criterion IDs, preserve them in the evidence and completion
+report. Distinguish current verified results from failed, stale, unknown and unexecuted
+checks. A green aggregate command cannot establish an unrelated criterion. Without the
+optional runtime, retain these distinctions in the existing private task record.
+
 Finish with the behavior delivered, acceptance evidence, files or interfaces affected and
 remaining limits. If interrupted, preserve a compact progress note and verify the checkout
 before resuming. Follow consumer commit strategy and existing user authorization or standing

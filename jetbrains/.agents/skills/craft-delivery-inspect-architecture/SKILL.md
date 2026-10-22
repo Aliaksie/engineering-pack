@@ -45,4 +45,18 @@ inference. A proposed record describes a candidate choice; implementation descri
 exists. Neither establishes acceptance of the other. Missing documentation is a discovery
 limit, not a reason to invent a decision or create an ADR automatically.
 
+When carrying grounding into a structured task context, keep stable source IDs, source
+identity, observed time and affected scope with each interpreted constraint. Preserve
+explicit conflicts and unknown coverage. A source hash identifies inspected bytes;
+it does not accept an ADR, verify a declared check or authorize its execution.
+Reuse bounded lookup observations without promoting literal matches into requirements.
+
+When the question needs a view of an existing contract, the optional `architecture-projection`
+engine operation selects boundary, dependency and operational-consequence constraints by ID.
+It preserves source provenance, ADR status, conflicts and evidence gaps without discovering
+new facts. Keep declared design, observed coupling and inference distinct; cite mixed bases
+individually. With no runtime or code access, give the same brief from supplied facts and
+mark unobserved boundaries explicitly. Empty selections do not prove absence, and neither
+this view nor passing checks accepts a proposed ADR or authorizes its creation.
+
 Package tools and shared assets: `../../../packages/craft-delivery` relative to this skill directory.

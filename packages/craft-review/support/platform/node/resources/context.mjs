@@ -78,3 +78,18 @@ export function contextFiles(bundleRoot, requests) {
   }
   return { entries: [...files.values()], missing };
 }
+
+// Observe explicit local citations only; source text is never executed or interpreted here.
+export function groundingFiles(root, files) {
+  root = fs.realpathSync(root);
+  return files.map(reference => {
+    if (typeof reference !== 'string' || reference.startsWith('/') || /^[A-Za-z]:/.test(reference) || reference.includes('\\') || reference.split('/').some(part => !part || part === '..') || privatePath(reference)) throw new Error('invalid grounding source path');
+    try {
+      const file = localFile(root, reference);
+      if (!file) return { reference, identity: null, status: 'missing' };
+      const content = fs.readFileSync(file);
+      if (content.length > MAX_FILE_BYTES) throw new Error('grounding read limit');
+      return { reference, identity: createHash('sha256').update(content).digest('hex'), status: 'observed' };
+    } catch (error) { return { reference, identity: null, status: error.code === 'ENOTDIR' ? 'missing' : 'unavailable' }; }
+  });
+}

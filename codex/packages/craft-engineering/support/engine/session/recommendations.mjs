@@ -1,6 +1,6 @@
 import { unresolvedAttempts } from './activity.mjs';
 import { digest } from '../cache/identity.mjs';
-import { taskSource } from './task.mjs';
+import { taskSource, taskContract } from './task.mjs';
 import { workerBudget } from '../routing/worker-budget.mjs';
 import { delegation } from '../routing/execution.mjs';
 
@@ -56,21 +56,21 @@ export function proposeAction({ state, input, project, repository, status, facts
   actionFacts(facts);
   const applicable = eligibility(input.action, input, state, project, repository, status, facts, session, now);
   if (!applicable.eligible) return { state, offer: null, suppressed: true, applicability: applicable, executed: false };
-  const source = taskSource(repository), policy = digest(project);
+  const source = taskSource(repository), policy = digest(project), contract = taskContract(state.taskRecord);
   const risks = [...new Set(facts.observations?.task?.risks ?? [])].sort();
   const host = facts.observations?.host?.name ?? null;
   const model = applicable.execution?.model ?? null;
-  const id = digest([state.taskRecord.id, input.action, input.scope, source, policy, input.role ?? null, applicable.execution?.profile ?? input.profile ?? null, risks, host, model]);
+  const id = digest([state.taskRecord.id, input.action, input.scope, source, policy, input.role ?? null, applicable.execution?.profile ?? input.profile ?? null, risks, host, model, contract]);
   state.recommendations ??= {};
   const existing = state.recommendations[id];
   if (existing) return { state, offer: existing, suppressed: true, applicability: applicable, executed: false };
   if (Object.keys(state.recommendations).length >= 16) {
-    const old = Object.entries(state.recommendations).find(([, value]) => !value.executionReceipt && (value.source !== source || value.decision === 'declined'));
+    const old = Object.entries(state.recommendations).find(([, value]) => !value.executionReceipt && (value.source !== source || value.taskContract !== contract || value.decision === 'declined'));
     if (!old) throw new Error('task recommendation capacity reached; resolve existing proposals before adding more');
     delete state.recommendations[old[0]];
   }
   const offer = { id, action: input.action, scope: input.scope, benefit: input.benefit, evidence: input.evidence,
-    source, policy, risks, host, model, role: input.role ?? null, profile: applicable.execution?.profile ?? input.profile ?? null,
+    source, policy, taskContract: contract, risks, host, model, role: input.role ?? null, profile: applicable.execution?.profile ?? input.profile ?? null,
     decision: input.priorAuthorization ? 'already-authorized' : 'pending',
     decisionEvidence: input.priorAuthorization ?? null, at: new Date(now).toISOString(),
     execution: 'not-observed', trigger: applicable.reason,
@@ -82,6 +82,8 @@ function offerFor(state, id, project, repository) {
   if (!/^[a-f0-9]{64}$/.test(id ?? '') || !state.recommendations?.[id]) throw new Error('unknown action proposal');
   const offer = state.recommendations[id];
   if (offer.source !== taskSource(repository) || offer.policy !== digest(project)) throw new Error('action proposal is stale; source or effective policy changed');
+  if ((offer.taskContract !== undefined || state.taskRecord?.engineeringContract)
+    && offer.taskContract !== taskContract(state.taskRecord)) throw new Error('action proposal is stale; task contract changed or its binding is unavailable');
   return offer;
 }
 export function decideAction({ state, input, project, repository, now }) {

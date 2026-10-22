@@ -1,6 +1,10 @@
+import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
+import { qaProjection } from './session/qa.mjs';
+import { productProjection } from './session/product.mjs';
 import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
+import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
-import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers } from './session/workers.mjs';
+import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers, workerEvidence } from './session/workers.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
 import { taskBinding, taskContract, startTask, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
@@ -26,6 +30,16 @@ import { normalizeScope } from './contracts/paths.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
+  'product-projection': a => productProjection(a, 'product'),
+  'architecture-projection': a => productProjection(a, 'architecture'),
+  'qa-projection': a => qaProjection(a),
+  'grounding-request': a => groundingRequest(a),
+  'task-context-compose': a => composeTaskContext(a),
+  'task-context-validate': a => validateTaskContext(a.context),
+  'engineering-contract-validate': a => validateEngineeringContract(a.contract),
+  'engineering-contract-digest': a => engineeringContractDigest(a.contract),
+  'acceptance-evidence-validate': a => validateAcceptanceEvidence(a.evidence),
+  'acceptance-coverage': a => acceptanceCoverage(a.contract, a.evidence, a.current, a.blockers),
   'repository-scopes': a => repositoryScopes(a.repositories),
   'repository-snapshot': a => repositorySnapshot(a.repositories),
   'repository-checkout': a => repositoryCheckout(a.repositories),
@@ -42,6 +56,7 @@ const operations = {
   'feature-report': a => featureReport(a.state, taskSource(a.repository)),
   'worker-input': a => workerInput(a.input),
   'worker-state': a => workerState(a.state, a.tree),
+  'worker-evidence': a => workerEvidence(a.state, a.taskState, a.repository),
   'worker-snapshot': a => workerSnapshot(a.snapshot, a.session, a.now),
   'worker-admit': a => workerAdmission(a),
   'worker-transition': a => workerTransition(a.state, a.id, a.result),

@@ -24,10 +24,19 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
     catch (error) { observations.stateError = error.message; diagnostic('state','STATE_UNAVAILABLE'); }
   }
   if (observations.state?.taskRecord) {
-    observations.repository = gitState(root, sessionId, taskId);
+    try { observations.repository = gitState(root, sessionId, taskId); }
+    catch (error) {
+      observations.repositoryError = error.message; diagnostic('state', 'STATE_UNAVAILABLE');
+      observations.repository = { gitAvailable: false, head: null, checkout: null, fingerprints: { complete: false, index: null, workingTree: null } };
+    }
     const context = decide('task-context', { state: observations.state, repository: observations.repository });
     input = { ...input, ...(observations.state.notice && input.previous === undefined ? { previous: observations.state.notice } : {}), task: { ...context.task, ...input.task } };
     observations.taskStale = context.stale;
+    observations.acceptance = context.acceptance;
+    observations.evidenceDigest = context.evidenceDigest;
+    if (observations.state.taskRecord.engineeringContract) input.task = { ...input.task, goalComplete: context.task.goalComplete, verification: context.task.verification, safeBoundary: context.task.safeBoundary };
+    observations.taskContract = context.taskContract;
+    observations.binding = context.binding;
   }
   if (sessionId) {
     try { observations.saved = readCheckpoint(root, sessionId); }
@@ -68,7 +77,7 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
   try { version = runtimeVersion(); } catch { /* Missing supporting metadata cannot break the view. */ }
   const features = observations.state ? decide('feature-report', { state: observations.state, repository: observations.repository ?? {} }) : null;
   const workspace = workspaceBoundary(root, sessionId, taskId, 'status', project);
-  return { ...result, workspace, ...(observations.state?.taskRecord?.repositories ? { repositories: observations.state.taskRecord.repositories } : {}), ...(bindingError ? { diagnostics: [...result.diagnostics, `Task binding unavailable: ${bindingError}`] } : {}), task: input.task, featureOutcomes: features, ...(observations.taskStale ? { taskEvidenceStale: true } : {}), packVersion: version };
+  return { ...result, acceptance: observations.acceptance, evidenceDigest: observations.evidenceDigest, taskContract: observations.taskContract, binding: observations.binding, workspace, ...(observations.state?.taskRecord?.repositories ? { repositories: observations.state.taskRecord.repositories } : {}), ...(bindingError ? { diagnostics: [...result.diagnostics, `Task binding unavailable: ${bindingError}`] } : {}), task: input.task, featureOutcomes: features, ...(observations.taskStale ? { taskEvidenceStale: true } : {}), packVersion: version };
 }
 
 export const sessionStatus = (...args) => withTelemetry(args[2]?.root ?? '.', { session: args[2]?.session ?? args[0]?.sessionId, host: args[0]?.host?.name }, () => observe('session.observed', () => sessionStatusOperation(...args), result => ({ decision: result.recommendation?.action, pressure: result.pressure, occupancyKnown: result.usage?.status === 'observed' })));

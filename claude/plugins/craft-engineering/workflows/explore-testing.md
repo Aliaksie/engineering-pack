@@ -27,3 +27,25 @@ separate defects supported by evidence from uncertain requirements. Summarize ex
 unexplored scope, blocked probes and remaining risk. Reuse this evidence for acceptance or
 automation decisions; exploratory success does not establish exhaustive coverage. Publish
 defects or change tracker state only under existing explicit authorization.
+
+Carry supplied criterion IDs through the charter, each probe and the final findings.
+Map a probe to its affected flow/risk, expected requirement or explicit question,
+preconditions and test-data assumptions, actions, observations and retained artifact.
+Inspect configured automation and what it asserts; filenames and a green suite do not
+prove affected-flow coverage. Prioritize changed transitions and adjacent recovery or
+permission flows, and state what remains unexplored.
+
+Keep implementation and QA evidence together under the same criterion IDs. Preserve a
+contradictory result with both reporters and artifacts; do not silently select a pass.
+Bind observations to the actual build and environment, including relevant configuration.
+For a non-Git application, record an explicit build/version-and-environment identity;
+missing identity leaves freshness unknown. A changed build invalidates earlier evidence.
+An unexecuted probe is `not-run`; missing execution access is `not-available` with its
+prerequisite (the task may be blocked). Neither is passed. Do not copy a current identity
+onto an old observation. Keep observations in artifacts, not invented execution receipts.
+
+The optional runtime's `qa-projection` operation reads the existing contract and evidence
+ledger plus bounded probe detail; it neither executes probes nor persists a separate QA
+state. Without runtime access, retain the same facts in the charter/report. Required
+manual acceptance uses declared manual checks; automation does not certify a different
+manual observation. Testing-only scope grants no product edits or remote mutations.

@@ -1,3 +1,4 @@
+import { validateEngineeringContract, validateAcceptanceEvidence, engineeringContractDigest, acceptanceCoverage } from './acceptance.mjs';
 import { activityIdentity, appendAttempt, attemptReceipt, unresolvedAttempts } from './activity.mjs';
 import { validateMetadata } from '../checkpoint.mjs';
 import { relativeFile } from '../contracts/project.mjs';
@@ -21,17 +22,19 @@ export function taskBinding(value, repository) {
   return repository && (value.checkout === undefined || value.checkout !== (repository.checkout ?? null)) ? null : value;
 }
 export function taskContract(record) {
-  return record ? digest([record.id, record.goal, record.stage, record.files ?? [], record.risks ?? [], record.checkout ?? null, ...(record.repositories ? [record.repositories] : [])]) : null;
+  return record ? digest([record.id, record.goal, record.stage, record.files ?? [], record.risks ?? [], record.checkout ?? null, ...(record.repositories ? [record.repositories] : []), ...(record.engineeringContract ? [engineeringContractDigest(record.engineeringContract)] : [])]) : null;
 }
 export function taskSource(repository) {
   return repository?.gitAvailable && repository.fingerprints?.complete
     ? digest([repository.head, repository.fingerprints.index, repository.fingerprints.workingTree]) : null;
 }
 export function startTask(state, input, repository) {
-  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization', 'repositories'], 'task start');
+  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization', 'repositories', 'engineeringContract'], 'task start');
   activityIdentity('task', input.id);
   if (!text(input.goal)) throw new Error('task goal must be 1..512 characters without control characters');
   if (state.taskRecord && (state.taskRecord.id !== input.id || state.taskRecord.goal !== input.goal)) throw new Error('task identity already has a different goal; use a new task id');
+  if (input.engineeringContract !== undefined) validateEngineeringContract(input.engineeringContract);
+  const contract = input.engineeringContract ?? state.taskRecord?.engineeringContract;
   const selected = stage(input.stage ?? state.taskRecord?.stage ?? 'implement');
   const files = input.files ?? state.taskRecord?.files ?? [];
   if (!Array.isArray(files) || files.length > 32) throw new Error('task files must be a bounded array');
@@ -47,14 +50,21 @@ export function startTask(state, input, repository) {
     || JSON.stringify(state.taskRecord.files ?? []) !== JSON.stringify(files)
     || JSON.stringify(state.taskRecord.risks ?? []) !== JSON.stringify(risks)
     || JSON.stringify(state.taskRecord.repositories) !== JSON.stringify(repositories)
+    || (contract ? engineeringContractDigest(contract) : null) !== (state.taskRecord.engineeringContract ? engineeringContractDigest(state.taskRecord.engineeringContract) : null)
     || state.taskRecord.checkout !== (repository.checkout ?? null));
   if (changed) {
     Object.assign(state.taskRecord, { status: 'working', goalComplete: false });
     delete state.taskRecord.verification; delete state.taskRecord.verificationRevision;
+    if (contract) state.taskRecord.acceptanceEvidence = { formatVersion: 1, records: [] };
     delete state.taskRecord.completed; state.taskRecord.safeBoundary = false;
   }
   Object.assign(state.taskRecord, { stage: selected, files, risks, checkout: repository.checkout ?? null, ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
   if (repositories !== undefined) state.taskRecord.repositories = repositories;
+  if (contract) {
+    state.formatVersion = 2;
+    state.taskRecord.engineeringContract = contract;
+    state.taskRecord.acceptanceEvidence ??= { formatVersion: 1, records: [] };
+  }
   return { state, intent: taskIntents[selected], context: taskContext(state, repository) };
 }
 export function taskContext(state, repository) {
@@ -66,11 +76,17 @@ export function taskContext(state, repository) {
   const stale = Boolean(record.summary && (!source || record.source !== source
     || record.acceptedContract !== taskContract(record) || record.checkout !== (repository.checkout ?? null)));
   const task = Object.fromEntries(['id', 'stage', 'status', 'goalComplete', 'files', 'revision', 'verification', 'verificationRevision', 'safeBoundary', 'nextStep', 'risks', 'reviewRequested'].filter(key => record[key] !== undefined && record[key] !== null).map(key => [key, record[key]]));
-  if (stale) Object.assign(task, { status: 'working', goalComplete: false, verification: 'unknown', verificationRevision: undefined, safeBoundary: false });
-  return { task, stale, summary: record.summary ?? null, nextStep: record.nextStep ?? null };
+  const acceptance = taskAcceptance(state, repository);
+  if (stale || (record.engineeringContract && !acceptance.complete)) Object.assign(task, { status: 'working', goalComplete: false, verification: 'unknown', verificationRevision: undefined, safeBoundary: false });
+  return { task, stale, acceptance, evidenceDigest: digest(record.acceptanceEvidence ?? null), taskContract: taskContract(record), binding: { kind: 'repository', identity: source }, summary: record.summary ?? null, nextStep: record.nextStep ?? null };
+}
+export function taskAcceptance(state, repository) {
+  const record = state.taskRecord;
+  return acceptanceCoverage(record?.engineeringContract, record?.acceptanceEvidence,
+    { kind: 'repository', identity: taskSource(repository) }, unresolvedAttempts(state.attempts).length > 0);
 }
 export function recordTaskStep(state, input, repository, id, at) {
-  keys(input, ['stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'nextStep', 'complete', 'profile', 'maxAttempts'], 'task step');
+  keys(input, ['stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'nextStep', 'complete', 'profile', 'maxAttempts', 'acceptanceEvidence', 'expectedTaskContract', 'expectedEvidenceDigest'], 'task step');
   const record = state.taskRecord;
   if (!record) throw new Error('task-step requires task-start for this session and task');
   stage(input.stage ?? record.stage);
@@ -80,7 +96,18 @@ export function recordTaskStep(state, input, repository, id, at) {
   const selected = input.stage ?? record.stage;
   const receipt = attemptReceipt({ operation: selected, target: input.target, approach: input.approach, evidence: input.evidence, outcome: input.outcome,
     ...(input.profile !== undefined ? { profile: input.profile } : {}), ...(input.maxAttempts !== undefined ? { maxAttempts: input.maxAttempts } : {}) }, repository, id, at);
+  if (input.acceptanceEvidence !== undefined) {
+    if (!record.engineeringContract) throw new Error('acceptance evidence requires an engineering contract');
+    if (input.expectedTaskContract !== taskContract(record)) throw new Error('acceptance evidence task contract changed; reobserve the task');
+    if (input.expectedEvidenceDigest !== digest(record.acceptanceEvidence)) throw new Error('acceptance evidence ledger changed; reload before replacing evidence');
+    validateAcceptanceEvidence(input.acceptanceEvidence);
+    // Explicit whole-ledger replacement permits a documented correction without
+    // choosing a passing receipt over a contradictory failure automatically.
+    record.acceptanceEvidence = input.acceptanceEvidence;
+  }
   appendAttempt(state, receipt);
+  const acceptance = taskAcceptance(state, repository);
+  if (input.complete && record.engineeringContract && !acceptance.complete) throw new Error('task completion requires current verified evidence for every required criterion and no open conflicts or decisions');
   if (input.complete && unresolvedAttempts(state.attempts).length) throw new Error('task completion has unresolved acceptance failures or blockers');
   Object.assign(record, { stage: selected, status: input.outcome === 'passed' ? 'completed' : input.outcome === 'quality-failure' ? 'failed' : input.outcome === 'prerequisite-resolved' ? 'working' : 'blocked',
     goalComplete: input.complete === true, revision: repository.head, source: receipt.source, safeBoundary: true,
@@ -94,5 +121,5 @@ export function recordTaskStep(state, input, repository, id, at) {
     filesChanged: record.files.join(', ').slice(0, 1024), validation: `${input.outcome}: ${input.evidence}`,
     remainingWork: input.complete ? '' : input.nextStep, blockers: record.status === 'blocked' ? input.result : '', nextStep: input.nextStep };
   validateMetadata({ taskId: record.id, continuation });
-  return { state, receipt, continuation };
+  return { state, receipt, continuation, acceptance };
 }

@@ -11,6 +11,7 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
 | [Session status](SESSION.md) | Task lifecycle, context, activity and execution budgets |
+| [Acceptance contracts](ACCEPTANCE.md) | Opt-in portable context, criterion/evidence validation and coverage limits |
 | [Host controls](HOST-CONTROL.md) | Native worker, review and compaction bindings and limits |
 | [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |
 | [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |

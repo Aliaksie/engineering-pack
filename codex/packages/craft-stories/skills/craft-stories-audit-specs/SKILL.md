@@ -28,3 +28,8 @@ An unavailable implementation check is a limit of the audit, not a confirmed pro
 Return the report or requested report file without changing the source specification. Preserve
 competing claims and name the decision owner when known. Do not resolve a product disagreement
 by silently promoting whichever source was read last.
+
+Reuse existing source, constraint and decision IDs in findings. Preserve their status and
+conflict links; a passing implementation check cannot resolve an unanswered product choice.
+Distinguish declared dependencies from observed coupling using the cited source provenance.
+Missing source or runtime access remains an explicit gap, including in requirements-only audits.

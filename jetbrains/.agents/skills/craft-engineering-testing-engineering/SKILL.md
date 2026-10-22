@@ -38,6 +38,14 @@ so a reader can inspect it. Citation counts are not a quality measure.
 - [test-data-and-flakiness](references/test-data-and-flakiness.md): Isolation, realistic fixtures and nondeterminism.
 - [systematic-debugging](references/systematic-debugging.md): Competing causes and discriminating observations.
 
+For structured task evidence, keep the supplied criterion/check IDs, expected basis,
+checked source or build, reporter and artifact reference together. Verify artifact
+availability and check adequacy before declaring verified support. Failed execution,
+not-run, not-available and unknown support stay distinct; changed sources make earlier
+results stale. Current evidence for one criterion does not certify another. The optional
+runtime computes applicability from these assessments; it does not judge semantic truth.
+Without runtime access, report the same distinctions manually in the existing task record.
+
 Return a proportionate decision or focused change, the evidence that supports it and any unresolved limitation. Opening this skill grants no authority to change external systems.
 
 Package tools and shared assets: `../../../packages/craft-engineering` relative to this skill directory.

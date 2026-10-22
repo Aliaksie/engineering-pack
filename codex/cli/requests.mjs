@@ -57,11 +57,12 @@ function executeRequest(action, options, root) {
   }
   if (action === 'task-start') {
     if (!options.session || !options.task || !options.goal) throw new Error('task-start requires --session, --task and --goal');
-    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.repository ? { repositories: options.repository } : {}), ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
+    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.contract ? { engineeringContract: readInput(options.contract) } : {}), ...(options.repository ? { repositories: options.repository } : {}), ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
   }
   if (action === 'task-step') {
     if (!options.session || !options.task) throw new Error('task-step requires --session and an explicit --task or a task-start binding');
     return stepTask(root, options.session, options.task, { stage: options.stage, target: options.target, approach: options.approach, evidence: options.evidence, outcome: options.outcome, result: options.result, nextStep: options.next,
+      ...(options['acceptance-evidence'] ? { acceptanceEvidence: readInput(options['acceptance-evidence']), expectedTaskContract: options['expected-task-contract'], expectedEvidenceDigest: options['expected-evidence-digest'] } : {}),
       ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
   }
 

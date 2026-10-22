@@ -30,7 +30,11 @@ Include meaningful accessibility, feedback/microcopy and responsive behavior whe
 by the request or policy. Additional UX choices remain proposals until agreed, not hidden
 acceptance requirements.
 
-Reuse the shared evidence packet across drafts. Batch missing factual searches; an authorized
+Reuse stable source and criterion IDs from the shared packet across drafts and handoffs.
+Proposed criteria stay visibly proposed until accepted; do not silently add them to an active
+contract. Keep declared dependencies, observed coupling and inference distinct by citation.
+Acceptance coverage describes supplied evidence, not a delivery forecast or source completeness.
+Batch missing factual searches; an authorized
 economical worker can extract cited facts from bounded inputs, while product scope and acceptance
 judgment stay with the main reasoner. Refresh evidence affected by changed sources or scope.
 

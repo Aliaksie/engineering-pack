@@ -68,7 +68,7 @@ export function actionController(root, { session, task, preferencesFile, bundle 
     if (claimed.duplicate) return { supported: true, duplicate: true, executed: claimed.receipt.state === 'completed', receipt: claimed.receipt };
     try {
       const result = await host.execute({ root, session, task, key: claimed.receipt.key, action: offer.action, scope: offer.scope,
-        source: claimed.receipt.source, checkpoint: claimed.receipt.checkpoint });
+        source: claimed.receipt.source, taskContract: offer.taskContract ?? null, checkpoint: claimed.receipt.checkpoint });
       return settle(id, claimed.receipt, result);
     } catch { return settle(id, claimed.receipt, { state: 'uncertain' }); }
   };

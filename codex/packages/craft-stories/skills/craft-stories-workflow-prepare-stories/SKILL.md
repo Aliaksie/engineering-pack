@@ -14,9 +14,12 @@ facts matter, use `craft-stories-ground-spec` on explicit sources. Pass its cite
 revision and access limits to `craft-stories-audit-specs` rather than restarting discovery.
 Use `craft-stories-write-stories` to turn the understood outcomes into implementable slices.
 
-Carry a shared packet of confirmed requirements, source conflicts, assumptions and open
-choices throughout the work. Keep an unsupported interpretation conditional. If one product
-decision blocks a slice, make that question explicit and proceed with unaffected stories.
+Carry one shared packet through grounding, audit and drafting. When a structured task
+contract exists, reuse its source/criterion/decision IDs and current evidence. The optional
+`product-projection` engine operation presents acceptance gaps, dependencies and unresolved
+choices without another state store. Without runtime access, carry those distinctions in
+the local packet. Keep unsupported interpretations conditional; a blocking decision affects
+its slice while unaffected stories can proceed.
 
 Check the resulting drafts against the source intent: acceptance conditions should be
 observable, boundaries should make dependencies clear, and proposed UX or solution choices

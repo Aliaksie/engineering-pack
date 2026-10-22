@@ -30,7 +30,7 @@ function renderReceipt(action, result) {
     lines = [`Step recorded: ${receipt.operation} / ${receipt.target} — ${receipt.outcome}`,
       checkpointLine(result.checkpoint)];
     if (receipt.outcome !== 'passed') lines.push(`Result: ${result.result}`);
-    if (result.complete) lines.push('Task: complete (agent-declared)');
+    if (result.complete) lines.push(result.acceptance?.assurance === 'attributed' ? 'Task: complete (attributed criterion evidence)' : 'Task: complete (agent-declared)');
     const next = result.nextStep;
     if (next) {
       lines.push(`Next: ${next.action}${next.reason ? ` — ${next.reason}` : ''}`);
@@ -58,6 +58,13 @@ function renderReceipt(action, result) {
       'Readiness is not execution or a permission grant.');
     else lines.push('No action dispatched.');
   } else return null;
+  if (result.acceptance) {
+    lines.push(`Acceptance: ${result.acceptance.assurance}`);
+    for (const criterion of result.acceptance.criteria) lines.push(`Criterion: ${criterion.id} — ${criterion.status}${criterion.required ? '' : ' (optional)'}`);
+  }
+  if (result.taskContract) lines.push(`Task contract: ${result.taskContract}`);
+  if (result.evidenceDigest) lines.push(`Evidence digest: ${result.evidenceDigest}`);
+  if (result.binding) lines.push(`Source: ${result.binding.identity ?? 'unknown'}`);
   const status = result.status;
   if (result.workspace?.status === 'retained' && result.workspace.reason) lines.push(`Workspace retained: ${result.workspace.reason}`);
   if (status?.taskEvidenceStale) lines.push('Warning: task evidence is stale.');
@@ -86,6 +93,13 @@ export function renderSessionStatus(status) {
       ? 'No reliable occupancy observation; continue useful work without inferring context pressure.'
       : 'Continue useful work; no context change is indicated.')}`
   ];
+  if (status.acceptance) {
+    lines.push(`Acceptance: ${status.acceptance.assurance}`);
+    for (const criterion of status.acceptance.criteria) lines.push(`Criterion: ${criterion.id} — ${criterion.status}${criterion.required ? '' : ' (optional)'}`);
+  }
+  if (status.taskContract) lines.push(`Task contract: ${status.taskContract}`);
+  if (status.evidenceDigest) lines.push(`Evidence digest: ${status.evidenceDigest}`);
+  if (status.binding) lines.push(`Source: ${status.binding.identity ?? 'unknown'}`);
   if (status.capability?.recommendation) lines.push(`Model advice: ${status.capability.recommendation}`);
   if (status.repositories) lines.push(`Repositories: ${status.repositories.join(', ')}`);
   if (status.workspace?.status === 'available') lines.push(`Workspace: scratch ${status.workspace.scratch}; ${status.workspace.evidence.artifacts} evidence artifacts; ${status.workspace.diskBytes} bytes`);

@@ -21,8 +21,8 @@ const help = {
   'task-offer': { usage: 'task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]', mode: 'evaluate and record a recommendation; no dispatch' },
   'task-decision': { usage: 'task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id', mode: 'record an explicit scoped user decision; no action execution' },
   'task-action-check': { usage: 'task-action-check --session id --offer proposal-id --data fresh-observations.json', mode: 'revalidate source, approval, policy, support and capacity; no dispatch' },
-  'task-start': { usage: 'task-start --session id --task stable-id --goal "outcome" [--stage implement] [--file src/path] [--repository relative/repo ...]', mode: 'bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees' },
-  'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
+  'task-start': { usage: 'task-start --session id --task stable-id --goal "outcome" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]', mode: 'bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees' },
+  'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
   settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]', mode: 'effective settings, value origins, applied controls and private state location; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
@@ -33,7 +33,7 @@ const help = {
     example: { operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check.json', outcome: 'passed' },
     outcomes: ['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved'], optional: ['profile', 'maxAttempts', 'escalationReason'], mode: 'receipt only; no retry execution' },
   'checkpoint-read': { usage: 'checkpoint-read --root project --session id', mode: 'read-only recovery comparison' },
-  'checkpoint-save': { usage: 'checkpoint-save --root project --session id [--task task-id] [--repository relative/repo ...] --data handoff.json',
+  'checkpoint-save': { usage: 'checkpoint-save --root project --session id [--task task-id] [--repository relative/repo ...] [--contract contract.json] --data handoff.json',
     continuationFields: ['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'], mode: 'explicit local checkpoint write' }
 };
 
@@ -45,7 +45,7 @@ export function run(argv) {
     () => observe('cli.command', () => parse(action,args), () => ({ command:action }), { failureCode:'INVALID_INPUT' }));
 }
 function parse(action,args) {
-  const allowed = ['repository', 'feature', 'feature-status', 'reason', 'capture', 'review-authorization', 'action', 'scope', 'benefit', 'offer', 'decision', 'role', 'prior-authorization', 'facts', 'goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'verbose', 'max-output-bytes'];
+  const allowed = ['contract', 'acceptance-evidence', 'expected-evidence-digest', 'expected-task-contract', 'repository', 'feature', 'feature-status', 'reason', 'capture', 'review-authorization', 'action', 'scope', 'benefit', 'offer', 'decision', 'role', 'prior-authorization', 'facts', 'goal', 'stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'next', 'profile', 'complete', 'preferences', 'root', 'intent', 'file', 'host', 'delegate', 'task', 'risk', 'operation', 'params', 'session', 'data', 'module', 'term', 'path', 'max-files', 'max-matches', 'max-bytes', 'available-command', 'available-mcp-tool', 'bundle', 'budget-bytes', 'verification-mode', 'json', 'verbose', 'max-output-bytes'];
   const options = { file: [], risk: [], term: [], path: [] };
   const repeat = ['repository', 'file', 'risk', 'term', 'path', 'available-command', 'available-mcp-tool', 'bundle'];
   for (let index = 0; index < args.length; index++) {
@@ -59,6 +59,8 @@ function parse(action,args) {
     else if (Object.hasOwn(options, name)) throw new Error(`duplicate option ${arg}`);
     else options[name] = value;
   }
+  if (options.contract && action !== 'task-start') throw new Error('--contract is supported by task-start');
+  if ((options['acceptance-evidence'] || options['expected-task-contract'] || options['expected-evidence-digest']) && action !== 'task-step') throw new Error('structured evidence options require task-step');
   if (options.repository && !['task-start', 'checkpoint-save'].includes(action)) throw new Error('--repository is supported by task-start and checkpoint-save; other commands reuse the saved scope');
   return execute(action, options, path.resolve(options.root ?? '.'));
 }

@@ -1,6 +1,6 @@
 {
   "id": "workflow-inspect-architecture",
-  "prompt": "An accepted ADR and current implementation disagree about ownership. A proposal suggests a third option. Investigate the supplied repository.",
+  "prompt": "An accepted ADR and current implementation disagree about ownership. A proposal suggests a third option. Investigate the supplied repository. Reuse any supplied contract IDs. The declared design depends on a shared store, but the inspected code uses process-local state; explain the dependency distinction and operational uncertainty without claiming runtime verification.",
   "criteria": [
     {
       "id": "c1",
@@ -13,6 +13,10 @@
     {
       "id": "c3",
       "description": "Keep search bounded to supplied/linked repositories."
+    },
+    {
+      "id": "c4",
+      "description": "Reuse supplied source/constraint IDs, retain declared versus observed dependency provenance and operational evidence gaps; no role-specific state or fabricated execution."
     }
   ]
 }

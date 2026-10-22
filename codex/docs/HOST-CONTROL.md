@@ -58,6 +58,18 @@ assignment records in 256 KiB; reaching the bound rejects new work instead of de
 unresolved evidence. Native model mismatches stay visible and occupied. Worker lifecycle
 never completes main-task acceptance.
 
+New action offers bind the task-contract digest as well as source and effective policy.
+Scope, risk or engineering-contract amendments invalidate the old offer even without a
+source edit. Historical offers without this binding cannot authorize a structured task.
+Native worker/review dispatch receives `taskContract`; worker status projects its original
+binding and `freshness` (`current`, `stale` or `unknown`) without rewriting the lifecycle
+receipt. A completed worker may therefore have stale evidence and still occupy a slot.
+Reconcile native effects separately from verifying the amended task's acceptance.
+Bound worker requests use worker-ledger format 2 so their contract survives offer
+eviction. Readers retain version-1 requests with unknown bindings; old version-1-only
+controllers reject version 2. Stop incompatible controllers before upgrading and never
+downgrade the ledger to resume an older writer.
+
 ## Review and compaction
 
 Construct `actionController(root, { session, task, preferencesFile, bundle }, host)` with

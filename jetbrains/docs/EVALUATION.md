@@ -1,5 +1,60 @@
 # Paired workflow evaluation
 
+## Discovery reuse and persistent knowledge gate
+
+Measure the existing [bounded lookup reuse](SESSION.md#reuse-before-bounded-discovery)
+before proposing persistent observations. Freeze source and implementation identities,
+query/scope, configuration, runtime and acceptance criteria. Retain raw requests/results,
+timings and the available `telemetry-report`; its retained events are not complete history.
+Use the existing paired-eval protocol below for model comparisons.
+
+Compare fresh batched lookup, validated task-bound reuse and explicit source references.
+Alternate operation order and retain individual samples. Measure end-to-end lookup and
+inventory revalidation separately; inventory timing is a component measurement, not an
+additive estimate of total overhead. Report source bytes read, matches, skipped/truncated
+coverage and exact literal-result agreement. A known-file read with a checked content
+identity measures retrieval only; it cannot replace discovery of unknown callers or prove
+semantic relevance. Filesystem/process timings do not measure model latency or billing.
+
+Classify misses using controlled changes or attributable evidence: first lookup, changed
+session/task, changed source/revision/configuration, incomplete coverage, capacity eviction,
+disabled reuse and unavailable state/inventory. Explicit repository selections currently
+scan fresh. The existing telemetry aggregates hits/misses; it does not distinguish all these
+causes. An unattributed production miss stays unknown. Do not infer semantic rediscovery
+from a cache miss, repeated command text or repeated reads.
+
+The initial discovery assessment on 2026-10-22 returned **no-go for persistent knowledge**.
+Ten alternating samples per case replayed frozen source from the development pilot and
+the QA/product projection implementations in disposable Git repositories on macOS/Node 24.
+These are small deterministic source replays, not three real user tasks or cold OS-cache runs.
+
+| Source case | Fresh lookup median | Validated reuse median | Inventory median | Known-source read/hash median | Fresh source bytes |
+|---|---:|---:|---:|---:|---:|
+| Development pilot | 22.27 ms | 87.33 ms | 42.14 ms | 0.071 ms | 4480 |
+| QA projection | 22.21 ms | 87.09 ms | 42.24 ms | 0.053 ms | 3357 |
+| Product/architecture projection | 22.20 ms | 87.49 ms | 42.51 ms | 0.049 ms | 2274 |
+
+All 30 warm lookups matched fresh literal results and read zero source bytes. Controlled
+task/session changes, absent identity, source/manifest edits and incomplete prior scans
+all scanned fresh. These results establish local mechanics; the small scopes do not
+establish cache performance on large repositories. Keep timing diagnostic-only.
+
+The retained real development pilot has one task in two model arms: 13/19 completed shell
+commands, with five commands containing read/search operations in each arm and no explicit
+Craft lookup invocation. This lexical classification does not measure semantic effort or
+show that existing reuse was exhausted. QA/product examples are synthetic. Repeated real
+tasks, a useful durable fact with measured retrieval benefit, and held-out acceptance
+quality remain unavailable. Model-cost savings, native-host behavior and cross-OS performance
+are unknown. No runtime behavior or cache policy changed in this assessment.
+
+Reopen the gate only when repeated costly semantic discovery remains after existing reuse
+and cited source references. Name one bounded observation and its dependencies; compare it
+on held-out real tasks under equal tools/authorization and unchanged acceptance thresholds.
+Require lower measured retrieval/revalidation cost without correctness, freshness or isolation
+regressions. Otherwise retain the no-go and add no persistent-knowledge feature.
+
+## Paired model runs
+
 Do not assume the current Git HEAD includes working changes. Obtain a fixed repository
 snapshot, including relevant uncommitted sources, before paired model runs and record its
 identity in each report. Do not label deterministic routing fixtures as evidence of better

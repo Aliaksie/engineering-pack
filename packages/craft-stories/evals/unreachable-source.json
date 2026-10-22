@@ -3,6 +3,10 @@
   "prompt": "Draft concise stories from a specification proposing an admin dashboard to reduce support lookup time. It is unclear whether the dashboard is required or a suggested solution. The linked backend repository is unavailable. Supplied UI tests expect read-only users to see aggregate counts, but the specification says administrators only. Identify the consequential product questions, avoid invented discovery claims, and draft unaffected outcomes without a large template.",
   "criteria": [
     {
+      "id": "c5",
+      "description": "Reuses supplied source/criterion/decision IDs; distinguishes declared dependencies from observed coupling, preserves proposed criteria as proposals and does not equate evidence coverage with delivery readiness."
+    },
+    {
       "id": "c1",
       "description": "Labels implementation claims as unverified or unreachable."
     },

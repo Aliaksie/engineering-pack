@@ -1,3 +1,4 @@
+import { validateEngineeringContract, validateAcceptanceEvidence } from './acceptance.mjs';
 import { digest } from '../cache/identity.mjs';
 import { validateFeatures } from './features.mjs';
 const identity = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
@@ -70,12 +71,19 @@ export function appendAttempt(state, receipt) {
 }
 
 export function validateActivityState(state) {
+  const record = state.taskRecord;
+  if (record?.engineeringContract !== undefined || record?.acceptanceEvidence !== undefined || state.formatVersion === 2) {
+    if (state.formatVersion !== 2 || !record?.engineeringContract || !record?.acceptanceEvidence) throw new Error('structured acceptance requires session state version 2; stop incompatible writers');
+    validateEngineeringContract(record.engineeringContract);
+    validateAcceptanceEvidence(record.acceptanceEvidence);
+  }
   validateFeatures(state.featureOutcomes);
   if (state.recommendations !== undefined) {
     if (!state.recommendations || typeof state.recommendations !== 'object' || Array.isArray(state.recommendations)
       || Object.keys(state.recommendations).length > 16) throw new Error('invalid recommendation state');
     for (const [id, offer] of Object.entries(state.recommendations)) {
       if (!/^[a-f0-9]{64}$/.test(id) || !offer || offer.id !== id) throw new Error('invalid recommendation identity');
+      if (offer.taskContract !== undefined && !/^[a-f0-9]{64}$/.test(offer.taskContract)) throw new Error('invalid recommendation task contract');
       const receipt = offer.executionReceipt;
       if (receipt !== undefined && (!receipt || Object.keys(receipt).some(key => !['key', 'state', 'source', 'checkpoint', 'generation', 'evidence', 'acceptanceEvidence'].includes(key))
         || receipt.key !== digest([id, 'execute']) || receipt.source !== offer.source
@@ -85,7 +93,7 @@ export function validateActivityState(state) {
         || [receipt.evidence, receipt.acceptanceEvidence].some(value => value !== null && !identity(value)))) throw new Error('invalid native action receipt');
     }
   }
-  if (state.formatVersion !== 1 || !state.activity || typeof state.activity !== 'object' || Array.isArray(state.activity)
+  if (![1, 2].includes(state.formatVersion) || !state.activity || typeof state.activity !== 'object' || Array.isArray(state.activity)
     || !state.lookups || typeof state.lookups !== 'object' || Array.isArray(state.lookups)
     || !Array.isArray(state.attempts) || state.attempts.length > 24
     || Object.keys(state.lookups).length > 32

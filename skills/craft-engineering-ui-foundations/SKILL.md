@@ -22,4 +22,14 @@ applicable [language page](../craft-engineering-foundations/SKILL.md) independen
 lifecycle mechanics while keeping the same user outcome. Verify real rendering for layout/focus
 claims and distinguish that evidence from mocked component behavior.
 
+Select shared detail by the affected behavior:
+
+- [Accessibility](references/accessibility.md): semantics, keyboard and focus.
+- [Styling](references/styling-discipline.md): responsive layout and project tokens.
+- [Visual evidence](references/visual-regression.md): comparable rendered states and interpretation.
+
+For QA without source access, use supplied requirements and observed interaction as the
+basis. Missing application access leaves rendering and focus checks unexecuted; a plan
+or screenshot alone cannot establish those outcomes. No framework is implied.
+
 Package tools and shared assets: `../../packages/craft-engineering` relative to this skill directory.

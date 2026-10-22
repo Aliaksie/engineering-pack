@@ -95,6 +95,25 @@ runner differences; do not interpret a green job as lossless telemetry or a late
 budget pass. The first telemetry reference can itself be lossy, inflating mismatch
 counts; reported dropped events and affected turns are shown separately.
 
+The grounded lifecycle workload composes context, starts a structured task, checks the
+real developer fixture, records acceptance, and verifies rejection after a source edit.
+Each round launches a fresh Node process and measures its first (`cold`) and repeated
+(`warm`) lifecycle separately. Imports/setup are excluded from those sample spans; the
+separate process wall includes launch, imports, setup and both phases. OS caches remain
+uncontrolled. CPU and cumulative maximum RSS describe the benchmark child only, excluding
+spawned Git/test processes; whole-process-tree CPU and peak memory remain unknown.
+
+Run just this workload from the source checkout with a new output path:
+
+```sh
+node .github/benchmarks/lifecycle.mjs <new-output.json> 10
+```
+
+Retain at least ten samples per phase for each runner class before freezing an absolute
+budget and relative regression threshold. Local calibration cannot stand in for hosted
+Linux, macOS or Windows results. Until those baselines and their rationale are recorded,
+timing remains diagnostic and only correctness/completeness can fail the job.
+
 With a local Codex executable available, run the optional discovery regression after building:
 
 ```sh

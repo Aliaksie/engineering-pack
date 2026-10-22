@@ -26,7 +26,10 @@ function storage(root, session, task) {
 }
 export function workerStatus(root, session, task) {
   const store = storage(root, session, task), state = store.read();
-  return { tree: store.tree, requests: state.requests, transport: 'Host callbacks are required; no native transport is installed by configuration.',
+  let taskState = {}, repository = {};
+  try { taskState = readSessionState(root, session, task); repository = taskRepository(root, session, task); }
+  catch { /* Unavailable task/source observations cannot certify freshness. */ }
+  return { tree: store.tree, requests: decide('worker-evidence', { state, taskState, repository }), transport: 'Host callbacks are required; no native transport is installed by configuration.',
     limits: { maxRequests: 64, maxBytes: MAX_BYTES }, acceptance: 'Worker lifecycle evidence never closes main-task acceptance.' };
 }
 
@@ -103,6 +106,7 @@ export function workerController(root, { session, task, preferencesFile } = {}, 
     try {
       const result = await host.dispatch(clone({ ...context, key: admitted.request.key, model: admitted.request.model,
         role: admitted.request.role, profile: admitted.request.profile, source: admitted.request.source, revision: admitted.request.revision,
+        taskContract: admitted.request.taskContract ?? null,
         parent: input.parent ?? null, reuseWorker: input.reuseWorker ?? null, brief: input.brief, scope: input.scope, authorizationEvidence: authority.evidence }));
       return observedResult(input.id, result, admitted.request.generation);
     } catch {

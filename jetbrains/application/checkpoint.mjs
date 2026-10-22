@@ -29,7 +29,23 @@ function saveCheckpointOperation(root, session, metadata = {}, { expectedSource 
 export const gitState = (root, session, task) => taskRepository(root, session, task);
 function recoverCheckpointOperation(root, session) {
   const saved = readCheckpoint(root, session);
-  return decide('checkpoint-compare', { saved, current: repositorySnapshot(root, saved?.repositories) });
+  const recovered = decide('checkpoint-compare', { saved, current: repositorySnapshot(root, saved?.repositories) });
+  // Acceptance lives in task state. A historical checkpoint cannot restore or
+  // certify it, even when its repository snapshot still matches.
+  try {
+    const task = activeTask(root, session);
+    if (!task) return { ...recovered, taskRecovery: { status: 'unavailable' } };
+    const state = readSessionState(root, session, task);
+    if (!state.taskRecord) return { ...recovered, taskRecovery: { status: 'unavailable' } };
+    const repository = JSON.stringify(state.taskRecord.repositories) === JSON.stringify(saved?.repositories)
+      ? recovered.current : repositorySnapshot(root, state.taskRecord.repositories);
+    const context = decide('task-context', { state, repository });
+    return { ...recovered, taskRecovery: { status: 'available', ...context,
+      checkpointTaskMatches: saved?.taskId === task && saved?.taskContract === context.taskContract } };
+  } catch {
+    diagnostic('state', 'STATE_UNAVAILABLE');
+    return { ...recovered, taskRecovery: { status: 'unavailable' } };
+  }
 }
 
 export const saveCheckpoint = (...args) => withTelemetry(args[0], {}, () => observe('checkpoint.saved', () => saveCheckpointOperation(...args), result => ({ checkpoints: result.unchanged ? 0 : 1 }), { failureCode:'CHECKPOINT_UNAVAILABLE' }));

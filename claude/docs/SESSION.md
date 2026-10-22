@@ -578,3 +578,15 @@ A manual policy can use:
 
 Explicit commands remain available. A preference is never execution permission, a
 model mapping, a hook trust decision or evidence of observed feature use.
+
+Structured task contracts and criterion evidence are opt-in through the existing
+`task-start --contract` and `task-step --acceptance-evidence` commands. See
+[acceptance contracts](ACCEPTANCE.md#task-command-persistence) for input shapes,
+conditional ledger replacement, completion gates and version-2 session compatibility.
+
+The developer acceptance pilot in source-checkout `examples/evals/developer-acceptance/README.md`
+provides a reproducible two-criterion bug fix and adversarial reporting variants. Its
+source test composes cited context, persists a contract, executes independent checks
+and rejects missing or stale coverage through the task CLI. The direct tiny-fix variant
+uses no session runtime. Deterministic results establish mechanics; usefulness and
+shorter-guidance decisions require separate retained paired model runs.

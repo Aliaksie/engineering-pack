@@ -9,6 +9,12 @@ Use this flow when the requested outcome includes changing product behavior thro
 For testing-only requests, use `craft-engineering-workflow-verify-feature` when available;
 verification does not by itself authorize implementing or repairing the product.
 
+Keep a tiny, understood correction direct: inspect the affected code and constraints,
+make the scoped edit, run an adequate check and report the result. Size alone does not
+require setup, a structured contract, an ADR, a worker or a tracker. For larger tasks,
+carry the existing criterion IDs and checked source through the flow below; a passing
+unrelated check cannot certify completion.
+
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
 current paths/revision and verification evidence. Keep this record private by default; use
@@ -105,6 +111,12 @@ At a meaningful acceptance boundary, use `task-step` to supply the stage, accept
 approach, evidence identifier, observed outcome, brief result and next step. It records a
 semantic receipt, maintains one bounded continuation and returns session advice. A shell exit
 code alone does not establish acceptance; tool hooks never create these semantic receipts.
+For an opted-in structured task, carry the criterion IDs into attributable evidence
+records and use the current task/ledger digests when replacing evidence through `task-step`.
+Assess the artifact and checked source before declaring verified support; an unavailable
+check is not available evidence. Required gaps prevent structured completion; optional
+gaps remain in the report. Rebind amendments and recheck changed sources instead of
+refreshing old evidence identities. Legacy receipts remain agent declarations.
 Use `--complete` only when the requested outcome is accepted and unresolved failures are closed.
 This is a stage boundary, not a command to run after every tool call. Existing `session-advice`
 and explicit receipt/checkpoint commands remain available for more detailed observations. Continue necessary authorized work; a suggestion is not an extra approval

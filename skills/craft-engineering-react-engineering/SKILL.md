@@ -36,10 +36,10 @@ so a reader can inspect it. Citation counts are not a quality measure.
 - [component-patterns](references/component-patterns.md): Component contracts and effects.
 - [state-management](references/state-management.md): State ownership and async freshness.
 - [failure-and-loading](references/failure-and-loading.md): Loading, empty, stale and failed interactions.
-- [accessibility](references/accessibility.md): Semantics, keyboard and focus.
-- [styling-discipline](references/styling-discipline.md): Responsive layout and project tokens.
+- [accessibility](../craft-engineering-ui-foundations/references/accessibility.md): Semantics, keyboard and focus.
+- [styling-discipline](../craft-engineering-ui-foundations/references/styling-discipline.md): Responsive layout and project tokens.
 - [testing-react-components](references/testing-react-components.md): Interaction and integration checks.
-- [visual-regression](references/visual-regression.md): Rendered comparisons and interpretation.
+- [visual-regression](../craft-engineering-ui-foundations/references/visual-regression.md): Rendered comparisons and interpretation.
 
 Return a proportionate decision or focused change, the evidence that supports it and any unresolved limitation. Opening this skill grants no authority to change external systems.
 

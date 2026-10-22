@@ -84,9 +84,9 @@
       },
       "value": {
         "problem": "Architecture or ownership assumptions can misdirect a change.",
-        "contribution": "Trace source and decision status before recommending work.",
+        "contribution": "Trace source and decision status; distinguish declared dependencies from observed coupling.",
         "inputs": "Question, affected paths and available project sources.",
-        "result": "Grounded explanation with ownership, constraints and missing evidence.",
+        "result": "Grounded boundary brief with cited constraints, operational consequences and evidence gaps.",
         "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
         "consumer": "Explicit user workflow or composed delivery flow.",
         "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
@@ -171,7 +171,7 @@
       },
       "value": {
         "problem": "Task authoring can invent requirements or require an unavailable tracker.",
-        "contribution": "Ground local story criteria in source and expose unanswered questions.",
+        "contribution": "Reuse source and criterion IDs for local drafts; expose unresolved choices and dependency provenance.",
         "inputs": "Task text, accessible code and specification evidence.",
         "result": "Local story draft with checkable criteria and unknowns.",
         "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
@@ -314,7 +314,7 @@
       "id": "practice:accessibility",
       "skills": [],
       "references": [
-        "craft-engineering:react-engineering/references/accessibility.md"
+        "craft-engineering:ui-foundations/references/accessibility.md"
       ],
       "when": {
         "layers": [

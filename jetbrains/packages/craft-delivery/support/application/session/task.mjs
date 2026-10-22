@@ -36,8 +36,9 @@ export function startTask(root, session, task, input, { host, preferencesFile } 
       Object.assign(state, current.state); addActivity(state, { routingDecisions: 1 });
     });
     writeState(file, { formatVersion: 1, task, checkout: repository.checkout, ...(repositories ? { repositories } : {}) }, 16384);
+    const context = decide('task-context', { state: readSessionState(root, session, task), repository });
     const workspace = workspaceBoundary(root, session, task, 'maintain', project);
-    return { session, task, ...(repositories ? { repositories } : {}), routing, modelAdvice: model, checkpoint: checkpoint(root, session, task, project), workspace,
+    return { session, task, ...(repositories ? { repositories } : {}), routing, modelAdvice: model, acceptance: context.acceptance, evidenceDigest: context.evidenceDigest, taskContract: context.taskContract, binding: context.binding, checkpoint: checkpoint(root, session, task, project), workspace,
       authorization: 'Local task binding and snapshot only; no acceptance, worker, model switch or remote action was inferred.' };
   } finally { releaseState(ticket); }
 }
@@ -77,9 +78,10 @@ export function stepTask(root, session, task, input, { host, preferencesFile, bu
       try { updateSessionState(root, session, task, state => { state.notice = status.notice; }); }
       catch (error) { status.noticeDiagnostic = error.message; }
     }
-    const workspace = workspaceBoundary(root, session, task, input.complete ? 'complete' : 'touch', project);
+    const complete = result.state.taskRecord.goalComplete && (!result.state.taskRecord.engineeringContract || status.task?.goalComplete === true);
+    const workspace = workspaceBoundary(root, session, task, complete ? 'complete' : 'touch', project);
     status.workspace = workspace;
-    return { session, task, recorded: result.receipt, result: input.result, complete: result.state.taskRecord.goalComplete, workspace,
+    return { session, task, recorded: result.receipt, result: input.result, complete, acceptance: status.acceptance ?? result.acceptance, workspace,
       checkpoint: saved, ...(actionOffer ? { actionOffer: { offer: actionOffer.offer, suppressed: actionOffer.suppressed, applicability: actionOffer.applicability, executed: false } } : {}),
       nextStep: actionOffer?.suppressed ? null : status.suggestion ?? null, status,
       authorization: 'Agent-declared acceptance recorded locally; no recommended action was executed.' };
