@@ -105,6 +105,12 @@ At a meaningful acceptance boundary, use `task-step` to supply the stage, accept
 approach, evidence identifier, observed outcome, brief result and next step. It records a
 semantic receipt, maintains one bounded continuation and returns session advice. A shell exit
 code alone does not establish acceptance; tool hooks never create these semantic receipts.
+For an opted-in structured task, carry the criterion IDs into attributable evidence
+records and use the current task/ledger digests when replacing evidence through `task-step`.
+Assess the artifact and checked source before declaring verified support; an unavailable
+check is not available evidence. Required gaps prevent structured completion; optional
+gaps remain in the report. Rebind amendments and recheck changed sources instead of
+refreshing old evidence identities. Legacy receipts remain agent declarations.
 Use `--complete` only when the requested outcome is accepted and unresolved failures are closed.
 This is a stage boundary, not a command to run after every tool call. Existing `session-advice`
 and explicit receipt/checkpoint commands remain available for more detailed observations. Continue necessary authorized work; a suggestion is not an extra approval

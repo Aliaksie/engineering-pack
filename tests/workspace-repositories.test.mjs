@@ -294,3 +294,28 @@ test('concurrent independent workspace writers serialize without corrupting owne
   assert.equal(files.length, accepted.length);
   assert.equal(workspaceOperation(root, null, policy, 'maintain', {}, Date.now() + 2 * 86400000).cleaned[0].scratch, 'cleaned');
 });
+
+test('structured criterion evidence binds all selected repositories and reports missing roots as unknown', t => {
+  const { root, command } = fixture(t);
+  const contract = JSON.parse(fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url), 'utf8'));
+  const contractFile = path.join(root, 'contract.json'), ledgerFile = path.join(root, 'ledger.json');
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  command('task-start', '--task', 'task', '--goal', 'Update selected repositories', '--repository', 'kit', '--repository', 'profile', '--contract', contractFile);
+  const context = command('session');
+  const records = contract.criteria.map(c => ({ id: c.id, criterionIds: [c.id], scope: c.scope,
+    contract: decide('engineering-contract-digest', { contract }), binding: context.binding,
+    checkId: 'value-check', kind: 'check', artifact: 'retained/checks', observedAt: '2026-10-22T00:00:00Z',
+    reporter: 'fixture', basis: c.description, support: 'verified', execution: 'passed' }));
+  fs.writeFileSync(ledgerFile, JSON.stringify({ formatVersion: 1, records }));
+  const result = command('task-step', '--stage', 'verify', '--target', 'criteria', '--approach', 'assessed', '--evidence', 'checks', '--outcome', 'passed',
+    '--result', 'Criteria checked', '--next', 'Return result', '--acceptance-evidence', ledgerFile,
+    '--expected-task-contract', context.taskContract, '--expected-evidence-digest', context.evidenceDigest, '--complete');
+  assert.equal(result.complete, true);
+  fs.appendFileSync(path.join(root, 'profile/value.mjs'), '// edit in the second selected repository\n');
+  assert.equal(command('session').acceptance.complete, false);
+  assert.equal(command('session').acceptance.records[0].freshness, 'stale');
+  fs.renameSync(path.join(root, 'profile'), path.join(root, 'moved-profile'));
+  const missing = command('session', '--task', 'task');
+  assert.equal(missing.acceptance.complete, false);
+  assert.equal(missing.acceptance.records[0].freshness, 'unknown');
+});

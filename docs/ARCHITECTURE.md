@@ -85,6 +85,13 @@ Checkpoint, activity and hint state share bounded, symlink-checked, atomic file 
 with separate formats and lifecycles. Automatic Git snapshots cannot renew the source
 binding of older continuation notes. A reset recommendation requires a fresh continuation.
 
+Opt-in engineering contracts and criterion evidence share the existing locked task state.
+The engine computes coverage from the observed source and attributed assessments; the
+application observes Git and persists decisions atomically. Structured session version 2
+rejects incompatible writers, while legacy tasks retain version 1 and declared assurance.
+The evidence ledger survives attempt-history eviction; contract and ledger digests fence
+replacement writes. See [acceptance contracts](ACCEPTANCE.md).
+
 Worker reservations use one bounded private ledger per coordinator root/session/task across
 processes. Application controllers persist intent and release locks before calling trusted
 host functions; the engine decides admission and reconciliation from explicit JSON facts.

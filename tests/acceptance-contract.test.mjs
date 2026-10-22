@@ -130,13 +130,16 @@ test('legacy lifecycle and checkpoint fixtures retain declared completion withou
   const checkpoint = call('checkpoint-state', { previous: {}, metadata: { taskId: 'fix-value', continuation: stepped.continuation }, repository: legacy.repository, updated: legacy.at });
   assert.equal(call('checkpoint-validate', { state: checkpoint }).formatVersion, 1);
   assert.deepEqual(call('acceptance-coverage', { contract: null }), { assurance: 'declared', coverage: 'unknown', complete: false, criteria: [] });
-  // Legacy command readers reject new inputs; no new persisted writer is enabled.
-  invalid('task-start', { state: legacy.state, input: { ...legacy.start, engineeringContract: fixture('contract') }, repository: legacy.repository });
+  // Legacy declared receipts and checkpoints never acquire criterion coverage.
   invalid('attempt-receipt', { attempt: { operation: 'verify', target: 'value', approach: 'check', evidence: 'output', outcome: 'passed', criterionIds: ['value'] }, repository: legacy.repository, id: 'attempt', at: legacy.at });
   invalid('checkpoint-metadata', { metadata: { engineeringContract: fixture('contract') } });
   invalid('activity-validate', { state: { ...legacy.state, formatVersion: 2 } });
   const augmented = { ...frozen.state, taskRecord: { ...frozen.state.taskRecord, engineeringContract: fixture('contract') } };
-  assert.deepEqual(call('activity-validate', { state: augmented }), augmented);
+  invalid('activity-validate', { state: augmented });
+  const upgraded = call('task-start', { state: frozen.state, input: { ...legacy.start, engineeringContract: fixture('contract') }, repository: legacy.repository });
+  assert.equal(upgraded.state.formatVersion, 2);
+  assert.equal(upgraded.state.taskRecord.goalComplete, false);
+  assert.equal(call('activity-validate', { state: upgraded.state }).formatVersion, 2);
   const augmentedCheckpoint = { ...frozen.checkpoint, engineeringContract: fixture('contract') };
   assert.deepEqual(call('checkpoint-validate', { state: augmentedCheckpoint }), augmentedCheckpoint);
 });

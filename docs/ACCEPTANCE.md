@@ -1,8 +1,8 @@
 # Portable acceptance contracts
 
-The engine exposes opt-in JSON validation and coverage operations. These do not yet
-write session state, collect sources or change task command completion. Existing tasks
-remain usable with agent-declared completion and unassessed criterion coverage.
+The engine exposes opt-in JSON validation and criterion coverage. Task commands can
+persist structured contracts and evidence; required gaps prevent structured completion.
+Existing tasks remain usable with agent-declared completion and unknown criterion coverage.
 
 | Operation | Input | Result |
 |---|---|---|
@@ -94,14 +94,60 @@ Errors retain the engine's `INVALID_INPUT` code. Payload diagnostics use the pre
 | `engine/session/{status,recommendations,features}.mjs` | Recovery, action and operational feature facts retain their separate meanings |
 | CLI and host entry points | Continue through the existing application task/session operations |
 
-Legacy task/attempt/checkpoint input and completed-state fixtures freeze these paths.
-Strict legacy command and metadata readers reject new structured fields. Existing
-session validation is permissive about unknown task fields and checkpoint validation
-does not deeply validate arbitrary additions: acceptance by an old reader does not
-prove preservation by its writer. No structured fields are persisted in this increment.
-Before enabling writers, introduce explicit compatible state validation and mixed-version
-write rejection; never assume old clients preserve new evidence or convert an old
-passing receipt into verified criteria. State storage remains behind platform ports.
+Legacy task/attempt/checkpoint fixtures retain their declared semantics and original
+scope digest. Opting into a structured contract upgrades that session/task state to
+`formatVersion: 2`; current readers accept versions 1 and 2, and validate the nested
+contract and evidence in version 2. Old version-1 validators reject version 2 before
+writing. Stop incompatible writers before upgrading; do not downgrade a structured
+state file or remove its contract to regain legacy completion. Checkpoint format stays
+version 1: its existing task-contract binding now includes the engineering-contract
+digest. Evidence remains in the locked session state rather than duplicated in a checkpoint.
+
+## Task command persistence
+
+Use existing commands with an actual host session ID and private JSON input files:
+
+```sh
+node cli/main.mjs task-start --root PROJECT --session SESSION --task TASK --goal "Outcome" --contract contract.json --json
+node cli/main.mjs session --root PROJECT --session SESSION --json
+node cli/main.mjs task-step --root PROJECT --session SESSION --stage verify --target acceptance:criterion --approach assessed-check --evidence retained-output --outcome passed --result "Observed behavior" --next "Report remaining gaps" --acceptance-evidence ledger.json --expected-task-contract TASK_DIGEST --expected-evidence-digest LEDGER_DIGEST --complete --json
+```
+
+`--contract` reads the engineering-contract shape above. `--acceptance-evidence` reads
+the complete versioned evidence envelope. Use `taskContract`, `evidenceDigest` and
+`binding` returned by start/session; evidence records name the engineering-contract
+digest separately. Preserve the binding actually checked: copying a new source identity
+onto old evidence does not verify it. Non-Git roots return null repository identity and
+cannot obtain verified completion through this developer path. Explicit environment
+coverage remains available through the pure operation for QA producers.
+
+Ledger replacement is explicit and conditional on both expected digests under the
+existing session lock. Reload after a conflict; reconcile the records rather than retry
+an old replacement with new digests. An assessment correcting a failure must retain its
+basis in the revised ledger/retained artifact. No last-pass-wins rule hides a failure.
+Evidence persists independently of the 24-entry attempt history and is not evicted.
+The 32 KiB ledger, 32 KiB contract and combined 128 KiB session limits all apply; an
+oversized write fails atomically, preserving the prior state. Busy locks and unavailable
+storage fail the command. Checkpoint/workspace failures remain separately reported.
+
+Contract, scope, risk, repository selection and checkout amendments clear structured
+coverage and completion. Source edits make retained evidence stale; evidence with a
+null source remains unknown. Stage changes through `task-start` also reset evidence;
+normal `task-step` progression preserves it. Evidence from another contract/source is
+never rebound automatically. Required failures, gaps, conflicts, open decisions or
+attempt blockers reject `--complete`; optional gaps remain visible. Record partial
+coverage without `--complete` before resolving a gap. A rejected completion does not
+persist its proposed ledger or receipt.
+
+Artifact references and `verified` support are attributable reporter assessments, not
+automatic file retrieval or semantic checking. The reporter must establish artifact
+availability and adequacy before declaring support; unavailable output uses
+`execution: not-available`, unexecuted work `not-run`, and uncertain support `unknown`.
+Reobserve cited instructions/configuration and authorized external sources after changes;
+external freshness cannot be independently established by a repository fingerprint.
+No source prose, criterion descriptions or artifact contents enter operational telemetry.
+Direct commands require no hooks; guidance-only installations keep this same discipline
+manually without claiming runtime persistence or enforcement.
 
 ## Grounded context composition
 
