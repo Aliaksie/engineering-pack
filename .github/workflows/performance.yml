@@ -1,0 +1,52 @@
+name: Performance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  measure:
+    name: Performance (${{ matrix.os }}, Node 24.21.0)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Check out benchmark harnesses
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: benchmark
+      - name: Check out measured source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: measured-source
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - name: Measure and check portable workloads
+        env:
+          PERFORMANCE_REVISION: ${{ github.sha }}
+        run: node benchmark/.github/benchmarks/run.mjs measured-source benchmark-results
+      - name: Upload raw benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: performance-${{ matrix.os }}-node-24.21.0-${{ github.sha }}
+          path: benchmark-results/
+          if-no-files-found: error
+          retention-days: 14

@@ -63,6 +63,38 @@ identified hook diagnostic artifact. Its hand-labeled corpus can report false/mi
 collection success is not a policy-enforcement pass. See the
 [tool/hook audit](authoring/TOOLS.md) for the measured scope and current matcher limitations.
 
+### Performance diagnostics
+
+The separate **Performance** workflow runs on pushes to `main` and manual dispatch,
+with no pull-request trigger. For [manual dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow), select **Performance → Run workflow** and
+choose a branch when a focused run is needed. The workflow becomes available after
+its definition reaches the default branch. It measures the selected commit on native
+Ubuntu, macOS and Windows with the same pinned Node 24.21.0 patch; update that pin
+across the matrix together when refreshing the reference environment.
+
+Each platform retains raw JSON, environment and source/harness hashes, an assessment
+and a Markdown summary for 14 days. The job summary shows synthetic turn median/p95
+and telemetry diagnostics. Process/assertion failures, changed wire or selected task
+state, incomplete measurements and modified exports fail the benchmark job. Timing
+has no hard threshold: hosted hardware/cache variability and reported telemetry
+loss remain visible diagnostics. This workflow is independent of packaging and
+publication and is not a release prerequisite.
+
+For a local run against a clean checkout, use a new output directory outside that checkout:
+
+```sh
+node .github/benchmarks/run.mjs <clean-checkout> <new-results-directory>
+```
+
+The default is 30 repetitions plus a separate first sample. Set
+`PERFORMANCE_ROUNDS=1` only for a quick integration check, not a performance baseline.
+The suite measures process/Git operations, equal-byte file-count workloads, state
+primitives and synthetic parallel hook turns. It excludes actual tools/models and
+native host scheduling. Compare matching source/harness/runtime identities and retain
+runner differences; do not interpret a green job as lossless telemetry or a latency
+budget pass. The first telemetry reference can itself be lossy, inflating mismatch
+counts; reported dropped events and affected turns are shown separately.
+
 With a local Codex executable available, run the optional discovery regression after building:
 
 ```sh
