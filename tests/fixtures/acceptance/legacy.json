@@ -1,0 +1,37 @@
+{
+  "repository": {
+    "gitAvailable": true,
+    "checkout": "fixture-checkout",
+    "head": "revision-a",
+    "status": [],
+    "fingerprints": {
+      "complete": true,
+      "index": "index-a",
+      "workingTree": "tree-a"
+    }
+  },
+  "state": {
+    "formatVersion": 1,
+    "activity": {},
+    "lookups": {},
+    "attempts": []
+  },
+  "start": {
+    "id": "fix-value",
+    "goal": "Correct the value",
+    "files": [
+      "src/value.mjs"
+    ]
+  },
+  "step": {
+    "stage": "verify",
+    "target": "acceptance:value",
+    "approach": "focused-check",
+    "evidence": "fixture/value-output",
+    "outcome": "passed",
+    "result": "Value check passed",
+    "nextStep": "Report completion",
+    "complete": true
+  },
+  "at": "2026-10-22T00:00:00Z"
+}

@@ -6,8 +6,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { readSessionState, activeTask, bindingFile, attemptStatus } from '../application/session/activity.mjs';
-import { readCheckpoint } from '../application/checkpoint.mjs';
+import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
+import { renderCommand } from '../cli/render.mjs';
+import { lockState, releaseState } from '../platform/index.mjs';
+import { updateSessionState } from '../application/session/activity.mjs';
+import { readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { prepareEvent } from '../application/context-delivery/prepare.mjs';
+import { readTelemetry } from '../platform/node/telemetry.mjs';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-lifecycle-')));
@@ -253,4 +258,178 @@ test('risk-only changes invalidate verification and continuation for unchanged f
   assert.equal(status.task.goalComplete, false);
   assert.notEqual(status.task.verification, 'passed');
   assert.equal(status.checkpoint.status, 'stale-or-incomplete');
+});
+
+function structuredFixture(t) {
+  const f = fixture(t);
+  const contract = JSON.parse(fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url), 'utf8').replaceAll('"src"', '"value.mjs"'));
+  const contractFile = path.join(f.root, '.git', 'acceptance-contract.json');
+  const evidenceFile = path.join(f.root, '.git', 'acceptance-evidence.json');
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  const start = () => f.command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--file', 'value.mjs', '--contract', contractFile);
+  const submit = (records, extra = [], expected = f.command('session')) => {
+    fs.writeFileSync(evidenceFile, JSON.stringify({ formatVersion: 1, records }));
+    return f.command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'criterion-checks',
+      '--evidence', 'retained/checks', '--outcome', 'passed', '--result', 'Criteria assessed', '--next', 'Report remaining gaps',
+      '--acceptance-evidence', evidenceFile, '--expected-task-contract', expected.taskContract,
+      '--expected-evidence-digest', expected.evidenceDigest, ...extra);
+  };
+  const records = (binding = f.command('session').binding) => contract.criteria.map(criterion => ({
+    id: `check-${criterion.id}`, criterionIds: [criterion.id], scope: criterion.scope,
+    contract: engineeringContractDigest(contract), binding, checkId: 'value-check', kind: 'check',
+    artifact: 'retained/checks', observedAt: '2026-10-22T00:00:00Z', reporter: 'fixture assessor',
+    basis: criterion.description, support: 'verified', execution: 'passed'
+  }));
+  return { ...f, contract, contractFile, start, submit, records };
+}
+
+test('structured CLI completion survives restart, attempt eviction and checkpoint recovery', t => {
+  const { root, command, start, submit, records } = structuredFixture(t);
+  const begun = start();
+  assert.equal(begun.acceptance.complete, false);
+  assert.equal(begun.acceptance.assurance, 'attributed');
+  assert.throws(() => submit(records().slice(0, 1), ['--complete']), /every required criterion/);
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 0);
+  assert.equal(submit(records(), ['--complete']).complete, true);
+  for (let i = 0; i < 26; i++) command('session-attempt', '--data', writeAttempt(root, i));
+  const saved = readSessionState(root, 'host-session', 'fix-value');
+  assert.equal(saved.formatVersion, 2);
+  assert.equal(saved.attempts.length, 24);
+  assert.equal(saved.taskRecord.acceptanceEvidence.records.length, 2);
+  const restarted = spawnSync(process.execPath, ['cli/main.mjs', 'session', '--root', root, '--session', 'host-session', '--json'], { encoding: 'utf8' });
+  assert.equal(restarted.status, 0, restarted.stderr);
+  const status = JSON.parse(restarted.stdout);
+  assert.equal(status.acceptance.complete, true);
+  assert.equal(status.task.goalComplete, true);
+  assert.equal(status.checkpoint.status, 'fresh');
+  assert.equal(readCheckpoint(root, 'host-session').continuationSource.taskContract, status.taskContract);
+});
+
+test('compaction recovery reloads current criterion gaps without renewing evidence', t => {
+  const { root, start, submit, records, command, contract, contractFile } = structuredFixture(t);
+  start();
+  submit(records().slice(0, 1));
+  const recover = () => prepareEvent({ cwd: root, session: 'host-session', host: 'claude', event: 'after-compact' }).checkpoint.taskRecovery;
+  const pending = recover();
+  assert.equal(pending.status, 'available');
+  assert.equal(pending.checkpointTaskMatches, true);
+  assert.equal(pending.acceptance.complete, false);
+  assert.equal(pending.acceptance.criteria[1].status, 'gap');
+  assert.equal(pending.taskContract, command('session').taskContract);
+  submit(records(), ['--complete']);
+  assert.equal(recover().task.goalComplete, true);
+  fs.appendFileSync(path.join(root, 'value.mjs'), '// changed after checks\n');
+  const stale = recover();
+  assert.equal(stale.task.goalComplete, false);
+  assert.equal(stale.acceptance.complete, false);
+  assert.equal(stale.acceptance.records[0].freshness, 'stale');
+  contract.criteria[0].description = 'Revised criterion';
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  start();
+  assert.equal(recover().acceptance.records.length, 0);
+});
+
+test('checkpoint recovery keeps switched and unreadable tasks separate from historical acceptance', t => {
+  const { root, start, submit, records, command } = structuredFixture(t);
+  start(); submit(records(), ['--complete']);
+  const preferences = path.join(root, '.git', 'no-checkpoint.json');
+  fs.writeFileSync(preferences, '{"checkpoint":{"enabled":false}}');
+  command('task-start', '--task', 'another-task', '--goal', 'Another task', '--preferences', preferences);
+  const switched = recoverCheckpoint(root, 'host-session');
+  assert.equal(switched.saved.taskId, 'fix-value');
+  assert.equal(switched.taskRecovery.task.id, 'another-task');
+  assert.equal(switched.taskRecovery.checkpointTaskMatches, false);
+  fs.writeFileSync(bindingFile(root, 'host-session'), '{broken');
+  const unavailable = recoverCheckpoint(root, 'host-session');
+  assert.deepEqual(unavailable.taskRecovery, { status: 'unavailable' });
+  assert.equal(unavailable.saved.taskId, 'fix-value');
+});
+
+test('criterion recovery stays functional without telemetry and keeps prose out of events', t => {
+  const { root, contract, contractFile, start, submit, records } = structuredFixture(t);
+  const privateText = 'PRIVATE-criterion-source-material-7321';
+  contract.criteria[0].description = privateText;
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  start(); submit(records().slice(0, 1));
+  const recovery = recoverCheckpoint(root, 'host-session');
+  assert.equal(recovery.taskRecovery.acceptance.complete, false);
+  const before = readTelemetry(root);
+  assert.ok(before.some(event => event.name === 'checkpoint.recovered'));
+  assert.equal(JSON.stringify(before).includes(privateText), false);
+  fs.writeFileSync(path.join(root, '.craft', 'telemetry.json'), '{"local":false}');
+  // The new settings file changes the source snapshot; verify again rather than
+  // expecting evidence from before that change to remain current.
+  assert.equal(submit(records(), ['--complete']).complete, true);
+  assert.equal(recoverCheckpoint(root, 'host-session').taskRecovery.acceptance.complete, true);
+  assert.deepEqual(readTelemetry(root), before);
+});
+
+function writeAttempt(root, i) {
+  const file = path.join(root, '.git', 'attempt.json');
+  fs.writeFileSync(file, JSON.stringify({ operation: 'verify', target: `closed-${i}`, approach: 'fixture', evidence: 'retained/checks', outcome: 'passed' }));
+  return file;
+}
+
+test('structured evidence reports missing, failed, unavailable, irrelevant and optional coverage', t => {
+  const { root, contract, contractFile, command, start, submit, records } = structuredFixture(t);
+  start();
+  for (const change of [r => { r[1].execution = 'failed'; }, r => { r[1].execution = 'not-run'; },
+    r => { r[1].execution = 'not-available'; }, r => { r[1].checkId = 'unrelated'; }, r => { r[1].binding.identity = null; }]) {
+    const evidence = records(); change(evidence);
+    const observed = submit(evidence);
+    assert.equal(observed.acceptance.complete, false);
+    assert.throws(() => submit(evidence, ['--complete']), /every required criterion/);
+  }
+  contract.criteria[1].required = false;
+  fs.writeFileSync(contractFile, JSON.stringify(contract)); start();
+  const complete = submit(records().slice(0, 1), ['--complete']);
+  assert.equal(complete.complete, true);
+  assert.equal(complete.acceptance.criteria[1].status, 'gap');
+  const compact = renderCommand('task-step', complete);
+  assert.match(compact, /error — gap \(optional\)/);
+  assert.match(compact, /attributed criterion evidence/);
+  assert.match(renderCommand('session', command('session')), /value — verified/);
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.acceptanceEvidence.records.length, 1);
+});
+
+test('source changes, contract edits and delayed ledger writers cannot certify current completion', t => {
+  const { root, contract, contractFile, command, start, submit, records } = structuredFixture(t);
+  start();
+  const old = records();
+  submit(old);
+  const delayed = command('session');
+  const newer = records(); newer[0].basis = 'Updated assessment basis';
+  submit(newer);
+  assert.throws(() => submit(old, [], delayed), /ledger changed/);
+  fs.appendFileSync(path.join(root, 'value.mjs'), '// changed after checks\n');
+  assert.equal(command('session').acceptance.records[0].freshness, 'stale');
+  assert.throws(() => submit(old, ['--complete']), /every required criterion/);
+  submit(records(), ['--complete']);
+  contract.criteria[0].description = 'Amended acceptance without source changes';
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  const before = command('session'); start();
+  assert.equal(command('session').task.goalComplete, false);
+  assert.equal(command('session').acceptance.records.length, 0);
+  assert.throws(() => submit(old, [], before), /task contract changed/);
+  const scopeBefore = command('session');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--risk', 'new risk');
+  assert.throws(() => submit(records(), [], scopeBefore), /task contract changed/);
+});
+
+test('structured state refuses busy writers and combined capacity overflow without losing prior evidence', t => {
+  const { root, command, start, submit, records } = structuredFixture(t);
+  start(); submit(records());
+  const before = readSessionState(root, 'host-session', 'fix-value');
+  const lock = lockState(bindingFile(root, 'host-session'));
+  assert.ok(lock);
+  try { assert.throws(() => submit(records()), /writer is busy/); }
+  finally { releaseState(lock); }
+  assert.deepEqual(readSessionState(root, 'host-session', 'fix-value'), before);
+  updateSessionState(root, 'host-session', 'fix-value', state => { state.padding = 'x'.repeat(121000); });
+  const padded = readSessionState(root, 'host-session', 'fix-value');
+  const large = records();
+  for (let i = 0; i < 10; i++) large.push({ ...large[0], id: `extra-${i}`, basis: 'b'.repeat(512), artifact: 'a'.repeat(1024) });
+  assert.throws(() => submit(large), /limit|large|capacity|bound|size/);
+  assert.deepEqual(readSessionState(root, 'host-session', 'fix-value'), padded);
+  assert.equal(command('session').acceptance.complete, true);
 });

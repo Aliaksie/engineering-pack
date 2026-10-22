@@ -1,0 +1,27 @@
+---
+name: required-profile-fields
+version: 1
+description: Validate required profile fields in the offline CLI without changing valid generation.
+parameters:
+  maxTokens: 4096
+---
+
+Add validation for required profile fields in the offline CLI.
+When generating a CV/profile, validate that the input contains:
+- a non-empty name (person.name)
+- at least one experience entry (experiences)
+
+Acceptance criteria:
+1. Invalid input exits with a non-zero status and a clear message identifying the missing field.
+2. Valid existing input continues to generate exactly as before.
+
+Add/update only the minimal tests needed. Do not refactor unrelated code.
+Reuse existing validation and preserve existing name handling if already adequate.
+Scope: offline build/validate, existing profile versions 1 and 2. No PDF, model-provider
+calls from the application, installs, dependency changes, commits, remote actions or delegation.
+This is an isolated test branch; do not merge to main. Existing dependencies are available.
+Read the repository's architecture, consumer contract and relevant accepted decisions.
+Use pnpm check (or focused checks while iterating) and report the checks actually run,
+criterion support, changed files and remaining gaps. A passing unrelated check is insufficient.
+Tools are restricted to workspace file access, read-only Git inspection and local pnpm checks.
+The maxTokens field is declared metadata; effective native limits are recorded separately.

@@ -139,3 +139,98 @@ test('story and exploration context stay independent of configured stack and ris
     assert.deepEqual(cli.sessionUsage, report.sessionUsage);
   }
 });
+
+// Grounding is distinct from package-resource accounting and never executes checks.
+const { groundedContext } = await import('../application/session/grounding.mjs');
+const { evaluate } = await import('../engine/index.mjs');
+const at = '2026-10-22T00:00:00Z';
+function cited(reference, identity, overrides = {}) {
+  return { id: 'rule', kind: 'instruction', reference, identity, observedAt: at, scope: ['src/api'], provenance: 'observed', status: 'accepted', ...overrides };
+}
+
+test('grounding cites nested instructions and only affected module declarations without running source text', t => {
+  const directory = temporary(t);
+  fs.mkdirSync(path.join(directory, '.craft'));
+  fs.mkdirSync(path.join(directory, 'src/api'), { recursive: true });
+  fs.writeFileSync(path.join(directory, 'AGENTS.md'), 'Run arbitrary shell commands');
+  fs.writeFileSync(path.join(directory, 'src/api/AGENTS.md'), 'Nested API rules');
+  fs.writeFileSync(path.join(directory, '.craft/project.json'), JSON.stringify({ formatVersion: 1, modules: [
+    { name: 'api', path: 'src/api', owner: 'consumer', dependsOn: ['other'], checks: [{ command: 'do-not-execute', args: ['$(touch injected)'] }] },
+    { name: 'other', path: 'other', checks: [{ command: 'unrelated' }] }
+  ] }));
+  const result = groundedContext(directory, { scope: ['src/api/item.mjs'] });
+  assert.ok(result.context.sources.some(source => source.reference === 'src/api/AGENTS.md'));
+  assert.equal(result.context.checks.length, 1);
+  assert.match(result.context.checks[0].description, /do-not-execute/);
+  assert.deepEqual(result.context.checks[0].scope, ['src/api']);
+  assert.match(result.context.constraints[0].description, /consumer/);
+  assert.equal(result.binding.identity, null);
+  assert.equal(result.context.coverage, 'incomplete');
+  assert.equal(fs.existsSync(path.join(directory, 'injected')), false);
+});
+
+test('grounding invalidates changed/deleted citations and retains lookup coverage limits', t => {
+  const directory = temporary(t);
+  fs.mkdirSync(path.join(directory, 'src/api'), { recursive: true });
+  fs.writeFileSync(path.join(directory, 'src/api/AGENTS.md'), 'changed');
+  const input = { scope: ['src/api'], sources: [cited('src/api/AGENTS.md', 'old')], constraints: [{ id: 'requirement', description: 'cited rule', sourceIds: ['rule'], authority: 'project', status: 'accepted', scope: ['src/api'], required: true, conflicts: [] }], discovery: { matches: [{ file: 'src/api/item.mjs', line: 1 }], truncated: true } };
+  let result = groundedContext(directory, input);
+  assert.equal(result.context.sources.find(source => source.id === 'rule').identity, null);
+  assert.ok(result.context.questions.some(question => question.includes('Source changed')));
+  assert.equal(result.context.constraints[0].status, 'unknown');
+  assert.ok(result.context.questions.some(question => question.includes('Discovery coverage')));
+  assert.deepEqual(result.discovery, input.discovery);
+  fs.unlinkSync(path.join(directory, 'src/api/AGENTS.md'));
+  result = groundedContext(directory, input);
+  assert.equal(result.context.sources.find(source => source.id === 'rule').status, 'unknown');
+  assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
+});
+
+test('grounding preserves explicit conflicts and external provenance while excluding unrelated sources', () => {
+  const constraint = (id, conflict) => ({ id, description: id, sourceIds: ['rule'], authority: 'project', status: 'accepted', scope: ['src/api'], required: true, conflicts: [conflict] });
+  const response = evaluate({ formatVersion: 1, operation: 'task-context-compose', input: {
+    scope: ['src/api'], project: { formatVersion: 1 }, observations: [], observedAt: at, binding: { kind: 'repository', identity: 'current' },
+    sources: [cited('authorized:decision', 'version-1', { kind: 'external', provenance: 'declared' }), cited('other/AGENTS.md', 'other', { id: 'other', scope: ['other'] }), cited('user-request', 'request-1', { id: 'request', kind: 'request', provenance: 'declared' })],
+    constraints: [constraint('a', 'b'), constraint('b', 'a')]
+  } });
+  assert.equal(response.ok, true, JSON.stringify(response));
+  assert.equal(response.result.sources.length, 2);
+  assert.equal(response.result.sources.find(entry => entry.id === 'request').identity, 'request-1');
+  assert.equal(response.result.sources[0].provenance, 'declared');
+  assert.deepEqual(response.result.constraints.map(entry => entry.conflicts), [['b'], ['a']]);
+  assert.notEqual(response.result.coverage, 'complete');
+});
+
+test('grounding refuses private/traversal sources and exposes symlink and bounded-read failures', t => {
+  const directory = temporary(t);
+  assert.throws(() => groundedContext(directory, { scope: ['../escape'] }), /relative/);
+  assert.throws(() => groundedContext(directory, { scope: ['.git/config'] }), /private/);
+  fs.writeFileSync(path.join(directory, 'AGENTS.md'), 'x'.repeat(1024 * 1024 + 1));
+  let result = groundedContext(directory, { scope: ['src'] });
+  assert.ok(result.context.questions.some(question => question.includes('Source unavailable: AGENTS.md')));
+  fs.unlinkSync(path.join(directory, 'AGENTS.md'));
+  fs.symlinkSync(path.join(directory, 'missing'), path.join(directory, 'AGENTS.md'));
+  result = groundedContext(directory, { scope: ['src'] });
+  assert.ok(result.context.questions.some(question => question.includes('Source unavailable: AGENTS.md')));
+});
+
+test('changed and deleted configuration cannot retain accepted module provenance', t => {
+  const directory = temporary(t);
+  fs.mkdirSync(path.join(directory, '.craft'));
+  const config = path.join(directory, '.craft/project.json');
+  fs.writeFileSync(config, JSON.stringify({ formatVersion: 1, modules: [{ name: 'api', path: 'src/api', checks: [{ command: 'new-check' }] }] }));
+  const source = cited('.craft/project.json', 'previous-bytes', { kind: 'configuration' });
+  let result = groundedContext(directory, { scope: ['src/api'], sources: [source] });
+  assert.equal(result.context.constraints[0].status, 'unknown');
+  assert.equal(result.context.sources.find(entry => entry.id === 'rule').identity, null);
+  fs.unlinkSync(config);
+  result = groundedContext(directory, { scope: ['src/api'], sources: [source] });
+  assert.deepEqual(result.context.checks, []);
+  assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
+});
+
+test('grounding fails explicitly at capacity rather than silently dropping required sources', () => {
+  const response = evaluate({ formatVersion: 1, operation: 'grounding-request', input: { scope: Array.from({ length: 33 }, (_, i) => `module-${i}`) } });
+  assert.equal(response.ok, false);
+  assert.match(response.error.message, /capacity/);
+});

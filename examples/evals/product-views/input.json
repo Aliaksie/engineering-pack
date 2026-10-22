@@ -1,0 +1,169 @@
+{
+  "contract": {
+    "formatVersion": 1,
+    "intent": "Plan single-use reset links and assess the shared redemption boundary",
+    "exclusions": [
+      "Product fixes",
+      "Real accounts, email delivery and remote mutations"
+    ],
+    "context": {
+      "formatVersion": 1,
+      "scope": [
+        "reset"
+      ],
+      "sources": [
+        {
+          "id": "request",
+          "kind": "request",
+          "reference": "Agreed requirement: a used reset link cannot be reused",
+          "identity": "reset-requirement-v1",
+          "observedAt": "2026-10-22T00:00:00Z",
+          "scope": [
+            "reset"
+          ],
+          "provenance": "declared",
+          "status": "accepted"
+        },
+        {
+          "id": "design",
+          "kind": "adr",
+          "reference": "Synthetic proposed decision: use a shared redemption store",
+          "identity": "design-v1",
+          "observedAt": "2026-10-22T00:00:00Z",
+          "scope": [
+            "reset"
+          ],
+          "provenance": "declared",
+          "status": "proposed"
+        },
+        {
+          "id": "implementation",
+          "kind": "code",
+          "reference": "Synthetic inspected handler: process-local redemption state",
+          "identity": "handler-v1",
+          "observedAt": "2026-10-22T00:00:00Z",
+          "scope": [
+            "reset"
+          ],
+          "provenance": "observed",
+          "status": "unknown"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "shared-store",
+          "description": "Proposed shared store owns redemption across instances",
+          "sourceIds": [
+            "design"
+          ],
+          "authority": "project",
+          "status": "proposed",
+          "scope": [
+            "reset"
+          ],
+          "required": false,
+          "conflicts": [
+            "local-state"
+          ]
+        },
+        {
+          "id": "local-state",
+          "description": "Inspected handler keeps redemption state in one process",
+          "sourceIds": [
+            "implementation"
+          ],
+          "authority": "observation",
+          "status": "unknown",
+          "scope": [
+            "reset"
+          ],
+          "required": false,
+          "conflicts": [
+            "shared-store"
+          ]
+        },
+        {
+          "id": "outage",
+          "description": "Proposed shared store makes redemption depend on its availability",
+          "sourceIds": [
+            "design"
+          ],
+          "authority": "project",
+          "status": "proposed",
+          "scope": [
+            "reset"
+          ],
+          "required": false,
+          "conflicts": []
+        }
+      ],
+      "checks": [
+        {
+          "id": "replay",
+          "description": "Redeem an isolated synthetic link twice",
+          "sourceIds": [
+            "request"
+          ],
+          "scope": [
+            "reset"
+          ]
+        }
+      ],
+      "questions": [
+        "Expiry and concurrent redemption expectations are unspecified"
+      ],
+      "coverage": "incomplete"
+    },
+    "criteria": [
+      {
+        "id": "single-use",
+        "description": "A used reset link cannot be reused",
+        "required": true,
+        "scope": [
+          "reset"
+        ],
+        "sourceIds": [
+          "request"
+        ],
+        "checkIds": [
+          "replay"
+        ],
+        "evidenceKind": "manual"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "redemption-owner",
+        "description": "Choose the cross-instance redemption owner and outage behavior",
+        "blocking": true,
+        "resolved": false
+      }
+    ],
+    "derivation": {
+      "reporter": "Synthetic product/architecture fixture author",
+      "method": "declared",
+      "observedAt": "2026-10-22T00:00:00Z"
+    }
+  },
+  "evidence": {
+    "formatVersion": 1,
+    "records": []
+  },
+  "current": {
+    "kind": "environment",
+    "identity": null
+  },
+  "focus": {
+    "boundaries": [
+      "shared-store",
+      "local-state"
+    ],
+    "dependencies": [
+      "shared-store",
+      "local-state"
+    ],
+    "consequences": [
+      "outage"
+    ]
+  }
+}

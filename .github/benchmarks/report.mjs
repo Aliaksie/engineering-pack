@@ -1,6 +1,6 @@
 export function assessReports(reports, revision) {
   const failures = [], diagnostics = [];
-  for (const name of ['components', 'filesystem', 'turn']) {
+  for (const name of ['components', 'filesystem', 'turn', 'lifecycle']) {
     const report = reports[name];
     if (!report || report.loadError || !Array.isArray(report.samples) || !report.samples.length) {
       failures.push(`${name}: missing or unreadable samples`);
@@ -23,6 +23,10 @@ export function assessReports(reports, revision) {
     if (!Number.isInteger(expected) || expected < 1 || !summaries.length || summaries.some(value => value.n !== expected)) {
       failures.push(`${name}: incomplete repeated measurements`);
     }
+    if (name === 'lifecycle') {
+      if (['cold', 'warm'].some(phase => report.samples.filter(sample => sample.phase === phase && Number.isFinite(sample.wallMs) && sample.wallMs >= 0).length !== expected)) failures.push('lifecycle: incomplete cold/warm samples');
+      if (expected < 10) diagnostics.push('Lifecycle calibration needs at least ten cold and warm samples for this runner class; timing remains diagnostic.');
+    }
   }
   return { failures, diagnostics, timingPolicy: 'Diagnostic only; no elapsed-time threshold gates.' };
 }
@@ -32,6 +36,10 @@ export function formatSummary(assessment, reports, revision) {
     assessment.failures.length ? '**Correctness checks failed.**' : '**Correctness checks passed.**', '',
     '| Synthetic turn | Median ms | p95 ms |', '|---|---:|---:|'];
   for (const [name, stats] of Object.entries(reports.turn?.summary ?? {})) {
+    lines.push(`| ${name} | ${Number(stats.median).toFixed(1)} | ${Number(stats.p95).toFixed(1)} |`);
+  }
+  lines.push('', '| Grounded lifecycle | Median ms | p95 ms |', '|---|---:|---:|');
+  for (const [name, stats] of Object.entries(reports.lifecycle?.summary ?? {})) {
     lines.push(`| ${name} | ${Number(stats.median).toFixed(1)} | ${Number(stats.p95).toFixed(1)} |`);
   }
   lines.push('', assessment.timingPolicy, '',

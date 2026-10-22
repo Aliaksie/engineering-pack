@@ -1,0 +1,80 @@
+{
+  "formatVersion": 1,
+  "intent": "Correct the value and preserve errors",
+  "exclusions": [
+    "Remote publication"
+  ],
+  "context": {
+    "formatVersion": 1,
+    "scope": [
+      "src"
+    ],
+    "sources": [
+      {
+        "id": "request",
+        "kind": "request",
+        "reference": "user request",
+        "identity": "request-v1",
+        "observedAt": "2026-10-22T00:00:00Z",
+        "scope": [
+          "src"
+        ],
+        "provenance": "declared",
+        "status": "accepted"
+      }
+    ],
+    "constraints": [],
+    "checks": [
+      {
+        "id": "value-check",
+        "description": "Assert the returned value",
+        "sourceIds": [
+          "request"
+        ],
+        "scope": [
+          "src"
+        ]
+      }
+    ],
+    "questions": [],
+    "coverage": "complete"
+  },
+  "criteria": [
+    {
+      "id": "value",
+      "description": "Returns the expected value",
+      "required": true,
+      "scope": [
+        "src"
+      ],
+      "sourceIds": [
+        "request"
+      ],
+      "checkIds": [
+        "value-check"
+      ],
+      "evidenceKind": "check"
+    },
+    {
+      "id": "error",
+      "description": "Preserves the error behavior",
+      "required": true,
+      "scope": [
+        "src"
+      ],
+      "sourceIds": [
+        "request"
+      ],
+      "checkIds": [
+        "value-check"
+      ],
+      "evidenceKind": "check"
+    }
+  ],
+  "decisions": [],
+  "derivation": {
+    "reporter": "fixture agent",
+    "method": "declared",
+    "observedAt": "2026-10-22T00:00:00Z"
+  }
+}
