@@ -10,8 +10,9 @@ import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
 import { renderCommand } from '../cli/render.mjs';
 import { lockState, releaseState } from '../platform/index.mjs';
 import { updateSessionState } from '../application/session/activity.mjs';
-import { readCheckpoint } from '../application/checkpoint.mjs';
+import { readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { prepareEvent } from '../application/context-delivery/prepare.mjs';
+import { readTelemetry } from '../platform/node/telemetry.mjs';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-lifecycle-')));
@@ -302,6 +303,65 @@ test('structured CLI completion survives restart, attempt eviction and checkpoin
   assert.equal(status.task.goalComplete, true);
   assert.equal(status.checkpoint.status, 'fresh');
   assert.equal(readCheckpoint(root, 'host-session').continuationSource.taskContract, status.taskContract);
+});
+
+test('compaction recovery reloads current criterion gaps without renewing evidence', t => {
+  const { root, start, submit, records, command, contract, contractFile } = structuredFixture(t);
+  start();
+  submit(records().slice(0, 1));
+  const recover = () => prepareEvent({ cwd: root, session: 'host-session', host: 'claude', event: 'after-compact' }).checkpoint.taskRecovery;
+  const pending = recover();
+  assert.equal(pending.status, 'available');
+  assert.equal(pending.checkpointTaskMatches, true);
+  assert.equal(pending.acceptance.complete, false);
+  assert.equal(pending.acceptance.criteria[1].status, 'gap');
+  assert.equal(pending.taskContract, command('session').taskContract);
+  submit(records(), ['--complete']);
+  assert.equal(recover().task.goalComplete, true);
+  fs.appendFileSync(path.join(root, 'value.mjs'), '// changed after checks\n');
+  const stale = recover();
+  assert.equal(stale.task.goalComplete, false);
+  assert.equal(stale.acceptance.complete, false);
+  assert.equal(stale.acceptance.records[0].freshness, 'stale');
+  contract.criteria[0].description = 'Revised criterion';
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  start();
+  assert.equal(recover().acceptance.records.length, 0);
+});
+
+test('checkpoint recovery keeps switched and unreadable tasks separate from historical acceptance', t => {
+  const { root, start, submit, records, command } = structuredFixture(t);
+  start(); submit(records(), ['--complete']);
+  const preferences = path.join(root, '.git', 'no-checkpoint.json');
+  fs.writeFileSync(preferences, '{"checkpoint":{"enabled":false}}');
+  command('task-start', '--task', 'another-task', '--goal', 'Another task', '--preferences', preferences);
+  const switched = recoverCheckpoint(root, 'host-session');
+  assert.equal(switched.saved.taskId, 'fix-value');
+  assert.equal(switched.taskRecovery.task.id, 'another-task');
+  assert.equal(switched.taskRecovery.checkpointTaskMatches, false);
+  fs.writeFileSync(bindingFile(root, 'host-session'), '{broken');
+  const unavailable = recoverCheckpoint(root, 'host-session');
+  assert.deepEqual(unavailable.taskRecovery, { status: 'unavailable' });
+  assert.equal(unavailable.saved.taskId, 'fix-value');
+});
+
+test('criterion recovery stays functional without telemetry and keeps prose out of events', t => {
+  const { root, contract, contractFile, start, submit, records } = structuredFixture(t);
+  const privateText = 'PRIVATE-criterion-source-material-7321';
+  contract.criteria[0].description = privateText;
+  fs.writeFileSync(contractFile, JSON.stringify(contract));
+  start(); submit(records().slice(0, 1));
+  const recovery = recoverCheckpoint(root, 'host-session');
+  assert.equal(recovery.taskRecovery.acceptance.complete, false);
+  const before = readTelemetry(root);
+  assert.ok(before.some(event => event.name === 'checkpoint.recovered'));
+  assert.equal(JSON.stringify(before).includes(privateText), false);
+  fs.writeFileSync(path.join(root, '.craft', 'telemetry.json'), '{"local":false}');
+  // The new settings file changes the source snapshot; verify again rather than
+  // expecting evidence from before that change to remain current.
+  assert.equal(submit(records(), ['--complete']).complete, true);
+  assert.equal(recoverCheckpoint(root, 'host-session').taskRecovery.acceptance.complete, true);
+  assert.deepEqual(readTelemetry(root), before);
 });
 
 function writeAttempt(root, i) {

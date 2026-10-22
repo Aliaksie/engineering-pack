@@ -103,6 +103,15 @@ state file or remove its contract to regain legacy completion. Checkpoint format
 version 1: its existing task-contract binding now includes the engineering-contract
 digest. Evidence remains in the locked session state rather than duplicated in a checkpoint.
 
+`checkpoint-read` and supported session-start/after-compaction recovery reload the
+active task's current coverage as `taskRecovery`. Its task/contract identity and pending
+criteria come from session state, with freshness recomputed against current sources.
+`checkpointTaskMatches` reports whether the historical checkpoint names that task and
+contract; a matching repository snapshot alone cannot certify acceptance. Missing or
+unreadable task state returns `taskRecovery.status: unavailable` while retaining the
+historical checkpoint for inspection. Recovery neither rewrites evidence nor grants
+authorization. These task details are returned to the caller, never telemetry attributes.
+
 ## Task command persistence
 
 Use existing commands with an actual host session ID and private JSON input files:
