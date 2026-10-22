@@ -7,6 +7,13 @@ commands → real source fix → separate checks → evidence → completion. It
 unavailable/irrelevant checks, later source/instruction edits and a direct tiny fix.
 The deliberate bug remains in `fixture/`; do not repair the shared evaluation input.
 
+`prompt.txt` starts with YAML frontmatter: `name`, integer `version`, `description`
+and `parameters.maxTokens`, followed by the task instructions. Version changes identify
+intentional prompt revisions. The collector freezes and passes the entire file as text;
+it does not parse frontmatter or enforce token limits. A selected runner must explicitly
+map declared parameters to supported controls and retain the effective settings for both
+arms. Until then, `maxTokens` is metadata, not an observed execution limit.
+
 ## Freeze and collect
 
 Use the existing [paired collector](../../../docs/EVALUATION.md#collect-one-frozen-pair).

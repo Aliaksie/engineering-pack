@@ -1,3 +1,11 @@
+---
+name: developer-acceptance
+version: 1
+description: Fix canonical receipt identity and verify each acceptance criterion.
+parameters:
+  maxTokens: 4096
+---
+
 Correct receiptStore so retries using whitespace or letter-case variants of an event key
 apply only once. Preserve invalid-input rejection and receipt counts. Follow AGENTS.md;
 reuse the existing helper and add no dependency. Required criteria: retry (canonical identity
