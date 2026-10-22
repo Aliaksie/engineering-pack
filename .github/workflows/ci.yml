@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/benchmark-matrix-2026-10-22]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   workflows:
-    if: github.event.inputs.performance != 'true'
+    if: github.event.inputs.performance != 'true' && github.ref != 'refs/heads/perf/benchmark-matrix-2026-10-22'
     name: Validate GitHub workflows
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -53,7 +53,7 @@ jobs:
           npm run test:workflows
 
   check:
-    if: github.event.inputs.performance != 'true'
+    if: github.event.inputs.performance != 'true' && github.ref != 'refs/heads/perf/benchmark-matrix-2026-10-22'
     name: Check (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -162,7 +162,7 @@ jobs:
 
   performance:
     name: Performance (${{ matrix.os }}, Node 24)
-    if: github.event_name == 'workflow_dispatch' && inputs.performance
+    if: (github.event_name == 'workflow_dispatch' && inputs.performance) || (github.event_name == 'push' && github.ref == 'refs/heads/perf/benchmark-matrix-2026-10-22')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
