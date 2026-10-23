@@ -120,6 +120,43 @@ impl Store {
         tx.commit().map_err(|e| e.to_string())
     }
 
+    /// Retire contributions before acquisition, including after provider upgrades.
+    pub fn retain_providers(&mut self, active: &[&str]) -> Result<usize, String> {
+        let tx = self.connection.transaction().map_err(|e| e.to_string())?;
+        let providers = {
+            let mut statement = tx
+                .prepare("SELECT DISTINCT provider FROM sources")
+                .map_err(|e| e.to_string())?;
+            statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| e.to_string())?
+        };
+        let mut removed = 0;
+        for provider in providers {
+            if !active.contains(&provider.as_str()) {
+                removed += tx
+                    .execute("DELETE FROM sources WHERE provider=?1", [&provider])
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        if removed > 0 {
+            tx.execute(
+                "UPDATE metadata SET value=value+1 WHERE key='generation'",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+            tx.execute(
+                "UPDATE metadata SET value=0 WHERE key='inventory_complete'",
+                [],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(removed)
+    }
+
     pub fn begin_inventory(&mut self) -> Result<i64, String> {
         let tx = self.connection.transaction().map_err(|e| e.to_string())?;
         tx.execute(
@@ -243,6 +280,80 @@ impl Store {
 mod tests {
     use super::*;
     use crate::javascript::{PROVIDER, extract};
+    #[test]
+    fn refused_write_preserves_previous_generation_and_facts() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        store
+            .replace(&extract("a.js", b"const before = 1;").unwrap(), "1", epoch)
+            .unwrap();
+        let generation = store.status().unwrap()["generation"].clone();
+        store
+            .connection
+            .execute_batch("PRAGMA query_only=ON")
+            .unwrap();
+        assert!(
+            store
+                .replace(&extract("a.js", b"const after = 1;").unwrap(), "2", epoch)
+                .is_err()
+        );
+        assert_eq!(store.status().unwrap()["generation"], generation);
+        assert_eq!(
+            store.query("name", "before", "", 10).unwrap()["results"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            store.query("name", "after", "", 10).unwrap()["results"],
+            json!([])
+        );
+    }
+
+    #[test]
+    fn retired_provider_cannot_leave_queryable_facts() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        store
+            .replace(
+                &extract("a.js", b"const previous = 1;").unwrap(),
+                "1",
+                epoch,
+            )
+            .unwrap();
+        store.finish_inventory(PROVIDER, epoch).unwrap();
+        assert_eq!(store.retain_providers(&[PROVIDER]).unwrap(), 0);
+        assert_eq!(
+            store.retain_providers(&["replacement-provider"]).unwrap(),
+            1
+        );
+        assert_eq!(store.status().unwrap()["evidence"], 0);
+        assert_eq!(store.status().unwrap()["inventoryComplete"], false);
+        assert_eq!(
+            store.query("name", "previous", "", 10).unwrap()["results"],
+            json!([])
+        );
+        assert_eq!(store.retain_providers(&[]).unwrap(), 0);
+    }
+
+    #[test]
+    fn interrupted_inventory_preserves_committed_sources_for_restart() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        let extraction = extract("a.js", b"const retained = 1;").unwrap();
+        store.replace(&extraction, "1", epoch).unwrap();
+        assert_eq!(store.status().unwrap()["inventoryComplete"], false);
+        let restarted = store.begin_inventory().unwrap();
+        assert!(
+            store
+                .reuse("a.js", PROVIDER, &extraction.hash, restarted)
+                .unwrap()
+        );
+        assert_eq!(store.finish_inventory(PROVIDER, restarted).unwrap(), 0);
+        assert_eq!(store.status().unwrap()["evidence"], 1);
+    }
+
     #[test]
     fn replacement_failure_empty_success_and_deletion_are_distinct() {
         let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();

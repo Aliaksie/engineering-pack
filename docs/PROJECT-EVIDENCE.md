@@ -60,7 +60,9 @@ An OS lock serializes operations and releases on process exit. A successful extr
 atomically replaces that source/provider's records, including empty success. Parse/read
 failure retains historical evidence but excludes it from query results. Only successful
 inventory completion retires deleted/excluded sources. Restarting refresh reuses successful
-unchanged extractions. Unsupported schema versions refuse writes.
+unchanged extractions. Refresh retires contributions from providers no longer active,
+including replaced provider versions, before acquiring new evidence. Unsupported schema
+versions and corrupt databases refuse writes without automatic rebuilding.
 
 Hashes are SHA-256 over raw source bytes. Occurrence IDs hash a UTF-8 JSON string array
 of relative path, provider version, predicate, name and start byte. They replay across
@@ -80,7 +82,7 @@ build output, private plans and dependency directories are excluded. Cancellatio
 leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
 
 Resolved entity/relation queries, configurable extraction batches, richer diagnostics,
-provider retirement, consistent backup/rebuild and relocatable installation remain under
+consistent backup/rebuild and relocatable installation remain under
 development. Do not treat this preview as a completed migration or a packaged native release.
 
 ## Verification

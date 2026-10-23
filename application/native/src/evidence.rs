@@ -62,6 +62,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
         }
         "refresh" => {
             let started = Instant::now();
+            let retired = store.retain_providers(&[PROVIDER])?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
             let (mut files, mut reused, mut changed, mut failed, mut bytes) =
@@ -104,7 +105,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             let removed = store.finish_inventory(PROVIDER, epoch)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,
-                "bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
+                "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
             )
         }
         _ => Err("unknown evidence operation".into()),

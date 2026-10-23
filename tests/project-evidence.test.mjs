@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { projectEvidence } from '../application/project-evidence.mjs';
@@ -86,4 +87,16 @@ test('native state creation rejects symlinked private directories', { skip: !bin
   fs.symlinkSync(right.root, path.join(left.root, '.craft'));
   assert.throws(() => left.run('refresh'), /symlink/);
   assert.equal(fs.existsSync(path.join(right.root, 'state')), false);
+});
+
+
+test('corrupt databases fail without rebuilding or overwriting derived state', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  run('status');
+  const id = createHash('sha256').update(root).digest('hex').slice(0, 24);
+  const database = path.join(root, '.craft', 'state', id, 'shared', 'project-evidence.sqlite');
+  const corrupt = Buffer.from('not a SQLite database');
+  fs.writeFileSync(database, corrupt);
+  assert.throws(() => run('refresh'), /not a database/);
+  assert.deepEqual(fs.readFileSync(database), corrupt);
 });
