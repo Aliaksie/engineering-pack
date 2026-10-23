@@ -18,6 +18,7 @@
     "check": "npm run validate && npm run check:craft-bar && npm run build && npm run build:distribution && npm run validate:exports && npm run lint:scripts && npm run test:unit",
     "check:craft-bar": "node tooling/sync-craft-bar.mjs --check",
     "build": "node tooling/build.mjs",
+    "build:native": "node tooling/native-bundle.mjs",
     "build:claude": "node tooling/build.mjs claude",
     "build:codex": "node tooling/build.mjs codex",
     "build:agents": "node tooling/build.mjs agents",

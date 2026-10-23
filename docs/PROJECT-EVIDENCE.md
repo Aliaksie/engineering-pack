@@ -19,8 +19,8 @@ node cli/project-evidence.mjs query --enable --root . --binary "$PWD/target/debu
 node cli/project-evidence.mjs status --enable --root . --binary "$PWD/target/debug/craft-project-evidence" --json
 ```
 
-Omitting `--enable` disables native invocation and state access. No installation or
-automatic hook is provided yet. The wrapper never builds or downloads a binary.
+Omitting `--enable` disables native invocation and state access. The wrapper never
+builds or downloads a binary. No automatic host hook is installed.
 `version --enable --binary <absolute-path>` reports binary, schema and active `providers`.
 The legacy `provider` field continues to identify the JavaScript provider.
 
@@ -38,6 +38,29 @@ state and consumer configuration. Both operations use the normal exclusive lock.
 Unknown schema versions or corrupt stores still refuse writes; preserve those files
 for diagnosis before manually replacing them with a compatible snapshot while no
 command is running. Rebuild does not silently repair an incompatible store.
+
+## Relocatable local bundle
+
+Run `npm run build:native` to build an offline, locked release for the current Rust
+host target. Dependencies must already be cached; missing dependencies fail rather
+than downloading during packaging. `cargo` and `rustc` must be on PATH, or supplied
+through `CARGO` and `RUSTC` respectively. The command writes
+`dist/project-evidence/<target>/` and only replaces a previously generated bundle.
+This optional build is separate from ordinary host exports and `npm run build`.
+
+Move the entire bundle directory to its intended local location. With Node 22+ and
+Git on PATH, run `node <bundle>/cli/project-evidence.mjs version --enable` or the same
+refresh/query commands shown above without `--binary`. No Rust toolchain is needed
+at runtime. The bundle contains the release binary, the small wrapper, dependency
+notices and a manifest with protocol/schema/provider versions, target, source revision,
+dirty-state indicator and per-file SHA-256 checksums. The manifest itself is excluded
+from its checksum list. Checksums detect changed content; they are not signatures.
+
+The build does not install or enable a host integration. Keep the previous bundle
+directory when replacing an installed copy; rollback selects that directory again.
+Omitting `--enable` disables access without removing data. Removing a bundle leaves
+repository source and private evidence state intact. Current runtime verification is
+limited to Apple Silicon macOS; other platforms remain unverified.
 
 ## Explicit workspaces
 
@@ -108,9 +131,9 @@ has no file-count limit. Inventory streams NUL-delimited Git output; generated s
 build output, private plans and dependency directories are excluded. Cancellation can
 leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
 
-Resolved entity/relation queries, richer diagnostics,
-relocatable installation remain under
-development. Do not treat this preview as a completed migration or a packaged native release.
+Resolved callee relationships, richer diagnostics and host installation remain under
+development. The local bundle is a development preview, not a completed migration or
+a verified release for all platforms.
 
 Refresh accepts optional positive integer limits, each applied independently per member:
 
