@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { setTimeout as delay } from 'node:timers/promises';
 import { projectEvidence } from '../application/project-evidence.mjs';
 
 test('disabled evidence never requires a repository or native binary', () => {
@@ -122,4 +124,36 @@ test('backup is a consistent snapshot and rebuild only clears derived evidence',
   assert.equal(run('query', { value: 'saved' }).results.length, 1);
   assert.equal(run('status').generation, before.generation);
   assert.equal(run('refresh').reused, 1);
+});
+
+
+test('busy refresh refuses concurrent queries and killed acquisition restarts safely', { skip: !binary }, async t => {
+  const { root, run } = fixture(t);
+  for (let index = 0; index < 1000; index++) fs.writeFileSync(path.join(root, `${index}.js`), `export const item${index} = ${index};`);
+  const child = spawn(binary, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const exited = once(child, 'exit');
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
+  child.stdin.end(JSON.stringify({ formatVersion: 1, operation: 'refresh', input: { root } }));
+  const id = createHash('sha256').update(root).digest('hex').slice(0, 24);
+  const database = path.join(root, '.craft', 'state', id, 'shared', 'project-evidence.sqlite');
+  let busy = false;
+  for (let attempt = 0; attempt < 200; attempt++) {
+    if (fs.existsSync(database)) {
+      try { run('status'); } catch (error) {
+        if (/busy/.test(error.message)) { busy = true; break; }
+        throw error;
+      }
+    }
+    if (child.exitCode !== null) break;
+    await delay(5);
+  }
+  assert.equal(busy, true, 'observe the native exclusive lock before interrupting');
+  child.kill('SIGKILL');
+  await exited;
+  const partial = run('status');
+  assert.equal(partial.inventoryComplete, false);
+  const resumed = run('refresh');
+  assert.equal(resumed.files, 1000);
+  assert.equal(resumed.coverage.inventoryComplete, true);
+  assert.equal(run('query', { value: 'item999' }).results.length, 1);
 });
