@@ -90,13 +90,31 @@ has no file-count limit. Inventory streams NUL-delimited Git output; generated s
 build output, private plans and dependency directories are excluded. Cancellation can
 leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
 
-Resolved entity/relation queries, byte/time batch controls, richer diagnostics,
+Resolved entity/relation queries, richer diagnostics,
 relocatable installation remain under
 development. Do not treat this preview as a completed migration or a packaged native release.
 
-Refresh accepts `--max-files N` (native input `maxFiles`) to limit extraction
-attempts per selected member. Inventory and hashing still scan all eligible files;
-this is not a wall-clock or input-byte budget. Deferred sources persist as
+Refresh accepts optional positive integer limits, each applied independently per member:
+
+| CLI flag | Native input | Bound |
+|---|---|---|
+| `--max-files N` | `maxFiles` | Extraction attempts, including failures and rejected output |
+| `--max-bytes N` | `maxBytes` | Source bytes passed to extraction, including failed attempts |
+| `--max-output-bytes N` | `maxOutputBytes` | Compact UTF-8 JSON bytes of accepted complete extraction records, including source metadata |
+| `--max-duration-ms N` | `maxDurationMs` | Elapsed refresh time after store opening, checked before starting each extraction |
+
+Omitted limits are unrestricted within the fixed per-source bounds above. Time is a
+cooperative scheduling limit: an in-flight extraction and write may finish after it.
+Inventory, hashing, reuse and deletion detection still scan all eligible files even
+after a limit is reached. These controls do not bound total operation time, scanned
+bytes, SQLite size, parser memory or query/wrapper response size.
+
+Refresh reports `extractionAttempts`, `extractionBytes`, `outputBytes` and counts in
+`deferredByLimit`; `bytesScanned` includes reused and deferred sources. Output size is
+counted after extraction, before storage, without a second serialized copy. A source
+is never partially published to fit a limit. A source larger than the entire byte or
+output allowance stays pending until that limit is raised or omitted; smaller later
+sources can still advance. Deferred sources persist as
 `pendingSources`, and their older evidence is hidden from queries. Repeat refresh
 to advance: unchanged successful and failed extractions are reused, so a syntax
 error cannot starve later files. Changing the source retries extraction; rebuild

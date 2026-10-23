@@ -5,6 +5,9 @@ use std::{collections::HashSet, path::PathBuf};
 
 /// Explicit members share a response, never a database or an atomic snapshot.
 pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
+    if operation == "refresh" {
+        super::budget::Budget::from_input(input)?;
+    }
     let members = input["members"]
         .as_array()
         .ok_or("members must be an array")?;

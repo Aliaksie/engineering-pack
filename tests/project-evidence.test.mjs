@@ -184,3 +184,84 @@ test('bounded extraction persists pending work, hides stale facts and advances p
   assert.equal(run('query', { value: 'replacement' }).results.length, 0);
   for (const maxFiles of [0, -1, 1.5, '2']) assert.throws(() => run('refresh', { maxFiles }), /positive integer/);
 });
+
+test('byte batches skip oversized sources, bound failed attempts and resume without stale facts', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'a.mjs'), 'export const old = 1;');
+  run('refresh');
+  const large = 'export const large = 1;' + ' '.repeat(100);
+  const small = 'export const small = 1;';
+  fs.writeFileSync(path.join(root, 'a.mjs'), large);
+  fs.writeFileSync(path.join(root, 'b.mjs'), small);
+  const first = run('refresh', { maxBytes: Buffer.byteLength(small) });
+  assert.equal(first.changed, 1);
+  assert.equal(first.extractionBytes, Buffer.byteLength(small));
+  assert.deepEqual(first.deferredByLimit, { maxBytes: 1 });
+  assert.equal(first.bytesScanned, Buffer.byteLength(large + small));
+  assert.equal(run('query', { value: 'old' }).results.length, 0);
+  assert.equal(run('query', { value: 'small' }).results.length, 1);
+  assert.equal(run('refresh', { maxBytes: Buffer.byteLength(large) }).coverage.pendingSources, 0);
+  fs.writeFileSync(path.join(root, 'a.mjs'), 'export {');
+  fs.writeFileSync(path.join(root, 'b.mjs'), 'export const next = 2;');
+  const failed = run('refresh', { maxBytes: 8 });
+  assert.equal(failed.failed, 1);
+  assert.equal(failed.extractionBytes, 8);
+  assert.equal(failed.extractionAttempts, 1);
+  assert.equal(failed.deferred, 1);
+  assert.equal(run('refresh').changed, 1);
+});
+
+test('output batches publish complete sources, hide rejected stale facts and retry with larger limits', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'a.mjs'), 'export const old = 1;');
+  run('refresh');
+  const source = 'export const first = 1; export const second = 2;';
+  fs.writeFileSync(path.join(root, 'a.mjs'), source);
+  const extracted = JSON.parse(execFileSync(binary, [], { input: JSON.stringify({ formatVersion: 1, operation: 'extract', input: { path: 'a.mjs', source } }), encoding: 'utf8' })).result;
+  const size = Buffer.byteLength(JSON.stringify(extracted));
+  const rejected = run('refresh', { maxOutputBytes: size - 1 });
+  assert.equal(rejected.changed, 0);
+  assert.equal(rejected.outputBytes, 0);
+  assert.equal(rejected.extractionAttempts, 1);
+  assert.deepEqual(rejected.deferredByLimit, { maxOutputBytes: 1 });
+  for (const value of ['old', 'first', 'second']) assert.equal(run('query', { value }).results.length, 0);
+  const accepted = run('refresh', { maxOutputBytes: size });
+  assert.equal(accepted.changed, 1);
+  assert.equal(accepted.outputBytes, size);
+  assert.equal(accepted.coverage.pendingSources, 0);
+  for (const value of ['first', 'second']) assert.equal(run('query', { value }).results.length, 1);
+  const reused = run('refresh', { maxBytes: 1, maxOutputBytes: 1 });
+  assert.equal(reused.reused, 1);
+  assert.equal(reused.extractionAttempts, 0);
+  assert.equal(reused.outputBytes, 0);
+  fs.writeFileSync(path.join(root, 'b.mjs'), source);
+  run('rebuild');
+  const batch = run('refresh', { maxOutputBytes: size });
+  assert.equal(batch.changed, 1);
+  assert.equal(batch.deferred, 1);
+  assert.equal(batch.outputBytes, size);
+  assert.equal(run('refresh', { maxOutputBytes: size }).coverage.pendingSources, 0);
+});
+
+test('budget validation precedes state creation and limits are per member through CLI', { skip: !binary }, t => {
+  const left = fixture(t), right = fixture(t);
+  const members = [{ id: 'left', root: left.root }, { id: 'right', root: right.root }];
+  for (const field of ['maxFiles', 'maxBytes', 'maxOutputBytes', 'maxDurationMs']) {
+    for (const value of [0, -1, 1.5, '2', null]) {
+      assert.throws(() => left.run('refresh', { [field]: value }), /positive integer/);
+      assert.throws(() => left.run('refresh', { members, [field]: value }), /positive integer/);
+    }
+  }
+  assert.equal(fs.existsSync(path.join(left.root, '.craft')), false);
+  const source = 'export const item = 1;';
+  const bytes = Buffer.byteLength(source);
+  for (const { root } of [left, right]) fs.writeFileSync(path.join(root, 'a.js'), source);
+  const result = JSON.parse(execFileSync(process.execPath, ['cli/project-evidence.mjs', 'refresh', '--enable', '--binary', binary,
+    '--member', `left=${left.root}`, '--member', `right=${right.root}`, '--max-files', '1', '--max-bytes', String(bytes),
+    '--max-output-bytes', '1024', '--max-duration-ms', '60000', '--json'], { encoding: 'utf8' }));
+  for (const member of result.members) {
+    assert.equal(member.result.changed, 1);
+    assert.equal(member.result.extractionBytes, bytes);
+    assert.equal(member.result.coverage.pendingSources, 0);
+  }
+});

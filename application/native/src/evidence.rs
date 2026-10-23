@@ -8,6 +8,11 @@ use serde_json::{Value, json};
 use std::{path::Path, time::Instant};
 
 pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
+    let mut budget = if operation == "refresh" {
+        Some(super::budget::Budget::from_input(input)?)
+    } else {
+        None
+    };
     let root = Path::new(input["root"].as_str().ok_or("root is required")?)
         .canonicalize()
         .map_err(|e| e.to_string())?;
@@ -71,26 +76,14 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             Ok(result)
         }
         "refresh" => {
-            let max_files = match input.get("maxFiles") {
-                None => u64::MAX,
-                Some(value) => value
-                    .as_u64()
-                    .filter(|n| *n > 0)
-                    .ok_or("maxFiles must be a positive integer")?,
-            };
+            let budget = budget.as_mut().unwrap();
+            let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
             let started = Instant::now();
             let retired = store.retain_providers(&[PROVIDER])?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
-            let (
-                mut files,
-                mut reused,
-                mut changed,
-                mut failed,
-                mut bytes,
-                mut deferred,
-                mut attempted,
-            ) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+            let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
+                (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
             while let Some(path) = inventory.next_path()? {
                 if !eligible(&path) {
                     continue;
@@ -115,14 +108,20 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                     reused += 1;
                     continue;
                 }
-                if attempted >= max_files {
+                if let Err(reason) = budget.start(content.len() as u64, started.elapsed()) {
                     store.defer(&path, PROVIDER, epoch)?;
+                    *reasons.entry(reason).or_default() += 1;
                     deferred += 1;
                     continue;
                 }
-                attempted += 1;
                 match extract(&path, &content) {
                     Ok(extraction) => {
+                        if !budget.accept(&extraction)? {
+                            store.defer(&path, PROVIDER, epoch)?;
+                            *reasons.entry("maxOutputBytes").or_default() += 1;
+                            deferred += 1;
+                            continue;
+                        }
                         store.replace(&extraction, &observed_at, epoch)?;
                         changed += 1;
                     }
@@ -135,7 +134,9 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             let removed = store.finish_inventory(PROVIDER, epoch)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,
-                "deferred":deferred,"retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
+                "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
+                "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
+                "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
             )
         }
         _ => Err("unknown evidence operation".into()),
