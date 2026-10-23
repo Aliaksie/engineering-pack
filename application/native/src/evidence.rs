@@ -47,11 +47,20 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             Ok(json!({"cleared":true,"next":"refresh","coverage":store.status()?}))
         }
         "query" => {
+            let source_path = input
+                .get("sourcePath")
+                .map(|value| {
+                    value
+                        .as_str()
+                        .ok_or("sourcePath must be a relative source path")
+                })
+                .transpose()?;
             let mut result = store.query(
                 input["field"].as_str().unwrap_or("name"),
                 input["value"].as_str().ok_or("query value required")?,
                 input["after"].as_str().unwrap_or(""),
                 input["limit"].as_u64().unwrap_or(30) as usize,
+                source_path,
             )?;
             if input["verify"] == true {
                 let checked_at = now();

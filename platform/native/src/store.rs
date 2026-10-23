@@ -282,6 +282,7 @@ impl Store {
         value: &str,
         after: &str,
         limit: usize,
+        source_path: Option<&str>,
     ) -> Result<Value, String> {
         let column = match field {
             "id" => "e.id",
@@ -293,20 +294,31 @@ impl Store {
         if !(1..=200).contains(&limit) || value.len() > 4096 || after.len() > 64 {
             return Err("query exceeds bounds".into());
         }
+        if source_path.is_some_and(|path| !valid_path(path)) {
+            return Err("sourcePath must be a relative source path".into());
+        }
+        let source_filter = if source_path.is_some() {
+            "AND e.path=?4"
+        } else {
+            "AND ?4 IS NULL"
+        };
         let sql = format!("SELECT e.id,e.record,s.hash,s.observed_at,e.path,e.provider FROM evidence e JOIN sources s USING(path,provider)
-            WHERE {column}=?1 AND e.id>?2 AND s.outcome='ok' ORDER BY e.id LIMIT ?3");
+            WHERE {column}=?1 AND e.id>?2 AND s.outcome='ok' {source_filter} ORDER BY e.id LIMIT ?3");
         let mut statement = self.connection.prepare(&sql).map_err(|e| e.to_string())?;
         let rows = statement
-            .query_map(params![value, after, (limit + 1) as i64], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, String>(5)?,
-                ))
-            })
+            .query_map(
+                params![value, after, (limit + 1) as i64, source_path],
+                |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, String>(5)?,
+                    ))
+                },
+            )
             .map_err(|e| e.to_string())?;
         let mut results = Vec::new();
         for row in rows {
@@ -320,7 +332,9 @@ impl Store {
         } else {
             None
         };
-        Ok(json!({"results":results,"continuation":next,"coverage":self.status()?}))
+        Ok(
+            json!({"results":results,"continuation":next,"sourcePath":source_path,"coverage":self.status()?}),
+        )
     }
 }
 
@@ -347,14 +361,14 @@ mod tests {
         );
         assert_eq!(store.status().unwrap()["generation"], generation);
         assert_eq!(
-            store.query("name", "before", "", 10).unwrap()["results"]
+            store.query("name", "before", "", 10, None).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .len(),
             1
         );
         assert_eq!(
-            store.query("name", "after", "", 10).unwrap()["results"],
+            store.query("name", "after", "", 10, None).unwrap()["results"],
             json!([])
         );
     }
@@ -379,7 +393,7 @@ mod tests {
         assert_eq!(store.status().unwrap()["evidence"], 0);
         assert_eq!(store.status().unwrap()["inventoryComplete"], false);
         assert_eq!(
-            store.query("name", "previous", "", 10).unwrap()["results"],
+            store.query("name", "previous", "", 10, None).unwrap()["results"],
             json!([])
         );
         assert_eq!(store.retain_providers(&[]).unwrap(), 0);
@@ -410,7 +424,7 @@ mod tests {
             .replace(&extract("a.js", b"const before = 1;").unwrap(), "1", epoch)
             .unwrap();
         assert_eq!(
-            store.query("name", "before", "", 10).unwrap()["results"]
+            store.query("name", "before", "", 10, None).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .len(),
@@ -420,7 +434,7 @@ mod tests {
             .fail("a.js", PROVIDER, "", "syntax error", "2", epoch)
             .unwrap();
         assert!(
-            store.query("name", "before", "", 10).unwrap()["results"]
+            store.query("name", "before", "", 10, None).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .is_empty()

@@ -26,7 +26,11 @@ The legacy `provider` field continues to identify the JavaScript provider.
 
 Queries match an exact occurrence `id`, `name`, source `path`, or syntax `target` using `--field`
 and `--value`. Pages default to 30 rows, with a maximum of 200 and an explicit `--after`
-continuation. Continuations are for the same query and stored generation; restart after
+continuation. Add `--source <relative-path>` (native `sourcePath`) to restrict any
+query to one exact file before pagination. Paths are relative to each selected member;
+select one member when the same relative path exists in several roots. This avoids
+paging through unrelated languages or tests for common method names. Continuations
+are for the same query, source filter and stored generation; restart after
 a refresh. `--json` exposes hashes, byte ranges, byte columns, provider and observation time
 (Unix milliseconds). Text output shows source citations.
 

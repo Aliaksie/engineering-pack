@@ -320,3 +320,29 @@ test('mixed providers share extraction budgets and retire deleted sources togeth
   assert.equal(deleted.coverage.sources, 0);
   assert.equal(run('query', { value: 'two' }).results.length, 0);
 });
+
+test('source-scoped queries filter before pagination and preserve exact member-relative paths', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'noise.java'), `class Noise { void run() { ${'ping();'.repeat(210)} } void ping() {} }`);
+  fs.writeFileSync(path.join(root, 'selected.java'), 'class Selected { void run() { ping(); ping(); ping(); } void ping() {} }');
+  run('refresh');
+  assert.ok(run('query', { value: 'ping', limit: 200 }).continuation);
+  const rows = [];
+  let after = '';
+  do {
+    const result = run('query', { value: 'ping', sourcePath: 'selected.java', limit: 1, after, verify: true });
+    assert.equal(result.sourcePath, 'selected.java');
+    rows.push(...result.results);
+    after = result.continuation;
+  } while (after);
+  assert.equal(rows.length, 4);
+  assert.equal(new Set(rows.map(row => row.id)).size, 4);
+  assert.ok(rows.every(row => row.path === 'selected.java' && row.verification === 'verified-selected-source'));
+  assert.equal(run('query', { value: 'ping', sourcePath: 'absent.java' }).results.length, 0);
+  for (const sourcePath of ['../selected.java', '/selected.java', '', null, 7]) {
+    assert.throws(() => run('query', { value: 'ping', sourcePath }), /relative source path/);
+  }
+  const cli = JSON.parse(execFileSync(process.execPath, ['cli/project-evidence.mjs', 'query', '--enable', '--binary', binary,
+    '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
+  assert.equal(cli.results.length, 4);
+});
