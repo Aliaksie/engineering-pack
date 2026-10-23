@@ -67,7 +67,7 @@ The existing JavaScript engine remains in place for unaffected operations under
 SQLite state lives in `.craft/state/<worktree-id>/shared/project-evidence.sqlite`.
 An OS lock serializes operations and releases on process exit. A successful extraction
 atomically replaces that source/provider's records, including empty success. Parse/read
-failure retains historical evidence but excludes it from query results. Only successful
+failure records a diagnostic and retires outdated evidence. Only successful
 inventory completion retires deleted/excluded sources. Restarting refresh reuses successful
 unchanged extractions. Refresh retires contributions from providers no longer active,
 including replaced provider versions, before acquiring new evidence. Unsupported schema
@@ -90,9 +90,21 @@ has no file-count limit. Inventory streams NUL-delimited Git output; generated s
 build output, private plans and dependency directories are excluded. Cancellation can
 leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
 
-Resolved entity/relation queries, configurable extraction batches, richer diagnostics,
+Resolved entity/relation queries, byte/time batch controls, richer diagnostics,
 relocatable installation remain under
 development. Do not treat this preview as a completed migration or a packaged native release.
+
+Refresh accepts `--max-files N` (native input `maxFiles`) to limit extraction
+attempts per selected member. Inventory and hashing still scan all eligible files;
+this is not a wall-clock or input-byte budget. Deferred sources persist as
+`pendingSources`, and their older evidence is hidden from queries. Repeat refresh
+to advance: unchanged successful and failed extractions are reused, so a syntax
+error cannot starve later files. Changing the source retries extraction; rebuild
+also clears cached failures. `inventoryComplete` describes discovery only; inspect
+`pendingSources` and `failedSources` for extraction coverage.
+
+The provider revision advances to v2 for failed-content caching; the next refresh
+retires v1 contributions and reacquires them rather than reusing old failure hashes.
 
 ## Verification
 

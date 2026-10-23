@@ -157,3 +157,30 @@ test('busy refresh refuses concurrent queries and killed acquisition restarts sa
   assert.equal(resumed.coverage.inventoryComplete, true);
   assert.equal(run('query', { value: 'item999' }).results.length, 1);
 });
+
+test('bounded extraction persists pending work, hides stale facts and advances past failures', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  for (const name of ['a', 'b', 'c']) fs.writeFileSync(path.join(root, `${name}.mjs`), `export const ${name} = 1;`);
+  run('refresh');
+  fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
+  fs.writeFileSync(path.join(root, 'b.mjs'), 'export const replacement = 2;');
+  fs.writeFileSync(path.join(root, 'c.mjs'), 'export const tail = 3;');
+  const first = run('refresh', { maxFiles: 1 });
+  assert.equal(first.failed, 1);
+  assert.equal(first.deferred, 2);
+  assert.equal(first.coverage.inventoryComplete, true);
+  assert.equal(run('status').pendingSources, 2);
+  assert.equal(run('query', { value: 'b' }).results.length, 0);
+  const second = run('refresh', { maxFiles: 1 });
+  assert.equal(second.changed, 1);
+  assert.equal(second.deferred, 1);
+  assert.equal(second.coverage.failedSources, 1);
+  fs.unlinkSync(path.join(root, 'b.mjs'));
+  const third = run('refresh', { maxFiles: 1 });
+  assert.equal(third.changed, 1);
+  assert.equal(third.removed, 1);
+  assert.equal(third.coverage.pendingSources, 0);
+  assert.equal(run('query', { value: 'tail' }).results.length, 1);
+  assert.equal(run('query', { value: 'replacement' }).results.length, 0);
+  for (const maxFiles of [0, -1, 1.5, '2']) assert.throws(() => run('refresh', { maxFiles }), /positive integer/);
+});

@@ -3,7 +3,7 @@ use craft_engine::{Evidence, Extraction, hash, identity, valid_path};
 use std::time::{Duration, Instant};
 use tree_sitter::{ParseOptions, Parser};
 
-pub const PROVIDER: &str = "javascript-tree-sitter-0.25.0/v1";
+pub const PROVIDER: &str = "javascript-tree-sitter-0.25.0/v2";
 pub const MAX_SOURCE_BYTES: usize = 2 * 1024 * 1024;
 
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {

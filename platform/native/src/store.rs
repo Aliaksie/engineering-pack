@@ -108,16 +108,32 @@ impl Store {
             return Err("invalid source path".into());
         }
         let tx = self.connection.transaction().map_err(|e| e.to_string())?;
-        // Historical evidence retains its original hash. It is never returned as current.
+        // Failed content is cached so repeated bounded refreshes can advance.
+        // Retire old facts rather than bind them to the failed content hash.
         tx.execute("INSERT INTO sources VALUES (?1,?2,?3,'failed',?4,?5,?6)
-            ON CONFLICT(path,provider) DO UPDATE SET outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch",
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch",
             params![path,provider,hash,diagnostic,observed_at,epoch]).map_err(|e| e.to_string())?;
+        tx.execute(
+            "DELETE FROM evidence WHERE path=?1 AND provider=?2",
+            params![path, provider],
+        )
+        .map_err(|e| e.to_string())?;
         tx.execute(
             "UPDATE metadata SET value=value+1 WHERE key='generation'",
             [],
         )
         .map_err(|e| e.to_string())?;
         tx.commit().map_err(|e| e.to_string())
+    }
+
+    pub fn defer(&mut self, path: &str, provider: &str, epoch: i64) -> Result<(), String> {
+        if !valid_path(path) {
+            return Err("invalid source path".into());
+        }
+        self.connection.execute("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,'','pending','',?3)
+            ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch",
+            params![path,provider,epoch]).map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     /// Retire contributions before acquisition, including after provider upgrades.
@@ -187,7 +203,7 @@ impl Store {
         hash: &str,
         epoch: i64,
     ) -> Result<bool, String> {
-        let count = self.connection.execute("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome='ok'",
+        let count = self.connection.execute("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed')",
             params![path,provider,hash,epoch]).map_err(|e| e.to_string())?;
         Ok(count != 0)
     }
@@ -257,7 +273,8 @@ impl Store {
             "generation":scalar("SELECT value FROM metadata WHERE key='generation'")?,
             "inventoryComplete":scalar("SELECT value FROM metadata WHERE key='inventory_complete'")? == 1,
             "sources":scalar("SELECT count(*) FROM sources")?,
-            "failedSources":scalar("SELECT count(*) FROM sources WHERE outcome<>'ok'")?,
+            "failedSources":scalar("SELECT count(*) FROM sources WHERE outcome='failed'")?,
+            "pendingSources":scalar("SELECT count(*) FROM sources WHERE outcome='pending'")?,
             "evidence":scalar("SELECT count(*) FROM evidence e JOIN sources s USING(path,provider) WHERE s.outcome='ok'")?,
             "freshness":"stored-snapshot", "completeness":"unknown outside declared provider coverage"}))
     }

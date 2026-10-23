@@ -71,12 +71,26 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             Ok(result)
         }
         "refresh" => {
+            let max_files = match input.get("maxFiles") {
+                None => u64::MAX,
+                Some(value) => value
+                    .as_u64()
+                    .filter(|n| *n > 0)
+                    .ok_or("maxFiles must be a positive integer")?,
+            };
             let started = Instant::now();
             let retired = store.retain_providers(&[PROVIDER])?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
-            let (mut files, mut reused, mut changed, mut failed, mut bytes) =
-                (0u64, 0u64, 0u64, 0u64, 0u64);
+            let (
+                mut files,
+                mut reused,
+                mut changed,
+                mut failed,
+                mut bytes,
+                mut deferred,
+                mut attempted,
+            ) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
             while let Some(path) = inventory.next_path()? {
                 if !eligible(&path) {
                     continue;
@@ -101,6 +115,12 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                     reused += 1;
                     continue;
                 }
+                if attempted >= max_files {
+                    store.defer(&path, PROVIDER, epoch)?;
+                    deferred += 1;
+                    continue;
+                }
+                attempted += 1;
                 match extract(&path, &content) {
                     Ok(extraction) => {
                         store.replace(&extraction, &observed_at, epoch)?;
@@ -115,7 +135,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             let removed = store.finish_inventory(PROVIDER, epoch)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,
-                "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
+                "deferred":deferred,"retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
             )
         }
         _ => Err("unknown evidence operation".into()),
