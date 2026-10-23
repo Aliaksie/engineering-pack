@@ -10412,6 +10412,1427 @@
           }
         ]
       }
+    },
+    {
+      "id": "context:selection-attribution",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-requests",
+        "input": {
+          "plan": {
+            "loading": {
+              "selections": [
+                {
+                  "id": "one",
+                  "skills": [
+                    "pack:skill"
+                  ],
+                  "references": [
+                    "guide/λ.md"
+                  ]
+                },
+                {
+                  "id": "two",
+                  "skills": [
+                    "pack:skill"
+                  ],
+                  "references": []
+                }
+              ]
+            },
+            "skills": [
+              "pack:skill",
+              "pack:extra"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "target": "pack:skill",
+            "selectedBy": "one"
+          },
+          {
+            "target": "guide/λ.md",
+            "selectedBy": "one"
+          },
+          {
+            "target": "pack:skill",
+            "selectedBy": "two"
+          },
+          {
+            "target": "pack:extra",
+            "selectedBy": "module:configured-skills"
+          }
+        ]
+      }
+    },
+    {
+      "id": "context:selection-limit",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-requests",
+        "input": {
+          "plan": {
+            "skills": [
+              "pack:skill-0",
+              "pack:skill-1",
+              "pack:skill-2",
+              "pack:skill-3",
+              "pack:skill-4",
+              "pack:skill-5",
+              "pack:skill-6",
+              "pack:skill-7",
+              "pack:skill-8",
+              "pack:skill-9",
+              "pack:skill-10",
+              "pack:skill-11",
+              "pack:skill-12",
+              "pack:skill-13",
+              "pack:skill-14",
+              "pack:skill-15",
+              "pack:skill-16",
+              "pack:skill-17",
+              "pack:skill-18",
+              "pack:skill-19",
+              "pack:skill-20",
+              "pack:skill-21",
+              "pack:skill-22",
+              "pack:skill-23",
+              "pack:skill-24",
+              "pack:skill-25",
+              "pack:skill-26",
+              "pack:skill-27",
+              "pack:skill-28",
+              "pack:skill-29",
+              "pack:skill-30",
+              "pack:skill-31",
+              "pack:skill-32",
+              "pack:skill-33",
+              "pack:skill-34",
+              "pack:skill-35",
+              "pack:skill-36",
+              "pack:skill-37",
+              "pack:skill-38",
+              "pack:skill-39",
+              "pack:skill-40",
+              "pack:skill-41",
+              "pack:skill-42",
+              "pack:skill-43",
+              "pack:skill-44",
+              "pack:skill-45",
+              "pack:skill-46",
+              "pack:skill-47",
+              "pack:skill-48",
+              "pack:skill-49",
+              "pack:skill-50",
+              "pack:skill-51",
+              "pack:skill-52",
+              "pack:skill-53",
+              "pack:skill-54",
+              "pack:skill-55",
+              "pack:skill-56",
+              "pack:skill-57",
+              "pack:skill-58",
+              "pack:skill-59",
+              "pack:skill-60",
+              "pack:skill-61",
+              "pack:skill-62",
+              "pack:skill-63",
+              "pack:skill-64",
+              "pack:skill-65",
+              "pack:skill-66",
+              "pack:skill-67",
+              "pack:skill-68",
+              "pack:skill-69",
+              "pack:skill-70",
+              "pack:skill-71",
+              "pack:skill-72",
+              "pack:skill-73",
+              "pack:skill-74",
+              "pack:skill-75",
+              "pack:skill-76",
+              "pack:skill-77",
+              "pack:skill-78",
+              "pack:skill-79",
+              "pack:skill-80",
+              "pack:skill-81",
+              "pack:skill-82",
+              "pack:skill-83",
+              "pack:skill-84",
+              "pack:skill-85",
+              "pack:skill-86",
+              "pack:skill-87",
+              "pack:skill-88",
+              "pack:skill-89",
+              "pack:skill-90",
+              "pack:skill-91",
+              "pack:skill-92",
+              "pack:skill-93",
+              "pack:skill-94",
+              "pack:skill-95",
+              "pack:skill-96",
+              "pack:skill-97",
+              "pack:skill-98",
+              "pack:skill-99",
+              "pack:skill-100",
+              "pack:skill-101",
+              "pack:skill-102",
+              "pack:skill-103",
+              "pack:skill-104",
+              "pack:skill-105",
+              "pack:skill-106",
+              "pack:skill-107",
+              "pack:skill-108",
+              "pack:skill-109",
+              "pack:skill-110",
+              "pack:skill-111",
+              "pack:skill-112",
+              "pack:skill-113",
+              "pack:skill-114",
+              "pack:skill-115",
+              "pack:skill-116",
+              "pack:skill-117",
+              "pack:skill-118",
+              "pack:skill-119",
+              "pack:skill-120",
+              "pack:skill-121",
+              "pack:skill-122",
+              "pack:skill-123",
+              "pack:skill-124",
+              "pack:skill-125",
+              "pack:skill-126",
+              "pack:skill-127",
+              "pack:skill-128",
+              "pack:skill-129",
+              "pack:skill-130",
+              "pack:skill-131",
+              "pack:skill-132",
+              "pack:skill-133",
+              "pack:skill-134",
+              "pack:skill-135",
+              "pack:skill-136",
+              "pack:skill-137",
+              "pack:skill-138",
+              "pack:skill-139",
+              "pack:skill-140",
+              "pack:skill-141",
+              "pack:skill-142",
+              "pack:skill-143",
+              "pack:skill-144",
+              "pack:skill-145",
+              "pack:skill-146",
+              "pack:skill-147",
+              "pack:skill-148",
+              "pack:skill-149",
+              "pack:skill-150",
+              "pack:skill-151",
+              "pack:skill-152",
+              "pack:skill-153",
+              "pack:skill-154",
+              "pack:skill-155",
+              "pack:skill-156",
+              "pack:skill-157",
+              "pack:skill-158",
+              "pack:skill-159",
+              "pack:skill-160",
+              "pack:skill-161",
+              "pack:skill-162",
+              "pack:skill-163",
+              "pack:skill-164",
+              "pack:skill-165",
+              "pack:skill-166",
+              "pack:skill-167",
+              "pack:skill-168",
+              "pack:skill-169",
+              "pack:skill-170",
+              "pack:skill-171",
+              "pack:skill-172",
+              "pack:skill-173",
+              "pack:skill-174",
+              "pack:skill-175",
+              "pack:skill-176",
+              "pack:skill-177",
+              "pack:skill-178",
+              "pack:skill-179",
+              "pack:skill-180",
+              "pack:skill-181",
+              "pack:skill-182",
+              "pack:skill-183",
+              "pack:skill-184",
+              "pack:skill-185",
+              "pack:skill-186",
+              "pack:skill-187",
+              "pack:skill-188",
+              "pack:skill-189",
+              "pack:skill-190",
+              "pack:skill-191",
+              "pack:skill-192",
+              "pack:skill-193",
+              "pack:skill-194",
+              "pack:skill-195",
+              "pack:skill-196",
+              "pack:skill-197",
+              "pack:skill-198",
+              "pack:skill-199",
+              "pack:skill-200",
+              "pack:skill-201",
+              "pack:skill-202",
+              "pack:skill-203",
+              "pack:skill-204",
+              "pack:skill-205",
+              "pack:skill-206",
+              "pack:skill-207",
+              "pack:skill-208",
+              "pack:skill-209",
+              "pack:skill-210",
+              "pack:skill-211",
+              "pack:skill-212",
+              "pack:skill-213",
+              "pack:skill-214",
+              "pack:skill-215",
+              "pack:skill-216",
+              "pack:skill-217",
+              "pack:skill-218",
+              "pack:skill-219",
+              "pack:skill-220",
+              "pack:skill-221",
+              "pack:skill-222",
+              "pack:skill-223",
+              "pack:skill-224",
+              "pack:skill-225",
+              "pack:skill-226",
+              "pack:skill-227",
+              "pack:skill-228",
+              "pack:skill-229",
+              "pack:skill-230",
+              "pack:skill-231",
+              "pack:skill-232",
+              "pack:skill-233",
+              "pack:skill-234",
+              "pack:skill-235",
+              "pack:skill-236",
+              "pack:skill-237",
+              "pack:skill-238",
+              "pack:skill-239",
+              "pack:skill-240",
+              "pack:skill-241",
+              "pack:skill-242",
+              "pack:skill-243",
+              "pack:skill-244",
+              "pack:skill-245",
+              "pack:skill-246",
+              "pack:skill-247",
+              "pack:skill-248",
+              "pack:skill-249",
+              "pack:skill-250",
+              "pack:skill-251",
+              "pack:skill-252",
+              "pack:skill-253",
+              "pack:skill-254",
+              "pack:skill-255",
+              "pack:skill-256"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "context:summary-unconfigured",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-summary",
+        "input": {
+          "entries": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": "selected-guidance-files; not live session usage",
+          "complete": true,
+          "files": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "totals": {
+            "files": 2,
+            "bytes": 18,
+            "estimatedTokens": 6,
+            "repeatedSelections": 1
+          },
+          "identicalContent": [
+            [
+              "guide/λ.md",
+              "copy.md"
+            ]
+          ],
+          "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
+          "budget": {
+            "bytes": null,
+            "status": "not-configured",
+            "action": "report-only; no guidance omitted"
+          },
+          "sessionUsage": {
+            "currentTokens": null,
+            "capacityTokens": null,
+            "status": "unknown; no host observation supplied"
+          },
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+        }
+      }
+    },
+    {
+      "id": "context:summary-equal-budget",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-summary",
+        "input": {
+          "entries": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "budgetBytes": 18
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": "selected-guidance-files; not live session usage",
+          "complete": true,
+          "files": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "totals": {
+            "files": 2,
+            "bytes": 18,
+            "estimatedTokens": 6,
+            "repeatedSelections": 1
+          },
+          "identicalContent": [
+            [
+              "guide/λ.md",
+              "copy.md"
+            ]
+          ],
+          "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
+          "budget": {
+            "bytes": 18,
+            "status": "within",
+            "action": "report-only; no guidance omitted"
+          },
+          "sessionUsage": {
+            "currentTokens": null,
+            "capacityTokens": null,
+            "status": "unknown; no host observation supplied"
+          },
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+        }
+      }
+    },
+    {
+      "id": "context:summary-over-budget",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-summary",
+        "input": {
+          "entries": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "budgetBytes": 17
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": "selected-guidance-files; not live session usage",
+          "complete": true,
+          "files": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "totals": {
+            "files": 2,
+            "bytes": 18,
+            "estimatedTokens": 6,
+            "repeatedSelections": 1
+          },
+          "identicalContent": [
+            [
+              "guide/λ.md",
+              "copy.md"
+            ]
+          ],
+          "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
+          "budget": {
+            "bytes": 17,
+            "status": "exceeded",
+            "action": "report-only; no guidance omitted"
+          },
+          "sessionUsage": {
+            "currentTokens": null,
+            "capacityTokens": null,
+            "status": "unknown; no host observation supplied"
+          },
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+        }
+      }
+    },
+    {
+      "id": "context:summary-missing",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-summary",
+        "input": {
+          "entries": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [
+            "absent.md"
+          ],
+          "budgetBytes": 20
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": "selected-guidance-files; not live session usage",
+          "complete": false,
+          "files": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [
+            "absent.md"
+          ],
+          "totals": {
+            "files": 2,
+            "bytes": 18,
+            "estimatedTokens": 6,
+            "repeatedSelections": 1
+          },
+          "identicalContent": [
+            [
+              "guide/λ.md",
+              "copy.md"
+            ]
+          ],
+          "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
+          "budget": {
+            "bytes": 20,
+            "status": "unknown",
+            "action": "report-only; no guidance omitted"
+          },
+          "sessionUsage": {
+            "currentTokens": null,
+            "capacityTokens": null,
+            "status": "unknown; no host observation supplied"
+          },
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+        }
+      }
+    },
+    {
+      "id": "context:invalid-budget",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-summary",
+        "input": {
+          "entries": [
+            {
+              "path": "guide/λ.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 2,
+              "sha256": "same"
+            },
+            {
+              "path": "copy.md",
+              "bytes": 9,
+              "estimatedTokens": 3,
+              "selections": 1,
+              "sha256": "same"
+            }
+          ],
+          "missing": [],
+          "budgetBytes": 0
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "context:delivery-plan-start",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-delivery-plan",
+        "input": {
+          "facts": {
+            "session": "fixture",
+            "request": {
+              "prompt": " /review change"
+            },
+            "lifecycle": {
+              "started": true
+            }
+          },
+          "project": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "services": {
+              "git": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "intent": "review",
+          "invalidateHint": true,
+          "services": true,
+          "saveCheckpoint": false,
+          "recoverCheckpoint": true,
+          "readCheckpoint": false
+        }
+      }
+    },
+    {
+      "id": "context:delivery-plan-compact",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-delivery-plan",
+        "input": {
+          "facts": {
+            "session": "fixture",
+            "request": {
+              "edit": true
+            },
+            "lifecycle": {
+              "contextChanging": true
+            }
+          },
+          "project": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "services": {
+              "git": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "intent": "implement",
+          "invalidateHint": true,
+          "services": false,
+          "saveCheckpoint": true,
+          "recoverCheckpoint": false,
+          "readCheckpoint": true
+        }
+      }
+    },
+    {
+      "id": "context:delivery-plan-restore",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-delivery-plan",
+        "input": {
+          "facts": {
+            "session": "fixture",
+            "request": {
+              "prompt": "where is λ"
+            },
+            "lifecycle": {
+              "contextRestored": true
+            }
+          },
+          "project": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "services": {
+              "git": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "intent": "locate",
+          "invalidateHint": true,
+          "services": false,
+          "saveCheckpoint": false,
+          "recoverCheckpoint": true,
+          "readCheckpoint": false
+        }
+      }
+    },
+    {
+      "id": "context:delivery-plan-finish-without-session",
+      "request": {
+        "formatVersion": 1,
+        "operation": "context-delivery-plan",
+        "input": {
+          "facts": {
+            "request": {
+              "prompt": "verify change"
+            },
+            "lifecycle": {
+              "turnFinished": true
+            }
+          },
+          "project": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "services": {
+              "git": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "intent": "verify",
+          "invalidateHint": false,
+          "services": false,
+          "saveCheckpoint": false,
+          "recoverCheckpoint": false,
+          "readCheckpoint": false
+        }
+      }
+    },
+    {
+      "id": "hint:eligible",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-eligible",
+        "input": {
+          "event": {
+            "routing": true,
+            "project": {
+              "routing": {
+                "editHints": true,
+                "dedupeHints": true
+              },
+              "checkpoint": {
+                "enabled": true
+              },
+              "services": {
+                "git": {}
+              }
+            },
+            "session": "fixture",
+            "contextSupported": true
+          },
+          "result": {
+            "context": {
+              "kind": "routing"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": true
+      }
+    },
+    {
+      "id": "hint:no-context-support",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-eligible",
+        "input": {
+          "event": {
+            "routing": true,
+            "project": {
+              "routing": {
+                "editHints": true,
+                "dedupeHints": true
+              },
+              "checkpoint": {
+                "enabled": true
+              },
+              "services": {
+                "git": {}
+              }
+            },
+            "session": "fixture",
+            "contextSupported": false
+          },
+          "result": {
+            "context": {}
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": false
+      }
+    },
+    {
+      "id": "hint:fresh",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-valid",
+        "input": {
+          "previous": {
+            "key": "key",
+            "emittedAt": 1000
+          },
+          "key": "key",
+          "now": 1000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": true
+      }
+    },
+    {
+      "id": "hint:before-clock",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-valid",
+        "input": {
+          "previous": {
+            "key": "key",
+            "emittedAt": 1000
+          },
+          "key": "key",
+          "now": 999
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": false
+      }
+    },
+    {
+      "id": "hint:before-expiry",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-valid",
+        "input": {
+          "previous": {
+            "key": "key",
+            "emittedAt": 1000
+          },
+          "key": "key",
+          "now": 900999
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": true
+      }
+    },
+    {
+      "id": "hint:at-expiry",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-valid",
+        "input": {
+          "previous": {
+            "key": "key",
+            "emittedAt": 1000
+          },
+          "key": "key",
+          "now": 901000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": false
+      }
+    },
+    {
+      "id": "hint:different-key",
+      "request": {
+        "formatVersion": 1,
+        "operation": "hint-valid",
+        "input": {
+          "previous": {
+            "key": "key",
+            "emittedAt": 1000
+          },
+          "key": "other",
+          "now": 1000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": false
+      }
+    },
+    {
+      "id": "repository:normalized-scopes",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-scopes",
+        "input": {
+          "repositories": [
+            "z/./",
+            "src/λ"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          "src/λ",
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "repository:duplicate-scopes",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-scopes",
+        "input": {
+          "repositories": [
+            "src",
+            "src/./"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "repository:private-scope",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-scopes",
+        "input": {
+          "repositories": [
+            ".craft/state"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "repository:checkout-input-order",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-checkout",
+        "input": {
+          "repositories": [
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            },
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": true,
+                "issues": [],
+                "files": 1,
+                "bytes": 4
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "workspace:3e4a81576ae85155680756fc6cf8634b1f5501265445f88208cb72e681ffb8fc"
+      }
+    },
+    {
+      "id": "repository:snapshot-sorted",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-snapshot",
+        "input": {
+          "repositories": [
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            },
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": true,
+                "issues": [],
+                "files": 1,
+                "bytes": 4
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "repositories": [
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": true,
+                "issues": [],
+                "files": 1,
+                "bytes": 4
+              }
+            },
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            }
+          ],
+          "checkout": "workspace:192ebf2107492274e2a60a6d01f2a5eb8ffffb7d9030fe2510578b4599bea6c3",
+          "head": "workspace:93d1f25f9d24c58b4ebfe618f103abb135bac6eddd47ce1cfd8987a433264e82",
+          "status": [
+            "z:  M λ.js"
+          ],
+          "gitAvailable": true,
+          "fingerprints": {
+            "index": "8d8ccbdd85cc4dcb7597b5743eabebe129971bc8c429cf5677bfcd3465b8c5f9",
+            "workingTree": "40dcb5722a932497f1fe40729da2f27bc8716d2ab944c832d36f8e1c9cc69cb9",
+            "complete": true,
+            "issues": [],
+            "files": 3,
+            "bytes": 12
+          }
+        }
+      }
+    },
+    {
+      "id": "repository:snapshot-reversed",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-snapshot",
+        "input": {
+          "repositories": [
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": true,
+                "issues": [],
+                "files": 1,
+                "bytes": 4
+              }
+            },
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "repositories": [
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": true,
+                "issues": [],
+                "files": 1,
+                "bytes": 4
+              }
+            },
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            }
+          ],
+          "checkout": "workspace:192ebf2107492274e2a60a6d01f2a5eb8ffffb7d9030fe2510578b4599bea6c3",
+          "head": "workspace:93d1f25f9d24c58b4ebfe618f103abb135bac6eddd47ce1cfd8987a433264e82",
+          "status": [
+            "z:  M λ.js"
+          ],
+          "gitAvailable": true,
+          "fingerprints": {
+            "index": "8d8ccbdd85cc4dcb7597b5743eabebe129971bc8c429cf5677bfcd3465b8c5f9",
+            "workingTree": "40dcb5722a932497f1fe40729da2f27bc8716d2ab944c832d36f8e1c9cc69cb9",
+            "complete": true,
+            "issues": [],
+            "files": 3,
+            "bytes": 12
+          }
+        }
+      }
+    },
+    {
+      "id": "repository:snapshot-incomplete",
+      "request": {
+        "formatVersion": 1,
+        "operation": "repository-snapshot",
+        "input": {
+          "repositories": [
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            },
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": false,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": false,
+                "issues": [
+                  "unreadable λ"
+                ],
+                "files": 1,
+                "bytes": 4
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "repositories": [
+            {
+              "path": "a",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "checkout": "first",
+              "status": [],
+              "gitAvailable": false,
+              "fingerprints": {
+                "index": "i1",
+                "workingTree": "w1",
+                "complete": false,
+                "issues": [
+                  "unreadable λ"
+                ],
+                "files": 1,
+                "bytes": 4
+              }
+            },
+            {
+              "path": "z",
+              "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "checkout": "second",
+              "status": [
+                " M λ.js"
+              ],
+              "gitAvailable": true,
+              "fingerprints": {
+                "index": "i2",
+                "workingTree": "w2",
+                "complete": true,
+                "issues": [],
+                "files": 2,
+                "bytes": 8
+              }
+            }
+          ],
+          "checkout": "workspace:192ebf2107492274e2a60a6d01f2a5eb8ffffb7d9030fe2510578b4599bea6c3",
+          "head": "workspace:93d1f25f9d24c58b4ebfe618f103abb135bac6eddd47ce1cfd8987a433264e82",
+          "status": [
+            "z:  M λ.js"
+          ],
+          "gitAvailable": false,
+          "fingerprints": {
+            "index": "8d8ccbdd85cc4dcb7597b5743eabebe129971bc8c429cf5677bfcd3465b8c5f9",
+            "workingTree": "40dcb5722a932497f1fe40729da2f27bc8716d2ab944c832d36f8e1c9cc69cb9",
+            "complete": false,
+            "issues": [
+              "a: unreadable λ"
+            ],
+            "files": 3,
+            "bytes": 12
+          }
+        }
+      }
     }
   ]
 }
