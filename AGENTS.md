@@ -61,6 +61,12 @@ This repository authors portable AI Capability Packages. Canonical content lives
   installed checks pass. Simplify structure when justified by the changed behavior; preserve useful ownership boundaries and public contracts rather than copying
   JS layers one-for-one. See [ADR 0001](docs/adr/0001-rust-core-runtime.md).
 
+- Investigate bugs and suspicious behavior discovered during migration. Fix confirmed
+  defects with regression coverage before migrating the affected behavior; do not preserve
+  known bugs merely to match the baseline. Document intentional contract corrections and
+  update affected compatibility fixtures explicitly. Resolve suspicious behavior before
+  accepting the affected migration slice.
+
 - Before implementation edits, inspect Git state, preserve unrelated work and establish a safe
   change boundary under consumer branching/workspace policy and repository protection.
 - Follow consumer commit policy and existing authorization; implementation alone does not

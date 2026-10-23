@@ -7216,6 +7216,3202 @@
           "reason": "This project is configured for read-only review. Return revision-bound findings; publication belongs to a separately authorized job."
         }
       }
+    },
+    {
+      "id": "lifecycle:project",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1
+        }
+      }
+    },
+    {
+      "id": "action:propose-review",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-propose",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "priorAuthorization": "user:synthetic-fixture"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "already-authorized",
+            "decisionEvidence": "user:synthetic-fixture",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "suppressed": false,
+          "applicability": {
+            "eligible": true,
+            "reason": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "executed": false
+        }
+      }
+    },
+    {
+      "id": "action:repeat-offer",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-propose",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "priorAuthorization": "user:synthetic-fixture"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "already-authorized",
+            "decisionEvidence": "user:synthetic-fixture",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "suppressed": true,
+          "applicability": {
+            "eligible": true,
+            "reason": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "executed": false
+        }
+      }
+    },
+    {
+      "id": "action:ready",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-check",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "already-authorized",
+            "decisionEvidence": "user:synthetic-fixture",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "applicability": {
+            "eligible": true,
+            "reason": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "workerLimit": null,
+          "ready": true,
+          "executed": false,
+          "authorization": "Decision and host facts are caller declarations, not a permission grant; verify the real conversation and host policy.",
+          "reason": "Scoped approval and current prerequisites are present; the host must perform and observe the action separately."
+        }
+      }
+    },
+    {
+      "id": "action:host-denied",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-check",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": false,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "already-authorized",
+            "decisionEvidence": "user:synthetic-fixture",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "applicability": {
+            "eligible": false,
+            "reason": "Current session or consumer policy prohibits this action."
+          },
+          "workerLimit": null,
+          "ready": false,
+          "executed": false,
+          "authorization": "Decision and host facts are caller declarations, not a permission grant; verify the real conversation and host policy.",
+          "reason": "Current session or consumer policy prohibits this action."
+        }
+      }
+    },
+    {
+      "id": "action:decline",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-decide",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "already-authorized",
+                "decisionEvidence": "user:synthetic-fixture",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source."
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "decision": "declined",
+            "evidence": "user:fixture-decline"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "declined",
+                "decisionEvidence": "user:fixture-decline",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "declined",
+            "decisionEvidence": "user:fixture-decline",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+            "decidedAt": "2026-10-23T00:00:00.000Z"
+          },
+          "executed": false,
+          "authorization": "Caller-declared decision receipt; no host permission or completed execution is implied."
+        }
+      }
+    },
+    {
+      "id": "action:declined-not-ready",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-check",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "declined",
+                "decisionEvidence": "user:fixture-decline",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "declined",
+            "decisionEvidence": "user:fixture-decline",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+            "decidedAt": "2026-10-23T00:00:00.000Z"
+          },
+          "applicability": {
+            "eligible": true,
+            "reason": "A scoped review is requested or risk justifies an additional review of verified source."
+          },
+          "workerLimit": null,
+          "ready": false,
+          "executed": false,
+          "authorization": "Decision and host facts are caller declarations, not a permission grant; verify the real conversation and host policy.",
+          "reason": "Action remains declined; silence is not approval."
+        }
+      }
+    },
+    {
+      "id": "action:approve",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-decide",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "declined",
+                "decisionEvidence": "user:fixture-decline",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "decision": "approved",
+            "evidence": "user:fixture-approve"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "offer": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+            "action": "review",
+            "scope": "src/λ.js",
+            "benefit": "Inspect scoped source",
+            "evidence": "fixture:scope",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+            "risks": [],
+            "host": null,
+            "model": null,
+            "role": null,
+            "profile": null,
+            "decision": "approved",
+            "decisionEvidence": "user:fixture-approve",
+            "at": "2026-10-23T00:00:00.000Z",
+            "execution": "not-observed",
+            "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+            "decidedAt": "2026-10-23T00:00:00.000Z"
+          },
+          "executed": false,
+          "authorization": "Caller-declared decision receipt; no host permission or completed execution is implied."
+        }
+      }
+    },
+    {
+      "id": "action:stale-source",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-check",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "action:claim",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-claim",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "not-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z"
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "dispatching",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "dispatching",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 0,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "receipt": {
+            "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+            "state": "dispatching",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "checkpoint": null,
+            "generation": 0,
+            "evidence": null,
+            "acceptanceEvidence": null
+          },
+          "duplicate": false
+        }
+      }
+    },
+    {
+      "id": "action:duplicate-claim",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-claim",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "dispatching",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "dispatching",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 0,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          },
+          "status": {},
+          "facts": {
+            "allowed": true,
+            "supported": true
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "input": {
+            "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "dispatching",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "dispatching",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 0,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "receipt": {
+            "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+            "state": "dispatching",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "checkpoint": null,
+            "generation": 0,
+            "evidence": null,
+            "acceptanceEvidence": null
+          },
+          "duplicate": true
+        }
+      }
+    },
+    {
+      "id": "action:uncertain",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-finish",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "dispatching",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "dispatching",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 0,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+          "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+          "generation": 0,
+          "result": {
+            "state": "uncertain"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "uncertain",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "uncertain",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 1,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "receipt": {
+            "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+            "state": "uncertain",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "checkpoint": null,
+            "generation": 1,
+            "evidence": null,
+            "acceptanceEvidence": null
+          },
+          "ignored": false
+        }
+      }
+    },
+    {
+      "id": "action:negative-without-fence",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-finish",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "dispatching",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "dispatching",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 0,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+          "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+          "generation": 0,
+          "result": {
+            "state": "not-started",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "evidence": "host:missing"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "action:reconcile-completed",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-finish",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "uncertain",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "uncertain",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 1,
+                  "evidence": null,
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+          "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+          "generation": 1,
+          "result": {
+            "state": "completed",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "evidence": "host:confirmed"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "host-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "completed",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 2,
+                  "evidence": "host:confirmed",
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "receipt": {
+            "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+            "state": "completed",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "checkpoint": null,
+            "generation": 2,
+            "evidence": "host:confirmed",
+            "acceptanceEvidence": null
+          },
+          "ignored": false
+        }
+      }
+    },
+    {
+      "id": "action:late-result-ignored",
+      "request": {
+        "formatVersion": 1,
+        "operation": "action-finish",
+        "input": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "host-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "completed",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 2,
+                  "evidence": "host:confirmed",
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+          "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+          "generation": 0,
+          "result": {
+            "state": "uncertain"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "taskRecord": {
+              "id": "fixture-task"
+            },
+            "recommendations": {
+              "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82": {
+                "id": "5997e697b7bd0186c67489af9cba7db69ef2d75a144a11c6f794f11bb57bcd82",
+                "action": "review",
+                "scope": "src/λ.js",
+                "benefit": "Inspect scoped source",
+                "evidence": "fixture:scope",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "taskContract": "3ace2aa98394944396dd62105eec1ac131342bb8a4f071698b8944c4a42a84f2",
+                "risks": [],
+                "host": null,
+                "model": null,
+                "role": null,
+                "profile": null,
+                "decision": "approved",
+                "decisionEvidence": "user:fixture-approve",
+                "at": "2026-10-23T00:00:00.000Z",
+                "execution": "host-observed",
+                "trigger": "A scoped review is requested or risk justifies an additional review of verified source.",
+                "decidedAt": "2026-10-23T00:00:00.000Z",
+                "executionReceipt": {
+                  "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+                  "state": "completed",
+                  "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                  "checkpoint": null,
+                  "generation": 2,
+                  "evidence": "host:confirmed",
+                  "acceptanceEvidence": null
+                }
+              }
+            }
+          },
+          "receipt": {
+            "key": "f41e742a929b5c1394607a579971f9f2c6ae2c1491c59fac919a126e956900d1",
+            "state": "completed",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "checkpoint": null,
+            "generation": 2,
+            "evidence": "host:confirmed",
+            "acceptanceEvidence": null
+          },
+          "ignored": true
+        }
+      }
+    },
+    {
+      "id": "worker:empty-state",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-state",
+        "input": {
+          "state": null,
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "requests": []
+        }
+      }
+    },
+    {
+      "id": "worker:valid-input",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-input",
+        "input": {
+          "input": {
+            "id": "assignment-1",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "id": "assignment-1",
+          "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "scope": "src/λ.js",
+          "brief": {
+            "goal": "Inspect λ",
+            "sources": [
+              "src/λ.js"
+            ],
+            "acceptance": [
+              "Return source evidence"
+            ],
+            "restrictions": [
+              "Read only"
+            ],
+            "returnShape": "Evidence"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:control-character-input",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-input",
+        "input": {
+          "input": {
+            "id": "assignment-1",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "bad\npath",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:fresh-snapshot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-snapshot",
+        "input": {
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "session": "fixture-session",
+          "now": 1792713600000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "host": "fixture",
+          "capacity": 4,
+          "occupiedSlots": 1,
+          "taskWorkers": 0,
+          "allowed": true,
+          "sessionId": "fixture-session",
+          "observedAt": "2026-10-23T00:00:00Z",
+          "source": "fixture:inventory",
+          "workers": [],
+          "requests": []
+        }
+      }
+    },
+    {
+      "id": "worker:expired-snapshot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-snapshot",
+        "input": {
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "session": "fixture-session",
+          "now": 1792713630001
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:session-mismatch",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-snapshot",
+        "input": {
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "session": "other",
+          "now": 1792713600000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:budget",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory"
+          },
+          "options": {
+            "session": "fixture-session",
+            "now": 1792713600000
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 3,
+          "available": 3,
+          "occupiedTaskWorkers": 0,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "observed",
+          "observedAt": "2026-10-23T00:00:00Z",
+          "source": "fixture:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "worker:reserve",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-admit",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": []
+          },
+          "input": {
+            "id": "assignment-1",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          },
+          "checked": {
+            "ready": true,
+            "offer": {
+              "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "action": "delegate",
+              "scope": "src/λ.js",
+              "host": "fixture",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "proposedWorkers": 1
+            }
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "at": "2026-10-23T00:00:00Z",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "reserved",
+            "status": "unknown",
+            "workerId": null,
+            "occupied": true,
+            "generation": 0,
+            "evidence": null,
+            "modelMatches": false,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z"
+          },
+          "duplicate": false,
+          "budget": {
+            "mode": "recommend",
+            "requestedLimit": 3,
+            "effectiveLimit": 3,
+            "available": 3,
+            "occupiedTaskWorkers": 0,
+            "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+            "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+            "reason": "observed",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "cancelActiveWorkers": false
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:validate-reservation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-state",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "requests": [
+            {
+              "id": "assignment-1",
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+              "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "scope": "src/λ.js",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "host": "fixture",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "parent": null,
+              "reuseWorker": null,
+              "state": "reserved",
+              "status": "unknown",
+              "workerId": null,
+              "occupied": true,
+              "generation": 0,
+              "evidence": null,
+              "modelMatches": false,
+              "cancelKey": null,
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "worker:duplicate-reservation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-admit",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "input": {
+            "id": "assignment-1",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          },
+          "checked": {
+            "ready": true,
+            "offer": {
+              "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "action": "delegate",
+              "scope": "src/λ.js",
+              "host": "fixture",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "proposedWorkers": 1
+            }
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "at": "2026-10-23T00:00:00Z",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "reserved",
+            "status": "unknown",
+            "workerId": null,
+            "occupied": true,
+            "generation": 0,
+            "evidence": null,
+            "modelMatches": false,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z"
+          },
+          "duplicate": true
+        }
+      }
+    },
+    {
+      "id": "worker:changed-duplicate-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-admit",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "input": {
+            "id": "assignment-1",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "other",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          },
+          "checked": {
+            "ready": true,
+            "offer": {
+              "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "action": "delegate",
+              "scope": "src/λ.js",
+              "host": "fixture",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "proposedWorkers": 1
+            }
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "at": "2026-10-23T00:00:00Z",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:approval-scope-full",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-admit",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "input": {
+            "id": "assignment-2",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "brief": {
+              "goal": "Inspect λ",
+              "sources": [
+                "src/λ.js"
+              ],
+              "acceptance": [
+                "Return source evidence"
+              ],
+              "restrictions": [
+                "Read only"
+              ],
+              "returnShape": "Evidence"
+            }
+          },
+          "checked": {
+            "ready": true,
+            "offer": {
+              "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "action": "delegate",
+              "scope": "src/λ.js",
+              "host": "fixture",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "proposedWorkers": 1
+            }
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "project": {
+            "formatVersion": 1
+          },
+          "session": "fixture-session",
+          "now": 1792713600000,
+          "at": "2026-10-23T00:00:00Z",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:dispatch",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "reserved",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 0,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "dispatching"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "dispatching",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 1,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "dispatching",
+            "status": "unknown",
+            "workerId": null,
+            "occupied": true,
+            "generation": 1,
+            "evidence": null,
+            "modelMatches": false,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:redispatch-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "dispatching",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 1,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "dispatching"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "worker:uncertain",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "dispatching",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 1,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "uncertain"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "uncertain",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 2,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "uncertain",
+            "status": "unknown",
+            "workerId": null,
+            "occupied": true,
+            "generation": 2,
+            "evidence": null,
+            "modelMatches": false,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:missing-does-not-release",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-reconcile",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "uncertain",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 2,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": []
+          },
+          "targets": [
+            {
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "generation": 2
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "requests": [
+            {
+              "id": "assignment-1",
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+              "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "scope": "src/λ.js",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "host": "fixture",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "parent": null,
+              "reuseWorker": null,
+              "state": "uncertain",
+              "status": "unknown",
+              "workerId": null,
+              "occupied": true,
+              "generation": 2,
+              "evidence": null,
+              "modelMatches": false,
+              "cancelKey": null,
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "worker:valid-fenced-snapshot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-snapshot",
+        "input": {
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": [
+              {
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "status": "not-started",
+                "workerId": null,
+                "evidence": "host:fenced",
+                "fenced": true
+              }
+            ]
+          },
+          "session": "fixture-session",
+          "now": 1792713600000
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "host": "fixture",
+          "capacity": 4,
+          "occupiedSlots": 1,
+          "taskWorkers": 0,
+          "allowed": true,
+          "sessionId": "fixture-session",
+          "observedAt": "2026-10-23T00:00:00Z",
+          "source": "fixture:inventory",
+          "workers": [],
+          "requests": [
+            {
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "status": "not-started",
+              "workerId": null,
+              "evidence": "host:fenced",
+              "fenced": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "worker:fenced-release",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-reconcile",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "uncertain",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 2,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "snapshot": {
+            "host": "fixture",
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "fixture-session",
+            "observedAt": "2026-10-23T00:00:00Z",
+            "source": "fixture:inventory",
+            "workers": [],
+            "requests": [
+              {
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "status": "not-started",
+                "workerId": null,
+                "evidence": "host:fenced",
+                "fenced": true
+              }
+            ]
+          },
+          "targets": [
+            {
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "generation": 2
+            }
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "requests": [
+            {
+              "id": "assignment-1",
+              "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+              "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+              "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "scope": "src/λ.js",
+              "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+              "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+              "host": "fixture",
+              "model": "fixture-model",
+              "role": "researcher",
+              "profile": "standard",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "parent": null,
+              "reuseWorker": null,
+              "state": "observed",
+              "status": "not-started",
+              "workerId": null,
+              "occupied": false,
+              "generation": 3,
+              "evidence": "host:fenced",
+              "modelMatches": false,
+              "cancelKey": null,
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "worker:observed-running",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "dispatching",
+                "status": "unknown",
+                "workerId": null,
+                "occupied": true,
+                "generation": 1,
+                "evidence": null,
+                "modelMatches": false,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "observed",
+            "workerId": "native-1",
+            "status": "running",
+            "occupiesSlot": true,
+            "model": "fixture-model",
+            "evidence": "host:started"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "observed",
+                "status": "running",
+                "workerId": "native-1",
+                "occupied": true,
+                "generation": 2,
+                "evidence": "host:started",
+                "modelMatches": true,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "observed",
+            "status": "running",
+            "workerId": "native-1",
+            "occupied": true,
+            "generation": 2,
+            "evidence": "host:started",
+            "modelMatches": true,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:cancel",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "observed",
+                "status": "running",
+                "workerId": "native-1",
+                "occupied": true,
+                "generation": 2,
+                "evidence": "host:started",
+                "modelMatches": true,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "cancelling"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "cancelling",
+                "status": "running",
+                "workerId": "native-1",
+                "occupied": true,
+                "generation": 3,
+                "evidence": "host:started",
+                "modelMatches": true,
+                "cancelKey": "2efac94e078e4e9018fe2b0fa1e5ca7e81e9d8124877b85d7df13811495d879d",
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "cancelling",
+            "status": "running",
+            "workerId": "native-1",
+            "occupied": true,
+            "generation": 3,
+            "evidence": "host:started",
+            "modelMatches": true,
+            "cancelKey": "2efac94e078e4e9018fe2b0fa1e5ca7e81e9d8124877b85d7df13811495d879d",
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:cancelled-release",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-transition",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "cancelling",
+                "status": "running",
+                "workerId": "native-1",
+                "occupied": true,
+                "generation": 3,
+                "evidence": "host:started",
+                "modelMatches": true,
+                "cancelKey": "2efac94e078e4e9018fe2b0fa1e5ca7e81e9d8124877b85d7df13811495d879d",
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "id": "assignment-1",
+          "result": {
+            "kind": "observed",
+            "workerId": "native-1",
+            "status": "cancelled",
+            "occupiesSlot": false,
+            "model": "fixture-model",
+            "evidence": "host:cancelled"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "observed",
+                "status": "cancelled",
+                "workerId": "native-1",
+                "occupied": false,
+                "generation": 4,
+                "evidence": "host:cancelled",
+                "modelMatches": true,
+                "cancelKey": "2efac94e078e4e9018fe2b0fa1e5ca7e81e9d8124877b85d7df13811495d879d",
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "request": {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "observed",
+            "status": "cancelled",
+            "workerId": "native-1",
+            "occupied": false,
+            "generation": 4,
+            "evidence": "host:cancelled",
+            "modelMatches": true,
+            "cancelKey": "2efac94e078e4e9018fe2b0fa1e5ca7e81e9d8124877b85d7df13811495d879d",
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "worker:stale-evidence",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-evidence",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "tree": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "requests": [
+              {
+                "id": "assignment-1",
+                "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+                "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+                "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "scope": "src/λ.js",
+                "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+                "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+                "host": "fixture",
+                "model": "fixture-model",
+                "role": "researcher",
+                "profile": "standard",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "parent": null,
+                "reuseWorker": null,
+                "state": "observed",
+                "status": "running",
+                "workerId": "native-1",
+                "occupied": true,
+                "generation": 2,
+                "evidence": "host:started",
+                "modelMatches": true,
+                "cancelKey": null,
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "taskState": {
+            "taskRecord": {
+              "id": "fixture-task"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "index",
+              "workingTree": "work"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "id": "assignment-1",
+            "key": "1a37bad3524f162e65a3efe7598f1d68f086dae692a65cda6b37cd3d1455ee49",
+            "inputHash": "86f56d729dace6dc0d0227ab589950de3f9f3dcf9b84cf46980663d9c3da5736",
+            "offer": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "scope": "src/λ.js",
+            "source": "c8b489b2c43164cf96a6831cb15e7ecb981842873bd227226e00adf5c1e7048b",
+            "policy": "1186589f022f55694dae32f0ed63dafcc7f04efc0a0b8b29fb57229cd129bc98",
+            "host": "fixture",
+            "model": "fixture-model",
+            "role": "researcher",
+            "profile": "standard",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "parent": null,
+            "reuseWorker": null,
+            "state": "observed",
+            "status": "running",
+            "workerId": "native-1",
+            "occupied": true,
+            "generation": 2,
+            "evidence": "host:started",
+            "modelMatches": true,
+            "cancelKey": null,
+            "at": "2026-10-23T00:00:00Z",
+            "taskContract": null,
+            "freshness": "stale"
+          }
+        ]
+      }
     }
   ]
 }
