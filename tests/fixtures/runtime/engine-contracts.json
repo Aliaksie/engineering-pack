@@ -5431,6 +5431,1791 @@
           ]
         }
       }
+    },
+    {
+      "id": "checkpoint:continuation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-state",
+        "input": {
+          "previous": {},
+          "metadata": {
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "updated": "2026-10-23T00:00:00Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "updated": "2026-10-23T00:00:00Z",
+          "taskId": "task",
+          "continuation": {
+            "goal": "goal",
+            "currentState": "currentState",
+            "completed": "completed",
+            "approach": "approach",
+            "evidence": "evidence",
+            "filesChanged": "filesChanged",
+            "validation": "validation",
+            "remainingWork": "remainingWork",
+            "blockers": "blockers",
+            "nextStep": "nextStep"
+          },
+          "gitAvailable": true,
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "checkout": "fixture",
+          "status": [],
+          "fingerprints": {
+            "complete": true,
+            "index": "i",
+            "workingTree": "w"
+          },
+          "continuationSource": {
+            "taskId": "task",
+            "taskContract": null,
+            "checkout": "fixture",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "index": "i",
+            "workingTree": "w",
+            "complete": true
+          }
+        }
+      }
+    },
+    {
+      "id": "checkpoint:validate-saved",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-validate",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "updated": "2026-10-23T00:00:00Z",
+          "taskId": "task",
+          "continuation": {
+            "goal": "goal",
+            "currentState": "currentState",
+            "completed": "completed",
+            "approach": "approach",
+            "evidence": "evidence",
+            "filesChanged": "filesChanged",
+            "validation": "validation",
+            "remainingWork": "remainingWork",
+            "blockers": "blockers",
+            "nextStep": "nextStep"
+          },
+          "gitAvailable": true,
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "checkout": "fixture",
+          "status": [],
+          "fingerprints": {
+            "complete": true,
+            "index": "i",
+            "workingTree": "w"
+          },
+          "continuationSource": {
+            "taskId": "task",
+            "taskContract": null,
+            "checkout": "fixture",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "index": "i",
+            "workingTree": "w",
+            "complete": true
+          }
+        }
+      }
+    },
+    {
+      "id": "checkpoint:automatic-preserves-binding",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-state",
+        "input": {
+          "previous": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "metadata": {},
+          "repository": {
+            "gitAvailable": true,
+            "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "updated": "2026-10-23T01:00:00Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "updated": "2026-10-23T01:00:00Z",
+          "continuation": {
+            "goal": "goal",
+            "currentState": "currentState",
+            "completed": "completed",
+            "approach": "approach",
+            "evidence": "evidence",
+            "filesChanged": "filesChanged",
+            "validation": "validation",
+            "remainingWork": "remainingWork",
+            "blockers": "blockers",
+            "nextStep": "nextStep"
+          },
+          "taskId": "task",
+          "gitAvailable": true,
+          "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "checkout": "fixture",
+          "status": [],
+          "fingerprints": {
+            "complete": true,
+            "index": "i",
+            "workingTree": "w"
+          },
+          "continuationSource": {
+            "taskId": "task",
+            "taskContract": null,
+            "checkout": "fixture",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "index": "i",
+            "workingTree": "w",
+            "complete": true
+          }
+        }
+      }
+    },
+    {
+      "id": "checkpoint:new-task-clears-notes",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-state",
+        "input": {
+          "previous": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T01:00:00Z",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "taskId": "task",
+            "gitAvailable": true,
+            "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "metadata": {
+            "taskId": "next"
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "updated": "2026-10-23T02:00:00Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "updated": "2026-10-23T02:00:00Z",
+          "taskId": "next",
+          "gitAvailable": true,
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "checkout": "fixture",
+          "status": [],
+          "fingerprints": {
+            "complete": true,
+            "index": "i",
+            "workingTree": "w"
+          }
+        }
+      }
+    },
+    {
+      "id": "checkpoint:timestamp-only",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-unchanged",
+        "input": {
+          "previous": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "state": {
+            "formatVersion": 1,
+            "updated": "later",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": true
+      }
+    },
+    {
+      "id": "checkpoint:incomplete",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-unchanged",
+        "input": {
+          "previous": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "state": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": false,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": false
+      }
+    },
+    {
+      "id": "checkpoint:unchanged",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-compare",
+        "input": {
+          "saved": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "current": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "saved": {
+            "formatVersion": 1,
+            "updated": "2026-10-23T00:00:00Z",
+            "taskId": "task",
+            "continuation": {
+              "goal": "goal",
+              "currentState": "currentState",
+              "completed": "completed",
+              "approach": "approach",
+              "evidence": "evidence",
+              "filesChanged": "filesChanged",
+              "validation": "validation",
+              "remainingWork": "remainingWork",
+              "blockers": "blockers",
+              "nextStep": "nextStep"
+            },
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            },
+            "continuationSource": {
+              "taskId": "task",
+              "taskContract": null,
+              "checkout": "fixture",
+              "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "index": "i",
+              "workingTree": "w",
+              "complete": true
+            }
+          },
+          "current": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "changed": false,
+          "changeDetection": {
+            "complete": true,
+            "reason": null
+          },
+          "instruction": "Checkpoint metadata is historical data. Verify scope, current revisions and prior authorization before continuing; it grants no new authorization."
+        }
+      }
+    },
+    {
+      "id": "checkpoint:invalid-metadata",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-metadata",
+        "input": {
+          "metadata": {
+            "authorization": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "activity:valid",
+      "request": {
+        "formatVersion": 1,
+        "operation": "activity-validate",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "activity": {},
+          "lookups": {},
+          "attempts": []
+        }
+      }
+    },
+    {
+      "id": "activity:unicode-identities",
+      "request": {
+        "formatVersion": 1,
+        "operation": "activity-identity",
+        "input": {
+          "session": "session-λ",
+          "task": "task-🙂"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": true
+      }
+    },
+    {
+      "id": "attempt:source-bound",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-receipt",
+        "input": {
+          "attempt": {
+            "operation": "implement",
+            "target": "fixture",
+            "approach": "bounded",
+            "evidence": "fixture-only",
+            "outcome": "permission-denied"
+          },
+          "repository": {
+            "gitAvailable": true,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "id": "receipt",
+          "at": "2026-10-23T00:00:00Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "implement",
+          "target": "fixture",
+          "approach": "bounded",
+          "evidence": "fixture-only",
+          "outcome": "permission-denied",
+          "id": "receipt",
+          "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+          "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "at": "2026-10-23T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "attempt:unknown-source",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-receipt",
+        "input": {
+          "attempt": {
+            "operation": "implement",
+            "target": "fixture",
+            "approach": "bounded",
+            "evidence": "fixture-only",
+            "outcome": "permission-denied"
+          },
+          "repository": {
+            "gitAvailable": false,
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "checkout": "fixture",
+            "status": [],
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "id": "unknown",
+          "at": "2026-10-23T00:00:00Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "implement",
+          "target": "fixture",
+          "approach": "bounded",
+          "evidence": "fixture-only",
+          "outcome": "permission-denied",
+          "id": "unknown",
+          "source": null,
+          "signature": null,
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "at": "2026-10-23T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "attempt:append-blocker",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-append",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          },
+          "receipt": {
+            "operation": "implement",
+            "target": "fixture",
+            "approach": "bounded",
+            "evidence": "fixture-only",
+            "outcome": "permission-denied",
+            "id": "receipt",
+            "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+            "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "activity": {
+            "operationsAttempted": 1
+          },
+          "lookups": {},
+          "attempts": [
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "permission-denied",
+              "id": "receipt",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "attempt:resolve-blocker",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-append",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "lookups": {},
+            "attempts": [
+              {
+                "operation": "implement",
+                "target": "fixture",
+                "approach": "bounded",
+                "evidence": "fixture-only",
+                "outcome": "permission-denied",
+                "id": "receipt",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-23T00:00:00Z"
+              }
+            ]
+          },
+          "receipt": {
+            "operation": "implement",
+            "target": "fixture",
+            "approach": "bounded",
+            "evidence": "fixture-only",
+            "outcome": "prerequisite-resolved",
+            "id": "resolution",
+            "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+            "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "activity": {
+            "operationsAttempted": 2
+          },
+          "lookups": {},
+          "attempts": [
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "permission-denied",
+              "id": "receipt",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            },
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "prerequisite-resolved",
+              "id": "resolution",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "attempt:resolved-status",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-status",
+        "input": {
+          "records": [
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "permission-denied",
+              "id": "receipt",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            },
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "prerequisite-resolved",
+              "id": "resolution",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ],
+          "operation": "implement"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "attempts": 0,
+          "maxAttempts": 3,
+          "noProgressAttempts": 0,
+          "retries": 0,
+          "blocked": false,
+          "evidence": [],
+          "records": [
+            {
+              "operation": "implement",
+              "target": "fixture",
+              "approach": "bounded",
+              "evidence": "fixture-only",
+              "outcome": "prerequisite-resolved",
+              "id": "resolution",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-10-23T00:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "attempt:unmatched-resolution",
+      "request": {
+        "formatVersion": 1,
+        "operation": "attempt-append",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          },
+          "receipt": {
+            "operation": "implement",
+            "target": "fixture",
+            "approach": "bounded",
+            "evidence": "fixture-only",
+            "outcome": "prerequisite-resolved",
+            "id": "receipt",
+            "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+            "signature": "ec6e39f86c1e71e0e554a5e631f604603e5d94ed879dfda0cb8fc2abd52c2c66",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "at": "2026-10-23T00:00:00Z"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "discovery:bounded-request",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-request",
+        "input": {
+          "input": {
+            "terms": [
+              "λ",
+              "Foo"
+            ],
+            "paths": [
+              "src/./"
+            ],
+            "maxMatches": 2
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "options": {
+            "terms": [
+              "λ",
+              "Foo"
+            ],
+            "paths": [
+              "src"
+            ],
+            "maxMatches": 2
+          },
+          "terms": [
+            "λ",
+            "Foo"
+          ],
+          "paths": [
+            "src"
+          ],
+          "deferred": [],
+          "maxOutputBytes": 32768
+        }
+      }
+    },
+    {
+      "id": "discovery:cache-write",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-state",
+        "input": {
+          "current": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          },
+          "input": {
+            "request": {
+              "options": {
+                "terms": [
+                  "λ",
+                  "Foo"
+                ],
+                "paths": [
+                  "src"
+                ],
+                "maxMatches": 2
+              },
+              "terms": [
+                "λ",
+                "Foo"
+              ],
+              "paths": [
+                "src"
+              ],
+              "deferred": [],
+              "maxOutputBytes": 32768
+            },
+            "state": {
+              "formatVersion": 1,
+              "activity": {},
+              "lookups": {},
+              "attempts": []
+            },
+            "identity": "revision",
+            "reused": [],
+            "fresh": [
+              "λ",
+              "Foo"
+            ],
+            "stable": true,
+            "scanned": {
+              "matches": [
+                {
+                  "path": "src/λ.js",
+                  "line": 1,
+                  "text": "λ Foo",
+                  "termIndexes": [
+                    0,
+                    1
+                  ]
+                }
+              ],
+              "truncated": false,
+              "truncation": [],
+              "skipped": {
+                "binary": 0
+              },
+              "bounds": {
+                "maxMatches": 2
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "activity": {
+            "discoveryRequests": 2,
+            "repeatedLookups": 0,
+            "reuseHits": 0,
+            "freshLookups": 2,
+            "batchedOperations": 1
+          },
+          "lookups": {
+            "8b3e8f3d15d427e4261df7034ebb7d5a8d1a58101929d050c3cce4b84bcaaa00": {
+              "identity": "revision",
+              "matches": [
+                {
+                  "path": "src/λ.js",
+                  "line": 1,
+                  "text": "λ Foo"
+                }
+              ]
+            },
+            "50f47e22350f1f232303e7d1235528db99171b816e837df5f3c4e136103cbe98": {
+              "identity": "revision",
+              "matches": [
+                {
+                  "path": "src/λ.js",
+                  "line": 1,
+                  "text": "λ Foo"
+                }
+              ]
+            }
+          },
+          "attempts": [],
+          "lastDiscovery": {
+            "key": "83f1f9e45eb996e80f59817dce909c4c731a8b4af37fb688683153a487b2c411",
+            "repetitions": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "discovery:merge-result",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-result",
+        "input": {
+          "request": {
+            "options": {
+              "terms": [
+                "λ",
+                "Foo"
+              ],
+              "paths": [
+                "src"
+              ],
+              "maxMatches": 2
+            },
+            "terms": [
+              "λ",
+              "Foo"
+            ],
+            "paths": [
+              "src"
+            ],
+            "deferred": [],
+            "maxOutputBytes": 32768
+          },
+          "state": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          },
+          "identity": "revision",
+          "reused": [],
+          "fresh": [
+            "λ",
+            "Foo"
+          ],
+          "stable": true,
+          "scanned": {
+            "matches": [
+              {
+                "path": "src/λ.js",
+                "line": 1,
+                "text": "λ Foo",
+                "termIndexes": [
+                  0,
+                  1
+                ]
+              }
+            ],
+            "truncated": false,
+            "truncation": [],
+            "skipped": {
+              "binary": 0
+            },
+            "bounds": {
+              "maxMatches": 2
+            }
+          },
+          "enabled": true
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "matches": [
+            {
+              "path": "src/λ.js",
+              "line": 1,
+              "text": "λ Foo",
+              "termIndexes": [
+                0,
+                1
+              ]
+            }
+          ],
+          "truncated": false,
+          "truncation": [],
+          "skipped": {
+            "binary": 0
+          },
+          "bounds": {
+            "maxMatches": 2,
+            "maxOutputBytes": 32768
+          },
+          "terms": [
+            "λ",
+            "Foo"
+          ],
+          "deferred": [],
+          "discovery": {
+            "requested": 2,
+            "reused": 0,
+            "fresh": 2,
+            "batches": 1
+          },
+          "reuse": {
+            "enabled": true,
+            "identity": "revision",
+            "validated": true,
+            "diagnostic": null,
+            "invalidation": "session/task, HEAD, scoped file inventory/versions and root manifests/config; unavailable evidence always scans fresh"
+          }
+        }
+      }
+    },
+    {
+      "id": "discovery:unstable-skips-cache",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-state",
+        "input": {
+          "current": {
+            "formatVersion": 1,
+            "activity": {},
+            "lookups": {},
+            "attempts": []
+          },
+          "input": {
+            "request": {
+              "options": {
+                "terms": [
+                  "λ",
+                  "Foo"
+                ],
+                "paths": [
+                  "src"
+                ],
+                "maxMatches": 2
+              },
+              "terms": [
+                "λ",
+                "Foo"
+              ],
+              "paths": [
+                "src"
+              ],
+              "deferred": [],
+              "maxOutputBytes": 32768
+            },
+            "state": {
+              "formatVersion": 1,
+              "activity": {},
+              "lookups": {},
+              "attempts": []
+            },
+            "identity": "revision",
+            "reused": [],
+            "fresh": [
+              "λ",
+              "Foo"
+            ],
+            "stable": false,
+            "scanned": {
+              "matches": [
+                {
+                  "path": "src/λ.js",
+                  "line": 1,
+                  "text": "λ Foo",
+                  "termIndexes": [
+                    0,
+                    1
+                  ]
+                }
+              ],
+              "truncated": false,
+              "truncation": [],
+              "skipped": {
+                "binary": 0
+              },
+              "bounds": {
+                "maxMatches": 2
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "activity": {
+            "discoveryRequests": 2,
+            "repeatedLookups": 0,
+            "reuseHits": 0,
+            "freshLookups": 2,
+            "batchedOperations": 1
+          },
+          "lookups": {},
+          "attempts": [],
+          "lastDiscovery": {
+            "key": "83f1f9e45eb996e80f59817dce909c4c731a8b4af37fb688683153a487b2c411",
+            "repetitions": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "discovery:reuse-both",
+      "request": {
+        "formatVersion": 1,
+        "operation": "lookup-reuse",
+        "input": {
+          "terms": [
+            "λ",
+            "Foo"
+          ],
+          "paths": [
+            "src"
+          ],
+          "identity": "revision",
+          "state": {
+            "formatVersion": 1,
+            "activity": {
+              "discoveryRequests": 2,
+              "repeatedLookups": 0,
+              "reuseHits": 0,
+              "freshLookups": 2,
+              "batchedOperations": 1
+            },
+            "lookups": {
+              "8b3e8f3d15d427e4261df7034ebb7d5a8d1a58101929d050c3cce4b84bcaaa00": {
+                "identity": "revision",
+                "matches": [
+                  {
+                    "path": "src/λ.js",
+                    "line": 1,
+                    "text": "λ Foo"
+                  }
+                ]
+              },
+              "50f47e22350f1f232303e7d1235528db99171b816e837df5f3c4e136103cbe98": {
+                "identity": "revision",
+                "matches": [
+                  {
+                    "path": "src/λ.js",
+                    "line": 1,
+                    "text": "λ Foo"
+                  }
+                ]
+              }
+            },
+            "attempts": [],
+            "lastDiscovery": {
+              "key": "83f1f9e45eb996e80f59817dce909c4c731a8b4af37fb688683153a487b2c411",
+              "repetitions": 0
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "reused": [
+            "λ",
+            "Foo"
+          ],
+          "fresh": []
+        }
+      }
+    },
+    {
+      "id": "discovery:identity-invalidates",
+      "request": {
+        "formatVersion": 1,
+        "operation": "lookup-reuse",
+        "input": {
+          "terms": [
+            "λ",
+            "Foo"
+          ],
+          "paths": [
+            "src"
+          ],
+          "identity": "changed",
+          "state": {
+            "formatVersion": 1,
+            "activity": {
+              "discoveryRequests": 2,
+              "repeatedLookups": 0,
+              "reuseHits": 0,
+              "freshLookups": 2,
+              "batchedOperations": 1
+            },
+            "lookups": {
+              "8b3e8f3d15d427e4261df7034ebb7d5a8d1a58101929d050c3cce4b84bcaaa00": {
+                "identity": "revision",
+                "matches": [
+                  {
+                    "path": "src/λ.js",
+                    "line": 1,
+                    "text": "λ Foo"
+                  }
+                ]
+              },
+              "50f47e22350f1f232303e7d1235528db99171b816e837df5f3c4e136103cbe98": {
+                "identity": "revision",
+                "matches": [
+                  {
+                    "path": "src/λ.js",
+                    "line": 1,
+                    "text": "λ Foo"
+                  }
+                ]
+              }
+            },
+            "attempts": [],
+            "lastDiscovery": {
+              "key": "83f1f9e45eb996e80f59817dce909c4c731a8b4af37fb688683153a487b2c411",
+              "repetitions": 0
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "reused": [],
+          "fresh": [
+            "λ",
+            "Foo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "review:valid-snapshot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-snapshot",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "provider": "github",
+          "repository": "fixture/project",
+          "changeId": 12,
+          "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "files": [
+            "src/λ.js"
+          ],
+          "diff": "Synthetic fixture only."
+        }
+      }
+    },
+    {
+      "id": "review:needs-verification",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-validate",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          },
+          "review": {
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "summary": "Synthetic artifact; no semantic review performed.",
+            "recommendation": "needs-verification",
+            "findings": [],
+            "verification": [
+              "No model review ran."
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "valid": true,
+          "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "findings": 0,
+          "recommendation": "needs-verification",
+          "severityCounts": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "limitation": "Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification."
+        }
+      }
+    },
+    {
+      "id": "review:authorized-plan",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-publication",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          },
+          "review": {
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "summary": "Synthetic artifact; no semantic review performed.",
+            "recommendation": "needs-verification",
+            "findings": [],
+            "verification": [
+              "No model review ran."
+            ]
+          },
+          "target": {
+            "authorized": true,
+            "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "provider": "github",
+          "repository": "fixture/project",
+          "changeId": 12,
+          "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "summary": "Synthetic artifact; no semantic review performed.",
+          "recommendation": "needs-verification",
+          "findings": [],
+          "verification": [
+            "No model review ran."
+          ],
+          "action": "comment-only",
+          "execution": "not-published"
+        }
+      }
+    },
+    {
+      "id": "review:empty-context-preserved",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-publication",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          },
+          "review": {
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "summary": "Synthetic artifact; no semantic review performed.",
+            "recommendation": "needs-verification",
+            "findings": [],
+            "verification": [
+              "No model review ran."
+            ],
+            "context": []
+          },
+          "target": {
+            "authorized": true,
+            "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "provider": "github",
+          "repository": "fixture/project",
+          "changeId": 12,
+          "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "summary": "Synthetic artifact; no semantic review performed.",
+          "recommendation": "needs-verification",
+          "context": [],
+          "findings": [],
+          "verification": [
+            "No model review ran."
+          ],
+          "action": "comment-only",
+          "execution": "not-published"
+        }
+      }
+    },
+    {
+      "id": "review:unauthorized",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-publication",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          },
+          "review": {
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "summary": "Synthetic artifact; no semantic review performed.",
+            "recommendation": "needs-verification",
+            "findings": [],
+            "verification": [
+              "No model review ran."
+            ]
+          },
+          "target": {
+            "authorized": false,
+            "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "review:stale-head",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-publication",
+        "input": {
+          "snapshot": {
+            "formatVersion": 1,
+            "provider": "github",
+            "repository": "fixture/project",
+            "changeId": 12,
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "mergeBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "files": [
+              "src/λ.js"
+            ],
+            "diff": "Synthetic fixture only."
+          },
+          "review": {
+            "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "summary": "Synthetic artifact; no semantic review performed.",
+            "recommendation": "needs-verification",
+            "findings": [],
+            "verification": [
+              "No model review ran."
+            ]
+          },
+          "target": {
+            "authorized": true,
+            "currentHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "review:read-only-denial",
+      "request": {
+        "formatVersion": 1,
+        "operation": "review-publication-policy",
+        "input": {
+          "readOnly": true,
+          "commandExecution": true,
+          "publishes": true
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "decision": "deny",
+          "reason": "This project is configured for read-only review. Return revision-bound findings; publication belongs to a separately authorized job."
+        }
+      }
     }
   ]
 }
