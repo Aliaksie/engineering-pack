@@ -69,6 +69,30 @@ pub fn database_guard(path: &Path) -> Result<File, String> {
             }
         }
     }
+    let parent = path.parent().ok_or("database parent required")?;
+    let mut missing = Vec::new();
+    let mut current = parent;
+    while !current.exists() {
+        missing.push(current.to_path_buf());
+        current = current.parent().ok_or("invalid state path")?;
+    }
+    for directory in missing.iter().rev() {
+        let mut builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        match builder.create(directory) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.to_string()),
+        }
+        let metadata = fs::symlink_metadata(directory).map_err(|e| e.to_string())?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            return Err("unsafe state directory".into());
+        }
+    }
     let file = OpenOptions::new()
         .create(true)
         .truncate(false)

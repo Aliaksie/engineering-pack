@@ -11,7 +11,6 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
     let root = Path::new(input["root"].as_str().ok_or("root is required")?)
         .canonicalize()
         .map_err(|e| e.to_string())?;
-    let database = Path::new(input["database"].as_str().ok_or("database is required")?);
     let root_text = root
         .to_str()
         .ok_or("non-UTF-8 repository root unsupported")?;
@@ -21,6 +20,10 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
         .join(&hash(root_text.as_bytes())[..24])
         .join("shared")
         .join("project-evidence.sqlite");
+    let database = input["database"]
+        .as_str()
+        .map(Path::new)
+        .unwrap_or(&expected);
     if database != expected {
         return Err("database must belong to the selected worktree shared state".into());
     }

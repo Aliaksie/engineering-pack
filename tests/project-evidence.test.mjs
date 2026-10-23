@@ -55,3 +55,35 @@ test('native inventory reaches beyond ten thousand files and a two MiB listing',
   assert.equal(run('query', { value: 'symbol10000' }).results.length, 1);
   assert.equal(run('refresh').reused, 10001);
 });
+
+test('explicit members retain identities, independent coverage and cross-member import evidence', { skip: !binary }, t => {
+  const left = fixture(t), right = fixture(t);
+  const relative = path.relative(left.root, path.join(right.root, 'same.mjs')).split(path.sep).join('/');
+  fs.writeFileSync(path.join(left.root, 'same.mjs'), `import '${relative}';\nexport const shared = 1;`);
+  fs.writeFileSync(path.join(right.root, 'same.mjs'), 'export const shared = 2;');
+  const members = [{ id: 'left', root: left.root }, { id: 'right', root: right.root }, { id: 'absent', root: path.join(left.root, 'missing') }];
+  const refreshed = left.run('refresh', { members });
+  assert.deepEqual(refreshed.members.map(m => m.state), ['available', 'available', 'unavailable']);
+  const found = left.run('query', { members, value: 'shared', verify: true });
+  const rows = found.members.slice(0, 2).map(m => m.result.results[0]);
+  assert.equal(rows[0].path, rows[1].path);
+  assert.notEqual(rows[0].workspaceId, rows[1].workspaceId);
+  assert.deepEqual(rows.map(r => r.member), ['left', 'right']);
+  const query = selection => left.run('query', { members: selection, field: 'target', value: relative, verify: true }).members[0].result.results[0];
+  assert.equal(query(members).resolution.member, 'right');
+  assert.equal(query(members).resolution.sourceFreshness, 'verified-selected-source');
+  assert.equal(query(members.slice(0, 1)).resolution.state, 'unresolved');
+  fs.writeFileSync(path.join(left.root, 'same.mjs'), 'export const changed = 1;');
+  assert.equal(query(members).resolution.sourceFreshness, 'stale-or-unavailable');
+  fs.unlinkSync(path.join(right.root, 'same.mjs'));
+  assert.equal(query(members).resolution.state, 'unresolved');
+  assert.throws(() => left.run('refresh', { members: [members[0], members[0]] }), /unique/);
+  assert.throws(() => left.run('refresh', { members: [members[0], { id: 'alias', root: left.root }] }), /duplicate member root/);
+});
+
+test('native state creation rejects symlinked private directories', { skip: !binary || process.platform === 'win32' }, t => {
+  const left = fixture(t), right = fixture(t);
+  fs.symlinkSync(right.root, path.join(left.root, '.craft'));
+  assert.throws(() => left.run('refresh'), /symlink/);
+  assert.equal(fs.existsSync(path.join(right.root, 'state')), false);
+});

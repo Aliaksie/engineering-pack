@@ -1,8 +1,6 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { stateFile } from './state-files.mjs';
 
 // Explicit opt-in only. The installed wrapper never downloads or compiles a binary.
 export function projectEvidenceProcess({ enabled = false, root, operation, input = {}, binary, timeoutMs = 120000 } = {}) {
@@ -27,7 +25,5 @@ export function projectEvidenceProcess({ enabled = false, root, operation, input
   const version = invoke('version', {});
   if (version?.schemaVersion !== 1 || typeof version.binaryVersion !== 'string') throw new Error('incompatible native evidence binary');
   if (operation === 'version') return version;
-  const canonical = fs.realpathSync(root);
-  const database = stateFile(canonical, 'project-evidence.sqlite', true);
-  return invoke(operation, { ...input, root: canonical, database });
+  return invoke(operation, { ...input, root: path.resolve(root ?? '.') });
 }

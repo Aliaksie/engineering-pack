@@ -1,6 +1,7 @@
 use craft_engine::PROTOCOL_VERSION;
 use serde_json::{Value, json};
 mod evidence;
+mod workspace;
 
 pub fn evaluate(request: Value) -> Value {
     if request.get("formatVersion").and_then(Value::as_u64) != Some(PROTOCOL_VERSION.into()) {
@@ -8,7 +9,11 @@ pub fn evaluate(request: Value) -> Value {
     }
     let result = match request.get("operation").and_then(Value::as_str) {
         Some(operation @ ("refresh" | "status" | "query")) => {
-            evidence::run(operation, &request["input"])
+            if request["input"].get("members").is_some() {
+                workspace::run(operation, &request["input"])
+            } else {
+                evidence::run(operation, &request["input"])
+            }
         }
         Some("version") => Ok(
             json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER}),

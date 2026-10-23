@@ -28,6 +28,25 @@ continuation. Continuations are for the same query and stored generation; restar
 a refresh. `--json` exposes hashes, byte ranges, byte columns, provider and observation time
 (Unix milliseconds). Text output shows source citations.
 
+## Explicit workspaces
+
+Repeat `--member client=/absolute/client --member server=/absolute/server` on
+refresh, status or query to select named members. Only selected roots participate;
+missing members are reported as unavailable. Duplicate IDs, duplicate canonical roots
+and overlapping roots are rejected before refresh. Member IDs are portable citation
+names; physical roots remain separate. Each member keeps its own database, generation,
+query page and continuation. The response does not represent an atomic workspace snapshot.
+For paging one member, select it and pass its returned continuation with `--after`.
+
+Workspace query rows include the member and a member-qualified `workspaceId`. Literal
+relative imports into existing eligible files in selected members receive a bounded
+resolution record with target member, path and current hash. This is a declared import
+path, not proof of a runtime call. Package exports, omitted extensions, directory indexes
+and dynamic resolution remain unchecked. Target content is checked during resolution;
+source freshness remains independent and requires `--verify`. A stale source never
+becomes verified merely because its target exists. Missing or unselected targets stay
+unresolved. Workspace responses currently use JSON, including in the default display.
+
 ## Ownership and evidence lifecycle
 
 `engine/native` owns portable records and identities; `platform/native` owns SQLite,
