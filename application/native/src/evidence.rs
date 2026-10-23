@@ -31,6 +31,16 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
     let mut store = Store::open(database)?;
     match operation {
         "status" => store.status(),
+        "backup" => {
+            let backup = database.with_extension("sqlite.backup");
+            let _backup_guard = database_guard(&backup)?;
+            store.backup(&backup)?;
+            Ok(json!({"backup":backup,"coverage":store.status()?}))
+        }
+        "rebuild" => {
+            store.clear()?;
+            Ok(json!({"cleared":true,"next":"refresh","coverage":store.status()?}))
+        }
         "query" => {
             let mut result = store.query(
                 input["field"].as_str().unwrap_or("name"),

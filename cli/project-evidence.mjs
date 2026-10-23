@@ -4,7 +4,7 @@ import { projectEvidence } from '../application/project-evidence.mjs';
 
 const args = process.argv.slice(2);
 if (!args.length || args.includes('--help')) {
-  console.log('project-evidence version|refresh|status|query --enable --root <repository> [--member <id>=<absolute-root> ...] [--binary <absolute-path>] [--field name|path|target --value <exact-value> --limit 30 --after <id> --verify] [--json]');
+  console.log('project-evidence version|refresh|status|query|backup|rebuild --enable --root <repository> [--member <id>=<absolute-root> ...] [--binary <absolute-path>] [--field name|path|target --value <exact-value> --limit 30 --after <id> --verify] [--json]');
 } else {
   try {
     const operation = args.shift(), options = {}, members = [], flags = new Set();

@@ -28,6 +28,15 @@ continuation. Continuations are for the same query and stored generation; restar
 a refresh. `--json` exposes hashes, byte ranges, byte columns, provider and observation time
 (Unix milliseconds). Text output shows source citations.
 
+`backup` creates a consistent SQLite snapshot beside the database with suffix
+`.backup`; an existing backup is never replaced. Preserve or remove it explicitly
+before requesting another. `rebuild` transactionally clears derived evidence and
+marks coverage incomplete; run `refresh` next. It preserves source files, unrelated
+state and consumer configuration. Both operations use the normal exclusive lock.
+Unknown schema versions or corrupt stores still refuse writes; preserve those files
+for diagnosis before manually replacing them with a compatible snapshot while no
+command is running. Rebuild does not silently repair an incompatible store.
+
 ## Explicit workspaces
 
 Repeat `--member client=/absolute/client --member server=/absolute/server` on
@@ -82,7 +91,7 @@ build output, private plans and dependency directories are excluded. Cancellatio
 leave partial coverage; the next explicit refresh restarts inventory and reuses stored work.
 
 Resolved entity/relation queries, configurable extraction batches, richer diagnostics,
-consistent backup/rebuild and relocatable installation remain under
+relocatable installation remain under
 development. Do not treat this preview as a completed migration or a packaged native release.
 
 ## Verification

@@ -214,6 +214,39 @@ impl Store {
         Ok(removed)
     }
 
+    pub fn backup(&self, destination: &Path) -> Result<(), String> {
+        if destination.try_exists().map_err(|e| e.to_string())? {
+            return Err(
+                "backup already exists; preserve or remove it before another backup".into(),
+            );
+        }
+        self.connection
+            .execute(
+                "VACUUM INTO ?1",
+                [destination.to_str().ok_or("non-UTF-8 backup path")?],
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    /// Rebuild only derived evidence, preserving the store identity and generation history.
+    pub fn clear(&mut self) -> Result<(), String> {
+        let tx = self.connection.transaction().map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM sources", [])
+            .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE metadata SET value=0 WHERE key='inventory_complete'",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE metadata SET value=value+1 WHERE key='generation'",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())
+    }
+
     pub fn status(&self) -> Result<Value, String> {
         let scalar = |sql| {
             self.connection

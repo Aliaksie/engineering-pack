@@ -8,7 +8,7 @@ pub fn evaluate(request: Value) -> Value {
         return json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"UNSUPPORTED_VERSION","message":"expected formatVersion 1"}});
     }
     let result = match request.get("operation").and_then(Value::as_str) {
-        Some(operation @ ("refresh" | "status" | "query")) => {
+        Some(operation @ ("refresh" | "status" | "query" | "backup" | "rebuild")) => {
             if request["input"].get("members").is_some() {
                 workspace::run(operation, &request["input"])
             } else {

@@ -100,3 +100,26 @@ test('corrupt databases fail without rebuilding or overwriting derived state', {
   assert.throws(() => run('refresh'), /not a database/);
   assert.deepEqual(fs.readFileSync(database), corrupt);
 });
+
+
+test('backup is a consistent snapshot and rebuild only clears derived evidence', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'a.js'), 'export const saved = 1;');
+  run('refresh');
+  const before = run('status');
+  const snapshot = run('backup');
+  assert.equal(snapshot.coverage.generation, before.generation);
+  const database = snapshot.backup.slice(0, -'.backup'.length);
+  const unrelated = path.join(path.dirname(database), 'session.json');
+  fs.writeFileSync(unrelated, 'preserved');
+  assert.throws(() => run('backup'), /already exists/);
+  assert.equal(run('rebuild').coverage.sources, 0);
+  assert.equal(run('query', { value: 'saved' }).results.length, 0);
+  assert.equal(fs.readFileSync(unrelated, 'utf8'), 'preserved');
+  assert.equal(fs.readFileSync(path.join(root, 'a.js'), 'utf8'), 'export const saved = 1;');
+  assert.ok(run('status').generation > before.generation);
+  fs.copyFileSync(snapshot.backup, database);
+  assert.equal(run('query', { value: 'saved' }).results.length, 1);
+  assert.equal(run('status').generation, before.generation);
+  assert.equal(run('refresh').reused, 1);
+});
