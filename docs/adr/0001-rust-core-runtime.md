@@ -31,11 +31,12 @@ flowchart TD
     API --> RUNTIME[Telemetry · Context · Cache · Persistence]
 ```
 
-Existing JavaScript/TypeScript runtime components migrate opportunistically when
-affected by feature work, rather than through a standalone rewrite. Each migration
-preserves relevant public contracts, state compatibility, authorization behavior and
-observable outcomes, then removes the replaced runtime implementation. Unaffected
-legacy components may remain until work reaches them; new runtime logic belongs in Rust.
+Existing JavaScript/TypeScript runtime components migrate through a dedicated,
+incremental migration of complete use cases. Each migration preserves relevant public
+contracts, state compatibility, authorization behavior and observable outcomes, then
+removes the replaced runtime implementation. Legacy components remain authoritative only until their migration slice passes
+compatibility and installed-boundary checks. The completed runtime has no parallel
+JavaScript implementation of Rust-owned behavior; new runtime logic belongs in Rust.
 
 Migration may simplify folders, interfaces and layers when the changed behavior
 demonstrates that they are unnecessary or duplicate ownership. Rust need not reproduce
@@ -47,9 +48,9 @@ against the contracts they affect.
 ## Alternatives
 
 A permanent mixed core would preserve the current language split but leave ambiguous
-ownership for new runtime behavior. A standalone rewrite would postpone useful feature
-delivery and enlarge the compatibility surface of each change. Neither is the selected
-delivery approach.
+ownership for new runtime behavior. A big-bang rewrite would postpone working
+candidates and enlarge the compatibility surface of each change. Neither is the
+selected delivery approach.
 
 ## Consequences
 

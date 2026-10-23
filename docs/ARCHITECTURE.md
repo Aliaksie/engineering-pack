@@ -67,8 +67,9 @@ wires the current Node implementation without introducing a second infrastructur
 
 The target core runtime is Rust, as established by [ADR 0001](adr/0001-rust-core-runtime.md).
 This includes local orchestration, state, routing, telemetry, context, cache and persistence,
-as well as pure engine decisions and Project Intelligence. Existing JavaScript runtime
-components migrate when affected by feature work; a standalone rewrite is not required.
+as well as pure engine decisions and Project Intelligence. A dedicated incremental
+migration moves complete use cases from JavaScript into Rust, preserving compatibility
+and removing each replaced implementation after verification.
 New runtime capabilities belong in Rust. Host adapters and packaging may remain thin
 JS/TS where needed. The ownership map above describes the current layout, not a requirement
 to reproduce its folders or layers during migration. Simplify structure when useful while

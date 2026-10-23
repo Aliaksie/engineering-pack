@@ -56,9 +56,9 @@ This repository authors portable AI Capability Packages. Canonical content lives
 - The local Pack core runtime belongs in Rust: engine decisions, Project Intelligence,
   state, routing, telemetry, context, cache and persistence. Host-specific adapters and
   packaging may remain thin JS/TS where needed. New capabilities must not add substantial
-  JS/TS runtime logic. Migrate affected legacy runtime components during feature work,
-  not through a standalone rewrite. Simplify structure when justified by the changed
-  behavior; preserve useful ownership boundaries and public contracts rather than copying
+  JS/TS runtime logic. Migrate legacy runtime components in verified, incremental slices
+  of complete use cases; remove each replaced implementation after compatibility and
+  installed checks pass. Simplify structure when justified by the changed behavior; preserve useful ownership boundaries and public contracts rather than copying
   JS layers one-for-one. See [ADR 0001](docs/adr/0001-rust-core-runtime.md).
 
 - Before implementation edits, inspect Git state, preserve unrelated work and establish a safe
