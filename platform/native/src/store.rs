@@ -208,13 +208,10 @@ impl Store {
         Ok(count != 0)
     }
 
-    pub fn finish_inventory(&mut self, provider: &str, epoch: i64) -> Result<usize, String> {
+    pub fn finish_inventory(&mut self, epoch: i64) -> Result<usize, String> {
         let tx = self.connection.transaction().map_err(|e| e.to_string())?;
         let removed = tx
-            .execute(
-                "DELETE FROM sources WHERE provider=?1 AND epoch<>?2",
-                params![provider, epoch],
-            )
+            .execute("DELETE FROM sources WHERE epoch<>?1", params![epoch])
             .map_err(|e| e.to_string())?;
         tx.execute(
             "UPDATE metadata SET value=1 WHERE key='inventory_complete'",
@@ -287,10 +284,11 @@ impl Store {
         limit: usize,
     ) -> Result<Value, String> {
         let column = match field {
+            "id" => "e.id",
             "name" => "e.name",
             "path" => "e.path",
             "target" => "e.target",
-            _ => return Err("query field must be name, path or target".into()),
+            _ => return Err("query field must be id, name, path or target".into()),
         };
         if !(1..=200).contains(&limit) || value.len() > 4096 || after.len() > 64 {
             return Err("query exceeds bounds".into());
@@ -372,7 +370,7 @@ mod tests {
                 epoch,
             )
             .unwrap();
-        store.finish_inventory(PROVIDER, epoch).unwrap();
+        store.finish_inventory(epoch).unwrap();
         assert_eq!(store.retain_providers(&[PROVIDER]).unwrap(), 0);
         assert_eq!(
             store.retain_providers(&["replacement-provider"]).unwrap(),
@@ -400,7 +398,7 @@ mod tests {
                 .reuse("a.js", PROVIDER, &extraction.hash, restarted)
                 .unwrap()
         );
-        assert_eq!(store.finish_inventory(PROVIDER, restarted).unwrap(), 0);
+        assert_eq!(store.finish_inventory(restarted).unwrap(), 0);
         assert_eq!(store.status().unwrap()["evidence"], 1);
     }
 
@@ -432,14 +430,14 @@ mod tests {
             .replace(&extract("a.js", b"// empty").unwrap(), "3", epoch)
             .unwrap();
         assert_eq!(store.status().unwrap()["evidence"], 0);
-        store.finish_inventory(PROVIDER, epoch).unwrap();
+        store.finish_inventory(epoch).unwrap();
         let next = store.begin_inventory().unwrap();
         assert_eq!(
             store.status().unwrap()["sources"],
             1,
             "partial inventory cannot retire unseen sources"
         );
-        assert_eq!(store.finish_inventory(PROVIDER, next).unwrap(), 1);
+        assert_eq!(store.finish_inventory(next).unwrap(), 1);
         assert_eq!(store.status().unwrap()["sources"], 0);
     }
     #[test]

@@ -1,6 +1,6 @@
 use craft_engine::hash;
 use craft_platform::{
-    javascript::{PROVIDER, extract},
+    providers::{ACTIVE, extract, for_path},
     repository::{Inventory, database_guard, eligible, now, read_source},
     store::Store,
 };
@@ -79,7 +79,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             let budget = budget.as_mut().unwrap();
             let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
             let started = Instant::now();
-            let retired = store.retain_providers(&[PROVIDER])?;
+            let retired = store.retain_providers(ACTIVE)?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
             let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
@@ -92,24 +92,25 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                 if !root.join(&path).try_exists().map_err(|e| e.to_string())? {
                     continue;
                 }
+                let provider = for_path(&path).ok_or("eligible source has no provider")?;
                 files += 1;
                 let observed_at = now();
                 let content = match read_source(&root, &path) {
                     Ok(content) => content,
                     Err(error) => {
-                        store.fail(&path, PROVIDER, "", &error, &observed_at, epoch)?;
+                        store.fail(&path, provider, "", &error, &observed_at, epoch)?;
                         failed += 1;
                         continue;
                     }
                 };
                 bytes += content.len() as u64;
                 let digest = hash(&content);
-                if store.reuse(&path, PROVIDER, &digest, epoch)? {
+                if store.reuse(&path, provider, &digest, epoch)? {
                     reused += 1;
                     continue;
                 }
                 if let Err(reason) = budget.start(content.len() as u64, started.elapsed()) {
-                    store.defer(&path, PROVIDER, epoch)?;
+                    store.defer(&path, provider, epoch)?;
                     *reasons.entry(reason).or_default() += 1;
                     deferred += 1;
                     continue;
@@ -117,7 +118,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                 match extract(&path, &content) {
                     Ok(extraction) => {
                         if !budget.accept(&extraction)? {
-                            store.defer(&path, PROVIDER, epoch)?;
+                            store.defer(&path, provider, epoch)?;
                             *reasons.entry("maxOutputBytes").or_default() += 1;
                             deferred += 1;
                             continue;
@@ -126,12 +127,12 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                         changed += 1;
                     }
                     Err(error) => {
-                        store.fail(&path, PROVIDER, &digest, &error, &observed_at, epoch)?;
+                        store.fail(&path, provider, &digest, &error, &observed_at, epoch)?;
                         failed += 1;
                     }
                 }
             }
-            let removed = store.finish_inventory(PROVIDER, epoch)?;
+            let removed = store.finish_inventory(epoch)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,
                 "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,

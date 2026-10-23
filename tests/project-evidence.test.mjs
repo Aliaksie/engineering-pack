@@ -265,3 +265,58 @@ test('budget validation precedes state creation and limits are per member throug
     assert.equal(member.result.coverage.pendingSources, 0);
   }
 });
+
+test('Java syntax callers are cited independently of callee resolution and coexist with JS', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'keep.js'), 'export const kept = 1;');
+  const source = 'import example.Schema;\nclass Generator {\n String type(Schema s) { return schema(s); }\n String schema(Schema s) { return "string"; }\n}';
+  fs.writeFileSync(path.join(root, 'Generator.java'), source);
+  const first = run('refresh');
+  assert.equal(first.changed, 2);
+  assert.equal(first.coverage.sources, 2);
+  assert.equal(run('version').providers.length, 2);
+  const results = run('query', { value: 'schema', verify: true }).results;
+  const call = results.find(row => row.evidence.kind === 'java:invokes-syntax');
+  const declaration = results.find(row => row.evidence.kind === 'java:declares-method');
+  assert.ok(call && declaration);
+  assert.equal(call.verification, 'verified-selected-source');
+  assert.equal(call.evidence.line, 3);
+  assert.equal(call.evidence.target, 'schema');
+  assert.notEqual(call.evidence.container, declaration.id);
+  const caller = run('query', { field: 'id', value: call.evidence.container, verify: true }).results[0];
+  assert.equal(caller.evidence.name, 'type');
+  assert.equal(caller.evidence.kind, 'java:declares-method');
+  assert.equal(caller.path, call.path);
+  assert.equal(run('refresh').reused, 2);
+  fs.writeFileSync(path.join(root, 'Generator.java'), source.replace('schema(s)', 'replacement(s)'));
+  assert.equal(run('query', { field: 'id', value: call.id, verify: true }).results[0].verification, 'stale-or-unavailable');
+  const changed = run('refresh');
+  assert.equal(changed.changed, 1);
+  assert.equal(changed.reused, 1);
+  assert.equal(run('query', { field: 'id', value: call.id }).results.length, 0);
+  fs.writeFileSync(path.join(root, 'Generator.java'), 'class Generator { String broken( }');
+  assert.equal(run('refresh').failed, 1);
+  assert.equal(run('query', { value: 'replacement' }).results.length, 0);
+  assert.equal(run('query', { value: 'kept' }).results.length, 1);
+  fs.unlinkSync(path.join(root, 'Generator.java'));
+  assert.equal(run('refresh').removed, 1);
+  assert.equal(run('status').failedSources, 0);
+  assert.equal(run('status').sources, 1);
+});
+
+test('mixed providers share extraction budgets and retire deleted sources together', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.writeFileSync(path.join(root, 'a.java'), 'class A { void one() { two(); } }');
+  fs.writeFileSync(path.join(root, 'b.js'), 'export const two = 1;');
+  assert.equal(run('refresh', { maxFiles: 1 }).coverage.pendingSources, 1);
+  const completed = run('refresh', { maxFiles: 1 });
+  assert.equal(completed.reused, 1);
+  assert.equal(completed.changed, 1);
+  assert.equal(completed.coverage.pendingSources, 0);
+  fs.unlinkSync(path.join(root, 'a.java'));
+  fs.unlinkSync(path.join(root, 'b.js'));
+  const deleted = run('refresh');
+  assert.equal(deleted.removed, 2);
+  assert.equal(deleted.coverage.sources, 0);
+  assert.equal(run('query', { value: 'two' }).results.length, 0);
+});

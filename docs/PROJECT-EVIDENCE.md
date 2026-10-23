@@ -1,9 +1,10 @@
 # Project evidence development preview
 
 The opt-in native prototype extracts JavaScript declarations and literal import/re-export
-specifiers from Git-listed `.js`, `.mjs`, `.jsx` and `.cjs` sources. It records dynamic
-imports as unresolved syntax. It does not yet resolve incoming dependencies, runtime
-calls, package exports or symbol references. Direct source search remains useful.
+specifiers from Git-listed `.js`, `.mjs`, `.jsx` and `.cjs` sources, plus Java declarations,
+imports and method-invocation syntax from `.java` files. It records dynamic JavaScript
+imports as unresolved syntax. It does not resolve runtime dispatch, package exports,
+Java overloads or symbol references. Direct source search remains useful.
 
 ## Build and run
 
@@ -20,9 +21,10 @@ node cli/project-evidence.mjs status --enable --root . --binary "$PWD/target/deb
 
 Omitting `--enable` disables native invocation and state access. No installation or
 automatic hook is provided yet. The wrapper never builds or downloads a binary.
-`version --enable --binary <absolute-path>` reports binary, schema and provider versions.
+`version --enable --binary <absolute-path>` reports binary, schema and active `providers`.
+The legacy `provider` field continues to identify the JavaScript provider.
 
-Queries match an exact `name`, source `path`, or literal import `target` using `--field`
+Queries match an exact occurrence `id`, `name`, source `path`, or syntax `target` using `--field`
 and `--value`. Pages default to 30 rows, with a maximum of 200 and an explicit `--after`
 continuation. Continuations are for the same query and stored generation; restart after
 a refresh. `--json` exposes hashes, byte ranges, byte columns, provider and observation time
@@ -57,6 +59,22 @@ becomes verified merely because its target exists. Missing or unselected targets
 unresolved. Workspace responses currently use JSON, including in the default display.
 
 ## Ownership and evidence lifecycle
+
+Java records distinguish `java:declares-type`, `java:declares-method`,
+`java:declares-constructor`, `java:imports`, `java:imports-static` and
+`java:invokes-syntax`. Invocation `target` is the spelled method name, not a callee ID.
+An optional `container` is the same-source ID of the lexically enclosing method or
+constructor; query it with `--field id --value <container>` to inspect the caller's
+citation. Overloads retain distinct declaration IDs. Calls in lambdas retain their
+lexical container; this does not mean the lambda executes when its outer method does.
+Field/initializer calls have no method container, and anonymous/local type boundaries
+do not inherit the outer method's container. Comments and strings do not create calls.
+
+Receiver types, inheritance, overload selection, constructors called with `new`, method
+references, reflection, schema references and template relationships remain unchecked.
+Matching method names across files or members does not establish a resolved edge.
+Java imports retain their spelled qualified names and wildcard suffixes without
+claiming that a selected member supplies the imported type.
 
 `engine/native` owns portable records and identities; `platform/native` owns SQLite,
 Git inventory and the Tree-sitter provider; `application/native` orchestrates operations.
@@ -140,6 +158,7 @@ binary is explicitly supplied. Native checks are therefore separate from `npm ru
 
 Storage uses [rusqlite](https://docs.rs/crate/rusqlite/0.40.2) with bundled SQLite;
 syntax extraction uses [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) and its
-[JavaScript grammar](https://docs.rs/crate/tree-sitter-javascript/0.25.0).
+[JavaScript grammar](https://docs.rs/crate/tree-sitter-javascript/0.25.0) and
+[Java grammar](https://docs.rs/crate/tree-sitter-java/0.23.5).
 `Cargo.lock` pins the dependency graph. These libraries use permissive licenses;
 native distribution must include the applicable dependency notices.

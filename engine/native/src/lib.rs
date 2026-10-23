@@ -32,8 +32,11 @@ pub struct Evidence {
     pub column: usize,
     pub start_byte: usize,
     pub end_byte: usize,
-    /// Literal module specifier, or None for declarations/dynamic imports.
+    /// Provider-defined syntax target; not a resolved runtime relationship.
     pub target: Option<String>,
+    /// Same-source lexical declaration ID; not a resolved call target.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +59,7 @@ impl Extraction {
         {
             return Err("invalid extraction binding".into());
         }
-        let mut ids = std::collections::HashSet::new();
+        let mut ids = std::collections::HashMap::new();
         for item in &self.evidence {
             if item.line == 0
                 || item.column == 0
@@ -65,6 +68,9 @@ impl Extraction {
                 || item.kind.is_empty()
                 || item.kind.len() > 128
                 || item.target.as_ref().is_some_and(|s| s.len() > 4096)
+                || item.container.as_ref().is_some_and(|s| {
+                    s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()) || s == &item.id
+                })
                 || item.id
                     != identity(&[
                         &self.path,
@@ -73,9 +79,17 @@ impl Extraction {
                         &item.name,
                         &item.start_byte.to_string(),
                     ])
-                || !ids.insert(&item.id)
+                || ids.insert(&item.id, item).is_some()
             {
                 return Err("invalid evidence record".into());
+            }
+        }
+        for item in &self.evidence {
+            if let Some(container) = &item.container {
+                let owner = ids.get(container).ok_or("missing evidence container")?;
+                if owner.start_byte > item.start_byte || owner.end_byte < item.end_byte {
+                    return Err("evidence container does not enclose source range".into());
+                }
             }
         }
         Ok(())

@@ -1,4 +1,4 @@
-use crate::javascript::MAX_SOURCE_BYTES;
+use crate::syntax::MAX_SOURCE_BYTES;
 use craft_engine::valid_path;
 use std::{
     fs::{self, File, OpenOptions},
@@ -175,8 +175,5 @@ pub fn eligible(path: &str) -> bool {
                 ".git" | ".craft" | ".plan" | "node_modules" | "dist" | "target"
             )
         })
-        && matches!(
-            Path::new(path).extension().and_then(|e| e.to_str()),
-            Some("js" | "mjs" | "jsx" | "cjs")
-        )
+        && crate::providers::for_path(path).is_some()
 }

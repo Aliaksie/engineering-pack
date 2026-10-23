@@ -72,7 +72,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                         row["workspaceId"] =
                             json!(identity(&[id, row["id"].as_str().unwrap_or("")]));
                         let specifier = row["evidence"]["target"].as_str().unwrap_or("");
-                        if !specifier.starts_with('.') {
+                        if row["evidence"]["kind"] != "js:imports" || !specifier.starts_with('.') {
                             continue;
                         }
                         let source = row["path"].as_str().ok_or("missing source path")?;

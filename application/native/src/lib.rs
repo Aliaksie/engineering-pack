@@ -17,13 +17,13 @@ pub fn evaluate(request: Value) -> Value {
             }
         }
         Some("version") => Ok(
-            json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER}),
+            json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE}),
         ),
         Some("extract") => {
             let input = &request["input"];
             match (input["path"].as_str(), input["source"].as_str()) {
                 (Some(path), Some(source)) => {
-                    craft_platform::javascript::extract(path, source.as_bytes())
+                    craft_platform::providers::extract(path, source.as_bytes())
                         .and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string()))
                 }
                 _ => Err("extract requires path and source strings".into()),
