@@ -31,19 +31,7 @@ pub fn read_source(root: &Path, relative: &str) -> Result<Vec<u8>, String> {
             return Err("source symlinks are unsupported".into());
         }
     }
-    let file = File::open(&full).map_err(|e| e.to_string())?;
-    let metadata = file.metadata().map_err(|e| e.to_string())?;
-    if !metadata.is_file() || metadata.len() > MAX_SOURCE_BYTES as u64 {
-        return Err("source exceeds file/byte bounds".into());
-    }
-    let mut bytes = Vec::new();
-    file.take(MAX_SOURCE_BYTES as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|e| e.to_string())?;
-    if bytes.len() > MAX_SOURCE_BYTES {
-        return Err("source grew beyond byte bound".into());
-    }
-    Ok(bytes)
+    crate::files::read_bounded(&full, MAX_SOURCE_BYTES)
 }
 
 pub fn database_guard(path: &Path) -> Result<File, String> {

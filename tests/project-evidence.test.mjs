@@ -343,3 +343,19 @@ test('source-scoped queries filter before pagination and preserve exact member-r
     '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
   assert.equal(cli.results.length, 4);
 });
+
+test('native refresh records FIFO sources as unavailable without waiting for a writer', { skip: !binary || process.platform === 'win32', timeout: 15000 }, t => {
+  const { root, run } = fixture(t);
+  const source = path.join(root, 'pipe.mjs');
+  fs.writeFileSync(source, 'export const replacedByPipe = 1;');
+  execFileSync('git', ['-C', root, 'add', 'pipe.mjs']);
+  assert.equal(run('refresh').changed, 1);
+  fs.unlinkSync(source);
+  execFileSync('mkfifo', [source]);
+  // The child deadline keeps this regression bounded even with the old reader.
+  const invoke = (operation, input = {}) => projectEvidence({ enabled: true, root, binary, operation, input, timeoutMs: 3000 });
+  assert.equal(invoke('query', { value: 'replacedByPipe', verify: true }).results[0].verification, 'stale-or-unavailable');
+  assert.equal(invoke('refresh').failed, 1);
+  assert.equal(invoke('query', { value: 'replacedByPipe' }).results.length, 0);
+  assert.equal(invoke('status').sources, 1);
+});

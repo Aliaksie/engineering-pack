@@ -1,3 +1,4 @@
+pub mod files;
 pub mod java;
 pub mod javascript;
 pub mod providers;
