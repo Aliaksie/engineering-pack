@@ -35,7 +35,7 @@ function directory(file, create) {
 }
 export function stateLocation(root, session) {
   if (session !== undefined && (typeof session !== 'string' || !session || session.length > 512)) throw new Error('invalid state session');
-  const canonical = fs.realpathSync(root);
+  const canonical = fs.realpathSync.native(root);
   const worktreeId = hash(canonical);
   const sessionId = session === undefined ? 'shared' : hash(String(session));
   const base = path.join(canonical, '.craft', 'state', worktreeId);
@@ -46,7 +46,7 @@ export function stateLocation(root, session) {
 }
 export function stateFile(root, name, create = false, session) {
   if (!/^[a-zA-Z0-9.-]+$/.test(name) || name === '.' || name === '..') throw new Error('invalid state filename');
-  const canonical = fs.realpathSync(root);
+  const canonical = fs.realpathSync.native(root);
   const location = stateLocation(canonical, session);
   let folder = canonical;
   for (const part of path.relative(canonical, location.directory).split(path.sep)) {

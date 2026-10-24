@@ -63,6 +63,14 @@ test('unchanged snapshots are deduplicated and task transitions discard old cont
   assert.notEqual(stateFile(root, 's1.json'), stateFile(path.join(root, 'src'), 's1.json'));
 });
 
+test('state identity follows the physical worktree, not the caller spelling', t => {
+  const { root } = fixture(t);
+  const variant = path.join(path.dirname(root), path.basename(root).toUpperCase());
+  if (!fs.existsSync(variant)) return t.skip('case-sensitive filesystem');
+  assert.equal(stateFile(variant, 'record.json', true, 'session'), stateFile(root, 'record.json', false, 'session'));
+  assert.equal(stateLocation(variant).worktreeId, rootId(root));
+});
+
 test('linked worktrees isolate session state and metadata symlinks are rejected', t => {
   const { root, git } = fixture(t);
   const linked = path.join(root, 'linked');
@@ -97,7 +105,7 @@ test('personal reuse controls affect CLI discovery and preference changes invali
 });
 
 // These storage tests exercise real files/Git worktrees rather than mocked paths.
-const rootId = root => createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 24);
+const rootId = root => createHash('sha256').update(fs.realpathSync.native(root)).digest('hex').slice(0, 24);
 function metadata(root) {
   const result = {};
   const walk = directory => {

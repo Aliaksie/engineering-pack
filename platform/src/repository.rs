@@ -31,7 +31,11 @@ pub fn read_source(root: &Path, relative: &str) -> Result<Vec<u8>, String> {
             return Err("source symlinks are unsupported".into());
         }
     }
-    crate::files::read_bounded(&full, MAX_SOURCE_BYTES)
+    crate::files::read_bounded(&full, MAX_SOURCE_BYTES).map_err(|error| match error {
+        crate::files::ReadError::Bounds => "source exceeds file/byte bounds".into(),
+        crate::files::ReadError::Grew => "source grew beyond byte bound".into(),
+        crate::files::ReadError::Io(error) => error.to_string(),
+    })
 }
 
 pub fn database_guard(path: &Path) -> Result<File, String> {
@@ -164,4 +168,65 @@ pub fn eligible(path: &str) -> bool {
             )
         })
         && crate::providers::for_path(path).is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Fixture(std::path::PathBuf);
+    impl Fixture {
+        fn new(name: &str) -> Self {
+            let path = std::env::temp_dir()
+                .join(format!("craft-repository-{}-{name}", std::process::id()));
+            fs::create_dir(&path).unwrap();
+            Self(path)
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn source_paths_cannot_escape_the_selected_root() {
+        let fixture = Fixture::new("escape");
+        fs::write(fixture.0.join("source.mjs"), b"export const x = 1;").unwrap();
+        for path in [
+            "../source.mjs",
+            "/source.mjs",
+            "a/../source.mjs",
+            "a\\source.mjs",
+        ] {
+            assert!(read_source(&fixture.0, path).is_err(), "{path}");
+        }
+        assert!(read_source(&fixture.0, "source.mjs").is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_symlinks_and_special_files_are_rejected() {
+        use std::os::unix::fs::symlink;
+        let fixture = Fixture::new("links");
+        fs::write(fixture.0.join("source.mjs"), b"source").unwrap();
+        symlink("source.mjs", fixture.0.join("alias.mjs")).unwrap();
+        symlink("missing", fixture.0.join("dangling.mjs")).unwrap();
+        symlink(&fixture.0, fixture.0.join("directory")).unwrap();
+        for path in ["alias.mjs", "dangling.mjs", "directory/source.mjs"] {
+            assert!(read_source(&fixture.0, path).is_err());
+        }
+        let fifo = fixture.0.join("pipe.mjs");
+        assert!(
+            Command::new("mkfifo")
+                .arg(&fifo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(
+            read_source(&fixture.0, "pipe.mjs").unwrap_err(),
+            "source exceeds file/byte bounds"
+        );
+    }
 }

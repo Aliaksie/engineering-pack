@@ -2,6 +2,7 @@ use craft_engine::hash;
 use craft_platform::{
     providers::{ACTIVE, extract, for_path},
     repository::{Inventory, database_guard, eligible, now, read_source},
+    state,
     store::Store,
 };
 use serde_json::{Value, json};
@@ -13,17 +14,9 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
     } else {
         None
     };
-    let root = Path::new(input["root"].as_str().ok_or("root is required")?)
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
-    let root_text = root
-        .to_str()
-        .ok_or("non-UTF-8 repository root unsupported")?;
-    let expected = root
-        .join(".craft")
-        .join("state")
-        .join(&hash(root_text.as_bytes())[..24])
-        .join("shared")
+    let root = state::canonical_root(Path::new(input["root"].as_str().ok_or("root is required")?))?;
+    let expected = state::location(&root, None)?
+        .directory
         .join("project-evidence.sqlite");
     let database = input["database"]
         .as_str()

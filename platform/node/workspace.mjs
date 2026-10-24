@@ -94,7 +94,7 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
   const ticket = workspaceLock(anchor);
   if (!ticket) return { status: 'retained', reason: 'workspace is in use' };
   try {
-    const project = hash(fs.realpathSync(root)), cleaned = [], retained = [];
+    const project = hash(fs.realpathSync.native(root)), cleaned = [], retained = [];
     const key = identity ? hash(`${identity.session}:${identity.task}`) : null;
     const entries = [];
     const dir = fs.opendirSync(sessions);

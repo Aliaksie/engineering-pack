@@ -1,24 +1,43 @@
-use std::{fs, fs::File, io::Read, path::Path};
+use std::{fs, fs::File, io, io::Read, path::Path};
+
+#[derive(Debug)]
+pub enum ReadError {
+    Io(io::Error),
+    /// Not a regular file, or larger than the budget before reading.
+    Bounds,
+    /// The file grew past the budget while it was read.
+    Grew,
+}
+
+impl std::fmt::Display for ReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io(error) => error.fmt(f),
+            Self::Bounds => f.write_str("file exceeds type or byte bounds"),
+            Self::Grew => f.write_str("file grew beyond byte bound"),
+        }
+    }
+}
 
 /// Read a regular file within a byte budget. Refuse special files before opening
 /// them: opening a FIFO for reading can otherwise wait indefinitely for a writer.
 /// Callers own directory traversal and namespace policy.
-pub fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
-    let before = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
+pub fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {
+    let before = fs::symlink_metadata(path).map_err(ReadError::Io)?;
     if !before.is_file() || before.len() > max_bytes as u64 {
-        return Err("source exceeds file/byte bounds".into());
+        return Err(ReadError::Bounds);
     }
-    let file = File::open(path).map_err(|e| e.to_string())?;
-    let opened = file.metadata().map_err(|e| e.to_string())?;
+    let file = File::open(path).map_err(ReadError::Io)?;
+    let opened = file.metadata().map_err(ReadError::Io)?;
     if !opened.is_file() || opened.len() > max_bytes as u64 {
-        return Err("source exceeds file/byte bounds".into());
+        return Err(ReadError::Bounds);
     }
     let mut bytes = Vec::new();
     file.take((max_bytes as u64).saturating_add(1))
         .read_to_end(&mut bytes)
-        .map_err(|e| e.to_string())?;
+        .map_err(ReadError::Io)?;
     if bytes.len() > max_bytes {
-        return Err("source grew beyond byte bound".into());
+        return Err(ReadError::Grew);
     }
     Ok(bytes)
 }
@@ -53,43 +72,23 @@ mod tests {
         let file = fixture.0.join("source.mjs");
         fs::write(&file, b"abcd").unwrap();
         assert_eq!(read_bounded(&file, 4).unwrap(), b"abcd");
-        assert!(read_bounded(&file, 3).is_err());
-        assert!(read_bounded(&fixture.0, 4).is_err());
-        assert!(read_bounded(&fixture.0.join("missing"), 4).is_err());
+        assert!(matches!(read_bounded(&file, 3), Err(ReadError::Bounds)));
+        assert!(matches!(
+            read_bounded(&fixture.0, 4),
+            Err(ReadError::Bounds)
+        ));
+        assert!(matches!(
+            read_bounded(&fixture.0.join("missing"), 4),
+            Err(ReadError::Io(error)) if error.kind() == io::ErrorKind::NotFound
+        ));
         fs::write(&file, b"").unwrap();
         assert_eq!(read_bounded(&file, 0).unwrap(), b"");
     }
 
-    #[test]
-    fn source_paths_cannot_escape_the_selected_root() {
-        let fixture = Fixture::new();
-        fs::write(fixture.0.join("source.mjs"), b"export const x = 1;").unwrap();
-        for path in [
-            "../source.mjs",
-            "/source.mjs",
-            "a/../source.mjs",
-            "a\\source.mjs",
-        ] {
-            assert!(
-                crate::repository::read_source(&fixture.0, path).is_err(),
-                "{path}"
-            );
-        }
-        assert!(crate::repository::read_source(&fixture.0, "source.mjs").is_ok());
-    }
-
     #[cfg(unix)]
     #[test]
-    fn symlinks_and_special_files_are_rejected_before_open() {
-        use std::os::unix::fs::symlink;
+    fn special_files_are_rejected_before_open() {
         let fixture = Fixture::new();
-        fs::write(fixture.0.join("source.mjs"), b"source").unwrap();
-        symlink("source.mjs", fixture.0.join("alias.mjs")).unwrap();
-        symlink("missing", fixture.0.join("dangling.mjs")).unwrap();
-        symlink(&fixture.0, fixture.0.join("directory")).unwrap();
-        for path in ["alias.mjs", "dangling.mjs", "directory/source.mjs"] {
-            assert!(crate::repository::read_source(&fixture.0, path).is_err());
-        }
         let fifo = fixture.0.join("pipe.mjs");
         assert!(
             std::process::Command::new("mkfifo")
@@ -98,11 +97,7 @@ mod tests {
                 .unwrap()
                 .success()
         );
-        // Directly exercise the pre-open guard: the old reader blocks on this FIFO.
-        assert_eq!(
-            read_bounded(&fifo, 100).unwrap_err(),
-            "source exceeds file/byte bounds"
-        );
-        assert!(crate::repository::read_source(&fixture.0, "pipe.mjs").is_err());
+        // The old reader blocks on this FIFO.
+        assert!(matches!(read_bounded(&fifo, 100), Err(ReadError::Bounds)));
     }
 }
