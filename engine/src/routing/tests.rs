@@ -155,7 +155,7 @@ fn frozen_route_cases_replay() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
-    assert_eq!(cases.len(), 118);
+    assert_eq!(cases.len(), 120);
 }
 
 #[test]

@@ -17703,6 +17703,841 @@
       }
     },
     {
+      "id": "modules:nested-and-parent",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "languages": [
+            "go"
+          ],
+          "layers": [
+            "backend"
+          ],
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ],
+              "runtimes": [
+                "node"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "frameworks": [
+                "spring"
+              ],
+              "skills": [
+                "craft-engineering:foundations"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ],
+              "layers": [
+                "backend"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ],
+              "languages": [
+                "typescript"
+              ],
+              "layers": [
+                "ui"
+              ],
+              "frameworks": [
+                "react"
+              ],
+              "runtimes": [
+                "browser"
+              ]
+            },
+            {
+              "name": "e2e",
+              "path": "e2e",
+              "dependsOn": [
+                "client"
+              ]
+            },
+            {
+              "name": "agent",
+              "path": "agent",
+              "layers": [
+                "agent"
+              ],
+              "providers": [
+                "bedrock"
+              ],
+              "languages": [
+                "python"
+              ]
+            }
+          ]
+        },
+        "options": {
+          "intent": "implement",
+          "file": [
+            "src/api/A.java",
+            "src/api/v2/X.ts"
+          ]
+        }
+      },
+      "response": {
+        "ok": true,
+        "result": {
+          "intent": "implement",
+          "capability": {
+            "class": "standard",
+            "execution": "recommendation-only",
+            "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+            "pricing": "unknown; classes are not measured cost or capability",
+            "authorization": "no model switch or delegation executed"
+          },
+          "skills": [
+            "craft-delivery:apply-change",
+            "craft-engineering:foundations",
+            "craft-engineering:testing-engineering",
+            "craft-engineering:backend-foundations"
+          ],
+          "skillAvailability": "not-verified",
+          "execution": {
+            "mode": "main",
+            "role": "implementer"
+          },
+          "files": [
+            "src/api/A.java",
+            "src/api/v2/X.ts"
+          ],
+          "languages": [
+            "jvm",
+            "typescript"
+          ],
+          "layers": [
+            "backend"
+          ],
+          "references": [
+            "craft-engineering:foundations/references/languages/typescript.md",
+            "craft-engineering:foundations/references/languages/go.md",
+            "craft-engineering:foundations/references/languages/jvm.md"
+          ],
+          "loading": {
+            "workflow": "workflow:implement",
+            "practices": [
+              "practice:foundations",
+              "practice:testing"
+            ],
+            "specializations": [
+              "layer:backend",
+              "language:typescript",
+              "language:go",
+              "language:java",
+              "runtime:jvm",
+              "framework:spring"
+            ],
+            "selections": [
+              {
+                "id": "workflow:implement",
+                "skills": [
+                  "craft-delivery:apply-change"
+                ],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "implement"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "implement"
+                  ]
+                }
+              },
+              {
+                "id": "practice:foundations",
+                "skills": [
+                  "craft-engineering:foundations"
+                ],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "implement",
+                    "review"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "implement",
+                    "review"
+                  ]
+                }
+              },
+              {
+                "id": "practice:testing",
+                "skills": [
+                  "craft-engineering:testing-engineering"
+                ],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "implement",
+                    "review",
+                    "verify"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "implement"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "implement",
+                    "review",
+                    "verify"
+                  ]
+                }
+              },
+              {
+                "id": "layer:backend",
+                "skills": [
+                  "craft-engineering:backend-foundations"
+                ],
+                "references": [],
+                "when": {
+                  "layers": [
+                    "backend"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "layers",
+                    "values": [
+                      "backend"
+                    ],
+                    "source": "module:api",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "layers",
+                    "values": [
+                      "backend"
+                    ],
+                    "source": "module:api-v2",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "layers": [
+                    "backend"
+                  ]
+                }
+              },
+              {
+                "id": "language:typescript",
+                "skills": [],
+                "references": [
+                  "craft-engineering:foundations/references/languages/typescript.md"
+                ],
+                "when": {
+                  "languages": [
+                    "typescript"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "go"
+                    ],
+                    "source": "project",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "typescript"
+                    ],
+                    "source": "src/api/v2/X.ts",
+                    "inferred": true
+                  }
+                ],
+                "reason": {
+                  "languages": [
+                    "typescript"
+                  ]
+                }
+              },
+              {
+                "id": "language:go",
+                "skills": [],
+                "references": [
+                  "craft-engineering:foundations/references/languages/go.md"
+                ],
+                "when": {
+                  "languages": [
+                    "go"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "go"
+                    ],
+                    "source": "project",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "typescript"
+                    ],
+                    "source": "src/api/v2/X.ts",
+                    "inferred": true
+                  }
+                ],
+                "reason": {
+                  "languages": [
+                    "go"
+                  ]
+                }
+              },
+              {
+                "id": "language:java",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "languages": [
+                    "java"
+                  ]
+                },
+                "unavailable": "No independent language playbook passed the audit; use repository language configuration.",
+                "evidence": [
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "jvm"
+                    ],
+                    "source": "module:api",
+                    "inferred": false
+                  },
+                  {
+                    "dimension": "languages",
+                    "values": [
+                      "java"
+                    ],
+                    "source": "src/api/A.java",
+                    "inferred": true
+                  }
+                ],
+                "reason": {
+                  "languages": [
+                    "java"
+                  ]
+                }
+              },
+              {
+                "id": "runtime:jvm",
+                "skills": [],
+                "references": [
+                  "craft-engineering:foundations/references/languages/jvm.md"
+                ],
+                "when": {
+                  "runtimes": [
+                    "jvm"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "runtimes",
+                    "values": [
+                      "jvm"
+                    ],
+                    "source": "language:jvm",
+                    "inferred": true
+                  }
+                ],
+                "reason": {
+                  "runtimes": [
+                    "jvm"
+                  ]
+                }
+              },
+              {
+                "id": "framework:spring",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "frameworks": [
+                    "spring"
+                  ]
+                },
+                "unavailable": "No independent Spring playbook; resolve version-sensitive proxy and transaction behavior from official documentation.",
+                "documentationQuestion": "For the pinned Spring version, which proxy and transaction boundaries affect the changed path?",
+                "evidence": [
+                  {
+                    "dimension": "frameworks",
+                    "values": [
+                      "spring"
+                    ],
+                    "source": "module:api",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "frameworks": [
+                    "spring"
+                  ]
+                }
+              }
+            ],
+            "documentationQuestions": [
+              {
+                "id": "framework:spring",
+                "question": "For the pinned Spring version, which proxy and transaction boundaries affect the changed path?",
+                "status": "resolve-only-if-affected; pinned-version-required"
+              }
+            ],
+            "unavailable": [
+              {
+                "id": "language:java",
+                "reason": "No independent language playbook passed the audit; use repository language configuration."
+              },
+              {
+                "id": "framework:spring",
+                "reason": "No independent Spring playbook; resolve version-sensitive proxy and transaction behavior from official documentation."
+              }
+            ],
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "implement"
+                ],
+                "source": "request",
+                "inferred": false
+              },
+              {
+                "dimension": "risks",
+                "values": [],
+                "source": "request",
+                "inferred": false
+              },
+              {
+                "dimension": "languages",
+                "values": [
+                  "jvm"
+                ],
+                "source": "module:api",
+                "inferred": false
+              },
+              {
+                "dimension": "frameworks",
+                "values": [
+                  "spring"
+                ],
+                "source": "module:api",
+                "inferred": false
+              },
+              {
+                "dimension": "layers",
+                "values": [
+                  "backend"
+                ],
+                "source": "module:api",
+                "inferred": false
+              },
+              {
+                "dimension": "languages",
+                "values": [
+                  "java"
+                ],
+                "source": "src/api/A.java",
+                "inferred": true
+              },
+              {
+                "dimension": "runtimes",
+                "values": [
+                  "jvm"
+                ],
+                "source": "language:jvm",
+                "inferred": true
+              },
+              {
+                "dimension": "intents",
+                "values": [
+                  "implement"
+                ],
+                "source": "request",
+                "inferred": false
+              },
+              {
+                "dimension": "risks",
+                "values": [],
+                "source": "request",
+                "inferred": false
+              },
+              {
+                "dimension": "languages",
+                "values": [
+                  "go"
+                ],
+                "source": "project",
+                "inferred": false
+              },
+              {
+                "dimension": "layers",
+                "values": [
+                  "backend"
+                ],
+                "source": "module:api-v2",
+                "inferred": false
+              },
+              {
+                "dimension": "languages",
+                "values": [
+                  "typescript"
+                ],
+                "source": "src/api/v2/X.ts",
+                "inferred": true
+              }
+            ],
+            "missingContext": [
+              "Runtime is unspecified for api-v2; JavaScript/TypeScript does not establish Node or browser."
+            ],
+            "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+          },
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team"
+            },
+            {
+              "name": "api-v2",
+              "path": "src/api/v2"
+            }
+          ],
+          "affectedDependents": [
+            "client",
+            "e2e"
+          ],
+          "checks": [
+            {
+              "module": "api",
+              "cwd": "src/api",
+              "command": "verify",
+              "args": [
+                "--all"
+              ],
+              "execution": "not-run"
+            }
+          ],
+          "operations": [],
+          "missing": [],
+          "reasons": [
+            {
+              "id": "workflow:implement",
+              "selectors": {
+                "intents": [
+                  "implement"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                },
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "practice:foundations",
+              "selectors": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                },
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "practice:testing",
+              "selectors": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                },
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "layer:backend",
+              "selectors": {
+                "layers": [
+                  "backend"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "layers",
+                  "values": [
+                    "backend"
+                  ],
+                  "source": "module:api",
+                  "inferred": false
+                },
+                {
+                  "dimension": "layers",
+                  "values": [
+                    "backend"
+                  ],
+                  "source": "module:api-v2",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "language:typescript",
+              "selectors": {
+                "languages": [
+                  "typescript"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "go"
+                  ],
+                  "source": "project",
+                  "inferred": false
+                },
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "typescript"
+                  ],
+                  "source": "src/api/v2/X.ts",
+                  "inferred": true
+                }
+              ]
+            },
+            {
+              "id": "language:go",
+              "selectors": {
+                "languages": [
+                  "go"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "go"
+                  ],
+                  "source": "project",
+                  "inferred": false
+                },
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "typescript"
+                  ],
+                  "source": "src/api/v2/X.ts",
+                  "inferred": true
+                }
+              ]
+            },
+            {
+              "id": "language:java",
+              "selectors": {
+                "languages": [
+                  "java"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "jvm"
+                  ],
+                  "source": "module:api",
+                  "inferred": false
+                },
+                {
+                  "dimension": "languages",
+                  "values": [
+                    "java"
+                  ],
+                  "source": "src/api/A.java",
+                  "inferred": true
+                }
+              ]
+            },
+            {
+              "id": "runtime:jvm",
+              "selectors": {
+                "runtimes": [
+                  "jvm"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "runtimes",
+                  "values": [
+                    "jvm"
+                  ],
+                  "source": "language:jvm",
+                  "inferred": true
+                }
+              ]
+            },
+            {
+              "id": "framework:spring",
+              "selectors": {
+                "frameworks": [
+                  "spring"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "frameworks",
+                  "values": [
+                    "spring"
+                  ],
+                  "source": "module:api",
+                  "inferred": false
+                }
+              ]
+            }
+          ],
+          "authorization": "route-only; host permissions and original user scope still apply"
+        }
+      }
+    },
+    {
       "id": "modules:root-only",
       "request": {
         "project": {
@@ -32032,6 +32867,249 @@
               ]
             },
             "Delegation was not selected: the role and host must both explicitly support it."
+          ],
+          "authorization": "route-only; host permissions and original user scope still apply"
+        }
+      }
+    },
+    {
+      "id": "delegate:empty-profile",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "execution": {
+            "roles": {
+              "reviewer": {
+                "mode": "delegate",
+                "profile": ""
+              }
+            },
+            "hosts": {
+              "claude": {
+                "delegation": true,
+                "models": {
+                  "standard": "model-s"
+                }
+              }
+            }
+          }
+        },
+        "options": {
+          "intent": "review",
+          "host": "claude",
+          "delegate": true
+        }
+      },
+      "response": {
+        "ok": true,
+        "result": {
+          "intent": "review",
+          "capability": {
+            "class": "standard",
+            "execution": "recommendation-only",
+            "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+            "pricing": "unknown; classes are not measured cost or capability",
+            "authorization": "no model switch or delegation executed"
+          },
+          "skills": [
+            "craft-review:review-change",
+            "craft-engineering:foundations",
+            "craft-engineering:testing-engineering"
+          ],
+          "skillAvailability": "not-verified",
+          "execution": {
+            "mode": "delegate",
+            "role": "reviewer"
+          },
+          "files": [],
+          "languages": [],
+          "layers": [],
+          "references": [],
+          "loading": {
+            "workflow": "workflow:review",
+            "practices": [
+              "practice:foundations",
+              "practice:testing"
+            ],
+            "specializations": [],
+            "selections": [
+              {
+                "id": "workflow:review",
+                "skills": [
+                  "craft-review:review-change"
+                ],
+                "fallbackSkills": {
+                  "craft-review:review-change": "craft-delivery:review-code"
+                },
+                "references": [],
+                "when": {
+                  "intents": [
+                    "review"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "review"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "review"
+                  ]
+                }
+              },
+              {
+                "id": "practice:foundations",
+                "skills": [
+                  "craft-engineering:foundations"
+                ],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "implement",
+                    "review"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "review"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "implement",
+                    "review"
+                  ]
+                }
+              },
+              {
+                "id": "practice:testing",
+                "skills": [
+                  "craft-engineering:testing-engineering"
+                ],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "implement",
+                    "review",
+                    "verify"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "review"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ],
+                "reason": {
+                  "intents": [
+                    "implement",
+                    "review",
+                    "verify"
+                  ]
+                }
+              }
+            ],
+            "documentationQuestions": [],
+            "unavailable": [],
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "review"
+                ],
+                "source": "request",
+                "inferred": false
+              },
+              {
+                "dimension": "risks",
+                "values": [],
+                "source": "request",
+                "inferred": false
+              }
+            ],
+            "missingContext": [
+              "Affected paths are unspecified; project declarations do not establish the affected scope."
+            ],
+            "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+          },
+          "modules": [],
+          "affectedDependents": [],
+          "checks": [],
+          "operations": [],
+          "missing": [],
+          "reasons": [
+            {
+              "id": "workflow:review",
+              "selectors": {
+                "intents": [
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "practice:foundations",
+              "selectors": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            },
+            {
+              "id": "practice:testing",
+              "selectors": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ]
+            }
           ],
           "authorization": "route-only; host permissions and original user scope still apply"
         }
