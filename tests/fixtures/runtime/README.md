@@ -56,3 +56,14 @@ schemas, Unicode, string tool arguments, alias precedence, invalid arguments and
 session bounds. Optional undefined event fields compare as absent JSON fields.
 These fixtures protect the thin adapter boundary; they do not establish automatic
 hook dispatch, full application lifecycle, cancellation or native platform support.
+
+`state-contracts.json` fixes four JSON byte representations verified against the
+unchanged baseline state-file implementation. Run `npm run build` then
+`node --test tests/runtime-state-replay.test.mjs` for source and relocated AGENTS
+replay on disposable state. Eight scenarios per boundary cover exact UTF-8 limits,
+null and Unicode, key order, pretty printing, invalid existing records, exclusive
+and unresolved locks, interrupted atomic publication, and routing generation
+companion migration with source-change detection. Failure checks preserve existing
+bytes and verify temporary-file cleanup. These checks complement private-state
+integration tests; they do not establish crash durability, full payload schemas,
+concurrent-process safety or acceptance on other operating systems.

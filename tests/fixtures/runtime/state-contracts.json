@@ -1,0 +1,49 @@
+{
+  "baseline": "09d74ead129008575f8483f68bd5412d2627c839",
+  "writes": [
+    {
+      "id": "null",
+      "value": null,
+      "pretty": false,
+      "text": "null\n",
+      "bytes": 5
+    },
+    {
+      "id": "unicode",
+      "value": {
+        "text": "λ 😀",
+        "absent": null
+      },
+      "pretty": false,
+      "text": "{\"text\":\"λ 😀\",\"absent\":null}\n",
+      "bytes": 33
+    },
+    {
+      "id": "ordered",
+      "value": {
+        "z": 1,
+        "a": [
+          true,
+          false,
+          null
+        ]
+      },
+      "pretty": false,
+      "text": "{\"z\":1,\"a\":[true,false,null]}\n",
+      "bytes": 30
+    },
+    {
+      "id": "pretty",
+      "value": {
+        "text": "λ",
+        "items": [
+          1,
+          2
+        ]
+      },
+      "pretty": true,
+      "text": "{\n  \"text\": \"λ\",\n  \"items\": [\n    1,\n    2\n  ]\n}\n",
+      "bytes": 50
+    }
+  ]
+}
