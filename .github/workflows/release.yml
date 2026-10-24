@@ -4,7 +4,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: engineering-pack-distribution
+  group: engineering-pack-distribution-next
   cancel-in-progress: false
 jobs:
   release:
@@ -52,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_REVISION: ${{ steps.version.outputs.revision }}
-      - name: Refresh installation branch at release revision
+      - name: Refresh candidate installation branch at release revision
         run: node tooling/publish-distribution.mjs
         env:
           GH_TOKEN: ${{ github.token }}

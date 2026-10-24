@@ -1,8 +1,11 @@
 # Sharing and releasing
 
 The source branch is `main`; `packages/` remains the authoritative engineering core.
-The generated `distribution` branch is the GitHub installation channel for Claude, Codex
-and Gemini, and includes a downloadable JetBrains overlay. npm publication is unnecessary.
+The frozen `distribution` branch remains the stable GitHub installation channel.
+Routine CI and manual releases publish candidates only to `distribution-next`, including
+Claude, Codex, Gemini and the downloadable JetBrains overlay. Stable promotion requires
+the explicit `0.0.3` release after comparison and stabilization; neither publisher updates
+`distribution`. npm publication is unnecessary.
 The Claude marketplace identifier stays `craft-capabilities`; Codex uses `engineering-pack`.
 The canonical pack version is `package.json.version`; the initial versioned release is `0.0.2`.
 Capability manifests and the bundled runtime version are mechanically synchronized
@@ -12,11 +15,11 @@ projections. `npm run version:check` rejects drift, and every build checks consi
 
 Commit and push the source changes, including `.github/workflows/ci.yml`, to `main`.
 After Linux, macOS and Windows checks and the packaging job pass, CI creates or updates
-`distribution` using the job's GitHub token. No personal access token or npm secret is needed.
+`distribution-next` using the job's GitHub token. No personal access token or npm secret is needed.
 Alternatively run **CI → Run workflow** on `main` to retry publication. Repository rules must
-allow GitHub Actions to write the `distribution` branch; organization rules may restrict it.
+allow GitHub Actions to write the `distribution-next` branch; organization rules may restrict it.
 
-Check that the **Publish GitHub installation branch** job succeeded and the branch contains:
+Check that the **Publish candidate installation branch** job succeeded and the branch contains:
 
 ```text
 .claude-plugin/marketplace.json  → claude/plugins/<package>/
@@ -25,7 +28,8 @@ gemini-extension.json            → skills/ + packages/
 jetbrains/                      → project rule and portable resources
 ```
 
-Then use the [GitHub installation commands](PLATFORMS.md) from a disposable consumer project.
+To test candidates, select `distribution-next` explicitly in the
+[GitHub installation commands](PLATFORMS.md) from a disposable consumer project.
 The source branch itself is not the installable extension; preserve the documented branch
 selector in commands. No public marketplace approval or gallery listing is implied.
 
@@ -44,14 +48,14 @@ remote to exercise branch creation, no-op updates, history preservation, deletio
 stale-source rejection without publishing anything.
 
 The publisher commits only assembled output, never the checkout, plans, credentials,
-workflow files or `.git` data. It preserves distribution history, uses normal fast-forward
+workflow files or `.git` data. It preserves candidate distribution history, uses normal fast-forward
 pushes and refuses a source revision that is no longer `main`. Write permission is limited
 to the main-branch publish job; pull requests and forks cannot publish. Distribution commits
 contain no workflow, and CI ignores pushes to that branch.
 
 ## Updates and releases
 
-Every successful eligible CI run refreshes the generated branch. Users update with native
+Every successful eligible CI run refreshes `distribution-next`. Users update with native
 platform commands; the [installation guide](PLATFORMS.md#updates-and-verification) explains
 rolling-update caching limits. CI records the source revision in each distribution commit.
 Keep `dist/`, local eval results and plans out of source commits. Do not edit the generated
@@ -82,7 +86,7 @@ pre-publication guard, existing tag, version mismatch, failed check or rejected 
 blocks publication; refs are never forced.
 
 The release and rolling distribution publisher share a concurrency group. The release
-explicitly refreshes the installation branch at the validated release revision because
+explicitly refreshes the candidate installation branch at the validated release revision because
 tag publication does not replace installation-branch verification. A draft GitHub Release
 uses the selected changelog section plus source provenance as its notes. All eleven
 assets (nine archives, provenance and checksums) are uploaded and

@@ -126,7 +126,7 @@ jobs:
           retention-days: 14
 
   publish:
-    name: Publish GitHub installation branch
+    name: Publish candidate installation branch
     needs: [check, package]
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -134,7 +134,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: engineering-pack-distribution
+      group: engineering-pack-distribution-next
       cancel-in-progress: false
     steps:
       - name: Check out validated source
