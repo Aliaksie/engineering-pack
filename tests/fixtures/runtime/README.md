@@ -46,3 +46,13 @@ rejection, and disabled Project Intelligence with an unavailable binary. Compare
 status, stdout/stderr separation, structured results and native error codes; recorded
 diagnostic prose is evidence only. These checks do not establish signal cancellation,
 enabled native execution, automatic host hook dispatch or other platform support.
+
+`host-contracts.json` freezes 120 host translation cases from the same baseline,
+after verifying hosts and their runtime dependencies unchanged. Run `npm run build`
+then `node --test tests/runtime-host-replay.test.mjs` for source and relocated
+AGENTS bundle replay. Cases cover five hook-capable hosts and the guidance-only
+AGENTS host, all seven lifecycle events, deny/context support, native response
+schemas, Unicode, string tool arguments, alias precedence, invalid arguments and
+session bounds. Optional undefined event fields compare as absent JSON fields.
+These fixtures protect the thin adapter boundary; they do not establish automatic
+hook dispatch, full application lifecycle, cancellation or native platform support.
