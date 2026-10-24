@@ -93,6 +93,50 @@ fn exclusive_lock_refuses_overlap_and_unresolved_stale_locks() {
 }
 
 #[test]
+fn windows_denied_locks_are_busy_while_listed_and_retried_once_released() {
+    let fixture = Fixture::new();
+    let record = fixture.record("record.json");
+    let lock_file = record.with_file_name("record.json.lock");
+    let denied = || std::io::Error::from(ErrorKind::PermissionDenied);
+
+    // A persistent denial without a listed lock is a real error, on every attempt.
+    let mut attempts = 0;
+    let error = acquire(lock_file.clone(), true, |_| {
+        attempts += 1;
+        Err(denied())
+    })
+    .unwrap_err();
+    assert_eq!((error, attempts), (denied().to_string(), LOCK_ATTEMPTS));
+
+    // The previous holder finished deleting between the denial and the listing.
+    let mut attempts = 0;
+    let ticket = acquire(lock_file.clone(), true, |path| {
+        attempts += 1;
+        if attempts == 1 {
+            Err(denied())
+        } else {
+            File::create_new(path)
+        }
+    })
+    .unwrap()
+    .unwrap();
+    assert_eq!(attempts, 2);
+    drop(ticket);
+
+    fs::write(&lock_file, "deleting writer").unwrap();
+    assert!(
+        acquire(lock_file.clone(), true, |_| Err(denied()))
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(fs::read_to_string(&lock_file).unwrap(), "deleting writer");
+    fs::remove_file(&lock_file).unwrap();
+
+    // Elsewhere the same denial is never reinterpreted.
+    assert!(acquire(lock_file, false, |_| Err(denied())).is_err());
+}
+
+#[test]
 fn failed_atomic_publication_preserves_old_bytes_and_removes_temporary_files() {
     let fixture = Fixture::new();
     let record = fixture.record("record.json");

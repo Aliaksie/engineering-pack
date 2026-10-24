@@ -148,11 +148,11 @@ export function readState(file, maxBytes) {
   if (stat.isSymbolicLink() || !stat.isFile() || stat.size > maxBytes) throw new Error('invalid bounded state file');
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
-// Windows denies creating a lock whose previous holder is still deleting it; that lock is busy.
-const held = (error, lock) => error.code === 'EEXIST' || process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error.code) && fs.readdirSync(path.dirname(lock)).includes(path.basename(lock));
-export function lockState(file) {
+// Windows denies creating a lock its previous holder is still deleting (busy); without a listed lock the create is retried, then the denial is real.
+const denied = error => process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error.code);
+export function lockState(file, attempts = 3) {
   try { return { file, fd: fs.openSync(`${file}.lock`, 'wx', 0o600) }; }
-  catch (error) { if (held(error, `${file}.lock`)) return null; throw error; }
+  catch (error) { if (error.code === 'EEXIST' || denied(error) && fs.readdirSync(path.dirname(file)).includes(`${path.basename(file)}.lock`)) return null; if (!denied(error) || attempts <= 1) throw error; return lockState(file, attempts - 1); }
 }
 export function releaseState(ticket) { fs.closeSync(ticket.fd); fs.rmSync(`${ticket.file}.lock`, { force: true }); }
 export function writeState(file, state, maxBytes, pretty = false) {

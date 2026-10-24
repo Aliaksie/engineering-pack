@@ -12,7 +12,7 @@ import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEM
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { execute } from '../cli/requests.mjs';
-import { lockState, stateFile } from '../platform/node/state-files.mjs';
+import { lockState, releaseState, stateFile } from '../platform/node/state-files.mjs';
 
 const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z', sessionId:'a'.repeat(32), operationId:'12345678-1234-4234-a234-123456789abc', packVersion:'0.0.2', host:'codex', outcome:'success', durationMs:12 };
 function fixture(t, config) {
@@ -128,8 +128,14 @@ test('denied telemetry lock acquisition skips the event without touching another
     fs.writeFileSync(lock,'deleting writer');
     assert.equal(lockState(file),null);
     assert.equal(fs.readFileSync(lock,'utf8'),'deleting writer');
+    fs.unlinkSync(lock);
+    // The previous holder finished deleting between the denial and the listing.
+    let attempts=0;
+    mock.mock.mockImplementation((name,...args) => { if (name===lock && ++attempts===1) throw denied; return open(name,...args); });
+    const ticket=lockState(file);
+    assert.equal(attempts,2);
+    releaseState(ticket);
   } finally { Object.defineProperty(process,'platform',platform); mock.mock.restore(); }
-  fs.unlinkSync(lock);
   assert.equal(appendTelemetry(root,event),true);
   assert.deepEqual(readTelemetry(root),[event]);
 });

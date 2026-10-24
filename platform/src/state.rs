@@ -233,27 +233,45 @@ pub fn lock(file: &Path) -> Result<Option<Lock>, String> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    match options.open(&path) {
-        Ok(handle) => Ok(Some(Lock {
-            path,
-            file: Some(handle),
-        })),
-        Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(None),
-        // Windows denies creating a lock whose previous holder is still deleting it;
-        // that lock is busy. Without a listed lock the denial is a real error.
-        Err(error) if cfg!(windows) && error.kind() == ErrorKind::PermissionDenied => {
-            let parent = path.parent().ok_or("state lock parent required")?;
-            let name = path.file_name().ok_or("state lock name required")?;
-            let listed = fs::read_dir(parent)
-                .map_err(|e| e.to_string())?
-                .any(|entry| entry.is_ok_and(|entry| entry.file_name() == name));
-            if listed {
-                Ok(None)
-            } else {
-                Err(error.to_string())
+    acquire(path, cfg!(windows), |path| options.open(path))
+}
+
+const LOCK_ATTEMPTS: usize = 3;
+
+fn acquire(
+    path: PathBuf,
+    windows: bool,
+    mut open: impl FnMut(&Path) -> std::io::Result<File>,
+) -> Result<Option<Lock>, String> {
+    let mut attempt = 1;
+    loop {
+        match open(&path) {
+            Ok(handle) => {
+                return Ok(Some(Lock {
+                    path,
+                    file: Some(handle),
+                }));
             }
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => return Ok(None),
+            // Windows denies creating a lock whose previous holder is still deleting it;
+            // that lock is busy. A lock gone by the listing finished deleting in between,
+            // so the create is retried; a denial that persists without a lock is real.
+            Err(error) if windows && error.kind() == ErrorKind::PermissionDenied => {
+                let parent = path.parent().ok_or("state lock parent required")?;
+                let name = path.file_name().ok_or("state lock name required")?;
+                let listed = fs::read_dir(parent)
+                    .map_err(|e| e.to_string())?
+                    .any(|entry| entry.is_ok_and(|entry| entry.file_name() == name));
+                if listed {
+                    return Ok(None);
+                }
+                if attempt == LOCK_ATTEMPTS {
+                    return Err(error.to_string());
+                }
+                attempt += 1;
+            }
+            Err(error) => return Err(error.to_string()),
         }
-        Err(error) => Err(error.to_string()),
     }
 }
 
