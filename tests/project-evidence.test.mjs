@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
-import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -94,9 +93,8 @@ test('native state creation rejects symlinked private directories', { skip: !bin
 
 test('corrupt databases fail without rebuilding or overwriting derived state', { skip: !binary }, t => {
   const { root, run } = fixture(t);
-  run('status');
-  const id = createHash('sha256').update(root).digest('hex').slice(0, 24);
-  const database = path.join(root, '.craft', 'state', id, 'shared', 'project-evidence.sqlite');
+  // The native API owns canonical storage paths (including Windows path prefixes).
+  const database = run('backup').backup.slice(0, -'.backup'.length);
   const corrupt = Buffer.from('not a SQLite database');
   fs.writeFileSync(database, corrupt);
   assert.throws(() => run('refresh'), /not a database/);
@@ -130,12 +128,11 @@ test('backup is a consistent snapshot and rebuild only clears derived evidence',
 test('busy refresh refuses concurrent queries and killed acquisition restarts safely', { skip: !binary }, async t => {
   const { root, run } = fixture(t);
   for (let index = 0; index < 1000; index++) fs.writeFileSync(path.join(root, `${index}.js`), `export const item${index} = ${index};`);
+  const database = run('backup').backup.slice(0, -'.backup'.length);
   const child = spawn(binary, [], { stdio: ['pipe', 'pipe', 'pipe'] });
   const exited = once(child, 'exit');
   t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
   child.stdin.end(JSON.stringify({ formatVersion: 1, operation: 'refresh', input: { root } }));
-  const id = createHash('sha256').update(root).digest('hex').slice(0, 24);
-  const database = path.join(root, '.craft', 'state', id, 'shared', 'project-evidence.sqlite');
   let busy = false;
   for (let attempt = 0; attempt < 200; attempt++) {
     if (fs.existsSync(database)) {

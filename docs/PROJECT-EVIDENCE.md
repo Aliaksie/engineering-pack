@@ -50,7 +50,8 @@ host target. Dependencies must already be cached; missing dependencies fail rath
 than downloading during packaging. `cargo` and `rustc` must be on PATH, or supplied
 through `CARGO` and `RUSTC` respectively. The command writes
 `dist/project-evidence/<target>/` and only replaces a previously generated bundle.
-This optional build is separate from ordinary host exports and `npm run build`.
+This developer build is separate from `npm run build`. CI and release packaging include
+the checked prebuilts in each complete host bundle and independently cached plugin.
 
 Move the entire bundle directory to its intended local location. With Node 22+ and
 Git on PATH, run `node <bundle>/cli/project-evidence.mjs version --enable` or the same
@@ -63,8 +64,9 @@ from its checksum list. Checksums detect changed content; they are not signature
 The build does not install or enable a host integration. Keep the previous bundle
 directory when replacing an installed copy; rollback selects that directory again.
 Omitting `--enable` disables access without removing data. Removing a bundle leaves
-repository source and private evidence state intact. Current runtime verification is
-limited to Apple Silicon macOS; other platforms remain unverified.
+repository source and private evidence state intact. The native CI gate exercises Linux
+x86-64, Apple Silicon macOS and Windows x86-64; see the
+[supported candidate platforms](PLATFORMS.md#native-runtime-in-candidate-bundles).
 
 ## Explicit workspaces
 
@@ -110,6 +112,8 @@ The existing JavaScript engine remains in place for unaffected operations under
 [ADR 0001](adr/0001-rust-core-runtime.md).
 
 SQLite state lives in `.craft/state/<worktree-id>/shared/project-evidence.sqlite`.
+The native runtime owns its canonical worktree identity; consumers use paths returned
+by the API (for example `backup`) rather than reconstructing the directory hash.
 An OS lock serializes operations and releases on process exit. A successful extraction
 atomically replaces that source/provider's records, including empty success. Parse/read
 failure records a diagnostic and retires outdated evidence. Only successful
