@@ -12,7 +12,8 @@ import { discover } from '../application/discovery/discover.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 
 function fixture(t) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-private-state-')));
+  // State identity is the physical path; Windows temp paths may contain 8.3 short names.
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-private-state-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const git = (...args) => {
     const result = spawnSync('git', ['-C', root, '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', ...args], { encoding: 'utf8' });

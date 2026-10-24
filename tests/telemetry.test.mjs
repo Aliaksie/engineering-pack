@@ -110,11 +110,25 @@ test('denied telemetry lock acquisition skips the event without touching another
     try {
       if (code==='EIO') assert.throws(() => appendTelemetry(root,event),error => error===failure);
       else assert.equal(appendTelemetry(root,event),false);
-      assert.throws(() => lockState(file),error => error===failure);
+      // Windows denies creating a lock that its previous holder is still deleting.
+      if (process.platform==='win32' && ['EPERM','EACCES'].includes(code)) assert.equal(lockState(file),null);
+      else assert.throws(() => lockState(file),error => error===failure);
       assert.equal(fs.existsSync(file),false);
       assert.equal(fs.readFileSync(lock,'utf8'),'another writer');
     } finally { mock.mock.restore(); }
   }
+  fs.unlinkSync(lock);
+  // Exercise the Windows rule everywhere: a denial is busy only while the lock is listed.
+  const platform=Object.getOwnPropertyDescriptor(process,'platform');
+  const denied=Object.assign(new Error('lock unavailable'),{code:'EPERM'});
+  const mock=t.mock.method(fs,'openSync',(name,...args) => { if (name===lock) throw denied; return open(name,...args); });
+  try {
+    Object.defineProperty(process,'platform',{ ...platform, value:'win32' });
+    assert.throws(() => lockState(file),error => error===denied);
+    fs.writeFileSync(lock,'deleting writer');
+    assert.equal(lockState(file),null);
+    assert.equal(fs.readFileSync(lock,'utf8'),'deleting writer');
+  } finally { Object.defineProperty(process,'platform',platform); mock.mock.restore(); }
   fs.unlinkSync(lock);
   assert.equal(appendTelemetry(root,event),true);
   assert.deepEqual(readTelemetry(root),[event]);
