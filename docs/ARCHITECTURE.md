@@ -40,6 +40,8 @@ Top-level names identify ownership: `engine/` decides, `application/` orchestrat
 `integrations/` maps external systems, `cli/` handles human input/output,
 `tooling/` builds and validates, and `packages/` contains agent-facing guidance.
 No former runtime, adapter or script paths are retained as forwarding modules.
+The accepted module map, dependency directions and runtime JS budgets are declared in
+`architecture.json` and [ADR 0002](adr/0002-module-map-and-boundaries.md); `npm run architecture` enforces them.
 
 ## Engine contract
 

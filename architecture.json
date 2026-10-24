@@ -1,0 +1,184 @@
+{
+  "formatVersion": 1,
+  "decision": "docs/adr/0002-module-map-and-boundaries.md",
+  "rootFiles": [".gitattributes", ".gitignore", "AGENTS.md", "CHANGELOG.md", "Cargo.lock", "Cargo.toml", "LICENSE", "README.md", "architecture.json", "package-lock.json", "package.json"],
+  "modules": {
+    "engine": {
+      "kind": "rust-crate",
+      "crate": "craft-engine",
+      "responsibility": "Pure decisions, contracts, identities and transitions over explicit observations.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "dependsOn": [],
+      "externalDependencies": ["serde", "serde_json", "sha2"],
+      "shipped": true,
+      "legacy": {
+        "retireBy": "W4",
+        "allow": ["**/*.mjs", "routing/catalog.json"],
+        "jsLines": 2372,
+        "dependsOn": [],
+        "entryPoints": ["engine/index.mjs"]
+      }
+    },
+    "platform": {
+      "kind": "rust-crate",
+      "crate": "craft-platform",
+      "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "dependsOn": ["engine"],
+      "externalDependencies": ["rusqlite", "serde_json", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
+      "shipped": true,
+      "legacy": {
+        "retireBy": "W4",
+        "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
+        "jsLines": 1146,
+        "dependsOn": [],
+        "entryPoints": ["platform/index.mjs"]
+      }
+    },
+    "application": {
+      "kind": "rust-crate",
+      "crate": "craft-application",
+      "responsibility": "Complete use cases, CLI parsing and rendering, host-neutral lifecycle handling and the craft executable.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "dependsOn": ["engine", "platform"],
+      "externalDependencies": ["serde_json"],
+      "shipped": true,
+      "legacy": {
+        "retireBy": "W4",
+        "allow": ["**/*.mjs"],
+        "jsLines": 1328,
+        "dependsOn": ["engine", "platform", "integrations"],
+        "entryPoints": [
+          "application/checkpoint.mjs",
+          "application/context-delivery/prepare.mjs",
+          "application/discovery/discover.mjs",
+          "application/engine-client.mjs",
+          "application/inbox.mjs",
+          "application/project-evidence.mjs",
+          "application/project/configuration.mjs",
+          "application/review.mjs",
+          "application/routing/select.mjs",
+          "application/services.mjs",
+          "application/session/actions.mjs",
+          "application/session/activity.mjs",
+          "application/session/admission.mjs",
+          "application/session/context.mjs",
+          "application/session/features.mjs",
+          "application/session/models.mjs",
+          "application/session/status.mjs",
+          "application/session/task.mjs",
+          "application/session/workers.mjs",
+          "application/telemetry/capture.mjs",
+          "application/telemetry/lifecycle.mjs",
+          "application/telemetry/observe.mjs",
+          "application/telemetry/report.mjs",
+          "application/workspace.mjs"
+        ],
+        "runtimeRoots": [
+          "application/context-delivery/prepare.mjs",
+          "application/project/configuration.mjs",
+          "application/session/grounding.mjs",
+          "application/session/status.mjs",
+          "application/telemetry/observe.mjs"
+        ]
+      }
+    },
+    "cli": {
+      "kind": "retiring",
+      "responsibility": "Legacy JS command parsing and display that moves into the application crate.",
+      "allow": ["**/*.mjs"],
+      "retireBy": "W4",
+      "jsLines": 345,
+      "dependsOn": ["application", "platform"],
+      "shipped": true,
+      "runtimeRoots": ["cli/main.mjs", "cli/project-evidence.mjs"]
+    },
+    "integrations": {
+      "kind": "retiring",
+      "responsibility": "Legacy external command, service and OTLP mappings that dissolve into application, platform and review owners.",
+      "allow": ["**/*.mjs"],
+      "retireBy": "W4",
+      "jsLines": 338,
+      "dependsOn": [],
+      "shipped": true,
+      "entryPoints": [
+        "integrations/inbox-guard.mjs",
+        "integrations/inbox-output.mjs",
+        "integrations/otel/traces.mjs",
+        "integrations/review-commands.mjs",
+        "integrations/review-inbox.mjs",
+        "integrations/services.mjs"
+      ]
+    },
+    "hosts": {
+      "kind": "host-adapter",
+      "responsibility": "Per-host payload parsing, native invocation and host wire output, the only runtime JavaScript after migration.",
+      "allow": ["**/*.mjs"],
+      "jsLines": 1089,
+      "maxFileLines": 300,
+      "dependsOn": ["application", "platform"],
+      "shipped": true,
+      "runtimeRoots": ["hosts/**/*.mjs"]
+    },
+    "packages": {
+      "kind": "content",
+      "responsibility": "Capability guidance, skills, workflows, standards, evals and thin package entry points.",
+      "allow": ["**/*.md", "**/*.json", "*/hooks/*.mjs", "*/bin/*.mjs"],
+      "jsLines": 50,
+      "dependsOn": ["application"],
+      "shipped": true,
+      "runtimeRoots": ["packages/*/hooks/*.mjs", "packages/*/bin/*.mjs"]
+    },
+    "tools": {
+      "kind": "optional-tool",
+      "responsibility": "Optional personal review inbox, excluded from exports, whose future owner is undecided.",
+      "allow": ["craft-review-inbox/**"],
+      "jsLines": 381,
+      "dependsOn": ["application", "integrations"],
+      "shipped": false,
+      "runtimeRoots": ["tools/craft-review-inbox/bin/*.mjs", "tools/craft-review-inbox/hooks/*.mjs"]
+    },
+    "tooling": {
+      "kind": "build-tooling",
+      "responsibility": "Build, export, release, validation, benchmarks and evaluation drivers.",
+      "allow": ["**/*.mjs", "**/*.json", "**/*.md", "native/notices/*"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    "schemas": {
+      "kind": "schema",
+      "responsibility": "Published local authoring schemas.",
+      "allow": ["*.json"],
+      "dependsOn": [],
+      "shipped": true
+    },
+    "docs": {
+      "kind": "docs",
+      "responsibility": "Maintained user, contributor and architecture documentation.",
+      "allow": ["**/*.md"],
+      "dependsOn": [],
+      "shipped": true
+    },
+    "tests": {
+      "kind": "tests",
+      "responsibility": "Repository-level behavior, contract replay and architecture tests.",
+      "allow": ["**/*.mjs", "**/*.json", "**/*.md"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    "examples": {
+      "kind": "examples",
+      "responsibility": "Consumer configuration skeletons and eval fixtures without live connections.",
+      "allow": ["**"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    ".github": {
+      "kind": "ci-config",
+      "responsibility": "CI workflows and benchmark harnesses.",
+      "allow": ["workflows/*.yml", "benchmarks/*.mjs"],
+      "dependsOn": "*",
+      "shipped": false
+    }
+  }
+}

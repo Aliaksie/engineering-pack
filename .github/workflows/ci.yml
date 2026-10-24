@@ -84,6 +84,8 @@ jobs:
         run: npm run build
       - name: Assemble direct-install distribution
         run: npm run build:distribution
+      - name: Check module map and boundaries
+        run: npm run architecture
       - name: Validate generated exports
         run: npm run validate:exports
       - name: Run tests
