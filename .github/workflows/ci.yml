@@ -92,6 +92,8 @@ jobs:
       - name: Validate generated exports
         run: npm run validate:exports
       - name: Install pinned Rust toolchain
+        # Windows runners default to PowerShell, which would expand "$RUSTUP_TOOLCHAIN" to ''.
+        shell: bash
         run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
       - name: Fetch locked dependencies
         run: cargo fetch --locked
