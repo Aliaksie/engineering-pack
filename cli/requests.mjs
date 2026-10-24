@@ -6,12 +6,10 @@ import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
 import { readProject, readInput } from '../application/project/configuration.mjs';
-import { route } from '../application/routing/select.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
 import { locateCommand } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
-import { contextReport } from '../application/session/context.mjs';
 import { bundleRoot, nativeCommand } from '../platform/index.mjs';
 export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
@@ -75,19 +73,18 @@ function executeRequest(action, options, root) {
     }
     return result;
   };
-  if (action === 'context-report') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, verificationMode: options['verification-mode'] });
-    const bundle = options.bundle ?? bundleRoot();
-    const report = contextReport(bundle, plan, { budgetBytes: options['budget-bytes'] === undefined ? undefined : Number(options['budget-bytes']) });
-    return activity(report, { filesRequested: report.totals.files, referencesRequested: plan.references.length });
-  }
-  if (action === 'route') {
-    // Session binding/activity remain with their W2 owner; routing runs once in Rust.
-    const argv = Object.entries({ ...options, root }).filter(([, value]) => value !== undefined).flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).flatMap(item => item === true ? [`--${key}`] : [`--${key}`, item]));
-    const outcome = nativeCommand(['route', ...argv], { telemetry: commandTelemetry() }); forwardTelemetry(outcome.export);
+  // Session binding/activity remain with their W2 owner; each use case runs once in Rust.
+  const forward = (command, values) => {
+    const argv = Object.entries({ ...values, root }).filter(([, value]) => value !== undefined).flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).flatMap(item => item === true ? [`--${key}`] : [`--${key}`, item]));
+    const outcome = nativeCommand([command, ...argv], { telemetry: commandTelemetry() }); forwardTelemetry(outcome.export);
     if (outcome.exitCode) throw Object.assign(new Error(outcome.stderr.trimEnd()), { code: outcome.errorCode });
-    return activity(JSON.parse(outcome.stdout), { routingDecisions: 1 });
+    return outcome;
+  };
+  if (action === 'context-report') {
+    const outcome = forward('context-report', { ...options, bundle: options.bundle ?? [bundleRoot()] });
+    return activity(JSON.parse(outcome.stdout), outcome.activity);
   }
+  if (action === 'route') return activity(JSON.parse(forward('route', options).stdout), { routingDecisions: 1 });
   if (action === 'checkpoint-save') {
     const metadata = options.data ? readInput(options.data) : {};
     let task = options.task ?? metadata.taskId;

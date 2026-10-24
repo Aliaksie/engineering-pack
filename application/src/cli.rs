@@ -2,8 +2,9 @@
 //! `cli/main.mjs`, which forwards these commands here.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder};
-use craft_engine::{contracts, models, routing, services};
+use craft_engine::{context, contracts, models, routing, services};
 use craft_platform::documents::DocumentError;
+use craft_platform::guidance;
 use serde_json::{Map, Value, json};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -16,6 +17,7 @@ pub const COMMANDS: &[&str] = &[
     "lookup",
     "route",
     "locate",
+    "context-report",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -185,6 +187,8 @@ pub struct Outcome {
     pub stderr: String,
     /// Remote-bound telemetry for the caller to post, when configured.
     pub export: Option<Value>,
+    /// Session activity counters for the caller that owns session state until W2.
+    pub activity: Option<Value>,
 }
 
 #[derive(Default)]
@@ -445,24 +449,39 @@ fn strings(options: &Options, name: &str) -> Vec<String> {
         .collect()
 }
 
-fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
-    let settings = loaded(options, recorder, parent)?;
-    let files = options
-        .values
-        .get("file")
-        .and_then(Value::as_array)
-        .map_or(&[][..], Vec::as_slice);
-    let request = routing::Request {
+fn route_request<'a>(
+    options: &'a Options,
+    files: &'a [Value],
+    risks: &'a [String],
+) -> routing::Request<'a> {
+    routing::Request {
         intent: options.get("intent"),
         files,
-        risks: &strings(options, "risk"),
+        risks,
         host: options.get("host").unwrap_or("agents"),
         delegate: options.values.contains_key("delegate"),
         task: options.get("task"),
         verification_mode: options.get("verification-mode"),
-    };
+    }
+}
+
+fn files(options: &Options) -> &[Value] {
+    options
+        .values
+        .get("file")
+        .and_then(Value::as_array)
+        .map_or(&[][..], Vec::as_slice)
+}
+
+/// The route with its `routing.completed` operation and `guidance.selected` observations.
+fn routed(
+    settings: &Value,
+    request: &routing::Request,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
     let operation = recorder.start("routing.completed", Some(parent));
-    let result = routing::route(&settings, &request);
+    let result = routing::route(settings, request);
     let (attributes, failure) = match &result {
         Ok(plan) => {
             let catalog = routing::catalog::catalog()?;
@@ -487,6 +506,61 @@ fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Resu
     };
     recorder.complete(operation, attributes, failure);
     Ok(result?)
+}
+
+fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let risks = strings(options, "risk");
+    let request = route_request(options, files(options), &risks);
+    routed(&settings, &request, recorder, parent)
+}
+
+/// Selected guidance accounting, and the session activity counters it implies.
+fn context_report(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<(Value, Value), Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let risks = strings(options, "risk");
+    // Guidance accounting neither delegates nor reads the task.
+    let request = routing::Request {
+        delegate: false,
+        task: None,
+        ..route_request(options, files(options), &risks)
+    };
+    let plan = routed(&settings, &request, recorder, parent)?;
+    let operation = recorder.start("context.observed", Some(parent));
+    let result = (|| -> Result<Value, Failure> {
+        let requests = context::requests(&plan)?;
+        let (entries, missing) = guidance::measure(&strings(options, "bundle"), &requests)?;
+        let budget = match options.get("budget-bytes") {
+            Some(text) => Some(context::budget(&crate::discovery::number(text))?),
+            None => None,
+        };
+        Ok(context::summary(entries, missing, budget))
+    })();
+    let (attributes, failure) = match &result {
+        Ok(report) => {
+            let totals = &report["totals"];
+            let attributes = Map::from_iter([
+                ("guidanceFiles".to_string(), totals["files"].clone()),
+                ("guidanceBytes".to_string(), totals["bytes"].clone()),
+                (
+                    "estimatedTokens".to_string(),
+                    totals["estimatedTokens"].clone(),
+                ),
+            ]);
+            (attributes, None)
+        }
+        Err(error) => (Map::new(), Some(error.code("CONTEXT_UNAVAILABLE"))),
+    };
+    recorder.complete(operation, attributes, failure);
+    let report = result?;
+    let references = plan["references"].as_array().map_or(0, Vec::len);
+    let activity =
+        json!({ "filesRequested": report["totals"]["files"], "referencesRequested": references });
+    Ok((report, activity))
 }
 
 fn locate(
@@ -560,6 +634,10 @@ fn help(action: &str) -> Value {
             "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",
             "mode":"bounded literal scan; optional local reuse receipts"
         }),
+        "context-report" => json!({
+            "usage": "context-report --intent implement [--file src/main.py] [--bundle package-root ...]",
+            "mode": "selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading",
+        }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
@@ -599,6 +677,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 stdout: String::new(),
                 stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
                 export: None,
+                activity: None,
             };
         }
     };
@@ -609,6 +688,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             stdout: render(&help(action)),
             stderr: String::new(),
             export: None,
+            activity: None,
         };
     }
     let hint = |flag: &str| {
@@ -634,8 +714,14 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "locate" => locate,
         _ => settings,
     };
+    let mut activity = None;
     let result = parse(action, args).and_then(|mut options| {
         options.discovery = context["discovery"].clone();
+        if action == "context-report" {
+            let (report, counters) = context_report(&options, &mut recorder, &operation)?;
+            activity = Some(counters);
+            return Ok(report);
+        }
         command(&options, &mut recorder, &operation)
     });
     let outcome = match &result {
@@ -670,5 +756,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         stdout: outcome.1,
         stderr: outcome.2,
         export: recorder.finish(),
+        activity,
     }
 }

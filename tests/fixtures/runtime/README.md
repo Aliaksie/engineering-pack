@@ -91,3 +91,17 @@ error messages omitted. The Rust engine replays every case unchanged.
 with the JavaScript engine operation. The Rust replay lists three intentional corrections:
 an empty module name and a module selector combined with a file now fail instead of listing
 every module or silently ignoring the file.
+
+`route-contracts.json` freezes 120 JavaScript responses for the `route` use case at
+`173123c`: effective settings, then the application route over CLI options, with error
+messages omitted. The Rust engine replays every case unchanged, including key order.
+
+`locate-contracts.json` freezes 66 bounded literal search cases at `b27ec99` and
+`discovery-contracts.json` freezes 92 discovery planning, reuse and result cases at `266b8d1`,
+including the JavaScript engine discovery fixtures they retired.
+
+`context-contracts.json` freezes 54 JavaScript responses for the `context-report` use case at
+`20ab5c9`. Each case stores its bundle trees as file maps (`{repeat, count}` for large files)
+and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust replay rebuilds
+the trees and runs the `craft context-report` command, comparing output bytes and the session
+activity counters.

@@ -33,11 +33,13 @@ fn text(path: &Path) -> Result<&str, String> {
         .ok_or_else(|| "non-UTF-8 state path unsupported".into())
 }
 
-/// The physical worktree path in the form Node's `fs.realpathSync.native` returns,
-/// so both runtimes hash the same identity. Windows verbatim prefixes are removed.
-pub fn canonical_root(root: &Path) -> Result<PathBuf, String> {
-    let canonical = root.canonicalize().map_err(|e| e.to_string())?;
-    let value = text(&canonical)?;
+/// The physical path in the form Node's `fs.realpathSync.native` returns. Windows verbatim
+/// prefixes are removed.
+pub fn physical(path: &Path) -> std::io::Result<PathBuf> {
+    let canonical = path.canonicalize()?;
+    let Some(value) = canonical.to_str() else {
+        return Ok(canonical);
+    };
     Ok(match value.strip_prefix(r"\\?\") {
         Some(rest) => match rest.strip_prefix(r"UNC\") {
             Some(share) => PathBuf::from(format!(r"\\{share}")),
@@ -45,6 +47,13 @@ pub fn canonical_root(root: &Path) -> Result<PathBuf, String> {
         },
         None => canonical,
     })
+}
+
+/// The physical worktree path, so both runtimes hash the same identity.
+pub fn canonical_root(root: &Path) -> Result<PathBuf, String> {
+    let physical = physical(root).map_err(|e| e.to_string())?;
+    text(&physical)?;
+    Ok(physical)
 }
 
 /// An existing component must be a real directory; a missing one is created only on request.

@@ -28,7 +28,6 @@ const help = {
   'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
-  'context-report': { usage: 'context-report --intent implement [--file src/main.py] [--bundle package-root ...]', mode: 'selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading' },
   'session-attempt': { usage: 'session-attempt --root project --session id --task task-id --data attempt.json',
     example: { operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check.json', outcome: 'passed' },
     outcomes: ['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved'], optional: ['profile', 'maxAttempts', 'escalationReason'], mode: 'receipt only; no retry execution' },
@@ -40,7 +39,7 @@ const help = {
 export function run(argv) {
   const [action, ...args] = argv;
   if (native.has(action)) { const outcome = nativeCommand(argv); forwardTelemetry(outcome.export); if (outcome.exitCode) throw new Error(outcome.stderr.trimEnd()); return JSON.parse(outcome.stdout); }
-  if (action === 'locate' && args.includes('--help')) { const outcome = nativeCommand(argv); return JSON.parse(outcome.stdout); }
+  if (['locate', 'context-report'].includes(action) && args.includes('--help')) { const outcome = nativeCommand(argv); return JSON.parse(outcome.stdout); }
   if (action === 'help' || action === '--help' || args.includes('--help')) return { ...(help[action] ?? { commands: ['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean', 'worker-status', 'task-feature', 'task-features', 'telemetry-capture', 'telemetry-forget', 'telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' }), output: 'Routine receipts are compact by default; --json or --verbose returns the full structured result.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
   return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },

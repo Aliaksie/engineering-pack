@@ -121,6 +121,8 @@ additional wrappers. This report does not claim to measure those copies or nativ
 The CLI defaults to its own source/bundle/package root. `--bundle <path>` selects an explicit
 source checkout, full export or standalone package to inspect; `--root` remains the consumer
 project configuration. Installed packages use `node support/cli/main.mjs context-report`.
+Running the `craft` executable directly requires at least one `--bundle`. Repeated roots that
+resolve to the same physical directory are counted once, whatever their spelling.
 The shared implementation ships in every adapter and does not inspect user plugin caches,
 activate tools, change models or emit per-tool context reports.
 
