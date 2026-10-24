@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { publishDistribution } from '../tooling/publish-distribution.mjs';
 
 // Real Git against a local bare remote: no GitHub credentials or network access.
-test('publishing creates a branch, skips unchanged trees, preserves history and removes old files', t => {
+test('candidate publishing preserves stable distribution, skips unchanged trees, preserves history and removes old files', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'distribution-transport-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const remote = path.join(root, 'remote.git');
@@ -26,20 +26,26 @@ test('publishing creates a branch, skips unchanged trees, preserves history and 
   git(['remote', 'add', 'origin', remote]);
   git(['push', 'origin', 'main']);
   const revision = git(['rev-parse', 'HEAD']);
+  git(['push', 'origin', 'HEAD:refs/heads/distribution']);
+  const frozen = git(['--git-dir', remote, 'rev-parse', 'distribution']);
   fs.writeFileSync(path.join(bundle, 'obsolete.md'), 'Old generated file.\n');
   assert.equal(publishDistribution(bundle, remote, revision), true);
-  const first = git(['--git-dir', remote, 'rev-parse', 'distribution']);
+  const first = git(['--git-dir', remote, 'rev-parse', 'distribution-next']);
   assert.equal(publishDistribution(bundle, remote, revision), false);
   fs.unlinkSync(path.join(bundle, 'obsolete.md'));
   fs.writeFileSync(path.join(bundle, 'current.md'), 'New generated file.\n');
   assert.equal(publishDistribution(bundle, remote, revision), true);
-  assert.equal(git(['--git-dir', remote, 'rev-parse', 'distribution^']), first);
-  assert.equal(git(['--git-dir', remote, 'ls-tree', '--name-only', 'distribution']), 'current.md');
+  assert.equal(git(['--git-dir', remote, 'rev-parse', 'distribution-next^']), first);
+  assert.equal(git(['--git-dir', remote, 'ls-tree', '--name-only', 'distribution-next']), 'current.md');
   fs.writeFileSync(path.join(source, 'source.md'), 'New source revision.\n');
   git(['add', '.']);
   commit('advance main');
   git(['push', 'origin', 'main']);
+  const candidate = git(['--git-dir', remote, 'rev-parse', 'distribution-next']);
   assert.throws(() => publishDistribution(bundle, remote, revision), /stale/);
+  assert.equal(git(['--git-dir', remote, 'rev-parse', 'distribution-next']), candidate);
+  assert.equal(git(['--git-dir', remote, 'rev-parse', 'distribution']), frozen);
+  assert.equal(git(['--git-dir', remote, 'ls-tree', '--name-only', 'distribution']), 'source.md');
 });
 
 test('publisher CLI refuses local or untrusted workflow execution', () => {

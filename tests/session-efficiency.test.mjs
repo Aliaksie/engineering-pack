@@ -9,10 +9,13 @@ import { discover } from '../application/discovery/discover.mjs';
 import { attemptStatus } from '../application/session/activity.mjs';
 import { readSessionState, recordAttempt } from '../application/session/activity.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
-import { sessionAdvice } from '../application/session/advice.mjs';
+import { decide } from '../application/engine-client.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { capabilityAdvice, modelAdvice } from '../application/session/models.mjs';
 import { run } from '../cli/main.mjs';
+
+// The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
+const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'session-efficiency-'));
@@ -160,19 +163,12 @@ test('policy distinguishes healthy progress, unknown telemetry, pressure and cha
 });
 
 test('classes use deterministic economical discovery and allow directly requested strong reasoning', () => {
+  const capabilityAdvice = (operation, risks) => decide('capability', { operation, risks });
   assert.equal(capabilityAdvice('locate').class, 'economical');
   assert.equal(capabilityAdvice('locate').execution, 'prefer-deterministic-tool');
   assert.equal(capabilityAdvice('architecture').class, 'strong');
   assert.equal(capabilityAdvice('implement', ['distributed-consistency']).class, 'strong');
   assert.equal(capabilityAdvice('implement').class, 'standard');
-  const project = { formatVersion: 1, execution: {
-    roles: { planner: { mode: 'delegate', profile: 'small' } },
-    profiles: { small: { capabilities: [], class: 'economical', escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong' } },
-    hosts: { fixture: { delegation: true, models: { small: 'consumer-a', deep: 'consumer-b' } } }
-  } };
-  const result = modelAdvice({ host: 'fixture', role: 'planner', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
-  assert.equal(result.profile, 'deep');
-  assert.equal(result.attemptsRemaining, 3);
 });
 
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {
@@ -411,4 +407,18 @@ test('active receipt capacity fails explicitly without changing persisted eviden
   assert.equal(after.attempts.length, 24);
   assert.equal(attemptStatus(after.attempts, 'implement').attempts, 1);
   assert.equal(attemptStatus(after.attempts, 'operation:1').attempts, 1);
+});
+
+test('lookup reuse cannot hide an unavailable native implementation', t => {
+  const { root } = fixture(t);
+  discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
+  assert.equal(discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope).discovery.reused, 1);
+  const binary = process.env.CRAFT_NATIVE_BINARY;
+  try {
+    process.env.CRAFT_NATIVE_BINARY = path.join(root, 'missing-native-binary');
+    assert.throws(() => discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope), { code: 'NATIVE_UNAVAILABLE' });
+  } finally {
+    if (binary === undefined) delete process.env.CRAFT_NATIVE_BINARY;
+    else process.env.CRAFT_NATIVE_BINARY = binary;
+  }
 });

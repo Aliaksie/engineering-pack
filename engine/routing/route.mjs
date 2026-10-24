@@ -19,16 +19,6 @@ export function matchingModules(project, files) {
   }
   return [...selected];
 }
-export function lookup(project, { file, module } = {}) {
-  validateProject(project);
-  if (file !== undefined) file = relativeFile(file);
-  if (file !== undefined && privatePath(file)) return { modules: [], availability: 'private workspace excluded', execution: 'deterministic-lookup' };
-  const selected = module ? (project.modules ?? []).filter((entry) => entry.name === module)
-    : file ? matchingModules(project, [file]) : project.modules ?? [];
-  if (module && !selected.length) throw new Error(`unknown module: ${module}`);
-  return { modules: selected.map((entry) => ({ ...entry, path: relativeFile(entry.path) })), availability: 'declarations-only; verify paths and checks in the actual project', execution: 'deterministic-lookup' };
-}
-
 export function route({ intent, files = [], project = { formatVersion: 1 }, host = 'agents', delegate = false, task, risks = [], availableSkills, verificationMode, catalog, bindings } = {}) {
   validateProject(project);
   if (!catalog.intents.includes(intent)) throw new Error(`unknown intent: ${intent}`);

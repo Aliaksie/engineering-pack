@@ -1,0 +1,2681 @@
+{
+  "baseline": "09d74ead129008575f8483f68bd5412d2627c839",
+  "cases": [
+    {
+      "id": "claude-normalize-shell",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "shell",
+        "contextSupported": true,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "claude-normalize-powershell",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "shell",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "claude-normalize-edit",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "edit",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "claude-normalize-read",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "read",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "claude-normalize-prompt",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "other",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "claude-normalize-precedence",
+      "operation": "normalize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "claude",
+        "tool": "edit",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "claude-before-tool-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-before-tool-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "Blocked λ\n",
+        "exitCode": 2
+      }
+    },
+    {
+      "id": "claude-after-tool-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-after-tool-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-before-prompt-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-before-prompt-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-session-start-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-session-start-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-before-compact-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-before-compact-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-after-compact-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-after-compact-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-turn-end-allow",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "claude-turn-end-deny",
+      "operation": "serialize",
+      "host": "claude",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-normalize-shell",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "shell",
+        "contextSupported": true,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "codex-normalize-powershell",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "shell",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "codex-normalize-edit",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "edit",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "codex-normalize-read",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "read",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "codex-normalize-prompt",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "other",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "codex-normalize-precedence",
+      "operation": "normalize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "codex",
+        "tool": "edit",
+        "contextSupported": true,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "codex-before-tool-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-before-tool-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-after-tool-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-after-tool-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-before-prompt-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-before-prompt-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-session-start-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-session-start-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-before-compact-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-before-compact-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-after-compact-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-after-compact-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-turn-end-allow",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "codex-turn-end-deny",
+      "operation": "serialize",
+      "host": "codex",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-normalize-shell",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "cursor-normalize-powershell",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "cursor-normalize-edit",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "cursor-normalize-read",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "read",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "cursor-normalize-prompt",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "other",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "cursor-normalize-precedence",
+      "operation": "normalize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "cursor",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "cursor-before-tool-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"permission\":\"allow\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-before-tool-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"permission\":\"deny\",\"user_message\":\"Blocked λ\",\"agent_message\":\"Blocked λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-after-tool-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additional_context\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-after-tool-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additional_context\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-before-prompt-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"continue\":true}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-before-prompt-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"continue\":true}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-session-start-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additional_context\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-session-start-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additional_context\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-before-compact-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-before-compact-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-after-compact-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-after-compact-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-turn-end-allow",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "cursor-turn-end-deny",
+      "operation": "serialize",
+      "host": "cursor",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-normalize-shell",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "copilot-normalize-powershell",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "copilot-normalize-edit",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "copilot-normalize-read",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "read",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "copilot-normalize-prompt",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "other",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "copilot-normalize-precedence",
+      "operation": "normalize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "copilot",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "copilot-before-tool-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"permissionDecision\":\"allow\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-before-tool-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-after-tool-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-after-tool-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-before-prompt-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-before-prompt-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-session-start-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additionalContext\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-session-start-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"additionalContext\":\"Context λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-before-compact-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-before-compact-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-after-compact-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-after-compact-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-turn-end-allow",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "copilot-turn-end-deny",
+      "operation": "serialize",
+      "host": "copilot",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-normalize-shell",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "gemini-normalize-powershell",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "gemini-normalize-edit",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "gemini-normalize-read",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "read",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "gemini-normalize-prompt",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "other",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "gemini-normalize-precedence",
+      "operation": "normalize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "gemini",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "gemini-before-tool-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-before-tool-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"decision\":\"deny\",\"reason\":\"Blocked λ\"}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-after-tool-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"AfterTool\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-after-tool-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"AfterTool\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-before-prompt-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"BeforeAgent\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-before-prompt-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"BeforeAgent\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-session-start-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-session-start-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Context λ\"}}\n",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-before-compact-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-before-compact-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-after-compact-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-after-compact-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-turn-end-allow",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "gemini-turn-end-deny",
+      "operation": "serialize",
+      "host": "gemini",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-normalize-shell",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture with spaces",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "file_path": "src/λ.rs"
+        },
+        "session_id": "session-λ"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture with spaces",
+        "command": "git status",
+        "file": "src/λ.rs",
+        "prompt": "",
+        "session": "session-λ"
+      }
+    },
+    {
+      "id": "agents-normalize-powershell",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "pwsh",
+        "toolArgs": "{\"cmd\":\"git push\",\"path\":\"a b\"}",
+        "conversation_id": "conversation"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "shell",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "git push",
+        "file": "a b",
+        "prompt": "",
+        "session": "conversation"
+      }
+    },
+    {
+      "id": "agents-normalize-edit",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "apply_patch",
+        "tool_input": {
+          "path": "λ.rs"
+        },
+        "sessionId": "session"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "file": "λ.rs",
+        "prompt": "",
+        "session": "session"
+      }
+    },
+    {
+      "id": "agents-normalize-read",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "toolName": "view",
+        "toolArgs": "invalid json",
+        "session_id": 12
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "read",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": ""
+      }
+    },
+    {
+      "id": "agents-normalize-prompt",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "prompt": "review λ",
+        "session_id": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "other",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "",
+        "prompt": "review λ"
+      }
+    },
+    {
+      "id": "agents-normalize-precedence",
+      "operation": "normalize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "cwd": "/fixture",
+        "tool_name": "Write",
+        "toolName": "Bash",
+        "tool_input": null,
+        "toolArgs": {
+          "cmd": "ignored?"
+        },
+        "session_id": "",
+        "sessionId": "fallback"
+      },
+      "response": {
+        "event": "before-tool",
+        "host": "agents",
+        "tool": "edit",
+        "contextSupported": false,
+        "cwd": "/fixture",
+        "command": "ignored?",
+        "prompt": "",
+        "session": ""
+      }
+    },
+    {
+      "id": "agents-before-tool-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-before-tool-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-after-tool-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-after-tool-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "after-tool",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-before-prompt-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-before-prompt-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-prompt",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-session-start-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-session-start-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "session-start",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-before-compact-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-before-compact-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "before-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-after-compact-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-after-compact-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "after-compact",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-turn-end-allow",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "allow",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "agents-turn-end-deny",
+      "operation": "serialize",
+      "host": "agents",
+      "definition": {
+        "name": "fixture",
+        "event": "turn-end",
+        "tool": "any"
+      },
+      "input": {
+        "decision": "deny",
+        "reason": "Blocked λ",
+        "context": "Context λ"
+      },
+      "response": {
+        "output": "",
+        "error": "",
+        "exitCode": 0
+      }
+    }
+  ]
+}

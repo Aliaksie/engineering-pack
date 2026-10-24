@@ -4,20 +4,12 @@ import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
-import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
-import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
-import { lookup, route } from '../application/routing/select.mjs';
-import { planOperation } from '../application/services.mjs';
-import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
-import { discover } from '../application/discovery/discover.mjs';
+import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
+import { readProject, readInput } from '../application/project/configuration.mjs';
+import { locateCommand } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
-import { prepareServices } from '../application/services.mjs';
-import { contextReport } from '../application/session/context.mjs';
-import { bundleRoot } from '../platform/index.mjs';
-import { modelAdvice } from '../application/session/models.mjs';
-
-
+import { bundleRoot, nativeCommand } from '../platform/index.mjs';
 export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
@@ -66,16 +58,7 @@ function executeRequest(action, options, root) {
       ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
   }
 
-  if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {}, ...(options.facts ? { workerFacts: readInput(options.facts), session: options.session } : {}) });
-  if (action === 'locate') {
-    const limits = {};
-    for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {
-      if (options[flag] !== undefined) limits[field] = Number(options[flag]);
-    }
-    const request = options.data ? readInput(options.data) : { terms: options.term, paths: options.path, ...limits };
-    return discover(root, request, { session: options.session, task: options.task, preferencesFile: options.preferences });
-  }
-  if (action === 'prepare-services') return prepareServices(readProject(root, { preferencesFile: options.preferences }), { availableCommands: options['available-command'], availableMcpTools: options['available-mcp-tool'] });
+  if (action === 'locate') return locateCommand(root, options);
   if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
   if (action === 'session-attempt') {
     if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');
@@ -89,32 +72,17 @@ function executeRequest(action, options, root) {
     }
     return result;
   };
-  if (action === 'model-advice') {
-    if (!options.data) throw new Error('model-advice requires --data <request.json>');
-    return modelAdvice(readInput(options.data), readProject(root, { preferencesFile: options.preferences }));
-  }
-  if (action === 'lookup') return lookup(readProject(root, { preferencesFile: options.preferences }), { file: options.file[0], module: options.module });
+  // Session binding/activity remain with their W2 owner; each use case runs once in Rust.
+  const forward = (command, values) => {
+    const argv = Object.entries({ ...values, root }).filter(([, value]) => value !== undefined).flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).flatMap(item => item === true ? [`--${key}`] : [`--${key}`, item]));
+    const outcome = nativeCommand([command, ...argv], { telemetry: commandTelemetry() }); forwardTelemetry(outcome.export);
+    if (outcome.exitCode) throw Object.assign(new Error(outcome.stderr.trimEnd()), { code: outcome.errorCode });
+    return outcome;
+  };
   if (action === 'context-report') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, verificationMode: options['verification-mode'] });
-    const bundle = options.bundle ?? bundleRoot();
-    const report = contextReport(bundle, plan, { budgetBytes: options['budget-bytes'] === undefined ? undefined : Number(options['budget-bytes']) });
-    return activity(report, { filesRequested: report.totals.files, referencesRequested: plan.references.length });
+    const outcome = forward('context-report', { ...options, bundle: options.bundle ?? [bundleRoot()] });
+    return activity(JSON.parse(outcome.stdout), outcome.activity);
   }
-  if (action === 'route') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, delegate: options.delegate, task: options.task, verificationMode: options['verification-mode'] });
-    return activity(plan, { routingDecisions: 1 });
-  }
-  if (action === 'operation') return planOperation(readProject(root, { preferencesFile: options.preferences }), options.operation, JSON.parse(options.params ?? '{}'));
-  if (action === 'checkpoint-save') {
-    const metadata = options.data ? readInput(options.data) : {};
-    let task = options.task ?? metadata.taskId;
-    if (!task && options.session) {
-      try { task = activeTask(root, options.session); } catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
-    }
-    options = { ...options, task };
-    const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.repository ? { repositories: options.repository } : {}), ...(options.task ? { taskId: options.task } : {}) });
-    return activity(saved, { checkpoints: 1 });
-  }
-  if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]');
+  if (action === 'route') return activity(JSON.parse(forward('route', options).stdout), { routingDecisions: 1 });
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|locate> [--root project] [options]');
 }

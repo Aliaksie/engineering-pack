@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { decide } from '../application/engine-client.mjs';
-import { readEffectiveSettings, readProject } from '../application/project/configuration.mjs';
+import { workerBudget } from '../engine/routing/worker-budget.mjs';
+import { validateProject } from '../engine/contracts/project.mjs';
+import { readProject } from '../application/project/configuration.mjs';
 const resolve = input => decide('effective-settings', { project: {formatVersion:1}, ...input });
 test('nested precedence retains false, zero and sibling defaults without mutation', () => {
   const input = { project: {formatVersion:1, routing:{editHints:false}}, preferences:{efficiency:{delegation:{maxWorkers:1}}}, overrides:{efficiency:{delegation:{maxWorkers:0}}} };
@@ -24,20 +26,24 @@ test('invalid limits, unknown fields, permission preferences and thresholds fail
   assert.throws(()=>resolve({overrides:{efficiency:{context:{compactAt:0.9}}}}), /thresholds/);
   assert.throws(()=>resolve({project:{formatVersion:1,efficiency:{unknown:true}}}), /unknown/);
 });
-test('fresh settings preview reads private preferences and creates no repository config', t => {
+test('override errors name overrides, stale contradictory counts and non-string identities fail', () => {
+  assert.throws(() => resolve({ overrides:{bogus:1} }), /unknown overrides field: bogus/);
+  assert.throws(() => workerBudget({formatVersion:1}, { capacity:4, occupiedSlots:1, taskWorkers:1 }), /must fit occupied slots/);
+  const binding = (field, value) => () => validateProject({ formatVersion:1, services:{ git:{ provider:'git', transport:'cli', command:'git', [field]:value } } });
+  assert.throws(binding('host', 443), /^Error: invalid binding host$/);
+  assert.throws(binding('repository', ['a/b']), /^Error: invalid binding repository$/);
+});
+test('JS commands read private preferences and create no repository config', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'craft-settings-'));
   t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   const preferencesFile = path.join(root,'preferences.json');
-  const defaults = readEffectiveSettings(root,{preferencesFile});
-  assert.equal(defaults.settings.efficiency.delegation.maxWorkers,3);
+  assert.equal(readProject(root,{preferencesFile}).efficiency.delegation.maxWorkers,3);
   fs.writeFileSync(preferencesFile,JSON.stringify({routing:{editHints:false}}),{mode:0o600});
-  assert.equal(readEffectiveSettings(root,{preferencesFile}).settings.routing.editHints,false);
   assert.equal(fs.existsSync(path.join(root,'.craft','project.json')),false);
-  assert.deepEqual(readProject(root, { preferencesFile }), readEffectiveSettings(root, { preferencesFile }).settings);
   assert.equal(readProject(root, { preferencesFile }).routing.editHints, false);
   if (process.platform !== 'win32') {
     fs.chmodSync(preferencesFile,0o666);
-    assert.throws(()=>readEffectiveSettings(root,{preferencesFile}), /writable/);
+    assert.throws(()=>readProject(root,{preferencesFile}), /writable/);
   }
 });
 test('symlink and oversized preference inputs are rejected before parsing', t => {
@@ -46,7 +52,7 @@ test('symlink and oversized preference inputs are rejected before parsing', t =>
   const target = path.join(root,'target.json');
   const link = path.join(root,'link.json');
   fs.writeFileSync(target,'{}',{mode:0o600}); fs.symlinkSync(target,link);
-  assert.throws(()=>readEffectiveSettings(root,{preferencesFile:link}), /symlink/);
+  assert.throws(()=>readProject(root,{preferencesFile:link}), /symlink/);
   fs.writeFileSync(target,' '.repeat(65537));
-  assert.throws(()=>readEffectiveSettings(root,{preferencesFile:target}), /bounded/);
+  assert.throws(()=>readProject(root,{preferencesFile:target}), /bounded/);
 });

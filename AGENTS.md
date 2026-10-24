@@ -12,6 +12,7 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `npm test` | Build exports, then run Node tests |
 | `npm run validate` | Validate capability manifests and referenced source files |
 | `npm run validate:exports` | Check generated Claude marketplace and references |
+| `npm run architecture` | Check the declared module map, dependency rules and runtime JS budgets |
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
@@ -52,6 +53,24 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `dist` | Generated, ignored platform exports; never edit by hand |
 
 ## Rules
+
+- The local Pack core runtime belongs in Rust: engine decisions, Project Intelligence,
+  state, routing, telemetry, context, cache and persistence. Host-specific adapters and
+  packaging may remain thin JS/TS where needed. New capabilities must not add substantial
+  JS/TS runtime logic. Migrate legacy runtime components in verified, incremental slices
+  of complete use cases; remove each replaced implementation after compatibility and
+  installed checks pass. Simplify structure when justified by the changed behavior; preserve useful ownership boundaries and public contracts rather than copying
+  JS layers one-for-one. See [ADR 0001](docs/adr/0001-rust-core-runtime.md).
+
+- Top-level modules, their kinds and dependencies are declared in `architecture.json` and
+  [ADR 0002](docs/adr/0002-module-map-and-boundaries.md). Change both together; never add a
+  top-level folder, cross-module import or runtime JS budget increase without them.
+
+- Investigate bugs and suspicious behavior discovered during migration. Fix confirmed
+  defects with regression coverage before migrating the affected behavior; do not preserve
+  known bugs merely to match the baseline. Document intentional contract corrections and
+  update affected compatibility fixtures explicitly. Resolve suspicious behavior before
+  accepting the affected migration slice.
 
 - Before implementation edits, inspect Git state, preserve unrelated work and establish a safe
   change boundary under consumer branching/workspace policy and repository protection.

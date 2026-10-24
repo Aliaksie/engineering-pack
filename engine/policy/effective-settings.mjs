@@ -53,7 +53,7 @@ function merge(target, source, origin, origins, prefix = '') {
   }
 }
 export function effectiveSettings({ project, preferences = {}, overrides = {} }) {
-  validatePreferences(preferences); validatePreferences(overrides);
+  validatePreferences(preferences); validate(overrides, DEFAULT_SETTINGS, 'overrides');
   const settings = {}, origins = {};
   merge(settings, DEFAULT_SETTINGS, 'bundled', origins);
   if (project.execution?.profiles === undefined) {

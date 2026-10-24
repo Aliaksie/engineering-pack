@@ -75,6 +75,9 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
     assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
     assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
   }
+  const remoteLinks = files(output).filter(file => file.endsWith('.md')).flatMap(file => fs.readFileSync(file, 'utf8').match(/https:\/\/github\.com\/Aliaksie\/engineering-pack\/blob\/distribution[^)\s]*/g) ?? []);
+  assert.ok(remoteLinks.some(link => link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution-next/')));
+  assert.ok(remoteLinks.every(link => !link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution/')));
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));
   fs.unlinkSync(path.join(output, '.engineering-distribution.json'));
   assert.throws(() => assembleDistribution(fixture), /unmanaged/);

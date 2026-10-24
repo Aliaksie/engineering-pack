@@ -40,6 +40,8 @@ Top-level names identify ownership: `engine/` decides, `application/` orchestrat
 `integrations/` maps external systems, `cli/` handles human input/output,
 `tooling/` builds and validates, and `packages/` contains agent-facing guidance.
 No former runtime, adapter or script paths are retained as forwarding modules.
+The accepted module map, dependency directions and runtime JS budgets are declared in
+`architecture.json` and [ADR 0002](adr/0002-module-map-and-boundaries.md); `npm run architecture` enforces them.
 
 ## Engine contract
 
@@ -65,10 +67,16 @@ Node implementations do not import application logic or engine policy. Applicati
 imports only `platform/index.mjs`, never `platform/node/` details. The platform entry point
 wires the current Node implementation without introducing a second infrastructure layer. Port callbacks stay within application/Node orchestration; they never cross the JSON engine boundary.
 
-A future Rust implementation can replace `evaluate` while retaining observation collection,
-CLI output and host adapters. No native bridge, process protocol or second implementation
-is required now. JavaScript remains a supported long-term implementation. Contract replay
-and dependency tests enforce the useful boundary independently of implementation language.
+The target core runtime is Rust, as established by [ADR 0001](adr/0001-rust-core-runtime.md).
+This includes local orchestration, state, routing, telemetry, context, cache and persistence,
+as well as pure engine decisions and Project Intelligence. A dedicated incremental
+migration moves complete use cases from JavaScript into Rust, preserving compatibility
+and removing each replaced implementation after verification.
+New runtime capabilities belong in Rust. Host adapters and packaging may remain thin
+JS/TS where needed. The ownership map above describes the current layout, not a requirement
+to reproduce its folders or layers during migration. Simplify structure when useful while
+preserving public contracts and separation of pure decisions from I/O. Contract replay
+and dependency tests continue to protect those boundaries.
 
 ## Evidence and effects
 

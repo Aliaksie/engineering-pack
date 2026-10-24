@@ -4,10 +4,13 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sessionAdvice } from '../application/session/advice.mjs';
+import { decide } from '../application/engine-client.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
 import { renderSessionStatus } from '../cli/render.mjs';
 import { sessionCapabilities, sessionObservation, renderSession } from '../hosts/session.mjs';
 
+// The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
+const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });
 const now = Date.parse('2026-10-18T12:00:00Z');
 const observed = (currentTokens = 85) => ({ sessionId: 's1', host: { reliableCompaction: true }, task: { safeBoundary: true, handoffSaved: true, checkpointFresh: true }, usage: { kind: 'current-context', currentTokens,
   capacityTokens: 100, source: 'fixture-host', observedAt: new Date(now).toISOString(), sessionId: 's1' } });

@@ -16,3 +16,4 @@ dist/
 **/.craft/state/
 **/.capabilities/state/
 /.codex/
+/target/

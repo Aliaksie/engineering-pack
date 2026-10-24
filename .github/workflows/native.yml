@@ -1,0 +1,89 @@
+name: Native runtime
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  RUSTUP_TOOLCHAIN: '1.99.1'
+
+jobs:
+  rust-quality:
+    name: Rust quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt --component clippy
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Check Clippy
+        run: cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+      - name: Test Rust workspace
+        run: cargo test --workspace --locked --offline
+
+  native-platform:
+    name: Native (${{ matrix.os }})
+    needs: rust-quality
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            runner: macos-15
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            runner: windows-2022
+            target: x86_64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
+      - name: Test native platform
+        run: cargo test --workspace --locked --offline
+      - name: Build host adapter
+        run: npm run build:codex
+      - name: Build release bundle
+        run: npm run build:native
+      - name: Select built target
+        env:
+          EXPECTED_NATIVE_TARGET: ${{ matrix.target }}
+        run: |
+          target=$(rustc -vV | sed -n 's/^host: //p')
+          test "$target" = "$EXPECTED_NATIVE_TARGET"
+          suffix=''
+          if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe'; fi
+          echo "CRAFT_PROJECT_EVIDENCE_BINARY=$GITHUB_WORKSPACE/target/$target/release/craft$suffix" >> "$GITHUB_ENV"
+          echo "CRAFT_PROJECT_EVIDENCE_BUNDLE=$GITHUB_WORKSPACE/dist/project-evidence/$target" >> "$GITHUB_ENV"
+      - name: Verify host invocation and relocated distribution
+        run: node --test tests/project-evidence.test.mjs tests/native-bundle.test.mjs tests/native-install.test.mjs
+      - name: Retain checked native bundle and provenance
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-${{ matrix.os }}-${{ github.sha }}
+          path: dist/project-evidence/
+          if-no-files-found: error
+          retention-days: 14

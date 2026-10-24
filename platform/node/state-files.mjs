@@ -35,7 +35,7 @@ function directory(file, create) {
 }
 export function stateLocation(root, session) {
   if (session !== undefined && (typeof session !== 'string' || !session || session.length > 512)) throw new Error('invalid state session');
-  const canonical = fs.realpathSync(root);
+  const canonical = fs.realpathSync.native(root);
   const worktreeId = hash(canonical);
   const sessionId = session === undefined ? 'shared' : hash(String(session));
   const base = path.join(canonical, '.craft', 'state', worktreeId);
@@ -46,7 +46,7 @@ export function stateLocation(root, session) {
 }
 export function stateFile(root, name, create = false, session) {
   if (!/^[a-zA-Z0-9.-]+$/.test(name) || name === '.' || name === '..') throw new Error('invalid state filename');
-  const canonical = fs.realpathSync(root);
+  const canonical = fs.realpathSync.native(root);
   const location = stateLocation(canonical, session);
   let folder = canonical;
   for (const part of path.relative(canonical, location.directory).split(path.sep)) {
@@ -148,13 +148,13 @@ export function readState(file, maxBytes) {
   if (stat.isSymbolicLink() || !stat.isFile() || stat.size > maxBytes) throw new Error('invalid bounded state file');
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
-export function lockState(file) {
+// Windows denies creating a lock its previous holder is still deleting (busy); without a listed lock the create is retried, then the denial is real.
+const denied = error => process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error.code);
+export function lockState(file, attempts = 3) {
   try { return { file, fd: fs.openSync(`${file}.lock`, 'wx', 0o600) }; }
-  catch (error) { if (error.code === 'EEXIST') return null; throw error; }
+  catch (error) { if (error.code === 'EEXIST' || denied(error) && fs.readdirSync(path.dirname(file)).includes(`${path.basename(file)}.lock`)) return null; if (!denied(error) || attempts <= 1) throw error; return lockState(file, attempts - 1); }
 }
-export function releaseState(ticket) {
-  fs.closeSync(ticket.fd); fs.rmSync(`${ticket.file}.lock`, { force: true });
-}
+export function releaseState(ticket) { fs.closeSync(ticket.fd); fs.rmSync(`${ticket.file}.lock`, { force: true }); }
 export function writeState(file, state, maxBytes, pretty = false) {
   const text = `${JSON.stringify(state, null, pretty ? 2 : undefined)}\n`;
   if (Buffer.byteLength(text) > maxBytes) throw new Error('state exceeds size limit');

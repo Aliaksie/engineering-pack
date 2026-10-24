@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-import { flushTelemetry, withTelemetry, observe } from '../application/telemetry/observe.mjs';
+import { flushTelemetry, forwardTelemetry, withTelemetry, observe } from '../application/telemetry/observe.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
+import { nativeCommand } from '../platform/index.mjs';
+
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read']); // complete use cases in the native runtime
 
 const help = {
   'workspace-open': { usage: 'workspace-open --root project --session id [--task id] [--operation scope]', mode: 'lazily allocate bounded private scratch for the active task; no host temp/cache changes' },
@@ -23,22 +26,17 @@ const help = {
   'task-action-check': { usage: 'task-action-check --session id --offer proposal-id --data fresh-observations.json', mode: 'revalidate source, approval, policy, support and capacity; no dispatch' },
   'task-start': { usage: 'task-start --session id --task stable-id --goal "outcome" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]', mode: 'bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees' },
   'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
-  settings: { usage: 'settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]', mode: 'effective settings, value origins, applied controls and private state location; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
-  'context-report': { usage: 'context-report --intent implement [--file src/main.py] [--bundle package-root ...]', mode: 'selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading' },
-  locate: { usage: 'locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]',
-    data: 'Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes', mode: 'bounded literal scan; optional local reuse receipts' },
   'session-attempt': { usage: 'session-attempt --root project --session id --task task-id --data attempt.json',
     example: { operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check.json', outcome: 'passed' },
-    outcomes: ['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved'], optional: ['profile', 'maxAttempts', 'escalationReason'], mode: 'receipt only; no retry execution' },
-  'checkpoint-read': { usage: 'checkpoint-read --root project --session id', mode: 'read-only recovery comparison' },
-  'checkpoint-save': { usage: 'checkpoint-save --root project --session id [--task task-id] [--repository relative/repo ...] [--contract contract.json] --data handoff.json',
-    continuationFields: ['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'], mode: 'explicit local checkpoint write' }
+    outcomes: ['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved'], optional: ['profile', 'maxAttempts', 'escalationReason'], mode: 'receipt only; no retry execution' }
 };
 
 export function run(argv) {
   const [action, ...args] = argv;
+  if (native.has(action)) { const outcome = nativeCommand(argv, { structured: true }); forwardTelemetry(outcome.export); if (outcome.exitCode) throw new Error(outcome.stderr.trimEnd()); return JSON.parse(outcome.stdout); }
+  if (['locate', 'context-report'].includes(action) && args.includes('--help')) { const outcome = nativeCommand(argv); return JSON.parse(outcome.stdout); }
   if (action === 'help' || action === '--help' || args.includes('--help')) return { ...(help[action] ?? { commands: ['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean', 'worker-status', 'task-feature', 'task-features', 'telemetry-capture', 'telemetry-forget', 'telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' }), output: 'Routine receipts are compact by default; --json or --verbose returns the full structured result.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
   return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },

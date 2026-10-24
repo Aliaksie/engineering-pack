@@ -10,7 +10,8 @@ npm run route -- --root examples/project --intent review --file services/orders/
 ```
 
 For a module inventory or direct owner lookup, use `node cli/main.mjs lookup --root
-<project> [--file <path> | --module <name>]`. The most specific matching module owns a path.
+<project> [--file <path> ... | --module <name>]`. The most specific matching module owns a path;
+repeated `--file` selects the owners of every path, and private state or Git paths are skipped.
 
 The route returns:
 
@@ -120,6 +121,8 @@ additional wrappers. This report does not claim to measure those copies or nativ
 The CLI defaults to its own source/bundle/package root. `--bundle <path>` selects an explicit
 source checkout, full export or standalone package to inspect; `--root` remains the consumer
 project configuration. Installed packages use `node support/cli/main.mjs context-report`.
+Running the `craft` executable directly requires at least one `--bundle`. Repeated roots that
+resolve to the same physical directory are counted once, whatever their spelling.
 The shared implementation ships in every adapter and does not inspect user plugin caches,
 activate tools, change models or emit per-tool context reports.
 
@@ -175,7 +178,8 @@ This routing contract does not replace host permissions. `explore` remains a foc
 `npm run model:advice -- --root <project> --data <request.json>` recommends a configured
 logical profile without calling a model. Requests name `host`, `role`, `task`, `revision`,
 optional `requiredCapabilities`, `capabilityClass`, `currentProfile` and bounded `attempts`. The `verifier` role is available.
-Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default 1) and
+Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default
+`efficiency.attempts.maxAttempts`, bundled 3) and
 optional `class` (`economical`, `standard`, `strong`) and `escalateTo`; existing role/host
 delegation settings and exact model mappings
 remain necessary. Profiles and escalation chains are optional and contain no vendor defaults.

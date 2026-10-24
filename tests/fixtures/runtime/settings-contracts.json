@@ -1,0 +1,5438 @@
+{
+  "formatVersion": 1,
+  "revision": "470b316d4f843c08ad9ced8f90afaa7e87e30122",
+  "scope": "effective-settings, validate-project and worker-budget engine operations; error messages omitted",
+  "cases": [
+    {
+      "id": "settings:defaults",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:integral-floats",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "workspace": {
+              "maxSessions": 4
+            }
+          },
+          "preferences": {
+            "efficiency": {
+              "batching": {
+                "maxConcurrency": 2
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 4,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 2
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "project",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "user",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:project-profiles-replace-defaults",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [
+                    "edit"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [
+                    "edit"
+                  ]
+                }
+              }
+            }
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "formatVersion": "project",
+            "execution.profiles.fast.capabilities": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:project-roles-merge-defaults",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "roles": {
+                "reviewer": {
+                  "mode": "delegate",
+                  "profile": "standard"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "delegate",
+                  "profile": "standard"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "project",
+            "execution.roles.reviewer.profile": "project",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:layered-thresholds",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "efficiency": {
+              "context": {
+                "restartAt": 0.95
+              }
+            }
+          },
+          "preferences": {
+            "efficiency": {
+              "context": {
+                "compactAt": 0.8
+              }
+            }
+          },
+          "overrides": {
+            "efficiency": {
+              "context": {
+                "elevatedAt": 0.7
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.7,
+                "compactAt": 0.8,
+                "restartAt": 0.95,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "task",
+            "efficiency.context.compactAt": "user",
+            "efficiency.context.restartAt": "project",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:equal-thresholds",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "overrides": {
+            "efficiency": {
+              "context": {
+                "compactAt": 0.6
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:project-arrays-and-empty-objects",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "languages": [
+              "go",
+              "python"
+            ],
+            "services": {},
+            "modules": [
+              {
+                "name": "api",
+                "path": "./src/api",
+                "checks": [
+                  {
+                    "command": "make",
+                    "args": null
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1,
+            "languages": [
+              "go",
+              "python"
+            ],
+            "services": {},
+            "modules": [
+              {
+                "name": "api",
+                "path": "./src/api",
+                "checks": [
+                  {
+                    "command": "make",
+                    "args": null
+                  }
+                ]
+              }
+            ]
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project",
+            "languages": "project",
+            "modules": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:zero-workers",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "overrides": {
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 0
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 0
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "task",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-array-preferences",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-null-preferences",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-unknown-top",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "execution": {}
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-unknown-nested",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "routing": {
+              "other": true
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-string-boolean",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "routing": {
+              "editHints": "false"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-bad-enum",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "review": {
+                "mode": "auto"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-bad-at",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "advice": {
+                "at": "always"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-zero-threshold",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "context": {
+                "elevatedAt": 0
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-threshold-above-one",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "context": {
+                "restartAt": 1.01
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-threshold-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "context": {
+                "compactAt": "0.7"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-workers-negative",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": -1
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-workers-fraction",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 1.5
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-workers-unsafe",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 9007199254740992
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-attempts-six",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "attempts": {
+                "maxAttempts": 6
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-attempts-zero",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "attempts": {
+                "maxAttempts": 0
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-concurrency-65",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "efficiency": {
+              "batching": {
+                "maxConcurrency": 65
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-scratch-bytes-max",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "workspace": {
+              "scratch": {
+                "maxBytes": 67108864
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 67108864,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "user",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-scratch-bytes-over",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "workspace": {
+              "scratch": {
+                "maxBytes": 67108865
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-files-1025",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "workspace": {
+              "scratch": {
+                "maxFiles": 1025
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-retention-366",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "workspace": {
+              "evidence": {
+                "retentionDays": 366
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-stale-8760",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "workspace": {
+              "scratch": {
+                "staleAfterHours": 8760
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": true
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 8760,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 3
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "bundled",
+            "routing.dedupeHints": "bundled",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "user",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "bundled",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-object-for-leaf",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "routing": {
+              "editHints": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "settings:preferences-leaf-for-object",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "preferences": {
+            "routing": true
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:minimal",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1
+        }
+      }
+    },
+    {
+      "id": "project:missing-version",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {}
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:version-two",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 2
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:version-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": "1"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:array",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:null",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:unknown-field",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "extra": true
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:languages-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "languages": [
+              "cobol"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:languages-null",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "languages": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:layers-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "layers": [
+              "ui",
+              "agent"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "layers": [
+            "ui",
+            "agent"
+          ]
+        }
+      }
+    },
+    {
+      "id": "project:runtimes-number",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "runtimes": [
+              1
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:modules-object",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": {}
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "core-1",
+                "path": "src/core",
+                "owner": "team",
+                "languages": [
+                  "java"
+                ],
+                "dependsOn": [],
+                "checks": [
+                  {
+                    "command": "mvn",
+                    "args": [
+                      "test"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "core-1",
+              "path": "src/core",
+              "owner": "team",
+              "languages": [
+                "java"
+              ],
+              "dependsOn": [],
+              "checks": [
+                {
+                  "command": "mvn",
+                  "args": [
+                    "test"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "project:module-name-upper",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "Core",
+                "path": "src"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-duplicate",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a"
+              },
+              {
+                "name": "a",
+                "path": "b"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-path-absolute",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "/src"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-path-drive",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "C:/src"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-path-parent",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "src/../x"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-path-backslash",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "src\\x"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-path-dot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "."
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "a",
+              "path": "."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "project:module-path-empty-part",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "src//x"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-owner-number",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "owner": 3
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-dependency-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "dependsOn": [
+                  "b"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:module-dependency-forward",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "dependsOn": [
+                  "b"
+                ]
+              },
+              {
+                "name": "b",
+                "path": "b"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "a",
+              "path": "a",
+              "dependsOn": [
+                "b"
+              ]
+            },
+            {
+              "name": "b",
+              "path": "b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "project:check-blank-command",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "checks": [
+                  {
+                    "command": "  "
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:check-args-number",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "checks": [
+                  {
+                    "command": "x",
+                    "args": [
+                      1
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:checks-object",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "a",
+                "path": "a",
+                "checks": {}
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "mail": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-cli-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:service-cli-no-command",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-bad-transport",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "http"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-empty-provider",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "",
+                "transport": "mcp"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-host-port",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gh",
+                "transport": "mcp",
+                "host": "github.example:8443",
+                "repository": "org/repo"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gh",
+              "transport": "mcp",
+              "host": "github.example:8443",
+              "repository": "org/repo"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:service-host-bad",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gh",
+                "transport": "mcp",
+                "host": "https://github.com"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-host-number",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gh",
+                "transport": "mcp",
+                "host": 443
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-repository-single",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gh",
+                "transport": "mcp",
+                "repository": "repo"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-repository-dot",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gh",
+                "transport": "mcp",
+                "repository": "org/.."
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-repository-nested",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "codehost": {
+                "provider": "gl",
+                "transport": "mcp",
+                "repository": "group/sub/repo"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gl",
+              "transport": "mcp",
+              "repository": "group/sub/repo"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:service-operation-other-service",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git",
+                "operations": {
+                  "task.read": {
+                    "args": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-operation-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git",
+                "operations": {
+                  "git.rebase": {
+                    "args": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-mcp-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "tasks": {
+                "provider": "jira",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "jira:get_issue",
+                    "arguments": {
+                      "id": "{id}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "jira",
+              "transport": "mcp",
+              "operations": {
+                "task.read": {
+                  "tool": "jira:get_issue",
+                  "arguments": {
+                    "id": "{id}"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:service-mcp-bad-tool",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "tasks": {
+                "provider": "jira",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "get issue",
+                    "arguments": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-mcp-cli-mapping",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "tasks": {
+                "provider": "jira",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "args": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:service-operations-array",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git",
+                "operations": []
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:permissions-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "permissions": {
+              "writeOperations": [
+                "git.commit"
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "permissions": {
+            "writeOperations": [
+              "git.commit"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "project:permissions-read-op",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "permissions": {
+              "writeOperations": [
+                "git.status"
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:permissions-null-ops",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "permissions": {
+              "writeOperations": null
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "permissions": {
+            "writeOperations": null
+          }
+        }
+      }
+    },
+    {
+      "id": "project:roles-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "roles": {
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "execution": {
+            "roles": {
+              "planner": {
+                "mode": "main",
+                "profile": "standard"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:roles-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "roles": {
+                "writer": {
+                  "mode": "main"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:roles-bad-mode",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "roles": {
+                "planner": {
+                  "mode": "auto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:roles-array",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "roles": []
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:hosts-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "hosts": {
+                "claude": {
+                  "delegation": true,
+                  "mainModelSwitch": false,
+                  "models": {
+                    "strong": "model-x"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "execution": {
+            "hosts": {
+              "claude": {
+                "delegation": true,
+                "mainModelSwitch": false,
+                "models": {
+                  "strong": "model-x"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:hosts-delegation-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "hosts": {
+                "claude": {
+                  "delegation": "yes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:hosts-empty-model",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "hosts": {
+                "claude": {
+                  "models": {
+                    "strong": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "class": "economical",
+                  "capabilities": [
+                    "read-only"
+                  ],
+                  "maxAttempts": 2,
+                  "escalateTo": "deep"
+                },
+                "deep": {
+                  "capabilities": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "execution": {
+            "profiles": {
+              "fast": {
+                "class": "economical",
+                "capabilities": [
+                  "read-only"
+                ],
+                "maxAttempts": 2,
+                "escalateTo": "deep"
+              },
+              "deep": {
+                "capabilities": []
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:profiles-17",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "p0": {
+                  "capabilities": []
+                },
+                "p1": {
+                  "capabilities": []
+                },
+                "p2": {
+                  "capabilities": []
+                },
+                "p3": {
+                  "capabilities": []
+                },
+                "p4": {
+                  "capabilities": []
+                },
+                "p5": {
+                  "capabilities": []
+                },
+                "p6": {
+                  "capabilities": []
+                },
+                "p7": {
+                  "capabilities": []
+                },
+                "p8": {
+                  "capabilities": []
+                },
+                "p9": {
+                  "capabilities": []
+                },
+                "p10": {
+                  "capabilities": []
+                },
+                "p11": {
+                  "capabilities": []
+                },
+                "p12": {
+                  "capabilities": []
+                },
+                "p13": {
+                  "capabilities": []
+                },
+                "p14": {
+                  "capabilities": []
+                },
+                "p15": {
+                  "capabilities": []
+                },
+                "p16": {
+                  "capabilities": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-bad-name",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "Fast": {
+                  "capabilities": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-no-capabilities",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {}
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-bad-class",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "class": "huge",
+                  "capabilities": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-33-capabilities",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [
+                    "c0",
+                    "c1",
+                    "c2",
+                    "c3",
+                    "c4",
+                    "c5",
+                    "c6",
+                    "c7",
+                    "c8",
+                    "c9",
+                    "c10",
+                    "c11",
+                    "c12",
+                    "c13",
+                    "c14",
+                    "c15",
+                    "c16",
+                    "c17",
+                    "c18",
+                    "c19",
+                    "c20",
+                    "c21",
+                    "c22",
+                    "c23",
+                    "c24",
+                    "c25",
+                    "c26",
+                    "c27",
+                    "c28",
+                    "c29",
+                    "c30",
+                    "c31",
+                    "c32"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-attempts-float",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [],
+                  "maxAttempts": 2.5
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-attempts-six",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [],
+                  "maxAttempts": 6
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-attempts-integral-float",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [],
+                  "maxAttempts": 2
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "execution": {
+            "profiles": {
+              "fast": {
+                "capabilities": [],
+                "maxAttempts": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:profiles-unknown-escalation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "fast": {
+                  "capabilities": [],
+                  "escalateTo": "deep"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-cycle",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "a": {
+                  "capabilities": [],
+                  "escalateTo": "b"
+                },
+                "b": {
+                  "capabilities": [],
+                  "escalateTo": "a"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:profiles-self-cycle",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "execution": {
+              "profiles": {
+                "a": {
+                  "capabilities": [],
+                  "escalateTo": "a"
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:checkpoint-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "checkpoint": {
+              "enabled": false
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "checkpoint": {
+            "enabled": false
+          }
+        }
+      }
+    },
+    {
+      "id": "project:checkpoint-missing",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "checkpoint": {}
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:review-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "review": {
+              "readOnly": true
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "review": {
+            "readOnly": true
+          }
+        }
+      }
+    },
+    {
+      "id": "project:review-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "review": {
+              "readOnly": "true"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:routing-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "routing": {
+              "editHints": false
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "routing": {
+            "editHints": false
+          }
+        }
+      }
+    },
+    {
+      "id": "project:routing-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "routing": {
+              "dedupeHints": "no"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:efficiency-unknown",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "efficiency": {
+              "turbo": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project:workspace-ok",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "workspace": {
+              "enabled": false,
+              "scratch": {
+                "maxFiles": 8
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "workspace": {
+            "enabled": false,
+            "scratch": {
+              "maxFiles": 8
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "project:workspace-before-version",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-project",
+        "input": {
+          "project": {
+            "workspace": {
+              "enabled": "no"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:observed",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 3,
+          "available": 2,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "observed",
+          "observedAt": "2026-10-24T11:59:50.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:no-facts",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {}
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": null,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:capacity-limited",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 2,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 1,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "host-capacity-limited",
+          "observedAt": "2026-10-24T11:59:50.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:limit-reduced",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 2,
+            "occupiedSlots": 3,
+            "taskWorkers": 2,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 1,
+          "available": 0,
+          "occupiedTaskWorkers": 2,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "limit-reduced-no-new-assignments",
+          "observedAt": "2026-10-24T11:59:50.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:other-sessions-occupied",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 3,
+            "occupiedSlots": 3,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 0,
+          "available": 0,
+          "occupiedTaskWorkers": 0,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "host-capacity-limited",
+          "observedAt": "2026-10-24T11:59:50.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:other-sessions-over-capacity",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 2,
+            "occupiedSlots": 4,
+            "taskWorkers": 0,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 0,
+          "available": 0,
+          "occupiedTaskWorkers": 0,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "host-capacity-limited",
+          "observedAt": "2026-10-24T11:59:50.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:disabled",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 0
+              }
+            }
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 0,
+          "effectiveLimit": 0,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "disabled"
+        }
+      }
+    },
+    {
+      "id": "workers:prohibited",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": false,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 0,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "session-prohibited"
+        }
+      }
+    },
+    {
+      "id": "workers:allowed-missing",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:other-session",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s2",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:no-session",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:stale",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:29.999Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:boundary",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:30.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 3,
+          "available": 2,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "observed",
+          "observedAt": "2026-10-24T11:59:30.000Z",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:future",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T12:00:00.001Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:offset",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T13:59:55+02:00",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 3,
+          "available": 2,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "observed",
+          "observedAt": "2026-10-24T13:59:55+02:00",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:date-only",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792800010000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": 3,
+          "available": 2,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "observed",
+          "observedAt": "2026-10-24",
+          "source": "host:inventory",
+          "cancelActiveWorkers": false
+        }
+      }
+    },
+    {
+      "id": "workers:empty-source",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": ""
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:long-source",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:missing-capacity",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "mode": "recommend",
+          "requestedLimit": 3,
+          "effectiveLimit": null,
+          "available": 0,
+          "occupiedTaskWorkers": 1,
+          "scope": "One task-wide tree, including idle/reusable and nested workers that still occupy host slots.",
+          "evidence": "Caller-supplied host observations; this calculation neither discovers capacity nor grants action authorization.",
+          "reason": "fresh-host-capacity-or-session-policy-unavailable"
+        }
+      }
+    },
+    {
+      "id": "workers:slot-overflow",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 1,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:zero-capacity",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 0,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:negative-workers",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": -1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:fraction-slots",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 1.5,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:allowed-string",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": "true",
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:unknown-fact",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory",
+            "cpu": 8
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:array-facts",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "workers:invalid-project",
+      "request": {
+        "formatVersion": 1,
+        "operation": "worker-budget",
+        "input": {
+          "project": {
+            "formatVersion": 2
+          },
+          "options": {
+            "session": "s1",
+            "now": 1792843200000
+          },
+          "facts": {
+            "capacity": 4,
+            "occupiedSlots": 2,
+            "taskWorkers": 1,
+            "allowed": true,
+            "sessionId": "s1",
+            "observedAt": "2026-10-24T11:59:50.000Z",
+            "source": "host:inventory"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    }
+  ]
+}

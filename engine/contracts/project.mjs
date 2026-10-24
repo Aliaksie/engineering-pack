@@ -49,9 +49,9 @@ export function validateProject(project) {
     keys(binding, ['provider', 'transport', 'command', 'host', 'repository', 'operations'], 'binding');
     if (typeof binding.provider !== 'string' || !binding.provider || !['cli', 'mcp'].includes(binding.transport)) throw new Error('invalid service binding');
     if (binding.transport === 'cli' && (typeof binding.command !== 'string' || !binding.command.trim())) throw new Error('binding command required');
+    for (const field of ['host', 'repository']) if (binding[field] !== undefined && (typeof binding[field] !== 'string' || !binding[field].trim())) throw new Error(`invalid binding ${field}`);
     if (binding.host !== undefined && !/^[A-Za-z0-9.-]+(?::[0-9]+)?$/.test(binding.host)) throw new Error('invalid binding host');
     if (binding.repository !== undefined && (!/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+$/.test(binding.repository) || binding.repository.split('/').some((part) => part === '.' || part === '..'))) throw new Error('invalid repository identity');
-    for (const field of ['host', 'repository']) if (binding[field] !== undefined && (typeof binding[field] !== 'string' || !binding[field].trim())) throw new Error(`invalid binding ${field}`);
     if (binding.operations !== undefined && !plain(binding.operations)) throw new Error('binding operations must be an object');
     for (const [operation, mapping] of Object.entries(binding.operations ?? {})) {
       if (!operation.startsWith(service === 'tasks' ? 'task.' : service === 'codehost' ? 'change.' : 'git.')) throw new Error('operation belongs to a different service');
@@ -89,7 +89,7 @@ export function validateProject(project) {
         if (profile.class !== undefined && !['economical', 'standard', 'strong'].includes(profile.class)) throw new Error('invalid profile class');
         strings(profile.capabilities, 'profile capabilities');
         if (profile.capabilities.length > 32 || profile.capabilities.some((item) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item))) throw new Error('invalid profile capabilities');
-        if (profile.maxAttempts !== undefined && (!Number.isInteger(profile.maxAttempts) || profile.maxAttempts < 1 || profile.maxAttempts > 5)) throw new Error('profile maxAttempts must be 1..5');
+        if (profile.maxAttempts !== undefined && (!Number.isSafeInteger(profile.maxAttempts) || profile.maxAttempts < 1 || profile.maxAttempts > 5)) throw new Error('profile maxAttempts must be 1..5');
         if (profile.escalateTo !== undefined && !Object.hasOwn(profiles, profile.escalateTo)) throw new Error('unknown escalation profile');
       }
       for (const name of Object.keys(profiles)) {

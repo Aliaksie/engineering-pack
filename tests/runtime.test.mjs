@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { route, lookup } from '../application/routing/select.mjs';
-import { planOperation } from '../application/services.mjs';
+import { route } from '../application/routing/select.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
@@ -26,6 +25,16 @@ function git(root, ...args) {
   const result = spawnSync('git', ['-c', `core.hooksPath=${path.join(root, 'no-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-C', root, ...args], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+// `lookup` runs in the native runtime; select through the public command line.
+function lookup(config, { file, module } = {}) {
+  const configured = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(configured, '.craft'));
+    fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    return run(['lookup', '--root', configured, '--preferences', path.join(configured, 'absent.json'),
+      ...(file === undefined ? [] : ['--file', file]), ...(module === undefined ? [] : ['--module', module])]);
+  } finally { fs.rmSync(configured, { recursive: true, force: true }); }
 }
 function repository(t) {
   const dir = temp(t);
@@ -76,6 +85,32 @@ test('module lookup uses path boundaries, specificity and transitive declared im
   assert.deepEqual(result.languages, ['jvm']);
   assert.deepEqual(result.affectedDependents, ['client', 'console']);
   assert.throws(() => lookup(config, { module: 'absent' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: '' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: 'api', file: 'src/api/a.java' }), /choose --file or --module/);
+  const files = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(files, '.craft'));
+    fs.writeFileSync(path.join(files, '.craft/project.json'), JSON.stringify(config));
+    const selected = run(['lookup', '--root', files, '--preferences', path.join(files, 'absent.json'), '--file', 'client/a', '--file', '.git/b', '--file', 'src/api/c']);
+    assert.deepEqual(selected.modules.map((entry) => entry.name), ['client', 'api']);
+  } finally { fs.rmSync(files, { recursive: true, force: true }); }
+});
+
+test('native route takes the task from a session binding and records session activity', t => {
+  const dir = temp(t);
+  git(dir, 'init', '-q');
+  fs.mkdirSync(path.join(dir, '.craft'));
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1,
+    services: { tasks: { provider: 'tracker', transport: 'cli', command: 'tracker', operations: { 'task.read': { args: ['read', '{id}'] } } } } }));
+  const routed = (...args) => run(['route', '--root', dir, '--intent', 'implement', ...args]);
+  assert.deepEqual(routed('--session', 's1').operations, []);
+  run(['task-start', '--root', dir, '--session', 's1', '--task', 'T-1', '--goal', 'route the bound task']);
+  const activity = (task) => run(['session', '--root', dir, '--session', 's1', '--task', task]).activity.routingDecisions ?? 0;
+  const started = activity('T-1');
+  assert.deepEqual(routed('--session', 's1').operations.map((operation) => operation.args), [['read', 'T-1']]);
+  assert.deepEqual(routed('--session', 's1', '--task', 'T-2').operations.map((operation) => operation.args), [['read', 'T-2']]);
+  assert.equal(activity('T-1'), started + 1);
+  assert.equal(activity('T-2'), 1);
 });
 
 test('equivalent module paths preserve ownership, checks and stack guidance without changing configuration', () => {
@@ -153,13 +188,26 @@ test('all built-in routed skills resolve to actual capability source', () => {
   assert.ok(unavailable.missing.some((message) => message.includes('skill not installed')));
 });
 
+// `operation` runs in the native runtime; plan through the public command line.
+function planOperation(config, name, params) {
+  const configured = typeof config === 'string' ? config : fs.mkdtempSync(path.join(os.tmpdir(), 'craft-operation-'));
+  try {
+    if (configured !== config) {
+      fs.mkdirSync(path.join(configured, '.craft'));
+      fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    }
+    return run(['operation', '--root', configured, '--preferences', path.join(configured, 'absent.json'), '--operation', name, '--params', JSON.stringify(params)]);
+  } finally { if (configured !== config) fs.rmSync(configured, { recursive: true, force: true }); }
+}
+const example = path.join(root, 'examples/project');
+
 test('bindings distinguish local Git, codehost and tracker and preserve argument boundaries', () => {
   const github = { formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', host: 'github.example.com', repository: 'team/repo' } } };
   assert.deepEqual(planOperation(github, 'change.read', { id: 42 }).args, ['pr', 'view', '42', '--repo', 'github.example.com/team/repo', '--json', 'number,title,body,baseRefOid,headRefOid']);
-  const gitlab = planOperation(project, 'change.read', { id: 42 });
+  const gitlab = planOperation(example, 'change.read', { id: 42 });
   assert.deepEqual(gitlab.args, ['mr', 'view', '42', '--repo', 'https://gitlab.example.com/team/project', '--output', 'json']);
   const hostile = 'TEAM-1; $(touch /tmp/never-run)';
-  const cli = planOperation(project, 'task.read', { id: hostile });
+  const cli = planOperation(example, 'task.read', { id: hostile });
   assert.deepEqual(cli.args, ['read', hostile]);
   assert.equal(cli.shell, false);
   assert.equal(cli.availability, 'not-verified');

@@ -12,7 +12,8 @@ import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEM
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { execute } from '../cli/requests.mjs';
-import { lockState, stateFile } from '../platform/node/state-files.mjs';
+import { run } from '../cli/main.mjs';
+import { lockState, releaseState, stateFile } from '../platform/node/state-files.mjs';
 
 const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z', sessionId:'a'.repeat(32), operationId:'12345678-1234-4234-a234-123456789abc', packVersion:'0.0.2', host:'codex', outcome:'success', durationMs:12 };
 function fixture(t, config) {
@@ -110,12 +111,32 @@ test('denied telemetry lock acquisition skips the event without touching another
     try {
       if (code==='EIO') assert.throws(() => appendTelemetry(root,event),error => error===failure);
       else assert.equal(appendTelemetry(root,event),false);
-      assert.throws(() => lockState(file),error => error===failure);
+      // Windows denies creating a lock that its previous holder is still deleting.
+      if (process.platform==='win32' && ['EPERM','EACCES'].includes(code)) assert.equal(lockState(file),null);
+      else assert.throws(() => lockState(file),error => error===failure);
       assert.equal(fs.existsSync(file),false);
       assert.equal(fs.readFileSync(lock,'utf8'),'another writer');
     } finally { mock.mock.restore(); }
   }
   fs.unlinkSync(lock);
+  // Exercise the Windows rule everywhere: a denial is busy only while the lock is listed.
+  const platform=Object.getOwnPropertyDescriptor(process,'platform');
+  const denied=Object.assign(new Error('lock unavailable'),{code:'EPERM'});
+  const mock=t.mock.method(fs,'openSync',(name,...args) => { if (name===lock) throw denied; return open(name,...args); });
+  try {
+    Object.defineProperty(process,'platform',{ ...platform, value:'win32' });
+    assert.throws(() => lockState(file),error => error===denied);
+    fs.writeFileSync(lock,'deleting writer');
+    assert.equal(lockState(file),null);
+    assert.equal(fs.readFileSync(lock,'utf8'),'deleting writer');
+    fs.unlinkSync(lock);
+    // The previous holder finished deleting between the denial and the listing.
+    let attempts=0;
+    mock.mock.mockImplementation((name,...args) => { if (name===lock && ++attempts===1) throw denied; return open(name,...args); });
+    const ticket=lockState(file);
+    assert.equal(attempts,2);
+    releaseState(ticket);
+  } finally { Object.defineProperty(process,'platform',platform); mock.mock.restore(); }
   assert.equal(appendTelemetry(root,event),true);
   assert.deepEqual(readTelemetry(root),[event]);
 });
@@ -154,7 +175,7 @@ test('telemetry stops retrying when a wait overshoots the deadline without remov
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {
   const root=fixture(t), options={intent:'implement',file:[],risk:[],host:'codex',session:'session',task:'task'};
-  const routed=execute('route',options,root);
+  const routed=run(['route','--root',root,'--intent','implement','--host','codex','--session','session','--task','task']);
   assert.ok(routed.skills.length);
   const session=execute('session',options,root);
   assert.equal(session.usage.status,'unknown'); assert.equal(session.packVersion,runtimeVersion());

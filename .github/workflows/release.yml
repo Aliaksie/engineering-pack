@@ -4,15 +4,20 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: engineering-pack-distribution
+  group: engineering-pack-distribution-next
   cancel-in-progress: false
 jobs:
+  native:
+    name: Verify release native runtime
+    uses: ./.github/workflows/native.yml
   release:
+    needs: native
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,6 +36,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Validate release revision and build artifacts
         run: npm run check
+      - name: Collect checked native bundles from this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_REVISION: ${{ steps.version.outputs.revision }}
+        run: |
+          for runner in ubuntu-latest macos-latest windows-latest; do
+            gh run download "$GITHUB_RUN_ID" --name "native-${runner}-${GITHUB_SHA}" --dir .eval-results/native
+          done
+          node tooling/native-release.mjs .eval-results/native .eval-results/release
+          for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
+            node tooling/native-install.mjs .eval-results/native "dist/$target"
+          done
       - name: Archive validated distributions
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -45,14 +63,14 @@ jobs:
           printf '\n' >> .eval-results/release-notes.md
           cat .eval-results/release/PROVENANCE.txt >> .eval-results/release-notes.md
           cd .eval-results/release
-          sha256sum ./*.tar.gz PROVENANCE.txt > SHA256SUMS
+          sha256sum ./*.tar.gz native-release.json PROVENANCE.txt > SHA256SUMS
       - name: Publish release tag at reviewed main revision
         run: node tooling/release.mjs publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_REVISION: ${{ steps.version.outputs.revision }}
-      - name: Refresh installation branch at release revision
+      - name: Refresh candidate installation branch at release revision
         run: node tooling/publish-distribution.mjs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,7 +84,7 @@ jobs:
           gh release create "v${RELEASE_VERSION}" --verify-tag --draft --title "Engineering Pack ${RELEASE_VERSION}" --notes-file .eval-results/release-notes.md
           gh release upload "v${RELEASE_VERSION}" .eval-results/release/*
           gh release view "v${RELEASE_VERSION}" --json assets --jq '.assets | length' > .eval-results/release-asset-count
-          test "$(cat .eval-results/release-asset-count)" = 11
+          test "$(cat .eval-results/release-asset-count)" = 15
           gh release edit "v${RELEASE_VERSION}" --draft=false
       - name: Retain recovery artifacts
         if: always()

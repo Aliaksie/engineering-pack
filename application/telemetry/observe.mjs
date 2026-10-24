@@ -67,7 +67,7 @@ export function createTelemetry(root, { session, host, packageName } = {}, ports
     else if (localDrops && localDiagnostic('TELEMETRY_EVENTS_DROPPED', { droppedEvents:localDrops })) localDrops = 0;
   };
   const handle = {
-    enabled: true, trace, flushLocal,
+    enabled: true, trace, flushLocal, correlation: () => ({ sessionId:correlation(), identityScope:validSession(session) && !identityUnavailable ? 'session' : 'invocation' }),
     enrich(identity) {
       if (!validSession(session) && validSession(identity.session)) { session = identity.session; sessionId = undefined; identityUnavailable = false; initialIdentityDiagnostic = false; }
       host ??= identity.host;
@@ -183,6 +183,20 @@ export function observe(name, callback, summarize = () => ({}), options = {}) {
       complete(result); return result;
     } catch (error) { complete(undefined,error,true); throw error; }
   });
+}
+// Carry a command's correlation through its native call; flush earlier local children first.
+export function commandTelemetry() {
+  const frame = telemetryContext(); frame?.handle.flushLocal();
+  return frame?.operation?.name === 'cli.command' ? { traceId:frame.handle.trace(), operationId:frame.operation.id, ...frame.handle.correlation() } : undefined;
+}
+// Native events bound for export; the next flush posts them under the same pseudonym.
+export function forwardTelemetry(exported) {
+  if (!exported) return;
+  try {
+    const { endpoint, root, session, host, events } = exported, remote = telemetryOptions({ remote: { enabled: true, endpoint } }).remote, sessionId = events[0].sessionId;
+    const handle = createTelemetry(root, { session: session ?? undefined, host: host ?? undefined }, { telemetryIdentity: () => sessionId });
+    for (const event of events.slice(0, 32)) if (handle.enabled && pending.length < 32) pending.push({ endpoint: remote, event, handle });
+  } catch { /* Advisory only. */ }
 }
 export async function flushTelemetry(transport = postTelemetry) {
   const batch = pending.splice(0,32), groups = new Map();

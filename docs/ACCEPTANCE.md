@@ -27,7 +27,7 @@ Tests are not included in installed bundles.
 A context contains canonical relative `scope` paths, `sources`, `constraints`,
 `checks`, `questions` and `coverage` (`complete`, `incomplete`, `unknown`). Each source
 has an ID, kind, reference, content/version identity (or explicit null), UTC observation
-time, scope, provenance (`declared`, `observed`, `inferred`) and decision status
+time (`YYYY-MM-DDTHH:MM:SS[.mmm]Z`, a real calendar date), scope, provenance (`declared`, `observed`, `inferred`) and decision status
 (`accepted`, `proposed`, `superseded`, `unknown`). Full source text stays outside the
 packet. References and check descriptions are data; validation executes nothing.
 

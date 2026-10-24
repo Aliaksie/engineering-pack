@@ -7,6 +7,8 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | Document | Purpose |
 |---|---|
 | [Architecture](ARCHITECTURE.md) | Engine, application, platform, host, integration and tooling ownership |
+| [Rust core runtime decision](adr/0001-rust-core-runtime.md) | Runtime language ownership, incremental migration and structural simplification |
+| [Project evidence preview](PROJECT-EVIDENCE.md) | Native development commands, evidence semantics and current limits |
 | [Naming](NAMING.md) | Repository, package, skill, workflow and tool conventions |
 | [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |

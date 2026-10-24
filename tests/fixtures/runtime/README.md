@@ -1,0 +1,118 @@
+# Frozen runtime contracts
+
+`engine-contracts.json` records requests and responses from the JavaScript engine
+at `09d74ead129008575f8483f68bd5412d2627c839`. The source was verified unchanged
+against that revision when capturing the fixtures. Expected responses are static;
+do not regenerate them from a replacement implementation.
+
+Investigate suspicious baseline behavior and fix confirmed defects with regression
+coverage before migration. For an intentional contract correction, update the affected
+fixture explicitly and explain the correction; frozen output does not justify a known bug.
+
+Run `node --test tests/runtime-replay.test.mjs` to replay them through the public
+engine boundary. Keep this same corpus when replacing that boundary with Rust.
+Compare JSON results, error codes and caller immutability. Diagnostic error
+messages and explicitly listed diagnostic result paths are excluded from wording
+comparison; diagnostic fields must remain strings. Echoed user descriptions and
+identity material remain exact. Arrays retain order and absent fields differ from null.
+
+The 260 cases include an empty-input request for each of the 82 engine operations,
+envelope failures, UTF-8 hashes, digest ordering, portable paths, literal discovery,
+routing, continuation, acceptance projections, blocked attempts, checkpoint binding,
+review publication plans, and worker/action lifecycle transitions. There are 158
+successful responses across all 82 operations. Task cases preserve completion,
+stale-source detection, scope reset and binding rejection. Grounding cases preserve
+incomplete coverage and source provenance; session cases use explicit observations
+and a fixed clock. Settings, model advice and service cases preserve precedence,
+blockers and typed invocation plans without executing them. Context cases cover
+selection attribution,
+byte budgets and lifecycle delivery decisions. Hint cases cover clock reversal and
+the exact expiry boundary. Repository cases cover normalized scopes, ordered checkout
+identities, sorted snapshots and incomplete observations. Worker cases preserve
+reservation identities,
+duplicate refusal, uncertain dispatch, fenced release and cancellation. Action cases
+preserve scoped decisions, stale-source refusal, durable claims and completion receipts.
+These use synthetic host observations; they do not execute workers or publish reviews.
+Empty-input rejection is not successful operation coverage; each migrated use case
+still needs its own success, state and installed checks.
+
+`cli-contracts.json` freezes 28 executable cases after verifying CLI, application,
+platform, engine and review executable sources unchanged against the same baseline.
+Run `npm run build` then `node --test tests/runtime-cli-replay.test.mjs` to replay
+source and relocated AGENTS exports from disposable working directories with isolated
+user configuration. These cover the command catalog, help precedence, repeated Unicode
+file arguments, JSON/verbose routing, parser and required-input failures, review argument
+rejection, and disabled Project Intelligence with an unavailable binary. Compare exit
+status, stdout/stderr separation, structured results and native error codes; recorded
+diagnostic prose is evidence only. These checks do not establish signal cancellation,
+enabled native execution, automatic host hook dispatch or other platform support.
+
+`host-contracts.json` freezes 120 host translation cases from the same baseline,
+after verifying hosts and their runtime dependencies unchanged. Run `npm run build`
+then `node --test tests/runtime-host-replay.test.mjs` for source and relocated
+AGENTS bundle replay. Cases cover five hook-capable hosts and the guidance-only
+AGENTS host, all seven lifecycle events, deny/context support, native response
+schemas, Unicode, string tool arguments, alias precedence, invalid arguments and
+session bounds. Optional undefined event fields compare as absent JSON fields.
+These fixtures protect the thin adapter boundary; they do not establish automatic
+hook dispatch, full application lifecycle, cancellation or native platform support.
+
+`state-contracts.json` fixes four JSON byte representations verified against the
+unchanged baseline state-file implementation. Run `npm run build` then
+`node --test tests/runtime-state-replay.test.mjs` for source and relocated AGENTS
+replay on disposable state. Eight scenarios per boundary cover exact UTF-8 limits,
+null and Unicode, key order, pretty printing, invalid existing records, exclusive
+and unresolved locks, interrupted atomic publication, and routing generation
+companion migration with source-change detection. Failure checks preserve existing
+bytes and verify temporary-file cleanup. These checks complement private-state
+integration tests; they do not establish crash durability, full payload schemas,
+concurrent-process safety or acceptance on other operating systems.
+
+`settings-contracts.json` freezes 133 JavaScript engine responses for `effective-settings`,
+`validate-project` and `worker-budget`, captured at `470b316` with error messages omitted.
+They cover precedence and origins, every project validation family, preference bounds,
+null coalescing, integral floats, and worker freshness at a fixed clock. The Rust
+engine replays this corpus with the matching `engine-contracts.json` cases
+(`cargo test -p craft-engine`); it replaces those cases when their JavaScript retires.
+
+`services-contracts.json` freezes 63 JavaScript responses for the `operation` and
+`prepare-services` use cases at `7352220`: effective settings from a project, built-in
+CLI mappings and the engine decision, with error messages omitted. The Rust replay lists
+seven intentional corrections by case ID: built-in arguments are not substituted again,
+placeholders inside text take only scalar parameters, a change number is a string or safe
+integer, and built-in mappings come only from the operation's own service.
+
+`models-contracts.json` freezes 83 JavaScript responses for the `model-advice` use case at
+`dc5c447`: effective settings from a project and the engine decision over the request, with
+error messages omitted. The Rust engine replays every case unchanged.
+
+`lookup-contracts.json` freezes 42 JavaScript responses for the `lookup` use case at
+`dc47bf2`, including the three non-empty `lookup` cases retired from `engine-contracts.json`
+with the JavaScript engine operation. The Rust replay lists three intentional corrections:
+an empty module name and a module selector combined with a file now fail instead of listing
+every module or silently ignoring the file.
+
+`route-contracts.json` freezes 120 JavaScript responses for the `route` use case at
+`173123c`: effective settings, then the application route over CLI options, with error
+messages omitted. The Rust engine replays every case unchanged, including key order.
+
+`locate-contracts.json` freezes 66 bounded literal search cases at `b27ec99` and
+`discovery-contracts.json` freezes 92 discovery planning, reuse and result cases at `266b8d1`,
+including the JavaScript engine discovery fixtures they retired.
+
+`context-contracts.json` freezes 54 JavaScript responses for the `context-report` use case at
+`20ab5c9`. Each case stores its bundle trees as file maps (`{repeat, count}` for large files)
+and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust replay rebuilds
+the trees and runs the `craft context-report` command, comparing output bytes and the session
+activity counters.
+
+`checkpoint-contracts.json` freezes 1765 JavaScript engine responses at `c27951a` for
+repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison and change
+detection, session-state validation, activity counters, task binding/contract/source/context
+and acceptance coverage. Valid metadata, engineering contracts, evidence ledgers and session
+states are mutated field by field; a mutated case stores `{$mutate: {base, at, value|remove}}`
+against `documents`, and validator responses omit their echoed input. `acceptance:` reasons
+are compared exactly; other error prose is not. The Rust replay
+(`cargo test -p craft-engine --test checkpoint_contracts`) lists five intentional
+corrections: impossible calendar dates such as `2026-02-30`, which `Date.parse` rolled over,
+are rejected in acceptance observation times and feature outcome times.

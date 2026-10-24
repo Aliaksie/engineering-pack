@@ -56,8 +56,8 @@ node cli/main.mjs task-start --root <workspace> --session <host-id> --task updat
 ```
 
 Repeat `--repository` for at most eight workspace-relative worktree roots, including `.`
-when applicable. Traversal, absolute paths, symlink aliases and subdirectories masquerading
-as repository roots are rejected. Linked Git worktrees are supported. Keep the coordination
+when applicable. Traversal, absolute paths, symlink or case aliases and subdirectories
+masquerading as repository roots are rejected. Linked Git worktrees are supported. Keep the coordination
 root/session stable across task steps. Repeating task-start retains its repository selection
 unless a new selection is supplied; a changed selection invalidates prior acceptance.
 Each selected repository retains its own revision, checkout, status and fingerprints in
@@ -73,8 +73,9 @@ Each repository's instructions, permissions, branch rules and build commands sti
 apply independently; this binding does not merge child configuration into parent policy.
 Revision-bound Git operations and reviews still require an actual repository and its refs.
 Without explicit selection, a non-Git root remains limited and compact checkpoint output
-reports incomplete repository inspection. Standalone checkpoint-save also accepts repeated
-`--repository`; recovery reuses that saved selection.
+reports incomplete repository inspection, as does a working-tree name that is not UTF-8.
+Standalone checkpoint-save also accepts repeated `--repository`; recovery reuses that saved
+selection. Its `--data` handoff must be a JSON object.
 
 ### Private scratch and retained evidence
 

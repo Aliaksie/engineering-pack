@@ -11,6 +11,25 @@ The branch contains generated copies of the authoritative `packages/` source. CI
 and builds it; nobody maintains a separate vendor instruction tree. Official documentation
 was checked on 2026-10-18. Local fixtures validate packaging, not live model behavior.
 
+## Native runtime in candidate bundles
+
+The stable `distribution` channel stays frozen. Native-enabled candidates use
+`distribution-next`; substitute that branch in the installation commands below after
+its first successful publication. Each complete host package and independently cached
+plugin includes the prebuilt runtime. Node selects the executable for the current OS
+and CPU and verifies its SHA-256 checksum before launching it. No platform argument,
+Rust toolchain or compilation step is required.
+
+The candidate build matrix covers macOS 15+ on Apple Silicon, Ubuntu 24.04+ on
+x86-64, and Windows x86-64 (tested on Windows Server 2022). macOS Intel, Linux ARM and Alpine/musl have no candidate artifact.
+An enabled native operation on an unsupported platform fails explicitly. Project
+Intelligence remains opt-in; disabled access does not require a native executable.
+Checksums detect damaged or inconsistent bundle contents; they are not signatures.
+
+Keep the complete previous bundle to roll back. Select that bundle again through the
+host's installation controls; do not mix executables and adapters from different
+bundles. Replacing a bundle does not delete the consumer's private evidence state.
+
 ## Codex CLI
 
 ```sh

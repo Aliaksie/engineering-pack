@@ -7,7 +7,6 @@ import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
-import { modelAdvice } from '../application/session/models.mjs';
 
 function fixture(t, config = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-action-controls-')));
@@ -47,23 +46,6 @@ test('task-wide worker budgets honor zero, capacity, occupied idle/nested slots 
   assert.equal(budget(capacity({ observedAt: '2020-01-01T00:00:00Z' })).effectiveLimit, null);
   assert.equal(budget(capacity({ sessionId: 'another' })).available, 0);
   assert.throws(() => budget(capacity({ taskWorkers: 3, occupiedSlots: 2 })), /slot counts/);
-});
-
-test('logical defaults give useful main-model advice without workers or exact model aliases', () => {
-  const project = validateProject({ formatVersion: 1, efficiency: { delegation: { maxWorkers: 0 } } });
-  const advice = modelAdvice({ host: 'unknown', role: 'implementer', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
-  assert.equal(advice.profile, 'strong');
-  assert.equal(advice.execution.mode, 'main');
-  assert.equal(advice.mainModel.model, null);
-  assert.equal(advice.mainModel.switchSupported, false);
-  assert.equal(advice.attemptsRemaining, 3);
-  const adequate = modelAdvice({ host: 'unknown', role: 'implementer', task: 'T1', revision: 'r1', currentProfile: 'strong' }, project);
-  assert.equal(adequate.mainModel.decision, 'keep-current');
-  const mapped = validateProject({ formatVersion: 1, execution: { hosts: { fixture: { mainModelSwitch: true, models: { standard: 'explicit-consumer-model' } } } } });
-  const suggestion = modelAdvice({ host: 'fixture', role: 'implementer', task: 'T1', revision: 'r1' }, mapped);
-  assert.equal(suggestion.mainModel.switchSupported, true);
-  assert.equal(suggestion.mainModel.model, 'explicit-consumer-model');
-  assert.equal(suggestion.execution.mode, 'main');
 });
 
 test('risky verified steps create a pending review offer; decline suppresses repeats and approval does not execute', t => {

@@ -60,8 +60,8 @@ snapshot, including relevant uncommitted sources, before paired model runs and r
 identity in each report. Do not label deterministic routing fixtures as evidence of better
 engineering output.
 
-Use the same host, model, repository snapshot, prompt, tools, authorization and acceptance
-criteria in each arm. Baseline receives the ordinary project instructions and tools without
+For a guidance comparison, use the same host, model, repository snapshot, prompt, tools,
+authorization and acceptance criteria in each arm. Baseline receives the ordinary project instructions and tools without
 this suite. Candidate additionally receives only the selected playbook context. Do not weaken
 the baseline. Start each arm with a clean checkout/session and record missing prerequisites.
 
@@ -169,3 +169,65 @@ Post-run inventories retain profile changes and detect mutations of the frozen b
 inspection failures stop collection. These checks are evidence collection, not a sandbox.
 Token usage, cost and semantic verdict remain unknown until supplied by actual native
 measurements and acceptance review. Test runners establish the collector contract only.
+
+## Cost and context comparison gate
+
+Separate three experiments before changing profile advice or adopting shorter guidance.
+Existing capability classes describe intended work; they are not measured model rankings.
+Tier 0 means deterministic execution, not a model class. Tiers 1, 2 and 3 map to the
+existing economical, standard and strong classes respectively. Consumer host mappings
+remain explicit, and architecture ambiguity, security-sensitive work and difficult
+cross-boundary reasoning retain direct strong selection.
+
+| Experiment | Change between arms | Hold constant | Required evidence |
+|---|---|---|---|
+| Deterministic extraction | Ordinary discovery versus bounded extraction/reuse | Source, query, required coverage and freshness rules | Result agreement, missed/truncated scope, source bytes and end-to-end time; semantic usefulness needs separately judged real tasks |
+| Reduced selected context | Current selected guidance versus one reduced candidate | Runtime bundle behavior, model/settings, task, tools and authorization | Actual resource loads where observable, native usage and unchanged acceptance quality; file bytes alone establish only artifact size |
+| Economical reasoning | Standard versus consumer-mapped economical profile | Identical bundle, selected context, task, tools, authorization and rubric | Observed profile/model/settings, acceptance, retries/rework and native usage/cost where available |
+
+Use bundle mode for current-versus-reduced content, so both arms receive the same prompt
+and a complete standalone installation. Guidance mode compares ordinary instructions with
+added guidance; it does not compare two versions of existing content. For the profile
+experiment, supply identical bundles and explicit per-arm `profileFiles`; the runner must
+consume those files through `{profile}` and retain the host's observed settings. The
+collector has one runner declaration, not a per-arm model selector. A declared profile
+name or copied settings file does not establish that the host used a different model.
+Do not change content and model in the same attribution experiment.
+
+Before collection, freeze case identities, source and bundle hashes, prompts, profile
+settings, tool access, order, repetition count, timeout, rubric and the adoption scope.
+Separate tuning cases from held-out cases before inspecting candidate outputs. Alternate
+arm order across repetitions. Record the authorized call/resource limit and stop when
+it is reached; a failed setup does not justify an unbounded retry. Preparation can proceed
+without model calls. Preserve earlier runs when source, runner or settings changes require
+a newly prepared pair.
+
+The fixed comparison set must include these observable outcomes:
+
+| Case | Required outcome in both arms |
+|---|---|
+| Tiny scoped fix | Correct behavior, existing implementation reused, no unrelated setup or changes |
+| Conflicting constraints or ambiguous story | Cited conflict and unresolved product choice remain visible; no invented acceptance |
+| Verification unavailable or QA without application access | Useful bounded checks/charter with explicit unexecuted results; no completion claim based on absent evidence |
+| Source or instruction changed after a check | Earlier evidence is treated as stale and affected criteria are rechecked |
+| Selected multi-repository task | Ownership and source identities remain separate; unavailable roots remain explicit |
+| Standalone package or missing host mapping | Useful supported fallback without a mandatory sibling package, invented model switch or extra permission |
+| Risk requiring strong reasoning | Risk remains visible; a cheaper-profile label does not override the required reasoning or authorize dispatch |
+
+Include representative language/runtime failure cases when reducing their references.
+Retain raw responses, diffs, independent acceptance checks, loaded-resource observations,
+native counters and attributable judgments. Record judge identity, blinding limits and
+tuning overlap. Treat missing counters, billing or backend identity as unknown. Count
+failed attempts and rework in the comparison rather than reporting only successful calls.
+
+Reject a candidate on any critical correctness, scope, permission, stale-evidence or
+fabricated-completion regression. Passing structural checks or one paired pilot is not
+quality equivalence. Adopt only within the evaluated task classes after held-out outcomes
+meet the unchanged rubric and the intended context/cost measure improves. If quality or
+measurement is inconclusive, preserve the current guidance/profile policy. Unknown price
+cannot support a dollar-savings claim; lower loaded bytes cannot support a billed-token claim.
+
+Record the decision with its evaluated source/profile identities and limits before changing
+defaults. Profile recommendations remain advice: unsupported mappings retain viable current
+execution, and permission/tool failures require resolving the prerequisite rather than
+switching models. This protocol adds no dispatcher, billing service or second model router.

@@ -10,9 +10,7 @@ import { taskBinding, taskContract, startTask, taskContext, taskSource, recordTa
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
-import { discoveryRequest, discoveryResult, discoveryState, deferredDiscovery } from './discovery/plan.mjs';
-import { locateRequest, matchLines } from './discovery/match.mjs';
-import { route, lookup } from './routing/route.mjs';
+import { route } from './routing/route.mjs';
 import { validateProject } from './contracts/project.mjs';
 import { validatePlaybookCatalog } from './contracts/catalog.mjs';
 import { planOperation } from './routing/operations.mjs';
@@ -24,9 +22,8 @@ import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchan
 import { activityUpdate, appendAttempt, attemptReceipt, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
 import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
-import { hintValid, validateHint, hintEligible, lookupReuse } from './cache/reuse.mjs';
+import { hintValid, validateHint, hintEligible } from './cache/reuse.mjs';
 import { digest, hash } from './cache/identity.mjs';
-import { normalizeScope } from './contracts/paths.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
 const operations = {
@@ -75,14 +72,7 @@ const operations = {
   'task-step': a => recordTaskStep(a.state, a.input, a.repository, a.id, a.at),
   'activity-validate': a => validateActivityState(a.state),
   'activity-identity': a => activityIdentity(a.session, a.task),
-  'discovery-request': a => discoveryRequest(a.input),
-  'discovery-result': a => discoveryResult(a),
-  'discovery-state': a => discoveryState(a.current, a.input),
-  'discovery-deferred': a => deferredDiscovery(a.request),
-  'locate-request': a => locateRequest(a.input),
-  'locate-match': a => matchLines(a.content, a.file, a.terms, a.maxMatches),
   route: a => route({ ...a, catalog: a.catalog }),
-  lookup: a => lookup(a.project, a.options),
   'effective-settings': a => effectiveSettings({ ...a, project: validateProject(a.project) }),
   'validate-project': a => validateProject(a.project),
   'validate-catalog': a => validatePlaybookCatalog(a.catalog),
@@ -109,9 +99,7 @@ const operations = {
   'delivery-failure': a => deliveryFailure(a.enforcementRequired, a.message),
   'hint-eligible': a => hintEligible(a.event, a.result),
   'hint-valid': a => hintValid(a.previous, a.key, a.now),
-  'lookup-reuse': a => lookupReuse(a.terms, a.paths, a.identity, a.state),
-  digest: a => digest(a.value), hash: a => hash(a.text),
-  'locate-scope': a => normalizeScope(a.value)
+  digest: a => digest(a.value), hash: a => hash(a.text)
 };
 
 function json(value) {
