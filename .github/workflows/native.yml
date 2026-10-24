@@ -32,12 +32,21 @@ jobs:
   native-platform:
     name: Native (${{ matrix.os }})
     needs: rust-quality
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            runner: macos-15
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            runner: windows-2022
+            target: x86_64-pc-windows-msvc
     defaults:
       run:
         shell: bash
@@ -55,18 +64,22 @@ jobs:
         run: cargo fetch --locked
       - name: Test native platform
         run: cargo test --workspace --locked --offline
+      - name: Build host adapter
+        run: npm run build:codex
       - name: Build release bundle
         run: npm run build:native
       - name: Select built target
+        env:
+          EXPECTED_NATIVE_TARGET: ${{ matrix.target }}
         run: |
           target=$(rustc -vV | sed -n 's/^host: //p')
-          test -n "$target"
+          test "$target" = "$EXPECTED_NATIVE_TARGET"
           suffix=''
           if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe'; fi
           echo "CRAFT_PROJECT_EVIDENCE_BINARY=$GITHUB_WORKSPACE/target/$target/release/craft$suffix" >> "$GITHUB_ENV"
           echo "CRAFT_PROJECT_EVIDENCE_BUNDLE=$GITHUB_WORKSPACE/dist/project-evidence/$target" >> "$GITHUB_ENV"
       - name: Verify host invocation and relocated distribution
-        run: node --test tests/project-evidence.test.mjs tests/native-bundle.test.mjs
+        run: node --test tests/project-evidence.test.mjs tests/native-bundle.test.mjs tests/native-install.test.mjs
       - name: Retain checked native bundle and provenance
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

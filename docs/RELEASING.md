@@ -53,6 +53,17 @@ pushes and refuses a source revision that is no longer `main`. Write permission 
 to the main-branch publish job; pull requests and forks cannot publish. Distribution commits
 contain no workflow, and CI ignores pushes to that branch.
 
+To compare a release-mode candidate against a retained PR9 native bundle, use:
+
+```sh
+node tooling/native-benchmark.mjs <candidate-runtime-root> <baseline-runtime-root>
+```
+
+Each root contains `cli/project-evidence.mjs`; an installed plugin uses its `support/`
+root. The driver runs real version, refresh/reuse and verified query operations in
+separate disposable consumers. It reports fresh-process latency without asserting a
+speedup; retained PR9 process/RSS measurements remain the broader comparison baseline.
+
 ## Updates and releases
 
 Every successful eligible CI run refreshes `distribution-next`. Users update with native
@@ -79,8 +90,21 @@ The workflow validates the selected main SHA, checks version consistency, requir
 nonempty matching changelog section, checks tag absence, and runs `npm run check` again
 before publication. Nested consumer telemetry is ignored so these checks do not leave
 generated state that would violate the clean-checkout guard.
-It archives all eight adapter bundles plus the combined distribution, preserving hidden
-files, and records source/release SHAs and SHA-256 checksums. A normal Git push publishes
+Native jobs build and exercise release-mode `craft` on Linux x86-64, macOS Apple
+Silicon and Windows x86-64. Each job checks a relocated standalone bundle and an
+independently cached Codex plugin, including refresh, query, checksum rejection and
+bundle rollback. Their target manifests retain source revision, clean-source status,
+compiler, Cargo lock digest, complete file hashes and dependency notices.
+
+Packaging collects artifacts from the same workflow run and validates every required
+target before copying them into each host runtime and independently cached plugin.
+`native-bin/runtime.json` records automatic OS/CPU selection and binary checksums.
+The installation publisher promotes this checked package output without rebuilding it.
+
+The release archives all eight native-enabled adapter bundles, the combined distribution
+and three standalone native bundles, preserving hidden files. `native-release.json`
+records release/source identity, target, binary and archive checksums; `SHA256SUMS`
+also covers that index and provenance. A normal Git push publishes
 only the `vX.Y.Z` tag at the reviewed main revision. An advanced main detected by the
 pre-publication guard, existing tag, version mismatch, failed check or rejected push
 blocks publication; refs are never forced.
@@ -88,8 +112,8 @@ blocks publication; refs are never forced.
 The release and rolling distribution publisher share a concurrency group. The release
 explicitly refreshes the candidate installation branch at the validated release revision because
 tag publication does not replace installation-branch verification. A draft GitHub Release
-uses the selected changelog section plus source provenance as its notes. All eleven
-assets (nine archives, provenance and checksums) are uploaded and
+uses the selected changelog section plus source provenance as its notes. All fifteen
+assets (twelve archives, native index, provenance and checksums) are uploaded and
 counted, and only then is the release published. Archive names include the pack version;
 build reports, native manifests, distribution marker and runtime metadata carry it too.
 No npm publication, hosted analytics setup or semantic model certification occurs.
@@ -110,7 +134,7 @@ release, delete tags or move an existing tag. Verify that the remote tag resolve
 recorded release revision and that the version and checksums agree with retained artifacts.
 Then retry only the missing installation/publication step against that revision, using
 an explicitly authorized workflow or GitHub CLI action. For a draft release, upload only
-missing assets, verify all eleven assets/checksums, and publish the draft. A workflow
+missing assets, verify all fifteen assets/checksums, and publish the draft. A workflow
 rerun from preparation deliberately refuses the existing tag. Recovery is a deliberate
 external action; this documentation grants no agent permission to execute it.
 

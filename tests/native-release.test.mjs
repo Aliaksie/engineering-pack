@@ -16,9 +16,11 @@ function fixture(t) {
     fs.mkdirSync(path.join(root, 'native-bin'), { recursive: true });
     const binary = `native-bin/craft-project-evidence${target.includes('windows') ? '.exe' : ''}`;
     fs.writeFileSync(path.join(root, binary), 'binary', { mode: 0o755 });
-    fs.writeFileSync(path.join(root, 'native-bundle.json'), JSON.stringify({ formatVersion: 1, protocolVersion: 1, profile: 'release', target,
+    const primary = `native-bin/craft${target.includes('windows') ? '.exe' : ''}`;
+    fs.writeFileSync(path.join(root, primary), 'binary', { mode: 0o755 });
+    fs.writeFileSync(path.join(root, 'native-bundle.json'), JSON.stringify({ formatVersion: 1, packVersion: options.version, protocolVersion: 1, profile: 'release', target,
       sourceRevision: options.revision, sourceDirty: false, cargoLockSha256: options.lockSha256, binaryVersion: '0.0.1',
-      files: [{ path: binary, bytes: 6, sha256: digest('binary') }] }));
+      files: [binary, primary].map(file => ({ path: file, bytes: 6, sha256: digest('binary') })) }));
   }
   return options;
 }
@@ -37,10 +39,15 @@ test('release collects checked targets with checksummed archives and binary prov
     assert.equal(JSON.parse(fs.readFileSync(path.join(relocated, 'native-bundle.json'))).target, asset.target);
   }
 });
-for (const defect of ['revision', 'dirty', 'lock', 'target', 'checksum', 'extra', 'missing', 'traversal', 'duplicate', 'symlink']) {
+for (const defect of ['version', 'revision', 'dirty', 'lock', 'target', 'checksum', 'extra', 'missing', 'primary', 'traversal', 'duplicate', 'symlink']) {
   test(`release refuses ${defect} before creating assets`, t => {
     const options = fixture(t), root = path.join(options.input, releaseTargets[2]);
     const file = path.join(root, 'native-bundle.json'), manifest = JSON.parse(fs.readFileSync(file));
+    if (defect === 'version') manifest.packVersion = '9.9.9';
+    if (defect === 'primary') {
+      fs.unlinkSync(path.join(root, manifest.files[1].path));
+      manifest.files.pop();
+    }
     if (defect === 'revision') manifest.sourceRevision = 'c'.repeat(40);
     if (defect === 'dirty') manifest.sourceDirty = true;
     if (defect === 'lock') manifest.cargoLockSha256 = 'c'.repeat(64);

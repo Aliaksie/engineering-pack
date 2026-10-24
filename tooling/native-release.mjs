@@ -5,7 +5,8 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const releaseTargets = ['x86_64-unknown-linux-gnu', 'aarch64-apple-darwin', 'x86_64-pc-windows-msvc'];
+export const nativeTargets = JSON.parse(fs.readFileSync(new URL('./native/targets.json', import.meta.url), 'utf8'));
+export const releaseTargets = nativeTargets.map(entry => entry.target);
 const hash = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 function files(root, relative = '') {
   return fs.readdirSync(path.join(root, relative), { withFileTypes: true }).flatMap(entry => {
@@ -16,15 +17,17 @@ function files(root, relative = '') {
     return [name];
   });
 }
-export function assembleNativeRelease({ input, output, revision, version, lockSha256 }) {
+export function validateNativeBundles({ input, revision, version, lockSha256, targets = releaseTargets, allowDirty = false }) {
   if (!/^[a-f0-9]{40}$/.test(revision) || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error('invalid release identity');
-  const bundles = releaseTargets.map(target => {
+  if (!Array.isArray(targets) || !targets.length || new Set(targets).size !== targets.length) throw new Error('invalid native target selection');
+  return targets.map(target => {
+    if (!releaseTargets.includes(target)) throw new Error(`unsupported native target: ${target}`);
     const root = path.join(input, target);
     if (fs.lstatSync(root).isSymbolicLink()) throw new Error(`symlink native target: ${target}`);
     const actual = files(root);
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'native-bundle.json'), 'utf8'));
-    if (manifest.formatVersion !== 1 || manifest.protocolVersion !== 1 || manifest.profile !== 'release'
-      || manifest.target !== target || manifest.sourceRevision !== revision || manifest.sourceDirty !== false
+    if (manifest.packVersion !== version || manifest.formatVersion !== 1 || manifest.protocolVersion !== 1 || manifest.profile !== 'release'
+      || manifest.target !== target || manifest.sourceRevision !== revision || (!allowDirty && manifest.sourceDirty !== false)
       || manifest.cargoLockSha256 !== lockSha256) throw new Error(`invalid native provenance: ${target}`);
     if (!Array.isArray(manifest.files)) throw new Error(`missing native inventory: ${target}`);
     const listed = new Set();
@@ -36,9 +39,14 @@ export function assembleNativeRelease({ input, output, revision, version, lockSh
       if (fs.statSync(location).size !== file.bytes || hash(location) !== file.sha256) throw new Error(`native checksum mismatch: ${target}/${file.path}`);
     }
     const executable = `native-bin/craft-project-evidence${target.includes('windows') ? '.exe' : ''}`;
-    if (!listed.has(executable) || actual.length !== listed.size + 1) throw new Error(`incomplete native inventory: ${target}`);
-    return { root, target, executable, manifest };
+    const primary = `native-bin/craft${target.includes('windows') ? '.exe' : ''}`;
+    if (!listed.has(primary) || !listed.has(executable) || actual.length !== listed.size + 1) throw new Error(`incomplete native inventory: ${target}`);
+    return { root, target, executable: primary, manifest };
   });
+}
+export function assembleNativeRelease(options) {
+  const { output, version, revision, lockSha256 } = options;
+  const bundles = validateNativeBundles(options);
   // Validate all inputs before producing any release assets.
   fs.mkdirSync(output, { recursive: true });
   const assets = bundles.map(({ root, target, executable, manifest }) => {

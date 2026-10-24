@@ -46,6 +46,9 @@ jobs:
             gh run download "$GITHUB_RUN_ID" --name "native-${runner}-${GITHUB_SHA}" --dir .eval-results/native
           done
           node tooling/native-release.mjs .eval-results/native .eval-results/release
+          for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
+            node tooling/native-install.mjs .eval-results/native "dist/$target"
+          done
       - name: Archive validated distributions
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}

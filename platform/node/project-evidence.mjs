@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { nativeArtifact } from './native-artifact.mjs';
 import { spawnSync } from 'node:child_process';
 
 // Explicit opt-in only. The installed wrapper never downloads or compiles a binary.
@@ -7,7 +7,7 @@ export function projectEvidenceProcess({ enabled = false, root, operation, input
   if (!enabled) return { enabled: false, reason: 'Project evidence is disabled' };
   if (!['version', 'refresh', 'status', 'query', 'backup', 'rebuild'].includes(operation)) throw new Error('unknown project evidence operation');
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) throw new Error('invalid native deadline');
-  const executable = binary ?? fileURLToPath(new URL(`../../native-bin/craft-project-evidence${process.platform === 'win32' ? '.exe' : ''}`, import.meta.url));
+  const executable = binary ?? nativeArtifact();
   if (!path.isAbsolute(executable)) throw new Error('native binary path must be absolute');
   const invoke = (operation, input) => {
     const request = JSON.stringify({ formatVersion: 1, operation, input });

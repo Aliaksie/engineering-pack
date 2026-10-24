@@ -101,6 +101,9 @@ jobs:
 
   package:
     name: Package host bundles
+    permissions:
+      contents: read
+      actions: read
     needs: [check, workflows, native]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -118,6 +121,16 @@ jobs:
         run: |
           npm run build
           npm run build:distribution
+      - name: Include checked native runtimes in every host package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for runner in ubuntu-latest macos-latest windows-latest; do
+            gh run download "$GITHUB_RUN_ID" --name "native-${runner}-${GITHUB_SHA}" --dir .eval-results/native
+          done
+          for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
+            node tooling/native-install.mjs .eval-results/native "dist/$target"
+          done
       - name: Validate package output
         run: npm run validate:exports
       - name: Upload host bundles
@@ -137,6 +150,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: read
     concurrency:
       group: engineering-pack-distribution-next
       cancel-in-progress: false
@@ -150,8 +164,10 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Build installation branch
-        run: npm run build:distribution
+      - name: Retrieve verified installable distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" --name "craft-capabilities-${GITHUB_SHA}" --dir dist
       - name: Publish generated files
         run: node tooling/publish-distribution.mjs
         env:
