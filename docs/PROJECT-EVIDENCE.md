@@ -9,7 +9,6 @@ Java overloads or symbol references. Direct source search remains useful.
 ## Build and run
 
 Development requires Rust/Cargo and a C compiler for bundled SQLite and Tree-sitter.
-The current native implementation has been exercised on Apple Silicon macOS only.
 Run from the checkout:
 
 ```sh
