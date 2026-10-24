@@ -115,16 +115,17 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
         owned.push({ entry, folder, value });
       } catch (error) { retained.push({ entry, reason: error.message }); }
     }
+    const removed = () => cleaned.filter(item => item.removed).length, room = create && identity && !entries.includes(key) ? 1 : 0; // unverified entries occupy capacity
     if (['maintain', 'open', 'write'].includes(action)) {
       for (const item of owned.sort((a, b) => a.value.updated - b.value.updated)) {
         if (item.entry === key || active(item.value)) continue;
         try {
           const age = now - item.value.updated;
-          if (item.value.closed || age >= policy.scratch.staleAfterHours * 3600000) {
+          if ((item.value.closed || age >= policy.scratch.staleAfterHours * 3600000) && directory(path.join(item.folder, 'scratch'))) {
             removeTree(path.join(item.folder, 'scratch'));
             cleaned.push({ entry: item.entry, scratch: 'cleaned' });
           }
-          if (age >= policy.evidence.retentionDays * 86400000 || owned.length - cleaned.filter(item => item.removed).length > policy.maxSessions) {
+          if (age >= policy.evidence.retentionDays * 86400000 || entries.length - removed() + room > policy.maxSessions) {
             if (fs.readdirSync(item.folder).some(name => !['owner.json', 'scratch', 'evidence'].includes(name))) throw new Error('unknown workspace files; cleanup refused');
             removeTree(item.folder); cleaned.push({ entry: item.entry, removed: true });
           }
@@ -136,7 +137,7 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
     const folder = path.join(sessions, key);
     if (!directory(folder)) {
       if (!create) return { status: 'absent', cleaned, retained };
-      if (entries.length - cleaned.filter(item => item.removed).length >= policy.maxSessions) throw new Error('workspace session capacity reached; active or unverified workspaces were retained');
+      if (entries.length - removed() >= policy.maxSessions) throw new Error('workspace session capacity reached; active or unverified workspaces were retained');
       directory(folder, true);
       writeState(path.join(folder, 'owner.json'), { owner: 'craft', formatVersion: 1, project, session: identity.session, task: identity.task,
         updated: now, closed: false, operations: {}, evidence: [] }, 32768, true);
@@ -188,14 +189,13 @@ export function workspaceOperation(root, identity, policy, action, input = {}, n
       value.closed = true;
       for (const op of Object.values(value.operations)) if (op.pid === process.pid) op.closed = true;
     }
-    if (action === 'touch' && !value.closed) value.updated = now;
     let cleanup = 'retained';
     if ((action === 'complete' || action === 'release') && !active(value) && (value.closed || Object.values(value.operations).every(op => op.closed))) {
       try { removeTree(scratch); cleanup = 'cleaned'; }
       catch (error) { retained.push({ entry: key, reason: error.message }); }
     }
     if (action !== 'status') {
-      value.updated = now;
+      if (action !== 'touch' || !value.closed) value.updated = now; // retention counts from completion
       writeState(owner, value, 32768, true);
     }
     const scratchUsage = contents(scratch), evidenceUsage = contents(evidence);

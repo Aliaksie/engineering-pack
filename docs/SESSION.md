@@ -117,8 +117,9 @@ against a hostile same-user process swapping paths concurrently.
 
 Defaults need no configuration: workspace enabled, 20 session/task directories, 8 MiB/64
 scratch files per directory, stale scratch after 24 hours with no live owner, and 1 MiB/16
-intentionally retained evidence files for seven days after inactivity. Active owners are
-never evicted to make space; optional allocation fails at capacity. Effective user/project
+intentionally retained evidence files for seven days after inactivity. A new workspace at
+capacity evicts the oldest inactive one; active owners and unverified entries are never
+evicted, so optional allocation fails when only those remain. Effective user/project
 settings may override `workspace.enabled`, `maxSessions`, `scratch.staleAfterHours`,
 `scratch.maxBytes`, `scratch.maxFiles`, `evidence.enabled`, `evidence.retentionDays`,
 `evidence.maxArtifacts` and `evidence.maxBytes`. Disabling persistence does not delete prior

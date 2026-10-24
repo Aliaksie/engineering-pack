@@ -230,6 +230,37 @@ test('linked worktree selection and relocated exported workspace commands preser
   assert.equal(fs.existsSync(path.join(root, 'linked/.craft')), false);
 });
 
+test('a new workspace at capacity evicts the oldest inactive one; unverified entries occupy capacity', t => {
+  const { root } = fixture(t);
+  const policy = { ...DEFAULT_SETTINGS.workspace, maxSessions: 2 }, now = Date.now();
+  const identity = name => ({ session: digest('s'), task: digest(name), operation: digest('main') });
+  const abandon = opened => {
+    const file = path.join(opened.directory, 'owner.json'), owner = JSON.parse(fs.readFileSync(file));
+    for (const op of Object.values(owner.operations)) op.pid = 2147483647;
+    fs.writeFileSync(file, JSON.stringify(owner));
+  };
+  const old = workspaceOperation(root, identity('old'), policy, 'open', {}, now);
+  fs.mkdirSync(path.join(path.dirname(old.directory), 'unverified'));
+  abandon(old);
+  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain', {}, now + 1).cleaned, [], 'maintain at capacity keeps the entry');
+  const opened = workspaceOperation(root, identity('new'), policy, 'open', {}, now + 2);
+  assert.equal(opened.status, 'available');
+  assert.deepEqual(opened.cleaned.filter(item => item.removed), [{ entry: path.basename(old.directory), removed: true }]);
+  assert.throws(() => workspaceOperation(root, identity('third'), policy, 'open', {}, now + 3), /capacity/, 'live and unverified entries are never evicted');
+});
+
+test('cleanup reports only scratch it removed and touching a closed workspace keeps its retention clock', t => {
+  const { root } = fixture(t);
+  const policy = DEFAULT_SETTINGS.workspace, now = Date.now();
+  const identity = { session: digest('s'), task: digest('t'), operation: digest('main') };
+  const opened = workspaceOperation(root, identity, policy, 'write', { name: 'note', content: 'x' }, now);
+  assert.equal(workspaceOperation(root, identity, policy, 'complete', {}, now + 1).scratch, 'cleaned');
+  const owner = () => JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
+  assert.equal(workspaceOperation(root, identity, policy, 'touch', {}, now + 5).status, 'available');
+  assert.equal(owner().updated, now + 1);
+  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain', {}, now + 6).cleaned, []);
+});
+
 test('an exited workspace writer is reclaimable while its parent stays alive', t => {
   const { root } = fixture(t);
   const identity = { session: digest('child'), task: digest('task'), operation: digest('main') };
