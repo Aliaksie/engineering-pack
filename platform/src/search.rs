@@ -63,10 +63,16 @@ const LIMITATIONS: &[&str] = &[
 
 fn safe_file(root: &Path, relative: &str) -> Result<Option<PathBuf>, SearchError> {
     let mut current = root.to_path_buf();
-    for part in relative.split('/') {
+    let mut parts = relative.split('/').peekable();
+    while let Some(part) = parts.next() {
         current.push(part);
-        if fs::symlink_metadata(&current)?.file_type().is_symlink() {
+        let kind = fs::symlink_metadata(&current)?.file_type();
+        if kind.is_symlink() {
             return Ok(None);
+        }
+        // Windows reports a path below a regular file as missing; name it as Unix does.
+        if !kind.is_dir() && parts.peek().is_some() {
+            return Err(SearchError::Io(std::io::ErrorKind::NotADirectory.into()));
         }
     }
     Ok(Some(current))
@@ -338,6 +344,25 @@ pub fn scan(
     Ok(
         json!({"inventory":if git_inventory { "git" } else { "explicit-paths" },"terms":request.terms,"paths":request.scopes,"bounds":request.bounds(),"filesScanned":files_scanned,"bytesRead":bytes_read,"matches":matches,"skipped":scan.skipped,"truncated":!scan.truncation.is_empty(),"truncation":scan.truncation,"limitations":LIMITATIONS}),
     )
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::*;
+    #[test]
+    fn a_scope_below_a_regular_file_is_not_a_directory_on_every_platform() {
+        let root = std::env::temp_dir().join(format!("craft-search-scope-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("source"), "needle").unwrap();
+        let error = safe_file(&root, "source/child").unwrap_err();
+        assert_eq!(error.code(), "ENOTDIR");
+        assert_eq!(
+            safe_file(&root, "missing/child").unwrap_err().code(),
+            "ENOENT"
+        );
+        assert!(safe_file(&root, "source").unwrap().is_some());
+        fs::remove_dir_all(&root).unwrap();
+    }
 }
 
 #[cfg(all(test, unix))]

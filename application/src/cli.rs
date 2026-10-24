@@ -587,7 +587,8 @@ pub fn run(argv: &[String]) -> Outcome {
     run_in_context(argv, &Value::Null)
 }
 
-/// A forwarded command can share the JS command's operation while W2 owns its session work.
+/// A forwarded command can share the JS command's operation (`context.telemetry`) and receive
+/// the session observation its W2 owner validated (`context.discovery`).
 pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let (action, args) = match argv.split_first() {
         Some((action, args)) if COMMANDS.contains(&action.as_str()) => (action.as_str(), args),
@@ -621,7 +622,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         hint("--session"),
         hint("--host"),
     );
-    let inherited = recorder.inherit(context);
+    let inherited = recorder.inherit(&context["telemetry"]);
     let forwarded = inherited.is_some();
     let operation = inherited.unwrap_or_else(|| recorder.start("cli.command", None));
     let command = match action {
