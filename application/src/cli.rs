@@ -2,12 +2,45 @@
 //! `cli/main.mjs`, which forwards these commands here.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder};
+use craft_engine::{contracts, services};
 use craft_platform::documents::DocumentError;
 use serde_json::{Map, Value, json};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
-pub const COMMANDS: &[&str] = &["settings"];
+pub const COMMANDS: &[&str] = &["settings", "operation", "prepare-services"];
+/// Every command `cli/main.mjs` lists in its general help, migrated or not.
+const ALL_COMMANDS: &[&str] = &[
+    "workspace-open",
+    "workspace-write",
+    "workspace-promote",
+    "workspace-release",
+    "workspace-clean",
+    "worker-status",
+    "task-feature",
+    "task-features",
+    "telemetry-capture",
+    "telemetry-forget",
+    "telemetry-report",
+    "task-offer",
+    "task-decision",
+    "task-action-check",
+    "task-start",
+    "task-step",
+    "settings",
+    "route",
+    "context-report",
+    "session",
+    "session-advice",
+    "session-attempt",
+    "model-advice",
+    "lookup",
+    "locate",
+    "prepare-services",
+    "operation",
+    "checkpoint-save",
+    "checkpoint-read",
+];
 
 /// Options every command accepts, as the shared JS parser does; each command reads its own.
 const OPTIONS: &[&str] = &[
@@ -207,12 +240,122 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     Ok(options)
 }
 
-fn input(recorder: &mut Recorder, parent: &Operation, file: &str) -> Result<Value, Failure> {
-    let operation = recorder.start("input.loaded", Some(parent));
-    let result = project::input(Path::new(file));
-    let failure = result.as_ref().err().map(|f| f.code("INVALID_INPUT"));
-    recorder.complete(operation, Map::new(), failure);
+/// One child operation of `parent`: success records `summary`, failure the code of its
+/// I/O error or `fallback`.
+fn observe<T>(
+    recorder: &mut Recorder,
+    name: &'static str,
+    parent: &Operation,
+    fallback: &'static str,
+    summary: Map<String, Value>,
+    work: impl FnOnce(&mut Recorder, &Operation) -> Result<T, Failure>,
+) -> Result<T, Failure> {
+    let operation = recorder.start(name, Some(parent));
+    let result = work(recorder, &operation);
+    let (attributes, failure) = match &result {
+        Ok(_) => (summary, None),
+        Err(error) => (Map::new(), Some(error.code(fallback))),
+    };
+    recorder.complete(operation, attributes, failure);
     result
+}
+
+fn input(recorder: &mut Recorder, parent: &Operation, file: &str) -> Result<Value, Failure> {
+    observe(
+        recorder,
+        "input.loaded",
+        parent,
+        "INVALID_INPUT",
+        Map::new(),
+        |_, _| project::input(Path::new(file)),
+    )
+}
+
+fn root(options: &Options) -> PathBuf {
+    resolve(options.get("root").unwrap_or("."))
+}
+
+fn loaded(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    observe(
+        recorder,
+        "project.loaded",
+        parent,
+        "CONFIG_INVALID",
+        Map::new(),
+        |_, _| project::settings(&root(options), options.get("preferences").map(Path::new)),
+    )
+}
+
+fn plan_operation(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let mut params = match options.get("params") {
+        Some(text) => {
+            serde_json::from_str(text).map_err(|e| format!("invalid --params JSON: {e}"))?
+        }
+        None => json!({}),
+    };
+    contracts::normalize_numbers(&mut params);
+    let name = options.get("operation");
+    let summary = Map::from_iter(name.map(|name| ("operation".to_string(), json!(name))));
+    observe(
+        recorder,
+        "integration.planned",
+        parent,
+        "INTEGRATION_UNAVAILABLE",
+        summary,
+        |_, _| {
+            let name = name.ok_or("operation requires --operation <name>")?;
+            Ok(services::plan(&settings, name, &params)?)
+        },
+    )
+}
+
+fn prepare_services(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    observe(
+        recorder,
+        "integration.prepared",
+        parent,
+        "INTEGRATION_UNAVAILABLE",
+        Map::new(),
+        |recorder, operation| {
+            let result = services::prepare(
+                &settings,
+                options.values.get("available-command"),
+                options.values.get("available-mcp-tool"),
+            )?;
+            let unavailable = result["services"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .flat_map(|service| service["operations"].as_array().into_iter().flatten())
+                .filter(|operation| operation["availability"] == "not-observed")
+                .count();
+            if unavailable > 0 {
+                let attributes =
+                    Map::from_iter([("unavailableCapabilities".to_string(), json!(unavailable))]);
+                recorder.report(
+                    "integration",
+                    "INTEGRATION_UNAVAILABLE",
+                    attributes,
+                    operation,
+                );
+            }
+            Ok(result)
+        },
+    )
 }
 
 fn settings(
@@ -234,16 +377,25 @@ fn settings(
         overrides,
         workers,
     };
-    project::effective_settings(&resolve(options.get("root").unwrap_or(".")), request)
+    project::effective_settings(&root(options), request)
 }
 
-/// Help for `settings`, the only migrated command so far.
-fn help() -> Value {
-    json!({
-        "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
-        "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
-        "output": "Routine receipts are compact by default; --json or --verbose returns the full structured result."
-    })
+/// Command help as `cli/main.mjs` gives it; commands without an entry get the general list.
+fn help(action: &str) -> Value {
+    let mut help = match action {
+        "settings" => json!({
+            "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
+            "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
+        }),
+        _ => json!({
+            "commands": ALL_COMMANDS,
+            "detail": "Use <command> --help or docs/SESSION.md for session policy.",
+        }),
+    };
+    help["output"] = json!(
+        "Routine receipts are compact by default; --json or --verbose returns the full structured result."
+    );
+    help
 }
 
 fn render(value: &Value) -> String {
@@ -269,7 +421,7 @@ pub fn run(argv: &[String]) -> Outcome {
     if args.iter().any(|arg| arg == "--help") {
         return Outcome {
             exit_code: 0,
-            stdout: render(&help()),
+            stdout: render(&help(action)),
             stderr: String::new(),
             export: None,
         };
@@ -286,8 +438,13 @@ pub fn run(argv: &[String]) -> Outcome {
         hint("--host"),
     );
     let operation = recorder.start("cli.command", None);
+    let command = match action {
+        "operation" => plan_operation,
+        "prepare-services" => prepare_services,
+        _ => settings,
+    };
     let result =
-        parse(action, args).and_then(|options| settings(&options, &mut recorder, &operation));
+        parse(action, args).and_then(|options| command(&options, &mut recorder, &operation));
     let outcome = match &result {
         Ok(value) => {
             recorder.complete(

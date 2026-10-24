@@ -7,12 +7,10 @@ import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
-import { planOperation } from '../application/services.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
 import { discover } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
-import { prepareServices } from '../application/services.mjs';
 import { contextReport } from '../application/session/context.mjs';
 import { bundleRoot } from '../platform/index.mjs';
 import { modelAdvice } from '../application/session/models.mjs';
@@ -74,7 +72,6 @@ function executeRequest(action, options, root) {
     const request = options.data ? readInput(options.data) : { terms: options.term, paths: options.path, ...limits };
     return discover(root, request, { session: options.session, task: options.task, preferencesFile: options.preferences });
   }
-  if (action === 'prepare-services') return prepareServices(readProject(root, { preferencesFile: options.preferences }), { availableCommands: options['available-command'], availableMcpTools: options['available-mcp-tool'] });
   if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
   if (action === 'session-attempt') {
     if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');
@@ -103,7 +100,6 @@ function executeRequest(action, options, root) {
     const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, delegate: options.delegate, task: options.task, verificationMode: options['verification-mode'] });
     return activity(plan, { routingDecisions: 1 });
   }
-  if (action === 'operation') return planOperation(readProject(root, { preferencesFile: options.preferences }), options.operation, JSON.parse(options.params ?? '{}'));
   if (action === 'checkpoint-save') {
     const metadata = options.data ? readInput(options.data) : {};
     let task = options.task ?? metadata.taskId;
@@ -115,5 +111,5 @@ function executeRequest(action, options, root) {
     return activity(saved, { checkpoints: 1 });
   }
   if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
 }

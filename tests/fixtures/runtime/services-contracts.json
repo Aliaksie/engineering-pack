@@ -1,0 +1,3761 @@
+{
+  "formatVersion": 1,
+  "revision": "7352220ff5420f936ad2b83dc3c50607c838c16c",
+  "scope": "operation and prepare-services use cases over a project document; error messages omitted",
+  "cases": [
+    {
+      "id": "operation:git-status-default",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.status",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--short"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-default",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.diff",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "save-to-artifact",
+          "command": "git",
+          "args": [
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "--"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-range",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": "main",
+          "head": "HEAD~1"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.diff",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "save-to-artifact",
+          "command": "git",
+          "args": [
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "main...HEAD~1",
+            "--"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-refspec-chars",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": "v1.0^{commit}",
+          "head": "feature/x@{1}"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-base-only",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": "main"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-option-revision",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": "-x",
+          "head": "HEAD"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-number-revision",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": 1,
+          "head": "HEAD"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:git-diff-space-revision",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.diff",
+        "params": {
+          "base": "a b",
+          "head": "HEAD"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:git-other-provider",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "jj",
+              "transport": "cli",
+              "command": "jj"
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:configured-partial",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": 2
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=2"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:configured-missing-parameter",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:configured-float-parameter",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": 2.5
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=2.5"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:configured-boolean-parameter",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": true
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=true"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:configured-null-parameter",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=null"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:configured-object-partial",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": {
+            "a": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=[object Object]"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:configured-array-partial",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "version": [
+            1,
+            2
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "status",
+            "--porcelain=1,2"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:write-disabled",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.commit",
+        "params": {
+          "message": "x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:write-enabled",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          },
+          "permissions": {
+            "writeOperations": [
+              "git.commit"
+            ]
+          }
+        },
+        "operation": "git.commit",
+        "params": {
+          "message": "fix: λ"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.commit",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "write",
+          "authorization": "explicit-user-or-job-approval-required",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "commit",
+            "-m",
+            "fix: λ"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:write-enabled-unmapped",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "permissions": {
+            "writeOperations": [
+              "git.commit"
+            ]
+          }
+        },
+        "operation": "git.commit",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:write-whole-object",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          },
+          "permissions": {
+            "writeOperations": [
+              "git.push"
+            ]
+          }
+        },
+        "operation": "git.push",
+        "params": {
+          "remote": "origin",
+          "whole": {
+            "a": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:write-whole-number",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          },
+          "permissions": {
+            "writeOperations": [
+              "git.push"
+            ]
+          }
+        },
+        "operation": "git.push",
+        "params": {
+          "remote": "origin",
+          "whole": 3
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.push",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "write",
+          "authorization": "explicit-user-or-job-approval-required",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git",
+          "args": [
+            "push",
+            "origin",
+            "3"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:write-whole-null",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          },
+          "permissions": {
+            "writeOperations": [
+              "git.push"
+            ]
+          }
+        },
+        "operation": "git.push",
+        "params": {
+          "remote": "origin",
+          "whole": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:unknown-operation",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.clone",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:params-array",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.status",
+        "params": []
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:params-null",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.status",
+        "params": null
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:params-string",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "git.status",
+        "params": "x"
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:params-inherited-name",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {
+          "toString": "x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:github-read",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 42
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "github",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "gh",
+          "args": [
+            "pr",
+            "view",
+            "42",
+            "--repo",
+            "org/repo",
+            "--json",
+            "number,title,body,baseRefOid,headRefOid"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:github-read-string-id",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": "42"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "github",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "gh",
+          "args": [
+            "pr",
+            "view",
+            "42",
+            "--repo",
+            "org/repo",
+            "--json",
+            "number,title,body,baseRefOid,headRefOid"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:github-diff-host",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo",
+              "host": "ghe.example"
+            }
+          }
+        },
+        "operation": "change.diff",
+        "params": {
+          "id": 7
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.diff",
+          "service": "codehost",
+          "provider": "github",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "save-to-artifact",
+          "command": "gh",
+          "args": [
+            "pr",
+            "diff",
+            "7",
+            "--repo",
+            "ghe.example/org/repo"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:gitlab-read-host",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gitlab",
+              "transport": "cli",
+              "command": "glab",
+              "host": "gitlab.example",
+              "repository": "group/sub/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 3
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "gitlab",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "glab",
+          "args": [
+            "mr",
+            "view",
+            "3",
+            "--repo",
+            "https://gitlab.example/group/sub/repo",
+            "--output",
+            "json"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:gitlab-diff-no-host",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gitlab",
+              "transport": "cli",
+              "command": "glab",
+              "repository": "group/sub/repo"
+            }
+          }
+        },
+        "operation": "change.diff",
+        "params": {
+          "id": 3
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.diff",
+          "service": "codehost",
+          "provider": "gitlab",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "save-to-artifact",
+          "command": "glab",
+          "args": [
+            "mr",
+            "diff",
+            "3",
+            "--repo",
+            "group/sub/repo"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-zero",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 0
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-leading-zero",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": "007"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-float",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 1.5
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-integral-float",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 4
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "github",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "gh",
+          "args": [
+            "pr",
+            "view",
+            "4",
+            "--repo",
+            "org/repo",
+            "--json",
+            "number,title,body,baseRefOid,headRefOid"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-array",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": [
+            5
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "github",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "gh",
+          "args": [
+            "pr",
+            "view",
+            "5",
+            "--repo",
+            "org/repo",
+            "--json",
+            "number,title,body,baseRefOid,headRefOid"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:change-id-missing",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-no-repository",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-other-provider",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gitea",
+              "transport": "cli",
+              "command": "tea",
+              "repository": "o/r"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-missing-binding",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:change-publish-disabled",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "operation": "change.publish",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:mcp-typed",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "jira",
+              "transport": "mcp",
+              "operations": {
+                "task.read": {
+                  "tool": "jira_get",
+                  "arguments": {
+                    "key": "{id}",
+                    "fields": [
+                      "summary",
+                      "{field}"
+                    ],
+                    "depth": "{depth}",
+                    "label": "issue-{id}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operation": "task.read",
+        "params": {
+          "id": "PRJ-1",
+          "field": "status",
+          "depth": 2
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "task.read",
+          "service": "tasks",
+          "provider": "jira",
+          "transport": "mcp",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "tool": "jira_get",
+          "arguments": {
+            "key": "PRJ-1",
+            "fields": [
+              "summary",
+              "status"
+            ],
+            "depth": 2,
+            "label": "issue-PRJ-1"
+          }
+        }
+      }
+    },
+    {
+      "id": "operation:mcp-whole-object",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "jira",
+              "transport": "mcp",
+              "operations": {
+                "task.read": {
+                  "tool": "jira_get",
+                  "arguments": {
+                    "key": "{id}",
+                    "fields": [
+                      "summary",
+                      "{field}"
+                    ],
+                    "depth": "{depth}",
+                    "label": "issue-{id}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operation": "task.read",
+        "params": {
+          "id": "PRJ-1",
+          "field": "status",
+          "depth": {
+            "max": 2
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "task.read",
+          "service": "tasks",
+          "provider": "jira",
+          "transport": "mcp",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "tool": "jira_get",
+          "arguments": {
+            "key": "PRJ-1",
+            "fields": [
+              "summary",
+              "status"
+            ],
+            "depth": {
+              "max": 2
+            },
+            "label": "issue-PRJ-1"
+          }
+        }
+      }
+    },
+    {
+      "id": "operation:mcp-unmapped",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "jira",
+              "transport": "mcp",
+              "operations": {
+                "task.read": {
+                  "tool": "jira_get",
+                  "arguments": {
+                    "key": "{id}",
+                    "fields": [
+                      "summary",
+                      "{field}"
+                    ],
+                    "depth": "{depth}",
+                    "label": "issue-{id}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operation": "task.search",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:tasks-missing-binding",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1
+        },
+        "operation": "task.read",
+        "params": {
+          "id": "X"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:tasks-github-supplies-change",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            },
+            "codehost": {
+              "provider": "gitlab",
+              "transport": "mcp"
+            }
+          }
+        },
+        "operation": "change.read",
+        "params": {
+          "id": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "change.read",
+          "service": "codehost",
+          "provider": "gitlab",
+          "transport": "mcp",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result"
+        }
+      }
+    },
+    {
+      "id": "operation:codehost-git-supplies-git",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "jj",
+              "transport": "cli",
+              "command": "jj"
+            },
+            "codehost": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git"
+            }
+          }
+        },
+        "operation": "git.status",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "jj",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "jj",
+          "args": [
+            "status",
+            "--short"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:project-invalid",
+      "request": {
+        "command": "operation",
+        "project": {
+          "formatVersion": 2
+        },
+        "operation": "git.status",
+        "params": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "services:defaults",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:observed",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "availableCommands": [
+          "git"
+        ],
+        "availableMcpTools": [
+          "jira_get"
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": true,
+              "source": "project",
+              "provider": "github",
+              "transport": "cli",
+              "scope": {
+                "repository": "org/repo",
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for change.publish"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:observed-empty",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        },
+        "availableCommands": []
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": true,
+              "source": "project",
+              "provider": "github",
+              "transport": "cli",
+              "scope": {
+                "repository": "org/repo",
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for change.publish"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:codehost-github",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo",
+              "host": "ghe.example"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": true,
+              "source": "project",
+              "provider": "github",
+              "transport": "cli",
+              "scope": {
+                "host": "ghe.example",
+                "repository": "org/repo",
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "gh",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for change.publish"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:codehost-no-repository",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": true,
+              "source": "project",
+              "provider": "github",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "codehost repository must be explicit"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "codehost repository must be explicit"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for change.publish"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:gitlab",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "codehost": {
+              "provider": "gitlab",
+              "transport": "cli",
+              "command": "glab",
+              "host": "gitlab.example",
+              "repository": "group/sub/repo"
+            }
+          }
+        },
+        "availableCommands": [
+          "glab",
+          "git"
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": true,
+              "source": "project",
+              "provider": "gitlab",
+              "transport": "cli",
+              "scope": {
+                "host": "gitlab.example",
+                "repository": "group/sub/repo",
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "glab",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "glab",
+                  "requiredParameters": [
+                    "id"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for change.publish"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:configured-git",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "git",
+              "transport": "cli",
+              "command": "git",
+              "operations": {
+                "git.status": {
+                  "args": [
+                    "status",
+                    "--porcelain={version}"
+                  ]
+                },
+                "git.commit": {
+                  "args": [
+                    "commit",
+                    "-m",
+                    "{message}"
+                  ]
+                },
+                "git.push": {
+                  "args": [
+                    "push",
+                    "{remote}",
+                    "{whole}"
+                  ]
+                }
+              }
+            }
+          },
+          "permissions": {
+            "writeOperations": [
+              "git.commit"
+            ]
+          }
+        },
+        "availableCommands": [
+          "git"
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "project",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "configured",
+                  "command": "git",
+                  "requiredParameters": [
+                    "version"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "enabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "configured",
+                  "command": "git",
+                  "requiredParameters": [
+                    "message"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "configured",
+                  "command": "git",
+                  "requiredParameters": [
+                    "remote",
+                    "whole"
+                  ],
+                  "availability": "observed-available"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:tasks-mcp",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "jira",
+              "transport": "mcp",
+              "operations": {
+                "task.read": {
+                  "tool": "jira_get",
+                  "arguments": {
+                    "key": "{id}",
+                    "fields": [
+                      "summary",
+                      "{field}"
+                    ],
+                    "depth": "{depth}",
+                    "label": "issue-{id}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "availableMcpTools": [
+          "jira_get",
+          "other"
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": true,
+              "source": "project",
+              "provider": "jira",
+              "transport": "mcp",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "configured",
+                  "tool": "jira_get",
+                  "requiredParameters": [
+                    "depth",
+                    "field",
+                    "id"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.search"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.transition"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.comment"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:other-provider",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "git": {
+              "provider": "jj",
+              "transport": "cli",
+              "command": "jj"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "project",
+              "provider": "jj",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.status"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.diff"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:tasks-github-supplies-change",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "tasks": {
+              "provider": "github",
+              "transport": "cli",
+              "command": "gh",
+              "repository": "org/repo"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "builtin",
+                  "command": "git",
+                  "requiredParameters": [],
+                  "optionalParameters": [
+                    "base",
+                    "head"
+                  ],
+                  "availability": "unverified"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": true,
+              "source": "project",
+              "provider": "github",
+              "transport": "cli",
+              "scope": {
+                "repository": "org/repo",
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.read"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.search"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.transition"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.comment"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:commands-blank",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1
+        },
+        "availableCommands": [
+          " "
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "services:commands-not-array",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1
+        },
+        "availableCommands": "git"
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "services:tools-number",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1
+        },
+        "availableMcpTools": [
+          1
+        ]
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "services:project-invalid",
+      "request": {
+        "command": "prepare-services",
+        "project": {
+          "formatVersion": 1,
+          "services": {
+            "mail": {}
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    }
+  ]
+}

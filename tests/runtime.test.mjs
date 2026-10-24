@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { route, lookup } from '../application/routing/select.mjs';
-import { planOperation } from '../application/services.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
@@ -153,13 +152,26 @@ test('all built-in routed skills resolve to actual capability source', () => {
   assert.ok(unavailable.missing.some((message) => message.includes('skill not installed')));
 });
 
+// `operation` runs in the native runtime; plan through the public command line.
+function planOperation(config, name, params) {
+  const configured = typeof config === 'string' ? config : fs.mkdtempSync(path.join(os.tmpdir(), 'craft-operation-'));
+  try {
+    if (configured !== config) {
+      fs.mkdirSync(path.join(configured, '.craft'));
+      fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    }
+    return run(['operation', '--root', configured, '--preferences', path.join(configured, 'absent.json'), '--operation', name, '--params', JSON.stringify(params)]);
+  } finally { if (configured !== config) fs.rmSync(configured, { recursive: true, force: true }); }
+}
+const example = path.join(root, 'examples/project');
+
 test('bindings distinguish local Git, codehost and tracker and preserve argument boundaries', () => {
   const github = { formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', host: 'github.example.com', repository: 'team/repo' } } };
   assert.deepEqual(planOperation(github, 'change.read', { id: 42 }).args, ['pr', 'view', '42', '--repo', 'github.example.com/team/repo', '--json', 'number,title,body,baseRefOid,headRefOid']);
-  const gitlab = planOperation(project, 'change.read', { id: 42 });
+  const gitlab = planOperation(example, 'change.read', { id: 42 });
   assert.deepEqual(gitlab.args, ['mr', 'view', '42', '--repo', 'https://gitlab.example.com/team/project', '--output', 'json']);
   const hostile = 'TEAM-1; $(touch /tmp/never-run)';
-  const cli = planOperation(project, 'task.read', { id: hostile });
+  const cli = planOperation(example, 'task.read', { id: hostile });
   assert.deepEqual(cli.args, ['read', hostile]);
   assert.equal(cli.shell, false);
   assert.equal(cli.availability, 'not-verified');

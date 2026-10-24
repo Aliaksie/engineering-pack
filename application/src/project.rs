@@ -49,15 +49,27 @@ pub struct Settings<'a> {
     pub workers: Option<(Value, Option<&'a str>)>,
 }
 
-pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failure> {
+fn resolve(root: &Path, preferences: Option<&Path>, overrides: &Value) -> Result<Value, Failure> {
     let project = document(documents::project(root))?;
     let preferences = document(documents::preferences(
-        request
-            .preferences
+        preferences
             .map_or_else(preference_file, Path::to_path_buf)
             .as_path(),
     ))?;
-    let mut result = contracts::effective_settings(&project, &preferences, &request.overrides)?;
+    Ok(contracts::effective_settings(
+        &project,
+        &preferences,
+        overrides,
+    )?)
+}
+
+/// Validated effective settings without task overrides, as commands consume them.
+pub fn settings(root: &Path, preferences: Option<&Path>) -> Result<Value, Failure> {
+    Ok(resolve(root, preferences, &json!({}))?["settings"].take())
+}
+
+pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failure> {
+    let mut result = resolve(root, request.preferences, &request.overrides)?;
     let (facts, session) = request.workers.unwrap_or((json!({}), None));
     let budget = workers::budget(&result["settings"], &facts, session, now_ms())?;
     result["state"] = state_location(root);

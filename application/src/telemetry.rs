@@ -280,11 +280,41 @@ impl Recorder {
             failure,
             true,
         );
+        self.record(event, operation.id);
+    }
+
+    /// A domain diagnostic under `parent`, stored and exported like operation events.
+    pub fn report(
+        &mut self,
+        area: &'static str,
+        reason: &'static str,
+        mut attributes: Map<String, Value>,
+        parent: &Operation,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        attributes.insert("area".into(), json!(area));
+        let id = store::uuid().unwrap_or_default();
+        let event = self.build(
+            "diagnostic",
+            attributes,
+            "failure",
+            None,
+            id.clone(),
+            Some(parent.id.clone()),
+            Some(reason),
+            false,
+        );
+        self.record(event, id);
+    }
+
+    fn record(&mut self, event: Result<Value, String>, id: String) {
         for reason in std::mem::take(&mut self.pending) {
-            self.diagnostic(reason, Map::new(), Some(operation.id.clone()));
+            self.diagnostic(reason, Map::new(), Some(id.clone()));
         }
         let Ok(event) = event else {
-            self.diagnostic("TELEMETRY_EVENT_INVALID", Map::new(), Some(operation.id));
+            self.diagnostic("TELEMETRY_EVENT_INVALID", Map::new(), Some(id));
             return;
         };
         if self.remote.is_some() {

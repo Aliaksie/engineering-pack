@@ -74,3 +74,10 @@ They cover precedence and origins, every project validation family, preference b
 null coalescing, integral floats, and worker freshness at a fixed clock. The Rust
 engine replays this corpus with the matching `engine-contracts.json` cases
 (`cargo test -p craft-engine`); it replaces those cases when their JavaScript retires.
+
+`services-contracts.json` freezes 63 JavaScript responses for the `operation` and
+`prepare-services` use cases at `7352220`: effective settings from a project, built-in
+CLI mappings and the engine decision, with error messages omitted. The Rust replay lists
+seven intentional corrections by case ID: built-in arguments are not substituted again,
+placeholders inside text take only scalar parameters, a change number is a string or safe
+integer, and built-in mappings come only from the operation's own service.
