@@ -62,6 +62,10 @@ native request per invocation plus handing native results back to the remaining 
 telemetry export until bounded HTTP is native). Each such raise is recorded with its slice and is
 recovered when the forwarded module retires. Behavior never moves into JavaScript this way.
 
+W1h forwards `route` while its existing session binding and activity remain with the W2 owner. CLI transport adds one line
+(337→338); application telemetry transport adds five lines (1320→1325) to carry the existing
+command trace and pseudonym across the process boundary. Both retire with their JS owners.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.

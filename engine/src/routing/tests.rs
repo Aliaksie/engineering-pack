@@ -104,3 +104,125 @@ fn private_paths_match_whole_components() {
         assert!(!private_path(path), "{path}");
     }
 }
+
+const ROUTES: &str = include_str!("../../../tests/fixtures/runtime/route-contracts.json");
+
+fn run_route(request: &Value) -> Result<Value> {
+    let options = &request["options"];
+    let strings = |name: &str| -> Vec<String> {
+        options[name]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|item| item.as_str().map(str::to_string))
+            .collect()
+    };
+    let files: Vec<Value> = options["file"].as_array().cloned().unwrap_or_default();
+    route(
+        &settings(&request["project"])?,
+        &Request {
+            intent: options["intent"].as_str(),
+            files: &files,
+            risks: &strings("risk"),
+            host: options["host"].as_str().unwrap_or("agents"),
+            delegate: options["delegate"] == true,
+            task: options["task"].as_str(),
+            verification_mode: options["verificationMode"].as_str(),
+        },
+    )
+}
+
+#[test]
+fn frozen_route_cases_replay() {
+    let corpus: Value = serde_json::from_str(ROUTES).unwrap();
+    let cases = corpus["cases"].as_array().unwrap();
+    let mut failures = Vec::new();
+    for case in cases {
+        let id = case["id"].as_str().unwrap();
+        let mut request = case["request"].clone();
+        normalize_numbers(&mut request);
+        let response = &case["response"];
+        match (run_route(&request), response["ok"].as_bool().unwrap()) {
+            (Ok(result), true) if result == response["result"] => {
+                assert_eq!(
+                    serde_json::to_string(&result).unwrap(),
+                    serde_json::to_string(&response["result"]).unwrap(),
+                    "{id}: key order"
+                );
+            }
+            (Err(_), false) => {}
+            (actual, _) => failures.push(format!("{id}: got {actual:?}")),
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    assert_eq!(cases.len(), 118);
+}
+
+#[test]
+fn embedded_catalog_is_valid() {
+    let catalog = catalog::catalog().unwrap();
+    assert!(catalog::skills(catalog).contains(&"craft-engineering:foundations"));
+}
+
+#[test]
+fn catalog_rejects_invalid_selectors_and_load_targets() {
+    let original = catalog::catalog().unwrap();
+    for (pointer, value) in [
+        ("/formatVersion", json!(2)),
+        ("/entries/0/id", json!("vendor:implement")),
+        ("/entries/0/when", json!({})),
+        ("/entries/0/when", json!({"framework": ["spring"]})),
+        ("/entries/0/when/intents", json!(["invent"])),
+        ("/entries/0/when/intents", json!(["implement", "implement"])),
+        ("/entries/0/when", json!({"languages": ["java"]})),
+        ("/entries/0/value/evidence", json!(" ")),
+        (
+            "/entries/0/references",
+            json!(["craft-engineering:foundations/../../secret.md"]),
+        ),
+        ("/entries/0/skills", json!(["invalid"])),
+        ("/layerExtensions/.tsx", json!("react")),
+        ("/runtimeImplications/python", json!("missing")),
+    ] {
+        let mut changed = original.clone();
+        // Mappings need not already contain the test key.
+        let (parent, key) = pointer.rsplit_once('/').unwrap();
+        changed.pointer_mut(parent).unwrap()[key] = value;
+        assert!(catalog::validate(&changed).is_err(), "{pointer}");
+    }
+    for scope in [".", "a", ".github/workflows", "automation/release.yml"] {
+        let mut changed = original.clone();
+        let entry = changed["entries"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|entry| entry["id"] == "practice:github-actions-path")
+            .unwrap();
+        entry["when"] = json!({"paths": [scope]});
+        assert!(catalog::validate(&changed).is_ok(), "{scope}");
+    }
+    for scope in [
+        "",
+        "..",
+        "./ci",
+        "ci/../release",
+        "ci//release",
+        "ci/",
+        "/ci",
+        "C:/ci",
+        "ci/*.yml",
+        "ci/[ab]",
+        "ci/{a,b}",
+        "ci?",
+    ] {
+        let mut changed = original.clone();
+        let entry = changed["entries"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|entry| entry["id"] == "practice:github-actions-path")
+            .unwrap();
+        entry["when"] = json!({"paths": [scope]});
+        assert!(catalog::validate(&changed).is_err(), "{scope}");
+    }
+}

@@ -96,6 +96,23 @@ test('module lookup uses path boundaries, specificity and transitive declared im
   } finally { fs.rmSync(files, { recursive: true, force: true }); }
 });
 
+test('native route takes the task from a session binding and records session activity', t => {
+  const dir = temp(t);
+  git(dir, 'init', '-q');
+  fs.mkdirSync(path.join(dir, '.craft'));
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1,
+    services: { tasks: { provider: 'tracker', transport: 'cli', command: 'tracker', operations: { 'task.read': { args: ['read', '{id}'] } } } } }));
+  const routed = (...args) => run(['route', '--root', dir, '--intent', 'implement', ...args]);
+  assert.deepEqual(routed('--session', 's1').operations, []);
+  run(['task-start', '--root', dir, '--session', 's1', '--task', 'T-1', '--goal', 'route the bound task']);
+  const activity = (task) => run(['session', '--root', dir, '--session', 's1', '--task', task]).activity.routingDecisions ?? 0;
+  const started = activity('T-1');
+  assert.deepEqual(routed('--session', 's1').operations.map((operation) => operation.args), [['read', 'T-1']]);
+  assert.deepEqual(routed('--session', 's1', '--task', 'T-2').operations.map((operation) => operation.args), [['read', 'T-2']]);
+  assert.equal(activity('T-1'), started + 1);
+  assert.equal(activity('T-2'), 1);
+});
+
 test('equivalent module paths preserve ownership, checks and stack guidance without changing configuration', () => {
   const canonical = { formatVersion: 1, modules: [
     { name: 'root', path: '.', languages: ['python'] },

@@ -14,6 +14,7 @@ pub const COMMANDS: &[&str] = &[
     "prepare-services",
     "model-advice",
     "lookup",
+    "route",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -158,6 +159,8 @@ impl From<DocumentError> for Failure {
 }
 
 pub struct Outcome {
+    /// A portable Node-style I/O code for a caller-owned command telemetry envelope.
+    pub error_code: Option<&'static str>,
     pub exit_code: i32,
     pub stdout: String,
     pub stderr: String,
@@ -411,6 +414,61 @@ fn lookup(
     Ok(routing::lookup(&settings, files, options.get("module"))?)
 }
 
+fn strings(options: &Options, name: &str) -> Vec<String> {
+    options
+        .values
+        .get(name)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item.as_str().map(str::to_string))
+        .collect()
+}
+
+fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let files = options
+        .values
+        .get("file")
+        .and_then(Value::as_array)
+        .map_or(&[][..], Vec::as_slice);
+    let request = routing::Request {
+        intent: options.get("intent"),
+        files,
+        risks: &strings(options, "risk"),
+        host: options.get("host").unwrap_or("agents"),
+        delegate: options.values.contains_key("delegate"),
+        task: options.get("task"),
+        verification_mode: options.get("verification-mode"),
+    };
+    let operation = recorder.start("routing.completed", Some(parent));
+    let result = routing::route(&settings, &request);
+    let (attributes, failure) = match &result {
+        Ok(plan) => {
+            let catalog = routing::catalog::catalog()?;
+            let known = routing::catalog::skills(catalog);
+            // Route skills are already unique.
+            let skills = plan["skills"].as_array().map_or(&[][..], Vec::as_slice);
+            for skill in skills.iter().take(32) {
+                let attributes = Map::from_iter([("skill".to_string(), skill.clone())]);
+                recorder.observe("guidance.selected", attributes, &operation, &known);
+            }
+            let attributes = Map::from_iter([
+                ("intent".to_string(), plan["intent"].clone()),
+                (
+                    "capabilityClass".to_string(),
+                    plan["capability"]["class"].clone(),
+                ),
+                ("selectedSkills".to_string(), json!(skills.len())),
+            ]);
+            (attributes, None)
+        }
+        Err(_) => (Map::new(), Some("OPERATION_FAILED")),
+    };
+    recorder.complete(operation, attributes, failure);
+    Ok(result?)
+}
+
 fn settings(
     options: &Options,
     recorder: &mut Recorder,
@@ -460,10 +518,16 @@ fn render(value: &Value) -> String {
 
 /// Run one migrated command. `argv` excludes the executable name.
 pub fn run(argv: &[String]) -> Outcome {
+    run_in_context(argv, &Value::Null)
+}
+
+/// A forwarded command can share the JS command's operation while W2 owns its session work.
+pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let (action, args) = match argv.split_first() {
         Some((action, args)) if COMMANDS.contains(&action.as_str()) => (action.as_str(), args),
         _ => {
             return Outcome {
+                error_code: None,
                 exit_code: 2,
                 stdout: String::new(),
                 stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
@@ -473,6 +537,7 @@ pub fn run(argv: &[String]) -> Outcome {
     };
     if args.iter().any(|arg| arg == "--help") {
         return Outcome {
+            error_code: None,
             exit_code: 0,
             stdout: render(&help(action)),
             stderr: String::new(),
@@ -490,31 +555,46 @@ pub fn run(argv: &[String]) -> Outcome {
         hint("--session"),
         hint("--host"),
     );
-    let operation = recorder.start("cli.command", None);
+    let inherited = recorder.inherit(context);
+    let forwarded = inherited.is_some();
+    let operation = inherited.unwrap_or_else(|| recorder.start("cli.command", None));
     let command = match action {
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
         "lookup" => lookup,
+        "route" => route,
         _ => settings,
     };
     let result =
         parse(action, args).and_then(|options| command(&options, &mut recorder, &operation));
     let outcome = match &result {
         Ok(value) => {
-            recorder.complete(
-                operation,
-                Map::from_iter([("command".to_string(), json!(action))]),
-                None,
-            );
+            if !forwarded {
+                recorder.complete(
+                    operation,
+                    Map::from_iter([("command".to_string(), json!(action))]),
+                    None,
+                );
+            }
             (0, render(value), String::new())
         }
         Err(failure) => {
-            recorder.complete(operation, Map::new(), Some(failure.code("INVALID_INPUT")));
+            if !forwarded {
+                recorder.complete(operation, Map::new(), Some(failure.code("INVALID_INPUT")));
+            }
             (2, String::new(), format!("{}\n", failure.message))
         }
     };
     Outcome {
+        error_code: result.err().and_then(|failure| match failure.io {
+            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
+            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
+            Some(ErrorKind::NotFound) => Some("ENOENT"),
+            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
+            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
+            _ => None,
+        }),
         exit_code: outcome.0,
         stdout: outcome.1,
         stderr: outcome.2,

@@ -162,6 +162,45 @@ impl Recorder {
         }
     }
 
+    /// Join a caller-owned CLI operation; only bounded hexadecimal transport identities pass.
+    pub fn inherit(&mut self, context: &Value) -> Option<Operation> {
+        let trace = context["traceId"].as_str()?;
+        let id = context["operationId"].as_str()?;
+        let hex = |value: &str, len| {
+            value.len() == len
+                && value
+                    .bytes()
+                    .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+        };
+        let session_id = context["sessionId"].as_str()?;
+        if !hex(trace, 32)
+            || trace.bytes().all(|b| b == b'0')
+            || !hex(session_id, 32)
+            || id.len() != 36
+            || !id.bytes().enumerate().all(|(i, b)| {
+                if [8, 13, 18, 23].contains(&i) {
+                    b == b'-'
+                } else {
+                    matches!(b, b'0'..=b'9' | b'a'..=b'f')
+                }
+            })
+        {
+            return None;
+        }
+        if id.replace('-', "")[..16] == *"0".repeat(16) {
+            return None;
+        }
+        self.trace = trace.to_string();
+        self.session_id = Some(session_id.to_string());
+        self.identity_unavailable = context["identityScope"] != "session" && self.session.is_some();
+        Some(Operation {
+            id: id.to_string(),
+            name: "cli.command",
+            parent: None,
+            started: now_ms(),
+        })
+    }
+
     pub fn start(&self, name: &'static str, parent: Option<&Operation>) -> Operation {
         Operation {
             id: store::uuid().unwrap_or_default(),
@@ -193,12 +232,13 @@ impl Recorder {
         &mut self,
         name: &str,
         mut attributes: Map<String, Value>,
-        outcome: &str,
+        outcome: Option<&str>,
         duration: Option<i64>,
         operation_id: String,
         parent: Option<String>,
         reason: Option<&str>,
         operation: bool,
+        skills: &[&str],
     ) -> Result<Value, String> {
         let session_id = self.correlation();
         let scope = if self.session.is_some() && !self.identity_unavailable {
@@ -218,12 +258,12 @@ impl Recorder {
                 pack_version: self.version.as_deref(),
                 host: self.host.as_deref(),
                 attributes,
-                outcome: Some(outcome),
+                outcome,
                 duration_ms: duration,
                 reason_code: reason,
                 operation,
             },
-            &[],
+            skills,
         )
     }
 
@@ -243,12 +283,13 @@ impl Recorder {
         match self.build(
             "diagnostic",
             attributes,
-            "failure",
+            Some("failure"),
             None,
             id,
             parent,
             Some(reason),
             false,
+            &[],
         ) {
             Ok(event) => store::append(&self.root, &[event]),
             Err(_) => false,
@@ -273,12 +314,13 @@ impl Recorder {
         let event = self.build(
             operation.name,
             attributes,
-            outcome,
+            Some(outcome),
             Some(duration),
             operation.id.clone(),
             operation.parent,
             failure,
             true,
+            &[],
         );
         self.record(event, operation.id);
     }
@@ -299,12 +341,39 @@ impl Recorder {
         let event = self.build(
             "diagnostic",
             attributes,
-            "failure",
+            Some("failure"),
             None,
             id.clone(),
             Some(parent.id.clone()),
             Some(reason),
             false,
+            &[],
+        );
+        self.record(event, id);
+    }
+
+    /// An observation under `parent`; a `skill` attribute is kept only when `skills` lists it.
+    pub fn observe(
+        &mut self,
+        name: &'static str,
+        attributes: Map<String, Value>,
+        parent: &Operation,
+        skills: &[&str],
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let id = store::uuid().unwrap_or_default();
+        let event = self.build(
+            name,
+            attributes,
+            Some("success"),
+            None,
+            id.clone(),
+            Some(parent.id.clone()),
+            None,
+            false,
+            skills,
         );
         self.record(event, id);
     }

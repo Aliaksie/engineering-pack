@@ -86,6 +86,31 @@ test('route, session and integration commands produce correlated roots and meani
   command(root,'prepare-services');
   assert.ok(readTelemetry(root).some(event=>event.name==='integration.prepared' && event.parentOperationId));
 });
+test('forwarded route preserves one command trace and pseudonym through session activity and failures', t => {
+  for (const args of [[], ['--session', 's1', '--task', 'T-1'], ['--session', 'bad\u0001id'], ['--intent', 'invalid']]) {
+    const root = fixture(t);
+    const argv = ['route', '--root', root, ...(args.includes('--intent') ? [] : ['--intent', 'implement']), ...args];
+    if (args.includes('invalid')) assert.throws(() => run(argv), /unknown intent/);
+    else assert.ok(run(argv).skills.length);
+    const events = readTelemetry(root);
+    const { top, trace } = tree(events, 'cli.command');
+    assert.equal(events.filter(event => event.name === 'cli.command').length, 1);
+    assert.equal(trace.length, events.length);
+    assert.ok(trace.every(event => event.sessionId === top.sessionId));
+    if (args.includes('T-1')) {
+      const updated = trace.find(event => event.name === 'state.updated');
+      assert.equal(updated.parentOperationId, top.operationId);
+    }
+  }
+});
+test('native route preserves access-denied telemetry when the caller owns the command', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, t => {
+  const root = fixture(t), file = path.join(root, '.craft/project.json');
+  fs.writeFileSync(file, '{}', { mode: 0 });
+  assert.throws(() => command(root, 'route', '--intent', 'implement'), { code: 'EACCES' });
+  const events = readTelemetry(root), { top } = tree(events, 'cli.command');
+  assert.equal(top.reasonCode, 'ACCESS_DENIED');
+  assert.equal(events.find(event => event.name === 'project.loaded').reasonCode, 'ACCESS_DENIED');
+});
 test('discovery correlates cache/search and records bounded failures without input bodies',t=>{
   const root=fixture(t); fs.writeFileSync(path.join(root,'source.txt'),'PRIVATE_SEARCH_MARKER');
   command(root,'locate','--path','source.txt','--term','PRIVATE_SEARCH_MARKER');

@@ -4,7 +4,7 @@ import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
-import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
+import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
 import { readProject, readInput } from '../application/project/configuration.mjs';
 import { route } from '../application/routing/select.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
@@ -12,9 +12,7 @@ import { discover } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
 import { contextReport } from '../application/session/context.mjs';
-import { bundleRoot } from '../platform/index.mjs';
-
-
+import { bundleRoot, nativeCommand } from '../platform/index.mjs';
 export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
@@ -91,8 +89,11 @@ function executeRequest(action, options, root) {
     return activity(report, { filesRequested: report.totals.files, referencesRequested: plan.references.length });
   }
   if (action === 'route') {
-    const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, delegate: options.delegate, task: options.task, verificationMode: options['verification-mode'] });
-    return activity(plan, { routingDecisions: 1 });
+    // Session binding/activity remain with their W2 owner; routing runs once in Rust.
+    const argv = Object.entries({ ...options, root }).filter(([, value]) => value !== undefined).flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).flatMap(item => item === true ? [`--${key}`] : [`--${key}`, item]));
+    const outcome = nativeCommand(['route', ...argv], { telemetry: commandTelemetry() }); forwardTelemetry(outcome.export);
+    if (outcome.exitCode) throw Object.assign(new Error(outcome.stderr.trimEnd()), { code: outcome.errorCode });
+    return activity(JSON.parse(outcome.stdout), { routingDecisions: 1 });
   }
   if (action === 'checkpoint-save') {
     const metadata = options.data ? readInput(options.data) : {};

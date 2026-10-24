@@ -12,6 +12,7 @@ import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEM
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { execute } from '../cli/requests.mjs';
+import { run } from '../cli/main.mjs';
 import { lockState, releaseState, stateFile } from '../platform/node/state-files.mjs';
 
 const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z', sessionId:'a'.repeat(32), operationId:'12345678-1234-4234-a234-123456789abc', packVersion:'0.0.2', host:'codex', outcome:'success', durationMs:12 };
@@ -174,7 +175,7 @@ test('telemetry stops retrying when a wait overshoots the deadline without remov
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {
   const root=fixture(t), options={intent:'implement',file:[],risk:[],host:'codex',session:'session',task:'task'};
-  const routed=execute('route',options,root);
+  const routed=run(['route','--root',root,'--intent','implement','--host','codex','--session','session','--task','task']);
   assert.ok(routed.skills.length);
   const session=execute('session',options,root);
   assert.equal(session.usage.status,'unknown'); assert.equal(session.packVersion,runtimeVersion());

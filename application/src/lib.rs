@@ -26,9 +26,9 @@ pub fn evaluate(request: Value) -> Value {
                 .collect::<Option<Vec<_>>>()
         }) {
             Some(argv) => {
-                let outcome = cli::run(&argv);
+                let outcome = cli::run_in_context(&argv, &request["input"]["telemetry"]);
                 Ok(
-                    json!({"exitCode":outcome.exit_code,"stdout":outcome.stdout,"stderr":outcome.stderr,"export":outcome.export}),
+                    json!({"exitCode":outcome.exit_code,"stdout":outcome.stdout,"stderr":outcome.stderr,"export":outcome.export,"errorCode":outcome.error_code}),
                 )
             }
             None => Err("cli requires an argv string array".into()),
