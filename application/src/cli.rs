@@ -2,13 +2,13 @@
 //! `cli/main.mjs`, which forwards these commands here.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder};
-use craft_engine::{contracts, services};
+use craft_engine::{contracts, models, services};
 use craft_platform::documents::DocumentError;
 use serde_json::{Map, Value, json};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
-pub const COMMANDS: &[&str] = &["settings", "operation", "prepare-services"];
+pub const COMMANDS: &[&str] = &["settings", "operation", "prepare-services", "model-advice"];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
     "workspace-open",
@@ -358,6 +358,39 @@ fn prepare_services(
     )
 }
 
+fn model_advice(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let file = options
+        .get("data")
+        .ok_or("model-advice requires --data <request.json>")?;
+    let request = input(recorder, parent, file)?;
+    let settings = loaded(options, recorder, parent)?;
+    let operation = recorder.start("model.advice", Some(parent));
+    let result = models::advise(&settings, &request);
+    let (attributes, failure) = match &result {
+        Ok(advice) => {
+            if advice["decision"] == "unavailable" {
+                recorder.report("model", "MODEL_ADVICE_UNAVAILABLE", Map::new(), &operation);
+            }
+            let class = advice
+                .get("capabilityClass")
+                .or_else(|| request.get("capabilityClass"));
+            let mut attributes =
+                Map::from_iter([("decision".to_string(), advice["decision"].clone())]);
+            if let Some(class) = class {
+                attributes.insert("capabilityClass".into(), class.clone());
+            }
+            (attributes, None)
+        }
+        Err(_) => (Map::new(), Some("OPERATION_FAILED")),
+    };
+    recorder.complete(operation, attributes, failure);
+    Ok(result?)
+}
+
 fn settings(
     options: &Options,
     recorder: &mut Recorder,
@@ -441,6 +474,7 @@ pub fn run(argv: &[String]) -> Outcome {
     let command = match action {
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
+        "model-advice" => model_advice,
         _ => settings,
     };
     let result =

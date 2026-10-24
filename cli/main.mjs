@@ -7,7 +7,7 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice']); // complete use cases in the native runtime
 
 const help = {
   'workspace-open': { usage: 'workspace-open --root project --session id [--task id] [--operation scope]', mode: 'lazily allocate bounded private scratch for the active task; no host temp/cache changes' },

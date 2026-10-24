@@ -81,3 +81,7 @@ CLI mappings and the engine decision, with error messages omitted. The Rust repl
 seven intentional corrections by case ID: built-in arguments are not substituted again,
 placeholders inside text take only scalar parameters, a change number is a string or safe
 integer, and built-in mappings come only from the operation's own service.
+
+`models-contracts.json` freezes 83 JavaScript responses for the `model-advice` use case at
+`dc5c447`: effective settings from a project and the engine decision over the request, with
+error messages omitted. The Rust engine replays every case unchanged.

@@ -12,7 +12,6 @@ import { sessionStatus } from '../application/session/status.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { capabilityAdvice, modelAdvice } from '../application/session/models.mjs';
 import { run } from '../cli/main.mjs';
 
 // The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
@@ -164,19 +163,12 @@ test('policy distinguishes healthy progress, unknown telemetry, pressure and cha
 });
 
 test('classes use deterministic economical discovery and allow directly requested strong reasoning', () => {
+  const capabilityAdvice = (operation, risks) => decide('capability', { operation, risks });
   assert.equal(capabilityAdvice('locate').class, 'economical');
   assert.equal(capabilityAdvice('locate').execution, 'prefer-deterministic-tool');
   assert.equal(capabilityAdvice('architecture').class, 'strong');
   assert.equal(capabilityAdvice('implement', ['distributed-consistency']).class, 'strong');
   assert.equal(capabilityAdvice('implement').class, 'standard');
-  const project = { formatVersion: 1, execution: {
-    roles: { planner: { mode: 'delegate', profile: 'small' } },
-    profiles: { small: { capabilities: [], class: 'economical', escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong' } },
-    hosts: { fixture: { delegation: true, models: { small: 'consumer-a', deep: 'consumer-b' } } }
-  } };
-  const result = modelAdvice({ host: 'fixture', role: 'planner', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
-  assert.equal(result.profile, 'deep');
-  assert.equal(result.attemptsRemaining, 3);
 });
 
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {

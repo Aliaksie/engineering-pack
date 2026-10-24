@@ -13,7 +13,6 @@ import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
 import { contextReport } from '../application/session/context.mjs';
 import { bundleRoot } from '../platform/index.mjs';
-import { modelAdvice } from '../application/session/models.mjs';
 
 
 export function execute(action, options, root) {
@@ -85,10 +84,6 @@ function executeRequest(action, options, root) {
     }
     return result;
   };
-  if (action === 'model-advice') {
-    if (!options.data) throw new Error('model-advice requires --data <request.json>');
-    return modelAdvice(readInput(options.data), readProject(root, { preferencesFile: options.preferences }));
-  }
   if (action === 'lookup') return lookup(readProject(root, { preferencesFile: options.preferences }), { file: options.file[0], module: options.module });
   if (action === 'context-report') {
     const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, verificationMode: options['verification-mode'] });
@@ -111,5 +106,5 @@ function executeRequest(action, options, root) {
     return activity(saved, { checkpoints: 1 });
   }
   if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|lookup|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
 }

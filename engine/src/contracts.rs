@@ -29,7 +29,7 @@ pub const WRITE_OPERATIONS: &[&str] = &[
     "task.transition",
     "task.comment",
 ];
-const ROLES: &[&str] = &[
+pub const ROLES: &[&str] = &[
     "locator",
     "researcher",
     "implementer",
@@ -57,6 +57,12 @@ pub fn safe_integer(value: &Value) -> Option<i64> {
 /// JavaScript string length, which bounds identifiers in UTF-16 code units.
 pub fn js_length(text: &str) -> usize {
     text.encode_utf16().count()
+}
+
+/// Whether `text.trim()` is empty in JavaScript, whose whitespace includes U+FEFF but not U+0085.
+pub fn js_blank(text: &str) -> bool {
+    text.chars()
+        .all(|c| c == '\u{feff}' || (c.is_whitespace() && c != '\u{85}'))
 }
 
 fn object<'a>(value: &'a Value, allowed: &[&str], label: &str) -> Result<&'a Map<String, Value>> {
@@ -95,7 +101,7 @@ fn optional_strings(
     }
 }
 
-fn kebab(text: &str) -> bool {
+pub fn kebab(text: &str) -> bool {
     !text.is_empty()
         && text.split('-').all(|part| {
             !part.is_empty()

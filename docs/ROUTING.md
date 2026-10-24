@@ -175,7 +175,8 @@ This routing contract does not replace host permissions. `explore` remains a foc
 `npm run model:advice -- --root <project> --data <request.json>` recommends a configured
 logical profile without calling a model. Requests name `host`, `role`, `task`, `revision`,
 optional `requiredCapabilities`, `capabilityClass`, `currentProfile` and bounded `attempts`. The `verifier` role is available.
-Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default 1) and
+Consumer `execution.profiles` declares capabilities, `maxAttempts` (1–5, default
+`efficiency.attempts.maxAttempts`, bundled 3) and
 optional `class` (`economical`, `standard`, `strong`) and `escalateTo`; existing role/host
 delegation settings and exact model mappings
 remain necessary. Profiles and escalation chains are optional and contain no vendor defaults.
