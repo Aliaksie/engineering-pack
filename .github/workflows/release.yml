@@ -7,7 +7,11 @@ concurrency:
   group: engineering-pack-distribution-next
   cancel-in-progress: false
 jobs:
+  native:
+    name: Verify release native runtime
+    uses: ./.github/workflows/native.yml
   release:
+    needs: native
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
