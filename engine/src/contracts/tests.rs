@@ -23,7 +23,8 @@ fn evaluate(operation: &str, input: &Value) -> Option<std::result::Result<Value,
                 .get("now")
                 .and_then(Value::as_i64)
                 .unwrap_or(i64::MIN);
-            workers::budget(field("project"), defaulted("facts"), session, now)
+            validate_project(field("project"))
+                .and_then(|()| workers::budget(field("project"), defaulted("facts"), session, now))
         }
         _ => return None,
     })
@@ -90,5 +91,29 @@ fn result_key_order_matches_javascript() {
     assert_eq!(
         serde_json::to_string(&result["settings"]["efficiency"]["context"]).unwrap(),
         r#"{"elevatedAt":0.6,"compactAt":0.75,"restartAt":0.85,"action":"recommend"}"#
+    );
+}
+
+#[test]
+fn contract_corrections_over_the_frozen_javascript() {
+    let project = json!({"formatVersion": 1});
+    let error = effective_settings(&project, &json!({}), &json!({"bogus": 1})).unwrap_err();
+    assert_eq!(error, "unknown overrides field: bogus");
+
+    // Contradictory counts fail even when the observation could never be fresh.
+    let settings = &effective_settings(&project, &json!({}), &json!({})).unwrap()["settings"];
+    let facts = json!({"capacity": 4, "occupiedSlots": 1, "taskWorkers": 1});
+    assert!(workers::budget(settings, &facts, None, 0).is_err());
+
+    // Non-string identities fail their type check rather than a coerced pattern.
+    let binding = |field: &str, value: Value| {
+        let mut git = json!({"provider": "git", "transport": "cli", "command": "git"});
+        git[field] = value;
+        validate_project(&json!({"formatVersion": 1, "services": {"git": git}})).unwrap_err()
+    };
+    assert_eq!(binding("host", json!(443)), "invalid binding host");
+    assert_eq!(
+        binding("repository", json!(["a/b"])),
+        "invalid binding repository"
     );
 }

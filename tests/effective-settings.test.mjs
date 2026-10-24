@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { decide } from '../application/engine-client.mjs';
+import { workerBudget } from '../engine/routing/worker-budget.mjs';
+import { validateProject } from '../engine/contracts/project.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 const resolve = input => decide('effective-settings', { project: {formatVersion:1}, ...input });
 test('nested precedence retains false, zero and sibling defaults without mutation', () => {
@@ -23,6 +25,13 @@ test('invalid limits, unknown fields, permission preferences and thresholds fail
   assert.throws(()=>resolve({preferences:{permissions:{writeOperations:['git.push']}}}), /unknown/);
   assert.throws(()=>resolve({overrides:{efficiency:{context:{compactAt:0.9}}}}), /thresholds/);
   assert.throws(()=>resolve({project:{formatVersion:1,efficiency:{unknown:true}}}), /unknown/);
+});
+test('override errors name overrides, stale contradictory counts and non-string identities fail', () => {
+  assert.throws(() => resolve({ overrides:{bogus:1} }), /unknown overrides field: bogus/);
+  assert.throws(() => workerBudget({formatVersion:1}, { capacity:4, occupiedSlots:1, taskWorkers:1 }), /must fit occupied slots/);
+  const binding = (field, value) => () => validateProject({ formatVersion:1, services:{ git:{ provider:'git', transport:'cli', command:'git', [field]:value } } });
+  assert.throws(binding('host', 443), /^Error: invalid binding host$/);
+  assert.throws(binding('repository', ['a/b']), /^Error: invalid binding repository$/);
 });
 test('JS commands read private preferences and create no repository config', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'craft-settings-'));

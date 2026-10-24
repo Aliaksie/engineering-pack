@@ -1,5 +1,5 @@
 //! Worker capacity: a fresh host observation, independent of preferences and approval.
-use crate::contracts::{js_length, safe_integer, validate_project};
+use crate::contracts::{js_length, safe_integer};
 use crate::timestamp;
 use serde_json::{Value, json};
 
@@ -15,14 +15,14 @@ const FACTS: &[&str] = &[
 const FRESH_MS: i64 = 30_000;
 
 /// Effective worker limit for one task tree from caller-supplied facts at `now_ms`.
-/// `observedAt` must be ISO 8601 with a UTC date or explicit offset.
+/// `settings` are validated effective settings; `observedAt` must be ISO 8601 with a
+/// UTC date or explicit offset.
 pub fn budget(
     settings: &Value,
     facts: &Value,
     session: Option<&str>,
     now_ms: i64,
 ) -> Result<Value, String> {
-    validate_project(settings)?;
     let facts = facts
         .as_object()
         .filter(|facts| facts.keys().all(|key| FACTS.contains(&key.as_str())))
@@ -42,6 +42,12 @@ pub fn budget(
         }
     }
     let [capacity, occupied, task_workers] = counts;
+    // Contradictory counts are invalid input whether or not the observation is fresh.
+    if let (Some(occupied), Some(task_workers)) = (occupied, task_workers)
+        && task_workers > occupied - 1
+    {
+        return Err("worker slot counts exclude the main agent and must fit occupied slots".into());
+    }
     if facts
         .get("allowed")
         .is_some_and(|allowed| !allowed.is_boolean())
@@ -89,9 +95,6 @@ pub fn budget(
     };
     if !fresh || facts.get("allowed") != Some(&Value::Bool(true)) {
         return finish(json!({ "reason": "fresh-host-capacity-or-session-policy-unavailable" }));
-    }
-    if task_workers > occupied - 1 {
-        return Err("worker slot counts exclude the main agent and must fit occupied slots".into());
     }
     let other = occupied - 1 - task_workers;
     let limit = requested.min((capacity - 1 - other).max(0));

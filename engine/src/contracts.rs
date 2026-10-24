@@ -369,24 +369,6 @@ fn validate_binding(service: &str, binding: &Value) -> Result {
     {
         return Err("binding command required".into());
     }
-    // `RegExp.test` coerces non-strings; the type check below still rejects them.
-    let coerced = |value: &Value| {
-        value
-            .as_str()
-            .map_or_else(|| value.to_string(), str::to_string)
-    };
-    if binding
-        .get("host")
-        .is_some_and(|host| !host_name(&coerced(host)))
-    {
-        return Err("invalid binding host".into());
-    }
-    if binding
-        .get("repository")
-        .is_some_and(|repository| !repository_identity(&coerced(repository)))
-    {
-        return Err("invalid repository identity".into());
-    }
     for field in ["host", "repository"] {
         if binding
             .get(field)
@@ -394,6 +376,20 @@ fn validate_binding(service: &str, binding: &Value) -> Result {
         {
             return Err(format!("invalid binding {field}"));
         }
+    }
+    if binding
+        .get("host")
+        .and_then(Value::as_str)
+        .is_some_and(|host| !host_name(host))
+    {
+        return Err("invalid binding host".into());
+    }
+    if binding
+        .get("repository")
+        .and_then(Value::as_str)
+        .is_some_and(|repository| !repository_identity(repository))
+    {
+        return Err("invalid repository identity".into());
     }
     let operations = match binding.get("operations") {
         Some(Value::Object(operations)) => Some(operations),
@@ -522,11 +518,10 @@ fn validate_execution(execution: &Map<String, Value>) -> Result {
         {
             return Err("invalid profile capabilities".into());
         }
-        // `Number.isInteger`, not a safe-integer bound.
-        if profile.get("maxAttempts").is_some_and(|n| {
-            !n.as_f64()
-                .is_some_and(|n| n.fract() == 0.0 && (1.0..=5.0).contains(&n))
-        }) {
+        if profile
+            .get("maxAttempts")
+            .is_some_and(|n| !safe_integer(n).is_some_and(|n| (1..=5).contains(&n)))
+        {
             return Err("profile maxAttempts must be 1..5".into());
         }
         if profile
@@ -699,7 +694,7 @@ pub fn effective_settings(
     validate_project(project)?;
     let defaults = default_settings();
     validate_settings(preferences, &defaults, "preferences")?;
-    validate_settings(overrides, &defaults, "preferences")?;
+    validate_settings(overrides, &defaults, "overrides")?;
     let (mut settings, mut origins) = (Map::new(), Map::new());
     merge(
         &mut settings,
