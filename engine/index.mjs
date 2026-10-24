@@ -19,7 +19,7 @@ import { modelAdvice, capabilityAdvice } from './policy/models.mjs';
 import { sessionAdvice } from './session/advice.mjs';
 import { sessionStatus, sessionObservationPlan } from './session/status.mjs';
 import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchanged, compareCheckpoint } from './checkpoint.mjs';
-import { activityUpdate, appendAttempt, attemptReceipt, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
+import { activityUpdate, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
 import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
 import { hintValid, validateHint, hintEligible } from './cache/reuse.mjs';
@@ -88,8 +88,6 @@ const operations = {
   'checkpoint-state': a => checkpointState(a.previous, a.metadata, a.repository, a.updated),
   'checkpoint-compare': a => compareCheckpoint(a.saved, a.current),
   'activity-update': a => activityUpdate(a.state, a.values),
-  'attempt-receipt': a => attemptReceipt(a.attempt, a.repository, a.id, a.at),
-  'attempt-append': a => appendAttempt(a.state, a.receipt),
   'attempt-status': a => attemptStatus(a.records, a.operation),
   'context-requests': a => contextRequests(a.plan),
   'context-summary': a => summarizeContext(a.entries, a.missing, a.budgetBytes),

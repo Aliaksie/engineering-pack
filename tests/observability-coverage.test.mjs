@@ -13,7 +13,6 @@ import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
 import { execute } from '../cli/requests.mjs';
-import { recordAttempt } from '../application/session/activity.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { discover } from '../application/discovery/discover.mjs';
 import { readCheckpoint } from '../application/checkpoint.mjs';
@@ -160,9 +159,10 @@ test('review preparation/validation and checkpoint flows have traced success and
 });
 test('attempt recording uses cumulative counter beyond bounded receipt retention',t=>{
   const root=fixture(t);
-  withTelemetry(root,{session:'attempts'},()=>{
-    for(let index=0;index<26;index++) recordAttempt(root,'attempts','task',{operation:'verify',target:'acceptance',approach:'probe',evidence:'check.json',outcome:'passed'});
-  });
+  const data=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'attempt-')),'attempt.json');
+  t.after(()=>fs.rmSync(path.dirname(data),{recursive:true,force:true}));
+  fs.writeFileSync(data,JSON.stringify({operation:'verify',target:'acceptance',approach:'probe',evidence:'check.json',outcome:'passed'}));
+  for(let index=0;index<26;index++) run(['session-attempt','--root',root,'--session','attempts','--task','task','--data',data]);
   const events=readTelemetry(root).filter(event=>event.name==='attempt.recorded');
   assert.deepEqual(events.slice(-3).map(event=>event.attributes.recordedAttempts),[24,25,26]);
   assert.ok(events.every(event=>!Object.hasOwn(event.attributes,'attemptNumber')));

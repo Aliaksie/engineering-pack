@@ -105,6 +105,44 @@ pub fn update_state(
     )
 }
 
+/// Append one attempt receipt bound to the task's current source; the attempt budget is
+/// the profile's, else the project default. Returns the updated state.
+pub fn record_attempt(
+    root: &Path,
+    session: &str,
+    task: &str,
+    attempt: &Value,
+    settings: &Value,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let profile = attempt.get("profile").and_then(Value::as_str);
+    let limit = profile
+        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
+        .filter(|limit| !limit.is_null())
+        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"));
+    let mut bounded = Map::new();
+    if let Some(limit) = limit {
+        bounded.insert("maxAttempts".into(), limit.clone());
+    }
+    if let Some(fields) = attempt.as_object() {
+        bounded.extend(fields.clone());
+    }
+    let attempt = if attempt.is_object() {
+        Value::Object(bounded)
+    } else {
+        attempt.clone()
+    };
+    let state = read_state(root, session, task, recorder, parent)?;
+    let repository = snapshot::workspace(root, state["taskRecord"].get("repositories"), false)?;
+    let id = craft_platform::telemetry::uuid()?;
+    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
+    let receipt = session::attempt_receipt(&attempt, &repository, &id, &at)?;
+    update_state(root, session, task, recorder, parent, |state| {
+        Ok(session::append_attempt(state, receipt)?)
+    })
+}
+
 /// Add activity counters to the task state; a failure is reported and returned as a
 /// warning, never raised.
 pub fn add_activity(

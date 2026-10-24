@@ -130,8 +130,7 @@ test('legacy lifecycle and checkpoint fixtures retain declared completion withou
   const checkpoint = call('checkpoint-state', { previous: {}, metadata: { taskId: 'fix-value', continuation: stepped.continuation }, repository: legacy.repository, updated: legacy.at });
   assert.equal(call('checkpoint-validate', { state: checkpoint }).formatVersion, 1);
   assert.deepEqual(call('acceptance-coverage', { contract: null }), { assurance: 'declared', coverage: 'unknown', complete: false, criteria: [] });
-  // Legacy declared receipts and checkpoints never acquire criterion coverage.
-  invalid('attempt-receipt', { attempt: { operation: 'verify', target: 'value', approach: 'check', evidence: 'output', outcome: 'passed', criterionIds: ['value'] }, repository: legacy.repository, id: 'attempt', at: legacy.at });
+  // Legacy declared checkpoints never acquire criterion coverage; receipts: attempt-contracts.json.
   invalid('checkpoint-metadata', { metadata: { engineeringContract: fixture('contract') } });
   invalid('activity-validate', { state: { ...legacy.state, formatVersion: 2 } });
   const augmented = { ...frozen.state, taskRecord: { ...frozen.state.taskRecord, engineeringContract: fixture('contract') } };

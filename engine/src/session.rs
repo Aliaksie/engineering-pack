@@ -10,6 +10,26 @@ pub mod acceptance;
 type Result<T = ()> = std::result::Result<T, String>;
 
 pub const BLOCKERS: &[&str] = &["permission-denied", "tool-unavailable", "blocked"];
+pub const OUTCOMES: &[&str] = &[
+    "passed",
+    "quality-failure",
+    "permission-denied",
+    "tool-unavailable",
+    "blocked",
+    "prerequisite-resolved",
+];
+const ATTEMPT_FIELDS: &[&str] = &[
+    "operation",
+    "target",
+    "approach",
+    "evidence",
+    "outcome",
+    "profile",
+    "maxAttempts",
+    "escalationReason",
+];
+/// Saved attempts per task; also the most that may be open at once.
+const ATTEMPT_CAPACITY: usize = 24;
 pub const FEATURES: &[&str] = &[
     "routing",
     "hint-deduplication",
@@ -128,6 +148,93 @@ pub fn unresolved(records: &[Value]) -> Vec<usize> {
             pass.max(resolution).is_none_or(|closed| index > closed)
         })
         .collect()
+}
+
+/// A meaningful attempt as a receipt bound to the source it was observed at; attempts at the
+/// same operation, target and approach against unchanged source share a signature.
+pub fn attempt_receipt(attempt: &Value, repository: &Value, id: &str, at: &str) -> Result<Value> {
+    let invalid = || "invalid meaningful attempt receipt".to_string();
+    let fields = attempt.as_object().ok_or_else(invalid)?;
+    let valid = fields
+        .keys()
+        .all(|key| ATTEMPT_FIELDS.contains(&key.as_str()))
+        && ["operation", "target", "approach", "evidence"]
+            .iter()
+            .all(|key| fields.get(*key).is_some_and(text))
+        && fields
+            .get("outcome")
+            .and_then(Value::as_str)
+            .is_some_and(|outcome| OUTCOMES.contains(&outcome))
+        && fields.get("profile").is_none_or(text)
+        && fields
+            .get("escalationReason")
+            .is_none_or(|reason| text(reason) && fields.contains_key("profile"))
+        && fields
+            .get("maxAttempts")
+            .is_none_or(|limit| safe_integer(limit).is_some_and(|n| (1..=5).contains(&n)));
+    if !valid {
+        return Err(invalid());
+    }
+    let source = source(repository);
+    let signature = match &source {
+        Value::Null => Value::Null,
+        source => json!(digest(&json!([
+            fields["operation"],
+            fields["target"],
+            fields["approach"],
+            source
+        ]))),
+    };
+    let mut receipt = fields.clone();
+    receipt.insert("id".into(), json!(id));
+    receipt.insert("source".into(), source);
+    receipt.insert("signature".into(), signature);
+    if let Some(head) = repository.get("head") {
+        receipt.insert("revision".into(), head.clone());
+    }
+    receipt.insert("at".into(), json!(at));
+    Ok(Value::Object(receipt))
+}
+
+/// Append a receipt. A resolution needs a matching open blocker; open records are never
+/// evicted, so recording fails once more than the capacity would be open, and only closed
+/// history (oldest first) makes room.
+pub fn append_attempt(state: &mut Value, receipt: Value) -> Result {
+    let mut records = state["attempts"]
+        .as_array()
+        .ok_or("invalid session state")?
+        .clone();
+    let same = |record: &Value| {
+        record["operation"] == receipt["operation"] && record["target"] == receipt["target"]
+    };
+    if receipt["outcome"] == "prerequisite-resolved"
+        && !unresolved(&records).into_iter().any(|index| {
+            let record = &records[index];
+            same(record) && BLOCKERS.contains(&record["outcome"].as_str().unwrap_or_default())
+        })
+    {
+        return Err("prerequisite resolution requires a matching unresolved blocker".into());
+    }
+    let mut counters = Map::from_iter([("operationsAttempted".to_string(), json!(1))]);
+    if receipt.get("escalationReason").is_some_and(truthy) {
+        counters.insert("modelEscalations".into(), json!(1));
+    }
+    records.push(receipt);
+    let open = unresolved(&records);
+    if open.len() > ATTEMPT_CAPACITY {
+        return Err("session attempt capacity reached: preserve evidence and resolve an active operation before recording more attempts".into());
+    }
+    add_activity(state, &counters)?;
+    let mut discard = records.len().saturating_sub(ATTEMPT_CAPACITY);
+    let mut index = 0;
+    records.retain(|_| {
+        let evict = discard > 0 && !open.contains(&index);
+        discard -= usize::from(evict);
+        index += 1;
+        !evict
+    });
+    state["attempts"] = Value::Array(records);
+    Ok(())
 }
 
 pub fn validate_features(records: Option<&Value>) -> Result {
@@ -254,7 +361,9 @@ pub fn validate(state: &Value) -> Result {
         && object("activity")
             .is_some_and(|a| a.values().all(|v| safe_integer(v).is_some_and(|n| n >= 0)))
         && object("lookups").is_some_and(|l| l.len() <= 32)
-        && state["attempts"].as_array().is_some_and(|a| a.len() <= 24)
+        && state["attempts"]
+            .as_array()
+            .is_some_and(|a| a.len() <= ATTEMPT_CAPACITY)
         && discovery;
     if valid {
         Ok(())

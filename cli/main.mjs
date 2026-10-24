@@ -7,7 +7,7 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session-attempt']); // complete use cases in the native runtime
 
 const help = {
   'workspace-open': { usage: 'workspace-open --root project --session id [--task id] [--operation scope]', mode: 'lazily allocate bounded private scratch for the active task; no host temp/cache changes' },
@@ -28,9 +28,6 @@ const help = {
   'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
   session: { usage: 'session [--root project] [--session id --task task-id] [--data task.json] [--json]',
     taskFields: ['id', 'revision', 'stage', 'operation', 'status', 'files', 'safeBoundary', 'phaseChanged', 'almostComplete', 'compacted', 'staleAssumptions', 'risks', 'nextStep'], mode: 'recommendation-only' },
-  'session-attempt': { usage: 'session-attempt --root project --session id --task task-id --data attempt.json',
-    example: { operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check.json', outcome: 'passed' },
-    outcomes: ['passed', 'quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved'], optional: ['profile', 'maxAttempts', 'escalationReason'], mode: 'receipt only; no retry execution' }
 };
 
 export function run(argv) {

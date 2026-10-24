@@ -3,11 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { discover } from '../application/discovery/discover.mjs';
 import { attemptStatus } from '../application/session/activity.mjs';
-import { readSessionState, recordAttempt } from '../application/session/activity.mjs';
+import { readSessionState } from '../application/session/activity.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
@@ -31,6 +31,15 @@ function fixture(t) {
   return { root, git, write };
 }
 const scope = { session: 's1', task: 'T1' };
+// Attempts are recorded through the public CLI; the request file stays outside the worktree
+// so it never changes the source the receipt is bound to.
+const requests = fs.mkdtempSync(path.join(os.tmpdir(), 'session-attempt-'));
+after(() => fs.rmSync(requests, { recursive: true, force: true }));
+function recordAttempt(root, session, task, attempt) {
+  const file = path.join(requests, 'attempt.json');
+  fs.writeFileSync(file, JSON.stringify(attempt));
+  return run(['session-attempt', '--root', root, '--session', session, '--task', task, '--data', file]);
+}
 const continuation = () => Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, `${key}: concise resume evidence`]));
 const receipt = extra => ({ operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check-1.json', outcome: 'quality-failure', ...extra });
 const now = Date.parse('2026-10-18T12:00:00Z');

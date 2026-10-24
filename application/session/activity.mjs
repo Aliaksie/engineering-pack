@@ -1,7 +1,6 @@
-import { readProject } from '../project/configuration.mjs';
 import { observe, diagnostic, withTelemetry } from '../telemetry/observe.mjs';
 import { decide, digest } from '../engine-client.mjs';
-import { stateFile, readState, lockState, releaseState, writeState, clock, uniqueId } from '../../platform/index.mjs';
+import { stateFile, readState, lockState, releaseState, writeState } from '../../platform/index.mjs';
 import { repositorySnapshot } from '../repositories.mjs';
 
 function filename(root, session, task, create = false) {
@@ -23,17 +22,7 @@ function updateState(root, session, task, update) {
   } finally { releaseState(ticket); }
 }
 export const addActivity = (state, values) => Object.assign(state, decide('activity-update', { state, values }));
-function recordAttemptOperation(root, session, task, attempt, { preferencesFile } = {}) {
-  const project = readProject(root, { preferencesFile });
-  const profileLimit = project.execution?.profiles?.[attempt.profile]?.maxAttempts;
-  const boundedAttempt = { maxAttempts: profileLimit ?? project.efficiency.attempts.maxAttempts, ...attempt };
-  const receipt = decide('attempt-receipt', { attempt: boundedAttempt, repository: taskRepository(root, session, task), id: uniqueId(), at: clock().iso });
-  return updateSessionState(root, session, task, state => Object.assign(state, decide('attempt-append', { state, receipt })));
-}
-
 export const attemptStatus = (records, operation) => decide('attempt-status', { records, operation });
-
-export const recordAttempt = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('attempt.recorded', () => recordAttemptOperation(...args), result => ({ recordedAttempts: result.activity.operationsAttempted, reason: 'recorded' }), { failureCode:'VALIDATION_FAILED' }));
 
 export const updateSessionState = (...args) => withTelemetry(args[0], { session:args[1] }, () => observe('state.updated', () => updateState(...args), () => ({ area:'session' }), { failureCode:'STATE_UNAVAILABLE' }));
 

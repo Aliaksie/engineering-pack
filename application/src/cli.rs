@@ -20,6 +20,7 @@ pub const COMMANDS: &[&str] = &[
     "context-report",
     "checkpoint-save",
     "checkpoint-read",
+    "session-attempt",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -650,6 +651,54 @@ fn checkpoint_save(
     Ok(saved)
 }
 
+/// A local attempt receipt for the explicit or bound task; nothing is retried or executed.
+fn session_attempt(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let root = root(options);
+    let session = options.get("session").filter(|s| !s.is_empty());
+    let mut task = options
+        .get("task")
+        .filter(|t| !t.is_empty())
+        .map(str::to_string);
+    if task.is_none() && session.is_some() {
+        task = crate::session::active_task(&root, session)?;
+    }
+    let (Some(file), Some(session), Some(task)) =
+        (options.get("data").filter(|d| !d.is_empty()), session, task)
+    else {
+        return Err("session-attempt requires --session, --task and --data".into());
+    };
+    let attempt = input(recorder, parent, file)?;
+    let operation = recorder.start("attempt.recorded", Some(parent));
+    let result = loaded(options, recorder, &operation).and_then(|settings| {
+        crate::session::record_attempt(
+            &root, session, &task, &attempt, &settings, recorder, &operation,
+        )
+    });
+    let (attributes, failure) = match &result {
+        Ok(state) => (
+            Map::from_iter([
+                (
+                    "recordedAttempts".to_string(),
+                    state["activity"]["operationsAttempted"].clone(),
+                ),
+                ("reason".to_string(), json!("recorded")),
+            ]),
+            None,
+        ),
+        Err(error) => (Map::new(), Some(error.code("VALIDATION_FAILED"))),
+    };
+    recorder.complete(operation, attributes, failure);
+    let state = result?;
+    Ok(json!({
+        "recorded": state["attempts"].as_array().and_then(|a| a.last()),
+        "authorization": "local receipt only; no retry, model switch or command was executed",
+    }))
+}
+
 fn checkpoint_read(
     options: &Options,
     recorder: &mut Recorder,
@@ -701,6 +750,13 @@ fn help(action: &str) -> Value {
         "checkpoint-read" => json!({
             "usage": "checkpoint-read --root project --session id",
             "mode": "read-only recovery comparison",
+        }),
+        "session-attempt" => json!({
+            "usage": "session-attempt --root project --session id --task task-id --data attempt.json",
+            "example": {"operation": "implement", "target": "acceptance:regression", "approach": "bounded-fix", "evidence": "artifacts/check.json", "outcome": "passed"},
+            "outcomes": craft_engine::session::OUTCOMES,
+            "optional": ["profile", "maxAttempts", "escalationReason"],
+            "mode": "receipt only; no retry execution",
         }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
@@ -805,6 +861,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "locate" => locate,
         "checkpoint-save" => checkpoint_save,
         "checkpoint-read" => checkpoint_read,
+        "session-attempt" => session_attempt,
         _ => settings,
     };
     let mut activity = None;
@@ -826,13 +883,22 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                     None,
                 );
             }
-            let compact = action == "checkpoint-save"
-                && context["structured"] != true
+            let compact = context["structured"] != true
                 && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
-            let text = if compact {
-                receipt(value)
-            } else {
-                render(value)
+            let text = match action {
+                "checkpoint-save" if compact => receipt(value),
+                "session-attempt" if compact => {
+                    let recorded = &value["recorded"];
+                    let field =
+                        |name: &str| recorded[name].as_str().unwrap_or_default().to_string();
+                    format!(
+                        "Attempt recorded: {} / {} — {}\n",
+                        field("operation"),
+                        field("target"),
+                        field("outcome")
+                    )
+                }
+                _ => render(value),
             };
             (0, text, String::new())
         }

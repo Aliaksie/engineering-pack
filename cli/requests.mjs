@@ -8,7 +8,7 @@ import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry 
 import { readProject, readInput } from '../application/project/configuration.mjs';
 import { locateCommand } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
-import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
+import { updateSessionState, addActivity, activeTask } from '../application/session/activity.mjs';
 import { bundleRoot, nativeCommand } from '../platform/index.mjs';
 export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
@@ -25,10 +25,10 @@ function executeRequest(action, options, root) {
     if (options.capture && options.session) throw new Error('choose --capture or --session for telemetry-report');
     return options.capture ? readTelemetryCapture(root, options.capture) : telemetryReport(root, { session: options.session });
   }
-  if (options.session && !options.task && ['worker-status', 'task-features', 'task-feature', 'route', 'context-report', 'locate', 'session-attempt', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
+  if (options.session && !options.task && ['worker-status', 'task-features', 'task-feature', 'route', 'context-report', 'locate', 'task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) {
     try { options = { ...options, task: activeTask(root, options.session) }; }
     catch (error) {
-      if (['task-step', 'session-attempt', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) throw error;
+      if (['task-step', 'task-offer', 'task-decision', 'task-action-check'].includes(action)) throw error;
       diagnostic('state', 'STATE_UNAVAILABLE');
     }
   }
@@ -60,11 +60,6 @@ function executeRequest(action, options, root) {
 
   if (action === 'locate') return locateCommand(root, options);
   if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
-  if (action === 'session-attempt') {
-    if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');
-    const state = recordAttempt(root, options.session, options.task, readInput(options.data), { preferencesFile: options.preferences });
-    return { recorded: state.attempts.at(-1), authorization: 'local receipt only; no retry, model switch or command was executed' };
-  }
   const activity = (result, values) => {
     if (options.session && options.task) {
       try { updateSessionState(root, options.session, options.task, state => addActivity(state, values)); }
@@ -84,5 +79,5 @@ function executeRequest(action, options, root) {
     return activity(JSON.parse(outcome.stdout), outcome.activity);
   }
   if (action === 'route') return activity(JSON.parse(forward('route', options).stdout), { routingDecisions: 1 });
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|locate> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|locate> [--root project] [options]');
 }

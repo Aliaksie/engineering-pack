@@ -16,11 +16,11 @@ messages and explicitly listed diagnostic result paths are excluded from wording
 comparison; diagnostic fields must remain strings. Echoed user descriptions and
 identity material remain exact. Arrays retain order and absent fields differ from null.
 
-The 260 cases include an empty-input request for each of the 82 engine operations,
+The 226 cases include an empty-input request for each of the 73 remaining JavaScript engine operations,
 envelope failures, UTF-8 hashes, digest ordering, portable paths, literal discovery,
 routing, continuation, acceptance projections, blocked attempts, checkpoint binding,
-review publication plans, and worker/action lifecycle transitions. There are 158
-successful responses across all 82 operations. Task cases preserve completion,
+review publication plans, and worker/action lifecycle transitions. There are 140
+successful responses across 72 operations. Task cases preserve completion,
 stale-source detection, scope reset and binding rejection. Grounding cases preserve
 incomplete coverage and source provenance; session cases use explicit observations
 and a fixed clock. Settings, model advice and service cases preserve precedence,
@@ -116,3 +116,11 @@ are compared exactly; other error prose is not. The Rust replay
 (`cargo test -p craft-engine --test checkpoint_contracts`) lists five intentional
 corrections: impossible calendar dates such as `2026-02-30`, which `Date.parse` rolled over,
 are rejected in acceptance observation times and feature outcome times.
+
+`attempt-contracts.json` freezes 185 JavaScript engine responses at `6864ab2` for attempt
+receipts and appends: every field of a valid attempt mutated, repository source states, and
+deterministic append walks whose every step stores the saved attempt IDs and counters or the
+refusal (resolution rules, open-attempt capacity, closed-history eviction, counter overflow).
+It includes the seven `attempt-receipt`/`attempt-append` cases retired from
+`engine-contracts.json`. The Rust replay (`cargo test -p craft-engine --test attempt_contracts`)
+has no corrections.
