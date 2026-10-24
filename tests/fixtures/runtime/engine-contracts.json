@@ -11833,6 +11833,1408 @@
           }
         }
       }
+    },
+    {
+      "id": "settings:precedence",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "routing": {
+              "editHints": false
+            },
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 1
+              }
+            }
+          },
+          "preferences": {
+            "routing": {
+              "editHints": true,
+              "dedupeHints": false
+            },
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 2
+              }
+            }
+          },
+          "overrides": {
+            "efficiency": {
+              "delegation": {
+                "maxWorkers": 0
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "settings": {
+            "routing": {
+              "editHints": false,
+              "dedupeHints": false
+            },
+            "checkpoint": {
+              "enabled": true
+            },
+            "workspace": {
+              "enabled": true,
+              "maxSessions": 20,
+              "scratch": {
+                "staleAfterHours": 24,
+                "maxBytes": 8388608,
+                "maxFiles": 64
+              },
+              "evidence": {
+                "enabled": true,
+                "retentionDays": 7,
+                "maxArtifacts": 16,
+                "maxBytes": 1048576
+              }
+            },
+            "efficiency": {
+              "lookup": {
+                "enabled": true,
+                "reuse": true
+              },
+              "batching": {
+                "enabled": true,
+                "maxConcurrency": 3
+              },
+              "attempts": {
+                "enabled": true,
+                "maxAttempts": 3
+              },
+              "advice": {
+                "enabled": true,
+                "at": "meaningful-boundaries",
+                "nextStep": true
+              },
+              "review": {
+                "mode": "recommend"
+              },
+              "context": {
+                "elevatedAt": 0.6,
+                "compactAt": 0.75,
+                "restartAt": 0.85,
+                "action": "recommend"
+              },
+              "delegation": {
+                "mode": "recommend",
+                "maxWorkers": 0
+              }
+            },
+            "execution": {
+              "profiles": {
+                "economical": {
+                  "class": "economical",
+                  "capabilities": [],
+                  "escalateTo": "standard"
+                },
+                "standard": {
+                  "class": "standard",
+                  "capabilities": [],
+                  "escalateTo": "strong"
+                },
+                "strong": {
+                  "class": "strong",
+                  "capabilities": []
+                }
+              },
+              "roles": {
+                "locator": {
+                  "mode": "tool",
+                  "profile": "economical"
+                },
+                "researcher": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "implementer": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "reviewer": {
+                  "mode": "main",
+                  "profile": "strong"
+                },
+                "planner": {
+                  "mode": "main",
+                  "profile": "standard"
+                },
+                "verifier": {
+                  "mode": "main",
+                  "profile": "standard"
+                }
+              }
+            },
+            "formatVersion": 1
+          },
+          "origins": {
+            "routing.editHints": "project",
+            "routing.dedupeHints": "user",
+            "checkpoint.enabled": "bundled",
+            "workspace.enabled": "bundled",
+            "workspace.maxSessions": "bundled",
+            "workspace.scratch.staleAfterHours": "bundled",
+            "workspace.scratch.maxBytes": "bundled",
+            "workspace.scratch.maxFiles": "bundled",
+            "workspace.evidence.enabled": "bundled",
+            "workspace.evidence.retentionDays": "bundled",
+            "workspace.evidence.maxArtifacts": "bundled",
+            "workspace.evidence.maxBytes": "bundled",
+            "efficiency.lookup.enabled": "bundled",
+            "efficiency.lookup.reuse": "bundled",
+            "efficiency.batching.enabled": "bundled",
+            "efficiency.batching.maxConcurrency": "bundled",
+            "efficiency.attempts.enabled": "bundled",
+            "efficiency.attempts.maxAttempts": "bundled",
+            "efficiency.advice.enabled": "bundled",
+            "efficiency.advice.at": "bundled",
+            "efficiency.advice.nextStep": "bundled",
+            "efficiency.review.mode": "bundled",
+            "efficiency.context.elevatedAt": "bundled",
+            "efficiency.context.compactAt": "bundled",
+            "efficiency.context.restartAt": "bundled",
+            "efficiency.context.action": "bundled",
+            "efficiency.delegation.mode": "bundled",
+            "efficiency.delegation.maxWorkers": "task",
+            "execution.profiles.economical.class": "bundled",
+            "execution.profiles.economical.capabilities": "bundled",
+            "execution.profiles.economical.escalateTo": "bundled",
+            "execution.profiles.standard.class": "bundled",
+            "execution.profiles.standard.capabilities": "bundled",
+            "execution.profiles.standard.escalateTo": "bundled",
+            "execution.profiles.strong.class": "bundled",
+            "execution.profiles.strong.capabilities": "bundled",
+            "execution.roles.locator.mode": "bundled",
+            "execution.roles.locator.profile": "bundled",
+            "execution.roles.researcher.mode": "bundled",
+            "execution.roles.researcher.profile": "bundled",
+            "execution.roles.implementer.mode": "bundled",
+            "execution.roles.implementer.profile": "bundled",
+            "execution.roles.reviewer.mode": "bundled",
+            "execution.roles.reviewer.profile": "bundled",
+            "execution.roles.planner.mode": "bundled",
+            "execution.roles.planner.profile": "bundled",
+            "execution.roles.verifier.mode": "bundled",
+            "execution.roles.verifier.profile": "bundled",
+            "formatVersion": "project"
+          },
+          "runtimeApplied": [
+            "routing",
+            "checkpoint",
+            "workspace",
+            "efficiency.lookup",
+            "efficiency.attempts.maxAttempts",
+            "efficiency.context.thresholds",
+            "efficiency.context.action",
+            "efficiency.review.mode",
+            "efficiency.delegation.maxWorkers",
+            "efficiency.delegation.mode"
+          ],
+          "prerequisites": [
+            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
+            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
+            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
+          ],
+          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
+        }
+      }
+    },
+    {
+      "id": "settings:invalid-threshold-order",
+      "request": {
+        "formatVersion": 1,
+        "operation": "effective-settings",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "overrides": {
+            "efficiency": {
+              "context": {
+                "elevatedAt": 0.8
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "capability:unknown-0",
+      "request": {
+        "formatVersion": 1,
+        "operation": "capability",
+        "input": {
+          "operation": "unknown",
+          "risks": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "class": "unknown",
+          "execution": "recommendation-only",
+          "reason": "Operation is unknown.",
+          "pricing": "unknown"
+        }
+      }
+    },
+    {
+      "id": "capability:locate-0",
+      "request": {
+        "formatVersion": 1,
+        "operation": "capability",
+        "input": {
+          "operation": "locate",
+          "risks": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "class": "economical",
+          "execution": "prefer-deterministic-tool",
+          "reason": "Bounded mechanical evidence gathering can use deterministic tools or an economical profile.",
+          "pricing": "unknown; classes are not measured cost or capability",
+          "authorization": "no model switch or delegation executed"
+        }
+      }
+    },
+    {
+      "id": "capability:implement-0",
+      "request": {
+        "formatVersion": 1,
+        "operation": "capability",
+        "input": {
+          "operation": "implement",
+          "risks": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "class": "standard",
+          "execution": "recommendation-only",
+          "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+          "pricing": "unknown; classes are not measured cost or capability",
+          "authorization": "no model switch or delegation executed"
+        }
+      }
+    },
+    {
+      "id": "capability:locate-1",
+      "request": {
+        "formatVersion": 1,
+        "operation": "capability",
+        "input": {
+          "operation": "locate",
+          "risks": [
+            "security-sensitive"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "class": "strong",
+          "execution": "recommendation-only",
+          "reason": "The declared operation requires architecture or difficult cross-boundary reasoning.",
+          "pricing": "unknown; classes are not measured cost or capability",
+          "authorization": "no model switch or delegation executed"
+        }
+      }
+    },
+    {
+      "id": "model:default-recommendation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "model-advice",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "input": {
+            "host": "fixture",
+            "role": "implementer",
+            "task": "migration",
+            "revision": "r1"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "host": "fixture",
+          "role": "implementer",
+          "task": "migration",
+          "revision": "r1",
+          "requiredCapabilities": [],
+          "ignoredAttempts": 0,
+          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
+          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
+          "decision": "recommend",
+          "profile": "standard",
+          "execution": {
+            "mode": "main",
+            "role": "implementer"
+          },
+          "mainModel": {
+            "profile": "standard",
+            "model": null,
+            "evidence": "Consumer-declared model mapping/support; native switching and authorization must be verified separately.",
+            "switchSupported": false,
+            "decision": "retain-current-until-authorized",
+            "limitation": "Exact host model mapping is unavailable; keep current execution."
+          },
+          "workerMappingAvailable": false,
+          "capabilityClass": "standard",
+          "currentProfile": null,
+          "comparison": "unknown",
+          "attemptsRemaining": 3,
+          "reasons": [
+            "Continue in main; a worker requires supported role/model mapping, positive capacity and scoped authorization.",
+            "Exact host model mapping is unavailable; keep current execution."
+          ]
+        }
+      }
+    },
+    {
+      "id": "model:stale-blocker-ignored",
+      "request": {
+        "formatVersion": 1,
+        "operation": "model-advice",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "input": {
+            "host": "fixture",
+            "role": "implementer",
+            "task": "migration",
+            "revision": "r1",
+            "attempts": [
+              {
+                "id": "old",
+                "profile": "standard",
+                "task": "migration",
+                "revision": "r0",
+                "outcome": "permission-denied",
+                "evidence": "old-evidence"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "host": "fixture",
+          "role": "implementer",
+          "task": "migration",
+          "revision": "r1",
+          "requiredCapabilities": [],
+          "ignoredAttempts": 1,
+          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
+          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
+          "decision": "recommend",
+          "profile": "standard",
+          "execution": {
+            "mode": "main",
+            "role": "implementer"
+          },
+          "mainModel": {
+            "profile": "standard",
+            "model": null,
+            "evidence": "Consumer-declared model mapping/support; native switching and authorization must be verified separately.",
+            "switchSupported": false,
+            "decision": "retain-current-until-authorized",
+            "limitation": "Exact host model mapping is unavailable; keep current execution."
+          },
+          "workerMappingAvailable": false,
+          "capabilityClass": "standard",
+          "currentProfile": null,
+          "comparison": "unknown",
+          "attemptsRemaining": 3,
+          "reasons": [
+            "Continue in main; a worker requires supported role/model mapping, positive capacity and scoped authorization.",
+            "Exact host model mapping is unavailable; keep current execution."
+          ]
+        }
+      }
+    },
+    {
+      "id": "model:permission-blocker",
+      "request": {
+        "formatVersion": 1,
+        "operation": "model-advice",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          },
+          "input": {
+            "host": "fixture",
+            "role": "implementer",
+            "task": "migration",
+            "revision": "r1",
+            "attempts": [
+              {
+                "id": "blocked",
+                "profile": "standard",
+                "task": "migration",
+                "revision": "r1",
+                "outcome": "permission-denied",
+                "evidence": "permission-evidence"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "host": "fixture",
+          "role": "implementer",
+          "task": "migration",
+          "revision": "r1",
+          "requiredCapabilities": [],
+          "ignoredAttempts": 0,
+          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
+          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
+          "decision": "stop",
+          "profile": "standard",
+          "reasons": [
+            "Resolve permission-denied; changing models does not remove this boundary."
+          ],
+          "evidence": [
+            "permission-evidence"
+          ]
+        }
+      }
+    },
+    {
+      "id": "checkpoint:metadata-unicode",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-metadata",
+        "input": {
+          "metadata": {
+            "task": "Migrate λ",
+            "authorization": "local only",
+            "nextStep": "verify",
+            "taskId": "migration",
+            "taskContract": null,
+            "sources": [
+              "src/λ.rs"
+            ],
+            "repositories": [
+              "src/./",
+              "engine"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "task": "Migrate λ",
+          "authorization": "local only",
+          "nextStep": "verify",
+          "taskId": "migration",
+          "taskContract": null,
+          "sources": [
+            "src/λ.rs"
+          ],
+          "repositories": [
+            "src/./",
+            "engine"
+          ]
+        }
+      }
+    },
+    {
+      "id": "checkpoint:metadata-unknown-field",
+      "request": {
+        "formatVersion": 1,
+        "operation": "checkpoint-metadata",
+        "input": {
+          "metadata": {
+            "unexpected": true
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "discovery:dependent-request",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-request",
+        "input": {
+          "input": {
+            "requests": [
+              {
+                "id": "first",
+                "term": "λ"
+              },
+              {
+                "id": "later",
+                "term": "dependent",
+                "dependsOn": [
+                  "first"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "options": {
+            "paths": []
+          },
+          "terms": [
+            "λ"
+          ],
+          "paths": [],
+          "deferred": [
+            {
+              "id": "later",
+              "reason": "dependent lookup requires a later reasoning stage"
+            }
+          ],
+          "maxOutputBytes": 32768
+        }
+      }
+    },
+    {
+      "id": "discovery:deferred-only",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-deferred",
+        "input": {
+          "request": {
+            "options": {
+              "paths": []
+            },
+            "terms": [],
+            "paths": [],
+            "deferred": [
+              {
+                "id": "later",
+                "reason": "dependent lookup requires a later reasoning stage"
+              }
+            ],
+            "maxOutputBytes": 32768
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [],
+          "paths": [],
+          "matches": [],
+          "deferred": [
+            {
+              "id": "later",
+              "reason": "dependent lookup requires a later reasoning stage"
+            }
+          ],
+          "discovery": {
+            "requested": 1,
+            "reused": 0,
+            "fresh": 0,
+            "batches": 0
+          },
+          "truncated": false,
+          "bounds": {
+            "maxOutputBytes": 32768
+          }
+        }
+      }
+    },
+    {
+      "id": "discovery:deferred-over-budget",
+      "request": {
+        "formatVersion": 1,
+        "operation": "discovery-deferred",
+        "input": {
+          "request": {
+            "paths": [],
+            "deferred": [
+              {
+                "id": "later",
+                "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              }
+            ],
+            "maxOutputBytes": 256
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "services:default-unverified",
+      "request": {
+        "formatVersion": 1,
+        "operation": "services",
+        "input": {
+          "project": {
+            "formatVersion": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "local-default",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.status"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.diff"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing tasks binding"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "services:observed-inventories",
+      "request": {
+        "formatVersion": 1,
+        "operation": "services",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": [
+                "task.comment"
+              ]
+            }
+          },
+          "options": {
+            "availableCommands": [],
+            "availableMcpTools": [
+              "fixture_read"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "services": [
+            {
+              "service": "git",
+              "configured": true,
+              "source": "project",
+              "provider": "git",
+              "transport": "cli",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "git.status",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "configured",
+                  "command": "git-wrapper",
+                  "requiredParameters": [
+                    "short"
+                  ],
+                  "availability": "not-observed"
+                },
+                {
+                  "operation": "git.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.diff"
+                },
+                {
+                  "operation": "git.commit",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.commit"
+                },
+                {
+                  "operation": "git.push",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for git.push"
+                }
+              ]
+            },
+            {
+              "service": "codehost",
+              "configured": false,
+              "operations": [
+                {
+                  "operation": "change.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.diff",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                },
+                {
+                  "operation": "change.publish",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "missing codehost binding"
+                }
+              ]
+            },
+            {
+              "service": "tasks",
+              "configured": true,
+              "source": "project",
+              "provider": "consumer",
+              "transport": "mcp",
+              "scope": {
+                "account": "unverified"
+              },
+              "operations": [
+                {
+                  "operation": "task.read",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "configured",
+                  "tool": "fixture_read",
+                  "requiredParameters": [
+                    "id",
+                    "owner"
+                  ],
+                  "availability": "observed-available"
+                },
+                {
+                  "operation": "task.search",
+                  "effect": "read",
+                  "projectPolicy": "read",
+                  "authorization": "host-permissions-apply",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.search"
+                },
+                {
+                  "operation": "task.transition",
+                  "effect": "write",
+                  "projectPolicy": "disabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "missing",
+                  "availability": "not-applicable",
+                  "missing": "binding has no mapping for task.transition"
+                },
+                {
+                  "operation": "task.comment",
+                  "effect": "write",
+                  "projectPolicy": "enabled",
+                  "authorization": "explicit-user-or-job-approval-required",
+                  "mapping": "configured",
+                  "tool": "fixture_comment",
+                  "requiredParameters": [
+                    "body",
+                    "id"
+                  ],
+                  "availability": "not-observed"
+                }
+              ]
+            }
+          ],
+          "reuse": {
+            "prepare": "once-per-session-or-first-service-need",
+            "refreshOn": [
+              "project-binding-change",
+              "tool-connection-change",
+              "account-or-scope-change",
+              "relevant-operation-failure"
+            ],
+            "limits": "Reuse metadata between turns. Tool names do not establish account identity, authorization, or fresh remote state."
+          }
+        }
+      }
+    },
+    {
+      "id": "operation:cli-scalar",
+      "request": {
+        "formatVersion": 1,
+        "operation": "operation",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": [
+                "task.comment"
+              ]
+            }
+          },
+          "operation": "git.status",
+          "params": {
+            "short": true
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "git.status",
+          "service": "git",
+          "provider": "git",
+          "transport": "cli",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "command": "git-wrapper",
+          "args": [
+            "status",
+            "true"
+          ],
+          "shell": false
+        }
+      }
+    },
+    {
+      "id": "operation:mcp-typed-substitution",
+      "request": {
+        "formatVersion": 1,
+        "operation": "operation",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": [
+                "task.comment"
+              ]
+            }
+          },
+          "operation": "task.read",
+          "params": {
+            "id": 7,
+            "owner": "λ"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "task.read",
+          "service": "tasks",
+          "provider": "consumer",
+          "transport": "mcp",
+          "effect": "read",
+          "authorization": "host-permissions-apply",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "tool": "fixture_read",
+          "arguments": {
+            "id": 7,
+            "filter": "owner=λ"
+          }
+        }
+      }
+    },
+    {
+      "id": "operation:write-plan",
+      "request": {
+        "formatVersion": 1,
+        "operation": "operation",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": [
+                "task.comment"
+              ]
+            }
+          },
+          "operation": "task.comment",
+          "params": {
+            "id": 7,
+            "body": "Review λ"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "operation": "task.comment",
+          "service": "tasks",
+          "provider": "consumer",
+          "transport": "mcp",
+          "effect": "write",
+          "authorization": "explicit-user-or-job-approval-required",
+          "availability": "not-verified",
+          "output": "bounded-result",
+          "tool": "fixture_comment",
+          "arguments": {
+            "id": 7,
+            "body": "Review λ"
+          }
+        }
+      }
+    },
+    {
+      "id": "operation:missing-parameter",
+      "request": {
+        "formatVersion": 1,
+        "operation": "operation",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": [
+                "task.comment"
+              ]
+            }
+          },
+          "operation": "task.read",
+          "params": {
+            "id": 7
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "operation:write-disabled",
+      "request": {
+        "formatVersion": 1,
+        "operation": "operation",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "services": {
+              "git": {
+                "provider": "git",
+                "transport": "cli",
+                "command": "git-wrapper",
+                "operations": {
+                  "git.status": {
+                    "args": [
+                      "status",
+                      "{short}"
+                    ]
+                  }
+                }
+              },
+              "tasks": {
+                "provider": "consumer",
+                "transport": "mcp",
+                "operations": {
+                  "task.read": {
+                    "tool": "fixture_read",
+                    "arguments": {
+                      "id": "{id}",
+                      "filter": "owner={owner}"
+                    }
+                  },
+                  "task.comment": {
+                    "tool": "fixture_comment",
+                    "arguments": {
+                      "id": "{id}",
+                      "body": "{body}"
+                    }
+                  }
+                }
+              }
+            },
+            "permissions": {
+              "writeOperations": []
+            }
+          },
+          "operation": "task.comment",
+          "params": {
+            "id": 7,
+            "body": "λ"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
     }
   ]
 }
