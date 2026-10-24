@@ -7,11 +7,15 @@ license.workspace = true
 
 [dependencies]
 craft-engine = { path = "../engine" }
+getrandom.workspace = true
 rusqlite.workspace = true
 serde_json.workspace = true
 tree-sitter.workspace = true
 tree-sitter-javascript.workspace = true
 tree-sitter-java.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
 
 [lints]
 workspace = true

@@ -5,7 +5,7 @@ import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '
 import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
-import { readProject, readInput, readEffectiveSettings } from '../application/project/configuration.mjs';
+import { readProject, readInput } from '../application/project/configuration.mjs';
 import { lookup, route } from '../application/routing/select.mjs';
 import { planOperation } from '../application/services.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
@@ -66,7 +66,6 @@ function executeRequest(action, options, root) {
       ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
   }
 
-  if (action === 'settings') return readEffectiveSettings(root, { preferencesFile: options.preferences, overrides: options.data ? readInput(options.data) : {}, ...(options.facts ? { workerFacts: readInput(options.facts), session: options.session } : {}) });
   if (action === 'locate') {
     const limits = {};
     for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {

@@ -67,3 +67,10 @@ companion migration with source-change detection. Failure checks preserve existi
 bytes and verify temporary-file cleanup. These checks complement private-state
 integration tests; they do not establish crash durability, full payload schemas,
 concurrent-process safety or acceptance on other operating systems.
+
+`settings-contracts.json` freezes 133 JavaScript engine responses for `effective-settings`,
+`validate-project` and `worker-budget`, captured at `470b316` with error messages omitted.
+They cover precedence and origins, every project validation family, preference bounds,
+null coalescing, integral floats, and worker freshness at a fixed clock. The Rust
+engine replays this corpus with the matching `engine-contracts.json` cases
+(`cargo test -p craft-engine`); it replaces those cases when their JavaScript retires.

@@ -57,6 +57,11 @@ the JavaScript inside the crate folders is legacy and retires by wave W4 of the 
 | A10 | Each host adapter file stays within the module's line limit |
 | A11 | Exports contain no module declared as not shipped |
 
+A budget rises only for the JavaScript forwarder that moves an entry point into `craft`: one
+native request per invocation plus handing native results back to the remaining JS (for example,
+telemetry export until bounded HTTP is native). Each such raise is recorded with its slice and is
+recovered when the forwarded module retires. Behavior never moves into JavaScript this way.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.

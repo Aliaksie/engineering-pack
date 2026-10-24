@@ -26,7 +26,7 @@ function fixture(t) {
   }
   for (const root of [options.destination, path.join(options.destination, 'packages/example/support')]) {
     fs.mkdirSync(path.join(root, 'platform/node'), { recursive: true });
-    for (const name of ['native-artifact.mjs', 'project-evidence.mjs']) fs.copyFileSync(path.join(repo, 'platform/node', name), path.join(root, 'platform/node', name));
+    for (const name of ['native-artifact.mjs', 'native-command.mjs', 'project-evidence.mjs']) fs.copyFileSync(path.join(repo, 'platform/node', name), path.join(root, 'platform/node', name));
   }
   return options;
 }

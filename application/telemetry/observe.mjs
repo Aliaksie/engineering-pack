@@ -184,6 +184,15 @@ export function observe(name, callback, summarize = () => ({}), options = {}) {
     } catch (error) { complete(undefined,error,true); throw error; }
   });
 }
+// Native events bound for export; the next flush posts them under the same pseudonym.
+export function forwardTelemetry(exported) {
+  if (!exported) return;
+  try {
+    const { endpoint, root, session, host, events } = exported, remote = telemetryOptions({ remote: { enabled: true, endpoint } }).remote, sessionId = events[0].sessionId;
+    const handle = createTelemetry(root, { session: session ?? undefined, host: host ?? undefined }, { telemetryIdentity: () => sessionId });
+    for (const event of events.slice(0, 32)) if (handle.enabled && pending.length < 32) pending.push({ endpoint: remote, event, handle });
+  } catch { /* Advisory only. */ }
+}
 export async function flushTelemetry(transport = postTelemetry) {
   const batch = pending.splice(0,32), groups = new Map();
   for (const entry of batch) { if (!groups.has(entry.endpoint)) groups.set(entry.endpoint,[]); groups.get(entry.endpoint).push(entry); }

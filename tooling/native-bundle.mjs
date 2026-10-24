@@ -103,7 +103,7 @@ export function buildNativeBundle() {
   if (versionResponse.ok !== true || versionResponse.formatVersion !== 1 || versionResponse.result?.schemaVersion !== 1) throw new Error('incompatible native binary');
   const stage = fs.mkdtempSync(path.join(parent, '.bundle-'));
   try {
-    for (const relative of ['cli/project-evidence.mjs', 'application/project-evidence.mjs', 'platform/node/project-evidence.mjs', 'platform/node/native-artifact.mjs', 'LICENSE']) {
+    for (const relative of ['cli/project-evidence.mjs', 'application/project-evidence.mjs', 'platform/node/project-evidence.mjs', 'platform/node/native-command.mjs', 'platform/node/native-artifact.mjs', 'LICENSE']) {
       fs.mkdirSync(path.dirname(path.join(stage, relative)), { recursive: true });
       fs.copyFileSync(path.join(repository, relative), path.join(stage, relative));
     }

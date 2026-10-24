@@ -2,6 +2,17 @@ use serde_json::json;
 use std::io::{self, Read};
 
 fn main() {
+    // `craft <command> [options]` for people; no arguments reads one JSON envelope on stdin.
+    let argv: Vec<String> = std::env::args_os()
+        .skip(1)
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    if !argv.is_empty() {
+        let outcome = craft_application::cli::run(&argv);
+        print!("{}", outcome.stdout);
+        eprint!("{}", outcome.stderr);
+        std::process::exit(outcome.exit_code);
+    }
     let mut input = Vec::new();
     let response = match io::stdin()
         .take(3 * 1024 * 1024 + 1)

@@ -2,6 +2,11 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod contracts;
+pub mod telemetry;
+pub mod timestamp;
+pub mod workers;
+
 pub const SCHEMA_VERSION: u32 = 1;
 pub const PROTOCOL_VERSION: u32 = 1;
 

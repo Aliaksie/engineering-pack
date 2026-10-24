@@ -199,8 +199,12 @@ The `craft` executable and the compatibility name `craft-project-evidence` accep
 one UTF-8 JSON request on standard input, bounded to 3 MiB, and write one JSON
 response on standard output. Both executables use the same application library.
 The request envelope is `{ "formatVersion": 1, "operation": "version", "input": {} }`.
-Operations are `version`, `extract`, `refresh`, `status`, `query`, `backup` and
-`rebuild`; operation inputs retain their existing Project Intelligence contracts.
+Operations are `version`, `extract`, `refresh`, `status`, `query`, `backup`,
+`rebuild` and `cli`; operation inputs retain their existing Project Intelligence contracts.
+`cli` runs one migrated command (currently `settings`) from `{ "argv": [...] }` and returns
+its `exitCode`, `stdout`, `stderr` and any remote-bound telemetry `export`, which
+`cli/main.mjs` posts until bounded HTTP is native. `craft settings [options]` runs the same
+command directly with local telemetry only.
 Successful responses contain `formatVersion`, `ok: true` and `result`. Failures
 contain `formatVersion`, `ok: false` and `error` with `code` and `message`, and exit
 with status 1. Invalid JSON or oversized input returns `INVALID_INPUT`, an

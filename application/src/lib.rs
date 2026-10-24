@@ -1,7 +1,10 @@
 use craft_engine::PROTOCOL_VERSION;
 use serde_json::{Value, json};
 mod budget;
+pub mod cli;
 mod evidence;
+mod project;
+mod telemetry;
 mod workspace;
 
 pub fn evaluate(request: Value) -> Value {
@@ -16,6 +19,20 @@ pub fn evaluate(request: Value) -> Value {
                 evidence::run(operation, &request["input"])
             }
         }
+        // One migrated CLI invocation; the JS forwarder writes the streams and posts `export`.
+        Some("cli") => match request["input"]["argv"].as_array().and_then(|argv| {
+            argv.iter()
+                .map(|a| a.as_str().map(str::to_string))
+                .collect::<Option<Vec<_>>>()
+        }) {
+            Some(argv) => {
+                let outcome = cli::run(&argv);
+                Ok(
+                    json!({"exitCode":outcome.exit_code,"stdout":outcome.stdout,"stderr":outcome.stderr,"export":outcome.export}),
+                )
+            }
+            None => Err("cli requires an argv string array".into()),
+        },
         Some("version") => Ok(
             json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE}),
         ),
