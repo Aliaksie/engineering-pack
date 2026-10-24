@@ -15,6 +15,7 @@ pub const COMMANDS: &[&str] = &[
     "model-advice",
     "lookup",
     "route",
+    "locate",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -125,6 +126,24 @@ pub struct Failure {
 }
 
 impl Failure {
+    pub(crate) fn from_io(error: std::io::Error) -> Self {
+        Self {
+            message: error.to_string(),
+            io: Some(error.kind()),
+        }
+    }
+    pub(crate) fn from_error_code(code: &str) -> Self {
+        let io = match code {
+            "ENOENT" => Some(ErrorKind::NotFound),
+            "EACCES" => Some(ErrorKind::PermissionDenied),
+            "ENOTDIR" => Some(ErrorKind::NotADirectory),
+            _ => None,
+        };
+        Self {
+            message: code.into(),
+            io,
+        }
+    }
     /// The stable reason code `observe` records for this failure.
     pub fn code(&self, fallback: &'static str) -> &'static str {
         match self.io {
@@ -171,6 +190,7 @@ pub struct Outcome {
 #[derive(Default)]
 struct Options {
     values: Map<String, Value>,
+    discovery: Value,
 }
 
 impl Options {
@@ -469,6 +489,47 @@ fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Resu
     Ok(result?)
 }
 
+fn locate(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let request = if let Some(request) = options.discovery.get("request") {
+        request.clone()
+    } else {
+        match options.get("data") {
+            Some(file) => input(recorder, parent, file)?,
+            None => {
+                let mut request =
+                    json!({"terms":strings(options,"term"),"paths":strings(options,"path")});
+                for (flag, field) in [
+                    ("max-files", "maxFiles"),
+                    ("max-matches", "maxMatches"),
+                    ("max-bytes", "maxBytes"),
+                    ("max-output-bytes", "maxOutputBytes"),
+                ] {
+                    if let Some(value) = options.get(flag) {
+                        request[field] = crate::discovery::number(value);
+                    }
+                }
+                request
+            }
+        }
+    };
+    crate::discovery::run(
+        &request,
+        crate::discovery::Context {
+            root: &root(options),
+            session: options.get("session"),
+            task: options.get("task"),
+            preferences: options.get("preferences").map(Path::new),
+            bridge: &options.discovery,
+        },
+        recorder,
+        parent,
+    )
+}
+
 fn settings(
     options: &Options,
     recorder: &mut Recorder,
@@ -494,6 +555,11 @@ fn settings(
 /// Command help as `cli/main.mjs` gives it; commands without an entry get the general list.
 fn help(action: &str) -> Value {
     let mut help = match action {
+        "locate" => json!({
+            "usage":"locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]",
+            "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",
+            "mode":"bounded literal scan; optional local reuse receipts"
+        }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
@@ -564,10 +630,13 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "model-advice" => model_advice,
         "lookup" => lookup,
         "route" => route,
+        "locate" => locate,
         _ => settings,
     };
-    let result =
-        parse(action, args).and_then(|options| command(&options, &mut recorder, &operation));
+    let result = parse(action, args).and_then(|mut options| {
+        options.discovery = context["discovery"].clone();
+        command(&options, &mut recorder, &operation)
+    });
     let outcome = match &result {
         Ok(value) => {
             if !forwarded {
@@ -591,6 +660,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             Some(ErrorKind::PermissionDenied) => Some("EACCES"),
             Some(ErrorKind::StorageFull) => Some("ENOSPC"),
             Some(ErrorKind::NotFound) => Some("ENOENT"),
+            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
             Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
             Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
             _ => None,

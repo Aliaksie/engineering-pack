@@ -45,19 +45,6 @@ test('routing and budgets replay from explicit JSON evidence without filesystem 
   assert.equal(blocked.blocked,true);
 });
 
-test('discovery JSON plans defer dependent work and invalidate packets without matching evidence', () => {
-  const plan = result('discovery-request',{ input:{ paths:['src/./'],requests:[
-    { id:'foo',term:'Foo' }, { id:'bar',term:'Bar' }, { id:'later',term:'Baz',dependsOn:['foo'] }
-  ] } });
-  assert.deepEqual(plan.terms,['Foo','Bar']);
-  assert.deepEqual(plan.paths,['src']);
-  assert.equal(plan.deferred[0].id,'later');
-  const key = result('digest',{ value:['Foo',['src']] });
-  const state = { lookups:{ [key]:{ identity:'revision-1', matches:[] } } };
-  for (const identity of [null,'revision-2']) assert.deepEqual(result('lookup-reuse',{ terms:['Foo'],paths:['src'],identity,state }).fresh,['Foo']);
-  assert.deepEqual(result('lookup-reuse',{ terms:['Foo'],paths:['src'],identity:'revision-1',state }).reused,['Foo']);
-});
-
 test('continuation source binding survives automatic snapshots and incomplete observations stay unknown', () => {
   const continuation = Object.fromEntries(['goal','currentState','completed','approach','evidence','filesChanged','validation','remainingWork','blockers','nextStep'].map(key => [key,key]));
   const repository = { head:'a',status:[],fingerprints:{ complete:true,index:'i',workingTree:'w' } };

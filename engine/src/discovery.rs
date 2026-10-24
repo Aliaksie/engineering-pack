@@ -2,6 +2,8 @@
 use crate::contracts::{js_length, safe_integer};
 use serde_json::{Value, json};
 
+pub mod planning;
+
 pub const SNIPPET: usize = 240;
 pub const MAX_FILE_BYTES: usize = 262_144;
 

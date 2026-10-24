@@ -364,3 +364,139 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 }
+
+/// A locator-only metadata identity. Unavailable or unsafe observations never certify reuse.
+/// The running artifact participates so a different implementation cannot reuse old packets.
+pub fn identity(root: &Path, scopes: &[String], max_files: usize) -> Option<String> {
+    fn metadata(path: &Path) -> Option<Value> {
+        let stat = match fs::symlink_metadata(path) {
+            Ok(stat) if !stat.file_type().is_symlink() => stat,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Some(Value::Null),
+            _ => return None,
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            Some(json!([
+                stat.dev().to_string(),
+                stat.ino().to_string(),
+                stat.len().to_string(),
+                format!("{}:{}", stat.mtime(), stat.mtime_nsec()),
+                format!("{}:{}", stat.ctime(), stat.ctime_nsec())
+            ]))
+        }
+        #[cfg(not(unix))]
+        {
+            Some(json!([
+                stat.len().to_string(),
+                format!("{:?}", stat.modified().ok()?),
+                format!("{:?}", stat.created().ok()?)
+            ]))
+        }
+    }
+    fn version(root: &Path, name: &str, remaining: &mut usize) -> Option<Value> {
+        let mut file = root.to_path_buf();
+        for part in name.split('/') {
+            if part == ".." || Path::new(name).is_absolute() {
+                return None;
+            }
+            file.push(part);
+            if fs::symlink_metadata(&file).is_ok_and(|s| s.file_type().is_symlink()) {
+                return None;
+            }
+        }
+        let version = metadata(&file)?;
+        let _ = &remaining;
+        // Windows std metadata has no change time or stable file ID. Verify bounded
+        // contents too, so restoring mtime after a same-size edit cannot reuse a packet.
+        #[cfg(not(unix))]
+        if !version.is_null() {
+            let mut bytes = Vec::new();
+            open_source(&file)
+                .ok()?
+                .take(MAX_FILE_BYTES as u64 + 1)
+                .read_to_end(&mut bytes)
+                .ok()?;
+            if bytes.len() > MAX_FILE_BYTES || bytes.len() > *remaining {
+                return None;
+            }
+            *remaining -= bytes.len();
+            return Some(json!([version, craft_engine::hash(&bytes)]));
+        }
+        Some(version)
+    }
+
+    if scopes.iter().any(|p| private_path(p)) {
+        return None;
+    }
+    let inventory = inventory(root).ok()??;
+    let head = process::git(root, &["rev-parse", "--verify", "HEAD"], 16384).ok()??;
+    let mut names: Vec<_> = String::from_utf8(inventory)
+        .ok()?
+        .split('\0')
+        .filter(|name| {
+            !name.is_empty()
+                && !private_path(name)
+                && !name.split('/').any(|p| OMIT.contains(&p))
+                && (scopes.is_empty()
+                    || scopes.iter().any(|scope| {
+                        scope == "." || name == scope || name.starts_with(&format!("{scope}/"))
+                    }))
+        })
+        .map(str::to_string)
+        .collect();
+    names.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+    names.dedup();
+    if names.len() > max_files {
+        return None;
+    }
+    names.push(".craft/project.json".into());
+    let mut prefixes = vec![String::new()];
+    for scope in scopes {
+        let mut directory = root.to_path_buf();
+        let mut prefix = String::new();
+        for part in scope.split('/') {
+            directory.push(part);
+            let stat = match fs::symlink_metadata(&directory) {
+                Ok(stat) => stat,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
+                _ => return None,
+            };
+            if stat.file_type().is_symlink() {
+                return None;
+            }
+            if !stat.is_dir() {
+                break;
+            }
+            prefix.push_str(part);
+            prefix.push('/');
+            if !prefixes.contains(&prefix) {
+                prefixes.push(prefix.clone());
+            }
+        }
+    }
+    for prefix in prefixes {
+        for manifest in [
+            "package.json",
+            "pyproject.toml",
+            "go.mod",
+            "pom.xml",
+            "build.gradle",
+            "build.gradle.kts",
+        ] {
+            names.push(format!("{prefix}{manifest}"));
+        }
+    }
+    let mut remaining = 2_097_152;
+    let versions: Option<Vec<_>> = names
+        .iter()
+        .map(|name| Some(json!([name, version(root, name, &mut remaining)?])))
+        .collect();
+    let binary = metadata(&std::env::current_exe().ok()?)?;
+    Some(craft_engine::discovery::planning::digest(&json!([
+        "rust-discovery-v1",
+        binary,
+        String::from_utf8(head).ok()?.trim(),
+        versions?
+    ])))
+}

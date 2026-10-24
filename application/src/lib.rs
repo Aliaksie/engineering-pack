@@ -2,6 +2,7 @@ use craft_engine::PROTOCOL_VERSION;
 use serde_json::{Value, json};
 mod budget;
 pub mod cli;
+mod discovery;
 mod evidence;
 mod project;
 mod telemetry;

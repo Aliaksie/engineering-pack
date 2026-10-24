@@ -8,7 +8,7 @@ import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry 
 import { readProject, readInput } from '../application/project/configuration.mjs';
 import { route } from '../application/routing/select.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
-import { discover } from '../application/discovery/discover.mjs';
+import { locateCommand } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
 import { contextReport } from '../application/session/context.mjs';
@@ -61,14 +61,7 @@ function executeRequest(action, options, root) {
       ...(options.profile !== undefined ? { profile: options.profile } : {}), complete: options.complete === true }, { host: options.host, preferencesFile: options.preferences, bundle: options.bundle });
   }
 
-  if (action === 'locate') {
-    const limits = {};
-    for (const [flag, field] of [['max-files', 'maxFiles'], ['max-matches', 'maxMatches'], ['max-bytes', 'maxBytes'], ['max-output-bytes', 'maxOutputBytes']]) {
-      if (options[flag] !== undefined) limits[field] = Number(options[flag]);
-    }
-    const request = options.data ? readInput(options.data) : { terms: options.term, paths: options.path, ...limits };
-    return discover(root, request, { session: options.session, task: options.task, preferencesFile: options.preferences });
-  }
+  if (action === 'locate') return locateCommand(root, options);
   if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
   if (action === 'session-attempt') {
     if (!options.data || !options.session || !options.task) throw new Error('session-attempt requires --session, --task and --data');

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { locate } from '../application/discovery/locate.mjs';
+import { nativeLocate as locate } from '../platform/index.mjs';
 
 function fixture(t, git = true) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-locate-'));

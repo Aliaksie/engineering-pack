@@ -4,7 +4,6 @@ export { stateFile, stateLocation, readState, lockState, releaseState, writeStat
 export { gitState as repositoryState, gitCheckout as repositoryCheckout } from './node/repository/snapshot.mjs';
 export { repositoryRoots } from './node/repository/roots.mjs';
 export { workspaceOperation } from './node/workspace.mjs';
-export { inventoryIdentity } from './node/repository/inventory.mjs';
 export { contextFiles, groundingFiles } from './node/resources/context.mjs';
 export { projectData, preferenceData, preferenceFile } from './node/resources/project.mjs';
 export { readSessionInput } from './node/resources/session-input.mjs';

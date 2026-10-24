@@ -10,7 +10,6 @@ import { taskBinding, taskContract, startTask, taskContext, taskSource, recordTa
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
-import { discoveryRequest, discoveryResult, discoveryState, deferredDiscovery } from './discovery/plan.mjs';
 import { route } from './routing/route.mjs';
 import { validateProject } from './contracts/project.mjs';
 import { validatePlaybookCatalog } from './contracts/catalog.mjs';
@@ -23,7 +22,7 @@ import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchan
 import { activityUpdate, appendAttempt, attemptReceipt, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
 import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
-import { hintValid, validateHint, hintEligible, lookupReuse } from './cache/reuse.mjs';
+import { hintValid, validateHint, hintEligible } from './cache/reuse.mjs';
 import { digest, hash } from './cache/identity.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
@@ -73,10 +72,6 @@ const operations = {
   'task-step': a => recordTaskStep(a.state, a.input, a.repository, a.id, a.at),
   'activity-validate': a => validateActivityState(a.state),
   'activity-identity': a => activityIdentity(a.session, a.task),
-  'discovery-request': a => discoveryRequest(a.input),
-  'discovery-result': a => discoveryResult(a),
-  'discovery-state': a => discoveryState(a.current, a.input),
-  'discovery-deferred': a => deferredDiscovery(a.request),
   route: a => route({ ...a, catalog: a.catalog }),
   'effective-settings': a => effectiveSettings({ ...a, project: validateProject(a.project) }),
   'validate-project': a => validateProject(a.project),
@@ -104,7 +99,6 @@ const operations = {
   'delivery-failure': a => deliveryFailure(a.enforcementRequired, a.message),
   'hint-eligible': a => hintEligible(a.event, a.result),
   'hint-valid': a => hintValid(a.previous, a.key, a.now),
-  'lookup-reuse': a => lookupReuse(a.terms, a.paths, a.identity, a.state),
   digest: a => digest(a.value), hash: a => hash(a.text)
 };
 
