@@ -16,11 +16,16 @@ messages and explicitly listed diagnostic result paths are excluded from wording
 comparison; diagnostic fields must remain strings. Echoed user descriptions and
 identity material remain exact. Arrays retain order and absent fields differ from null.
 
-The 213 cases include an empty-input request for each of the 83 engine operations,
+The 264 cases include an empty-input request for each of the 83 engine operations,
 envelope failures, UTF-8 hashes, digest ordering, portable paths, literal discovery,
 routing, continuation, acceptance projections, blocked attempts, checkpoint binding,
-review publication plans, and worker/action lifecycle transitions. There are 123
-successful responses across 62 operations. Context cases cover selection attribution,
+review publication plans, and worker/action lifecycle transitions. There are 160
+successful responses across all 83 operations. Task cases preserve completion,
+stale-source detection, scope reset and binding rejection. Grounding cases preserve
+incomplete coverage and source provenance; session cases use explicit observations
+and a fixed clock. Settings, model advice and service cases preserve precedence,
+blockers and typed invocation plans without executing them. Context cases cover
+selection attribution,
 byte budgets and lifecycle delivery decisions. Hint cases cover clock reversal and
 the exact expiry boundary. Repository cases cover normalized scopes, ordered checkout
 identities, sorted snapshots and incomplete observations. Worker cases preserve

@@ -13235,6 +13235,2530 @@
           "code": "INVALID_INPUT"
         }
       }
+    },
+    {
+      "id": "task:start-scoped",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-start",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {}
+          },
+          "input": {
+            "id": "migration",
+            "goal": "Migrate λ runtime",
+            "stage": "verify",
+            "files": [
+              "src/api"
+            ],
+            "risks": [
+              "portability"
+            ]
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "intent": "verify",
+          "context": {
+            "task": {
+              "id": "migration",
+              "stage": "verify",
+              "status": "working",
+              "goalComplete": false,
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ]
+            },
+            "stale": false,
+            "acceptance": {
+              "assurance": "declared",
+              "coverage": "unknown",
+              "complete": false,
+              "criteria": []
+            },
+            "evidenceDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+            "taskContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+            "binding": {
+              "kind": "repository",
+              "identity": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58"
+            },
+            "summary": null,
+            "nextStep": null
+          }
+        }
+      }
+    },
+    {
+      "id": "task:binding-current",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-binding",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "task": "migration",
+            "checkout": "fixture-checkout"
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "task": "migration",
+          "checkout": "fixture-checkout"
+        }
+      }
+    },
+    {
+      "id": "task:binding-other-checkout",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-binding",
+        "input": {
+          "state": {
+            "formatVersion": 1,
+            "task": "migration",
+            "checkout": "other"
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "id": "task:context-working",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-context",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "task": {
+            "id": "migration",
+            "stage": "verify",
+            "status": "working",
+            "goalComplete": false,
+            "files": [
+              "src/api"
+            ],
+            "risks": [
+              "portability"
+            ]
+          },
+          "stale": false,
+          "acceptance": {
+            "assurance": "declared",
+            "coverage": "unknown",
+            "complete": false,
+            "criteria": []
+          },
+          "evidenceDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+          "taskContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+          "binding": {
+            "kind": "repository",
+            "identity": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58"
+          },
+          "summary": null,
+          "nextStep": null
+        }
+      }
+    },
+    {
+      "id": "task:complete-verified",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-step",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "input": {
+            "stage": "verify",
+            "target": "runtime",
+            "approach": "frozen-replay",
+            "evidence": "check:fixture",
+            "outcome": "passed",
+            "result": "Frozen replay passed",
+            "nextStep": "Continue migration",
+            "complete": true
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "id": "receipt-1",
+          "at": "2026-10-24T00:00:00.000Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "completed",
+              "goalComplete": true,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": true,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "verification": "passed",
+              "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+              "completed": "Frozen replay passed"
+            }
+          },
+          "receipt": {
+            "operation": "verify",
+            "target": "runtime",
+            "approach": "frozen-replay",
+            "evidence": "check:fixture",
+            "outcome": "passed",
+            "id": "receipt-1",
+            "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+            "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "at": "2026-10-24T00:00:00.000Z"
+          },
+          "continuation": {
+            "goal": "Migrate λ runtime",
+            "currentState": "Frozen replay passed",
+            "completed": "Frozen replay passed",
+            "approach": "frozen-replay",
+            "evidence": "check:fixture",
+            "filesChanged": "src/api",
+            "validation": "passed: check:fixture",
+            "remainingWork": "",
+            "blockers": "",
+            "nextStep": "Continue migration"
+          },
+          "acceptance": {
+            "assurance": "declared",
+            "coverage": "unknown",
+            "complete": false,
+            "criteria": []
+          }
+        }
+      }
+    },
+    {
+      "id": "task:context-accepted",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-context",
+        "input": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "completed",
+              "goalComplete": true,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": true,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "verification": "passed",
+              "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+              "completed": "Frozen replay passed"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "task": {
+            "id": "migration",
+            "stage": "verify",
+            "status": "completed",
+            "goalComplete": true,
+            "files": [
+              "src/api"
+            ],
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verification": "passed",
+            "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "safeBoundary": true,
+            "nextStep": "Continue migration",
+            "risks": [
+              "portability"
+            ]
+          },
+          "stale": false,
+          "acceptance": {
+            "assurance": "declared",
+            "coverage": "unknown",
+            "complete": false,
+            "criteria": []
+          },
+          "evidenceDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+          "taskContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+          "binding": {
+            "kind": "repository",
+            "identity": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58"
+          },
+          "summary": "Frozen replay passed",
+          "nextStep": "Continue migration"
+        }
+      }
+    },
+    {
+      "id": "task:context-stale-source",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-context",
+        "input": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "completed",
+              "goalComplete": true,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": true,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "verification": "passed",
+              "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+              "completed": "Frozen replay passed"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "changed"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "task": {
+            "id": "migration",
+            "stage": "verify",
+            "status": "working",
+            "goalComplete": false,
+            "files": [
+              "src/api"
+            ],
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verification": "unknown",
+            "safeBoundary": false,
+            "nextStep": "Continue migration",
+            "risks": [
+              "portability"
+            ]
+          },
+          "stale": true,
+          "acceptance": {
+            "assurance": "declared",
+            "coverage": "unknown",
+            "complete": false,
+            "criteria": []
+          },
+          "evidenceDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+          "taskContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+          "binding": {
+            "kind": "repository",
+            "identity": "b1436cf6760a014375635c2661cecf61b81b605ac23fcef911b27d678a8c76fc"
+          },
+          "summary": "Frozen replay passed",
+          "nextStep": "Continue migration"
+        }
+      }
+    },
+    {
+      "id": "task:scope-change-resets-completion",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-start",
+        "input": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "completed",
+              "goalComplete": true,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": true,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "verification": "passed",
+              "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+              "completed": "Frozen replay passed"
+            }
+          },
+          "input": {
+            "id": "migration",
+            "goal": "Migrate λ runtime",
+            "files": [
+              "src/api/new.rs"
+            ]
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api/new.rs"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": false,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b"
+            }
+          },
+          "intent": "verify",
+          "context": {
+            "task": {
+              "id": "migration",
+              "stage": "verify",
+              "status": "working",
+              "goalComplete": false,
+              "files": [
+                "src/api/new.rs"
+              ],
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "safeBoundary": false,
+              "nextStep": "Continue migration",
+              "risks": [
+                "portability"
+              ],
+              "verification": "unknown"
+            },
+            "stale": true,
+            "acceptance": {
+              "assurance": "declared",
+              "coverage": "unknown",
+              "complete": false,
+              "criteria": []
+            },
+            "evidenceDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+            "taskContract": "11ce8e40481326cf848c3ab8d91b12feddc66f8980669c11c84af76dbe4ab3e6",
+            "binding": {
+              "kind": "repository",
+              "identity": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58"
+            },
+            "summary": "Frozen replay passed",
+            "nextStep": "Continue migration"
+          }
+        }
+      }
+    },
+    {
+      "id": "task:goal-reuse-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-start",
+        "input": {
+          "state": {
+            "attempts": [
+              {
+                "operation": "verify",
+                "target": "runtime",
+                "approach": "frozen-replay",
+                "evidence": "check:fixture",
+                "outcome": "passed",
+                "id": "receipt-1",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "signature": "fbdedee99e36bf7e2e38c39c231199313c7f3f56ee83d18a25706f51a7182d9b",
+                "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "at": "2026-10-24T00:00:00.000Z"
+              }
+            ],
+            "activity": {
+              "operationsAttempted": 1
+            },
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "completed",
+              "goalComplete": true,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout",
+              "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "safeBoundary": true,
+              "summary": "Frozen replay passed",
+              "nextStep": "Continue migration",
+              "verification": "passed",
+              "verificationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "acceptedContract": "de9389c1d5212816f48f1cc94c9264c3212e812aa023baa684e41fa7be2ae67b",
+              "completed": "Frozen replay passed"
+            }
+          },
+          "input": {
+            "id": "migration",
+            "goal": "Different outcome"
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "task:private-source-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-start",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {}
+          },
+          "input": {
+            "id": "migration",
+            "goal": "Migrate",
+            "files": [
+              ".craft/state/private"
+            ]
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "task:completion-failure-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-step",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "input": {
+            "stage": "verify",
+            "target": "runtime",
+            "approach": "frozen-replay",
+            "evidence": "check:fixture",
+            "outcome": "quality-failure",
+            "result": "Frozen replay passed",
+            "nextStep": "Continue migration",
+            "complete": true
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "id": "receipt-2",
+          "at": "2026-10-24T00:00:00.000Z"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "feature:declared-unsupported",
+      "request": {
+        "formatVersion": 1,
+        "operation": "feature-record",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "at": "2026-10-24T00:00:00.000Z",
+          "input": {
+            "feature": "compaction",
+            "status": "unsupported",
+            "reason": "No verified host control",
+            "evidence": "host:fixture"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            },
+            "featureOutcomes": {
+              "compaction": {
+                "status": "unsupported",
+                "reason": "No verified host control",
+                "evidence": "host:fixture",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "at": "2026-10-24T00:00:00.000Z",
+                "provenance": "agent-declared"
+              }
+            }
+          },
+          "recorded": {
+            "feature": "compaction",
+            "status": "unsupported",
+            "reason": "No verified host control",
+            "evidence": "host:fixture",
+            "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+            "at": "2026-10-24T00:00:00.000Z",
+            "provenance": "agent-declared"
+          }
+        }
+      }
+    },
+    {
+      "id": "feature:report-current",
+      "request": {
+        "formatVersion": 1,
+        "operation": "feature-report",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            },
+            "featureOutcomes": {
+              "compaction": {
+                "status": "unsupported",
+                "reason": "No verified host control",
+                "evidence": "host:fixture",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "at": "2026-10-24T00:00:00.000Z",
+                "provenance": "agent-declared"
+              }
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "features": {
+            "routing": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "hint-deduplication": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "lookup": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "batching": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "services": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "attempts": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "loop-detection": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "model-advice": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "delegation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "checkpoints": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "continuation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "context-advice": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "next-step": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "compaction": {
+              "status": "unsupported",
+              "reason": "No verified host control",
+              "evidence": "host:fixture",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "at": "2026-10-24T00:00:00.000Z",
+              "provenance": "agent-declared",
+              "sourceStatus": "current"
+            },
+            "context-accounting": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "review": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "telemetry": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "evaluation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            }
+          },
+          "allClassified": false,
+          "limits": "Task-local observations/declarations, not a semantic verdict or proof of natural workflow adoption. Stale or historical outcomes do not certify current acceptance."
+        }
+      }
+    },
+    {
+      "id": "feature:report-stale",
+      "request": {
+        "formatVersion": 1,
+        "operation": "feature-report",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            },
+            "featureOutcomes": {
+              "compaction": {
+                "status": "unsupported",
+                "reason": "No verified host control",
+                "evidence": "host:fixture",
+                "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+                "at": "2026-10-24T00:00:00.000Z",
+                "provenance": "agent-declared"
+              }
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "changed"
+            }
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "features": {
+            "routing": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "hint-deduplication": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "lookup": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "batching": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "services": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "attempts": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "loop-detection": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "model-advice": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "delegation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "checkpoints": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "continuation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "context-advice": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "next-step": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "compaction": {
+              "status": "unsupported",
+              "reason": "No verified host control",
+              "evidence": "host:fixture",
+              "source": "dda1c3cbb9979ce318f08da9a9a3a61c1177bde124300fc2d462a4eb1001cd58",
+              "at": "2026-10-24T00:00:00.000Z",
+              "provenance": "agent-declared",
+              "sourceStatus": "stale"
+            },
+            "context-accounting": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "review": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "telemetry": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            },
+            "evaluation": {
+              "status": "unknown",
+              "reason": "No outcome evidence retained for this feature.",
+              "provenance": "unobserved",
+              "sourceStatus": "unknown"
+            }
+          },
+          "allClassified": false,
+          "limits": "Task-local observations/declarations, not a semantic verdict or proof of natural workflow adoption. Stale or historical outcomes do not certify current acceptance."
+        }
+      }
+    },
+    {
+      "id": "feature:invalid-status",
+      "request": {
+        "formatVersion": 1,
+        "operation": "feature-record",
+        "input": {
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "repository": {
+            "gitAvailable": true,
+            "checkout": "fixture-checkout",
+            "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fingerprints": {
+              "complete": true,
+              "index": "i",
+              "workingTree": "w"
+            }
+          },
+          "at": "2026-10-24T00:00:00.000Z",
+          "input": {
+            "feature": "review",
+            "status": "passed"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "locate:deduplicate-literals-scopes",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "λ",
+              "a.b",
+              "λ"
+            ],
+            "paths": [
+              "src/./api",
+              "src/api"
+            ],
+            "maxFiles": 1,
+            "maxMatches": 1,
+            "maxBytes": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "λ",
+            "a.b"
+          ],
+          "scopes": [
+            "src/api"
+          ],
+          "maxFiles": 1,
+          "maxMatches": 1,
+          "maxBytes": 1,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "locate:traversal-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "λ"
+            ],
+            "paths": [
+              "../outside"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "lookup:matching-module",
+      "request": {
+        "formatVersion": 1,
+        "operation": "lookup",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "options": {
+            "file": "src/api/λ.rs"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "consumer"
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "lookup:private-excluded",
+      "request": {
+        "formatVersion": 1,
+        "operation": "lookup",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "options": {
+            "file": ".craft/state/private"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "lookup:unknown-module",
+      "request": {
+        "formatVersion": 1,
+        "operation": "lookup",
+        "input": {
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "options": {
+            "module": "missing"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "grounding:nested-deduplicated",
+      "request": {
+        "formatVersion": 1,
+        "operation": "grounding-request",
+        "input": {
+          "scope": [
+            "src/api",
+            "src/api"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "scope": [
+            "src/api"
+          ],
+          "files": [
+            ".craft/project.json",
+            "AGENTS.md",
+            "src/AGENTS.md",
+            "src/api/AGENTS.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "grounding:private-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "grounding-request",
+        "input": {
+          "scope": [
+            ".git/config"
+          ]
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "grounding:incomplete-observation",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-context-compose",
+        "input": {
+          "scope": [
+            "src/api"
+          ],
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "observations": [
+            {
+              "reference": "AGENTS.md",
+              "identity": "fixture",
+              "status": "observed"
+            }
+          ],
+          "observedAt": "2026-10-24T00:00:00.000Z",
+          "binding": {
+            "kind": "repository",
+            "identity": null
+          },
+          "discovery": {
+            "truncated": true
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": [
+            "src/api"
+          ],
+          "sources": [
+            {
+              "id": "local-7044ada49af013da",
+              "kind": "instruction",
+              "reference": "AGENTS.md",
+              "identity": "fixture",
+              "observedAt": "2026-10-24T00:00:00.000Z",
+              "scope": [
+                "."
+              ],
+              "provenance": "observed",
+              "status": "unknown"
+            }
+          ],
+          "constraints": [],
+          "checks": [],
+          "questions": [
+            "Repository identity unavailable; source freshness is unknown.",
+            "Discovery coverage is incomplete; matches do not prove absence."
+          ],
+          "coverage": "incomplete"
+        }
+      }
+    },
+    {
+      "id": "grounding:validate-packet",
+      "request": {
+        "formatVersion": 1,
+        "operation": "task-context-validate",
+        "input": {
+          "context": {
+            "formatVersion": 1,
+            "scope": [
+              "src/api"
+            ],
+            "sources": [
+              {
+                "id": "local-7044ada49af013da",
+                "kind": "instruction",
+                "reference": "AGENTS.md",
+                "identity": "fixture",
+                "observedAt": "2026-10-24T00:00:00.000Z",
+                "scope": [
+                  "."
+                ],
+                "provenance": "observed",
+                "status": "unknown"
+              }
+            ],
+            "constraints": [],
+            "checks": [],
+            "questions": [
+              "Repository identity unavailable; source freshness is unknown.",
+              "Discovery coverage is incomplete; matches do not prove absence."
+            ],
+            "coverage": "incomplete"
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "scope": [
+            "src/api"
+          ],
+          "sources": [
+            {
+              "id": "local-7044ada49af013da",
+              "kind": "instruction",
+              "reference": "AGENTS.md",
+              "identity": "fixture",
+              "observedAt": "2026-10-24T00:00:00.000Z",
+              "scope": [
+                "."
+              ],
+              "provenance": "observed",
+              "status": "unknown"
+            }
+          ],
+          "constraints": [],
+          "checks": [],
+          "questions": [
+            "Repository identity unavailable; source freshness is unknown.",
+            "Discovery coverage is incomplete; matches do not prove absence."
+          ],
+          "coverage": "incomplete"
+        }
+      }
+    },
+    {
+      "id": "catalog:context-only-workflow",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-catalog",
+        "input": {
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "intents": [
+            "verify",
+            "run-check"
+          ],
+          "stackIntents": [
+            "verify"
+          ],
+          "extensions": {},
+          "layerExtensions": {},
+          "runtimeImplications": {},
+          "entries": [
+            {
+              "id": "workflow:verify",
+              "skills": [],
+              "references": [],
+              "when": {
+                "intents": [
+                  "verify"
+                ]
+              },
+              "contextOnly": true,
+              "value": {
+                "problem": "Fixture problem",
+                "contribution": "Fixture contribution",
+                "inputs": "Fixture inputs",
+                "result": "Fixture result",
+                "boundaries": "Fixture boundaries",
+                "consumer": "Fixture consumer",
+                "evidence": "Fixture evidence"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "catalog:duplicate-entry-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "validate-catalog",
+        "input": {
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              },
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "session:observation-scoped",
+      "request": {
+        "formatVersion": 1,
+        "operation": "session-observation-plan",
+        "input": {
+          "input": {
+            "task": {
+              "id": "migration",
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ]
+            }
+          },
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "saved": {
+            "taskId": "migration",
+            "continuationSource": {
+              "taskId": "migration"
+            },
+            "continuation": {
+              "goal": "Migrate λ runtime",
+              "currentState": "Frozen replay passed",
+              "completed": "Frozen replay passed",
+              "approach": "frozen-replay",
+              "evidence": "check:fixture",
+              "filesChanged": "src/api",
+              "validation": "passed: check:fixture",
+              "remainingWork": "",
+              "blockers": "",
+              "nextStep": "Continue migration"
+            }
+          },
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "plan": {
+            "intent": "verify",
+            "capability": {
+              "class": "standard",
+              "execution": "recommendation-only",
+              "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+              "pricing": "unknown; classes are not measured cost or capability",
+              "authorization": "no model switch or delegation executed"
+            },
+            "skills": [],
+            "skillAvailability": "not-verified",
+            "execution": {
+              "mode": "main",
+              "role": "verifier"
+            },
+            "taskBoundary": {
+              "kind": "testing-only",
+              "mode": "choose-from-request",
+              "testEdits": "not-selected",
+              "productEdits": "not-selected",
+              "enforcement": "routing contract; host permissions and original scope remain authoritative"
+            },
+            "files": [
+              "src/api"
+            ],
+            "languages": [],
+            "layers": [],
+            "references": [],
+            "loading": {
+              "workflow": "workflow:verify",
+              "practices": [],
+              "specializations": [],
+              "selections": [
+                {
+                  "id": "workflow:verify",
+                  "skills": [],
+                  "references": [],
+                  "when": {
+                    "intents": [
+                      "verify"
+                    ]
+                  },
+                  "contextOnly": true,
+                  "evidence": [
+                    {
+                      "dimension": "intents",
+                      "values": [
+                        "verify"
+                      ],
+                      "source": "request",
+                      "inferred": false
+                    }
+                  ],
+                  "reason": {
+                    "intents": [
+                      "verify"
+                    ]
+                  }
+                }
+              ],
+              "documentationQuestions": [],
+              "unavailable": [],
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "verify"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                },
+                {
+                  "dimension": "risks",
+                  "values": [],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "missingContext": [],
+              "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+            },
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              }
+            ],
+            "affectedDependents": [],
+            "checks": [],
+            "operations": [],
+            "missing": [],
+            "reasons": [
+              {
+                "id": "workflow:verify",
+                "selectors": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "verify"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ]
+              }
+            ],
+            "authorization": "route-only; host permissions and original user scope still apply"
+          },
+          "recover": true,
+          "repository": false
+        }
+      }
+    },
+    {
+      "id": "session:observation-unmatched-task",
+      "request": {
+        "formatVersion": 1,
+        "operation": "session-observation-plan",
+        "input": {
+          "input": {
+            "task": {
+              "id": "other",
+              "stage": "verify"
+            }
+          },
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "state": {
+            "attempts": [],
+            "activity": {},
+            "taskRecord": {
+              "id": "migration",
+              "goal": "Migrate λ runtime",
+              "status": "working",
+              "goalComplete": false,
+              "stage": "verify",
+              "files": [
+                "src/api"
+              ],
+              "risks": [
+                "portability"
+              ],
+              "checkout": "fixture-checkout"
+            }
+          },
+          "saved": {
+            "taskId": "migration",
+            "continuationSource": {
+              "taskId": "migration"
+            },
+            "continuation": {
+              "goal": "Migrate λ runtime",
+              "currentState": "Frozen replay passed",
+              "completed": "Frozen replay passed",
+              "approach": "frozen-replay",
+              "evidence": "check:fixture",
+              "filesChanged": "src/api",
+              "validation": "passed: check:fixture",
+              "remainingWork": "",
+              "blockers": "",
+              "nextStep": "Continue migration"
+            }
+          },
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "plan": {
+            "intent": "verify",
+            "capability": {
+              "class": "standard",
+              "execution": "recommendation-only",
+              "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+              "pricing": "unknown; classes are not measured cost or capability",
+              "authorization": "no model switch or delegation executed"
+            },
+            "skills": [],
+            "skillAvailability": "not-verified",
+            "execution": {
+              "mode": "main",
+              "role": "verifier"
+            },
+            "taskBoundary": {
+              "kind": "testing-only",
+              "mode": "choose-from-request",
+              "testEdits": "not-selected",
+              "productEdits": "not-selected",
+              "enforcement": "routing contract; host permissions and original scope remain authoritative"
+            },
+            "files": [],
+            "languages": [],
+            "layers": [],
+            "references": [],
+            "loading": {
+              "workflow": "workflow:verify",
+              "practices": [],
+              "specializations": [],
+              "selections": [
+                {
+                  "id": "workflow:verify",
+                  "skills": [],
+                  "references": [],
+                  "when": {
+                    "intents": [
+                      "verify"
+                    ]
+                  },
+                  "contextOnly": true,
+                  "evidence": [
+                    {
+                      "dimension": "intents",
+                      "values": [
+                        "verify"
+                      ],
+                      "source": "request",
+                      "inferred": false
+                    }
+                  ],
+                  "reason": {
+                    "intents": [
+                      "verify"
+                    ]
+                  }
+                }
+              ],
+              "documentationQuestions": [],
+              "unavailable": [],
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "verify"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                },
+                {
+                  "dimension": "risks",
+                  "values": [],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "missingContext": [
+                "Affected paths are unspecified; project declarations do not establish the affected scope."
+              ],
+              "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+            },
+            "modules": [],
+            "affectedDependents": [],
+            "checks": [],
+            "operations": [],
+            "missing": [],
+            "reasons": [
+              {
+                "id": "workflow:verify",
+                "selectors": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "evidence": [
+                  {
+                    "dimension": "intents",
+                    "values": [
+                      "verify"
+                    ],
+                    "source": "request",
+                    "inferred": false
+                  }
+                ]
+              }
+            ],
+            "authorization": "route-only; host permissions and original user scope still apply"
+          },
+          "recover": false,
+          "repository": false
+        }
+      }
+    },
+    {
+      "id": "session:status-explicit-observations",
+      "request": {
+        "formatVersion": 1,
+        "operation": "session-status",
+        "input": {
+          "input": {
+            "sessionId": "fixture-session",
+            "task": {
+              "id": "migration"
+            }
+          },
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "options": {
+            "now": 1792800000000,
+            "observations": {
+              "state": {
+                "attempts": [],
+                "activity": {},
+                "taskRecord": {
+                  "id": "migration",
+                  "goal": "Migrate λ runtime",
+                  "status": "working",
+                  "goalComplete": false,
+                  "stage": "verify",
+                  "files": [
+                    "src/api"
+                  ],
+                  "risks": [
+                    "portability"
+                  ],
+                  "checkout": "fixture-checkout"
+                }
+              }
+            }
+          },
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "formatVersion": 1,
+          "mode": "recommend",
+          "usage": {
+            "status": "unknown",
+            "confidence": "unknown",
+            "reason": "No current-context observation supplied.",
+            "currentTokens": null,
+            "capacityTokens": null,
+            "usedRatio": null
+          },
+          "pressure": "unknown",
+          "operation": "unknown",
+          "host": {
+            "name": "unknown",
+            "model": "unknown",
+            "reliableCompaction": null
+          },
+          "packContext": {
+            "scope": "caller-declared selected guidance; estimated tokens, not occupancy",
+            "estimatedTokens": null,
+            "skills": null,
+            "references": null
+          },
+          "activity": {
+            "scope": "Engineering Pack command receipts plus declarations for unobserved fields; not provider usage",
+            "discoveryRequests": null,
+            "repeatedLookups": null,
+            "batchedOperations": null,
+            "reuseHits": null,
+            "checkpoints": null,
+            "attempts": null,
+            "maxAttempts": null,
+            "retries": null,
+            "modelEscalations": null,
+            "noProgressAttempts": null,
+            "freshLookups": null,
+            "routingDecisions": null,
+            "filesRequested": null,
+            "referencesRequested": null,
+            "operationsAttempted": null
+          },
+          "recommendation": null,
+          "suggestion": null,
+          "suppressed": false,
+          "notice": null,
+          "authorization": "advice-only; no command, compaction, reset or checkpoint write was executed",
+          "evidence": "Task completion and verification are caller declarations, not inferred or independently certified.",
+          "checkpoint": {
+            "status": "missing",
+            "fileRevision": null,
+            "taskMatches": false,
+            "changed": null,
+            "complete": false,
+            "nextStep": null,
+            "reason": "A matching bounded continuation and unchanged complete repository evidence are required."
+          },
+          "capability": {
+            "class": "unknown",
+            "execution": "recommendation-only",
+            "reason": "Operation is unknown.",
+            "pricing": "unknown",
+            "currentProfile": null,
+            "currentClass": "unknown",
+            "recommendation": null
+          },
+          "modelAdvice": null,
+          "discovery": {
+            "requested": null,
+            "reused": null,
+            "fresh": null,
+            "batches": null
+          },
+          "packReport": null,
+          "attemptEvidence": [],
+          "diagnostics": [],
+          "activitySource": "Engineering Pack command receipts; explicit declarations fill unobserved fields"
+        }
+      }
+    },
+    {
+      "id": "session:status-identity-mismatch",
+      "request": {
+        "formatVersion": 1,
+        "operation": "session-status",
+        "input": {
+          "input": {
+            "sessionId": "fixture-session"
+          },
+          "project": {
+            "formatVersion": 1,
+            "modules": [
+              {
+                "name": "api",
+                "path": "src/api",
+                "owner": "consumer"
+              },
+              {
+                "name": "other",
+                "path": "other"
+              }
+            ]
+          },
+          "options": {
+            "session": "other",
+            "now": 1792800000000
+          },
+          "catalog": {
+            "formatVersion": 1,
+            "intents": [
+              "verify",
+              "run-check"
+            ],
+            "stackIntents": [
+              "verify"
+            ],
+            "extensions": {},
+            "layerExtensions": {},
+            "runtimeImplications": {},
+            "entries": [
+              {
+                "id": "workflow:verify",
+                "skills": [],
+                "references": [],
+                "when": {
+                  "intents": [
+                    "verify"
+                  ]
+                },
+                "contextOnly": true,
+                "value": {
+                  "problem": "Fixture problem",
+                  "contribution": "Fixture contribution",
+                  "inputs": "Fixture inputs",
+                  "result": "Fixture result",
+                  "boundaries": "Fixture boundaries",
+                  "consumer": "Fixture consumer",
+                  "evidence": "Fixture evidence"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
     }
   ]
 }
