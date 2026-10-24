@@ -7,14 +7,9 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session-attempt']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session-attempt', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
 
 const help = {
-  'workspace-open': { usage: 'workspace-open --root project --session id [--task id] [--operation scope]', mode: 'lazily allocate bounded private scratch for the active task; no host temp/cache changes' },
-  'workspace-write': { usage: 'workspace-write --session id [--operation scope] --data artifact.json', mode: 'write a new bounded scratch file from {name,content}; existing files are never overwritten' },
-  'workspace-promote': { usage: 'workspace-promote --session id [--operation scope] --data promotion.json', mode: 'intentionally retain bounded evidence from {name,purpose}; never promote secrets or transcripts' },
-  'workspace-release': { usage: 'workspace-release --session id [--operation scope]', mode: 'release the current owner operation; task completion cleans disposable scratch when no other owner is active' },
-  'workspace-clean': { usage: 'workspace-clean --root project', mode: 'reclaim closed or stale abandoned storage; live or unverified owners are retained' },
   'worker-status': { usage: 'worker-status --root project --session id [--task id]', mode: 'shared task-tree reservations and host observations; no dispatch' },
   'task-feature': { usage: 'task-feature --session id --feature feature-id --feature-status used|eligible-but-skipped|disabled|unsupported|not-applicable|failed --reason reason --evidence reference', mode: 'explicit evaluation classification only; normal delivery uses runtime observations and leaves missing evidence unknown' },
   'task-features': { usage: 'task-features --session id [--task id]', mode: 'all feature outcomes, provenance, missing evidence and stale-source markers' },

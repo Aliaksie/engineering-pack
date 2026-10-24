@@ -9,6 +9,7 @@ pub mod discovery;
 pub mod models;
 pub mod repository;
 pub mod routing;
+pub mod scratch;
 pub mod services;
 pub mod session;
 pub mod telemetry;

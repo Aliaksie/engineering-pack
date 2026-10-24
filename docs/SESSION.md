@@ -96,7 +96,7 @@ node cli/main.mjs workspace-promote --root <workspace> --session <host-id> --ope
 node cli/main.mjs workspace-release --root <workspace> --session <host-id> --operation investigation
 ```
 
-The write input is `{ "name": "result.json", "content": "small structured result" }`;
+The write input is the JSON object `{ "name": "result.json", "content": "small structured result" }`;
 promotion is `{ "name": "result.json", "purpose": "acceptance" }`. Managed writes enforce
 file/byte budgets and refuse overwrites. Direct tool writes to the supplied directory are
 cooperative: they must respect the same bounds; the pack cannot intercept arbitrary tools.
@@ -111,7 +111,9 @@ remains. Workers release their own scopes after use. Startup/task boundaries and
 `workspace-clean --root <workspace>` reclaim verified closed or stale abandoned workspaces.
 Live process owners are retained regardless of age; uncertain ownership, symlinks, unsafe
 metadata, exhausted bounds or busy locks retain data and expose a reason. A dead managed lock
-can be reclaimed; unknown locks are preserved. Cleanup failure never blocks task acceptance.
+can be reclaimed; unknown locks are preserved. On Windows the native runtime cannot observe
+whether another recorded process still runs: such an owner holds its workspace until the
+scratch stale age, and its workspace lock can be reclaimed after ten minutes. Cleanup failure never blocks task acceptance.
 The lock serializes cooperating pack processes; these path checks are not an OS sandbox
 against a hostile same-user process swapping paths concurrently.
 

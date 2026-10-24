@@ -1,5 +1,4 @@
 import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
-import { workspace } from '../application/workspace.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { taskFeatures } from '../application/session/features.mjs';
@@ -14,11 +13,6 @@ export function execute(action, options, root) {
   return withTelemetry(root, { session: options.session, host: options.host }, () => observe('cli.command', () => executeRequest(action,options,root), () => ({ command:action }), { failureCode:'INVALID_INPUT', reuse:true }));
 }
 function executeRequest(action, options, root) {
-  if (['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean'].includes(action)) {
-    const input = options.data ? readInput(options.data) : {};
-    if (options.operation) input.operation = options.operation;
-    return workspace(root, options.session, options.task, { 'workspace-open': 'open', 'workspace-write': 'write', 'workspace-promote': 'promote', 'workspace-release': 'release', 'workspace-clean': 'maintain' }[action], input, readProject(root, { preferencesFile: options.preferences }));
-  }
   if (action === 'telemetry-capture') return captureTelemetry(root, { session: options.session });
   if (action === 'telemetry-forget') return forgetTelemetryCapture(root, options.capture);
   if (action === 'telemetry-report') {

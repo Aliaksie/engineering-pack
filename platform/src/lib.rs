@@ -6,6 +6,7 @@ pub mod javascript;
 pub mod process;
 pub mod providers;
 pub mod repository;
+pub mod scratch;
 pub mod search;
 pub mod state;
 pub mod store;

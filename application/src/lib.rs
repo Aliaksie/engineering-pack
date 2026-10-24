@@ -6,6 +6,7 @@ pub mod cli;
 mod discovery;
 mod evidence;
 mod project;
+mod scratch;
 mod session;
 mod telemetry;
 mod workspace;

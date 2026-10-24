@@ -224,6 +224,13 @@ pub struct Lock {
     file: Option<File>,
 }
 
+impl Lock {
+    /// Record the holder in the lock file, for protocols that recover abandoned locks.
+    pub fn record(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        self.file.as_mut().expect("held lock").write_all(bytes)
+    }
+}
+
 impl Drop for Lock {
     fn drop(&mut self) {
         drop(self.file.take());

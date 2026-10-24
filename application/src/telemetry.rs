@@ -378,6 +378,33 @@ impl Recorder {
         self.record(event, id);
     }
 
+    /// An observation under `parent` that carries its own outcome and duration.
+    pub fn observed(
+        &mut self,
+        name: &'static str,
+        attributes: Map<String, Value>,
+        parent: &Operation,
+        outcome: &'static str,
+        duration: i64,
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let id = store::uuid().unwrap_or_default();
+        let event = self.build(
+            name,
+            attributes,
+            Some(outcome),
+            Some(duration.max(0)),
+            id.clone(),
+            Some(parent.id.clone()),
+            None,
+            false,
+            &[],
+        );
+        self.record(event, id);
+    }
+
     fn record(&mut self, event: Result<Value, String>, id: String) {
         for reason in std::mem::take(&mut self.pending) {
             self.diagnostic(reason, Map::new(), Some(id.clone()));

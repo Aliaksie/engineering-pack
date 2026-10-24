@@ -21,6 +21,11 @@ pub const COMMANDS: &[&str] = &[
     "checkpoint-save",
     "checkpoint-read",
     "session-attempt",
+    "workspace-open",
+    "workspace-write",
+    "workspace-promote",
+    "workspace-release",
+    "workspace-clean",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -699,6 +704,36 @@ fn session_attempt(
     }))
 }
 
+/// One `workspace-*` action for the explicit or bound task: `--data` supplies the artifact
+/// or promotion, `--operation` the owner scope.
+fn workspace(
+    action: crate::scratch::Action,
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let mut data = match options.get("data").filter(|d| !d.is_empty()) {
+        Some(file) => input(recorder, parent, file)?,
+        None => json!({}),
+    };
+    if !data.is_object() {
+        return Err("workspace input must be a JSON object".into());
+    }
+    if let Some(operation) = options.get("operation").filter(|o| !o.is_empty()) {
+        data["operation"] = json!(operation);
+    }
+    let settings = loaded(options, recorder, parent)?;
+    let request = crate::scratch::Request {
+        root: &root(options),
+        session: options.get("session"),
+        task: options.get("task"),
+        action,
+        input: &data,
+        settings: &settings,
+    };
+    crate::scratch::run(request, recorder, parent)
+}
+
 fn checkpoint_read(
     options: &Options,
     recorder: &mut Recorder,
@@ -757,6 +792,26 @@ fn help(action: &str) -> Value {
             "outcomes": craft_engine::session::OUTCOMES,
             "optional": ["profile", "maxAttempts", "escalationReason"],
             "mode": "receipt only; no retry execution",
+        }),
+        "workspace-open" => json!({
+            "usage": "workspace-open --root project --session id [--task id] [--operation scope]",
+            "mode": "lazily allocate bounded private scratch for the active task; no host temp/cache changes",
+        }),
+        "workspace-write" => json!({
+            "usage": "workspace-write --session id [--operation scope] --data artifact.json",
+            "mode": "write a new bounded scratch file from {name,content}; existing files are never overwritten",
+        }),
+        "workspace-promote" => json!({
+            "usage": "workspace-promote --session id [--operation scope] --data promotion.json",
+            "mode": "intentionally retain bounded evidence from {name,purpose}; never promote secrets or transcripts",
+        }),
+        "workspace-release" => json!({
+            "usage": "workspace-release --session id [--operation scope]",
+            "mode": "release the current owner operation; task completion cleans disposable scratch when no other owner is active",
+        }),
+        "workspace-clean" => json!({
+            "usage": "workspace-clean --root project",
+            "mode": "reclaim closed or stale abandoned storage; live or unverified owners are retained",
         }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
@@ -867,6 +922,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let mut activity = None;
     let result = parse(action, args).and_then(|mut options| {
         options.discovery = context["discovery"].clone();
+        if let Some(action) = crate::scratch::Action::from_command(action) {
+            return workspace(action, &options, &mut recorder, &operation);
+        }
         if action == "context-report" {
             let (report, counters) = context_report(&options, &mut recorder, &operation)?;
             activity = Some(counters);
