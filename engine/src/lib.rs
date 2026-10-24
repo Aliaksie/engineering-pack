@@ -2,12 +2,15 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod checkpoint;
 pub mod context;
 pub mod contracts;
 pub mod discovery;
 pub mod models;
+pub mod repository;
 pub mod routing;
 pub mod services;
+pub mod session;
 pub mod telemetry;
 pub mod timestamp;
 pub mod workers;
@@ -17,6 +20,29 @@ pub const PROTOCOL_VERSION: u32 = 1;
 
 pub fn hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
+}
+
+/// SHA-256 of the JSON text, as `JSON.stringify` writes it for normalized values.
+pub fn digest(value: &serde_json::Value) -> String {
+    hash(&serde_json::to_vec(value).expect("JSON values serialize"))
+}
+
+/// A copy with object keys sorted by UTF-16 code units, as `canonical` in the JS engine.
+pub fn canonical(value: &serde_json::Value) -> serde_json::Value {
+    use serde_json::Value;
+    match value {
+        Value::Array(items) => Value::Array(items.iter().map(canonical).collect()),
+        Value::Object(map) => {
+            let mut keys: Vec<_> = map.keys().collect();
+            keys.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+            Value::Object(
+                keys.into_iter()
+                    .map(|k| (k.clone(), canonical(&map[k])))
+                    .collect(),
+            )
+        }
+        other => other.clone(),
+    }
 }
 
 pub fn identity(parts: &[&str]) -> String {

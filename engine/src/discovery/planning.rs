@@ -1,14 +1,9 @@
 //! Discovery batches, bounded evidence packets and session lookup receipts.
 use super::{request as search_request, scope};
-use crate::{
-    contracts::{js_length, safe_integer},
-    hash,
-};
+use crate::contracts::{js_length, safe_integer};
 use serde_json::{Value, json};
 
-pub fn digest(value: &Value) -> String {
-    hash(&serde_json::to_vec(value).expect("JSON values serialize"))
-}
+pub use crate::digest;
 fn size(value: &Value) -> usize {
     serde_json::to_vec(value)
         .expect("JSON values serialize")

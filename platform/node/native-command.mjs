@@ -18,9 +18,9 @@ export function nativeRequest(executable, operation, input, { timeoutMs = 120000
   return response.result;
 }
 
-// A migrated CLI invocation. CRAFT_NATIVE_BINARY selects an absolute development build.
-export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, telemetry, discovery } = {}) {
-  const result = nativeRequest(binary || nativeArtifact(), 'cli', { argv, telemetry, discovery });
+// A migrated CLI invocation (`structured`: JSON, not a compact receipt). CRAFT_NATIVE_BINARY selects a development build.
+export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, telemetry, discovery, structured } = {}) {
+  const result = nativeRequest(binary || nativeArtifact(), 'cli', { argv, telemetry, discovery, structured });
   if (!Number.isInteger(result?.exitCode)) throw new Error('incompatible native runtime protocol');
   return result;
 }

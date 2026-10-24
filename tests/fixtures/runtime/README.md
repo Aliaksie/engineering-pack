@@ -105,3 +105,14 @@ including the JavaScript engine discovery fixtures they retired.
 and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust replay rebuilds
 the trees and runs the `craft context-report` command, comparing output bytes and the session
 activity counters.
+
+`checkpoint-contracts.json` freezes 1765 JavaScript engine responses at `c27951a` for
+repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison and change
+detection, session-state validation, activity counters, task binding/contract/source/context
+and acceptance coverage. Valid metadata, engineering contracts, evidence ledgers and session
+states are mutated field by field; a mutated case stores `{$mutate: {base, at, value|remove}}`
+against `documents`, and validator responses omit their echoed input. `acceptance:` reasons
+are compared exactly; other error prose is not. The Rust replay
+(`cargo test -p craft-engine --test checkpoint_contracts`) lists five intentional
+corrections: impossible calendar dates such as `2026-02-30`, which `Date.parse` rolled over,
+are rejected in acceptance observation times and feature outcome times.

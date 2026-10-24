@@ -18,6 +18,8 @@ pub const COMMANDS: &[&str] = &[
     "route",
     "locate",
     "context-report",
+    "checkpoint-save",
+    "checkpoint-read",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -275,7 +277,7 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
 
 /// One child operation of `parent`: success records `summary`, failure the code of its
 /// I/O error or `fallback`.
-fn observe<T>(
+pub(crate) fn observe<T>(
     recorder: &mut Recorder,
     name: &'static str,
     parent: &Operation,
@@ -604,6 +606,59 @@ fn locate(
     )
 }
 
+/// The task a checkpoint describes: explicit, from the handoff, or the active binding.
+fn checkpoint_save(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let root = root(options);
+    let mut metadata = match options.get("data") {
+        Some(file) => input(recorder, parent, file)?,
+        None => json!({}),
+    };
+    let session = options.get("session").filter(|s| !s.is_empty());
+    let mut task = options
+        .get("task")
+        .map(|t| json!(t))
+        .or_else(|| metadata.get("taskId").filter(|t| !t.is_null()).cloned())
+        .filter(|t| t.as_str() != Some(""));
+    if task.is_none() && session.is_some() {
+        match crate::session::active_task(&root, session) {
+            Ok(active) => task = active.map(Value::String),
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), parent),
+        }
+    }
+    if let Some(map) = metadata.as_object_mut() {
+        if let Some(repositories) = options.values.get("repository") {
+            map.insert("repositories".into(), repositories.clone());
+        }
+        if let Some(task) = &task {
+            map.insert("taskId".into(), task.clone());
+        }
+    }
+    let name = options.get("session").unwrap_or("manual");
+    let mut saved = crate::checkpoint::save(&root, name, &metadata, recorder, parent)?;
+    if let (Some(session), Some(task)) = (session, task.as_ref().and_then(Value::as_str)) {
+        let values = Map::from_iter([("checkpoints".to_string(), json!(1))]);
+        if let Some(warning) =
+            crate::session::add_activity(&root, session, task, &values, recorder, parent)
+        {
+            saved["activityDiagnostic"] = json!(warning);
+        }
+    }
+    Ok(saved)
+}
+
+fn checkpoint_read(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let name = options.get("session").unwrap_or("manual");
+    crate::checkpoint::recover(&root(options), name, recorder, parent)
+}
+
 fn settings(
     options: &Options,
     recorder: &mut Recorder,
@@ -638,6 +693,15 @@ fn help(action: &str) -> Value {
             "usage": "context-report --intent implement [--file src/main.py] [--bundle package-root ...]",
             "mode": "selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading",
         }),
+        "checkpoint-save" => json!({
+            "usage": "checkpoint-save --root project --session id [--task task-id] [--repository relative/repo ...] --data handoff.json",
+            "continuationFields": craft_engine::checkpoint::CONTINUATION,
+            "mode": "explicit local checkpoint write",
+        }),
+        "checkpoint-read" => json!({
+            "usage": "checkpoint-read --root project --session id",
+            "mode": "read-only recovery comparison",
+        }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
@@ -660,13 +724,40 @@ fn render(value: &Value) -> String {
     )
 }
 
+/// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.
+fn receipt(saved: &Value) -> String {
+    let incomplete = if saved["state"]["fingerprints"]["complete"] == false {
+        " (repository inspection incomplete)"
+    } else {
+        ""
+    };
+    let status = if saved["unchanged"] == true {
+        "unchanged"
+    } else {
+        "saved"
+    };
+    let mut text = format!("Checkpoint: {status}{incomplete}");
+    if let Some(file) = saved["file"].as_str().filter(|f| !f.is_empty()) {
+        text.push_str(&format!(" — {file}"));
+    }
+    if let Some(warning) = saved["activityDiagnostic"]
+        .as_str()
+        .filter(|w| !w.is_empty())
+    {
+        text.push_str(&format!("\nWarning: {warning}"));
+    }
+    text.push('\n');
+    text
+}
+
 /// Run one migrated command. `argv` excludes the executable name.
 pub fn run(argv: &[String]) -> Outcome {
     run_in_context(argv, &Value::Null)
 }
 
-/// A forwarded command can share the JS command's operation (`context.telemetry`) and receive
-/// the session observation its W2 owner validated (`context.discovery`).
+/// A forwarded command can share the JS command's operation (`context.telemetry`), receive
+/// the session observation its W2 owner validated (`context.discovery`) and ask for the
+/// JSON result instead of a compact receipt (`context.structured`).
 pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let (action, args) = match argv.split_first() {
         Some((action, args)) if COMMANDS.contains(&action.as_str()) => (action.as_str(), args),
@@ -712,6 +803,8 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "lookup" => lookup,
         "route" => route,
         "locate" => locate,
+        "checkpoint-save" => checkpoint_save,
+        "checkpoint-read" => checkpoint_read,
         _ => settings,
     };
     let mut activity = None;
@@ -733,7 +826,15 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                     None,
                 );
             }
-            (0, render(value), String::new())
+            let compact = action == "checkpoint-save"
+                && context["structured"] != true
+                && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
+            let text = if compact {
+                receipt(value)
+            } else {
+                render(value)
+            };
+            (0, text, String::new())
         }
         Err(failure) => {
             if !forwarded {

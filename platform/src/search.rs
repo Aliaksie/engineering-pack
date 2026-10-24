@@ -1,5 +1,5 @@
 //! One bounded literal scan over a Git inventory or explicit paths.
-use crate::{process, state};
+use crate::process;
 use craft_engine::{
     discovery::{self, MAX_FILE_BYTES, Search},
     routing::private_path,
@@ -61,7 +61,7 @@ const LIMITATIONS: &[&str] = &[
     "Symlinks, generated directories and binary or oversized files are excluded; this is not a sandbox against concurrent filesystem changes.",
 ];
 
-fn safe_file(root: &Path, relative: &str) -> Result<Option<PathBuf>, SearchError> {
+pub(crate) fn safe_file(root: &Path, relative: &str) -> Result<Option<PathBuf>, SearchError> {
     let mut current = root.to_path_buf();
     let mut parts = relative.split('/').peekable();
     while let Some(part) = parts.next() {
@@ -80,7 +80,7 @@ fn safe_file(root: &Path, relative: &str) -> Result<Option<PathBuf>, SearchError
 
 /// Refuse a final symlink or special-file replacement at open. Directory replacement
 /// races remain outside this path-based traversal contract.
-fn open_source(path: &Path) -> std::io::Result<File> {
+pub(crate) fn open_source(path: &Path) -> std::io::Result<File> {
     #[cfg(unix)]
     let file = {
         use rustix::fs::{Mode, OFlags, open};
@@ -207,22 +207,7 @@ fn inventory(root: &Path) -> Result<Option<Vec<u8>>, String> {
 
 fn selected_inventory(root: &Path, repositories: &[String]) -> Result<Vec<u8>, SearchError> {
     let mut paths = Vec::new();
-    let mut seen = BTreeSet::new();
-    for scope in repositories {
-        let candidate = root.join(scope);
-        let Some(_) = safe_file(root, scope)? else {
-            return Err("repository scope must not traverse symlinks".into());
-        };
-        let canonical = state::canonical_root(&candidate)?;
-        if !seen.insert(canonical.clone()) {
-            return Err("duplicate repository root".into());
-        }
-        let top = process::git(&canonical, &["rev-parse", "--show-toplevel"], 16384)?
-            .ok_or_else(|| format!("repository scope is not a Git worktree root: {scope}"))?;
-        let top = String::from_utf8_lossy(&top);
-        if state::canonical_root(Path::new(top.trim()))? != canonical {
-            return Err(format!("repository scope is not a Git worktree root: {scope}").into());
-        }
+    for (scope, canonical) in crate::repository::snapshot::roots(root, repositories)? {
         let output = inventory(&canonical)?
             .ok_or_else(|| format!("Selected repository inventory failed: {scope}"))?;
         for name in output.split(|b| *b == 0).filter(|p| !p.is_empty()) {

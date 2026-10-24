@@ -25,7 +25,7 @@
       "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
       "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
       "dependsOn": ["engine"],
-      "externalDependencies": ["getrandom", "rusqlite", "rustix", "serde_json", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
+      "externalDependencies": ["getrandom", "rusqlite", "rustix", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
       "shipped": true,
       "legacy": {
         "retireBy": "W4",
@@ -49,7 +49,6 @@
         "jsLines": 1292,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
-          "application/checkpoint.mjs",
           "application/context-delivery/prepare.mjs",
           "application/discovery/discover.mjs",
           "application/engine-client.mjs",
@@ -84,7 +83,7 @@
       "responsibility": "Legacy JS command parsing and display that moves into the application crate.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 326,
+      "jsLines": 311,
       "dependsOn": ["application", "platform"],
       "shipped": true,
       "runtimeRoots": ["cli/main.mjs", "cli/project-evidence.mjs"]

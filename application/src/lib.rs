@@ -1,10 +1,12 @@
 use craft_engine::PROTOCOL_VERSION;
 use serde_json::{Value, json};
 mod budget;
+mod checkpoint;
 pub mod cli;
 mod discovery;
 mod evidence;
 mod project;
+mod session;
 mod telemetry;
 mod workspace;
 
@@ -41,7 +43,7 @@ pub fn evaluate(request: Value) -> Value {
                 let search = craft_engine::discovery::request(&input["request"])?;
                 let repositories = input
                     .get("repositories")
-                    .map(craft_engine::discovery::repository_scopes)
+                    .map(craft_engine::repository::scopes)
                     .transpose()?;
                 craft_platform::search::scan(
                     std::path::Path::new(root),

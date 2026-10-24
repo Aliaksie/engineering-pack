@@ -36,30 +36,6 @@ pub fn scope(value: &Value) -> Result<String, String> {
     Ok(if name.is_empty() { ".".into() } else { name })
 }
 
-pub fn repository_scopes(value: &Value) -> Result<Vec<String>, String> {
-    let roots = value
-        .as_array()
-        .filter(|roots| !roots.is_empty() && roots.len() <= 8)
-        .ok_or("repositories require 1..8 workspace-relative directories")?;
-    let mut scopes = Vec::new();
-    for value in roots {
-        let text = value
-            .as_str()
-            .filter(|s| js_length(s) <= 1024 && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}'))
-            .ok_or("repositories require 1..8 workspace-relative directories")?;
-        let scope = scope(&json!(text))?;
-        if crate::routing::private_path(&scope) {
-            return Err("private workspace cannot be a repository scope".into());
-        }
-        if scopes.contains(&scope) {
-            return Err("duplicate repository scope".into());
-        }
-        scopes.push(scope);
-    }
-    scopes.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
-    Ok(scopes)
-}
-
 fn bound(input: &Value, field: &str, default: usize, ceiling: usize) -> Result<usize, String> {
     match input.get(field) {
         None => Ok(default),
@@ -169,24 +145,6 @@ mod tests {
         let at_start = matches(&format!("😀{}needle", "x".repeat(39)), "a", &terms, 1);
         assert_eq!(at_start[0]["text"], format!("{}needle", "x".repeat(39)));
         assert_eq!(at_start[0]["snippetTruncated"], true);
-    }
-    #[test]
-    fn selected_repositories_are_bounded_normalized_and_nonprivate() {
-        assert_eq!(
-            repository_scopes(&json!(["./z/", "a"])).unwrap(),
-            vec!["a", "z"]
-        );
-        for input in [
-            json!([]),
-            json!(["../outside"]),
-            json!([".craft/state"]),
-            json!(["src", "./src"]),
-            json!([null]),
-            json!(["a\u{0}b"]),
-            json!(vec!["a"; 9]),
-        ] {
-            assert!(repository_scopes(&input).is_err(), "{input}");
-        }
     }
     #[test]
     fn frozen_literal_search_contracts() {

@@ -81,7 +81,7 @@ fn discover(
     let mut input = input.clone();
     let repositories = bridge
         .get("repositories")
-        .map(discovery::repository_scopes)
+        .map(craft_engine::repository::scopes)
         .transpose()?;
     if let Some(repositories) = &repositories {
         let paths = match input

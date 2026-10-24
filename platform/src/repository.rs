@@ -1,4 +1,6 @@
 use crate::syntax::MAX_SOURCE_BYTES;
+
+pub mod snapshot;
 use craft_engine::valid_path;
 use std::{
     fs::{self, File, OpenOptions},

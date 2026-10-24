@@ -6,7 +6,6 @@ import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
 import { readProject, readInput } from '../application/project/configuration.mjs';
-import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
 import { locateCommand } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, recordAttempt, activeTask } from '../application/session/activity.mjs';
@@ -85,16 +84,5 @@ function executeRequest(action, options, root) {
     return activity(JSON.parse(outcome.stdout), outcome.activity);
   }
   if (action === 'route') return activity(JSON.parse(forward('route', options).stdout), { routingDecisions: 1 });
-  if (action === 'checkpoint-save') {
-    const metadata = options.data ? readInput(options.data) : {};
-    let task = options.task ?? metadata.taskId;
-    if (!task && options.session) {
-      try { task = activeTask(root, options.session); } catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
-    }
-    options = { ...options, task };
-    const saved = saveCheckpoint(root, options.session ?? 'manual', { ...metadata, ...(options.repository ? { repositories: options.repository } : {}), ...(options.task ? { taskId: options.task } : {}) });
-    return activity(saved, { checkpoints: 1 });
-  }
-  if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|locate> [--root project] [options]');
 }
