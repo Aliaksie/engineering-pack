@@ -9,10 +9,14 @@ import { discover } from '../application/discovery/discover.mjs';
 import { attemptStatus } from '../application/session/activity.mjs';
 import { readSessionState, recordAttempt } from '../application/session/activity.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
-import { sessionAdvice } from '../application/session/advice.mjs';
+import { decide } from '../application/engine-client.mjs';
+import { catalog } from '../application/routing/catalog.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { capabilityAdvice, modelAdvice } from '../application/session/models.mjs';
 import { run } from '../cli/main.mjs';
+
+// The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
+const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'session-efficiency-'));
