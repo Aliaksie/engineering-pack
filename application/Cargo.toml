@@ -1,0 +1,22 @@
+[package]
+name = "craft-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "craft"
+path = "src/main.rs"
+
+[[bin]]
+name = "craft-project-evidence"
+path = "src/compat.rs"
+
+[dependencies]
+craft-engine = { path = "../engine" }
+craft-platform = { path = "../platform" }
+serde_json.workspace = true
+
+[lints]
+workspace = true

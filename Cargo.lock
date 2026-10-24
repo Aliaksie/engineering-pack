@@ -58,6 +58,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-application"
+version = "0.0.1"
+dependencies = [
+ "craft-engine",
+ "craft-platform",
+ "serde_json",
+]
+
+[[package]]
 name = "craft-engine"
 version = "0.0.1"
 dependencies = [
@@ -76,15 +85,6 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-java",
  "tree-sitter-javascript",
-]
-
-[[package]]
-name = "craft-project-evidence"
-version = "0.0.1"
-dependencies = [
- "craft-engine",
- "craft-platform",
- "serde_json",
 ]
 
 [[package]]

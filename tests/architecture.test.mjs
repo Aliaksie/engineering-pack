@@ -92,3 +92,19 @@ test('portable telemetry contracts cannot depend on providers or runtime impleme
     assert.ok(inDirectory(path.resolve(path.dirname(file),specifier),'integrations/otel'),`${file}: provider mapping depends on core contract implementation`);
   }
 });
+
+test('Rust workspace keeps the engine, platform and application dependency direction', () => {
+  const workspace = fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8');
+  assert.match(workspace, /members = \["engine", "platform", "application"\]/);
+  assert.match(workspace, /resolver = "3"/);
+  assert.match(workspace, /unsafe_code = "forbid"/);
+  const allowed = { engine: [], platform: ['engine'], application: ['engine', 'platform'] };
+  for (const [name, dependencies] of Object.entries(allowed)) {
+    const manifest = fs.readFileSync(path.join(root, name, 'Cargo.toml'), 'utf8');
+    assert.match(manifest, new RegExp(`name = "craft-${name}"`));
+    assert.match(manifest, /\[lints\]\nworkspace = true/);
+    const local = [...manifest.matchAll(/path\s*=\s*"(\.\.[^"]+)"/g)].map(match => match[1]);
+    assert.deepEqual(local.sort(), dependencies.map(dependency => `../${dependency}`).sort());
+    assert.equal(fs.existsSync(path.join(root, name, 'native')), false);
+  }
+});

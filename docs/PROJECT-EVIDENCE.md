@@ -103,9 +103,9 @@ Matching method names across files or members does not establish a resolved edge
 Java imports retain their spelled qualified names and wildcard suffixes without
 claiming that a selected member supplies the imported type.
 
-`engine/native` owns portable records and identities; `platform/native` owns SQLite,
-Git inventory and the Tree-sitter provider; `application/native` orchestrates operations.
-The Node platform bridge invokes a versioned JSON operation through `cli/native/main.rs`.
+`engine/src` owns portable records and identities; `platform/src` owns SQLite,
+Git inventory and the Tree-sitter provider; `application/src` orchestrates operations.
+The Node platform bridge invokes a versioned JSON operation through `application/src/main.rs`.
 The existing JavaScript engine remains in place for unaffected operations under
 [ADR 0001](adr/0001-rust-core-runtime.md).
 
@@ -189,3 +189,22 @@ syntax extraction uses [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) a
 [Java grammar](https://docs.rs/crate/tree-sitter-java/0.23.5).
 `Cargo.lock` pins the dependency graph. These libraries use permissive licenses;
 native distribution must include the applicable dependency notices.
+
+### Native invocation contract
+
+The `craft` executable and the compatibility name `craft-project-evidence` accept
+one UTF-8 JSON request on standard input, bounded to 3 MiB, and write one JSON
+response on standard output. Both executables use the same application library.
+The request envelope is `{ "formatVersion": 1, "operation": "version", "input": {} }`.
+Operations are `version`, `extract`, `refresh`, `status`, `query`, `backup` and
+`rebuild`; operation inputs retain their existing Project Intelligence contracts.
+Successful responses contain `formatVersion`, `ok: true` and `result`. Failures
+contain `formatVersion`, `ok: false` and `error` with `code` and `message`, and exit
+with status 1. Invalid JSON or oversized input returns `INVALID_INPUT`, an
+unsupported envelope version returns `UNSUPPORTED_VERSION`, and an unknown
+operation returns `UNKNOWN_OPERATION`.
+
+The existing Node bridge continues to select `craft-project-evidence`, checks its
+version before invoking an operation, and reports native failures without replay.
+Disabled access bypasses the executable. Missing executables and deadlines remain
+explicit availability errors; signal interruption reports possible partial effects.

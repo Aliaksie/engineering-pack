@@ -8,7 +8,7 @@ fn main() {
         .read_to_end(&mut input)
     {
         Ok(_) if input.len() <= 3 * 1024 * 1024 => match serde_json::from_slice(&input) {
-            Ok(request) => craft_project_evidence::evaluate(request),
+            Ok(request) => craft_application::evaluate(request),
             Err(error) => {
                 json!({"formatVersion":1,"ok":false,"error":{"code":"INVALID_INPUT","message":error.to_string()}})
             }

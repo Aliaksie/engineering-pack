@@ -20,7 +20,7 @@ function checkedDirectory(directory) {
 function notices(metadata, stage) {
   const packages = new Map(metadata.packages.map(pkg => [pkg.id, pkg]));
   const nodes = new Map(metadata.resolve.nodes.map(node => [node.id, node]));
-  const root = metadata.packages.find(pkg => pkg.name === 'craft-project-evidence');
+  const root = metadata.packages.find(pkg => pkg.name === 'craft-application');
   if (!root) throw new Error('native application package missing');
   const selected = new Set();
   const visit = id => {
@@ -94,7 +94,7 @@ export function buildNativeBundle() {
     if (!fs.existsSync(existing) || fs.lstatSync(existing).isSymbolicLink()
       || JSON.parse(fs.readFileSync(existing, 'utf8')).target !== target) throw new Error('refusing to replace unmanaged native bundle');
   }
-  run(cargo, ['build', '--release', '--locked', '--offline', '--package', 'craft-project-evidence', '--target', target]);
+  run(cargo, ['build', '--release', '--locked', '--offline', '--package', 'craft-application', '--target', target]);
   const metadata = JSON.parse(run(cargo, ['metadata', '--format-version', '1', '--locked', '--offline', '--filter-platform', target]));
   const executable = `craft-project-evidence${process.platform === 'win32' ? '.exe' : ''}`;
   const binary = path.join(metadata.target_directory, target, 'release', executable);
