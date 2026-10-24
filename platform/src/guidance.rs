@@ -382,6 +382,37 @@ mod tests {
         );
     }
 
+    #[test]
+    fn one_directory_spelled_two_ways_is_one_installation() {
+        let bundle = Bundle::new(&[
+            PACKAGE,
+            ("packages/p/skills/a/SKILL.md", "a"),
+            ("packages/p/AGENTS.md", "i"),
+        ]);
+        let name = bundle
+            .0
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_uppercase();
+        let respelled = bundle.0.with_file_name(name);
+        if !respelled.exists() {
+            return; // Case-sensitive filesystem: the spellings name different directories.
+        }
+        let roots = vec![
+            bundle.0.display().to_string(),
+            respelled.display().to_string(),
+        ];
+        let (entries, missing) = measure(&roots, &[request("p:a", "x")]).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(missing.is_empty());
+        assert!(
+            entries
+                .iter()
+                .all(|entry| entry.get("bundleRoot").is_none())
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_symlinked_path_component_is_refused() {
