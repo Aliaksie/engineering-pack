@@ -728,36 +728,6 @@
       }
     },
     {
-      "id": "locate-request:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-request",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "locate-match:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-match",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
       "id": "route:empty",
       "request": {
         "formatVersion": 1,
@@ -1219,21 +1189,6 @@
       }
     },
     {
-      "id": "locate-scope:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
       "id": "envelope:0",
       "request": null,
       "response": {
@@ -1472,87 +1427,6 @@
         "formatVersion": 1,
         "ok": true,
         "result": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
-      }
-    },
-    {
-      "id": "scope:0",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {
-          "value": "src/./"
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": "src"
-      }
-    },
-    {
-      "id": "scope:1",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {
-          "value": "src/../a"
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "scope:2",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {
-          "value": "../escape"
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "scope:3",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {
-          "value": "src\\a"
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "scope:4",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-scope",
-        "input": {
-          "value": "λ/🙂"
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": "λ/🙂"
       }
     },
     {
@@ -2794,46 +2668,6 @@
           "evidencePolicy"
         ]
       ]
-    },
-    {
-      "id": "locate:unicode-literal",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-match",
-        "input": {
-          "content": "λ🙂\r\na.b\naxb",
-          "file": "λ.js",
-          "terms": [
-            "λ",
-            "a.b"
-          ],
-          "maxMatches": 5
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": [
-          {
-            "path": "λ.js",
-            "line": 1,
-            "text": "λ🙂",
-            "termIndexes": [
-              0
-            ],
-            "snippetTruncated": false
-          },
-          {
-            "path": "λ.js",
-            "line": 2,
-            "text": "a.b",
-            "termIndexes": [
-              1
-            ],
-            "snippetTruncated": false
-          }
-        ]
-      }
     },
     {
       "id": "attempt:success",
@@ -14538,71 +14372,6 @@
           "input": {
             "feature": "review",
             "status": "passed"
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "locate:deduplicate-literals-scopes",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-request",
-        "input": {
-          "input": {
-            "terms": [
-              "λ",
-              "a.b",
-              "λ"
-            ],
-            "paths": [
-              "src/./api",
-              "src/api"
-            ],
-            "maxFiles": 1,
-            "maxMatches": 1,
-            "maxBytes": 1
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "terms": [
-            "λ",
-            "a.b"
-          ],
-          "scopes": [
-            "src/api"
-          ],
-          "maxFiles": 1,
-          "maxMatches": 1,
-          "maxBytes": 1,
-          "maxFileBytes": 262144,
-          "maxSnippetCharacters": 240
-        }
-      }
-    },
-    {
-      "id": "locate:traversal-refused",
-      "request": {
-        "formatVersion": 1,
-        "operation": "locate-request",
-        "input": {
-          "input": {
-            "terms": [
-              "λ"
-            ],
-            "paths": [
-              "../outside"
-            ]
           }
         }
       },

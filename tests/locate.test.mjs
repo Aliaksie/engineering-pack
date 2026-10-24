@@ -95,3 +95,9 @@ test('equivalent canonical scopes select the same evidence in Git and explicit i
     assert.throws(() => locate(root, { terms: ['needle'], paths: ['src/../elsewhere'] }), /relative scopes/);
   }
 });
+
+test('locate preserves filesystem error codes for scopes below a regular file', t => {
+  const root = fixture(t);
+  write(root, 'source', 'needle');
+  assert.throws(() => locate(root, { terms: ['needle'], paths: ['source/child'] }), { code: 'ENOTDIR' });
+});

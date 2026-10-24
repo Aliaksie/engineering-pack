@@ -8,7 +8,7 @@ import { run } from '../cli/main.mjs';
 import { activeTask } from '../application/session/activity.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { workspace, workspaceBoundary } from '../application/workspace.mjs';
-import { workspaceOperation, repositoryRoots, repositoryState, scan, reviewSnapshot, stateFile } from '../platform/index.mjs';
+import { workspaceOperation, repositoryRoots, repositoryState, nativeLocate, reviewSnapshot, stateFile } from '../platform/index.mjs';
 import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
 import { decide, digest } from '../application/engine-client.mjs';
 import { copy } from '../tooling/export/export.mjs';
@@ -175,7 +175,8 @@ for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirec
   const after = repositoryState(repo);
   assert.equal(before.fingerprints.workingTree, after.fingerprints.workingTree);
   assert.deepEqual(before.status, []);
-  const result = scan(repo, { terms: ['PRIVATE_NEEDLE'], scopes: ['.'], maxFiles: 100, maxMatches: 10, maxBytes: 10000, maxFileBytes: 10000, maxSnippetCharacters: 100 }, ({ content }) => { assert.equal(content.includes('PRIVATE_NEEDLE'), false); return []; });
+  const result = nativeLocate(repo, { terms: ['PRIVATE_NEEDLE'], paths: ['.'], maxFiles: 100, maxMatches: 10, maxBytes: 10000 });
+  assert.deepEqual(result.matches, []);
   assert.equal(result.filesScanned, 1);
   const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url)));
   assert.deepEqual(decide('route', { intent: 'implement', files: [`nested/${privateDirectory}/state/tempting.py`], project: { formatVersion: 1 }, catalog }).files, []);

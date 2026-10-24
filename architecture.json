@@ -14,7 +14,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 2361,
+        "jsLines": 2327,
         "dependsOn": [],
         "entryPoints": ["engine/index.mjs"]
       }
@@ -30,7 +30,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 1160,
+        "jsLines": 1060,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -46,7 +46,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 1325,
+        "jsLines": 1323,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
           "application/checkpoint.mjs",

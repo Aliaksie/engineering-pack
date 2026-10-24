@@ -24,3 +24,8 @@ export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, 
   if (!Number.isInteger(result?.exitCode)) throw new Error('incompatible native runtime protocol');
   return result;
 }
+
+// Bounded search for legacy session/discovery callers until their W2 cutover.
+export function nativeLocate(root, request, repositories) {
+  return nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'locate', { root, request, ...(repositories ? { repositories } : {}) });
+}

@@ -33,6 +33,28 @@ pub fn evaluate(request: Value) -> Value {
             }
             None => Err("cli requires an argv string array".into()),
         },
+        Some("locate") => {
+            let result = (|| -> Result<Value, craft_platform::search::SearchError> {
+                let input = &request["input"];
+                let root = input["root"].as_str().ok_or("locate requires root")?;
+                let search = craft_engine::discovery::request(&input["request"])?;
+                let repositories = input
+                    .get("repositories")
+                    .map(craft_engine::discovery::repository_scopes)
+                    .transpose()?;
+                craft_platform::search::scan(
+                    std::path::Path::new(root),
+                    &search,
+                    repositories.as_deref(),
+                )
+            })();
+            return match result {
+                Ok(result) => json!({"formatVersion":1,"ok":true,"result":result}),
+                Err(error) => {
+                    json!({"formatVersion":1,"ok":false,"error":{"code":error.code(),"message":error.to_string()}})
+                }
+            };
+        }
         Some("version") => Ok(
             json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE}),
         ),

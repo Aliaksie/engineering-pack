@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { nativeArtifact } from '../native-artifact.mjs';
 import { privatePath } from '../private-path.mjs';
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const locatorVersion = digest(['../search.mjs', './inventory.mjs', '../../../engine/discovery/match.mjs', '../../../engine/discovery/plan.mjs'].map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')));
+const locatorVersion = digest(['../native-command.mjs', './inventory.mjs', '../../../engine/discovery/plan.mjs'].map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')));
 
 // Locator-only reuse: one stat inventory validates the narrow packet. No arbitrary executor.
 export function inventoryIdentity(root, paths, maxFiles) {
@@ -38,7 +39,9 @@ export function inventoryIdentity(root, paths, maxFiles) {
       }
     }
     for (const prefix of prefixes) for (const manifest of ['package.json', 'pyproject.toml', 'go.mod', 'pom.xml', 'build.gradle', 'build.gradle.kts']) names.push(`${prefix}${manifest}`);
-    return digest([locatorVersion, head.stdout.trim(), names.map(name => {
+    const binary = fs.statSync(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), { bigint: true });
+    const nativeVersion = [binary.dev, binary.ino, binary.size, binary.mtimeNs, binary.ctimeNs].map(String);
+    return digest([locatorVersion, nativeVersion, head.stdout.trim(), names.map(name => {
       let file = root;
       for (const part of name.split('/')) {
         if (part === '..' || path.isAbsolute(name)) throw new Error('unsafe inventory path');

@@ -1,0 +1,1516 @@
+{
+  "formatVersion": 1,
+  "revision": "b27ec99",
+  "scope": "bounded literal search validation and line matching; diagnostic prose omitted",
+  "cases": [
+    {
+      "id": "scope:\".\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "."
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "."
+      }
+    },
+    {
+      "id": "scope:\"./src/./\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "./src/./"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "src"
+      }
+    },
+    {
+      "id": "scope:\"src//nested/\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "src//nested/"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "src/nested"
+      }
+    },
+    {
+      "id": "scope:\"../up\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "../up"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"/abs\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "/abs"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"C:/x\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "C:/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"C:x\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "C:x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"a\\\\b\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "a\\b"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": ""
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:null",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:4",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": 4
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:\"a\\u0000b\"",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "a\u0000b"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "a\u0000b"
+      }
+    },
+    {
+      "id": "request:12",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {}
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:13",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": null
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:14",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": []
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:15",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": []
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:16",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "a",
+              "a",
+              "β"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "a",
+            "β"
+          ],
+          "scopes": [],
+          "maxFiles": 500,
+          "maxMatches": 80,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:17",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "a"
+            ],
+            "paths": [
+              "./src/",
+              "src"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "a"
+          ],
+          "scopes": [
+            "src"
+          ],
+          "maxFiles": 500,
+          "maxMatches": 80,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:18",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          ],
+          "scopes": [],
+          "maxFiles": 500,
+          "maxMatches": 80,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:19",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:20",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+          ],
+          "scopes": [],
+          "maxFiles": 500,
+          "maxMatches": 80,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:21",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:22",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "a\n"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:23",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "a\r"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:24",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "a\u0000"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:25",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              1
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:26",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              null
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:27",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x",
+              "x"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:28",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "paths": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:29",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": 0
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:30",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "x"
+          ],
+          "scopes": [],
+          "maxFiles": 1,
+          "maxMatches": 80,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:31",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": 1.5
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:32",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": -1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:33",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:34",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxFiles": 100000000
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:35",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": 0
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:36",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "x"
+          ],
+          "scopes": [],
+          "maxFiles": 500,
+          "maxMatches": 1,
+          "maxBytes": 2097152,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:37",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": 1.5
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:38",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": -1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:39",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:40",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxMatches": 100000000
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:41",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": 0
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:42",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "x"
+          ],
+          "scopes": [],
+          "maxFiles": 500,
+          "maxMatches": 80,
+          "maxBytes": 1,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "request:43",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": 1.5
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:44",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": -1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:45",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": null
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "request:46",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "x"
+            ],
+            "maxBytes": 100000000
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "match:47",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "alpha\r\nβ alpha\n",
+          "file": "source λ",
+          "terms": [
+            "alpha",
+            "β"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "alpha",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": false
+          },
+          {
+            "path": "source λ",
+            "line": 2,
+            "text": "β alpha",
+            "termIndexes": [
+              0,
+              1
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:48",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "aaaa",
+          "file": "source λ",
+          "terms": [
+            "a",
+            "aa"
+          ],
+          "maxMatches": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "aaaa",
+            "termIndexes": [
+              0,
+              1
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:49",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxneedle tail",
+          "file": "source λ",
+          "terms": [
+            "needle"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxneedle tail",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:50",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀needle",
+          "file": "source λ",
+          "terms": [
+            "needle",
+            "😀"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+            "termIndexes": [
+              0,
+              1
+            ],
+            "snippetTruncated": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:51",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "no match",
+          "file": "source λ",
+          "terms": [
+            "absent"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": []
+      }
+    },
+    {
+      "id": "match:52",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "a\rb",
+          "file": "source λ",
+          "terms": [
+            "b"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "a\rb",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:53",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "needle\nneedle",
+          "file": "source λ",
+          "terms": [
+            "needle"
+          ],
+          "maxMatches": 1
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "needle",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "match:54",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "a b",
+          "file": "source λ",
+          "terms": [
+            "b"
+          ],
+          "maxMatches": 80
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "source λ",
+            "line": 1,
+            "text": "a b",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "locate-request:empty",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "locate-match:empty",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "locate-scope:empty",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:0",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "src/./"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "src"
+      }
+    },
+    {
+      "id": "scope:1",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "src/../a"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:2",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "../escape"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:3",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "src\\a"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "scope:4",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-scope",
+        "input": {
+          "value": "λ/🙂"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": "λ/🙂"
+      }
+    },
+    {
+      "id": "locate:unicode-literal",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-match",
+        "input": {
+          "content": "λ🙂\r\na.b\naxb",
+          "file": "λ.js",
+          "terms": [
+            "λ",
+            "a.b"
+          ],
+          "maxMatches": 5
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": [
+          {
+            "path": "λ.js",
+            "line": 1,
+            "text": "λ🙂",
+            "termIndexes": [
+              0
+            ],
+            "snippetTruncated": false
+          },
+          {
+            "path": "λ.js",
+            "line": 2,
+            "text": "a.b",
+            "termIndexes": [
+              1
+            ],
+            "snippetTruncated": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "locate:deduplicate-literals-scopes",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "λ",
+              "a.b",
+              "λ"
+            ],
+            "paths": [
+              "src/./api",
+              "src/api"
+            ],
+            "maxFiles": 1,
+            "maxMatches": 1,
+            "maxBytes": 1
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "terms": [
+            "λ",
+            "a.b"
+          ],
+          "scopes": [
+            "src/api"
+          ],
+          "maxFiles": 1,
+          "maxMatches": 1,
+          "maxBytes": 1,
+          "maxFileBytes": 262144,
+          "maxSnippetCharacters": 240
+        }
+      }
+    },
+    {
+      "id": "locate:traversal-refused",
+      "request": {
+        "formatVersion": 1,
+        "operation": "locate-request",
+        "input": {
+          "input": {
+            "terms": [
+              "λ"
+            ],
+            "paths": [
+              "../outside"
+            ]
+          }
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    }
+  ]
+}

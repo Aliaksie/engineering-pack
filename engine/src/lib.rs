@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub mod contracts;
+pub mod discovery;
 pub mod models;
 pub mod routing;
 pub mod services;

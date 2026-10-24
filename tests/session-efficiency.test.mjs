@@ -408,3 +408,17 @@ test('active receipt capacity fails explicitly without changing persisted eviden
   assert.equal(attemptStatus(after.attempts, 'implement').attempts, 1);
   assert.equal(attemptStatus(after.attempts, 'operation:1').attempts, 1);
 });
+
+test('lookup reuse cannot hide an unavailable native implementation', t => {
+  const { root } = fixture(t);
+  discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
+  assert.equal(discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope).discovery.reused, 1);
+  const binary = process.env.CRAFT_NATIVE_BINARY;
+  try {
+    process.env.CRAFT_NATIVE_BINARY = path.join(root, 'missing-native-binary');
+    assert.throws(() => discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope), { code: 'NATIVE_UNAVAILABLE' });
+  } finally {
+    if (binary === undefined) delete process.env.CRAFT_NATIVE_BINARY;
+    else process.env.CRAFT_NATIVE_BINARY = binary;
+  }
+});
