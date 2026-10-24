@@ -773,21 +773,6 @@
       }
     },
     {
-      "id": "lookup:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "lookup",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
       "id": "effective-settings:empty",
       "request": {
         "formatVersion": 1,
@@ -14618,115 +14603,6 @@
             "paths": [
               "../outside"
             ]
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "lookup:matching-module",
-      "request": {
-        "formatVersion": 1,
-        "operation": "lookup",
-        "input": {
-          "project": {
-            "formatVersion": 1,
-            "modules": [
-              {
-                "name": "api",
-                "path": "src/api",
-                "owner": "consumer"
-              },
-              {
-                "name": "other",
-                "path": "other"
-              }
-            ]
-          },
-          "options": {
-            "file": "src/api/λ.rs"
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "modules": [
-            {
-              "name": "api",
-              "path": "src/api",
-              "owner": "consumer"
-            }
-          ],
-          "availability": "declarations-only; verify paths and checks in the actual project",
-          "execution": "deterministic-lookup"
-        }
-      }
-    },
-    {
-      "id": "lookup:private-excluded",
-      "request": {
-        "formatVersion": 1,
-        "operation": "lookup",
-        "input": {
-          "project": {
-            "formatVersion": 1,
-            "modules": [
-              {
-                "name": "api",
-                "path": "src/api",
-                "owner": "consumer"
-              },
-              {
-                "name": "other",
-                "path": "other"
-              }
-            ]
-          },
-          "options": {
-            "file": ".craft/state/private"
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "modules": [],
-          "availability": "private workspace excluded",
-          "execution": "deterministic-lookup"
-        }
-      }
-    },
-    {
-      "id": "lookup:unknown-module",
-      "request": {
-        "formatVersion": 1,
-        "operation": "lookup",
-        "input": {
-          "project": {
-            "formatVersion": 1,
-            "modules": [
-              {
-                "name": "api",
-                "path": "src/api",
-                "owner": "consumer"
-              },
-              {
-                "name": "other",
-                "path": "other"
-              }
-            ]
-          },
-          "options": {
-            "module": "missing"
           }
         }
       },

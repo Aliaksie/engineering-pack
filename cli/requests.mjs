@@ -6,7 +6,7 @@ import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic } from '../application/telemetry/observe.mjs';
 import { readProject, readInput } from '../application/project/configuration.mjs';
-import { lookup, route } from '../application/routing/select.mjs';
+import { route } from '../application/routing/select.mjs';
 import { recoverCheckpoint, saveCheckpoint } from '../application/checkpoint.mjs';
 import { discover } from '../application/discovery/discover.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
@@ -84,7 +84,6 @@ function executeRequest(action, options, root) {
     }
     return result;
   };
-  if (action === 'lookup') return lookup(readProject(root, { preferencesFile: options.preferences }), { file: options.file[0], module: options.module });
   if (action === 'context-report') {
     const plan = route({ intent: options.intent, files: options.file, risks: options.risk, project: readProject(root, { preferencesFile: options.preferences }), host: options.host, verificationMode: options['verification-mode'] });
     const bundle = options.bundle ?? bundleRoot();
@@ -106,5 +105,5 @@ function executeRequest(action, options, root) {
     return activity(saved, { checkpoints: 1 });
   }
   if (action === 'checkpoint-read') return recoverCheckpoint(root, options.session ?? 'manual');
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|lookup|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|locate|checkpoint-save|checkpoint-read> [--root project] [options]');
 }

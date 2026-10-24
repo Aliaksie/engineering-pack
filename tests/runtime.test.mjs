@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { route, lookup } from '../application/routing/select.mjs';
+import { route } from '../application/routing/select.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
@@ -25,6 +25,16 @@ function git(root, ...args) {
   const result = spawnSync('git', ['-c', `core.hooksPath=${path.join(root, 'no-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-C', root, ...args], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+// `lookup` runs in the native runtime; select through the public command line.
+function lookup(config, { file, module } = {}) {
+  const configured = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(configured, '.craft'));
+    fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    return run(['lookup', '--root', configured, '--preferences', path.join(configured, 'absent.json'),
+      ...(file === undefined ? [] : ['--file', file]), ...(module === undefined ? [] : ['--module', module])]);
+  } finally { fs.rmSync(configured, { recursive: true, force: true }); }
 }
 function repository(t) {
   const dir = temp(t);
@@ -75,6 +85,15 @@ test('module lookup uses path boundaries, specificity and transitive declared im
   assert.deepEqual(result.languages, ['jvm']);
   assert.deepEqual(result.affectedDependents, ['client', 'console']);
   assert.throws(() => lookup(config, { module: 'absent' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: '' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: 'api', file: 'src/api/a.java' }), /choose --file or --module/);
+  const files = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(files, '.craft'));
+    fs.writeFileSync(path.join(files, '.craft/project.json'), JSON.stringify(config));
+    const selected = run(['lookup', '--root', files, '--preferences', path.join(files, 'absent.json'), '--file', 'client/a', '--file', '.git/b', '--file', 'src/api/c']);
+    assert.deepEqual(selected.modules.map((entry) => entry.name), ['client', 'api']);
+  } finally { fs.rmSync(files, { recursive: true, force: true }); }
 });
 
 test('equivalent module paths preserve ownership, checks and stack guidance without changing configuration', () => {

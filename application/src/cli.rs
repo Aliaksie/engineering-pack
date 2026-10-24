@@ -2,13 +2,19 @@
 //! `cli/main.mjs`, which forwards these commands here.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder};
-use craft_engine::{contracts, models, services};
+use craft_engine::{contracts, models, routing, services};
 use craft_platform::documents::DocumentError;
 use serde_json::{Map, Value, json};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
-pub const COMMANDS: &[&str] = &["settings", "operation", "prepare-services", "model-advice"];
+pub const COMMANDS: &[&str] = &[
+    "settings",
+    "operation",
+    "prepare-services",
+    "model-advice",
+    "lookup",
+];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
     "workspace-open",
@@ -391,6 +397,20 @@ fn model_advice(
     Ok(result?)
 }
 
+fn lookup(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let files = options
+        .values
+        .get("file")
+        .and_then(Value::as_array)
+        .map_or(&[][..], Vec::as_slice);
+    Ok(routing::lookup(&settings, files, options.get("module"))?)
+}
+
 fn settings(
     options: &Options,
     recorder: &mut Recorder,
@@ -475,6 +495,7 @@ pub fn run(argv: &[String]) -> Outcome {
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
+        "lookup" => lookup,
         _ => settings,
     };
     let result =

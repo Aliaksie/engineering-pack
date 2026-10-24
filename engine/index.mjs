@@ -12,7 +12,7 @@ import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
 import { discoveryRequest, discoveryResult, discoveryState, deferredDiscovery } from './discovery/plan.mjs';
 import { locateRequest, matchLines } from './discovery/match.mjs';
-import { route, lookup } from './routing/route.mjs';
+import { route } from './routing/route.mjs';
 import { validateProject } from './contracts/project.mjs';
 import { validatePlaybookCatalog } from './contracts/catalog.mjs';
 import { planOperation } from './routing/operations.mjs';
@@ -82,7 +82,6 @@ const operations = {
   'locate-request': a => locateRequest(a.input),
   'locate-match': a => matchLines(a.content, a.file, a.terms, a.maxMatches),
   route: a => route({ ...a, catalog: a.catalog }),
-  lookup: a => lookup(a.project, a.options),
   'effective-settings': a => effectiveSettings({ ...a, project: validateProject(a.project) }),
   'validate-project': a => validateProject(a.project),
   'validate-catalog': a => validatePlaybookCatalog(a.catalog),

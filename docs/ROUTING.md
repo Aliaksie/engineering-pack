@@ -10,7 +10,8 @@ npm run route -- --root examples/project --intent review --file services/orders/
 ```
 
 For a module inventory or direct owner lookup, use `node cli/main.mjs lookup --root
-<project> [--file <path> | --module <name>]`. The most specific matching module owns a path.
+<project> [--file <path> ... | --module <name>]`. The most specific matching module owns a path;
+repeated `--file` selects the owners of every path, and private state or Git paths are skipped.
 
 The route returns:
 

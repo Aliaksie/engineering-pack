@@ -16,11 +16,11 @@ messages and explicitly listed diagnostic result paths are excluded from wording
 comparison; diagnostic fields must remain strings. Echoed user descriptions and
 identity material remain exact. Arrays retain order and absent fields differ from null.
 
-The 264 cases include an empty-input request for each of the 83 engine operations,
+The 260 cases include an empty-input request for each of the 82 engine operations,
 envelope failures, UTF-8 hashes, digest ordering, portable paths, literal discovery,
 routing, continuation, acceptance projections, blocked attempts, checkpoint binding,
-review publication plans, and worker/action lifecycle transitions. There are 160
-successful responses across all 83 operations. Task cases preserve completion,
+review publication plans, and worker/action lifecycle transitions. There are 158
+successful responses across all 82 operations. Task cases preserve completion,
 stale-source detection, scope reset and binding rejection. Grounding cases preserve
 incomplete coverage and source provenance; session cases use explicit observations
 and a fixed clock. Settings, model advice and service cases preserve precedence,
@@ -85,3 +85,9 @@ integer, and built-in mappings come only from the operation's own service.
 `models-contracts.json` freezes 83 JavaScript responses for the `model-advice` use case at
 `dc5c447`: effective settings from a project and the engine decision over the request, with
 error messages omitted. The Rust engine replays every case unchanged.
+
+`lookup-contracts.json` freezes 42 JavaScript responses for the `lookup` use case at
+`dc47bf2`, including the three non-empty `lookup` cases retired from `engine-contracts.json`
+with the JavaScript engine operation. The Rust replay lists three intentional corrections:
+an empty module name and a module selector combined with a file now fail instead of listing
+every module or silently ignoring the file.
