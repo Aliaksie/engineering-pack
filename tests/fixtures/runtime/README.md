@@ -35,3 +35,14 @@ preserve scoped decisions, stale-source refusal, durable claims and completion r
 These use synthetic host observations; they do not execute workers or publish reviews.
 Empty-input rejection is not successful operation coverage; each migrated use case
 still needs its own success, state and installed checks.
+
+`cli-contracts.json` freezes 28 executable cases after verifying CLI, application,
+platform, engine and review executable sources unchanged against the same baseline.
+Run `npm run build` then `node --test tests/runtime-cli-replay.test.mjs` to replay
+source and relocated AGENTS exports from disposable working directories with isolated
+user configuration. These cover the command catalog, help precedence, repeated Unicode
+file arguments, JSON/verbose routing, parser and required-input failures, review argument
+rejection, and disabled Project Intelligence with an unavailable binary. Compare exit
+status, stdout/stderr separation, structured results and native error codes; recorded
+diagnostic prose is evidence only. These checks do not establish signal cancellation,
+enabled native execution, automatic host hook dispatch or other platform support.
