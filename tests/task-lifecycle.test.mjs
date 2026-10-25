@@ -62,6 +62,15 @@ test('declared task risks select the route capability and persist across task-st
   assert.equal(repeated.routing.capability.class, 'strong');
 });
 
+test('task files are saved in their project-relative form, so a respelling is the same scope', t => {
+  const { root, command } = fixture(t);
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', './value.mjs');
+  assert.deepEqual(readSessionState(root, 'host-session', 'fix-value').taskRecord.files, ['value.mjs']);
+  command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', 'value.mjs');
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.goalComplete, true);
+});
+
 test('source edits invalidate stored acceptance and native tool success never creates a receipt', t => {
   const { root, command, start } = fixture(t);
   start();

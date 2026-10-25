@@ -36,9 +36,9 @@ export function startTask(state, input, repository) {
   if (input.engineeringContract !== undefined) validateEngineeringContract(input.engineeringContract);
   const contract = input.engineeringContract ?? state.taskRecord?.engineeringContract;
   const selected = stage(input.stage ?? state.taskRecord?.stage ?? 'implement');
-  const files = input.files ?? state.taskRecord?.files ?? [];
-  if (!Array.isArray(files) || files.length > 32) throw new Error('task files must be a bounded array');
-  files.forEach(relativeFile);
+  const given = input.files ?? state.taskRecord?.files ?? [];
+  if (!Array.isArray(given) || given.length > 32) throw new Error('task files must be a bounded array');
+  const files = given.map(relativeFile);
   if (files.some(privatePath)) throw new Error('private workspace files are not task source');
   const repositories = input.repositories === undefined ? state.taskRecord?.repositories : repositoryScopes(input.repositories);
   if (repositories && files.some(file => !repositories.some(scope => scope === '.' || file === scope || file.startsWith(`${scope}/`)))) throw new Error('task files must belong to a selected repository');

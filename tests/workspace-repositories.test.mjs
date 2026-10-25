@@ -67,6 +67,13 @@ test('a non-Git workspace binds one repository and ignores changes in unselected
   assert.equal(recoverCheckpoint(root, 'session').changed, true);
 });
 
+test('a task file spelled with ./ belongs to its selected repository', t => {
+  const { command } = fixture(t);
+  const begun = command('task-start', '--task', 'task', '--goal', 'Update selected repositories', '--repository', 'kit', '--file', './kit/value.mjs');
+  assert.deepEqual(begun.repositories, ['kit']);
+  assert.throws(() => command('task-start', '--task', 'other', '--goal', 'Outside scope', '--repository', 'kit', '--file', './profile/value.mjs'), /selected repository/);
+});
+
 test('cross-repository acceptance detects edits and same-SHA branch changes in either repository', t => {
   const { root, git, command, start, accept } = fixture(t);
   start(['profile', 'kit']);
