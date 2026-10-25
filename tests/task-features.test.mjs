@@ -26,6 +26,19 @@ test('feature evidence is bounded, distinguishes declaration/runtime receipts, a
   }
 });
 
+test('an agent declaration never replaces a runtime-observed outcome', () => {
+  const at = '2026-10-20T00:00:00.000Z', source = 'a'.repeat(64);
+  const input = { feature: 'review', status: 'disabled', reason: 'Declared afterwards', evidence: 'agent:claim' };
+  const observed = decide('feature-record', { state: { taskRecord: { id: 'task' } }, source, at, provenance: 'runtime-observed',
+    input: { feature: 'review', status: 'used', reason: 'Host adapter reported the scoped action', evidence: 'review:receipt' } }).state;
+  assert.throws(() => decide('feature-record', { state: observed, input, source, at, provenance: 'agent-declared' }), /runtime-observed/);
+  assert.equal(observed.featureOutcomes.review.status, 'used');
+  const declared = decide('feature-record', { state: { taskRecord: { id: 'task' } }, input, source, at, provenance: 'agent-declared' }).state;
+  const replaced = decide('feature-record', { state: declared, source, at, provenance: 'runtime-observed',
+    input: { feature: 'review', status: 'used', reason: 'Host adapter reported the scoped action', evidence: 'review:receipt' } }).state;
+  assert.equal(replaced.featureOutcomes.review.provenance, 'runtime-observed');
+});
+
 test('normal task commands retain outcomes and mark changed sources stale without changing the recorded verdict', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-feature-outcomes-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

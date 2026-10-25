@@ -15,7 +15,7 @@ export function validateFeatures(records = {}) {
 export function recordFeature(state, input, source, at, provenance = 'agent-declared') {
   if (!state.taskRecord) throw new Error('task feature outcomes require task-start');
   if (!input || typeof input !== 'object' || Object.keys(input).some(key => !['feature', 'status', 'reason', 'evidence'].includes(key)) || !featureIds.includes(input.feature)) throw new Error('unknown feature or invalid feature outcome');
-  const { feature, ...record } = input;
+  const { feature, ...record } = input; if (provenance === 'agent-declared' && state.featureOutcomes?.[feature]?.provenance === 'runtime-observed') throw new Error('a runtime-observed feature outcome cannot be replaced by a declaration');
   const next = { ...record, source, at, provenance };
   validateFeatures({ [feature]: next });
   state.featureOutcomes = { ...validateFeatures(state.featureOutcomes), [feature]: next };

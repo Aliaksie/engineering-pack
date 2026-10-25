@@ -263,8 +263,8 @@ evidence and semantic judgments stay unknown. For an explicitly requested evalua
 `task-feature --session <id> --feature review --feature-status used --reason <reason>
 --evidence <reference>` to retain a bounded declaration. Supported statuses are `used`,
 `eligible-but-skipped`, `disabled`, `unsupported`, `not-applicable` and `failed`.
-CLI declarations are marked `agent-declared`; observed controller results and historical
-command counters remain separate. A complete classification is no semantic success verdict.
+CLI declarations are marked `agent-declared` and never replace an observed controller result;
+historical command counters remain separate. A complete classification is no semantic success verdict.
 `worker-status --session <id>` reads the shared task-tree reservations without dispatching.
 
 | Measure | Evidence | Unknowns and limits |
