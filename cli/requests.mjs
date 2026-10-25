@@ -1,6 +1,5 @@
 import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
-import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
 import { locateCommand } from '../application/discovery/discover.mjs';
@@ -16,15 +15,13 @@ function executeRequest(action, options, root) {
     if (options.capture && options.session) throw new Error('choose --capture or --session for telemetry-report');
     return options.capture ? readTelemetryCapture(root, options.capture) : telemetryReport(root, { session: options.session });
   }
-  if (options.session && !options.task && ['worker-status', 'task-features', 'task-feature', 'route', 'context-report', 'locate'].includes(action)) {
+  if (options.session && !options.task && ['worker-status', 'route', 'context-report', 'locate'].includes(action)) {
     try { options = { ...options, task: activeTask(root, options.session) }; }
     catch { diagnostic('state', 'STATE_UNAVAILABLE'); }
   }
-  if (['task-features', 'task-feature', 'worker-status'].includes(action)) {
+  if (action === 'worker-status') {
     if (!options.session || !options.task) throw new Error('task outcome/worker view requires --session and a task binding or explicit --task');
-    if (action === 'worker-status') return workerStatus(root, options.session, options.task);
-    return taskFeatures(root, options.session, options.task, action === 'task-feature'
-      ? { feature: options.feature, status: options['feature-status'], reason: options.reason, evidence: options.evidence } : undefined);
+    return workerStatus(root, options.session, options.task);
   }
   if (action === 'locate') return locateCommand(root, options);
   const activity = (result, values) => {

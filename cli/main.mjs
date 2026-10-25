@@ -7,12 +7,10 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand, bundleRoot } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'task-step', 'task-offer', 'task-decision', 'task-action-check', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'task-step', 'task-offer', 'task-decision', 'task-action-check', 'task-feature', 'task-features', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
 
 const help = {
   'worker-status': { usage: 'worker-status --root project --session id [--task id]', mode: 'shared task-tree reservations and host observations; no dispatch' },
-  'task-feature': { usage: 'task-feature --session id --feature feature-id --feature-status used|eligible-but-skipped|disabled|unsupported|not-applicable|failed --reason reason --evidence reference', mode: 'explicit evaluation classification only; normal delivery uses runtime observations and leaves missing evidence unknown' },
-  'task-features': { usage: 'task-features --session id [--task id]', mode: 'all feature outcomes, provenance, missing evidence and stale-source markers' },
   'telemetry-capture': { usage: 'telemetry-capture --root project --session id', mode: 'explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction' },
   'telemetry-forget': { usage: 'telemetry-forget --root project --capture id', mode: 'explicitly remove one retained report; ordinary CLI telemetry still applies' },
   'telemetry-report': { usage: 'telemetry-report [--root project] [--session id | --capture id]', mode: 'bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims' },

@@ -275,6 +275,60 @@ pub fn validate_features(records: Option<&Value>) -> Result {
     Ok(())
 }
 
+/// Save one feature outcome bound to `source` and return it. A declaration never replaces a
+/// runtime-observed outcome; an observation replaces anything.
+pub fn record_feature(
+    state: &mut Value,
+    input: &Value,
+    source: &Value,
+    at: &str,
+    provenance: &str,
+) -> Result<Value> {
+    if !truthy(&state["taskRecord"]) {
+        return Err("task feature outcomes require task-start".into());
+    }
+    let input = input
+        .as_object()
+        .filter(|input| {
+            input
+                .keys()
+                .all(|k| ["feature", "status", "reason", "evidence"].contains(&k.as_str()))
+        })
+        .ok_or("unknown feature or invalid feature outcome")?;
+    let feature = input
+        .get("feature")
+        .and_then(Value::as_str)
+        .filter(|f| FEATURES.contains(f))
+        .ok_or("unknown feature or invalid feature outcome")?;
+    if provenance == "agent-declared"
+        && state["featureOutcomes"]
+            .get(feature)
+            .map(|r| &r["provenance"])
+            == Some(&json!("runtime-observed"))
+    {
+        return Err(
+            "a runtime-observed feature outcome cannot be replaced by a declaration".into(),
+        );
+    }
+    let mut next: Map<String, Value> = input
+        .iter()
+        .filter(|(k, _)| *k != "feature")
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    next.extend([
+        ("source".to_string(), source.clone()),
+        ("at".to_string(), json!(at)),
+        ("provenance".to_string(), json!(provenance)),
+    ]);
+    let next = Value::Object(next);
+    validate_features(Some(&json!({ feature: next })))?;
+    validate_features(state.get("featureOutcomes"))?;
+    state["featureOutcomes"][feature] = next.clone();
+    let mut recorded = Map::from_iter([("feature".to_string(), json!(feature))]);
+    recorded.extend(next.as_object().cloned().unwrap_or_default());
+    Ok(Value::Object(recorded))
+}
+
 /// Every feature with its saved outcome against the current `source`, a runtime receipt that
 /// implies use, or an unknown outcome.
 pub fn feature_report(state: &Value, source: &Value) -> Result<Value> {

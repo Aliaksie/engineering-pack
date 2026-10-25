@@ -46,7 +46,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 1168,
+        "jsLines": 1148,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
           "application/context-delivery/prepare.mjs",
@@ -59,7 +59,6 @@
           "application/session/actions.mjs",
           "application/session/activity.mjs",
           "application/session/admission.mjs",
-          "application/session/features.mjs",
           "application/session/status.mjs",
           "application/session/workers.mjs",
           "application/telemetry/capture.mjs",
@@ -81,7 +80,7 @@
       "responsibility": "Legacy JS command parsing and display that moves into the application crate.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 259,
+      "jsLines": 254,
       "dependsOn": ["application", "platform"],
       "shipped": true,
       "runtimeRoots": ["cli/main.mjs", "cli/project-evidence.mjs"]

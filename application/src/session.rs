@@ -164,3 +164,42 @@ pub fn add_activity(
         }
     }
 }
+
+/// The task's feature report, after saving the agent declaration `input` when given. A
+/// declaration needs the active binding, held for the update.
+pub fn features(
+    root: &Path,
+    session: &str,
+    task: &str,
+    input: Option<&Value>,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    session::identity(&json!(session), &json!(task))?;
+    let source = |state: &Value| -> Result<Value, Failure> {
+        let repository = snapshot::workspace(root, state["taskRecord"].get("repositories"), false)?;
+        Ok(session::source(&repository))
+    };
+    let Some(input) = input else {
+        let state = read_state(root, session, task, recorder, parent)?;
+        return Ok(session::feature_report(&state, &source(&state)?)?);
+    };
+    let Some(_lock) = state::lock(&binding_file(root, session, true)?)? else {
+        return Err("active task writer is busy".into());
+    };
+    if active_task(root, Some(session))?.as_deref() != Some(task) {
+        return Err("feature outcome requires the active task binding".into());
+    }
+    let source = source(&read_state(root, session, task, recorder, parent)?)?;
+    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
+    let mut recorded = Value::Null;
+    let state = update_state(root, session, task, recorder, parent, |state| {
+        recorded = session::record_feature(state, input, &source, &at, "agent-declared")?;
+        Ok(())
+    })?;
+    let mut result = Map::from_iter([("recorded".to_string(), recorded)]);
+    if let Value::Object(report) = session::feature_report(&state, &source)? {
+        result.extend(report);
+    }
+    Ok(Value::Object(result))
+}

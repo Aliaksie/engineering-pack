@@ -28,6 +28,8 @@ pub const COMMANDS: &[&str] = &[
     "task-offer",
     "task-decision",
     "task-action-check",
+    "task-feature",
+    "task-features",
     "workspace-open",
     "workspace-write",
     "workspace-promote",
@@ -921,6 +923,41 @@ fn task_action(
     )
 }
 
+/// Feature outcomes for the explicit or bound task; `task-feature` first saves one declaration.
+fn task_features(
+    record: bool,
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(session), Some(task)) = (options.get("session"), bound_task(options)?) else {
+        return Err(
+            "task outcome/worker view requires --session and a task binding or explicit --task"
+                .into(),
+        );
+    };
+    let mut input = Map::new();
+    for (name, flag) in [
+        ("feature", "feature"),
+        ("status", "feature-status"),
+        ("reason", "reason"),
+        ("evidence", "evidence"),
+    ] {
+        if let Some(value) = options.get(flag) {
+            input.insert(name.into(), json!(value));
+        }
+    }
+    let input = Value::Object(input);
+    crate::session::features(
+        &root(options),
+        session,
+        &task,
+        record.then_some(&input),
+        recorder,
+        parent,
+    )
+}
+
 /// Session status and advice for the explicit or bound task; `--data` declares the rest.
 fn session_status(
     options: &Options,
@@ -1070,6 +1107,14 @@ fn help(action: &str) -> Value {
         "task-decision" => json!({
             "usage": "task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id",
             "mode": "record an explicit scoped user decision; no action execution",
+        }),
+        "task-feature" => json!({
+            "usage": "task-feature --session id --feature feature-id --feature-status used|eligible-but-skipped|disabled|unsupported|not-applicable|failed --reason reason --evidence reference",
+            "mode": "explicit evaluation classification only; normal delivery uses runtime observations and leaves missing evidence unknown",
+        }),
+        "task-features" => json!({
+            "usage": "task-features --session id [--task id]",
+            "mode": "all feature outcomes, provenance, missing evidence and stale-source markers",
         }),
         "task-action-check" => json!({
             "usage": "task-action-check --session id --offer proposal-id --data fresh-observations.json",
@@ -1584,6 +1629,12 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "task-action-check" => |o: &Options, r: &mut Recorder, p: &Operation| {
             task_action(crate::actions::Kind::Check, o, r, p)
         },
+        "task-feature" => {
+            |o: &Options, r: &mut Recorder, p: &Operation| task_features(true, o, r, p)
+        }
+        "task-features" => {
+            |o: &Options, r: &mut Recorder, p: &Operation| task_features(false, o, r, p)
+        }
         _ => settings,
     };
     let mut activity = None;
