@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { stepTask, taskAction } from '../application/session/task.mjs';
+import { stepTask, taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { actionController } from '../application/session/actions.mjs';
 import { decide } from '../application/engine-client.mjs';
@@ -103,19 +103,4 @@ test('compaction completion requires actual resume/acceptance references and neg
   assert.equal(Object.hasOwn(state.recommendations[id], 'execution'), false);
   const later = decide('action-finish', { state: completed.state, id, key, generation: 0, result: { state: 'uncertain' } });
   assert.equal(later.ignored, true); assert.equal(later.receipt.state, 'completed');
-});
-
-test('recommendation retention never evicts native execution receipts, including stale or declined offers', () => {
-  const recommendations = Object.fromEntries(Array.from({ length: 16 }, (_, index) => [String(index).padStart(64, '0'),
-    { source: 'old-source', decision: 'declined', executionReceipt: { state: 'uncertain' } }]));
-  const args = { state: { taskRecord: { id: 'task' }, recommendations },
-    input: { action: 'review', scope: 'current source', benefit: 'Check risks', evidence: 'checks:current', priorAuthorization: 'user:review' },
-    project: {}, repository: { gitAvailable: true, head: 'a'.repeat(40), fingerprints: { complete: true, index: 'index', workingTree: 'work' } },
-    status: {}, facts: {}, session: 'session', now: Date.now() };
-  assert.throws(() => decide('action-propose', args), /capacity reached/);
-  assert.equal(Object.keys(recommendations).length, 16);
-  const removable = Object.keys(recommendations)[15]; delete recommendations[removable].executionReceipt;
-  const result = decide('action-propose', args);
-  assert.equal(Object.keys(result.state.recommendations).length, 16);
-  assert.equal(Object.hasOwn(result.state.recommendations, removable), false);
 });

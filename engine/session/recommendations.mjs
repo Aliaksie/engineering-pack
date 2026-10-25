@@ -49,35 +49,6 @@ function eligibility(action, input, state, project, repository, status, facts, s
   if (execution.mode !== 'delegate') return { ...fail('An exact supported host/role/model mapping is unavailable.'), budget };
   return { eligible: true, reason: 'Independent assignments fit the shared task-wide worker ceiling.', budget, execution, workerCount: Math.min(facts.independentTasks, reusable ? Math.max(1, budget.available) : budget.available) };
 }
-export function proposeAction({ state, input, project, repository, status, facts = {}, session, now }) {
-  keys(input, ['action', 'scope', 'benefit', 'evidence', 'role', 'profile', 'priorAuthorization'], 'action proposal');
-  if (!actions.includes(input.action) || !['scope', 'benefit', 'evidence'].every(field => text(input[field]))) throw new Error('action, bounded scope, benefit and evidence are required');
-  for (const field of ['role', 'profile', 'priorAuthorization']) if (input[field] !== undefined && !text(input[field])) throw new Error(`invalid action ${field}`);
-  actionFacts(facts);
-  const applicable = eligibility(input.action, input, state, project, repository, status, facts, session, now);
-  if (!applicable.eligible) return { state, offer: null, suppressed: true, applicability: applicable, executed: false };
-  const source = taskSource(repository), policy = digest(project), contract = taskContract(state.taskRecord);
-  const risks = [...new Set(facts.observations?.task?.risks ?? [])].sort();
-  const host = facts.observations?.host?.name ?? null;
-  const model = applicable.execution?.model ?? null;
-  const id = digest([state.taskRecord.id, input.action, input.scope, source, policy, input.role ?? null, applicable.execution?.profile ?? input.profile ?? null, risks, host, model, contract]);
-  state.recommendations ??= {};
-  const existing = state.recommendations[id];
-  if (existing) return { state, offer: existing, suppressed: true, applicability: applicable, executed: false };
-  if (Object.keys(state.recommendations).length >= 16) {
-    const old = Object.entries(state.recommendations).find(([, value]) => !value.executionReceipt && (value.source !== source || value.taskContract !== contract || value.decision === 'declined'));
-    if (!old) throw new Error('task recommendation capacity reached; resolve existing proposals before adding more');
-    delete state.recommendations[old[0]];
-  }
-  const offer = { id, action: input.action, scope: input.scope, benefit: input.benefit, evidence: input.evidence,
-    source, policy, taskContract: contract, risks, host, model, role: input.role ?? null, profile: applicable.execution?.profile ?? input.profile ?? null,
-    decision: input.priorAuthorization ? 'already-authorized' : 'pending',
-    decisionEvidence: input.priorAuthorization ?? null, at: new Date(now).toISOString(),
-    execution: 'not-observed', trigger: applicable.reason,
-    ...(applicable.budget ? { workerBudget: applicable.budget, proposedWorkers: applicable.workerCount } : {}) };
-  state.recommendations[id] = offer;
-  return { state, offer, suppressed: false, applicability: applicable, executed: false };
-}
 function offerFor(state, id, project, repository) {
   if (!/^[a-f0-9]{64}$/.test(id ?? '') || !state.recommendations?.[id]) throw new Error('unknown action proposal');
   const offer = state.recommendations[id];
@@ -85,13 +56,6 @@ function offerFor(state, id, project, repository) {
   if ((offer.taskContract !== undefined || state.taskRecord?.engineeringContract)
     && offer.taskContract !== taskContract(state.taskRecord)) throw new Error('action proposal is stale; task contract changed or its binding is unavailable');
   return offer;
-}
-export function decideAction({ state, input, project, repository, now }) {
-  keys(input, ['id', 'decision', 'evidence'], 'action decision');
-  if (!['approved', 'declined'].includes(input.decision) || !text(input.evidence)) throw new Error('explicit approval/decline and decision evidence are required');
-  const offer = offerFor(state, input.id, project, repository);
-  Object.assign(offer, { decision: input.decision, decisionEvidence: input.evidence, decidedAt: new Date(now).toISOString() });
-  return { state, offer, executed: false, authorization: 'Caller-declared decision receipt; no host permission or completed execution is implied.' };
 }
 export function checkAction({ state, input, project, repository, status, facts = {}, session, now }) {
   keys(input, ['id'], 'action check'); actionFacts(facts);

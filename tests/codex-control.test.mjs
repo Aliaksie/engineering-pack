@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createCodexControls, openCodexControls } from '../hosts/codex/control.mjs';
-import { stepTask, taskAction } from '../application/session/task.mjs';
+import { stepTask, taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
 
 // task-start runs in the native runtime; tests bind tasks through the CLI.

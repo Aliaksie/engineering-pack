@@ -22,6 +22,10 @@ pub enum Action {
     Maintain,
     /// Read-only usage of the task's workspace for session status.
     Status,
+    /// A task step: refresh the retention clock of an open workspace.
+    Touch,
+    /// Task completion: close the workspace and clean its scratch unless another owner holds it.
+    Complete,
 }
 
 impl Action {
@@ -44,6 +48,8 @@ impl Action {
             Action::Release => "release",
             Action::Maintain => "maintain",
             Action::Status => "status",
+            Action::Touch => "touch",
+            Action::Complete => "complete",
         }
     }
 
@@ -94,8 +100,10 @@ pub fn run(
     if let Some((session, task)) = bound {
         craft_engine::session::identity(&json!(session), &json!(task))?;
     }
-    if !matches!(action, Action::Maintain | Action::Status)
-        && session::active_task(root, session)? != selected
+    if matches!(
+        action,
+        Action::Open | Action::Write | Action::Promote | Action::Release
+    ) && session::active_task(root, session)? != selected
     {
         return Err("workspace writes require the active task binding".into());
     }
@@ -318,10 +326,12 @@ fn operate(
         })
     };
     let current = value["operations"].get(&identity.operation).cloned();
-    if !matches!(action, Action::Maintain | Action::Status)
-        && current
-            .as_ref()
-            .is_some_and(|op| op["closed"] == false && foreign(op, &value))
+    if matches!(
+        action,
+        Action::Open | Action::Write | Action::Promote | Action::Release
+    ) && current
+        .as_ref()
+        .is_some_and(|op| op["closed"] == false && foreign(op, &value))
     {
         return Err("workspace operation belongs to another active owner".into());
     }
@@ -394,8 +404,29 @@ fn operate(
             }
         }
     }
+    if action == Action::Complete {
+        value["closed"] = json!(true);
+        for operation in value["operations"]
+            .as_object_mut()
+            .into_iter()
+            .flat_map(|o| o.values_mut())
+        {
+            if operation["pid"].as_i64() == Some(pid()) {
+                operation["closed"] = json!(true);
+            }
+        }
+        if !active(&processes, &value, now, policy) {
+            match files::remove(&scratch_dir) {
+                Ok(()) => cleanup = "cleaned",
+                Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
+            }
+        }
+    }
     if action != Action::Status {
-        value["updated"] = json!(now);
+        // Retention counts from completion: a step never refreshes a closed workspace.
+        if action != Action::Touch || value["closed"] != true {
+            value["updated"] = json!(now);
+        }
         state::write(&owner, &value, MANIFEST_BYTES, true)?;
     }
     let scratch_usage = files::usage(&scratch_dir).map_err(io)?;

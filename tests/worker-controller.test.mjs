@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { taskAction } from '../application/session/task.mjs';
+import { taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { workerController } from '../application/session/workers.mjs';
 import { decide } from '../application/engine-client.mjs';

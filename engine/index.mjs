@@ -1,12 +1,12 @@
 import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
 import { qaProjection } from './session/qa.mjs';
 import { productProjection } from './session/product.mjs';
-import { actionFacts, proposeAction, decideAction, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
+import { actionFacts, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
 import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers, workerEvidence } from './session/workers.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
-import { taskBinding, taskContract, taskContext, taskSource, recordTaskStep } from './session/task.mjs';
+import { taskBinding, taskContract, taskContext, taskSource } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
@@ -59,8 +59,6 @@ const operations = {
   'worker-transition': a => workerTransition(a.state, a.id, a.result),
   'worker-reconcile': a => reconcileWorkers(a.state, a.snapshot, a.targets),
   'action-facts': a => actionFacts(a.facts),
-  'action-propose': a => proposeAction(a),
-  'action-decide': a => decideAction(a),
   'action-check': a => checkAction(a),
   'action-claim': a => claimAction(a),
   'action-finish': a => finishAction(a),
@@ -68,7 +66,6 @@ const operations = {
   'task-contract': a => taskContract(a.record),
   'task-source': a => taskSource(a.repository),
   'task-context': a => taskContext(a.state, a.repository),
-  'task-step': a => recordTaskStep(a.state, a.input, a.repository, a.id, a.at),
   'activity-validate': a => validateActivityState(a.state),
   'activity-identity': a => activityIdentity(a.session, a.task),
   route: a => route({ ...a, catalog: a.catalog }),

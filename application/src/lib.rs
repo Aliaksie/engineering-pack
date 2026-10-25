@@ -1,5 +1,6 @@
 use craft_engine::PROTOCOL_VERSION;
 use serde_json::{Value, json};
+mod actions;
 mod budget;
 mod checkpoint;
 pub mod cli;

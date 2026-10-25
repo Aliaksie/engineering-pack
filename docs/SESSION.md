@@ -282,8 +282,9 @@ cache discovery or sibling imports occur. Manifests identify each package. Multi
 installations of the same selected package are reported as ambiguous rather than choosing a
 version. Multi-root file entries include `bundleRoot` alongside their relative `path` and hash;
 repeated physical roots and files are counted once. Missing packages keep totals incomplete.
-The CLI supplies its own installed root when none is given; running `craft session` or
-`craft session-advice` directly requires at least one `--bundle`.
+The CLI supplies its own installed root when none is given; running `craft session`,
+`session-advice`, `task-step`, `task-offer` or `task-action-check` directly requires at least
+one `--bundle`.
 This measures selected resources, not observed host loads or current context occupancy.
 
 A task record can begin small:

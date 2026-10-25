@@ -145,3 +145,14 @@ Rust replay (`cargo test -p craft-engine --test session_contracts`) lists two co
 previous notice time without `Z` or an offset, which JavaScript read in the machine's time zone,
 is invalid; and a stage without a guidance observation, which the application never produces,
 reports a diagnostic instead of a JavaScript `TypeError`.
+
+`step-contracts.json` freezes 208 JavaScript engine responses at `8ca3cc4` for the `task-step`
+receipt (input validation, every outcome, verification, completion with and without an
+engineering contract, structured evidence replacement, continuation, attempt capacity) and
+the action offers: fact validation, review, compact and delegate eligibility, offer identity,
+suppression and capacity eviction, explicit decisions and readiness checks. It includes the
+legacy lifecycle step used by `acceptance-contract.test.mjs` and the recommendation-retention
+case formerly in `action-execution.test.mjs`, and absorbs the nine `task-step`, `action-propose`
+and `action-decide` cases retired from `engine-contracts.json`. Results, including the updated state, compare as
+serialized JSON and error messages exactly. The Rust replay
+(`cargo test -p craft-engine --test step_contracts`) has no corrections.

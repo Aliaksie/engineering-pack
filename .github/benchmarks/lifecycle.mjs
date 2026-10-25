@@ -19,10 +19,7 @@ const run = (command, args, cwd) => {
 if (process.argv[2] === '--worker') {
   const source = process.argv[3];
   const { groundedContext } = await import(pathToFileURL(path.join(source, 'application/session/grounding.mjs')));
-  const { stepTask } = await import(pathToFileURL(path.join(source, 'application/session/task.mjs')));
   const { nativeCommand } = await import(pathToFileURL(path.join(source, 'platform/index.mjs')));
-  const { sessionStatus } = await import(pathToFileURL(path.join(source, 'application/session/status.mjs')));
-  const { readProject } = await import(pathToFileURL(path.join(source, 'application/project/configuration.mjs')));
   const { engineeringContractDigest } = await import(pathToFileURL(path.join(source, 'engine/session/acceptance.mjs')));
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lifecycle-bench-')));
   try {
@@ -30,7 +27,13 @@ if (process.argv[2] === '--worker') {
     const git = (...args) => run('git', ['-c', 'core.autocrlf=false', '-c', `core.hooksPath=${path.join(root, '.git', 'no-hooks')}`, '-c', 'commit.gpgsign=false', ...args], root);
     git('init', '-q'); git('add', '.'); git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-qm', 'Fixture');
     const receipt = path.join(root, 'src/receipt.mjs'), original = fs.readFileSync(receipt, 'utf8');
-    const project = readProject(root), samples = [];
+    const samples = [];
+    // One native craft process per session status or task step, as the CLI forwards them.
+    const native = argv => { const outcome = nativeCommand([...argv, '--root', root, '--session', 'benchmark', '--bundle', source], { structured: true }); if (outcome.exitCode) throw new Error(outcome.stderr); return JSON.parse(outcome.stdout); };
+    const sessionStatus = task => native(['session', '--task', task]);
+    const stepTask = (task, input) => { const file = path.join(root, '.git', `${task}-evidence.json`); fs.writeFileSync(file, JSON.stringify(input.acceptanceEvidence));
+      return native(['task-step', '--task', task, '--stage', input.stage, '--target', input.target, '--approach', input.approach, '--evidence', input.evidence, '--outcome', input.outcome,
+        '--result', input.result, '--next', input.nextStep, '--acceptance-evidence', file, '--expected-task-contract', input.expectedTaskContract, '--expected-evidence-digest', input.expectedEvidenceDigest, '--complete']); };
     for (const phase of ['cold', 'warm']) {
       fs.writeFileSync(receipt, original);
       const task = `task-${phase}`, spans = {};
@@ -45,17 +48,17 @@ if (process.argv[2] === '--worker') {
       fs.writeFileSync(contractFile, JSON.stringify(contract));
       measure('start', () => assert.equal(nativeCommand(['task-start', '--root', root, '--session', 'benchmark', '--task', task, '--goal', contract.intent, '--file', 'src', '--contract', contractFile], { structured: true }).exitCode, 0));
       fs.writeFileSync(receipt, original.replace('      normalizeKey(key);', '      key = normalizeKey(key);'));
-      const status = measure('status', () => sessionStatus({}, project, { root, session: 'benchmark', task }));
+      const status = measure('status', () => sessionStatus(task));
       measure('checks', () => run(process.execPath, ['--test', 'acceptance.test.mjs'], root));
       const evidence = { formatVersion: 1, records: [{ id: 'retry', criterionIds: ['retry'], scope: ['src'], contract: engineeringContractDigest(contract), binding: status.binding,
         checkId: 'retry', kind: 'check', artifact: 'benchmark:acceptance-test', observedAt: '2026-10-22T00:00:00Z', reporter: 'benchmark fixture', basis: 'Executable retry and invalid-input assertions passed', support: 'verified', execution: 'passed' }] };
       const input = { stage: 'verify', target: 'acceptance:retry', approach: 'executable-check', evidence: 'benchmark:acceptance-test', outcome: 'passed', result: 'Fixture checks passed', nextStep: 'Report acceptance', acceptanceEvidence: evidence, expectedTaskContract: status.taskContract, expectedEvidenceDigest: status.evidenceDigest, complete: true };
-      assert.equal(measure('step', () => stepTask(root, 'benchmark', task, input)).complete, true);
+      assert.equal(measure('step', () => stepTask(task, input)).complete, true);
       fs.appendFileSync(receipt, '\n// Source changed after verification.\n');
-      const stale = measure('staleStatus', () => sessionStatus({}, project, { root, session: 'benchmark', task }));
+      const stale = measure('staleStatus', () => sessionStatus(task));
       assert.equal(stale.task.goalComplete, false);
       assert.equal(stale.acceptance.records[0].freshness, 'stale');
-      assert.throws(() => measure('rejectStale', () => stepTask(root, 'benchmark', task, { ...input, expectedTaskContract: stale.taskContract, expectedEvidenceDigest: stale.evidenceDigest })), /every required criterion/);
+      assert.throws(() => measure('rejectStale', () => stepTask(task, { ...input, expectedTaskContract: stale.taskContract, expectedEvidenceDigest: stale.evidenceDigest })), /every required criterion/);
       const used = process.cpuUsage(cpu);
       samples.push({ phase, wallMs: performance.now() - started, spans, cpuMs: { user: used.user / 1000, system: used.system / 1000 }, processMaxRssKiB: process.resourceUsage().maxRSS, correct: true });
     }
@@ -69,7 +72,7 @@ if (process.argv[2] === '--worker') {
   const inventory = directory => fs.readdirSync(directory, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name)).flatMap(entry => entry.isDirectory() ? inventory(path.join(directory, entry.name)) : [{ path: path.relative(fixture, path.join(directory, entry.name)).split(path.sep).join('/'), sha256: hash(fs.readFileSync(path.join(directory, entry.name))) }]);
   const report = { formatVersion: 1, revision, dirty: Boolean(status), patchSha256: hash(run('git', ['diff', 'HEAD', '--binary'], source)), harnessSha256: hash(fs.readFileSync(self)), fixture: inventory(fixture),
     environment: { node: process.version, os: os.platform(), release: os.release(), arch: os.arch(), cpu: os.cpus()[0]?.model, logicalCpus: os.cpus().length, runner: process.env.RUNNER_ENVIRONMENT ?? 'local', git: run('git', ['--version'], source) },
-    protocol: { rounds, timing: 'Fresh child per round: cold is first lifecycle; warm repeats in that child with another task and restored source. Module imports and fixture setup excluded from sample wall; processWallMs includes both phases, launch, imports and setup. OS caches uncontrolled.', resources: 'cpuMs and processMaxRssKiB cover the benchmark child only; exclude spawned Git/test processes. maxRSS is cumulative process high-water, so warm is not an independent peak. Whole-process-tree CPU and peak RSS unknown.', effects: 'Synthetic local CLI/application path; task-start runs one native craft process. Includes actual fixture tests. No model, worker or native action dispatch. Timing diagnostic only; no CI latency gate before runner-specific calibration.' }, samples: [] };
+    protocol: { rounds, timing: 'Fresh child per round: cold is first lifecycle; warm repeats in that child with another task and restored source. Module imports and fixture setup excluded from sample wall; processWallMs includes both phases, launch, imports and setup. OS caches uncontrolled.', resources: 'cpuMs and processMaxRssKiB cover the benchmark child only; exclude spawned Git/test processes. maxRSS is cumulative process high-water, so warm is not an independent peak. Whole-process-tree CPU and peak RSS unknown.', effects: 'Synthetic local CLI/application path; task-start, session status and task-step each run one native craft process. Includes actual fixture tests. No model, worker or native action dispatch. Timing diagnostic only; no CI latency gate before runner-specific calibration.' }, samples: [] };
   const save = () => fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
   save();
   for (let round = 0; round < rounds; round++) {

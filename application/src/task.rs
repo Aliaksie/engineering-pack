@@ -5,7 +5,7 @@ use crate::cli::{Failure, routed};
 use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
 use crate::telemetry::{Operation, Recorder};
-use craft_engine::{models, repository, routing, session};
+use craft_engine::{actions, models, repository, routing, session};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
 use std::path::Path;
@@ -126,7 +126,7 @@ pub fn start(
             let state = records::read_state(root, name, task, recorder, parent)?;
             let record = Some(&state["taskRecord"]).filter(|r| truthy(r));
             let metadata = json!({"taskId": task, "taskContract": session::contract(record)?});
-            crate::checkpoint::save(root, name, &metadata, recorder, parent)
+            crate::checkpoint::save(root, name, &metadata, None, recorder, parent)
         })()
         .unwrap_or_else(|failure| json!({"status": "unavailable", "reason": failure.message}))
     } else {
@@ -155,4 +155,175 @@ pub fn start(
         result[key] = value;
     }
     Ok(result)
+}
+
+pub struct Step<'a> {
+    pub root: &'a Path,
+    pub session: &'a str,
+    pub task: &'a str,
+    /// The engine step input; the attempt budget is added here.
+    pub input: Map<String, Value>,
+    pub host: Option<&'a str>,
+    pub bundles: &'a [String],
+}
+
+const BOUND: &str = "task-step requires the active task binding; use task-start to switch tasks";
+
+/// Record one acceptance step for the bound task under the active binding lock, save its
+/// continuation, observe status and offer a review the status recommends. Nothing is
+/// executed or approved.
+pub fn step(
+    request: Step,
+    load: crate::actions::Load,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let Step {
+        root,
+        session: name,
+        task,
+        mut input,
+        host,
+        bundles,
+    } = request;
+    session::identity(&json!(name), &json!(task))?;
+    if records::active_task(root, Some(name))?.as_deref() != Some(task) {
+        return Err(BOUND.into());
+    }
+    let file = records::binding_file(root, name, true)?;
+    let Some(_lock) = state::lock(&file)? else {
+        return Err("active task writer is busy".into());
+    };
+    if records::active_task(root, Some(name))?.as_deref() != Some(task) {
+        return Err(BOUND.into());
+    }
+    let settings = &load(recorder, parent)?;
+    let saved = records::read_state(root, name, task, recorder, parent)?;
+    let repository = snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)?;
+    let profile = input.get("profile").and_then(Value::as_str);
+    let limit = profile
+        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
+        .filter(|limit| !limit.is_null())
+        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let mut bounded = Map::from_iter([("maxAttempts".to_string(), limit)]);
+    bounded.append(&mut input);
+    let input = Value::Object(bounded);
+    let result = input["result"].clone();
+    let id = craft_platform::telemetry::uuid()?;
+    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
+    let mut recorded = None;
+    let updated = records::update_state(root, name, task, recorder, parent, |state| {
+        recorded = Some(session::step::step(state, &input, &repository, &id, &at)?);
+        Ok(())
+    })?;
+    let recorded = recorded.expect("recorded step");
+    let checkpoint = if truthy(&settings["checkpoint"]["enabled"]) {
+        (|| -> Result<Value, Failure> {
+            let state = records::read_state(root, name, task, recorder, parent)?;
+            let record = Some(&state["taskRecord"]).filter(|r| truthy(r));
+            let metadata = json!({"taskId": task, "taskContract": session::contract(record)?, "continuation": recorded.continuation});
+            crate::checkpoint::save(root, name, &metadata, Some(&recorded.receipt["source"]), recorder, parent)
+        })()
+        .unwrap_or_else(|failure| json!({"status": "unavailable", "reason": failure.message}))
+    } else {
+        json!({"status": "disabled"})
+    };
+    let declared = match host {
+        Some(host) => json!({"host": {"name": host}}),
+        None => json!({}),
+    };
+    let observed = crate::status::Request {
+        root,
+        input: &declared,
+        settings,
+        session: Some(name),
+        task: Some(task),
+        bundles,
+    };
+    let mut status = crate::status::run(observed, recorder, parent)
+        .unwrap_or_else(|failure| json!({"diagnostic": failure.message}));
+    let mut offer = None;
+    if status["recommendation"]["action"] == "review"
+        && settings["efficiency"]["review"]["mode"] != "manual"
+    {
+        let proposed = records::update_state(root, name, task, recorder, parent, |state| {
+            let mut proposal = json!({
+                "action": "review", "scope": "review:current-source",
+                "benefit": "Review the verified changes for declared risks.", "evidence": recorded.receipt["evidence"],
+            });
+            if let Some(prior) = state["taskRecord"]
+                .get("reviewAuthorization")
+                .filter(|p| truthy(p))
+            {
+                proposal["priorAuthorization"] = prior.clone();
+            }
+            let facts = json!({"observations": {"task": status["task"]}});
+            let context = actions::Context {
+                settings,
+                repository: &repository,
+                status: &status,
+                facts: &facts,
+                session: Some(name),
+                now: crate::telemetry::now_ms(),
+            };
+            offer = Some(actions::propose(state, &proposal, &context)?);
+            Ok(())
+        });
+        if let Err(failure) = proposed {
+            status["actionDiagnostic"] = json!(failure.message);
+        }
+    }
+    if truthy(&status["notice"]) {
+        let notice = status["notice"].clone();
+        let written = records::update_state(root, name, task, recorder, parent, |state| {
+            state["notice"] = notice;
+            Ok(())
+        });
+        if let Err(failure) = written {
+            status["noticeDiagnostic"] = json!(failure.message);
+        }
+    }
+    let record = &updated["taskRecord"];
+    let complete = record["goalComplete"] == true
+        && (!truthy(&record["engineeringContract"]) || status["task"]["goalComplete"] == true);
+    let boundary = scratch::Request {
+        root,
+        session: Some(name),
+        task: Some(task),
+        action: if complete {
+            Action::Complete
+        } else {
+            Action::Touch
+        },
+        input: &json!({}),
+        settings,
+    };
+    let workspace = scratch::run(boundary, recorder, parent).unwrap_or_else(|failure| {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), parent);
+        json!({"status": "retained", "reason": failure.message})
+    });
+    status["workspace"] = workspace.clone();
+    let suppressed = offer.as_ref().is_some_and(|o| o["suppressed"] == true);
+    let acceptance = match status.get("acceptance") {
+        Some(acceptance) if !acceptance.is_null() => acceptance.clone(),
+        _ => recorded.acceptance,
+    };
+    let mut response = json!({
+        "session": name, "task": task, "recorded": recorded.receipt, "result": result, "complete": complete,
+        "acceptance": acceptance, "workspace": workspace, "checkpoint": checkpoint,
+    });
+    if let Some(offer) = &offer {
+        response["actionOffer"] = json!({"offer": offer["offer"], "suppressed": offer["suppressed"], "applicability": offer["applicability"], "executed": false});
+    }
+    response["nextStep"] = if suppressed {
+        Value::Null
+    } else {
+        status.get("suggestion").cloned().unwrap_or(Value::Null)
+    };
+    response["status"] = status;
+    response["authorization"] =
+        json!("Agent-declared acceptance recorded locally; no recommended action was executed.");
+    Ok(response)
 }

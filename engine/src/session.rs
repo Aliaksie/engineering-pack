@@ -9,6 +9,7 @@ use serde_json::{Map, Value, json};
 
 pub mod acceptance;
 pub mod status;
+pub mod step;
 
 type Result<T = ()> = std::result::Result<T, String>;
 

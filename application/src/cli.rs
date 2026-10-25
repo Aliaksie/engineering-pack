@@ -24,6 +24,10 @@ pub const COMMANDS: &[&str] = &[
     "task-start",
     "session",
     "session-advice",
+    "task-step",
+    "task-offer",
+    "task-decision",
+    "task-action-check",
     "workspace-open",
     "workspace-write",
     "workspace-promote",
@@ -662,7 +666,7 @@ fn checkpoint_save(
         }
     }
     let name = options.get("session").unwrap_or("manual");
-    let mut saved = crate::checkpoint::save(&root, name, &metadata, recorder, parent)?;
+    let mut saved = crate::checkpoint::save(&root, name, &metadata, None, recorder, parent)?;
     if let (Some(session), Some(task)) = (session, task.as_ref().and_then(Value::as_str)) {
         let values = Map::from_iter([("checkpoints".to_string(), json!(1))]);
         if let Some(warning) =
@@ -764,6 +768,157 @@ fn task_start(
         settings: &settings,
     };
     crate::task::start(request, recorder, parent)
+}
+
+/// The explicit `--task`, else the session's bound task; binding failures are errors.
+fn bound_task(options: &Options) -> Result<Option<String>, Failure> {
+    if let Some(task) = options.get("task") {
+        return Ok(Some(task.to_string()));
+    }
+    crate::session::active_task(&root(options), options.get("session"))
+}
+
+fn required_bundles(options: &Options, command: &str) -> Result<Vec<String>, Failure> {
+    let bundles = strings(options, "bundle");
+    if bundles.is_empty() {
+        return Err(format!("{command} requires --bundle with the installed package root").into());
+    }
+    Ok(bundles)
+}
+
+/// Record one agent-declared acceptance step for the bound task.
+fn task_step(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(session), Some(task)) = (options.get("session"), bound_task(options)?) else {
+        return Err(
+            "task-step requires --session and an explicit --task or a task-start binding".into(),
+        );
+    };
+    let mut input = Map::new();
+    for (name, flag) in [
+        ("stage", "stage"),
+        ("target", "target"),
+        ("approach", "approach"),
+        ("evidence", "evidence"),
+        ("outcome", "outcome"),
+        ("result", "result"),
+        ("nextStep", "next"),
+    ] {
+        if let Some(value) = options.get(flag) {
+            input.insert(name.into(), json!(value));
+        }
+    }
+    if let Some(file) = options.get("acceptance-evidence").filter(|f| !f.is_empty()) {
+        input.insert(
+            "acceptanceEvidence".into(),
+            crate::cli::input(recorder, parent, file)?,
+        );
+        for (name, flag) in [
+            ("expectedTaskContract", "expected-task-contract"),
+            ("expectedEvidenceDigest", "expected-evidence-digest"),
+        ] {
+            if let Some(value) = options.get(flag) {
+                input.insert(name.into(), json!(value));
+            }
+        }
+    }
+    if let Some(profile) = options.get("profile") {
+        input.insert("profile".into(), json!(profile));
+    }
+    input.insert(
+        "complete".into(),
+        json!(options.values.get("complete") == Some(&json!(true))),
+    );
+    let bundles = required_bundles(options, "task-step")?;
+    let request = crate::task::Step {
+        root: &root(options),
+        session,
+        task: &task,
+        input,
+        host: options.get("host"),
+        bundles: &bundles,
+    };
+    crate::task::step(
+        request,
+        &mut |recorder, parent| loaded(options, recorder, parent),
+        recorder,
+        parent,
+    )
+}
+
+/// Propose, decide or check one recommended action for the bound task; `--data` supplies
+/// fresh host facts.
+fn task_action(
+    kind: crate::actions::Kind,
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    use crate::actions::Kind;
+    let (Some(session), Some(task)) = (options.get("session"), bound_task(options)?) else {
+        return Err("action recommendation requires --session and a task-start binding".into());
+    };
+    let mut input = Map::new();
+    let fields: &[(&str, &str)] = match kind {
+        Kind::Offer => &[
+            ("action", "action"),
+            ("scope", "scope"),
+            ("benefit", "benefit"),
+            ("evidence", "evidence"),
+            ("role", "role"),
+            ("profile", "profile"),
+        ],
+        Kind::Decision => &[
+            ("id", "offer"),
+            ("decision", "decision"),
+            ("evidence", "evidence"),
+        ],
+        Kind::Check => &[("id", "offer")],
+    };
+    for (name, flag) in fields {
+        if let Some(value) = options.get(flag) {
+            input.insert(name.to_string(), json!(value));
+        }
+    }
+    if kind == Kind::Offer
+        && let Some(prior) = options.get("prior-authorization").filter(|p| !p.is_empty())
+    {
+        input.insert("priorAuthorization".into(), json!(prior));
+    }
+    let facts = match options.get("data").filter(|d| !d.is_empty()) {
+        Some(file) => crate::cli::input(recorder, parent, file)?,
+        None => json!({}),
+    };
+    let bundles = if kind == Kind::Decision {
+        Vec::new()
+    } else {
+        required_bundles(
+            options,
+            if kind == Kind::Offer {
+                "task-offer"
+            } else {
+                "task-action-check"
+            },
+        )?
+    };
+    let request = crate::actions::Request {
+        root: &root(options),
+        session,
+        task: &task,
+        kind,
+        input: &Value::Object(input),
+        facts: &facts,
+        bundles: &bundles,
+    };
+    crate::actions::run(
+        request,
+        &mut |recorder, parent| loaded(options, recorder, parent),
+        recorder,
+        parent,
+    )
 }
 
 /// Session status and advice for the explicit or bound task; `--data` declares the rest.
@@ -907,6 +1062,22 @@ fn help(action: &str) -> Value {
         "workspace-clean" => json!({
             "usage": "workspace-clean --root project",
             "mode": "reclaim closed or stale abandoned storage; live or unverified owners are retained",
+        }),
+        "task-offer" => json!({
+            "usage": "task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]",
+            "mode": "evaluate and record a recommendation; no dispatch",
+        }),
+        "task-decision" => json!({
+            "usage": "task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id",
+            "mode": "record an explicit scoped user decision; no action execution",
+        }),
+        "task-action-check" => json!({
+            "usage": "task-action-check --session id --offer proposal-id --data fresh-observations.json",
+            "mode": "revalidate source, approval, policy, support and capacity; no dispatch",
+        }),
+        "task-step" => json!({
+            "usage": "task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result \"observed result\" --next \"next step\" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]",
+            "mode": "agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch",
         }),
         "session" => json!({
             "usage": "session [--root project] [--session id --task task-id] [--data task.json] [--json]",
@@ -1120,6 +1291,148 @@ fn session_view(status: &Value) -> String {
     format!("{}\n", lines.join("\n"))
 }
 
+fn offer_lines(result: &Value) -> Vec<String> {
+    let offer = &result["offer"];
+    if !offer.is_object() {
+        let reason = result["applicability"]["reason"]
+            .as_str()
+            .unwrap_or("No action proposed.");
+        return vec![format!("Offer: unavailable — {reason}")];
+    }
+    let suppressed = if result["suppressed"] == true {
+        " (unchanged; suppressed)"
+    } else {
+        ""
+    };
+    vec![
+        format!("Offer: {}", shown(&offer["id"])),
+        format!(
+            "Action: {} | Scope: {}",
+            shown(&offer["action"]),
+            shown(&offer["scope"])
+        ),
+        format!("Decision: {}{suppressed}", shown(&offer["decision"])),
+        format!(
+            "Execution: {}",
+            offer["execution"].as_str().unwrap_or("not-observed")
+        ),
+    ]
+}
+
+/// Compact task-step and action receipts: the receipt, next action or offer, acceptance and
+/// any warnings.
+fn action_receipt(action: &str, result: &Value) -> String {
+    let mut lines = Vec::new();
+    if action == "task-step" {
+        let receipt = &result["recorded"];
+        lines.push(format!(
+            "Step recorded: {} / {} — {}",
+            shown(&receipt["operation"]),
+            shown(&receipt["target"]),
+            shown(&receipt["outcome"])
+        ));
+        lines.push(checkpoint_line(&result["checkpoint"]));
+        if receipt["outcome"] != "passed" {
+            lines.push(format!("Result: {}", shown(&result["result"])));
+        }
+        if result["complete"] == true {
+            lines.push(if result["acceptance"]["assurance"] == "attributed" {
+                "Task: complete (attributed criterion evidence)".into()
+            } else {
+                "Task: complete (agent-declared)".into()
+            });
+        }
+        let next = &result["nextStep"];
+        if next.is_object() {
+            let reason = nonempty(&next["reason"]).map_or(String::new(), |r| format!(" — {r}"));
+            lines.push(format!("Next: {}{reason}", shown(&next["action"])));
+            for check in next["checks"].as_array().into_iter().flatten() {
+                let mut argv = vec![check["command"].clone()];
+                argv.extend(check["args"].as_array().cloned().unwrap_or_default());
+                lines.push(format!(
+                    "Check: {} {}",
+                    shown(&check["cwd"]),
+                    serde_json::to_string(&argv).expect("JSON values serialize")
+                ));
+            }
+            if let Some(after) = nonempty(&next["afterCheckpoint"]) {
+                lines.push(format!("After checkpoint: {after}"));
+            }
+        }
+        let offer = &result["actionOffer"];
+        if offer.is_object() && offer["suppressed"] != true {
+            lines.extend(offer_lines(offer));
+        }
+    } else {
+        lines.extend(offer_lines(result));
+        if action == "task-action-check" {
+            lines.push(format!("Ready: {}", result["ready"] == true));
+            lines.push(result["reason"].as_str().unwrap_or_default().to_string());
+            lines.push("Readiness is not execution or a permission grant.".into());
+        } else {
+            lines.push("No action dispatched.".into());
+        }
+    }
+    let acceptance = &result["acceptance"];
+    if acceptance.is_object() {
+        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
+        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
+            let optional = if criterion["required"] == true {
+                ""
+            } else {
+                " (optional)"
+            };
+            lines.push(format!(
+                "Criterion: {} — {}{optional}",
+                shown(&criterion["id"]),
+                shown(&criterion["status"])
+            ));
+        }
+    }
+    if let Some(contract) = nonempty(&result["taskContract"]) {
+        lines.push(format!("Task contract: {contract}"));
+    }
+    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
+        lines.push(format!("Evidence digest: {digest}"));
+    }
+    if result["binding"].is_object() {
+        lines.push(format!(
+            "Source: {}",
+            nonempty(&result["binding"]["identity"]).unwrap_or("unknown")
+        ));
+    }
+    let status = &result["status"];
+    if result["workspace"]["status"] == "retained"
+        && let Some(reason) = nonempty(&result["workspace"]["reason"])
+    {
+        lines.push(format!("Workspace retained: {reason}"));
+    }
+    if truthy_value(&status["taskEvidenceStale"]) {
+        lines.push("Warning: task evidence is stale.".into());
+    }
+    let mut warnings: Vec<&Value> = vec![
+        &result["activityDiagnostic"],
+        &status["diagnostic"],
+        &status["actionDiagnostic"],
+        &status["noticeDiagnostic"],
+    ];
+    warnings.extend(status["diagnostics"].as_array().into_iter().flatten());
+    for warning in warnings.into_iter().filter(|w| truthy_value(w)) {
+        lines.push(format!("Warning: {}", shown(warning)));
+    }
+    lines.retain(|line| !line.is_empty());
+    format!("{}\n", lines.join("\n"))
+}
+
+fn truthy_value(value: &Value) -> bool {
+    match value {
+        Value::Null | Value::Bool(false) => false,
+        Value::String(s) => !s.is_empty(),
+        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
+        _ => true,
+    }
+}
+
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
 fn task_receipt(result: &Value) -> String {
     let routing = &result["routing"];
@@ -1261,6 +1574,16 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "session-attempt" => session_attempt,
         "task-start" => task_start,
         "session" | "session-advice" => session_status,
+        "task-step" => task_step,
+        "task-offer" => |o: &Options, r: &mut Recorder, p: &Operation| {
+            task_action(crate::actions::Kind::Offer, o, r, p)
+        },
+        "task-decision" => |o: &Options, r: &mut Recorder, p: &Operation| {
+            task_action(crate::actions::Kind::Decision, o, r, p)
+        },
+        "task-action-check" => |o: &Options, r: &mut Recorder, p: &Operation| {
+            task_action(crate::actions::Kind::Check, o, r, p)
+        },
         _ => settings,
     };
     let mut activity = None;
@@ -1291,6 +1614,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 "checkpoint-save" if compact => receipt(value),
                 "task-start" if compact => task_receipt(value),
                 "session" | "session-advice" if compact => session_view(value),
+                "task-step" | "task-offer" | "task-decision" | "task-action-check" if compact => {
+                    action_receipt(action, value)
+                }
                 "session-attempt" if compact => {
                     let recorded = &value["recorded"];
                     let field =

@@ -1,6 +1,5 @@
-import { validateAcceptanceEvidence, engineeringContractDigest, acceptanceCoverage } from './acceptance.mjs';
-import { activityIdentity, appendAttempt, attemptReceipt, unresolvedAttempts } from './activity.mjs';
-import { validateMetadata } from '../checkpoint.mjs';
+import { engineeringContractDigest, acceptanceCoverage } from './acceptance.mjs';
+import { activityIdentity, unresolvedAttempts } from './activity.mjs';
 import { digest } from '../cache/identity.mjs';
 import { repositoryScopes } from '../repositories.mjs';
 
@@ -43,42 +42,4 @@ export function taskAcceptance(state, repository) {
   const record = state.taskRecord;
   return acceptanceCoverage(record?.engineeringContract, record?.acceptanceEvidence,
     { kind: 'repository', identity: taskSource(repository) }, unresolvedAttempts(state.attempts).length > 0);
-}
-export function recordTaskStep(state, input, repository, id, at) {
-  keys(input, ['stage', 'target', 'approach', 'evidence', 'outcome', 'result', 'nextStep', 'complete', 'profile', 'maxAttempts', 'acceptanceEvidence', 'expectedTaskContract', 'expectedEvidenceDigest'], 'task step');
-  const record = state.taskRecord;
-  if (!record) throw new Error('task-step requires task-start for this session and task');
-  stage(input.stage ?? record.stage);
-  for (const field of ['result', 'nextStep']) if (!text(input[field])) throw new Error(`task step ${field} must be 1..512 characters without control characters`);
-  if (input.complete !== undefined && typeof input.complete !== 'boolean') throw new Error('task completion must be boolean');
-  if (input.complete && input.outcome !== 'passed') throw new Error('task completion requires a passed acceptance receipt');
-  const selected = input.stage ?? record.stage;
-  const receipt = attemptReceipt({ operation: selected, target: input.target, approach: input.approach, evidence: input.evidence, outcome: input.outcome,
-    ...(input.profile !== undefined ? { profile: input.profile } : {}), ...(input.maxAttempts !== undefined ? { maxAttempts: input.maxAttempts } : {}) }, repository, id, at);
-  if (input.acceptanceEvidence !== undefined) {
-    if (!record.engineeringContract) throw new Error('acceptance evidence requires an engineering contract');
-    if (input.expectedTaskContract !== taskContract(record)) throw new Error('acceptance evidence task contract changed; reobserve the task');
-    if (input.expectedEvidenceDigest !== digest(record.acceptanceEvidence)) throw new Error('acceptance evidence ledger changed; reload before replacing evidence');
-    validateAcceptanceEvidence(input.acceptanceEvidence);
-    // Explicit whole-ledger replacement permits a documented correction without
-    // choosing a passing receipt over a contradictory failure automatically.
-    record.acceptanceEvidence = input.acceptanceEvidence;
-  }
-  appendAttempt(state, receipt);
-  const acceptance = taskAcceptance(state, repository);
-  if (input.complete && record.engineeringContract && !acceptance.complete) throw new Error('task completion requires current verified evidence for every required criterion and no open conflicts or decisions');
-  if (input.complete && unresolvedAttempts(state.attempts).length) throw new Error('task completion has unresolved acceptance failures or blockers');
-  Object.assign(record, { stage: selected, status: input.outcome === 'passed' ? 'completed' : input.outcome === 'quality-failure' ? 'failed' : input.outcome === 'prerequisite-resolved' ? 'working' : 'blocked',
-    goalComplete: input.complete === true, revision: repository.head, source: receipt.source, safeBoundary: true,
-    summary: input.result, nextStep: input.nextStep });
-  if (selected === 'verify' && ['passed', 'quality-failure'].includes(input.outcome)) Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
-  else { delete record.verification; delete record.verificationRevision; } // blockers and resolutions did not run the check
-  record.acceptedContract = taskContract(record);
-  if (input.outcome === 'passed' && !record.completed?.endsWith(input.result)) record.completed = [record.completed, input.result].filter(Boolean).join('\n').slice(-1024);
-  const continuation = { goal: record.goal, currentState: input.result,
-    completed: record.completed ?? '', approach: input.approach, evidence: input.evidence,
-    filesChanged: record.files.join(', ').slice(0, 1024), validation: `${input.outcome}: ${input.evidence}`,
-    remainingWork: input.complete ? '' : input.nextStep, blockers: record.status === 'blocked' ? input.result : '', nextStep: input.nextStep };
-  validateMetadata({ taskId: record.id, continuation });
-  return { state, receipt, continuation, acceptance };
 }

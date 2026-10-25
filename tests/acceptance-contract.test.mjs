@@ -7,6 +7,8 @@ const fixture = name => JSON.parse(fs.readFileSync(new URL(`./fixtures/acceptanc
 // task-start runs in the native runtime; its frozen corpus holds these legacy starts.
 const taskStarts = JSON.parse(fs.readFileSync(new URL('./fixtures/runtime/task-contracts.json', import.meta.url), 'utf8')).cases;
 const started = id => taskStarts.find(entry => entry.id === `task-start:${id}`).response.result;
+// task-step runs in the native runtime; its frozen corpus holds the legacy step.
+const steps = JSON.parse(fs.readFileSync(new URL('./fixtures/runtime/step-contracts.json', import.meta.url), 'utf8')).cases;
 function call(operation, input) {
   const response = evaluate({ formatVersion: 1, operation, input });
   assert.equal(response.ok, true, JSON.stringify(response));
@@ -122,7 +124,7 @@ test('invalid, ambiguous, unsupported and oversized payloads fail explicitly', (
 
 test('legacy lifecycle and checkpoint fixtures retain declared completion without inferred coverage', () => {
   const legacy = fixture('legacy');
-  const stepped = call('task-step', { state: started('legacy-start').state, input: legacy.step, repository: legacy.repository, id: 'legacy-pass', at: legacy.at });
+  const stepped = steps.find(entry => entry.id === 'step:legacy-step').response.result;
   const frozen = fixture('legacy-completed');
   assert.deepEqual(stepped.state, frozen.state);
   assert.equal(call('task-contract', { record: stepped.state.taskRecord }), frozen.checkpoint.taskContract);

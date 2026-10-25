@@ -52,16 +52,25 @@ fn truthy(value: Option<&Value>) -> bool {
     }
 }
 
-/// Save a checkpoint unless it is unchanged; `{file, state, unchanged}`.
+/// Save a checkpoint unless it is unchanged; `{file, state, unchanged}`. With
+/// `expected_source`, refuse when the current source differs from the accepted one.
 pub fn save(
     root: &Path,
     session: &str,
     metadata: &Value,
+    expected_source: Option<&Value>,
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let operation = recorder.start("checkpoint.saved", Some(parent));
-    let result = save_locked(root, session, metadata, recorder, &operation);
+    let result = save_locked(
+        root,
+        session,
+        metadata,
+        expected_source,
+        recorder,
+        &operation,
+    );
     let (attributes, failure) = match &result {
         Ok(saved) => {
             let count = if saved["unchanged"] == true { 0 } else { 1 };
@@ -80,6 +89,7 @@ fn save_locked(
     root: &Path,
     session: &str,
     metadata: &Value,
+    expected_source: Option<&Value>,
     recorder: &mut Recorder,
     operation: &Operation,
 ) -> Result<Value, Failure> {
@@ -109,6 +119,11 @@ fn save_locked(
     }
     .filter(|r| truthy(Some(r)));
     let repository = snapshot::workspace(root, repositories.as_ref(), false)?;
+    if expected_source.is_some_and(|expected| *expected != session::source(&repository)) {
+        return Err(
+            "Source changed after acceptance; continuation was not rebound to newer source".into(),
+        );
+    }
     if let Some(repositories) = repositories {
         metadata.insert("repositories".into(), repositories);
     }
@@ -199,4 +214,48 @@ fn task_recovery(
     }
     recovery["checkpointTaskMatches"] = json!(matches);
     Ok(recovery)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// task-step saves its continuation only for the source its receipt accepted.
+    #[test]
+    fn a_continuation_is_not_rebound_to_newer_source() {
+        let root =
+            std::env::temp_dir().join(format!("craft-checkpoint-source-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = std::fs::canonicalize(&root).unwrap();
+        let mut recorder = Recorder::open(&root, Some("s1"), None);
+        let parent = recorder.start("cli.command", None);
+        let metadata = json!({"taskId": "t1"});
+        // A non-Git root has no comparable source, so any accepted source differs.
+        let accepted = json!("a".repeat(64));
+        let refused = save(
+            &root,
+            "s1",
+            &metadata,
+            Some(&accepted),
+            &mut recorder,
+            &parent,
+        )
+        .unwrap_err();
+        assert_eq!(
+            refused.message,
+            "Source changed after acceptance; continuation was not rebound to newer source"
+        );
+        assert!(read(&root, "s1", &mut recorder, &parent).unwrap().is_null());
+        let saved = save(
+            &root,
+            "s1",
+            &metadata,
+            Some(&Value::Null),
+            &mut recorder,
+            &parent,
+        )
+        .unwrap();
+        assert_eq!(saved["unchanged"], false);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }

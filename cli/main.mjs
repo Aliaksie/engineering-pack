@@ -7,7 +7,7 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand, bundleRoot } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'task-step', 'task-offer', 'task-decision', 'task-action-check', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
 
 const help = {
   'worker-status': { usage: 'worker-status --root project --session id [--task id]', mode: 'shared task-tree reservations and host observations; no dispatch' },
@@ -16,16 +16,12 @@ const help = {
   'telemetry-capture': { usage: 'telemetry-capture --root project --session id', mode: 'explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction' },
   'telemetry-forget': { usage: 'telemetry-forget --root project --capture id', mode: 'explicitly remove one retained report; ordinary CLI telemetry still applies' },
   'telemetry-report': { usage: 'telemetry-report [--root project] [--session id | --capture id]', mode: 'bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims' },
-  'task-offer': { usage: 'task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]', mode: 'evaluate and record a recommendation; no dispatch' },
-  'task-decision': { usage: 'task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id', mode: 'record an explicit scoped user decision; no action execution' },
-  'task-action-check': { usage: 'task-action-check --session id --offer proposal-id --data fresh-observations.json', mode: 'revalidate source, approval, policy, support and capacity; no dispatch' },
-  'task-step': { usage: 'task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result "observed result" --next "next step" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]', mode: 'agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch' },
 };
 
 export function run(argv) {
   const [action, ...args] = argv;
   // Session guidance is accounted against this installed bundle unless the caller names roots.
-  if (native.has(action)) { const outcome = nativeCommand(action.startsWith('session') && action !== 'session-attempt' && !args.includes('--bundle') ? [...argv, '--bundle', bundleRoot()] : argv, { structured: true }); forwardTelemetry(outcome.export); if (outcome.exitCode) throw new Error(outcome.stderr.trimEnd()); return JSON.parse(outcome.stdout); }
+  if (native.has(action)) { const outcome = nativeCommand(['session', 'session-advice', 'task-step', 'task-offer', 'task-action-check'].includes(action) && !args.includes('--bundle') ? [...argv, '--bundle', bundleRoot()] : argv, { structured: true }); forwardTelemetry(outcome.export); if (outcome.exitCode) throw new Error(outcome.stderr.trimEnd()); return JSON.parse(outcome.stdout); }
   if (['locate', 'context-report'].includes(action) && args.includes('--help')) { const outcome = nativeCommand(argv); return JSON.parse(outcome.stdout); }
   if (action === 'help' || action === '--help' || args.includes('--help')) return { ...(help[action] ?? { commands: ['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean', 'worker-status', 'task-feature', 'task-features', 'telemetry-capture', 'telemetry-forget', 'telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' }), output: 'Routine receipts are compact by default; --json or --verbose returns the full structured result.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
