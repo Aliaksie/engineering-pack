@@ -79,27 +79,18 @@ export function appendTelemetryBatch(root, events) {
     return true;
   } finally { releaseState(ticket); }
 }
+// Retained schema-1 records, oldest file first; skipped lines are not reported here.
 export function readTelemetry(root) {
-  return readTelemetrySnapshot(root).events;
-}
-export function readTelemetrySnapshot(root) {
   const file = stateFile(root, 'telemetry.jsonl');
   const events = [];
-  const storage = { files: 0, bytes: 0, backupPresent: false, malformedLines: 0, unsupportedRecords: 0, oversizedLines: 0,
-    maxFileBytes: TELEMETRY_MAX_BYTES, backupCount: 1, completeHistory: false, concurrentSnapshot: true };
   for (const name of [`${file}.1`, file]) {
-    const stat = regular(name, TELEMETRY_MAX_BYTES);
-    if (!stat) continue;
-    storage.files++; storage.bytes += stat.size;
-    if (name.endsWith('.1')) storage.backupPresent = true;
+    if (!regular(name, TELEMETRY_MAX_BYTES)) continue;
     for (const line of fs.readFileSync(name, 'utf8').split('\n')) {
-      if (!line) continue;
-      if (Buffer.byteLength(line) > 8192) { storage.oversizedLines++; continue; }
-      try { const event = JSON.parse(line); if (event?.schemaVersion === 1) events.push(event); else storage.unsupportedRecords++; }
-      catch { storage.malformedLines++; }
+      if (!line || Buffer.byteLength(line) > 8192) continue;
+      try { const event = JSON.parse(line); if (event?.schemaVersion === 1) events.push(event); } catch {}
     }
   }
-  return { events, storage };
+  return events;
 }
 
 // Transport only: payload construction and policy remain outside the platform.

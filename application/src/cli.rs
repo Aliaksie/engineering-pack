@@ -1,7 +1,7 @@
 //! Commands owned by the Rust runtime, with the argument rules, output and exit codes of
 //! `cli/main.mjs`, which forwards these commands here.
 use crate::project::{self, Settings};
-use crate::telemetry::{Operation, Recorder};
+use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::{context, contracts, models, routing, services};
 use craft_platform::documents::DocumentError;
 use craft_platform::guidance;
@@ -37,6 +37,9 @@ pub const COMMANDS: &[&str] = &[
     "workspace-promote",
     "workspace-release",
     "workspace-clean",
+    "telemetry-report",
+    "telemetry-capture",
+    "telemetry-forget",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -1146,6 +1149,26 @@ fn workspace(
     crate::scratch::run(request, recorder, parent)
 }
 
+fn telemetry_report(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
+    let root = root(options);
+    match (options.get("capture"), options.get("session")) {
+        (Some(_), Some(_)) => Err("choose --capture or --session for telemetry-report".into()),
+        (Some(capture), None) => Ok(retained::read(&root, capture)?),
+        (None, session) => Ok(retained::report(&root, session)?),
+    }
+}
+
+fn telemetry_capture(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
+    Ok(retained::capture(&root(options), options.get("session"))?)
+}
+
+fn telemetry_forget(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
+    Ok(retained::forget(
+        &root(options),
+        options.get("capture").unwrap_or_default(),
+    )?)
+}
+
 fn checkpoint_read(
     options: &Options,
     recorder: &mut Recorder,
@@ -1263,6 +1286,18 @@ fn help(action: &str) -> Value {
             "usage": "session [--root project] [--session id --task task-id] [--data task.json] [--json]",
             "taskFields": ["id", "revision", "stage", "operation", "status", "files", "safeBoundary", "phaseChanged", "almostComplete", "compacted", "staleAssumptions", "risks", "nextStep"],
             "mode": "recommendation-only",
+        }),
+        "telemetry-capture" => json!({
+            "usage": "telemetry-capture --root project --session id",
+            "mode": "explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction",
+        }),
+        "telemetry-forget" => json!({
+            "usage": "telemetry-forget --root project --capture id",
+            "mode": "explicitly remove one retained report; ordinary CLI telemetry still applies",
+        }),
+        "telemetry-report" => json!({
+            "usage": "telemetry-report [--root project] [--session id | --capture id]",
+            "mode": "bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims",
         }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
@@ -1704,19 +1739,11 @@ pub fn run(argv: &[String]) -> Outcome {
 /// A forwarded command can ask for the JSON result instead of a compact receipt
 /// (`context.structured`).
 pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
-    let (action, args) = match argv.split_first() {
-        Some((action, args)) if COMMANDS.contains(&action.as_str()) => (action.as_str(), args),
-        _ => {
-            return Outcome {
-                error_code: None,
-                exit_code: 2,
-                stdout: String::new(),
-                stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
-                export: None,
-            };
-        }
-    };
-    if args.iter().any(|arg| arg == "--help") {
+    let (action, args) = argv
+        .split_first()
+        .map_or(("", &[][..]), |(action, args)| (action.as_str(), args));
+    let known = COMMANDS.contains(&action);
+    if known && args.iter().any(|arg| arg == "--help") {
         return Outcome {
             error_code: None,
             exit_code: 0,
@@ -1738,6 +1765,16 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     );
     recorder.package(context["package"].as_str());
     let operation = recorder.start("cli.command", None);
+    if !known {
+        recorder.complete(operation, Map::new(), Some("INVALID_INPUT"));
+        return Outcome {
+            error_code: None,
+            exit_code: 2,
+            stdout: String::new(),
+            stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
+            export: recorder.finish(),
+        };
+    }
     let command = match action {
         "grounded-context" => {
             |o: &Options, r: &mut Recorder, p: &Operation| grounded_context(o, r, p, None)
@@ -1752,6 +1789,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "locate" => locate,
         "checkpoint-save" => checkpoint_save,
         "checkpoint-read" => checkpoint_read,
+        "telemetry-report" => telemetry_report,
+        "telemetry-capture" => telemetry_capture,
+        "telemetry-forget" => telemetry_forget,
         "session-attempt" => session_attempt,
         "task-start" => task_start,
         "session" | "session-advice" => session_status,

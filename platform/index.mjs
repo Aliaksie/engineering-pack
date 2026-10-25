@@ -11,5 +11,5 @@ export { runtimeVersion } from './node/environment.mjs';
 export { rpcProcess } from './node/rpc-process.mjs';
 export { projectEvidenceProcess } from './node/project-evidence.mjs';
 export { nativeCommand, nativeLocate, nativeWorkers, nativeActions, nativeControl } from './node/native-command.mjs';
-export { TELEMETRY_BATCH_EVENTS, telemetryConfiguration, telemetryIdentity, appendTelemetry, appendTelemetryBatch, readTelemetry, readTelemetrySnapshot, postTelemetry,
+export { TELEMETRY_BATCH_EVENTS, telemetryConfiguration, telemetryIdentity, appendTelemetry, appendTelemetryBatch, readTelemetry, postTelemetry,
   telemetryContext, runTelemetryContext, telemetryRoot } from './node/telemetry.mjs';

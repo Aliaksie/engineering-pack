@@ -4,13 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
-import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture, CAPTURE_MAX_ENTRIES, CAPTURE_MAX_BYTES } from '../application/telemetry/capture.mjs';
+import { createHash } from 'node:crypto';
 import { createTelemetry } from '../application/telemetry/observe.mjs';
-import { telemetryReport } from '../application/telemetry/report.mjs';
+import { run } from '../cli/main.mjs';
 import { stateFile } from '../platform/index.mjs';
-import { digest } from '../application/engine-client.mjs';
 
+const CAPTURE_MAX_ENTRIES = 8, CAPTURE_MAX_BYTES = 65536;
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-capture-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -18,10 +17,16 @@ function fixture(t) {
 }
 const file = root => stateFile(root, 'telemetry-captures.json');
 const observe = (root, session = 'PRIVATE_SESSION') => createTelemetry(root, { session }).emit('discovery.completed');
+// Seeded evidence only: later commands stop recording their own events.
+const seal = root => fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
+const telemetryReport = (root, { session } = {}) => run(['telemetry-report', '--root', root, ...(session === undefined ? [] : ['--session', session])]);
+const captureTelemetry = (root, { session } = {}) => run(['telemetry-capture', '--root', root, ...(session === undefined ? [] : ['--session', session])]);
+const readTelemetryCapture = (root, id) => run(['telemetry-report', '--root', root, '--capture', id]);
+const forgetTelemetryCapture = (root, id) => run(['telemetry-forget', '--root', root, '--capture', id]);
 
 test('captured session report survives deletion of rolling logs and never implies complete history', t => {
   const root = fixture(t);
-  observe(root); observe(root, 'other');
+  observe(root); observe(root, 'other'); seal(root);
   const expected = telemetryReport(root, { session: 'PRIVATE_SESSION' });
   const captured = captureTelemetry(root, { session: 'PRIVATE_SESSION' });
   assert.equal(captured.unchanged, false);
@@ -40,11 +45,9 @@ test('captured session report survives deletion of rolling logs and never implie
 
 test('capacity never evicts captures; explicit removal frees one slot without changing rolling evidence', t => {
   const root = fixture(t), captures = [];
-  for (let i = 0; i < CAPTURE_MAX_ENTRIES; i++) {
-    observe(root, `session-${i}`);
-    captures.push(captureTelemetry(root, { session: `session-${i}` }).capture);
-  }
-  observe(root, 'next');
+  for (let i = 0; i < CAPTURE_MAX_ENTRIES; i++) observe(root, `session-${i}`);
+  observe(root, 'next'); seal(root);
+  for (let i = 0; i < CAPTURE_MAX_ENTRIES; i++) captures.push(captureTelemetry(root, { session: `session-${i}` }).capture);
   const before = fs.readFileSync(file(root), 'utf8');
   assert.throws(() => captureTelemetry(root, { session: 'next' }), /capacity reached/);
   assert.equal(fs.readFileSync(file(root), 'utf8'), before);
@@ -58,17 +61,19 @@ test('capacity never evicts captures; explicit removal frees one slot without ch
 
 test('missing identity or invocation-only evidence never creates a capture store', t => {
   const root = fixture(t);
+  fs.mkdirSync(path.join(root, '.craft')); seal(root);
   assert.throws(() => captureTelemetry(root), /requires/);
   assert.throws(() => captureTelemetry(root, { session: 'absent' }), /key is unavailable/);
-  assert.deepEqual(fs.readdirSync(root), []);
-  createTelemetry(root).emit('host.hook');
+  assert.deepEqual(fs.readdirSync(path.join(root, '.craft')), ['telemetry.json']);
+  fs.rmSync(path.join(root, '.craft/telemetry.json'));
+  createTelemetry(root).emit('host.hook'); seal(root);
   assert.throws(() => captureTelemetry(root, { session: 'absent' }), /no retained session/);
   assert.equal(fs.existsSync(file(root)), false);
   assert.throws(() => readTelemetryCapture(root, '../invalid'), /invalid/);
 });
 
 test('busy locks, symlinks and corrupt reports preserve the existing retained store', t => {
-  const root = fixture(t); observe(root);
+  const root = fixture(t); observe(root); seal(root);
   const saved = captureTelemetry(root, { session: 'PRIVATE_SESSION' });
   const before = fs.readFileSync(file(root), 'utf8');
   fs.writeFileSync(`${file(root)}.lock`, 'active');
@@ -76,9 +81,10 @@ test('busy locks, symlinks and corrupt reports preserve the existing retained st
   assert.throws(() => forgetTelemetryCapture(root, saved.capture), /busy/);
   assert.equal(fs.readFileSync(`${file(root)}.lock`, 'utf8'), 'active');
   fs.unlinkSync(`${file(root)}.lock`);
+  // An extra report field is rejected even when the identifier matches the changed report.
   const corrupt = JSON.parse(before), entry = corrupt.captures[0];
   entry.report.secret = 'PRIVATE_RAW_BODY';
-  entry.id = digest([entry.sessionId, entry.report]).slice(0, 24);
+  entry.id = createHash('sha256').update(JSON.stringify([entry.sessionId, entry.report])).digest('hex').slice(0, 24);
   fs.writeFileSync(file(root), JSON.stringify(corrupt));
   assert.throws(() => readTelemetryCapture(root, entry.id), /invalid retained/);
   assert.throws(() => captureTelemetry(root, { session: 'PRIVATE_SESSION' }), /invalid retained/);
@@ -95,13 +101,14 @@ test('busy locks, symlinks and corrupt reports preserve the existing retained st
 test('concurrent processes preserve captures or explicitly report contention, without lost updates', async t => {
   const root = fixture(t);
   for (let i = 0; i < 4; i++) observe(root, `session-${i}`);
-  const module = pathToFileURL(path.resolve('application/telemetry/capture.mjs')).href;
+  seal(root);
+  const cli = path.resolve('cli/main.mjs');
   const results = await Promise.all(Array.from({ length: 4 }, (_, index) => new Promise((resolve, reject) => {
-    const code = `import {captureTelemetry} from ${JSON.stringify(module)}; try { console.log(JSON.stringify(captureTelemetry(process.argv[1],{session:process.argv[2]}))); } catch(error) { if(!error.message.includes('busy')) throw error; console.log(JSON.stringify({busy:true})); }`;
-    const child = spawn(process.execPath, ['--input-type=module', '-e', code, root, `session-${index}`], { stdio: 'pipe' });
+    const child = spawn(process.execPath, [cli, 'telemetry-capture', '--root', root, '--session', `session-${index}`], { stdio: 'pipe' });
     let output = '', error = '';
     child.stdout.on('data', data => output += data); child.stderr.on('data', data => error += data);
-    child.on('error', reject); child.on('close', status => status ? reject(new Error(error)) : resolve(JSON.parse(output)));
+    child.on('error', reject);
+    child.on('close', status => !status ? resolve(JSON.parse(output)) : error.includes('busy') ? resolve({ busy: true }) : reject(new Error(error)));
   })));
   const stored = JSON.parse(fs.readFileSync(file(root), 'utf8'));
   assert.equal(stored.captures.length, results.filter(result => !result.busy).length);
@@ -113,13 +120,13 @@ test('copied standalone CLI captures, recovers and explicitly forgets session ev
   fs.cpSync(path.resolve('dist/codex/packages/craft-delivery'), exported, { recursive: true });
   const cli = path.join(exported, 'support/cli/main.mjs');
   observe(root);
-  const run = args => {
+  const command = args => {
     const result = spawnSync(process.execPath, [cli, ...args, '--root', root], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout);
   };
-  const captured = run(['telemetry-capture', '--session', 'PRIVATE_SESSION']);
+  const captured = command(['telemetry-capture', '--session', 'PRIVATE_SESSION']);
   fs.unlinkSync(stateFile(root, 'telemetry.jsonl'));
-  assert.equal(run(['telemetry-report', '--capture', captured.capture]).report.retainedEvents, 1);
-  assert.equal(run(['telemetry-forget', '--capture', captured.capture]).remaining, 0);
+  assert.equal(command(['telemetry-report', '--capture', captured.capture]).report.retainedEvents, 1);
+  assert.equal(command(['telemetry-forget', '--capture', captured.capture]).remaining, 0);
 });

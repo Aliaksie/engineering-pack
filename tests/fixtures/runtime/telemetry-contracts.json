@@ -1,0 +1,594 @@
+{
+ "formatVersion": 1,
+ "source": "cli/main.mjs telemetry-report/-capture/-forget at 888dfea",
+ "placeholders": {
+  "<ROOT>": "project root",
+  "<W>": "worktree state directory",
+  "<T>": "capture time",
+  "@N": "Nth capture ID returned in the case"
+ },
+ "cases": [
+  {
+   "id": "empty",
+   "key": null,
+   "steps": [
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 0,\n    \"bytes\": 0,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 0,\n    \"bytes\": 0,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      ""
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry session"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry session"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 0,\n    \"bytes\": 0,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "0123456789abcdef01234567"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture not found"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "XYZ"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry capture id"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "0123456789abcdef01234567",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "choose --capture or --session for telemetry-report"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--bogus"
+     ],
+     "status": 2,
+     "stderr": "unknown argument: --bogus"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--json"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 0,\n    \"bytes\": 0,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture requires a bounded --session identity"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "telemetry correlation key is unavailable"
+    },
+    {
+     "args": [
+      "telemetry-forget"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry capture id"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--capture",
+      "0123456789abcdef01234567"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture not found"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--capture",
+      "nope"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry capture id"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--help"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"usage\": \"telemetry-report [--root project] [--session id | --capture id]\",\n  \"mode\": \"bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims\",\n  \"output\": \"Routine receipts are compact by default; --json or --verbose returns the full structured result.\"\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--help"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"usage\": \"telemetry-capture --root project --session id\",\n  \"mode\": \"explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction\",\n  \"output\": \"Routine receipts are compact by default; --json or --verbose returns the full structured result.\"\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--help"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"usage\": \"telemetry-forget --root project --capture id\",\n  \"mode\": \"explicitly remove one retained report; ordinary CLI telemetry still applies\",\n  \"output\": \"Routine receipts are compact by default; --json or --verbose returns the full structured result.\"\n}\n"
+    }
+   ]
+  },
+  {
+   "id": "nokey",
+   "key": null,
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"discovery.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002f5\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}"
+   ],
+   "steps": [
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 1,\n  \"identity\": {\n    \"sessionEvents\": 1,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"unknown\": 1\n    },\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": \"2026-10-20T10:00:00.000Z\",\n    \"last\": \"2026-10-20T10:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 1,\n    \"bytes\": 317,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 1,\n    \"bytes\": 317,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "telemetry correlation key is unavailable"
+    }
+   ]
+  },
+  {
+   "id": "rich",
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002f6\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"guidance.selected\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002f7\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"outcome\":\"failure\"}",
+    "{\"schemaVersion\":1,\"name\":\"discovery.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002f8\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"outcome\":\"deferred\"}",
+    "{\"schemaVersion\":1,\"name\":\"cache.observed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002f9\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"invocation\",\"package\":\"craft-delivery\"}}",
+    "{\"schemaVersion\":1,\"name\":\"attempt.recorded\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002fa\",\"packVersion\":\"0.0.2\",\"attributes\":{\"recordedAttempts\":40,\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"diagnostic\",\"kind\":\"diagnostic\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002fb\",\"packVersion\":\"0.0.2\",\"attributes\":{\"droppedEvents\":3,\"identityScope\":\"session\"},\"reasonCode\":\"TELEMETRY_EVENTS_DROPPED\",\"outcome\":\"failure\"}",
+    "{\"schemaVersion\":1,\"name\":\"diagnostic\",\"kind\":\"diagnostic\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002fc\",\"packVersion\":\"0.0.2\",\"attributes\":{\"droppedEvents\":2,\"identityScope\":\"session\"},\"reasonCode\":\"EXPORT_QUEUE_FULL\"}",
+    "{\"schemaVersion\":1,\"name\":\"telemetry.export\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002fd\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"outcome\":\"failure\"}",
+    "{\"schemaVersion\":1,\"name\":\"host.hook\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002fe\",\"packVersion\":\"0.0.2\",\"attributes\":{\"inputStatus\":\"oversized\",\"package\":\"craft-engineering\",\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"host.hook\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"147674bfed0ef6dd187bfaa7e78999d8\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-0000000002ff\",\"packVersion\":\"0.0.2\",\"attributes\":{\"inputStatus\":\"complete\",\"package\":\"craft-review\",\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"host.hook\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000300\",\"packVersion\":\"0.0.2\",\"attributes\":{\"inputStatus\":\"bogus\"}}",
+    "{\"schemaVersion\":1,\"name\":\"review.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-19T09:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000301\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"model.advice\",\"kind\":\"observation\",\"timestamp\":\"2026-10-21T09:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000302\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"checkpoint.saved\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000303\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"checkpoint.recovered\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000304\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"integration.planned\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000305\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"session.advice\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000306\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"context.observed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000307\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"workspace.observed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000308\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"cli.command\",\"kind\":\"operation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000309\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"durationMs\":4}",
+    "{\"schemaVersion\":1,\"name\":\"session.observed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030a\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":null,\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030b\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T24:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030c\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"1969-12-31T23:59:59.999Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030d\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030e\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000030f\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000310\",\"packVersion\":null,\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000311\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000312\",\"packVersion\":\"1.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"x\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"00000000-0000-4000-8000-000000000001\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000315\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"parentOperationId\":null}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000316\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"parentOperationId\":\"1234abcd-1234-4abc-8abc-000000000099\"}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000317\",\"packVersion\":\"0.0.2\",\"attributes\":null}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000318\",\"packVersion\":\"0.0.2\",\"attributes\":\"ab\"}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000319\",\"packVersion\":\"0.0.2\",\"attributes\":[1]}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031a\",\"packVersion\":\"0.0.2\",\"attributes\":7}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031b\",\"packVersion\":\"0.0.2\"}",
+    "{\"schemaVersion\":1,\"name\":\"diagnostic\",\"kind\":\"diagnostic\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031c\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"unknown.event\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031d\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"00000000000000000000000000000000\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031e\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":5,\"operationId\":\"1234abcd-1234-4abc-8abc-00000000031f\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000320\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"},\"outcome\":\"odd\",\"durationMs\":-1,\"host\":\"claude\"}",
+    "{\"schemaVersion\":1,\"name\":\"diagnostic\",\"kind\":\"diagnostic\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000321\",\"packVersion\":\"0.0.2\",\"attributes\":{\"droppedEvents\":1.5,\"identityScope\":\"session\"},\"reasonCode\":\"TELEMETRY_EVENTS_DROPPED\"}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000322\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "not json",
+    "null",
+    "{\"schemaVersion\":2}",
+    "{\"schemaVersion\":1,\"secret\":\"private\"}",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000323\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}\r",
+    "   ",
+    "[1,2]",
+    "\"text\""
+   ],
+   "trailingBytes": [
+    255,
+    254,
+    10
+   ],
+   "backup": [
+    "{\"schemaVersion\":1,\"name\":\"discovery.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-01T00:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000324\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "broken {"
+   ],
+   "steps": [
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 35,\n  \"identity\": {\n    \"sessionEvents\": 29,\n    \"invocationOrUnknownEvents\": 6\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"unknown\": 32,\n      \"craft-delivery\": 1,\n      \"craft-engineering\": 1,\n      \"craft-review\": 1\n    },\n    \"hookInputs\": {\n      \"oversized\": 1,\n      \"complete\": 1,\n      \"unknown\": 1\n    }\n  },\n  \"window\": {\n    \"first\": \"2026-10-01T00:00:00.000Z\",\n    \"last\": \"2026-10-21T09:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 2,\n    \"bytes\": 23267,\n    \"backupPresent\": true,\n    \"malformedLines\": 4,\n    \"unsupportedRecords\": 4,\n    \"oversizedLines\": 1,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 13\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 3,\n    \"reportedQueueDrops\": 2,\n    \"exportFailures\": 1,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"observed\",\n      \"events\": 13,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 1,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"observed\",\n      \"events\": 2,\n      \"failures\": 0,\n      \"deferred\": 1\n    },\n    \"lookupCache\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"observed\",\n      \"events\": 2,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"observed\",\n      \"events\": 3,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 28,\n  \"identity\": {\n    \"sessionEvents\": 28,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"unknown\": 27,\n      \"craft-engineering\": 1\n    },\n    \"hookInputs\": {\n      \"oversized\": 1\n    }\n  },\n  \"window\": {\n    \"first\": \"2026-10-01T00:00:00.000Z\",\n    \"last\": \"2026-10-21T09:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 2,\n    \"bytes\": 23267,\n    \"backupPresent\": true,\n    \"malformedLines\": 4,\n    \"unsupportedRecords\": 4,\n    \"oversizedLines\": 1,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 13\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 3,\n    \"reportedQueueDrops\": 2,\n    \"exportFailures\": 1,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"observed\",\n      \"events\": 9,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 1,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"observed\",\n      \"events\": 2,\n      \"failures\": 0,\n      \"deferred\": 1\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"observed\",\n      \"events\": 2,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s2"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 1,\n  \"identity\": {\n    \"sessionEvents\": 1,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"craft-review\": 1\n    },\n    \"hookInputs\": {\n      \"complete\": 1\n    }\n  },\n  \"window\": {\n    \"first\": \"2026-10-20T10:00:00.000Z\",\n    \"last\": \"2026-10-20T10:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 2,\n    \"bytes\": 23267,\n    \"backupPresent\": true,\n    \"malformedLines\": 4,\n    \"unsupportedRecords\": 4,\n    \"oversizedLines\": 1,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 13\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "zz"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-session\",\n  \"retainedEvents\": 0,\n  \"identity\": {\n    \"sessionEvents\": 0,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {},\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": null,\n    \"last\": null\n  },\n  \"storage\": {\n    \"files\": 2,\n    \"bytes\": 23267,\n    \"backupPresent\": true,\n    \"malformedLines\": 4,\n    \"unsupportedRecords\": 4,\n    \"oversizedLines\": 1,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 13\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "zz"
+     ],
+     "status": 2,
+     "stderr": "no retained session-attributed observations to capture"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": true,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "@0"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"report\": {\n    \"formatVersion\": 1,\n    \"scope\": \"retained-session\",\n    \"retainedEvents\": 28,\n    \"identity\": {\n      \"sessionEvents\": 28,\n      \"invocationOrUnknownEvents\": 0\n    },\n    \"attribution\": {\n      \"packages\": {\n        \"unknown\": 27,\n        \"craft-engineering\": 1\n      },\n      \"hookInputs\": {\n        \"oversized\": 1\n      }\n    },\n    \"window\": {\n      \"first\": \"2026-10-01T00:00:00.000Z\",\n      \"last\": \"2026-10-21T09:00:00.000Z\"\n    },\n    \"storage\": {\n      \"files\": 2,\n      \"bytes\": 23267,\n      \"backupPresent\": true,\n      \"malformedLines\": 4,\n      \"unsupportedRecords\": 4,\n      \"oversizedLines\": 1,\n      \"maxFileBytes\": 1048576,\n      \"backupCount\": 1,\n      \"completeHistory\": false,\n      \"concurrentSnapshot\": true,\n      \"invalidRecords\": 13\n    },\n    \"loss\": {\n      \"reportedLocalDrops\": 3,\n      \"reportedQueueDrops\": 2,\n      \"exportFailures\": 1,\n      \"totalLostEvents\": null\n    },\n    \"features\": {\n      \"workspace\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"routing\": {\n        \"status\": \"observed\",\n        \"events\": 9,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"guidanceSelection\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 1,\n        \"deferred\": 0\n      },\n      \"discovery\": {\n        \"status\": \"observed\",\n        \"events\": 2,\n        \"failures\": 0,\n        \"deferred\": 1\n      },\n      \"lookupCache\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"attempts\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"modelAdvice\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"checkpoints\": {\n        \"status\": \"observed\",\n        \"events\": 2,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"context\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"sessionAdvice\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"review\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"services\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"nativeHooks\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      }\n    },\n    \"limits\": [\n      \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n      \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n      \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n      \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n    ]\n  },\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s2"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"b501b18decf31c9fbb3185f2\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--capture",
+      "@0"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"forgotten\": \"30022de9fab9efad8ce4daf3\",\n  \"remaining\": 1,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "@0"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture not found"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--capture",
+      "@0"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture not found"
+    },
+    {
+     "args": [
+      "telemetry-report",
+      "--capture",
+      "@1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"capture\": \"b501b18decf31c9fbb3185f2\",\n  \"capturedAt\": \"<T>\",\n  \"report\": {\n    \"formatVersion\": 1,\n    \"scope\": \"retained-session\",\n    \"retainedEvents\": 1,\n    \"identity\": {\n      \"sessionEvents\": 1,\n      \"invocationOrUnknownEvents\": 0\n    },\n    \"attribution\": {\n      \"packages\": {\n        \"craft-review\": 1\n      },\n      \"hookInputs\": {\n        \"complete\": 1\n      }\n    },\n    \"window\": {\n      \"first\": \"2026-10-20T10:00:00.000Z\",\n      \"last\": \"2026-10-20T10:00:00.000Z\"\n    },\n    \"storage\": {\n      \"files\": 2,\n      \"bytes\": 23267,\n      \"backupPresent\": true,\n      \"malformedLines\": 4,\n      \"unsupportedRecords\": 4,\n      \"oversizedLines\": 1,\n      \"maxFileBytes\": 1048576,\n      \"backupCount\": 1,\n      \"completeHistory\": false,\n      \"concurrentSnapshot\": true,\n      \"invalidRecords\": 13\n    },\n    \"loss\": {\n      \"reportedLocalDrops\": 0,\n      \"reportedQueueDrops\": 0,\n      \"exportFailures\": 0,\n      \"totalLostEvents\": null\n    },\n    \"features\": {\n      \"workspace\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"routing\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"guidanceSelection\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"discovery\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"lookupCache\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"attempts\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"modelAdvice\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"checkpoints\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"context\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"sessionAdvice\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"review\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"services\": {\n        \"status\": \"unobserved\",\n        \"events\": 0,\n        \"failures\": 0,\n        \"deferred\": 0\n      },\n      \"nativeHooks\": {\n        \"status\": \"observed\",\n        \"events\": 1,\n        \"failures\": 0,\n        \"deferred\": 0\n      }\n    },\n    \"limits\": [\n      \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n      \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n      \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n      \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n    ]\n  },\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    }
+   ]
+  },
+  {
+   "id": "sessions",
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000325\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"147674bfed0ef6dd187bfaa7e78999d8\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000326\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"e4420e2724ca612e76b862f50e6f3f67\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000327\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"b715e94289552c4838d13a61d46b57f7\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000328\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"c23e3b82e82f17cf9909f517c490737b\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000329\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"c4b4c7933621f5b503f0a9fd4855913f\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032a\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"7587ec2454c150979aa1facdcaa6c94f\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032b\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"451c542f7001c7f8dc1de0bcd57d997e\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032c\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"13a312aef75849b2c617b879a4d8fb7c\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032d\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}"
+   ],
+   "steps": [
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"6f65382170b5a936c2162f53\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s2"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"786b774da74da96ec59aa883\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s3"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"1f87d78e862815f2478260e5\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s4"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"f2e41451d3eb3fe3b0fecd7c\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s5"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"92bcf8f1c7396a713a0195fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s6"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"b476d004c941ccbafcf33f33\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s7"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"53b7d6767ebe4f706717ee83\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s8"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"6eb8aee1f4fae761538981fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s9"
+     ],
+     "status": 2,
+     "stderr": "telemetry capture capacity reached; preserve needed evidence and explicitly forget a capture before adding another"
+    },
+    {
+     "args": [
+      "telemetry-forget",
+      "--capture",
+      "@3"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"forgotten\": \"f2e41451d3eb3fe3b0fecd7c\",\n  \"remaining\": 7,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s9"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"8b69f9c02b159cc29aeaf02d\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+    }
+   ]
+  },
+  {
+   "id": "badkey",
+   "key": "{\"key\":\"short\"}\n",
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032e\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}"
+   ],
+   "steps": [
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry key"
+    },
+    {
+     "args": [
+      "telemetry-capture",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry key"
+    },
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 1,\n  \"identity\": {\n    \"sessionEvents\": 1,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"unknown\": 1\n    },\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": \"2026-10-20T10:00:00.000Z\",\n    \"last\": \"2026-10-20T10:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 1,\n    \"bytes\": 315,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"observed\",\n      \"events\": 1,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    }
+   ]
+  },
+  {
+   "id": "bigkey",
+   "key": "{\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-00000000032f\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}"
+   ],
+   "steps": [
+    {
+     "args": [
+      "telemetry-report",
+      "--session",
+      "s1"
+     ],
+     "status": 2,
+     "stderr": "invalid bounded state file"
+    }
+   ]
+  },
+  {
+   "id": "biglog",
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "raw": {
+    "repeat": "x",
+    "count": 1048577
+   },
+   "steps": [
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 2,
+     "stderr": "invalid telemetry file"
+    }
+   ]
+  },
+  {
+   "id": "impossible-date",
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "log": [
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-10-20T10:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000330\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}",
+    "{\"schemaVersion\":1,\"name\":\"routing.completed\",\"kind\":\"observation\",\"timestamp\":\"2026-02-30T00:00:00.000Z\",\"sessionId\":\"49670b7ee17f08c4b276d394daeb5050\",\"traceId\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"operationId\":\"1234abcd-1234-4abc-8abc-000000000331\",\"packVersion\":\"0.0.2\",\"attributes\":{\"identityScope\":\"session\"}}"
+   ],
+   "correction": "impossible calendar date accepted by Date.parse is an invalid record",
+   "steps": [
+    {
+     "args": [
+      "telemetry-report"
+     ],
+     "status": 0,
+     "stdout": "{\n  \"formatVersion\": 1,\n  \"scope\": \"retained-project\",\n  \"retainedEvents\": 2,\n  \"identity\": {\n    \"sessionEvents\": 2,\n    \"invocationOrUnknownEvents\": 0\n  },\n  \"attribution\": {\n    \"packages\": {\n      \"unknown\": 2\n    },\n    \"hookInputs\": {}\n  },\n  \"window\": {\n    \"first\": \"2026-02-30T00:00:00.000Z\",\n    \"last\": \"2026-10-20T10:00:00.000Z\"\n  },\n  \"storage\": {\n    \"files\": 1,\n    \"bytes\": 630,\n    \"backupPresent\": false,\n    \"malformedLines\": 0,\n    \"unsupportedRecords\": 0,\n    \"oversizedLines\": 0,\n    \"maxFileBytes\": 1048576,\n    \"backupCount\": 1,\n    \"completeHistory\": false,\n    \"concurrentSnapshot\": true,\n    \"invalidRecords\": 0\n  },\n  \"loss\": {\n    \"reportedLocalDrops\": 0,\n    \"reportedQueueDrops\": 0,\n    \"exportFailures\": 0,\n    \"totalLostEvents\": null\n  },\n  \"features\": {\n    \"workspace\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"routing\": {\n      \"status\": \"observed\",\n      \"events\": 2,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"guidanceSelection\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"discovery\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"lookupCache\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"attempts\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"modelAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"checkpoints\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"context\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"sessionAdvice\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"review\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"services\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    },\n    \"nativeHooks\": {\n      \"status\": \"unobserved\",\n      \"events\": 0,\n      \"failures\": 0,\n      \"deferred\": 0\n    }\n  },\n  \"limits\": [\n    \"Retained best-effort observations cannot establish complete history; rotation, deletion, disabled sinks and unreported losses remain unknown.\",\n    \"Storage and invalid-record counts cover the project files, including when events are filtered by session. Reads do not lock concurrent writers.\",\n    \"Unobserved does not mean disabled, unsupported or inapplicable. Observed events do not prove guidance use, acceptance quality or native action execution.\",\n    \"Attempt events are observations, not a sum of cumulative recordedAttempts. No task, model, worker or compaction execution is inferred.\"\n  ]\n}\n"
+    }
+   ]
+  }
+ ]
+}

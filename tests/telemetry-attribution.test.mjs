@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { createTelemetry, withTelemetry, emitTelemetry, flushTelemetry } from '../application/telemetry/observe.mjs';
 import { readTelemetry } from '../platform/index.mjs';
-import { telemetryReport } from '../application/telemetry/report.mjs';
+import { run } from '../cli/main.mjs';
 import { runHook } from './hook-command.mjs';
 
+const report = root => run(['telemetry-report', '--root', root]);
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-attribution-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -28,7 +29,7 @@ test('nested package scopes isolate traces and inherit package identity only wit
   assert.notEqual(events[0].traceId, events[1].traceId);
   assert.equal(events[0].sessionId, events[1].sessionId);
   assert.equal(JSON.stringify(events).includes('PRIVATE_'), false);
-  assert.deepEqual(telemetryReport(root).attribution.packages, { 'craft-delivery': 2, 'craft-review': 1, unknown: 1 });
+  assert.deepEqual(report(root).attribution.packages, { 'craft-delivery': 2, 'craft-review': 1, unknown: 1 });
 });
 
 test('loss counts survive failed diagnostic appends and repeated finish until actually stored', t => {
@@ -60,7 +61,7 @@ test('a valid JSON prefix followed by oversized whitespace never claims a sessio
   assert.ok(events.some(event => event.reasonCode === 'INPUT_TOO_LARGE'));
   assert.ok(events.every(event => event.attributes.identityScope === 'invocation'));
   assert.ok(events.every(event => event.attributes.package === 'craft-engineering'));
-  assert.equal(telemetryReport(root).attribution.hookInputs.oversized, 1);
+  assert.equal(report(root).attribution.hookInputs.oversized, 1);
 });
 
 test('queue loss diagnostics retain dropped counts across a failing local sink without recursive export', async t => {

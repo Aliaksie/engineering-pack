@@ -117,6 +117,16 @@ are compared exactly; other error prose is not. The Rust replay
 corrections: impossible calendar dates such as `2026-02-30`, which `Date.parse` rolled over,
 are rejected in acceptance observation times and feature outcome times.
 
+`telemetry-contracts.json` freezes 51 JavaScript `telemetry-report`, `telemetry-capture` and
+`telemetry-forget` invocations at `888dfea` over eight seeded stores: empty and keyless projects,
+valid and invalid envelopes of every reported feature, loss diagnostics, attribution, malformed,
+unsupported, oversized and non-UTF-8 lines, a backup file, session filtering, capture
+deduplication, capacity, explicit forgetting, invalid keys and an oversized log. Receipts
+use `<ROOT>`, `<W>` (worktree state directory) and `<T>` (capture time); `@N` is the Nth capture
+ID returned in a case. The Rust replay (`cargo test -p craft-application --test
+telemetry_contracts`) has one intentional correction: an event dated `2026-02-30`, which
+`Date.parse` rolled over, is an invalid record.
+
 `attempt-contracts.json` freezes 185 JavaScript engine responses at `6864ab2` for attempt
 receipts and appends: every field of a valid attempt mutated, repository source states, and
 deterministic append walks whose every step stores the saved attempt IDs and counters or the

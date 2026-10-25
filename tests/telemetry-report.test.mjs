@@ -4,18 +4,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { telemetryReport } from '../application/telemetry/report.mjs';
+import { run } from '../cli/main.mjs';
 import { createTelemetry } from '../application/telemetry/observe.mjs';
-import { stateFile } from '../platform/index.mjs';
+import { stateFile, readTelemetry } from '../platform/index.mjs';
 
+// Reports read the store before recording their own command event.
+const telemetryReport = (root, { session } = {}) => run(['telemetry-report', '--root', root, ...(session === undefined ? [] : ['--session', session])]);
+// Seeded evidence only: later commands stop recording their own events.
+const seal = root => fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-telemetry-report-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   return root;
 }
 
-test('empty reports do not create state or invent applicability and session identity', t => {
+test('empty reports do not create a correlation key or invent applicability and session identity', t => {
   const root = fixture(t);
+  fs.mkdirSync(path.join(root, '.craft'));
+  fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
   for (const session of [undefined, 'private-session']) {
     const result = telemetryReport(root, { session });
     assert.equal(result.retainedEvents, 0);
@@ -24,7 +30,7 @@ test('empty reports do not create state or invent applicability and session iden
     assert.equal(result.loss.totalLostEvents, null);
     assert.equal(result.storage.completeHistory, false);
   }
-  assert.deepEqual(fs.readdirSync(root), []);
+  assert.deepEqual(fs.readdirSync(path.join(root, '.craft')), ['telemetry.json']);
 });
 
 test('report filters real scoped identities and keeps loss counts separate from observed feature outcomes', t => {
@@ -38,6 +44,7 @@ test('report filters real scoped identities and keeps loss counts separate from 
   first.emit('telemetry.export', {}, 'failure');
   createTelemetry(root, { session: 'private-two' }).emit('discovery.completed', {}, 'failure');
   createTelemetry(root).emit('host.hook');
+  seal(root);
   const result = telemetryReport(root, { session: 'private-one' });
   assert.equal(result.retainedEvents, 6);
   assert.deepEqual(result.features.discovery, { status: 'observed', events: 1, failures: 0, deferred: 0 });
@@ -55,6 +62,7 @@ test('report filters real scoped identities and keeps loss counts separate from 
 test('bounded storage report exposes rotation and skipped data without leaking raw records', t => {
   const root = fixture(t);
   createTelemetry(root).emit('session.observed');
+  seal(root);
   const file = stateFile(root, 'telemetry.jsonl');
   fs.copyFileSync(file, `${file}.1`);
   fs.appendFileSync(file, 'secret-malformed\nnull\n{"schemaVersion":2}\n{"schemaVersion":1,"secret":"private"}\n' + 'x'.repeat(8193) + '\n');
@@ -70,6 +78,7 @@ test('bounded storage report exposes rotation and skipped data without leaking r
   fs.unlinkSync(file);
   fs.symlinkSync(path.join(root, 'target'), file);
   assert.throws(() => telemetryReport(root), /invalid telemetry file/);
+  assert.throws(() => telemetryReport(root, { session: '' }), /invalid telemetry session/);
   assert.equal(fs.existsSync(path.join(root, 'target')), false);
 });
 
@@ -82,4 +91,11 @@ test('standalone Codex CLI ships the report without needing local authoring modu
   const result = spawnSync(process.execPath, [cli, 'telemetry-report', '--root', root, '--session', 'private'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).retainedEvents, 0);
+});
+
+test('an unknown command fails with usage and records one failed invocation', t => {
+  const root = fixture(t);
+  assert.throws(() => run(['absent-command', '--root', root]), /usage: craft/);
+  const events = readTelemetry(root);
+  assert.deepEqual(events.map(event => [event.name, event.outcome, event.reasonCode]), [['cli.command', 'failure', 'INVALID_INPUT']]);
 });

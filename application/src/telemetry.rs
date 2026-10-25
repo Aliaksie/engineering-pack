@@ -7,6 +7,8 @@ use craft_platform::telemetry as store;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
+pub mod retained;
+
 const PACKAGE: &str = include_str!("../../package.json");
 const EXPORT_EVENTS: usize = 32;
 

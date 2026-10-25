@@ -2,6 +2,7 @@
 //! `.craft/telemetry.json` configuration, a private per-worktree key and a bounded
 //! JSONL log with one backup, written under the state `.lock` protocol.
 use crate::state;
+use craft_engine::telemetry::report::Storage;
 use serde_json::{Value, json};
 use std::{
     fs::{self, OpenOptions},
@@ -79,8 +80,20 @@ pub fn identity(root: &Path, session: &str) -> Result<String, String> {
         }
         data = state::read(&file, 256)?;
     }
+    pseudonym(data.as_ref(), session)
+}
+
+/// The pseudonym for `session` when the worktree key exists; never creates the key.
+pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, String> {
+    let file = state::file(root, "telemetry-key.json", false, None)?;
+    match state::read(&file, 256)? {
+        None | Some(Value::Null) => Ok(None),
+        data => pseudonym(data.as_ref(), session).map(Some),
+    }
+}
+
+fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, String> {
     let key = data
-        .as_ref()
         .and_then(|data| data["key"].as_str())
         .unwrap_or_default();
     if key.len() != 64 || !key.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
@@ -96,6 +109,46 @@ fn regular(file: &Path) -> Result<u64, String> {
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(0),
         Err(error) => Err(error.to_string()),
     }
+}
+
+/// Retained records of the log and its backup, oldest file first, with storage facts.
+/// Reads take no lock, so a concurrent writer may be partly visible.
+pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), String> {
+    let file = state::file(root, "telemetry.jsonl", false, None)?;
+    let mut backup = file.as_os_str().to_owned();
+    backup.push(".1");
+    let mut records = Vec::new();
+    let mut storage = Storage {
+        max_file_bytes: MAX_BYTES,
+        ..Storage::default()
+    };
+    for (path, is_backup) in [(PathBuf::from(backup), true), (file, false)] {
+        match fs::symlink_metadata(&path) {
+            Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => {}
+            Ok(_) => return Err("invalid telemetry file".into()),
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.to_string()),
+        }
+        let content = fs::read(&path).map_err(|e| e.to_string())?;
+        storage.files += 1;
+        storage.bytes += content.len() as u64;
+        storage.backup_present |= is_backup;
+        for line in String::from_utf8_lossy(&content).split('\n') {
+            if line.is_empty() {
+                continue;
+            }
+            if line.len() > LINE_BYTES {
+                storage.oversized_lines += 1;
+                continue;
+            }
+            match serde_json::from_str::<Value>(line) {
+                Ok(record) if record["schemaVersion"].as_f64() == Some(1.0) => records.push(record),
+                Ok(_) => storage.unsupported_records += 1,
+                Err(_) => storage.malformed_lines += 1,
+            }
+        }
+    }
+    Ok((records, storage))
 }
 
 /// Append up to 32 events atomically with respect to other writers. Returns `false`,
@@ -231,6 +284,51 @@ mod tests {
         );
         fs::write(&log, vec![b'x'; MAX_BYTES as usize + 1]).unwrap();
         assert!(!append(&fixture.0, &[json!({ "n": 5 })]));
+    }
+
+    #[test]
+    fn snapshots_count_skipped_lines_and_never_create_keys() {
+        let fixture = Fixture::new();
+        assert_eq!(existing_identity(&fixture.0, "s1").unwrap(), None);
+        let (records, storage) = snapshot(&fixture.0).unwrap();
+        assert!(records.is_empty());
+        assert_eq!((storage.files, storage.backup_present), (0, false));
+        assert!(!fixture.0.join(".craft").exists());
+        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        fs::write(
+            format!("{}.1", log.display()),
+            "{\"schemaVersion\":1,\"n\":0}\n",
+        )
+        .unwrap();
+        let oversized = "x".repeat(LINE_BYTES + 1);
+        let mut text = format!(
+            "broken\nnull\n{{\"schemaVersion\":2}}\n{oversized}\n{{\"schemaVersion\":1.0}}\n"
+        )
+        .into_bytes();
+        text.extend([0xff, b'\n']);
+        fs::write(&log, &text).unwrap();
+        let (records, storage) = snapshot(&fixture.0).unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0]["n"], 0);
+        assert_eq!(
+            (
+                storage.files,
+                storage.backup_present,
+                storage.malformed_lines,
+                storage.unsupported_records,
+                storage.oversized_lines
+            ),
+            (2, true, 2, 2, 1)
+        );
+        assert_eq!(storage.max_file_bytes, MAX_BYTES);
+        let first = identity(&fixture.0, "s1").unwrap();
+        assert_eq!(existing_identity(&fixture.0, "s1").unwrap(), Some(first));
+        #[cfg(unix)]
+        {
+            fs::remove_file(&log).unwrap();
+            std::os::unix::fs::symlink(fixture.0.join("target"), &log).unwrap();
+            assert_eq!(snapshot(&fixture.0).unwrap_err(), "invalid telemetry file");
+        }
     }
 
     #[test]
