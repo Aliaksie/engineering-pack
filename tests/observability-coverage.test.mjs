@@ -14,6 +14,7 @@ import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { readCheckpoint } from './checkpoint-cli.mjs';
+import { runHook } from './hook-command.mjs';
 
 const uuid = '12345678-1234-4234-a234-123456789abc';
 function fixture(t, telemetry) {
@@ -203,8 +204,7 @@ test('observability alone never executes tools/models, adds context or opens def
 
 test('generated native hooks trace success, malformed input and configuration failure without changing wire output',t=>{
   const enabled=fixture(t), disabled=fixture(t,{local:false});
-  const hook=path.resolve('dist/claude/plugins/craft-delivery/platform-hooks/prompt-routing.mjs');
-  const invoke=(root,input)=>spawnSync(process.execPath,[hook],{cwd:root,encoding:'utf8',input:typeof input === 'string' ? input : JSON.stringify(input)});
+  const invoke=(root,input)=>runHook(path.resolve('dist/claude/plugins/craft-delivery'),'claude','prompt-routing',{cwd:root,input:typeof input === 'string' ? input : JSON.stringify(input)});
   const payload=root=>({cwd:root,session_id:'private-native-session',prompt:'review the change PRIVATE_PROMPT_MARKER'});
   const normal=invoke(enabled,payload(enabled)), off=invoke(disabled,payload(disabled));
   assert.equal(normal.status,0,normal.stderr); assert.equal(normal.stdout,off.stdout); assert.equal(normal.stderr,off.stderr);

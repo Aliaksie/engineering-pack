@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { createTelemetry, withTelemetry, emitTelemetry, flushTelemetry } from '../application/telemetry/observe.mjs';
 import { readTelemetry } from '../platform/index.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
+import { runHook } from './hook-command.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-attribution-'));
@@ -52,8 +52,7 @@ test('loss counts survive failed diagnostic appends and repeated finish until ac
 
 test('a valid JSON prefix followed by oversized whitespace never claims a session from partial input', t => {
   const root = fixture(t);
-  const entry = path.resolve('dist/codex/packages/craft-engineering/platform-hooks/observe-before-tool.mjs');
-  const result = spawnSync(process.execPath, [entry], { cwd: root, encoding: 'utf8',
+  const result = runHook(path.resolve('dist/codex/packages/craft-engineering'), 'codex', 'observe-before-tool', { cwd: root,
     input: JSON.stringify({ session_id: 'PRIVATE_SESSION', cwd: root }) + ' '.repeat(70000) });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, ''); assert.equal(result.stderr, '');

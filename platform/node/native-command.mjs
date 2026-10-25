@@ -29,9 +29,6 @@ export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, 
 export function nativeLocate(root, request, repositories) {
   return nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'locate', { root, request, ...(repositories ? { repositories } : {}) });
 }
-// One host hook event with host-neutral facts; the adapter serializes the decision.
-export const nativeHook = facts => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'host', facts, { timeoutMs: 30000, subject: 'hook' });
-
 // One native worker phase between trusted asynchronous host callbacks.
 export const nativeWorkers = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'workers', input, { subject: 'worker controller' });
 

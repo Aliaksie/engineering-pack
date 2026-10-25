@@ -10,6 +10,7 @@ import { files, frontmatter, json, loadCapabilities, validateCapability } from '
 import { evaluateReport } from '../tooling/eval-report.mjs';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
+import { runHook } from './hook-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packages = loadCapabilities(root);
@@ -123,8 +124,7 @@ test('generated host exports run after relocation without source-tree imports', 
     const setup = json(path.join(standalone, 'SETUP.json'));
     assert.ok(fs.existsSync(path.join(standalone, 'SETUP.md')));
     assert.ok(fs.existsSync(path.join(standalone, setup.sessionAdvice.entry)));
-    const hook = path.join(moved, target === 'claude' ? 'plugins' : 'packages', 'craft-review', 'platform-hooks/read-only.mjs');
-    const result = spawnSync(process.execPath, [hook], { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }), encoding: 'utf8' });
+    const result = runHook(standalone, target, 'read-only', { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }) });
     if (target === 'claude') { assert.equal(result.status, 2); assert.match(result.stderr, /read-only review/); }
     else { assert.equal(result.status, 0); assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny'); }
   }

@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { HOSTS } from '../hosts/registry.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
+import { hookPackage, runHook } from './hook-command.mjs';
 
 const stateNames = root => {
   const base = path.join(root, '.craft', 'state');
@@ -29,7 +30,7 @@ function payload(host, cwd, command, tool = 'shell') {
   return { session_id: 'fixture-session', cwd, tool_name: tool === 'shell' ? host === 'cursor' ? 'Shell' : host === 'gemini' ? 'run_shell_command' : 'Bash' : 'Write', tool_input: { command, file_path: 'orders.py' } };
 }
 function invoke(host, pkg, hook, input, cwd) {
-  return spawnSync(process.execPath, [path.join(root, 'dist', host, host === 'claude' ? 'plugins' : 'packages', pkg, `platform-hooks/${hook}.mjs`)], { cwd, input: typeof input === 'string' ? input : JSON.stringify(input), encoding: 'utf8' });
+  return runHook(hookPackage(path.join(root, 'dist', host), host, pkg), host, hook, { cwd, input: typeof input === 'string' ? input : JSON.stringify(input) });
 }
 function decision(host, result) {
   if (host === 'claude') return result.status === 2 ? 'deny' : 'allow';
@@ -172,7 +173,8 @@ test('unsupported lifecycle mappings are reported and no fake wrapper is install
     const report = JSON.parse(fs.readFileSync(path.join(output, 'adapter-report.json'), 'utf8'));
     const delivery = report.packages.find((entry) => entry.package === 'craft-delivery');
     assert.equal(delivery.hookMappings.find((entry) => entry.id === 'compact-restore').supported, false);
-    assert.ok(!fs.existsSync(path.join(output, 'packages/craft-delivery/platform-hooks/compact-restore.mjs')));
+    const registered = JSON.stringify(host === 'agents' ? {} : JSON.parse(fs.readFileSync(path.join(output, { cursor: '.cursor/hooks.json', copilot: '.github/hooks/craft-capabilities.json', gemini: '.gemini/settings.json' }[host]), 'utf8')));
+    assert.ok(!registered.includes('after-compact'), `${host} registers no unsupported hook`);
   }
 });
 
@@ -190,12 +192,14 @@ test('Claude and Codex restore context through the documented compact session-st
   }
 });
 
-test('Copilot declares the same Node hook for Bash and PowerShell', () => {
+test('Copilot runs the same launcher arguments from Bash and PowerShell', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'dist/copilot/.github/hooks/craft-capabilities.json'), 'utf8'));
   for (const hooks of Object.values(config.hooks)) for (const hook of hooks) {
-    assert.equal(hook.powershell, hook.bash);
-    assert.match(hook.powershell, /^node "\.\/packages\//);
-    assert.ok(!/\.(?:sh|ps1)\b/.test(hook.powershell));
+    const bash = /^"\.\/packages\/([a-z-]+)\/bin\/craft" (hook copilot .+)$/.exec(hook.bash);
+    const powershell = /^& "\.\/packages\/([a-z-]+)\/bin\/craft\.cmd" (hook copilot .+)$/.exec(hook.powershell);
+    assert.ok(bash && powershell, JSON.stringify(hook));
+    assert.deepEqual(bash.slice(1), powershell.slice(1));
+    assert.ok(!/\bnode\b/.test(hook.bash + hook.powershell), 'hooks need no Node.js');
   }
 });
 

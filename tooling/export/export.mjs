@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { hookMapping } from '../../hosts/registry.mjs';
+import { emitLaunchers, hookArguments } from './launcher.mjs';
 import { sessionCapabilities } from '../../hosts/session.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
 import { featureSupport } from '../../hosts/capabilities.mjs';
@@ -113,19 +114,15 @@ export function preparePackage(item, packages, destination, platform) {
   return entries.map((entry) => skillName(manifest.name, entry.name, platform));
 }
 
-export function emitHooks(item, destination, platform, adapterRoot) {
+export function emitHooks(item, destination, platform) {
   if (!item.manifest.hooks.length) return;
-  for (const [source, name] of [['hooks.mjs','hook.mjs'],['registry.mjs','registry.mjs']]) write(destination, `platform-runtime/${name}`, fs.readFileSync(path.join(adapterRoot, source), 'utf8'));
+  emitLaunchers(item, destination, platform);
   const rootVariable = platform === 'claude' ? '${CLAUDE_PLUGIN_ROOT}' : '${PLUGIN_ROOT}';
   const events = {};
   for (const definition of item.manifest.hooks) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
-    const wrapper = `platform-hooks/${definition.name}.mjs`;
-    // Handlers that declare `native` run in `craft`; the others still use the JS delivery path.
-    write(destination, wrapper, `#!/usr/bin/env node\nimport * as handler from '../${definition.handler}';\nimport { runNativeHook } from '../platform-runtime/hook.mjs';\nimport { nativeHook } from '../support/platform/index.mjs';\nimport { forwardTelemetry, flushTelemetry } from '../support/application/telemetry/observe.mjs';\nconst definition = ${JSON.stringify(definition)};\nawait runNativeHook(handler, '${platform}', definition, ${JSON.stringify(item.manifest.name)}, { invoke: nativeHook, forward: forwardTelemetry, flush: flushTelemetry });\n`);
-    fs.chmodSync(path.join(destination, wrapper), 0o755);
-    const hooks = [{ type: 'command', command: `node "${rootVariable}/${wrapper}"` }];
+    const hooks = [{ type: 'command', command: `"${rootVariable}/bin/craft" ${hookArguments(platform, definition, item).join(' ')}` }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);
     (events[mapping.name] ??= []).push({ ...(matcher ? { matcher } : {}), hooks });
   }

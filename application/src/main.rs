@@ -7,6 +7,10 @@ fn main() {
         .skip(1)
         .map(|arg| arg.to_string_lossy().into_owned())
         .collect();
+    // A host hook reads the host's own payload on stdin and writes its wire response.
+    if argv.first().is_some_and(|command| command == "hook") {
+        std::process::exit(craft_application::hook::main(&argv[1..]));
+    }
     if !argv.is_empty() {
         let outcome = craft_application::cli::run(&argv);
         print!("{}", outcome.stdout);

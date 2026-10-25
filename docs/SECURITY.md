@@ -9,7 +9,7 @@ untrusted data. Packages cannot authorize remote writes, deployments or publicat
 credentials, private endpoints and saved production transcripts out of reusable packages.
 
 Portable policies are pure engine decisions. Application use cases collect observations;
-`hosts/` normalizes native inputs and serializes decisions. Filesystem, Git and state access
+`craft hook` parses host hook payloads and writes their wire output. Filesystem, Git and state access
 live under `platform/`; build/export code stays in `tooling/`. No native enforcement is
 installed by the generic AGENTS export. The review command policies use
 heuristic matching, not a complete shell parser, so they are guardrails rather than a security

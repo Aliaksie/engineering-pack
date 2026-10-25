@@ -430,6 +430,80 @@ impl Recorder {
         }
     }
 
+    /// Post a finished export to its endpoint and store the outcome as a local
+    /// `telemetry.export` operation under the batch's last event; the outcome itself is
+    /// never exported. The export keeps its session pseudonym.
+    pub fn deliver(export: Option<Value>) {
+        let Some(export) = export else {
+            return;
+        };
+        let (Some(endpoint), Some(root), Some(events)) = (
+            export["endpoint"].as_str(),
+            export["root"].as_str(),
+            export["events"].as_array(),
+        ) else {
+            return;
+        };
+        let events = &events[..events.len().min(EXPORT_EVENTS)];
+        let Some(last) = events.last() else {
+            return;
+        };
+        let mut recorder = Self::open(
+            Path::new(root),
+            export["session"].as_str(),
+            export["host"].as_str(),
+        );
+        if !recorder.enabled {
+            return;
+        }
+        recorder.package(export["package"].as_str());
+        recorder.session_id = events[0]["sessionId"].as_str().map(str::to_string);
+        if let Some(trace) = last["traceId"].as_str() {
+            recorder.trace = trace.to_string();
+        }
+        recorder.remote = None;
+        let started = now_ms();
+        let result = match craft_engine::otlp::traces(events) {
+            Ok(body) => craft_engine::otlp::outcome(&craft_platform::http::post(
+                endpoint,
+                body.to_string().as_bytes(),
+                std::time::Duration::from_millis(300),
+            )),
+            Err(_) => json!({"ok": false, "reasonCode": "EXPORT_FAILED"}),
+        };
+        let ok = result["ok"] == true;
+        let mut attributes = Map::from_iter([
+            ("area".to_string(), json!("telemetry")),
+            ("batchSize".to_string(), json!(events.len())),
+        ]);
+        if ok {
+            attributes.insert("exportedEvents".into(), json!(events.len()));
+        }
+        for key in ["statusCode", "rejectedEvents"] {
+            if let Some(value) = result.get(key).filter(|v| !v.is_null() && *v != 0) {
+                attributes.insert(key.into(), value.clone());
+            }
+        }
+        let reason = result["reasonCode"]
+            .as_str()
+            .and_then(|code| telemetry::REASON_CODES.iter().find(|known| **known == code))
+            .copied();
+        let id = store::uuid().unwrap_or_default();
+        let event = recorder.build(
+            "telemetry.export",
+            attributes,
+            Some(if ok { "success" } else { "failure" }),
+            Some((now_ms() - started).max(0)),
+            id.clone(),
+            last["operationId"].as_str().map(str::to_string),
+            reason,
+            true,
+            &[],
+        );
+        recorder.record(event, id);
+        recorder.finish();
+    }
+
     /// Store remaining events and return the remote export, if one is configured.
     pub fn finish(mut self) -> Option<Value> {
         if !self.enabled {

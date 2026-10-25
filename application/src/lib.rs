@@ -9,6 +9,7 @@ mod delivery;
 mod discovery;
 mod evidence;
 mod grounding;
+pub mod hook;
 mod host;
 mod project;
 mod scratch;

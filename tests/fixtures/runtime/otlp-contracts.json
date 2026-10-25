@@ -1,0 +1,2991 @@
+{
+ "source": "integrations/otel/traces.mjs",
+ "traces": [
+  {
+   "id": "base",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "child",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.observed",
+     "kind": "observation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000002-1111-4222-8333-000000000002",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "parentOperationId": "a0000001-1111-4222-8333-000000000001"
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000211114222",
+          "name": "host.observed",
+          "kind": 1,
+          "parentSpanId": "a000000111114222",
+          "startTimeUnixNano": "1792947600123000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "observation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "diagnostic",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "diagnostic",
+     "kind": "diagnostic",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000003-1111-4222-8333-000000000003",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "area": "host",
+      "identityScope": "invocation"
+     },
+     "outcome": "failure",
+     "parentOperationId": "a0000001-1111-4222-8333-000000000001",
+     "reasonCode": "HOOK_FAILED"
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000311114222",
+          "name": "diagnostic",
+          "kind": 1,
+          "parentSpanId": "a000000111114222",
+          "startTimeUnixNano": "1792947600123000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "area",
+            "value": {
+             "stringValue": "host"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "invocation"
+            }
+           },
+           {
+            "key": "engineering-pack.reason.code",
+            "value": {
+             "stringValue": "HOOK_FAILED"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "diagnostic"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "failure"
+            }
+           }
+          ],
+          "status": {
+           "code": 2
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "no-trace",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "a0000001111142228333000000000001",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "null-version",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": null,
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": null
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "no-version",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "no-host",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "no-outcome",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "no-kind",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "empty-attributes",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {},
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "counts",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "batchSize": 3,
+      "exportedEvents": 3,
+      "statusCode": 200,
+      "emitted": true,
+      "contextSupported": false,
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "batchSize",
+            "value": {
+             "doubleValue": 3
+            }
+           },
+           {
+            "key": "exportedEvents",
+            "value": {
+             "doubleValue": 3
+            }
+           },
+           {
+            "key": "statusCode",
+            "value": {
+             "doubleValue": 200
+            }
+           },
+           {
+            "key": "emitted",
+            "value": {
+             "boolValue": true
+            }
+           },
+           {
+            "key": "contextSupported",
+            "value": {
+             "boolValue": false
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "long-duration",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 10000000000000
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "0",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "zero-duration",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 0
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600123000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "epoch",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "1970-01-01T00:00:00.005Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 9
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "0",
+          "endTimeUnixNano": "5000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "deferred",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "deferred",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "deferred"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "failure",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "failure",
+     "durationMs": 12,
+     "reasonCode": "EXPORT_FAILED"
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.reason.code",
+            "value": {
+             "stringValue": "EXPORT_FAILED"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "failure"
+            }
+           }
+          ],
+          "status": {
+           "code": 2
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "batch",
+   "events": [
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    },
+    {
+     "schemaVersion": 1,
+     "name": "host.observed",
+     "kind": "observation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000002-1111-4222-8333-000000000002",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "parentOperationId": "a0000001-1111-4222-8333-000000000001"
+    },
+    {
+     "schemaVersion": 1,
+     "name": "diagnostic",
+     "kind": "diagnostic",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "operationId": "a0000003-1111-4222-8333-000000000003",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "area": "host",
+      "identityScope": "invocation"
+     },
+     "outcome": "failure",
+     "parentOperationId": "a0000001-1111-4222-8333-000000000001",
+     "reasonCode": "HOOK_FAILED"
+    },
+    {
+     "schemaVersion": 1,
+     "name": "host.hook",
+     "kind": "operation",
+     "timestamp": "2026-10-25T17:00:00.123Z",
+     "sessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "operationId": "a0000001-1111-4222-8333-000000000001",
+     "packVersion": "0.0.2",
+     "host": "claude",
+     "attributes": {
+      "lifecycle": "before-tool",
+      "decision": "allow",
+      "package": "craft-review",
+      "identityScope": "session"
+     },
+     "outcome": "success",
+     "durationMs": 12
+    }
+   ],
+   "expected": {
+    "resourceSpans": [
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000211114222",
+          "name": "host.observed",
+          "kind": 1,
+          "parentSpanId": "a000000111114222",
+          "startTimeUnixNano": "1792947600123000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "observation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "spanId": "a000000311114222",
+          "name": "diagnostic",
+          "kind": 1,
+          "parentSpanId": "a000000111114222",
+          "startTimeUnixNano": "1792947600123000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "area",
+            "value": {
+             "stringValue": "host"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "invocation"
+            }
+           },
+           {
+            "key": "engineering-pack.reason.code",
+            "value": {
+             "stringValue": "HOOK_FAILED"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "diagnostic"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "failure"
+            }
+           }
+          ],
+          "status": {
+           "code": 2
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "resource": {
+       "attributes": [
+        {
+         "key": "service.name",
+         "value": {
+          "stringValue": "engineering-pack"
+         }
+        },
+        {
+         "key": "service.version",
+         "value": {
+          "stringValue": "0.0.2"
+         }
+        },
+        {
+         "key": "engineering-pack.host",
+         "value": {
+          "stringValue": "claude"
+         }
+        }
+       ]
+      },
+      "scopeSpans": [
+       {
+        "scope": {
+         "name": "engineering-pack",
+         "version": "0.0.2"
+        },
+        "spans": [
+         {
+          "traceId": "a0000001111142228333000000000001",
+          "spanId": "a000000111114222",
+          "name": "host.hook",
+          "kind": 1,
+          "startTimeUnixNano": "1792947600111000000",
+          "endTimeUnixNano": "1792947600123000000",
+          "attributes": [
+           {
+            "key": "lifecycle",
+            "value": {
+             "stringValue": "before-tool"
+            }
+           },
+           {
+            "key": "decision",
+            "value": {
+             "stringValue": "allow"
+            }
+           },
+           {
+            "key": "package",
+            "value": {
+             "stringValue": "craft-review"
+            }
+           },
+           {
+            "key": "identityScope",
+            "value": {
+             "stringValue": "session"
+            }
+           },
+           {
+            "key": "engineering-pack.event.kind",
+            "value": {
+             "stringValue": "operation"
+            }
+           },
+           {
+            "key": "engineering-pack.session.id",
+            "value": {
+             "stringValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+           },
+           {
+            "key": "engineering-pack.outcome",
+            "value": {
+             "stringValue": "success"
+            }
+           }
+          ],
+          "status": {
+           "code": 0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "empty",
+   "events": [],
+   "expected": {
+    "resourceSpans": []
+   }
+  }
+ ],
+ "outcomes": [
+  {
+   "id": "outcome-0",
+   "result": {
+    "ok": false,
+    "failure": "timeout"
+   },
+   "expected": {
+    "ok": false,
+    "reasonCode": "EXPORT_TIMEOUT"
+   }
+  },
+  {
+   "id": "outcome-1",
+   "result": {
+    "ok": false,
+    "failure": "invalid-response",
+    "statusCode": 200
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-2",
+   "result": {
+    "ok": false,
+    "failure": "transport"
+   },
+   "expected": {
+    "ok": false,
+    "reasonCode": "EXPORT_FAILED"
+   }
+  },
+  {
+   "id": "outcome-3",
+   "result": {
+    "ok": false,
+    "failure": "request-too-large"
+   },
+   "expected": {
+    "ok": false,
+    "reasonCode": "EXPORT_FAILED"
+   }
+  },
+  {
+   "id": "outcome-4",
+   "result": {
+    "ok": false,
+    "failure": "response-too-large"
+   },
+   "expected": {
+    "ok": false,
+    "reasonCode": "EXPORT_FAILED"
+   }
+  },
+  {
+   "id": "outcome-5",
+   "result": {
+    "ok": false,
+    "statusCode": 500,
+    "json": {}
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 500,
+    "reasonCode": "EXPORT_FAILED"
+   }
+  },
+  {
+   "id": "outcome-6",
+   "result": {
+    "ok": false,
+    "statusCode": 0,
+    "failure": "transport"
+   },
+   "expected": {
+    "ok": false,
+    "reasonCode": "EXPORT_FAILED"
+   }
+  },
+  {
+   "id": "outcome-7",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {}
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-8",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": null
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-9",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": []
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-10",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": "text"
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-11",
+   "result": {
+    "ok": true,
+    "statusCode": 200
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-12",
+   "result": {
+    "ok": true,
+    "json": {}
+   },
+   "expected": {
+    "ok": true
+   }
+  },
+  {
+   "id": "outcome-13",
+   "result": {
+    "ok": true,
+    "statusCode": null,
+    "json": {}
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": null
+   }
+  },
+  {
+   "id": "outcome-14",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 0
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-15",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 1
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 1
+   }
+  },
+  {
+   "id": "outcome-16",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 5
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 5
+   }
+  },
+  {
+   "id": "outcome-17",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": "0"
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-18",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": "000"
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-19",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": "7"
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 7
+   }
+  },
+  {
+   "id": "outcome-20",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": "0012"
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 12
+   }
+  },
+  {
+   "id": "outcome-21",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": -1
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-22",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 1.5
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-23",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 1000000000
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 1000000000
+   }
+  },
+  {
+   "id": "outcome-24",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 1000000001
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED"
+   }
+  },
+  {
+   "id": "outcome-25",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 9007199254740992
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED"
+   }
+  },
+  {
+   "id": "outcome-26",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 100000000000000000000
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED"
+   }
+  },
+  {
+   "id": "outcome-27",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 1e+21
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-28",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": "99999999999999999999"
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED"
+   }
+  },
+  {
+   "id": "outcome-29",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": ""
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-30",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": " 1"
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-31",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": true
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-32",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": null
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-33",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": []
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-34",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": {}
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_INVALID_RESPONSE"
+   }
+  },
+  {
+   "id": "outcome-35",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {}
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-36",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": null
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-37",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": "x"
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-38",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": ""
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-39",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": "warn"
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_WARNING"
+   }
+  },
+  {
+   "id": "outcome-40",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": 0
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-41",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": 1
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_WARNING"
+   }
+  },
+  {
+   "id": "outcome-42",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": true
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_WARNING"
+   }
+  },
+  {
+   "id": "outcome-43",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": false
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200
+   }
+  },
+  {
+   "id": "outcome-44",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": []
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_WARNING"
+   }
+  },
+  {
+   "id": "outcome-45",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "errorMessage": {}
+     }
+    }
+   },
+   "expected": {
+    "ok": true,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_WARNING"
+   }
+  },
+  {
+   "id": "outcome-46",
+   "result": {
+    "ok": true,
+    "statusCode": 200,
+    "json": {
+     "partialSuccess": {
+      "rejectedSpans": 2,
+      "errorMessage": "x"
+     }
+    }
+   },
+   "expected": {
+    "ok": false,
+    "statusCode": 200,
+    "reasonCode": "EXPORT_PARTIAL_REJECTED",
+    "rejectedEvents": 2
+   }
+  }
+ ]
+}

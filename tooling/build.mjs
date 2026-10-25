@@ -7,6 +7,7 @@ import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
 import { setupControls } from '../hosts/onboarding.mjs';
 import { featureSupport } from '../hosts/capabilities.mjs';
+
 import { copy, rewriteLinks, runtimeImports, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
 import * as codex from './export/codex/index.mjs';
@@ -16,6 +17,9 @@ import * as copilot from './export/copilot/index.mjs';
 import * as gemini from './export/gemini/index.mjs';
 import * as geminiExtension from './export/gemini/extension.mjs';
 import * as jetbrains from './export/jetbrains/index.mjs';
+
+// The hook mapping table configures exports here; `craft` embeds the same data.
+const BUILD_ONLY = ['hosts/registry.mjs', 'hosts/hooks.json'];
 
 export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents, 'gemini-extension': geminiExtension, jetbrains };
 const MARKER = '.capability-build.json';
@@ -55,6 +59,7 @@ export function build(repo, target) {
       const policy = fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8');
       write(destination, 'SETUP.md', `${policy}\n## Export facts\n\n\`\`\`json\n${JSON.stringify(notice, null, 2)}\n\`\`\`\n`);
       for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
+      for (const file of BUILD_ONLY) fs.rmSync(path.join(destination, 'support', file));
       // Canonical package entry points import shared runtime source. Installed packages
       // resolve that same implementation locally, without fallback loaders or siblings.
       for (const file of files(destination).filter(file => file.endsWith('.mjs') && !path.relative(destination,file).startsWith(`support${path.sep}`))) {
@@ -71,6 +76,7 @@ export function build(repo, target) {
       for (const { manifest } of packages) fs.copyFileSync(license, path.join(stage, packageFolder, manifest.name, 'LICENSE'));
     }
     for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli', 'hosts']) copy(path.join(repo, folder), path.join(stage, folder));
+    for (const file of BUILD_ONLY) fs.rmSync(path.join(stage, file));
     copy(path.join(repo, 'docs'), path.join(stage, 'docs'));
     // Shared documentation can link into any package. Rebase those links to the
     // adapter's package folder and native skill names, just as package docs do.

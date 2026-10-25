@@ -67,11 +67,15 @@ activity are read and written natively. Discovery writes its reuse receipt under
 only if the state it observed is still current; a concurrent receipt is preserved with a
 diagnostic.
 
-A forwarded hook sends one native `host` request with host-neutral lifecycle facts, never host
-event names; only shell-scoped hooks receive the command text and only delivery hooks the edited
-file and prompt. The adapter keeps payload parsing, the input bound and wire output. If the
-runtime cannot answer, a shell enforcement hook still denies, observation stays silent and
-delivery reports its context as unavailable.
+A host hook runs `craft hook <host> <lifecycle>` through a generated launcher that only selects
+the bundled executable: `bin/craft` for POSIX shells, including Git Bash on Windows, and
+`bin/craft.cmd` for cmd and PowerShell. `craft` reads the host payload (64 KiB bound), derives
+host-neutral lifecycle facts with the embedded host mapping table `hosts/hooks.json`, which the
+build also reads, writes the host wire output and posts any remote telemetry export. Only
+shell-scoped hooks evaluate the command text and only delivery hooks the edited file and prompt.
+Without a bundled runtime for the platform, the launcher answers as a failed runtime would: a
+shell enforcement hook denies, observation stays silent and delivery reports its context as
+unavailable. Executable checksums are verified when bundles are assembled, not per hook call.
 
 The worker callback adapter lives in `hosts/`; it passes explicit observations to native
 phases for admission, reconciliation and result recording. Rust owns the worker ledger

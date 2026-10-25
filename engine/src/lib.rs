@@ -11,6 +11,7 @@ pub mod delivery;
 pub mod discovery;
 pub mod grounding;
 pub mod models;
+pub mod otlp;
 pub mod repository;
 pub mod review;
 pub mod routing;

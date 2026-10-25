@@ -16,9 +16,11 @@ was checked on 2026-10-18. Local fixtures validate packaging, not live model beh
 The stable `distribution` channel stays frozen. Native-enabled candidates use
 `distribution-next`; substitute that branch in the installation commands below after
 its first successful publication. Each complete host package and independently cached
-plugin includes the prebuilt runtime. Node selects the executable for the current OS
-and CPU and verifies its SHA-256 checksum before launching it. No platform argument,
-Rust toolchain or compilation step is required.
+plugin includes the prebuilt runtime. Hooks start it through a generated launcher that
+selects the executable for the current OS and CPU; the Node CLI and host controls also verify
+its SHA-256 checksum before launching it. No platform argument, Rust toolchain or
+compilation step is required. On a platform without an artifact, hooks answer as a failed
+runtime would: the read-only review guard denies shell commands and other hooks continue.
 
 The candidate build matrix covers macOS 15+ on Apple Silicon, Ubuntu 24.04+ on
 x86-64, and Windows x86-64 (tested on Windows Server 2022). macOS Intel, Linux ARM and Alpine/musl have no candidate artifact.

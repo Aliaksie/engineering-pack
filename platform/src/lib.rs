@@ -2,6 +2,7 @@ pub mod documents;
 pub mod files;
 pub mod grounding;
 pub mod guidance;
+pub mod http;
 pub mod java;
 pub mod javascript;
 pub mod lease;

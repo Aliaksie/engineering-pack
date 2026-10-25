@@ -60,8 +60,9 @@ for that specific surface. Other adapters retain their own native controls and l
 
 For direct GitHub installation use the [platform guide](PLATFORMS.md). The following
 paths are for local development. Run `npm run build` from the source checkout with Node 22+. Each export is a separate
-bundle; use the one for your host. Keep Node available on the host's PATH for the bundled
-CLI and hook wrappers. Local Git operations also require Git. No npm install is needed.
+bundle; use the one for your host. Hooks run the bundled native runtime through generated
+launchers and need no Node. Keep Node available on the host's PATH for the bundled CLI, status
+line and host controls. Local Git operations also require Git. No npm install is needed.
 
 | Host | Generated directory | How to adopt it |
 |---|---|---|

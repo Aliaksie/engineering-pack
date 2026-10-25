@@ -25,12 +25,12 @@
       "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
       "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
       "dependsOn": ["engine"],
-      "externalDependencies": ["getrandom", "rusqlite", "rustix", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
+      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
       "shipped": true,
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 710,
+        "jsLines": 707,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -91,9 +91,9 @@
     },
     "hosts": {
       "kind": "host-adapter",
-      "responsibility": "Per-host payload parsing, native invocation and host wire output, the only runtime JavaScript after migration.",
-      "allow": ["**/*.mjs", "capabilities.json"],
-      "jsLines": 1145,
+      "responsibility": "Host transports and callbacks for controls and the status line, plus the hook mapping table shared by the build and the native runtime.",
+      "allow": ["**/*.mjs", "capabilities.json", "hooks.json"],
+      "jsLines": 1020,
       "maxFileLines": 300,
       "dependsOn": ["application", "platform"],
       "shipped": true,

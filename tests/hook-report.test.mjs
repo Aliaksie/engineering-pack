@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { policyReport, localHookReport, wrapperPolicy } from '../tooling/hook-report.mjs';
+import { policyReport, localHookReport, hookPolicy, readOnlyHook } from '../tooling/hook-report.mjs';
 
 test('hook report exposes false and missed blocks without treating its corpus as a success gate', () => {
   const cases = [
@@ -36,8 +36,8 @@ test('read-only review catches literal shell scripts and active command substitu
     fs.writeFileSync(path.join(directory, '.craft/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
     return directory;
   };
-  const wrapper = path.resolve('dist/claude/plugins/craft-review/platform-hooks/read-only.mjs');
-  const policy = wrapperPolicy(wrapper, project({ review: { readOnly: true } }));
+  const hook = readOnlyHook(path.resolve('.'));
+  const policy = hookPolicy(hook, project({ review: { readOnly: true } }));
   const decision = command => policy({ command }).decision;
   for (const command of [
     'sh -c "git push"', "bash -lc 'git status; git push'", '/bin/sh -c "gh pr comment 1 --body review"',
@@ -49,7 +49,7 @@ test('read-only review catches literal shell scripts and active command substitu
     'echo "\\$(git push)"', 'echo "git push"', 'echo "$(echo \'git push\')"'
   ]) assert.equal(decision(command), 'allow', command);
   assert.equal(policyReport(policy).missedBlocks, 0);
-  assert.equal(wrapperPolicy(wrapper, project({}))({ command: 'sh -c "git push"' }).decision, 'allow');
+  assert.equal(hookPolicy(hook, project({}))({ command: 'sh -c "git push"' }).decision, 'allow');
 });
 
 test('local measurement observes generated allow/deny processes and bounds its workload', () => {
@@ -67,9 +67,9 @@ test('measurement refuses exports that do not match the source being reported', 
   const os = await import('node:os');
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'stale hook report ')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  for (const folder of ['engine', 'application', 'integrations', 'cli', 'hosts', 'packages/craft-review/hooks', 'dist/claude/plugins/craft-review']) {
+  for (const folder of ['packages/craft-review', 'dist/claude/plugins/craft-review']) {
     fs.cpSync(path.resolve(folder), path.join(directory, folder), { recursive: true });
   }
-  fs.appendFileSync(path.join(directory, 'application/project/configuration.mjs'), '\n// Changed after export.\n');
+  fs.appendFileSync(path.join(directory, 'packages/craft-review/hooks/read-only.mjs'), '\n// Changed after export.\n');
   assert.throws(() => localHookReport(directory, 1), /exports are stale/);
 });
