@@ -121,7 +121,10 @@ Review the selected export before merging it into your target project:
    and one intended workflow in a disposable project before adopting hooks in an existing project.
 
 Overlay hook commands resolve from the target project root. Copilot includes Bash and
-PowerShell launch fields; other shell environments need their own live-host verification.
+PowerShell launch fields. Gemini runs hooks with Bash, or PowerShell on Windows, so its
+commands start with an unquoted package path. Codex plugins add a `commandWindows` field for
+the PowerShell session shell Codex uses on Windows. Cursor's Windows hook shell is not
+documented; other shell environments need their own live-host verification.
 The plain AGENTS bundle registers no hooks or MCP connections. For guidance-only use of a
 project overlay, omit its hook configuration and invoke the discovered skills explicitly.
 
@@ -205,7 +208,7 @@ semantic model evals are separate checks. See [Cursor skills](https://cursor.com
 [Copilot skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) and
 [Gemini skills](https://geminicli.com/docs/cli/using-agent-skills/) for discovery behavior.
 
-Copilot overlays include both `bash` and `powershell` command fields, each launching the
-same Node wrapper. Shared normalization recognizes PowerShell shell tool names, so the
-read-only review policy does not silently skip those calls. Payload/configuration fixtures
+Copilot overlays include both `bash` and `powershell` command fields, launching the
+package's `bin/craft` and `bin/craft.cmd` launchers. Shared normalization recognizes
+PowerShell shell tool names, so the read-only review policy does not silently skip those calls. Payload/configuration fixtures
 verify this path; actual host loading remains a separate check.

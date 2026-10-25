@@ -18,6 +18,9 @@ export function workspace(platform) {
         const args = hookArguments(platform, definition, item).join(' ');
         const command = `"./packages/${manifest.name}/bin/craft" ${args}`;
         if (platform === 'cursor') (events[mapping.name] ??= []).push({ command });
+        // Gemini runs hooks with bash, or PowerShell on Windows, which does not run a command
+        // that starts with a quoted path; kebab-case package paths need no quoting.
+        else if (platform === 'gemini') (events[mapping.name] ??= []).push({ hooks: [{ name: `craft-${manifest.name}-${definition.name}`, type: 'command', command: `./packages/${manifest.name}/bin/craft ${args}`, timeout: 10000 }] });
         else if (platform === 'copilot') (events[mapping.name] ??= []).push({ type: 'command', bash: command, powershell: `& "./packages/${manifest.name}/bin/craft.cmd" ${args}`, cwd: '.', timeoutSec: 10 });
         else (events[mapping.name] ??= []).push({ hooks: [{ name: `craft-${manifest.name}-${definition.name}`, type: 'command', command, timeout: 10000 }] });
       }

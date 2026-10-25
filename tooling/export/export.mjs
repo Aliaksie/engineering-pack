@@ -122,7 +122,11 @@ export function emitHooks(item, destination, platform) {
   for (const definition of item.manifest.hooks) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
-    const hooks = [{ type: 'command', command: `"${rootVariable}/bin/craft" ${hookArguments(platform, definition, item).join(' ')}` }];
+    const args = hookArguments(platform, definition, item).join(' ');
+    // Codex runs hooks in the session shell and sets PLUGIN_ROOT only in the environment;
+    // on Windows that shell is PowerShell, which takes `commandWindows` instead.
+    const hooks = [{ type: 'command', command: `"${rootVariable}/bin/craft" ${args}`,
+      ...(platform === 'codex' ? { commandWindows: `& "$env:PLUGIN_ROOT\\bin\\craft.cmd" ${args}; exit $LASTEXITCODE` } : {}) }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);
     (events[mapping.name] ??= []).push({ ...(matcher ? { matcher } : {}), hooks });
   }

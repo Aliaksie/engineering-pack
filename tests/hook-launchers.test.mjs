@@ -78,17 +78,31 @@ test('without a bundled runtime, launchers answer as a failed runtime would', t 
   }
 });
 
-// Each registered command string through the shells a host may use. Claude runs hooks with
-// Bash (Git Bash on Windows) and Copilot names its PowerShell command explicitly; for the
-// other hosts the shell results are reported, since CI cannot observe a host's choice.
+// Each registered command string as its host runs it: Claude substitutes its plugin root and
+// uses Bash (Git Bash on Windows); Codex sets PLUGIN_ROOT only in the environment and uses the
+// session shell (PowerShell on Windows, with `commandWindows`; cmd without a session shell);
+// Gemini uses bash, or PowerShell on Windows with an exit-code suffix; Copilot names both.
+// Cursor's Windows shell is not documented, so its results there are reported only.
+// Enforcement must come from the runtime's policy, not the unavailable-runtime fallback.
 test('registered hook commands run through host shells', t => {
-  const shells = windows
-    ? { bash: command => ['bash', ['-c', command]], cmd: command => ['cmd.exe', ['/d', '/s', '/c', `"${command}"`]],
-      powershell: command => ['powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command]] }
-    : { sh: command => ['sh', ['-c', command]] };
-  const required = { claude: windows ? ['bash'] : ['sh'], copilot: windows ? ['bash', 'powershell'] : ['sh'] };
+  const pwsh = windows && spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0']).status === 0;
+  const powershell = (suffix = '') => Object.fromEntries([['powershell', 'powershell.exe'], ...(pwsh ? [['pwsh', 'pwsh']] : [])]
+    .map(([name, file]) => [name, command => [file, ['-NoProfile', '-NonInteractive', '-Command', `${command}${suffix}`]]]));
+  const bash = { bash: command => ['bash', ['-c', command]] };
+  const sh = { sh: command => ['sh', ['-c', command]] };
+  const cmd = { cmd: command => ['cmd.exe', ['/C', `"${command}"`]] };
+  const plans = windows ? {
+    claude: [{ field: 'command', required: bash }],
+    codex: [{ field: 'commandWindows', required: powershell(), reported: cmd }],
+    cursor: [{ field: 'command', reported: { ...bash, ...powershell() } }],
+    copilot: [{ field: 'bash', required: bash }, { field: 'powershell', required: powershell() }],
+    gemini: [{ field: 'command', required: powershell('; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }') }]
+  } : {
+    claude: [{ field: 'command', required: sh }], codex: [{ field: 'command', required: sh }], cursor: [{ field: 'command', required: sh }],
+    copilot: [{ field: 'bash', required: sh }], gemini: [{ field: 'command', required: bash }]
+  };
   const results = [];
-  for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini']) {
+  for (const [host, plan] of Object.entries(plans)) {
     const { root, project } = exported(t, host);
     const workspace = !['claude', 'codex'].includes(host);
     // Workspace exports are merged into the project; their commands run from its root.
@@ -99,21 +113,22 @@ test('registered hook commands run through host shells', t => {
       : read(path.join(packageRoot, 'platform-hooks/hooks.json'));
     const entries = Object.values(config.hooks).flat().flatMap(group => group.hooks ?? [group]);
     const entry = entries.find(hook => /--handler review-read-only/.test(hook.command ?? hook.bash));
-    const variants = host === 'copilot' ? { bash: entry.bash, powershell: entry.powershell } : { any: entry.command };
-    for (const [field, text] of Object.entries(variants)) {
-      const command = text.replaceAll('${CLAUDE_PLUGIN_ROOT}', packageRoot).replaceAll('${PLUGIN_ROOT}', packageRoot);
-      for (const [shell, form] of Object.entries(shells)) {
-        if (field !== 'any' && (field === 'powershell') !== (shell === 'powershell')) continue;
+    for (const { field, required = {}, reported = {} } of plan) {
+      const text = entry[field];
+      assert.equal(typeof text, 'string', `${host} registers ${field}`);
+      const command = host === 'claude' ? text.replaceAll('${CLAUDE_PLUGIN_ROOT}', packageRoot) : text;
+      for (const [shell, form] of Object.entries({ ...required, ...reported })) {
         const [file, args] = form(command);
         const result = spawnSync(file, args, { cwd, env: { ...process.env, CLAUDE_PLUGIN_ROOT: packageRoot, PLUGIN_ROOT: packageRoot }, input: publish(cwd), encoding: 'utf8', windowsVerbatimArguments: shell === 'cmd' });
-        const output = result.stdout.trim() ? (() => { try { return JSON.parse(result.stdout); } catch { return {}; } })() : {};
-        const denied = host === 'claude' ? result.status === 2 && /read-only review/.test(result.stderr)
-          : (output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision) === 'deny';
-        results.push({ host, field, shell, denied, status: result.status, stderr: result.stderr.trim().slice(0, 160) });
-        if (required[host]?.includes(shell)) assert.ok(denied, `${host} ${field} via ${shell}: ${result.status} ${result.stdout} ${result.stderr}`);
+        const output = result.stdout?.trim() ? (() => { try { return JSON.parse(result.stdout); } catch { return {}; } })() : {};
+        const reason = host === 'claude' ? result.stderr ?? '' : JSON.stringify(output);
+        const denied = (host === 'claude' ? result.status === 2
+          : (output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision) === 'deny')
+          && /read-only review/.test(reason) && !/could not be evaluated/.test(reason);
+        results.push({ host, field, shell, denied, status: result.status, stderr: `${result.stderr ?? result.error?.message ?? ''}`.trim().slice(0, 160) });
+        if (shell in required) assert.ok(denied, `${host} ${field} via ${shell}: ${result.status} ${result.stdout} ${result.stderr}`);
       }
     }
   }
   t.diagnostic(`hook shells: ${JSON.stringify(results.map(({ host, field, shell, denied, status, stderr }) => `${host}/${field}/${shell}: ${denied ? 'ok' : `failed ${status} ${stderr}`}`))}`);
-  if (!windows) assert.ok(results.every(result => result.denied), JSON.stringify(results));
 });

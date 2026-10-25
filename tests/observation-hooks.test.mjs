@@ -46,8 +46,9 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       assert.equal(matches.length, 1, `${host}: missing or duplicate registration for ${definition.event}`);
       const command = matches[0].command ?? matches[0].bash;
       if (host === 'copilot') assert.equal(matches[0].powershell, `& ${command.replace('/bin/craft"', '/bin/craft.cmd"')}`);
-      // The registered command exactly: a quoted launcher and plain arguments, no Node.js.
-      const match = /^"([^"]+)" (hook .+)$/.exec(command);
+      // The registered command exactly: the launcher (quoted except for Gemini's PowerShell-safe
+      // relative path) and plain arguments, no Node.js.
+      const match = (host === 'gemini' ? /^(\.\/packages\/[a-z0-9-]+\/bin\/craft) (hook .+)$/ : /^"([^"]+)" (hook .+)$/).exec(command);
       assert.ok(match, command);
       const launcher = match[1].replace('${CLAUDE_PLUGIN_ROOT}', packageRoot).replace('${PLUGIN_ROOT}', packageRoot).replace(/^\.\/packages\//, `${root}/packages/`);
       const result = spawnSync(process.platform === 'win32' ? `"${launcher}.cmd"` : launcher, match[2].split(' '), {
