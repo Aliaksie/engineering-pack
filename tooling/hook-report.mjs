@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { files } from './lib/capabilities.mjs';
 import { performance } from 'node:perf_hooks';
 import { spawnSync } from 'node:child_process';
+import { nativeBinary } from './lib/native-binary.mjs';
 
 export const CASES = [
   { id: 'local-read', command: 'git status --short', expected: 'allow' },
@@ -26,8 +27,8 @@ export const CASES = [
   { id: 'command-substitution', command: 'echo "$(git push)"', expected: 'deny' }
 ];
 // Decide through a generated Claude read-only wrapper in a project configured for read-only review.
-export const wrapperPolicy = (wrapper, directory) => ({ command }) => {
-  const result = spawnSync(process.execPath, [wrapper], { cwd: directory, shell: false, encoding: 'utf8', timeout: 10000,
+export const wrapperPolicy = (wrapper, directory, env = process.env) => ({ command }) => {
+  const result = spawnSync(process.execPath, [wrapper], { cwd: directory, env, shell: false, encoding: 'utf8', timeout: 10000,
     input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command } }) });
   return { decision: result.status === 2 ? 'deny' : result.status === 0 ? 'allow' : undefined };
 };
@@ -61,6 +62,8 @@ export function localHookReport(repo, iterations = 12) {
     artifactHashes[path.relative(repo, exported).split(path.sep).join('/')] = digest(exported);
   }
   artifactHashes[path.relative(repo, wrapper).split(path.sep).join('/')] = digest(wrapper);
+  // The wrapper decides through the native runtime; without it, shell policy fails closed.
+  const env = { ...process.env, CRAFT_NATIVE_BINARY: nativeBinary() };
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hook measurement ')));
   try {
     fs.mkdirSync(path.join(directory, '.craft'));
@@ -70,7 +73,7 @@ export function localHookReport(repo, iterations = 12) {
       const deny = index % 2 === 1;
       const started = performance.now();
       const result = spawnSync(process.execPath, [wrapper], {
-        cwd: directory, shell: false, encoding: 'utf8', timeout: 10000,
+        cwd: directory, env, shell: false, encoding: 'utf8', timeout: 10000,
         input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command: deny ? 'git push origin feature' : 'git status --short' } })
       });
       const milliseconds = performance.now() - started;
@@ -80,8 +83,8 @@ export function localHookReport(repo, iterations = 12) {
     const sorted = samples.map((sample) => sample.milliseconds).sort((a, b) => a - b);
     return {
       formatVersion: 1, measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.version, artifactHashes,
-      policy: policyReport(wrapperPolicy(wrapper, directory)),
-      latency: { path: 'fresh Node process → generated Claude wrapper → normalize → project read → policy → serialize', iterations, samples,
+      policy: policyReport(wrapperPolicy(wrapper, directory, env)),
+      latency: { path: 'fresh Node process → generated Claude wrapper → normalize → native runtime (project read → policy) → serialize', iterations, samples,
         minMs: sorted[0], medianMs: sorted[Math.floor(sorted.length / 2)], maxMs: sorted.at(-1),
         limitation: 'Local process-wall-time samples only; no host dispatch, model call, checkpoint write or network. Not a cross-platform or production latency claim.' }
     };
