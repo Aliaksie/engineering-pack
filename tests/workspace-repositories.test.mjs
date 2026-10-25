@@ -327,6 +327,23 @@ test('workspace creation refuses an unowned file where its directory belongs', t
   assert.throws(() => command('workspace-open'), /workspace directory must not be a symlink/);
 });
 
+test('a dead holder releasing its lock during reclaim defers to a fresh lock instead of failing', t => {
+  const { root, command, start } = fixture(t); start();
+  command('workspace-open');
+  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
+  const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
+  // Lock reads: the first inspection, `readState`, then the identity re-check before removal.
+  for (const [method, call] of [['lstatSync', 3], ['unlinkSync', 1]]) {
+    fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
+    const original = fs[method]; let calls = 0;
+    // The holder releases its lock just before this reclaim step reaches it.
+    fs[method] = (file, ...rest) => { if (file === lock && ++calls === call) fs.rmSync(lock); return original(file, ...rest); };
+    try { assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available', method); }
+    finally { fs[method] = original; }
+    assert.equal(fs.existsSync(lock), false);
+  }
+});
+
 test('concurrent native writers and JS boundaries serialize on one workspace lock', async t => {
   const { root, command, start } = fixture(t); start();
   command('workspace-open');

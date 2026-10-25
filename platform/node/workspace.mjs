@@ -64,9 +64,9 @@ function workspaceLock(anchor) {
       throw error;
     }
     if (owner?.owner !== 'craft-workspace-lock' || owner.formatVersion !== 1 || !Number.isSafeInteger(owner.pid) || owner.pid < 1 || live(owner.pid)) return null;
-    const current = fs.lstatSync(file);
-    if (stat.ino !== current.ino || stat.dev !== current.dev) return null;
-    fs.unlinkSync(file);
+    const current = fs.lstatSync(file, { throwIfNoEntry: false });
+    if (current && (stat.ino !== current.ino || stat.dev !== current.dev)) return null;
+    if (current) try { fs.unlinkSync(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     ticket = lockState(anchor);
   }
   if (ticket) {
