@@ -6,6 +6,7 @@ pub mod actions;
 pub mod checkpoint;
 pub mod context;
 pub mod contracts;
+pub mod delivery;
 pub mod discovery;
 pub mod models;
 pub mod repository;

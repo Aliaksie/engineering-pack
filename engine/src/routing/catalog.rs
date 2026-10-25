@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 type Result<T = ()> = std::result::Result<T, String>;
 
-const SOURCE: &str = include_str!("../../routing/catalog.json");
+pub(crate) const SOURCE: &str = include_str!("../../routing/catalog.json");
 const KINDS: [&str; 7] = [
     "workflow",
     "practice",
