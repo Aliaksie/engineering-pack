@@ -40,11 +40,11 @@ function prepare(event) {
     try { invalidateRoutingHint(root, event.session, event.host); }
     catch { diagnostic('cache','CACHE_UNAVAILABLE'); }
   }
-  const intent = plan.intent;
+  // An edit outside the project has no project route; it is not a delivery failure.
+  const file = relativePath(root, event.file, event.cwd), intent = file === null ? null : plan.intent;
   if (plan.services) result.services = prepareServices(project);
   if (intent) {
     if (event.contextSupported === false) diagnostic('host','HOST_CAPABILITY_UNAVAILABLE');
-    const file = relativePath(root, event.file);
     result.routing = { ...route({ intent, files: file ? [file] : [], project, host: event.host }), taskIdentity };
   }
   const session = event.session;

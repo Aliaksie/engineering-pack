@@ -50,6 +50,18 @@ test('default lifecycle and discovery use excluded local state without editing c
   assert.match(git('status', '--porcelain'), /\?\? \.craft\//);
 });
 
+test('edits outside the project root skip edit-hint routing instead of failing delivery', t => {
+  const { root } = fixture(t);
+  const nested = path.join(root, 'src');
+  const outside = path.join(path.dirname(root), 'elsewhere', 'notes.md');
+  const event = file => prepareEvent({ cwd: nested, event: 'before-tool', tool: 'edit', file, host: 'claude', session: 's1' });
+  assert.equal(event(outside).routing, undefined);
+  assert.equal(event(path.join(root, '..', path.basename(root), 'src', 'value.mjs')).routing.intent, 'implement');
+  // A relative tool path names a file below the hook's working directory.
+  assert.deepEqual(event('value.mjs').routing, event(path.join(nested, 'value.mjs')).routing);
+  assert.equal(event('../../elsewhere/notes.md').routing, undefined);
+});
+
 test('unchanged snapshots are deduplicated and task transitions discard old continuation', t => {
   const { root } = fixture(t);
   const first = saveCheckpoint(root, 's1', { taskId: 'task-1', continuation });
