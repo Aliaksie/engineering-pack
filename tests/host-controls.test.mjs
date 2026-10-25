@@ -327,6 +327,7 @@ test('host controls bind an aliased project root to its physical path', async t 
   const alias = path.join(path.dirname(f.root), path.basename(f.root).toUpperCase());
   if (!fs.existsSync(alias) || fs.realpathSync(alias) === fs.realpathSync.native(alias)) return t.skip('no aliased spelling of the root on this filesystem');
   const controls = f.install(createHostControls('claude', { ...f.options, root: alias, query: p.query }));
+  assert.equal((await controls.workerHost.observe({ ...f.binding, root: alias })).allowed, true);
   const result = await controls.workers.dispatch(f.assignment(await f.offer('delegate')));
   assert.equal(result.dispatchAttempted, true, JSON.stringify(result));
   assert.equal(result.executionObserved, true, JSON.stringify(result));

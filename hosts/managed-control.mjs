@@ -1,7 +1,7 @@
 import { workerController } from './workers.mjs';
 import { actionController } from './actions.mjs';
 import { nativeJournal, withTaskAdmission, assertNativeSource } from './native-control.mjs';
-import { clock, realRoot } from '../platform/index.mjs';
+import { clock, realRoot, sameRoot } from '../platform/index.mjs';
 export { assertNativeSource } from './native-control.mjs';
 
 export const nativeText = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
@@ -20,7 +20,7 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
   const persist = withdrawn => { usable(); try { owner.persist(withdrawn); } catch (error) { broken = true; throw error; } };
   const binding = input => {
     usable();
-    if (input.root !== root || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== context.tree)) throw new Error('native coordinator binding changed');
+    if (!sameRoot(input.root, root) || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== context.tree)) throw new Error('native coordinator binding changed');
   };
   const authority = async input => { binding(input); return authorize(nativeCopy(input)); };
   const guard = async input => {

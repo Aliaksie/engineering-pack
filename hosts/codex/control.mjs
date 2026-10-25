@@ -1,7 +1,7 @@
 import { nativeJournal, withTaskAdmission, assertNativeSource } from '../native-control.mjs';
 import { workerController } from '../workers.mjs';
 import { actionController } from '../actions.mjs';
-import { clock, realRoot, rpcProcess, runtimeVersion } from '../../platform/index.mjs';
+import { clock, realRoot, sameRoot, rpcProcess, runtimeVersion } from '../../platform/index.mjs';
 
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 const terminal = value => ['completed', 'failed', 'interrupted'].includes(value);
@@ -24,7 +24,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   };
   const usable = () => { if (closed || broken) throw new Error('native controller unavailable; reconcile retained intent before new effects'); };
   const checkContext = input => {
-    if (input.root !== root || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== tree)) throw new Error('native controller coordinator binding changed');
+    if (!sameRoot(input.root, root) || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== tree)) throw new Error('native controller coordinator binding changed');
   };
   const authority = async input => { checkContext(input); usable(); return authorize(copy(input)); };
   const guard = async input => {
