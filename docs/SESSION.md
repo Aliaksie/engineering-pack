@@ -7,8 +7,9 @@ npm run session -- --root <project> --session <id> --task <task-id> --data <task
 
 Installed bundles expose `node support/cli/main.mjs session`. The default is a small
 status and recommendation; `--json` includes evidence, diagnostics and the selected guidance
-report. `session:advice` uses the same display. No command automatically compacts, resets,
-switches models, starts workers or invokes arbitrary side effects.
+report. `session:advice` uses the same display. Its `--data` declarations must be a JSON
+object. No command automatically compacts, resets, switches models, starts workers or invokes
+arbitrary side effects.
 
 Routine `task-start`, `task-step`, `session-attempt`, `checkpoint-save`, `task-offer`,
 `task-decision` and `task-action-check` commands print compact receipts, next actions and
@@ -280,6 +281,8 @@ cache discovery or sibling imports occur. Manifests identify each package. Multi
 installations of the same selected package are reported as ambiguous rather than choosing a
 version. Multi-root file entries include `bundleRoot` alongside their relative `path` and hash;
 repeated physical roots and files are counted once. Missing packages keep totals incomplete.
+The CLI supplies its own installed root when none is given; running `craft session` or
+`craft session-advice` directly requires at least one `--bundle`.
 This measures selected resources, not observed host loads or current context occupancy.
 
 A task record can begin small:

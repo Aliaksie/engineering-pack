@@ -134,3 +134,14 @@ and task context. It includes the two legacy lifecycle starts used by
 error messages compare exactly. The Rust replay (`cargo test -p craft-engine --test task_contracts`)
 lists one message correction: a non-string task file is reported as JSON rather than
 `[object Object]`.
+
+`session-contracts.json` freezes 430 JavaScript engine responses at `72f1303` for session
+advice (input, policy and usage validation, freshness, pressure thresholds, recommendation
+order, notices), attempt status, feature reports, capability classes, the status observation
+plan and unified status over explicit observations (activity, checkpoint freshness, guidance,
+current profile, model advice and escalation, blockers, recorded offers). Effective settings
+are stored once per name. Results compare as serialized JSON and error messages exactly. The
+Rust replay (`cargo test -p craft-engine --test session_contracts`) lists two corrections: a
+previous notice time without `Z` or an offset, which JavaScript read in the machine's time zone,
+is invalid; and a stage without a guidance observation, which the application never produces,
+reports a diagnostic instead of a JavaScript `TypeError`.

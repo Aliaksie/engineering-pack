@@ -22,6 +22,8 @@ pub const COMMANDS: &[&str] = &[
     "checkpoint-read",
     "session-attempt",
     "task-start",
+    "session",
+    "session-advice",
     "workspace-open",
     "workspace-write",
     "workspace-promote",
@@ -539,14 +541,33 @@ fn context_report(
         ..route_request(options, files(options), &risks)
     };
     let plan = routed(&settings, &request, recorder, parent)?;
+    let budget = options.get("budget-bytes").map(crate::discovery::number);
+    let report = guidance_report(
+        &plan,
+        &strings(options, "bundle"),
+        budget.as_ref(),
+        recorder,
+        parent,
+    )?;
+    let references = plan["references"].as_array().map_or(0, Vec::len);
+    let activity =
+        json!({ "filesRequested": report["totals"]["files"], "referencesRequested": references });
+    Ok((report, activity))
+}
+
+/// Selected guidance files for `plan` in the verified `bundles`, observed as `context.observed`.
+pub(crate) fn guidance_report(
+    plan: &Value,
+    bundles: &[String],
+    budget: Option<&Value>,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
     let operation = recorder.start("context.observed", Some(parent));
     let result = (|| -> Result<Value, Failure> {
-        let requests = context::requests(&plan)?;
-        let (entries, missing) = guidance::measure(&strings(options, "bundle"), &requests)?;
-        let budget = match options.get("budget-bytes") {
-            Some(text) => Some(context::budget(&crate::discovery::number(text))?),
-            None => None,
-        };
+        let requests = context::requests(plan)?;
+        let (entries, missing) = guidance::measure(bundles, &requests)?;
+        let budget = budget.map(context::budget).transpose()?;
         Ok(context::summary(entries, missing, budget))
     })();
     let (attributes, failure) = match &result {
@@ -565,11 +586,7 @@ fn context_report(
         Err(error) => (Map::new(), Some(error.code("CONTEXT_UNAVAILABLE"))),
     };
     recorder.complete(operation, attributes, failure);
-    let report = result?;
-    let references = plan["references"].as_array().map_or(0, Vec::len);
-    let activity =
-        json!({ "filesRequested": report["totals"]["files"], "referencesRequested": references });
-    Ok((report, activity))
+    result
 }
 
 fn locate(
@@ -749,6 +766,35 @@ fn task_start(
     crate::task::start(request, recorder, parent)
 }
 
+/// Session status and advice for the explicit or bound task; `--data` declares the rest.
+fn session_status(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let data = match options.get("data") {
+        Some(file) => input(recorder, parent, file)?,
+        None => json!({}),
+    };
+    if !data.is_object() {
+        return Err("session input must be a JSON object".into());
+    }
+    let settings = loaded(options, recorder, parent)?;
+    let bundles = strings(options, "bundle");
+    if bundles.is_empty() {
+        return Err("session requires --bundle with the installed package root".into());
+    }
+    let request = crate::status::Request {
+        root: &root(options),
+        input: &data,
+        settings: &settings,
+        session: options.get("session"),
+        task: options.get("task"),
+        bundles: &bundles,
+    };
+    crate::status::run(request, recorder, parent)
+}
+
 /// One `workspace-*` action for the explicit or bound task: `--data` supplies the artifact
 /// or promotion, `--operation` the owner scope.
 fn workspace(
@@ -862,6 +908,11 @@ fn help(action: &str) -> Value {
             "usage": "workspace-clean --root project",
             "mode": "reclaim closed or stale abandoned storage; live or unverified owners are retained",
         }),
+        "session" => json!({
+            "usage": "session [--root project] [--session id --task task-id] [--data task.json] [--json]",
+            "taskFields": ["id", "revision", "stage", "operation", "status", "files", "safeBoundary", "phaseChanged", "almostComplete", "compacted", "staleAssumptions", "risks", "nextStep"],
+            "mode": "recommendation-only",
+        }),
         "settings" => json!({
             "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
@@ -916,6 +967,157 @@ fn checkpoint_line(saved: &Value) -> String {
 fn joined(value: &Value) -> Option<String> {
     let items: Vec<&str> = value.as_array()?.iter().filter_map(Value::as_str).collect();
     (!items.is_empty()).then(|| items.join(", "))
+}
+
+/// `String(value)` for a status field; absent and `null` read as unknown.
+fn shown(value: &Value) -> String {
+    match value {
+        Value::Null => "unknown".into(),
+        Value::String(text) => text.clone(),
+        Value::Number(number) => match number.as_f64() {
+            Some(float) if float.fract() == 0.0 && float.abs() < 1e21 => {
+                format!("{}", float as i64)
+            }
+            _ => number.to_string(),
+        },
+        other => other.to_string(),
+    }
+}
+
+/// The compact session view: context, guidance, activity, checkpoint and the next action.
+fn session_view(status: &Value) -> String {
+    let usage = &status["usage"];
+    let activity = &status["activity"];
+    let pack = &status["packContext"];
+    let suggestion = Some(&status["recommendation"])
+        .filter(|s| !s.is_null())
+        .unwrap_or(&status["suggestion"]);
+    let observed = usage["status"] == "observed";
+    let context = if observed {
+        let percent = (usage["usedRatio"].as_f64().unwrap_or(0.0) * 100.0 + 0.5).floor();
+        format!(
+            "{}% ({}/{}); {}; {}",
+            shown(&json!(percent)),
+            shown(&usage["currentTokens"]),
+            shown(&usage["capacityTokens"]),
+            shown(&status["pressure"]),
+            shown(&usage["source"])
+        )
+    } else {
+        format!("unknown — {}", shown(&usage["reason"]))
+    };
+    let tokens = match &pack["estimatedTokens"] {
+        Value::Null => "unknown".to_string(),
+        tokens => format!("~{}", shown(tokens)),
+    };
+    let profile = nonempty(&status["modelAdvice"]["profile"])
+        .map_or(String::new(), |p| format!("; configured profile {p}"));
+    let reason = match suggestion["reason"].as_str() {
+        Some(reason) => reason,
+        None if usage["status"] == "unknown" => {
+            "No reliable occupancy observation; continue useful work without inferring context pressure."
+        }
+        None => "Continue useful work; no context change is indicated.",
+    };
+    let or_unknown = |value: &Value| value.as_str().unwrap_or("unknown").to_string();
+    let mut lines = vec![
+        "Engineering Pack — Session".to_string(),
+        format!("Pack version: {}", shown(&status["packVersion"])),
+        format!(
+            "Host: {} | Model: {}",
+            shown(&status["host"]["name"]),
+            shown(&status["host"]["model"])
+        ),
+        format!("Context: {context}"),
+        format!(
+            "Pack: {tokens} estimated tokens selected; {} skills / {} references",
+            shown(&pack["skills"]),
+            shown(&pack["references"])
+        ),
+        format!(
+            "Task: {} | Attempts: {}/{}",
+            shown(&status["operation"]),
+            shown(&activity["attempts"]),
+            shown(&activity["maxAttempts"])
+        ),
+        format!(
+            "Discovery: {} reused / {} fresh / {} batches (pack activity)",
+            shown(&activity["reuseHits"]),
+            shown(&activity["freshLookups"]),
+            shown(&activity["batchedOperations"])
+        ),
+        format!(
+            "Capability: {} (current: {}){profile}",
+            or_unknown(&status["capability"]["class"]),
+            or_unknown(&status["capability"]["currentClass"])
+        ),
+        format!(
+            "Checkpoint: {}",
+            or_unknown(&status["checkpoint"]["status"])
+        ),
+        String::new(),
+        format!(
+            "Advice: {}",
+            suggestion["action"].as_str().unwrap_or("continue")
+        ),
+        format!("Reason: {reason}"),
+    ];
+    let acceptance = &status["acceptance"];
+    if acceptance.is_object() {
+        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
+        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
+            let optional = if criterion["required"] == true {
+                ""
+            } else {
+                " (optional)"
+            };
+            lines.push(format!(
+                "Criterion: {} — {}{optional}",
+                shown(&criterion["id"]),
+                shown(&criterion["status"])
+            ));
+        }
+    }
+    if let Some(contract) = nonempty(&status["taskContract"]) {
+        lines.push(format!("Task contract: {contract}"));
+    }
+    if let Some(digest) = nonempty(&status["evidenceDigest"]) {
+        lines.push(format!("Evidence digest: {digest}"));
+    }
+    if status["binding"].is_object() {
+        lines.push(format!(
+            "Source: {}",
+            nonempty(&status["binding"]["identity"]).unwrap_or("unknown")
+        ));
+    }
+    if let Some(advice) = nonempty(&status["capability"]["recommendation"]) {
+        lines.push(format!("Model advice: {advice}"));
+    }
+    if let Some(repositories) = status["repositories"].as_array() {
+        let names: Vec<String> = repositories.iter().map(shown).collect();
+        lines.push(format!("Repositories: {}", names.join(", ")));
+    }
+    let workspace = &status["workspace"];
+    if workspace["status"] == "available" {
+        lines.push(format!(
+            "Workspace: scratch {}; {} evidence artifacts; {} bytes",
+            shown(&workspace["scratch"]),
+            shown(&workspace["evidence"]["artifacts"]),
+            shown(&workspace["diskBytes"])
+        ));
+    } else if workspace["status"] == "retained" {
+        lines.push(format!(
+            "Workspace: retained — {}",
+            shown(&workspace["reason"])
+        ));
+    }
+    if let Some(after) = nonempty(&suggestion["afterCheckpoint"]) {
+        lines.push(format!("After checkpoint: {after}"));
+    }
+    if let Some(boundary) = nonempty(&suggestion["atBoundary"]) {
+        lines.push(format!("At boundary: {boundary}"));
+    }
+    format!("{}\n", lines.join("\n"))
 }
 
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
@@ -1058,6 +1260,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "checkpoint-read" => checkpoint_read,
         "session-attempt" => session_attempt,
         "task-start" => task_start,
+        "session" | "session-advice" => session_status,
         _ => settings,
     };
     let mut activity = None;
@@ -1087,6 +1290,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             let text = match action {
                 "checkpoint-save" if compact => receipt(value),
                 "task-start" if compact => task_receipt(value),
+                "session" | "session-advice" if compact => session_view(value),
                 "session-attempt" if compact => {
                     let recorded = &value["recorded"];
                     let field =

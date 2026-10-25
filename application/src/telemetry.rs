@@ -201,6 +201,23 @@ impl Recorder {
         })
     }
 
+    /// Adopt an identity the command learns from its input: a session when none is valid
+    /// yet (later events correlate to it) and a host when none was given.
+    pub fn enrich(&mut self, session: Option<&str>, host: Option<&str>) {
+        if self.session.is_none()
+            && let Some(session) = session.filter(|s| valid_session(s))
+        {
+            self.session = Some(session.to_string());
+            self.session_id = None;
+            self.identity_unavailable = false;
+            self.pending
+                .retain(|reason| *reason != "TELEMETRY_IDENTITY_UNAVAILABLE");
+        }
+        if self.host.is_none() {
+            self.host = host.map(str::to_string);
+        }
+    }
+
     pub fn start(&self, name: &'static str, parent: Option<&Operation>) -> Operation {
         Operation {
             id: store::uuid().unwrap_or_default(),

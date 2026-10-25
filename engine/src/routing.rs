@@ -135,7 +135,10 @@ const NOT_DELEGATED: &str =
     "Delegation was not selected: the role and host must both explicitly support it.";
 
 /// A capability class suggestion: a task heuristic, never a vendor ranking, price or model switch.
-fn capability(operation: &str, risks: &[String]) -> Value {
+pub fn capability(operation: &str, risks: &[String]) -> Value {
+    if operation == "unknown" {
+        return json!({"class": "unknown", "execution": "recommendation-only", "reason": "Operation is unknown.", "pricing": "unknown"});
+    }
     let strong = operation == "architecture"
         || risks
             .iter()

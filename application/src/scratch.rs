@@ -20,6 +20,8 @@ pub enum Action {
     Promote,
     Release,
     Maintain,
+    /// Read-only usage of the task's workspace for session status.
+    Status,
 }
 
 impl Action {
@@ -41,6 +43,7 @@ impl Action {
             Action::Promote => "promote",
             Action::Release => "release",
             Action::Maintain => "maintain",
+            Action::Status => "status",
         }
     }
 
@@ -91,7 +94,9 @@ pub fn run(
     if let Some((session, task)) = bound {
         craft_engine::session::identity(&json!(session), &json!(task))?;
     }
-    if action != Action::Maintain && session::active_task(root, session)? != selected {
+    if !matches!(action, Action::Maintain | Action::Status)
+        && session::active_task(root, session)? != selected
+    {
         return Err("workspace writes require the active task binding".into());
     }
     let operation = input.get("operation");
@@ -135,7 +140,9 @@ pub fn run(
     )?;
     let cleaned = result["cleaned"].as_array().map_or(&[][..], Vec::as_slice);
     let retained = result["retained"].as_array().map_or(&[][..], Vec::as_slice);
-    if result["status"] == "available" || !cleaned.is_empty() || !retained.is_empty() {
+    if action != Action::Status
+        && (result["status"] == "available" || !cleaned.is_empty() || !retained.is_empty())
+    {
         let mut entries: Vec<_> = cleaned.iter().map(|item| &item["entry"]).collect();
         entries.sort_by_key(|entry| entry.as_str());
         entries.dedup();
@@ -311,7 +318,7 @@ fn operate(
         })
     };
     let current = value["operations"].get(&identity.operation).cloned();
-    if action != Action::Maintain
+    if !matches!(action, Action::Maintain | Action::Status)
         && current
             .as_ref()
             .is_some_and(|op| op["closed"] == false && foreign(op, &value))
@@ -387,8 +394,10 @@ fn operate(
             }
         }
     }
-    value["updated"] = json!(now);
-    state::write(&owner, &value, MANIFEST_BYTES, true)?;
+    if action != Action::Status {
+        value["updated"] = json!(now);
+        state::write(&owner, &value, MANIFEST_BYTES, true)?;
+    }
     let scratch_usage = files::usage(&scratch_dir).map_err(io)?;
     let evidence_usage = files::usage(&evidence).map_err(io)?;
     let scratch_state = if files::directory(&scratch_dir, false).map_err(io)? {

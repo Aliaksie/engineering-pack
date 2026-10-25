@@ -11,7 +11,6 @@ import { createTelemetry, telemetryOptions, withTelemetry, observe, flushTelemet
 import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEMETRY_MAX_BYTES } from '../platform/node/telemetry.mjs';
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
-import { execute } from '../cli/requests.mjs';
 import { run } from '../cli/main.mjs';
 import { lockState, releaseState, stateFile } from '../platform/node/state-files.mjs';
 
@@ -174,10 +173,10 @@ test('telemetry stops retrying when a wait overshoots the deadline without remov
   assert.equal(fs.existsSync(file),false);
 });
 test('real routing and session commands emit sanitized observations and keep occupancy unknown', t => {
-  const root=fixture(t), options={intent:'implement',file:[],risk:[],host:'codex',session:'session',task:'task'};
+  const root=fixture(t);
   const routed=run(['route','--root',root,'--intent','implement','--host','codex','--session','session','--task','task']);
   assert.ok(routed.skills.length);
-  const session=execute('session',options,root);
+  const session=run(['session','--root',root,'--host','codex','--session','session','--task','task']);
   assert.equal(session.usage.status,'unknown'); assert.equal(session.packVersion,runtimeVersion());
   const events=readTelemetry(root);
   assert.ok(events.some(event => event.name==='routing.completed'));

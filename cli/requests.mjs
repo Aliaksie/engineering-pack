@@ -4,9 +4,8 @@ import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '
 import { taskFeatures } from '../application/session/features.mjs';
 import { workerStatus } from '../application/session/workers.mjs';
 import { withTelemetry, observe, diagnostic, forwardTelemetry, commandTelemetry } from '../application/telemetry/observe.mjs';
-import { readProject, readInput } from '../application/project/configuration.mjs';
+import { readInput } from '../application/project/configuration.mjs';
 import { locateCommand } from '../application/discovery/discover.mjs';
-import { sessionStatus } from '../application/session/status.mjs';
 import { updateSessionState, addActivity, activeTask } from '../application/session/activity.mjs';
 import { bundleRoot, nativeCommand } from '../platform/index.mjs';
 export function execute(action, options, root) {
@@ -49,7 +48,6 @@ function executeRequest(action, options, root) {
   }
 
   if (action === 'locate') return locateCommand(root, options);
-  if (['session', 'session-advice'].includes(action)) return sessionStatus(options.data ? readInput(options.data) : {}, readProject(root, { preferencesFile: options.preferences }), { root, session: options.session, task: options.task, bundle: options.bundle });
   const activity = (result, values) => {
     if (options.session && options.task) {
       try { updateSessionState(root, options.session, options.task, state => addActivity(state, values)); }
@@ -69,5 +67,5 @@ function executeRequest(action, options, root) {
     return activity(JSON.parse(outcome.stdout), outcome.activity);
   }
   if (action === 'route') return activity(JSON.parse(forward('route', options).stdout), { routingDecisions: 1 });
-  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|locate> [--root project] [options]');
+  throw new Error('usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|locate> [--root project] [options]');
 }

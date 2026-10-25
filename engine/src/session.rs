@@ -8,6 +8,7 @@ use crate::{
 use serde_json::{Map, Value, json};
 
 pub mod acceptance;
+pub mod status;
 
 type Result<T = ()> = std::result::Result<T, String>;
 
@@ -271,6 +272,114 @@ pub fn validate_features(records: Option<&Value>) -> Result {
         }
     }
     Ok(())
+}
+
+/// Every feature with its saved outcome against the current `source`, a runtime receipt that
+/// implies use, or an unknown outcome.
+pub fn feature_report(state: &Value, source: &Value) -> Result<Value> {
+    validate_features(state.get("featureOutcomes"))?;
+    let counter = |name: &str| state["activity"][name].as_f64().unwrap_or(0.0);
+    let inferred = |feature: &str| match feature {
+        "routing" if counter("routingDecisions") > 0.0 => Some((
+            "Routing decisions recorded; resource loading remains unobserved.",
+            "activity:routingDecisions",
+        )),
+        "lookup" if counter("freshLookups") + counter("reuseHits") > 0.0 => Some((
+            "Task discovery receipts exist; inspect reuse/invalidation evidence separately.",
+            "activity:discoveryRequests",
+        )),
+        "attempts" if counter("operationsAttempted") > 0.0 => Some((
+            "Local attempt receipts exist; semantic acceptance is agent-declared.",
+            "activity:operationsAttempted",
+        )),
+        _ => None,
+    };
+    let features: Map<String, Value> = FEATURES
+        .iter()
+        .map(|&feature| {
+            let outcome = if let Some(saved) = state["featureOutcomes"].get(feature) {
+                let status = match &saved["source"] {
+                    Value::Null => "unknown",
+                    _ if source.is_null() => "unknown",
+                    saved if saved == source => "current",
+                    _ => "stale",
+                };
+                let mut outcome = saved.clone();
+                outcome["sourceStatus"] = json!(status);
+                outcome
+            } else if let Some((reason, evidence)) = inferred(feature) {
+                json!({"status": "used", "reason": reason, "evidence": evidence, "provenance": "runtime-receipt", "sourceStatus": "historical"})
+            } else {
+                json!({"status": "unknown", "reason": "No outcome evidence retained for this feature.", "provenance": "unobserved", "sourceStatus": "unknown"})
+            };
+            (feature.to_string(), outcome)
+        })
+        .collect();
+    let classified = features.values().all(|f| f["status"] != "unknown");
+    Ok(json!({
+        "features": features,
+        "allClassified": classified,
+        "limits": "Task-local observations/declarations, not a semantic verdict or proof of natural workflow adoption. Stale or historical outcomes do not certify current acceptance.",
+    }))
+}
+
+/// The open retry series for `operation`: the latest blocker's target, else the latest open
+/// or recorded one. Failures count per profile; equal signatures made no progress.
+pub fn attempt_status(records: &[Value], operation: &str) -> Value {
+    let current: Vec<Value> = records
+        .iter()
+        .filter(|r| r["operation"] == operation)
+        .cloned()
+        .collect();
+    let open: Vec<&Value> = unresolved(&current)
+        .into_iter()
+        .map(|i| &current[i])
+        .collect();
+    let blocker = |r: &&Value| BLOCKERS.contains(&r["outcome"].as_str().unwrap_or_default());
+    let selected = open
+        .iter()
+        .rev()
+        .find(|r| blocker(r))
+        .or(open.last())
+        .copied()
+        .or(current.last());
+    let target = selected.map(|s| s.get("target"));
+    let aimed = |r: &&Value| Some(r.get("target")) == target;
+    let targeted: Vec<&Value> = current.iter().filter(aimed).collect();
+    let series: Vec<&Value> = open.iter().copied().filter(aimed).collect();
+    let last = series.last().or(targeted.last());
+    let profile = last.and_then(|l| l.get("profile")).filter(|p| truthy(p));
+    let failures: Vec<&Value> = series
+        .iter()
+        .copied()
+        .filter(|r| profile.is_none() || r.get("profile") == profile)
+        .collect();
+    let equivalent = match last.map(|l| &l["signature"]).filter(|s| truthy(s)) {
+        Some(signature) => failures
+            .iter()
+            .filter(|r| &r["signature"] == signature)
+            .count(),
+        None => 0,
+    };
+    let max_attempts = last
+        .and_then(|l| l.get("maxAttempts"))
+        .filter(|m| !m.is_null())
+        .cloned()
+        .unwrap_or(json!(3));
+    let records: Vec<&Value> = if series.is_empty() {
+        targeted.last().into_iter().copied().collect()
+    } else {
+        series.clone()
+    };
+    json!({
+        "attempts": failures.len(),
+        "maxAttempts": max_attempts,
+        "noProgressAttempts": equivalent,
+        "retries": failures.len().saturating_sub(1),
+        "blocked": series.iter().any(blocker),
+        "evidence": failures.iter().map(|r| r.get("evidence").cloned().unwrap_or(Value::Null)).collect::<Vec<_>>(),
+        "records": records,
+    })
 }
 
 fn recommendations(value: &Value) -> Result {

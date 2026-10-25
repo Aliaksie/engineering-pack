@@ -82,7 +82,7 @@
       "responsibility": "Legacy JS command parsing and display that moves into the application crate.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 287,
+      "jsLines": 284,
       "dependsOn": ["application", "platform"],
       "shipped": true,
       "runtimeRoots": ["cli/main.mjs", "cli/project-evidence.mjs"]
