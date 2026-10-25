@@ -19,7 +19,8 @@ function exported(t, host) {
   const scratch = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft hook launchers ')));
   t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
   const root = path.join(scratch, `${host} export`);
-  fs.cpSync(path.join(repo, 'dist', host), root, { recursive: true });
+  // Exports are tested without bundled runtimes unless a test assembles one.
+  fs.cpSync(path.join(repo, 'dist', host), root, { recursive: true, filter: source => path.basename(source) !== 'native-bin' });
   const project = path.join(scratch, 'project');
   fs.mkdirSync(path.join(project, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(project, '.craft/project.json'), JSON.stringify({ formatVersion: 1, review: { readOnly: true } }));
