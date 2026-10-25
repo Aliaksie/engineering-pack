@@ -156,3 +156,11 @@ case formerly in `action-execution.test.mjs`, and absorbs the nine `task-step`, 
 and `action-decide` cases retired from `engine-contracts.json`. Results, including the updated state, compare as
 serialized JSON and error messages exactly. The Rust replay
 (`cargo test -p craft-engine --test step_contracts`) has no corrections.
+
+`review-contracts.json` freezes the JavaScript read-only review guard at `0ecc73d`: 439 shell
+command lines with whether they publish (direct commands, quoting, separators, Git global
+options, `gh`/`glab` request actions and API writes, `-c` shell scripts, substitutions and the
+16-level nesting bound) and 32 policy decisions over `review.readOnly`, tool and command shape.
+It includes the commands of the former JavaScript policy unit tests and covers the two retired
+`review-publication-policy` cases from `engine-contracts.json`. The Rust replay
+(`cargo test -p craft-engine --test review_contracts`) has no corrections.

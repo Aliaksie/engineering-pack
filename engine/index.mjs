@@ -9,7 +9,7 @@ import { recordFeature, featureReport } from './session/features.mjs';
 import { taskBinding, taskContract, taskContext, taskSource } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
 import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
-import { validateSnapshot, validateReview, publicationPlan, reviewPublicationPolicy } from './policy/review.mjs';
+import { validateSnapshot, validateReview, publicationPlan } from './policy/review.mjs';
 import { route } from './routing/route.mjs';
 import { validateProject } from './contracts/project.mjs';
 import { validatePlaybookCatalog } from './contracts/catalog.mjs';
@@ -88,7 +88,6 @@ const operations = {
   'context-requests': a => contextRequests(a.plan),
   'context-summary': a => summarizeContext(a.entries, a.missing, a.budgetBytes),
   'context-delivery-plan': a => contextDeliveryPlan(a.facts, a.project),
-  'review-publication-policy': a => reviewPublicationPolicy(a),
   'context-delivery': a => contextDelivery(a),
   'delivery-failure': a => deliveryFailure(a.enforcementRequired, a.message),
   'hint-eligible': a => hintEligible(a.event, a.result),

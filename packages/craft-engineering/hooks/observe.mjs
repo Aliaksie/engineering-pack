@@ -1,2 +1,2 @@
-// Package entry point; lifecycle telemetry has no delivery side effects.
-export { prepare, evaluate, observational } from '../../../application/telemetry/lifecycle.mjs';
+// Package entry point; lifecycle telemetry runs natively and has no delivery or policy effects.
+export const native = 'observe', observational = true;

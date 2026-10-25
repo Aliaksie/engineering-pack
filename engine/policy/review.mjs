@@ -37,9 +37,3 @@ export function publicationPlan(input, review, { currentHead, currentBase, autho
     summary: review.summary, recommendation: review.recommendation, ...(review.context !== undefined ? { context: review.context } : {}),
     findings: review.findings, verification: review.verification, action: 'comment-only', execution: 'not-published' };
 }
-
-export function reviewPublicationPolicy({ readOnly, commandExecution, publishes }) {
-  return readOnly && commandExecution && publishes
-    ? { decision: 'deny', reason: 'This project is configured for read-only review. Return revision-bound findings; publication belongs to a separately authorized job.' }
-    : { decision: 'allow' };
-}

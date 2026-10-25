@@ -59,10 +59,14 @@ pub fn js_length(text: &str) -> usize {
     text.encode_utf16().count()
 }
 
-/// Whether `text.trim()` is empty in JavaScript, whose whitespace includes U+FEFF but not U+0085.
+/// JavaScript whitespace (`\s`, `trim`), which includes U+FEFF but not U+0085.
+pub fn js_space(c: char) -> bool {
+    c == '\u{feff}' || (c.is_whitespace() && c != '\u{85}')
+}
+
+/// Whether `text.trim()` is empty in JavaScript.
 pub fn js_blank(text: &str) -> bool {
-    text.chars()
-        .all(|c| c == '\u{feff}' || (c.is_whitespace() && c != '\u{85}'))
+    text.chars().all(js_space)
 }
 
 fn object<'a>(value: &'a Value, allowed: &[&str], label: &str) -> Result<&'a Map<String, Value>> {

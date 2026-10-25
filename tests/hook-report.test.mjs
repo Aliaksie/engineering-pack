@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { policyReport, localHookReport } from '../tooling/hook-report.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import { policyReport, localHookReport, wrapperPolicy } from '../tooling/hook-report.mjs';
 
 test('hook report exposes false and missed blocks without treating its corpus as a success gate', () => {
   const cases = [
@@ -19,16 +21,24 @@ test('hook report exposes false and missed blocks without treating its corpus as
 
 test('policy report counts unexpected decisions separately from false and missed blocks', () => {
   for (const decision of [undefined, null, 'ask']) {
-    const report = policyReport(() => ({ decision }));
+    const report = policyReport(() => ({ decision }), [{ id: 'read', command: 'read', expected: 'allow' }, { id: 'write', command: 'write', expected: 'deny' }]);
     assert.equal(report.unexpectedDecisions, report.cases.length);
     assert.equal(report.falseBlocks, 0);
     assert.equal(report.missedBlocks, 0);
   }
 });
 
-test('read-only review catches literal shell scripts and active command substitutions', async () => {
-  const { evaluateReviewPublication } = await import('../application/review.mjs');
-  const decision = command => evaluateReviewPublication({ tool: 'shell', command, project: { review: { readOnly: true } } }).decision;
+test('read-only review catches literal shell scripts and active command substitutions', t => {
+  const project = config => {
+    const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'read-only review ')));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(directory, '.craft'));
+    fs.writeFileSync(path.join(directory, '.craft/project.json'), JSON.stringify({ formatVersion: 1, ...config }));
+    return directory;
+  };
+  const wrapper = path.resolve('dist/claude/plugins/craft-review/platform-hooks/read-only.mjs');
+  const policy = wrapperPolicy(wrapper, project({ review: { readOnly: true } }));
+  const decision = command => policy({ command }).decision;
   for (const command of [
     'sh -c "git push"', "bash -lc 'git status; git push'", '/bin/sh -c "gh pr comment 1 --body review"',
     'echo "$(git push)"', 'echo `git push`', 'echo "$(echo $(git push))"',
@@ -38,8 +48,8 @@ test('read-only review catches literal shell scripts and active command substitu
     'sh -c "git status"', 'echo "$(git status)"', "echo '$(git push)'", "echo '`git push`'",
     'echo "\\$(git push)"', 'echo "git push"', 'echo "$(echo \'git push\')"'
   ]) assert.equal(decision(command), 'allow', command);
-  assert.equal(policyReport().missedBlocks, 0);
-  assert.equal(evaluateReviewPublication({ tool:'shell', command:'sh -c "git push"', project:{} }).decision, 'allow');
+  assert.equal(policyReport(policy).missedBlocks, 0);
+  assert.equal(wrapperPolicy(wrapper, project({}))({ command: 'sh -c "git push"' }).decision, 'allow');
 });
 
 test('local measurement observes generated allow/deny processes and bounds its workload', () => {

@@ -56,9 +56,7 @@ export function serialize(result, platform, definition) {
   return { output: output ? `${JSON.stringify(output)}\n` : '', error: '', exitCode: 0 };
 }
 
-export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
-  if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
-  const observational = delivery.observational === true;
+async function readPayload() {
   const chunks = [];
   let bytes = 0, inputError;
   try {
@@ -67,11 +65,43 @@ export async function runHook(evaluate, platform, definition = { name: 'policy',
   let payload;
   try { payload = inputError ? null : JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { payload = null; }
   const valid = Boolean(payload && typeof payload === 'object' && !Array.isArray(payload));
-  const event = normalize(valid ? payload : {}, platform, definition);
-  event.inputStatus = bytes > 65536 ? 'oversized' : inputError ? 'read-failure' : valid ? 'complete' : 'invalid';
+  return { payload: valid ? payload : {}, valid, inputError, inputStatus: bytes > 65536 ? 'oversized' : inputError ? 'read-failure' : valid ? 'complete' : 'invalid' };
+}
+
+// A hook whose use case runs natively: one runtime invocation with host-neutral facts.
+// Only shell-scoped hooks receive the command. Unread input still fails policy hooks.
+export async function runNativeHook(handler, platform, definition, packageName, runtime) {
+  if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
+  const { payload, inputError, inputStatus } = await readPayload();
+  const event = normalize(payload, platform, definition), observational = handler.observational === true;
+  const enforcement = definition.tool === 'shell' && definition.event === 'before-tool';
+  let result;
+  try {
+    try {
+      result = runtime.invoke({ handler: handler.native, host: platform, package: packageName, lifecycle: event.event, scope: definition.tool === 'shell' ? 'shell' : 'any',
+        inputStatus, tool: event.tool, contextSupported: event.contextSupported, cwd: event.cwd, session: event.session ?? null, ...(definition.tool === 'shell' ? { command: event.command } : {}) });
+      runtime.forward(result.export);
+    } catch (error) {
+      // Without a runtime decision, shell enforcement still fails closed.
+      result = enforcement ? { decision: 'deny', reason: `Policy could not be evaluated: ${error.message}` } : { decision: 'allow' };
+    }
+    if (inputError && !observational) throw inputError;
+    const wire = observational ? { output: '', error: '', exitCode: 0 } : serialize(result, platform, definition);
+    if (wire.output) process.stdout.write(wire.output);
+    if (wire.error) process.stderr.write(wire.error);
+    process.exitCode = wire.exitCode;
+  } finally { try { await runtime.flush(); } catch { /* Advisory export. */ } }
+}
+
+export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
+  if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
+  const observational = delivery.observational === true;
+  const { payload, valid, inputError, inputStatus } = await readPayload();
+  const event = normalize(payload, platform, definition);
+  event.inputStatus = inputStatus;
   const invoke = () => {
     if (inputError) {
-      delivery.diagnostic?.(bytes > 65536 ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
+      delivery.diagnostic?.(inputStatus === 'oversized' ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
       if (!observational) throw inputError;
       process.exitCode = 0;
       return { failed: true };

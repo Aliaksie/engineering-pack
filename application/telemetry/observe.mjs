@@ -188,8 +188,8 @@ export function observe(name, callback, summarize = () => ({}), options = {}) {
 export function forwardTelemetry(exported) {
   if (!exported) return;
   try {
-    const { endpoint, root, session, host, events } = exported, remote = telemetryOptions({ remote: { enabled: true, endpoint } }).remote, sessionId = events[0].sessionId;
-    const handle = createTelemetry(root, { session: session ?? undefined, host: host ?? undefined }, { telemetryIdentity: () => sessionId });
+    const { endpoint, root, session, host, package: packageName, events } = exported, remote = telemetryOptions({ remote: { enabled: true, endpoint } }).remote, sessionId = events[0].sessionId;
+    const handle = createTelemetry(root, { session: session ?? undefined, host: host ?? undefined, packageName: packageName ?? undefined }, { telemetryIdentity: () => sessionId });
     for (const event of events.slice(0, 32)) if (handle.enabled && pending.length < 32) pending.push({ endpoint: remote, event, handle });
   } catch { /* Advisory only. */ }
 }

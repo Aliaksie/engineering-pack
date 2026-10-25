@@ -1,0 +1,2037 @@
+{
+ "baseline": "0ecc73d",
+ "generator": "w3a-review-corpus.mjs",
+ "publishes": [
+  {
+   "command": "",
+   "publishes": false
+  },
+  {
+   "command": " ",
+   "publishes": false
+  },
+  {
+   "command": "git",
+   "publishes": false
+  },
+  {
+   "command": "git push",
+   "publishes": true
+  },
+  {
+   "command": "git push origin main",
+   "publishes": true
+  },
+  {
+   "command": "\"git\" push",
+   "publishes": true
+  },
+  {
+   "command": "'git' 'push'",
+   "publishes": true
+  },
+  {
+   "command": "git pu\"\"sh",
+   "publishes": true
+  },
+  {
+   "command": "g\"\"it push",
+   "publishes": true
+  },
+  {
+   "command": "git \"\"push",
+   "publishes": true
+  },
+  {
+   "command": "git -C \"a project\" push origin feature",
+   "publishes": true
+  },
+  {
+   "command": "git -C",
+   "publishes": false
+  },
+  {
+   "command": "git -C x",
+   "publishes": false
+  },
+  {
+   "command": "git --no-pager push",
+   "publishes": true
+  },
+  {
+   "command": "git -c advice.x=false push",
+   "publishes": true
+  },
+  {
+   "command": "git --git-dir=repo push",
+   "publishes": true
+  },
+  {
+   "command": "git --git-dir repo push",
+   "publishes": true
+  },
+  {
+   "command": "git --work-tree w push",
+   "publishes": true
+  },
+  {
+   "command": "git --namespace n push",
+   "publishes": true
+  },
+  {
+   "command": "git --config-env a=b push",
+   "publishes": true
+  },
+  {
+   "command": "git --super-prefix p push",
+   "publishes": true
+  },
+  {
+   "command": "git -p push",
+   "publishes": true
+  },
+  {
+   "command": "git --bare push",
+   "publishes": true
+  },
+  {
+   "command": "git status && git push",
+   "publishes": true
+  },
+  {
+   "command": "git status || git push",
+   "publishes": true
+  },
+  {
+   "command": "git status | git push",
+   "publishes": true
+  },
+  {
+   "command": "git status ; git push",
+   "publishes": true
+  },
+  {
+   "command": "git status\ngit push",
+   "publishes": true
+  },
+  {
+   "command": "git status\rgit push",
+   "publishes": true
+  },
+  {
+   "command": "git status\r\ngit push",
+   "publishes": true
+  },
+  {
+   "command": "git status &git push",
+   "publishes": true
+  },
+  {
+   "command": "git log --grep=\"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "echo \"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "printf '%s' 'gh pr comment 1'",
+   "publishes": false
+  },
+  {
+   "command": "echo \"safe; git push\"; gh pr comment 1 --body hi",
+   "publishes": true
+  },
+  {
+   "command": "echo git push",
+   "publishes": false
+  },
+  {
+   "command": "/usr/bin/git push",
+   "publishes": false
+  },
+  {
+   "command": "env git push",
+   "publishes": false
+  },
+  {
+   "command": "sudo git push",
+   "publishes": false
+  },
+  {
+   "command": "command git push",
+   "publishes": false
+  },
+  {
+   "command": "GIT_TRACE=1 git push",
+   "publishes": false
+  },
+  {
+   "command": "git\tpush",
+   "publishes": true
+  },
+  {
+   "command": "git push",
+   "publishes": true
+  },
+  {
+   "command": "git push",
+   "publishes": true
+  },
+  {
+   "command": "git﻿push",
+   "publishes": true
+  },
+  {
+   "command": "gitpush",
+   "publishes": false
+  },
+  {
+   "command": "git push",
+   "publishes": true
+  },
+  {
+   "command": "git  push",
+   "publishes": true
+  },
+  {
+   "command": "  git push  ",
+   "publishes": true
+  },
+  {
+   "command": "git push\\",
+   "publishes": false
+  },
+  {
+   "command": "git push \\; gh pr comment 1",
+   "publishes": true
+  },
+  {
+   "command": "git push \"unterminated",
+   "publishes": true
+  },
+  {
+   "command": "git push 'unterminated",
+   "publishes": true
+  },
+  {
+   "command": "gh",
+   "publishes": false
+  },
+  {
+   "command": "gh pr",
+   "publishes": false
+  },
+  {
+   "command": "gh pr view 1",
+   "publishes": false
+  },
+  {
+   "command": "gh pr list",
+   "publishes": false
+  },
+  {
+   "command": "gh pr diff 1",
+   "publishes": false
+  },
+  {
+   "command": "gh pr checks 1",
+   "publishes": false
+  },
+  {
+   "command": "gh pr status",
+   "publishes": false
+  },
+  {
+   "command": "gh pr checkout 1",
+   "publishes": false
+  },
+  {
+   "command": "glab",
+   "publishes": false
+  },
+  {
+   "command": "glab mr view 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo view",
+   "publishes": false
+  },
+  {
+   "command": "gh repo delete o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh release create v1",
+   "publishes": false
+  },
+  {
+   "command": "gh secret set K",
+   "publishes": false
+  },
+  {
+   "command": "gh label create x",
+   "publishes": false
+  },
+  {
+   "command": "gh workflow run x",
+   "publishes": false
+  },
+  {
+   "command": "gh run rerun 1",
+   "publishes": false
+  },
+  {
+   "command": "gh auth login",
+   "publishes": false
+  },
+  {
+   "command": "gh issue list",
+   "publishes": false
+  },
+  {
+   "command": "gh issue view 1",
+   "publishes": false
+  },
+  {
+   "command": "GH pr comment 1",
+   "publishes": false
+  },
+  {
+   "command": "gh PR comment 1",
+   "publishes": false
+  },
+  {
+   "command": "gh pr COMMENT 1",
+   "publishes": false
+  },
+  {
+   "command": "hub pr comment 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api",
+   "publishes": false
+  },
+  {
+   "command": "gh api repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api repos/o/r/pulls",
+   "publishes": false
+  },
+  {
+   "command": "gh api repos/o/r --paginate",
+   "publishes": false
+  },
+  {
+   "command": "gh api repos/o/r/pulls --jq .[].title",
+   "publishes": false
+  },
+  {
+   "command": "gh api -H \"Accept: x\" repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api --method",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X GET repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X get repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X HEAD repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api -XGET repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X=GET repos/o/r",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X POST repos/o/r",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X post repos/o/r",
+   "publishes": true
+  },
+  {
+   "command": "gh api -XPOST repos/o/r",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X=POST repos/o/r",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X=put repos/o/r",
+   "publishes": true
+  },
+  {
+   "command": "gh api --method=PATCH x",
+   "publishes": true
+  },
+  {
+   "command": "gh api --method=patch x",
+   "publishes": true
+  },
+  {
+   "command": "gh api --method DELETE x",
+   "publishes": true
+  },
+  {
+   "command": "gh api --method delete x",
+   "publishes": true
+  },
+  {
+   "command": "gh api --methodPOST x",
+   "publishes": false
+  },
+  {
+   "command": "gh api --method=GET -f a=b x",
+   "publishes": false
+  },
+  {
+   "command": "gh api -x POST x",
+   "publishes": false
+  },
+  {
+   "command": "gh api -X GET -X POST x",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X POST -X GET x",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -F a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -fa=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -Fa=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --field a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --field=a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --raw-field a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --raw-field=a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --input body.json",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --input=body.json",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --input",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -f",
+   "publishes": true
+  },
+  {
+   "command": "gh api x --fields a",
+   "publishes": false
+  },
+  {
+   "command": "gh api x --inputs a",
+   "publishes": false
+  },
+  {
+   "command": "gh api x -g a",
+   "publishes": false
+  },
+  {
+   "command": "gh api x -- -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api graphql -f \"query=query { viewer { login } }\"",
+   "publishes": false
+  },
+  {
+   "command": "gh api graphql -f \"query=mutation Update { a { id } }\"",
+   "publishes": true
+  },
+  {
+   "command": "gh api graphql -f query=@q.graphql",
+   "publishes": false
+  },
+  {
+   "command": "gh api graphql -f query=\"$DOC\"",
+   "publishes": false
+  },
+  {
+   "command": "gh api graphql",
+   "publishes": false
+  },
+  {
+   "command": "gh api -f query=x graphql",
+   "publishes": false
+  },
+  {
+   "command": "gh api x graphql -f a=b",
+   "publishes": false
+  },
+  {
+   "command": "gh api x -f \"q=mutations\"",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -f q=premutation",
+   "publishes": true
+  },
+  {
+   "command": "gh api x -f q=mutation_x",
+   "publishes": true
+  },
+  {
+   "command": "gh api x mutation",
+   "publishes": true
+  },
+  {
+   "command": "gh api x MUTATION",
+   "publishes": false
+  },
+  {
+   "command": "gh api x -X GET -f q=mutation",
+   "publishes": true
+  },
+  {
+   "command": "glab api projects/1",
+   "publishes": false
+  },
+  {
+   "command": "glab api projects/1/notes --field body=x",
+   "publishes": true
+  },
+  {
+   "command": "glab api projects/1 -X PUT",
+   "publishes": true
+  },
+  {
+   "command": "gh pr create",
+   "publishes": true
+  },
+  {
+   "command": "gh pr create --fill",
+   "publishes": true
+  },
+  {
+   "command": "gh issue create -t x",
+   "publishes": true
+  },
+  {
+   "command": "glab mr create",
+   "publishes": true
+  },
+  {
+   "command": "glab issue create",
+   "publishes": true
+  },
+  {
+   "command": "gh mr create",
+   "publishes": true
+  },
+  {
+   "command": "glab pr create",
+   "publishes": true
+  },
+  {
+   "command": "gh issue note 1",
+   "publishes": true
+  },
+  {
+   "command": "echo $(git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo `git push`",
+   "publishes": true
+  },
+  {
+   "command": "echo \"$(git push)\"",
+   "publishes": true
+  },
+  {
+   "command": "echo '$(git push)'",
+   "publishes": false
+  },
+  {
+   "command": "echo '`git push`'",
+   "publishes": false
+  },
+  {
+   "command": "echo \"`git push`\"",
+   "publishes": true
+  },
+  {
+   "command": "echo \\$(git push)",
+   "publishes": false
+  },
+  {
+   "command": "echo \\`git push\\`",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo $(git push))",
+   "publishes": true
+  },
+  {
+   "command": "echo $( (git push) )",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo \")\" ; git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo ')' ; git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo \\) ; git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo $(git push",
+   "publishes": true
+  },
+  {
+   "command": "echo `git push",
+   "publishes": true
+  },
+  {
+   "command": "echo `echo \\` git push`",
+   "publishes": false
+  },
+  {
+   "command": "x=$(gh pr comment 1) y",
+   "publishes": true
+  },
+  {
+   "command": "$(git push)",
+   "publishes": true
+  },
+  {
+   "command": "`gh pr merge 1`",
+   "publishes": true
+  },
+  {
+   "command": "echo $((1+2))",
+   "publishes": false
+  },
+  {
+   "command": "echo $( )",
+   "publishes": false
+  },
+  {
+   "command": "echo ${HOME}",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -c 'git push'",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"gh pr comment 1\"",
+   "publishes": true
+  },
+  {
+   "command": "zsh -c \"git status\"",
+   "publishes": false
+  },
+  {
+   "command": "dash -lc \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "ksh -xc \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "/bin/bash -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "/bin/sh -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "/usr/bin/bash -c \"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c",
+   "publishes": false
+  },
+  {
+   "command": "bash --command \"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -e -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -ec \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -ce \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -x \"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "bash script.sh",
+   "publishes": false
+  },
+  {
+   "command": "fish -c \"git push\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"bash -c 'git push'\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"echo \\\"git push\\\"\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"echo $(git push)\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"x; git push\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"git status\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"\" git push",
+   "publishes": false
+  },
+  {
+   "command": "sh -c 'gh api x -f a=b'",
+   "publishes": true
+  },
+  {
+   "command": "sh -c 'gh api -X GET x -f a=b'",
+   "publishes": false
+  },
+  {
+   "command": "git push # comment",
+   "publishes": true
+  },
+  {
+   "command": "# git push",
+   "publishes": false
+  },
+  {
+   "command": "git push;",
+   "publishes": true
+  },
+  {
+   "command": ";git push",
+   "publishes": true
+  },
+  {
+   "command": "&&git push",
+   "publishes": true
+  },
+  {
+   "command": "| git push",
+   "publishes": true
+  },
+  {
+   "command": "echo λ && git push",
+   "publishes": true
+  },
+  {
+   "command": "echo 😀; git push",
+   "publishes": true
+  },
+  {
+   "command": "echo \"😀\" `git push`",
+   "publishes": true
+  },
+  {
+   "command": "gh pr comment 1 --body \"$(cat notes.md)\"",
+   "publishes": true
+  },
+  {
+   "command": "gh pr view 1 --json body | jq .",
+   "publishes": false
+  },
+  {
+   "command": "git log $(git rev-parse HEAD)",
+   "publishes": false
+  },
+  {
+   "command": "git fetch && git rebase origin/main && git push -f",
+   "publishes": true
+  },
+  {
+   "command": "git -c advice.pushUpdateRejected=false push",
+   "publishes": true
+  },
+  {
+   "command": "gh api repos/o/r/issues/1/comments -f body=hi",
+   "publishes": true
+  },
+  {
+   "command": "gh api repos/o/r/issues -F title=x",
+   "publishes": true
+  },
+  {
+   "command": "gh api repos/o/r/labels --raw-field=name=x",
+   "publishes": true
+  },
+  {
+   "command": "gh api repos/o/r/pulls --input body.json",
+   "publishes": true
+  },
+  {
+   "command": "gh api repos/o/r -fname=x",
+   "publishes": true
+  },
+  {
+   "command": "gh api -XPOST repos/o/r/forks",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X=put repos/o/r/topics",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X GET search/issues -f q=x",
+   "publishes": false
+  },
+  {
+   "command": "gh api repos/o/r/pulls --method=GET -F per_page=5",
+   "publishes": false
+  },
+  {
+   "command": "bash -lc 'git status; git push'",
+   "publishes": true
+  },
+  {
+   "command": "/bin/sh -c \"gh pr comment 1 --body review\"",
+   "publishes": true
+  },
+  {
+   "command": "echo \"$(echo $(git push))\"",
+   "publishes": true
+  },
+  {
+   "command": "echo \"$(echo 'safe)'; git push)\"",
+   "publishes": true
+  },
+  {
+   "command": "sh -c 'echo \"$(git push)\"'",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"git status\"",
+   "publishes": false
+  },
+  {
+   "command": "echo \"$(git status)\"",
+   "publishes": false
+  },
+  {
+   "command": "echo \"\\$(git push)\"",
+   "publishes": false
+  },
+  {
+   "command": "echo \"$(echo 'git push')\"",
+   "publishes": false
+  },
+  {
+   "command": "git status --short",
+   "publishes": false
+  },
+  {
+   "command": "gh pr view 1 --json number",
+   "publishes": false
+  },
+  {
+   "command": "gh pr comment 1 --body review",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X POST repos/example/project/issues/1/comments",
+   "publishes": true
+  },
+  {
+   "command": "git -C project push origin feature",
+   "publishes": true
+  },
+  {
+   "command": "git --no-pager push origin feature",
+   "publishes": true
+  },
+  {
+   "command": "git push origin feature",
+   "publishes": true
+  },
+  {
+   "command": "echo \"$(echo ') $(git push) ')\"",
+   "publishes": false
+  },
+  {
+   "command": "echo \"$(echo (a); git push)\"",
+   "publishes": true
+  },
+  {
+   "command": "echo \"$(echo $(true); git push)\"",
+   "publishes": true
+  },
+  {
+   "command": "echo '\\' $(git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo '\\' '$(git push)'",
+   "publishes": false
+  },
+  {
+   "command": "gh api x \"-XPO\nST\" -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x \"--method=PO ST\" -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "gh api x \"-X=GET\r\" -F a=b",
+   "publishes": true
+  },
+  {
+   "command": "echo $(true)",
+   "publishes": false
+  },
+  {
+   "command": "echo $(bash -c \"true\")",
+   "publishes": false
+  },
+  {
+   "command": "sh -c \"echo $(git status)\"",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(true))))))))))))))",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(git push))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"true\")\")\")\")\")\")\")\")\")\")\")\")\")\")",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(git status)\")\")\")\")\")\")\")\")\")\")\")\")\")\"",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(true)))))))))))))))",
+   "publishes": false
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(git push)))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"true\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(git status)\")\")\")\")\")\")\")\")\")\")\")\")\")\")\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(true))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(git push))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"true\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(git status)\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(true)))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(git push)))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"true\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(git status)\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(true))))))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(git push))))))))))))))))))))",
+   "publishes": true
+  },
+  {
+   "command": "echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"echo $(bash -c \"true\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")",
+   "publishes": true
+  },
+  {
+   "command": "sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(sh -c \"echo $(git status)\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\")\"",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"true\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"bash -c \\\"true\\\"\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"bash -c \\\"bash -c \\\\\\\"bash -c \\\\\\\\\\\\\\\"true\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
+   "publishes": false
+  },
+  {
+   "command": "bash -c \"bash -c \\\"bash -c \\\\\\\"bash -c \\\\\\\\\\\\\\\"bash -c \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"bash -c \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"true\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"",
+   "publishes": false
+  },
+  {
+   "command": "gh pr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"gh pr merge 1\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(gh pr merge 1)",
+   "publishes": true
+  },
+  {
+   "command": "glab mr note 1",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"glab mr note 1\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(glab mr note 1)",
+   "publishes": true
+  },
+  {
+   "command": "gh api -X DELETE x",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"gh api -X DELETE x\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(gh api -X DELETE x)",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"gh api x -f a=b\"",
+   "publishes": true
+  },
+  {
+   "command": "echo $(gh api x -f a=b)",
+   "publishes": true
+  },
+  {
+   "command": "bash -c \"gh pr view 1\"",
+   "publishes": false
+  },
+  {
+   "command": "echo $(gh pr view 1)",
+   "publishes": false
+  },
+  {
+   "command": "cd x && git push",
+   "publishes": true
+  },
+  {
+   "command": "cd x && bash -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "cd x && echo $(git push)",
+   "publishes": true
+  },
+  {
+   "command": "cd x && gh pr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "cd x && bash -c \"gh pr merge 1\"",
+   "publishes": true
+  },
+  {
+   "command": "cd x && echo $(gh pr merge 1)",
+   "publishes": true
+  },
+  {
+   "command": "cd x && glab mr note 1",
+   "publishes": true
+  },
+  {
+   "command": "cd x && bash -c \"glab mr note 1\"",
+   "publishes": true
+  },
+  {
+   "command": "cd x && echo $(glab mr note 1)",
+   "publishes": true
+  },
+  {
+   "command": "cd x && gh api -X DELETE x",
+   "publishes": true
+  },
+  {
+   "command": "cd x && bash -c \"gh api -X DELETE x\"",
+   "publishes": true
+  },
+  {
+   "command": "cd x && echo $(gh api -X DELETE x)",
+   "publishes": true
+  },
+  {
+   "command": "cd x && gh api x -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "cd x && bash -c \"gh api x -f a=b\"",
+   "publishes": true
+  },
+  {
+   "command": "cd x && echo $(gh api x -f a=b)",
+   "publishes": true
+  },
+  {
+   "command": "cd x && gh pr view 1",
+   "publishes": false
+  },
+  {
+   "command": "cd x && bash -c \"gh pr view 1\"",
+   "publishes": false
+  },
+  {
+   "command": "cd x && echo $(gh pr view 1)",
+   "publishes": false
+  },
+  {
+   "command": "echo a; git push",
+   "publishes": true
+  },
+  {
+   "command": "echo a; bash -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "echo a; echo $(git push)",
+   "publishes": true
+  },
+  {
+   "command": "echo a; gh pr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "echo a; bash -c \"gh pr merge 1\"",
+   "publishes": true
+  },
+  {
+   "command": "echo a; echo $(gh pr merge 1)",
+   "publishes": true
+  },
+  {
+   "command": "echo a; glab mr note 1",
+   "publishes": true
+  },
+  {
+   "command": "echo a; bash -c \"glab mr note 1\"",
+   "publishes": true
+  },
+  {
+   "command": "echo a; echo $(glab mr note 1)",
+   "publishes": true
+  },
+  {
+   "command": "echo a; gh api -X DELETE x",
+   "publishes": true
+  },
+  {
+   "command": "echo a; bash -c \"gh api -X DELETE x\"",
+   "publishes": true
+  },
+  {
+   "command": "echo a; echo $(gh api -X DELETE x)",
+   "publishes": true
+  },
+  {
+   "command": "echo a; gh api x -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "echo a; bash -c \"gh api x -f a=b\"",
+   "publishes": true
+  },
+  {
+   "command": "echo a; echo $(gh api x -f a=b)",
+   "publishes": true
+  },
+  {
+   "command": "echo a; gh pr view 1",
+   "publishes": false
+  },
+  {
+   "command": "echo a; bash -c \"gh pr view 1\"",
+   "publishes": false
+  },
+  {
+   "command": "echo a; echo $(gh pr view 1)",
+   "publishes": false
+  },
+  {
+   "command": "true | git push",
+   "publishes": true
+  },
+  {
+   "command": "true | bash -c \"git push\"",
+   "publishes": true
+  },
+  {
+   "command": "true | echo $(git push)",
+   "publishes": true
+  },
+  {
+   "command": "true | gh pr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "true | bash -c \"gh pr merge 1\"",
+   "publishes": true
+  },
+  {
+   "command": "true | echo $(gh pr merge 1)",
+   "publishes": true
+  },
+  {
+   "command": "true | glab mr note 1",
+   "publishes": true
+  },
+  {
+   "command": "true | bash -c \"glab mr note 1\"",
+   "publishes": true
+  },
+  {
+   "command": "true | echo $(glab mr note 1)",
+   "publishes": true
+  },
+  {
+   "command": "true | gh api -X DELETE x",
+   "publishes": true
+  },
+  {
+   "command": "true | bash -c \"gh api -X DELETE x\"",
+   "publishes": true
+  },
+  {
+   "command": "true | echo $(gh api -X DELETE x)",
+   "publishes": true
+  },
+  {
+   "command": "true | gh api x -f a=b",
+   "publishes": true
+  },
+  {
+   "command": "true | bash -c \"gh api x -f a=b\"",
+   "publishes": true
+  },
+  {
+   "command": "true | echo $(gh api x -f a=b)",
+   "publishes": true
+  },
+  {
+   "command": "true | gh pr view 1",
+   "publishes": false
+  },
+  {
+   "command": "true | bash -c \"gh pr view 1\"",
+   "publishes": false
+  },
+  {
+   "command": "true | echo $(gh pr view 1)",
+   "publishes": false
+  },
+  {
+   "command": "gh pr create 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr comment 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr note 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr review 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr approve 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr close 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr edit 1",
+   "publishes": true
+  },
+  {
+   "command": "gh pr list 1",
+   "publishes": false
+  },
+  {
+   "command": "gh pr delete 1",
+   "publishes": false
+  },
+  {
+   "command": "gh mr create 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr comment 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr note 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr review 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr approve 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr close 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr edit 1",
+   "publishes": true
+  },
+  {
+   "command": "gh mr view 1",
+   "publishes": false
+  },
+  {
+   "command": "gh mr list 1",
+   "publishes": false
+  },
+  {
+   "command": "gh mr delete 1",
+   "publishes": false
+  },
+  {
+   "command": "gh issue create 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue comment 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue review 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue approve 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue merge 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue close 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue edit 1",
+   "publishes": true
+  },
+  {
+   "command": "gh issue list 1",
+   "publishes": false
+  },
+  {
+   "command": "gh issue delete 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo create 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo comment 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo note 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo review 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo approve 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo merge 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo close 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo reopen 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo edit 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo view 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo list 1",
+   "publishes": false
+  },
+  {
+   "command": "gh repo delete 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api create 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api comment 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api note 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api review 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api approve 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api merge 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api close 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api reopen 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api edit 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api view 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api list 1",
+   "publishes": false
+  },
+  {
+   "command": "gh api delete 1",
+   "publishes": false
+  },
+  {
+   "command": "glab pr create 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr comment 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr note 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr review 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr approve 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr close 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr edit 1",
+   "publishes": true
+  },
+  {
+   "command": "glab pr view 1",
+   "publishes": false
+  },
+  {
+   "command": "glab pr list 1",
+   "publishes": false
+  },
+  {
+   "command": "glab pr delete 1",
+   "publishes": false
+  },
+  {
+   "command": "glab mr create 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr comment 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr review 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr approve 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr merge 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr close 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr edit 1",
+   "publishes": true
+  },
+  {
+   "command": "glab mr list 1",
+   "publishes": false
+  },
+  {
+   "command": "glab mr delete 1",
+   "publishes": false
+  },
+  {
+   "command": "glab issue create 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue comment 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue note 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue review 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue approve 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue merge 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue close 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue reopen 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue edit 1",
+   "publishes": true
+  },
+  {
+   "command": "glab issue view 1",
+   "publishes": false
+  },
+  {
+   "command": "glab issue list 1",
+   "publishes": false
+  },
+  {
+   "command": "glab issue delete 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo create 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo comment 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo note 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo review 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo approve 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo merge 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo close 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo reopen 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo edit 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo view 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo list 1",
+   "publishes": false
+  },
+  {
+   "command": "glab repo delete 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api create 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api comment 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api note 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api review 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api approve 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api merge 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api close 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api reopen 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api edit 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api view 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api list 1",
+   "publishes": false
+  },
+  {
+   "command": "glab api delete 1",
+   "publishes": false
+  }
+ ],
+ "policy": [
+  {
+   "readOnly": true,
+   "tool": "shell",
+   "command": "git push",
+   "response": {
+    "decision": "deny",
+    "reason": "This project is configured for read-only review. Return revision-bound findings; publication belongs to a separately authorized job."
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "shell",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "shell",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "shell",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "edit",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "edit",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "edit",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": true,
+   "tool": "edit",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "shell",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "shell",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "shell",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "shell",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "edit",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "edit",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "edit",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": false,
+   "tool": "edit",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "shell",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "shell",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "shell",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "shell",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "edit",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "edit",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "edit",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "tool": "edit",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "shell",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "shell",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "shell",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "shell",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "edit",
+   "command": "git push",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "edit",
+   "command": "git status",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "edit",
+   "response": {
+    "decision": "allow"
+   }
+  },
+  {
+   "readOnly": "true",
+   "tool": "edit",
+   "command": 42,
+   "response": {
+    "decision": "allow"
+   }
+  }
+ ]
+}

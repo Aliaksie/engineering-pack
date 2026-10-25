@@ -1,7 +1,6 @@
 import { activeTask } from '../session/activity.mjs';
 import { workspaceBoundary } from '../workspace.mjs';
-import { withTelemetry, flushTelemetry, observe, diagnostic } from '../telemetry/observe.mjs';
-import { prepare as prepareLifecycleObservation } from '../telemetry/lifecycle.mjs';
+import { withTelemetry, flushTelemetry, observe, diagnostic, emitTelemetry } from '../telemetry/observe.mjs';
 export { flushTelemetry };
 import { projectRoot, relativePath } from '../../platform/index.mjs';
 import { readProject } from '../project/configuration.mjs';
@@ -22,7 +21,7 @@ export function prepareEvent(event) {
   return withTelemetry(projectRoot(event.cwd), { session: event.session, host: event.host }, () => prepare(event));
 }
 function prepare(event) {
-  prepareLifecycleObservation(event);
+  emitTelemetry('host.observed', { lifecycle: event.event, contextSupported: event.contextSupported });
   const root = projectRoot(event.cwd);
   const project = readProject(root);
   let task;

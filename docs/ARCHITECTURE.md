@@ -109,8 +109,10 @@ proposal cleanup. No executable adapter is loaded from project configuration. Se
 
 The engine returns plans and advice. It does not call models, switch profiles, execute
 remote operations, compact a host session or publish findings. Context-delivery policy
-receives lifecycle facts, not hook event names. Application code
-translates lifecycle events and collects delivery evidence; hosts parse and run native hooks.
+receives lifecycle facts, not hook event names. Hosts parse payloads, run native hooks and
+serialize their wire output. Lifecycle observation and the read-only review guard run in
+`craft` (one request per hook); context delivery still translates lifecycle events in the
+JavaScript application.
 Host lifecycle controls belong to `hosts/`; external service mappings belong to
 `integrations/`. Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
 

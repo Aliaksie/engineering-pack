@@ -218,7 +218,7 @@ impl Options {
 }
 
 /// `path.resolve`: absolute against the working directory, with `.` and `..` removed lexically.
-fn resolve(path: &str) -> PathBuf {
+pub(crate) fn resolve(path: &str) -> PathBuf {
     let joined = std::env::current_dir().unwrap_or_default().join(path);
     let mut resolved = PathBuf::new();
     for component in joined.components() {

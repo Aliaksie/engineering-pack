@@ -6,6 +6,7 @@ mod checkpoint;
 pub mod cli;
 mod discovery;
 mod evidence;
+mod host;
 mod project;
 mod scratch;
 mod session;
@@ -40,6 +41,8 @@ pub fn evaluate(request: Value) -> Value {
             }
             None => Err("cli requires an argv string array".into()),
         },
+        // One host hook event; the adapter serializes the decision and posts `export`.
+        Some("host") => host::run(&request["input"]),
         Some("locate") => {
             let result = (|| -> Result<Value, craft_platform::search::SearchError> {
                 let input = &request["input"];

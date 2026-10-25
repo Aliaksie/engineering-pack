@@ -9,8 +9,6 @@ import { createHash } from 'node:crypto';
 import { files } from './lib/capabilities.mjs';
 import { performance } from 'node:perf_hooks';
 import { spawnSync } from 'node:child_process';
-import { evaluateReviewPublication } from '../application/review.mjs';
-const evaluate = event => evaluateReviewPublication(event);
 
 export const CASES = [
   { id: 'local-read', command: 'git status --short', expected: 'allow' },
@@ -27,9 +25,15 @@ export const CASES = [
   { id: 'indirect-shell-execution', command: 'sh -c "git push"', expected: 'deny' },
   { id: 'command-substitution', command: 'echo "$(git push)"', expected: 'deny' }
 ];
-export function policyReport(policy = evaluate, cases = CASES) {
+// Decide through a generated Claude read-only wrapper in a project configured for read-only review.
+export const wrapperPolicy = (wrapper, directory) => ({ command }) => {
+  const result = spawnSync(process.execPath, [wrapper], { cwd: directory, shell: false, encoding: 'utf8', timeout: 10000,
+    input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command } }) });
+  return { decision: result.status === 2 ? 'deny' : result.status === 0 ? 'allow' : undefined };
+};
+export function policyReport(policy, cases = CASES) {
   const results = cases.map((entry) => {
-    const observed = policy({ tool: 'shell', command: entry.command, project: { review: { readOnly: true } } }).decision;
+    const observed = policy({ command: entry.command }).decision;
     return { ...entry, observed };
   });
   return {
@@ -76,7 +80,7 @@ export function localHookReport(repo, iterations = 12) {
     const sorted = samples.map((sample) => sample.milliseconds).sort((a, b) => a - b);
     return {
       formatVersion: 1, measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.version, artifactHashes,
-      policy: policyReport(),
+      policy: policyReport(wrapperPolicy(wrapper, directory)),
       latency: { path: 'fresh Node process → generated Claude wrapper → normalize → project read → policy → serialize', iterations, samples,
         minMs: sorted[0], medianMs: sorted[Math.floor(sorted.length / 2)], maxMs: sorted.at(-1),
         limitation: 'Local process-wall-time samples only; no host dispatch, model call, checkpoint write or network. Not a cross-platform or production latency claim.' }

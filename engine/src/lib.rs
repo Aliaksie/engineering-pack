@@ -9,6 +9,7 @@ pub mod contracts;
 pub mod discovery;
 pub mod models;
 pub mod repository;
+pub mod review;
 pub mod routing;
 pub mod scratch;
 pub mod services;

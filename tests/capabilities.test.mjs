@@ -9,8 +9,6 @@ import { ADAPTERS, build, checkBuild } from '../tooling/build.mjs';
 import { files, frontmatter, json, loadCapabilities, validateCapability } from '../tooling/lib/capabilities.mjs';
 import { evaluateReport } from '../tooling/eval-report.mjs';
 import { copy } from '../tooling/export/export.mjs';
-import { evaluateReviewPublication } from '../application/review.mjs';
-const reviewPolicy = event => evaluateReviewPublication(event);
 import { HOSTS } from '../hosts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

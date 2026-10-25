@@ -109,6 +109,8 @@ pub struct Recorder {
     remote: Option<String>,
     session: Option<String>,
     host: Option<String>,
+    /// The capability package a host hook belongs to, recorded on every event.
+    package: Option<String>,
     version: Option<String>,
     trace: String,
     session_id: Option<String>,
@@ -150,6 +152,7 @@ impl Recorder {
             remote,
             session: session.filter(|s| valid_session(s)).map(str::to_string),
             host: host.map(str::to_string),
+            package: None,
             version,
             trace: compact_uuid(),
             session_id: None,
@@ -177,6 +180,11 @@ impl Recorder {
         if self.host.is_none() {
             self.host = host.map(str::to_string);
         }
+    }
+
+    /// Attribute events to a capability package; the event envelope keeps only known names.
+    pub fn package(&mut self, name: Option<&str>) {
+        self.package = name.map(str::to_string);
     }
 
     pub fn start(&self, name: &'static str, parent: Option<&Operation>) -> Operation {
@@ -224,6 +232,9 @@ impl Recorder {
         } else {
             "invocation"
         };
+        if let Some(package) = &self.package {
+            attributes.insert("package".into(), json!(package));
+        }
         attributes.insert("identityScope".into(), json!(scope));
         telemetry::envelope(
             &telemetry::Event {
@@ -446,6 +457,7 @@ impl Recorder {
                 "root": self.root.to_string_lossy(),
                 "session": self.session,
                 "host": self.host,
+                "package": self.package,
                 "events": self.export,
             })
         })

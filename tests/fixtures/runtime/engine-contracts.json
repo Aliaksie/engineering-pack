@@ -920,21 +920,6 @@
       }
     },
     {
-      "id": "review-publication-policy:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "review-publication-policy",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "decision": "allow"
-        }
-      }
-    },
-    {
       "id": "context-delivery:empty",
       "request": {
         "formatVersion": 1,
@@ -6008,26 +5993,6 @@
         "ok": false,
         "error": {
           "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "review:read-only-denial",
-      "request": {
-        "formatVersion": 1,
-        "operation": "review-publication-policy",
-        "input": {
-          "readOnly": true,
-          "commandExecution": true,
-          "publishes": true
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "decision": "deny",
-          "reason": "This project is configured for read-only review. Return revision-bound findings; publication belongs to a separately authorized job."
         }
       }
     },

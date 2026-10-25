@@ -67,6 +67,11 @@ activity are read and written natively. Discovery writes its reuse receipt under
 only if the state it observed is still current; a concurrent receipt is preserved with a
 diagnostic.
 
+A forwarded hook sends one native `host` request with host-neutral lifecycle facts, never host
+event names; only shell-scoped hooks receive the command text. The adapter keeps payload
+parsing, the input bound and wire output. If the runtime cannot answer, a shell enforcement hook
+still denies and other hooks stay silent.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.
