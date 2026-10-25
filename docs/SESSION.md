@@ -111,9 +111,10 @@ remains. Workers release their own scopes after use. Startup/task boundaries and
 `workspace-clean --root <workspace>` reclaim verified closed or stale abandoned workspaces.
 Live process owners are retained regardless of age; uncertain ownership, symlinks, unsafe
 metadata, exhausted bounds or busy locks retain data and expose a reason. A dead managed lock
-can be reclaimed; unknown locks are preserved. On Windows the native runtime cannot observe
-whether another recorded process still runs: such an owner holds its workspace until the
-scratch stale age, and its workspace lock can be reclaimed after ten minutes. Cleanup failure never blocks task acceptance.
+can be reclaimed; unknown locks are preserved. On Windows the native runtime observes other
+processes through one bounded `tasklist` snapshot per operation; when that listing is
+unavailable, a recorded owner holds its workspace until the scratch stale age, and its
+workspace lock can be reclaimed after ten minutes. Cleanup failure never blocks task acceptance.
 The lock serializes cooperating pack processes; these path checks are not an OS sandbox
 against a hostile same-user process swapping paths concurrently.
 

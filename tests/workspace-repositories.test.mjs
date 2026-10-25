@@ -235,8 +235,8 @@ test('workspace operations retain other owners, recover only dead owned locks an
   assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available');
   assert.equal(fs.existsSync(lock), false);
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
-  assert.equal(command('workspace-open').status, process.platform === 'win32' ? 'retained' : 'available', 'Windows cannot observe the holder; a fresh lock waits');
-  assert.equal(fs.existsSync(lock), process.platform === 'win32');
+  assert.equal(command('workspace-open').status, 'available', 'the native runtime observes the dead holder on every platform');
+  assert.equal(fs.existsSync(lock), false);
   assert.throws(() => workspaceOperation(root, { ...identity, task: '../bad' }, policy, 'complete'), /identity/);
 });
 

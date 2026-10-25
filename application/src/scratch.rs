@@ -5,7 +5,7 @@ use crate::session;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::scratch::{self, Identity, MANIFEST_BYTES, MANIFEST_ENTRIES, Policy};
 use craft_platform::repository::snapshot;
-use craft_platform::scratch::{self as files, Usage};
+use craft_platform::scratch::{self as files, Processes, Usage};
 use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::io;
@@ -182,10 +182,10 @@ fn pid() -> i64 {
 }
 
 /// Whether any recorded, still-open owner holds the workspace.
-fn active(manifest: &Value, now: i64, policy: &Policy) -> bool {
+fn active(processes: &Processes, manifest: &Value, now: i64, policy: &Policy) -> bool {
     scratch::open_owners(manifest)
         .into_iter()
-        .any(|(_, pid)| scratch::holds(files::liveness(pid), manifest, now, policy))
+        .any(|(_, pid)| scratch::holds(processes.liveness(pid), manifest, now, policy))
 }
 
 fn read_manifest(file: &Path, project: &str, entry: &str) -> Result<Value, Failure> {
@@ -225,6 +225,7 @@ fn operate(
     let Some(_lock) = files::lock(&anchor).map_err(io)? else {
         return Ok(json!({"status": "retained", "reason": "workspace is in use"}));
     };
+    let processes = Processes::default();
     let project = craft_engine::hash(state::canonical_root(root)?.to_string_lossy().as_bytes());
     let mut entries = files::names(&sessions, SESSION_ENTRIES).map_err(io)?;
     entries.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
@@ -262,7 +263,9 @@ fn operate(
             i64::from(action.creates() && key.as_ref().is_some_and(|key| !entries.contains(key)));
         owned.sort_by_key(|item| item.manifest["updated"].as_i64().unwrap_or(0));
         for item in &owned {
-            if key.as_deref() == Some(item.entry.as_str()) || active(&item.manifest, now, policy) {
+            if key.as_deref() == Some(item.entry.as_str())
+                || active(&processes, &item.manifest, now, policy)
+            {
                 continue;
             }
             let over = |cleaned: &[Value]| total - removed(cleaned) + room > policy.max_sessions;
@@ -304,7 +307,7 @@ fn operate(
     let scope = scratch_dir.join(&identity.operation);
     let foreign = |operation: &Value, value: &Value| {
         operation["pid"].as_i64().is_some_and(|owner| {
-            owner != pid() && scratch::holds(files::liveness(owner), value, now, policy)
+            owner != pid() && scratch::holds(processes.liveness(owner), value, now, policy)
         })
     };
     let current = value["operations"].get(&identity.operation).cloned();
@@ -377,7 +380,7 @@ fn operate(
             value["operations"][&identity.operation]["closed"] = json!(true);
         }
         let closed = value["closed"] == true || scratch::open_owners(&value).is_empty();
-        if closed && !active(&value, now, policy) {
+        if closed && !active(&processes, &value, now, policy) {
             match files::remove(&scratch_dir) {
                 Ok(()) => cleanup = "cleaned",
                 Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
@@ -408,7 +411,7 @@ fn operate(
         },
         "state": "existing checkpoint/session stores",
         "diskBytes": scratch_usage.bytes + evidence_usage.bytes + manifest_bytes,
-        "active": active(&value, now, policy),
+        "active": active(&processes, &value, now, policy),
         "cleaned": cleaned,
         "retained": retained,
     }))
