@@ -20,7 +20,12 @@ pub(crate) fn binding_file(root: &Path, session: &str, create: bool) -> Result<P
     Ok(state::file(root, &name, create, Some(session))?)
 }
 
-fn state_file(root: &Path, session: &str, task: &str, create: bool) -> Result<PathBuf, Failure> {
+pub(crate) fn state_file(
+    root: &Path,
+    session: &str,
+    task: &str,
+    create: bool,
+) -> Result<PathBuf, Failure> {
     session::identity(&json!(session), &json!(task))?;
     let name = format!("session-{}.json", short(&json!([session, task])));
     Ok(state::file(root, &name, create, Some(session))?)

@@ -1,15 +1,11 @@
-import { decide, digest } from '../../application/engine-client.mjs';
-import { taskRepository } from '../../application/session/activity.mjs';
-import { withTaskAdmission } from '../../application/session/admission.mjs';
+import { nativeJournal, withTaskAdmission, assertNativeSource } from '../native-control.mjs';
 import { workerController } from '../workers.mjs';
 import { actionController } from '../actions.mjs';
-import { clock, realRoot, rpcProcess, runtimeVersion, stateFile, readState, writeState, lockState, releaseState } from '../../platform/index.mjs';
+import { clock, realRoot, rpcProcess, runtimeVersion } from '../../platform/index.mjs';
 
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
-const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const terminal = value => ['completed', 'failed', 'interrupted'].includes(value);
 const copy = value => JSON.parse(JSON.stringify(value));
-const limit = 262144;
 
 // App-server is an explicit, exclusive client surface, not a bridge into a running desktop.
 // The owner allocates a bounded lane; this number is not a provider/account limit.
@@ -18,30 +14,15 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   root = realRoot(root);
   if (![session, task, threadId].every(text) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 64
     || !client || !['request', 'subscribe'].every(name => typeof client[name] === 'function') || typeof authorize !== 'function') throw new Error('explicit Codex client, coordinator identity, lane capacity and authority verifier are required');
-  const tree = digest([root, session, task]);
-  const file = stateFile(root, `codex-control-${tree.slice(0, 24)}.json`, true, session);
-  const owner = lockState(file);
-  if (!owner) throw new Error('Codex task control already has an owner; do not bypass an unresolved owner lock');
-  let journal, closed = false, broken = false, unsubscribe;
-  try {
-    journal = readState(file, limit) ?? { formatVersion: 1, tree, threadId, operations: [] };
-    if (Object.keys(journal).some(key => !['formatVersion', 'tree', 'threadId', 'operations'].includes(key))
-      || journal.formatVersion !== 1 || journal.tree !== tree || journal.threadId !== threadId || !Array.isArray(journal.operations)
-      || journal.operations.length > 192 || new Set(journal.operations.map(op => op?.key)).size !== journal.operations.length
-      || journal.operations.some(op => !op || Object.keys(op).some(key => !['key', 'kind', 'source', 'checkpoint', 'threadId', 'turnId', 'model', 'phase', 'outcome', 'compacted', 'evidence'].includes(key))
-        || !hash(op.key) || !['worker', 'cancel', 'review', 'compact'].includes(op.kind)
-        || !['intent', 'acknowledged', 'resume-intent', 'resumed'].includes(op.phase)
-        || (op.threadId !== null && !text(op.threadId)) || (op.turnId !== null && !text(op.turnId))
-        || (op.source !== null && !hash(op.source)) || (op.checkpoint !== null && !hash(op.checkpoint))
-        || (op.model !== null && !text(op.model)) || (op.outcome !== null && !terminal(op.outcome))
-        || typeof op.compacted !== 'boolean' || (op.evidence !== null && !text(op.evidence)))) throw new Error('invalid bounded native operation journal');
-  } catch (error) { releaseState(owner); throw error; }
+  const owner = nativeJournal({ root, session, task, host: 'codex', coordinator: threadId, mode: 'codex' });
+  const { context, journal } = owner;
+  const { tree } = context;
+  let closed = false, broken = false, unsubscribe;
   const persist = () => {
     if (closed || broken) throw new Error('native journal owner is unavailable');
-    try { writeState(file, journal, limit); } catch (error) { broken = true; throw error; }
+    try { owner.persist(); } catch (error) { broken = true; throw error; }
   };
   const usable = () => { if (closed || broken) throw new Error('native controller unavailable; reconcile retained intent before new effects'); };
-  const context = { root, session, task, tree };
   const checkContext = input => {
     if (input.root !== root || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== tree)) throw new Error('native controller coordinator binding changed');
   };
@@ -49,17 +30,11 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
   const guard = async input => {
     const value = await authority(input);
     if (value?.allowed !== true || !text(value.evidence)) throw new Error('native effect requires freshly verified scoped authority');
-    if (input.source !== undefined && decide('task-source', { repository: taskRepository(root, session, task) }) !== input.source) throw new Error('native effect source changed after admission');
+    if (input.source !== undefined) assertNativeSource(root, input.source, session, task);
   };
   const begin = (input, kind, nativeThread = null) => {
     usable(); checkContext(input);
-    if (!hash(input.key)) throw new Error('invalid native operation key');
-    const prior = journal.operations.find(op => op.key === input.key);
-    if (prior) throw new Error('native operation already attempted; reconcile its original key');
-    if (journal.operations.length >= 192) throw new Error('native operation journal capacity reached');
-    const op = { key: input.key, kind, source: input.source ?? null, checkpoint: input.checkpoint ?? null,
-      threadId: nativeThread, turnId: null, model: null, phase: 'intent', outcome: null, compacted: false, evidence: null };
-    journal.operations.push(op); persist(); return op;
+    return owner.begin(input, kind, nativeThread);
   };
   const native = async (method, params) => { usable(); return client.request(method, params); };
   const readThread = async id => {
@@ -108,7 +83,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
     } catch { broken = true; }
   });
   if (typeof unsubscribe !== 'function') throw new Error('native client subscription must return an unsubscribe function');
-  } catch (error) { releaseState(owner); throw error; }
+  } catch (error) { owner.close(); throw error; }
   const acknowledge = (op, turn) => {
     if (!text(turn?.id) || !['inProgress', 'completed', 'failed', 'interrupted'].includes(turn.status)) throw new Error('native turn acknowledgement is unavailable');
     op.turnId = turn.id; op.phase = 'acknowledged'; op.outcome = terminal(turn.status) ? turn.status : null;
@@ -266,7 +241,7 @@ export function createCodexControls({ root, session, task, threadId, capacity, c
       if (!terminal(op.outcome)) throw new Error('native work must settle before unsubscribing');
       return withTaskAdmission(context, () => native('thread/unsubscribe', { threadId: workerId }));
     },
-    close() { if (closed) return; closed = true; try { unsubscribe(); } finally { releaseState(owner); } }
+    close() { if (closed) return; closed = true; try { unsubscribe(); } finally { owner.close(); } }
   };
 }
 

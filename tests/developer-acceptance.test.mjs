@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
-import { groundedContext } from '../application/session/grounding.mjs';
+import { groundedContext } from './grounding-cli.mjs';
 import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
 
 const fixture = new URL('../examples/evals/developer-acceptance/fixture/', import.meta.url);

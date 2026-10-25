@@ -222,6 +222,7 @@ pub fn write(file: &Path, value: &Value, max_bytes: usize, pretty: bool) -> Resu
 pub struct Lock {
     path: PathBuf,
     file: Option<File>,
+    retained: bool,
 }
 
 impl Lock {
@@ -229,12 +230,19 @@ impl Lock {
     pub fn record(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         self.file.as_mut().expect("held lock").write_all(bytes)
     }
+
+    /// Transfer cleanup to the native lease protocol across process invocations.
+    pub(crate) fn retain(mut self) {
+        self.retained = true;
+    }
 }
 
 impl Drop for Lock {
     fn drop(&mut self) {
         drop(self.file.take());
-        let _ = fs::remove_file(&self.path);
+        if !self.retained {
+            let _ = fs::remove_file(&self.path);
+        }
     }
 }
 
@@ -249,7 +257,12 @@ pub fn lock(file: &Path) -> Result<Option<Lock>, String> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    acquire(path, cfg!(windows), |path| options.open(path))
+    let ticket = acquire(path.clone(), cfg!(windows), |path| options.open(path))?;
+    if ticket.is_none() && crate::lease::reclaim(file)? {
+        acquire(path, cfg!(windows), |path| options.open(path))
+    } else {
+        Ok(ticket)
+    }
 }
 
 const LOCK_ATTEMPTS: usize = 3;
@@ -266,6 +279,7 @@ fn acquire(
                 return Ok(Some(Lock {
                     path,
                     file: Some(handle),
+                    retained: false,
                 }));
             }
             Err(error) if error.kind() == ErrorKind::AlreadyExists => return Ok(None),

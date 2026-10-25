@@ -139,8 +139,7 @@ test('story and exploration context stay independent of configured stack and ris
 });
 
 // Grounding is distinct from package-resource accounting and never executes checks.
-const { groundedContext } = await import('../application/session/grounding.mjs');
-const { evaluate } = await import('../engine/index.mjs');
+const { groundedContext } = await import('./grounding-cli.mjs');
 const at = '2026-10-22T00:00:00Z';
 function cited(reference, identity, overrides = {}) {
   return { id: 'rule', kind: 'instruction', reference, identity, observedAt: at, scope: ['src/api'], provenance: 'observed', status: 'accepted', ...overrides };
@@ -184,21 +183,6 @@ test('grounding invalidates changed/deleted citations and retains lookup coverag
   assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
 });
 
-test('grounding preserves explicit conflicts and external provenance while excluding unrelated sources', () => {
-  const constraint = (id, conflict) => ({ id, description: id, sourceIds: ['rule'], authority: 'project', status: 'accepted', scope: ['src/api'], required: true, conflicts: [conflict] });
-  const response = evaluate({ formatVersion: 1, operation: 'task-context-compose', input: {
-    scope: ['src/api'], project: { formatVersion: 1 }, observations: [], observedAt: at, binding: { kind: 'repository', identity: 'current' },
-    sources: [cited('authorized:decision', 'version-1', { kind: 'external', provenance: 'declared' }), cited('other/AGENTS.md', 'other', { id: 'other', scope: ['other'] }), cited('user-request', 'request-1', { id: 'request', kind: 'request', provenance: 'declared' })],
-    constraints: [constraint('a', 'b'), constraint('b', 'a')]
-  } });
-  assert.equal(response.ok, true, JSON.stringify(response));
-  assert.equal(response.result.sources.length, 2);
-  assert.equal(response.result.sources.find(entry => entry.id === 'request').identity, 'request-1');
-  assert.equal(response.result.sources[0].provenance, 'declared');
-  assert.deepEqual(response.result.constraints.map(entry => entry.conflicts), [['b'], ['a']]);
-  assert.notEqual(response.result.coverage, 'complete');
-});
-
 test('grounding refuses private/traversal sources and exposes symlink and bounded-read failures', t => {
   const directory = temporary(t);
   assert.throws(() => groundedContext(directory, { scope: ['../escape'] }), /relative/);
@@ -227,8 +211,6 @@ test('changed and deleted configuration cannot retain accepted module provenance
   assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
 });
 
-test('grounding fails explicitly at capacity rather than silently dropping required sources', () => {
-  const response = evaluate({ formatVersion: 1, operation: 'grounding-request', input: { scope: Array.from({ length: 33 }, (_, i) => `module-${i}`) } });
-  assert.equal(response.ok, false);
-  assert.match(response.error.message, /capacity/);
+test('grounding fails explicitly at capacity rather than silently dropping required sources', t => {
+  assert.throws(() => groundedContext(temporary(t), { scope: Array.from({ length: 33 }, (_, i) => `module-${i}`) }), /capacity/);
 });

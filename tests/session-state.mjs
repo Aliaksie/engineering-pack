@@ -1,7 +1,8 @@
-import { observe, diagnostic, withTelemetry } from '../telemetry/observe.mjs';
-import { decide, digest } from '../engine-client.mjs';
-import { stateFile, readState, lockState, releaseState, writeState } from '../../platform/index.mjs';
-import { repositorySnapshot } from '../repositories.mjs';
+// Test fixture access to native session records; never included in runtime exports.
+import { observe, diagnostic, withTelemetry } from '../application/telemetry/observe.mjs';
+import { decide, digest } from '../application/engine-client.mjs';
+import { stateFile, readState, lockState, releaseState, writeState } from '../platform/index.mjs';
+import { repositorySnapshot } from '../application/repositories.mjs';
 
 function filename(root, session, task, create = false) {
   decide('activity-identity', { session, task });
@@ -35,10 +36,4 @@ export function activeTask(root, session) {
   const binding = decide('task-binding', { state: readState(bindingFile(root, session), 16384) });
   if (!binding) return undefined;
   return decide('task-binding', { state: binding, repository: repositorySnapshot(root, binding.repositories, { checkoutOnly: true }) })?.task;
-}
-
-export function taskRepository(root, session, task) {
-  const selected = task ?? (session ? activeTask(root, session) : undefined);
-  const repositories = selected && session ? readSessionState(root, session, selected).taskRecord?.repositories : undefined;
-  return repositorySnapshot(root, repositories);
 }

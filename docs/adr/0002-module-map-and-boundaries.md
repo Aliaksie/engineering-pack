@@ -86,6 +86,14 @@ receipts with runtime-observed feature evidence. Moving the callback sequence ad
 JavaScript lines while retiring its application implementation. Status-line adapters pass
 parsed host observations to the native `session` command; Rust owns status aggregation.
 
+Native transport journals and asynchronous task admission use retained native leases.
+Rust records the calling host pid and an opaque ticket on the shared lock protocol;
+ordinary state writers reclaim a recognized lease only after observing its owner dead.
+Live, unknown, malformed and legacy ownerless locks remain busy. Native journal phases
+validate the bounded record and its revision before writing. Adapters hold transport
+observations and tickets; they do not open state files or own lock cleanup. Host feature
+support is a single data table read by the builder and embedded in the native engine.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.

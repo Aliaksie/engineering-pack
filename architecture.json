@@ -14,7 +14,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 1755,
+        "jsLines": 1675,
         "dependsOn": [],
         "entryPoints": ["engine/index.mjs"]
       }
@@ -30,7 +30,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 743,
+        "jsLines": 710,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -46,7 +46,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 562,
+        "jsLines": 479,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
           "application/engine-client.mjs",
@@ -54,15 +54,12 @@
           "application/project-evidence.mjs",
           "application/project/configuration.mjs",
           "application/review.mjs",
-          "application/session/activity.mjs",
-          "application/session/admission.mjs",
           "application/telemetry/capture.mjs",
           "application/telemetry/observe.mjs",
           "application/telemetry/report.mjs"
         ],
         "runtimeRoots": [
           "application/project/configuration.mjs",
-          "application/session/grounding.mjs",
           "application/telemetry/observe.mjs"
         ]
       }
@@ -95,8 +92,8 @@
     "hosts": {
       "kind": "host-adapter",
       "responsibility": "Per-host payload parsing, native invocation and host wire output, the only runtime JavaScript after migration.",
-      "allow": ["**/*.mjs"],
-      "jsLines": 1193,
+      "allow": ["**/*.mjs", "capabilities.json"],
+      "jsLines": 1145,
       "maxFileLines": 300,
       "dependsOn": ["application", "platform"],
       "shipped": true,

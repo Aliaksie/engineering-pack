@@ -1,4 +1,3 @@
-import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
 import { qaProjection } from './session/qa.mjs';
 import { productProjection } from './session/product.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
@@ -26,8 +25,6 @@ const operations = {
   'product-projection': a => productProjection(a, 'product'),
   'architecture-projection': a => productProjection(a, 'architecture'),
   'qa-projection': a => qaProjection(a),
-  'grounding-request': a => groundingRequest(a),
-  'task-context-compose': a => composeTaskContext(a),
   'task-context-validate': a => validateTaskContext(a.context),
   'engineering-contract-validate': a => validateEngineeringContract(a.contract),
   'engineering-contract-digest': a => engineeringContractDigest(a.contract),

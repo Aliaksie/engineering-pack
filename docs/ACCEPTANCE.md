@@ -227,11 +227,12 @@ manually without claiming runtime persistence or enforcement.
 
 ## Grounded context composition
 
-`application/session/grounding.mjs` exposes the opt-in, read-only
-`groundedContext(root, input, { preferencesFile })` use case. `input.scope` contains
+`craft grounded-context --root project --data input.json` composes opt-in, read-only
+context. The forwarded `support/cli/main.mjs grounded-context` command accepts the same
+options. `input.scope` contains
 1–32 project-relative paths. Optional `sources`, `constraints`, `checks` and `questions`
 use the context shapes above; `discovery` may carry an existing bounded lookup result.
-The public engine operations are `grounding-request` and `task-context-compose`.
+The native engine validates the request and composes the context packet.
 Task command persistence is separate; composition does not change task state.
 
 The application hashes root and ancestor `AGENTS.md` files, the project configuration

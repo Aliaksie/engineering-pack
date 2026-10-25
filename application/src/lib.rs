@@ -4,9 +4,11 @@ mod actions;
 mod budget;
 mod checkpoint;
 pub mod cli;
+mod control;
 mod delivery;
 mod discovery;
 mod evidence;
+mod grounding;
 mod host;
 mod project;
 mod scratch;
@@ -47,6 +49,7 @@ pub fn evaluate(request: Value) -> Value {
         Some("host") => host::run(&request["input"]),
         Some("workers") => workers::run(&request["input"]),
         Some("actions") => actions::execute(&request["input"]),
+        Some("control") => control::run(&request["input"]),
         Some("locate") => {
             let result = (|| -> Result<Value, craft_platform::search::SearchError> {
                 let input = &request["input"];

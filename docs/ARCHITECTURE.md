@@ -155,7 +155,7 @@ for diagnostics, bounded loss behavior and the zero-model-cost contract.
 
 ## Developer acceptance flow
 
-The developer slice composes context through `application/session/grounding.mjs`,
+The developer workflow composes context through `craft grounded-context`,
 then uses existing task-start/step/status operations for contracts and evidence.
 The caller interprets constraints and assesses check adequacy/artifact availability;
 the engine projects attributed criterion coverage against the checked binding.

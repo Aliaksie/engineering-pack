@@ -225,7 +225,10 @@ for an attempted release and never repeats the effect. If the native transport c
 release after a lost acknowledgement, the slot remains uncertain and occupied.
 
 These bindings share bounded private intent storage, exclusive ownership and no automatic
-effect retries or stale-lock takeover. An unresolved coordinator action blocks another
+effect retries. Native leases record the owning host pid and an opaque ticket. A recognized
+lease can be reclaimed only when its host process is observed dead; live, unknown, malformed
+and legacy ownerless locks remain busy. Journal writes also require the current revision.
+An unresolved coordinator action blocks another
 native coordinator action even after restart. Output is bounded and marks truncation;
 missing native usage/cost fields stay unknown. Native success is not delivery acceptance.
 

@@ -1,46 +1,23 @@
-import { decide, digest } from '../application/engine-client.mjs';
-import { taskRepository } from '../application/session/activity.mjs';
-import { withTaskAdmission } from '../application/session/admission.mjs';
 import { workerController } from './workers.mjs';
 import { actionController } from './actions.mjs';
-import { clock, realRoot, stateFile, readState, writeState, lockState, releaseState } from '../platform/index.mjs';
+import { nativeJournal, withTaskAdmission, assertNativeSource } from './native-control.mjs';
+import { clock, realRoot } from '../platform/index.mjs';
+export { assertNativeSource } from './native-control.mjs';
 
 export const nativeText = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
 export const nativeCopy = value => JSON.parse(JSON.stringify(value));
-const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-const bytes = 262144;
-export function assertNativeSource(root, source, session, task) {
-  if (!hash(source) || decide('task-source', { repository: taskRepository(root, session, task) }) !== source) throw new Error('native source changed after admission');
-}
-
-// Shared ownership and recovery for callback/stream hosts. Portable admission and approval
-// remain in the existing engine/controllers; a driver supplies only actual native facts.
+// A driver supplies native transport facts. Rust owns the durable journal and
+// admission fence; this adapter sequences callbacks using opaque native tickets.
 export function managedControls({ host, root, session, task, coordinatorId, capacity, driver,
   authorize, observations, verifyResume, preferencesFile, bundle } = {}) {
   root = realRoot(root);
-  decide('activity-identity', { session, task });
   if (!nativeText(host) || !nativeText(coordinatorId) || !Number.isSafeInteger(capacity) || capacity < 1 || capacity > 64
     || typeof authorize !== 'function' || !driver || !['snapshot', 'start', 'cancel', 'act', 'lookup', 'capabilities', 'output', 'close'].every(key => typeof driver[key] === 'function')) throw new Error('explicit native driver, identity, capacity and authority verifier required');
-  const context = { root, session, task, tree: digest([root, session, task]) };
-  const file = stateFile(root, `native-control-${digest([host, context.tree]).slice(0, 24)}.json`, true, session);
-  const owner = lockState(file);
-  if (!owner) throw new Error('native task control already has an owner; reconcile unresolved ownership first');
-  let journal, closed = false, broken = false;
-  try {
-    journal = readState(file, bytes) ?? { formatVersion: 1, host, tree: context.tree, coordinatorId, operations: [] };
-    if (journal.formatVersion !== 1 || journal.host !== host || journal.tree !== context.tree || journal.coordinatorId !== coordinatorId
-      || Object.keys(journal).some(key => !['formatVersion', 'host', 'tree', 'coordinatorId', 'operations'].includes(key))
-      || !Array.isArray(journal.operations) || journal.operations.length > 192
-      || new Set(journal.operations.map(op => op?.key)).size !== journal.operations.length
-      || journal.operations.some(op => !op || !hash(op.key) || !['worker', 'cancel', 'review', 'compact', 'release'].includes(op.kind)
-        || !['intent', 'acknowledged', 'resume-intent', 'resumed', 'completed'].includes(op.phase)
-        || Object.keys(op).some(key => !['key', 'kind', 'source', 'checkpoint', 'nativeId', 'phase', 'released', 'acceptanceEvidence'].includes(key))
-        || (op.source !== null && !hash(op.source)) || (op.checkpoint !== null && !hash(op.checkpoint))
-        || (op.nativeId !== null && !nativeText(op.nativeId)) || (op.acceptanceEvidence !== null && !nativeText(op.acceptanceEvidence))
-        || typeof op.released !== 'boolean')) throw new Error('invalid bounded native journal');
-  } catch (error) { releaseState(owner); throw error; }
+  const owner = nativeJournal({ root, session, task, host, coordinator: coordinatorId, mode: 'managed' });
+  const { context, journal } = owner;
+  let closed = false, broken = false;
   const usable = () => { if (closed || broken) throw new Error('native owner unavailable; retained intent requires reconciliation'); };
-  const persist = () => { usable(); try { writeState(file, journal, bytes); } catch (error) { broken = true; throw error; } };
+  const persist = withdrawn => { usable(); try { owner.persist(withdrawn); } catch (error) { broken = true; throw error; } };
   const binding = input => {
     usable();
     if (input.root !== root || input.session !== session || input.task !== task || (input.tree !== undefined && input.tree !== context.tree)) throw new Error('native coordinator binding changed');
@@ -53,10 +30,7 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
   };
   const begin = (input, kind, nativeId = null) => {
     binding(input);
-    if (!hash(input.key) || journal.operations.some(op => op.key === input.key)) throw new Error('native operation already attempted or invalid; reconcile its key');
-    if (journal.operations.length >= 192) throw new Error('native journal capacity reached; no intent was evicted');
-    const op = { key: input.key, kind, source: input.source ?? null, checkpoint: input.checkpoint ?? null, nativeId, phase: 'intent', released: false, acceptanceEvidence: null };
-    journal.operations.push(op); persist(); return op;
+    return owner.begin(input, kind, nativeId);
   };
   const remember = op => id => { if (!nativeText(id)) throw new Error('invalid native identity'); op.nativeId = id; persist(); };
   const acknowledged = (op, value) => { if (value?.workerId) remember(op)(value.workerId); op.phase = 'acknowledged'; persist(); return value; };
@@ -174,17 +148,17 @@ export function managedControls({ host, root, session, task, coordinatorId, capa
       if (prior) return reconcileRelease(workerId);
       return withTaskAdmission(context, async () => {
         if (driver.capabilities().release !== true || driver.canRelease?.(workerId) !== true) throw new Error('native work must settle and support release before recording intent');
-        const op = begin({ ...context, key: digest([context.tree, 'release', workerId]) }, 'release', workerId);
+        const op = begin({ ...context, releaseWorker: workerId }, 'release', workerId);
         const result = await driver.release(workerId);
         if (result?.released === false) {
           // Drivers return false only when no release effect was submitted.
-          journal.operations.splice(journal.operations.indexOf(op), 1); persist();
+          journal.operations.splice(journal.operations.indexOf(op), 1); persist(op.key);
           throw new Error('native slot release prerequisites changed');
         }
         if (result?.released !== true) throw new Error('native slot release unverified; reconcile before retry');
         op.phase = 'acknowledged'; op.released = true; persist(); return { released: true };
       });
     },
-    close() { if (closed) return; closed = true; try { driver.close(); } finally { releaseState(owner); } }
+    close() { if (closed) return; closed = true; try { driver.close(); } finally { owner.close(); } }
   };
 }

@@ -10,6 +10,7 @@ use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
 pub const COMMANDS: &[&str] = &[
+    "grounded-context",
     "worker-status",
     "settings",
     "operation",
@@ -44,6 +45,7 @@ const ALL_COMMANDS: &[&str] = &[
     "workspace-promote",
     "workspace-release",
     "workspace-clean",
+    "grounded-context",
     "worker-status",
     "task-feature",
     "task-features",
@@ -321,6 +323,26 @@ fn input(recorder: &mut Recorder, parent: &Operation, file: &str) -> Result<Valu
 
 fn root(options: &Options) -> PathBuf {
     resolve(options.get("root").unwrap_or("."))
+}
+
+fn grounded_context(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+    forwarded: Option<&Value>,
+) -> Result<Value, Failure> {
+    let data = match (forwarded, options.get("data")) {
+        (Some(data), _) => data.clone(),
+        (None, Some(file)) => input(recorder, parent, file)?,
+        _ => return Err("grounded-context requires --data input.json".into()),
+    };
+    crate::grounding::run(
+        &root(options),
+        &data,
+        options.get("preferences").map(Path::new),
+        recorder,
+        parent,
+    )
 }
 
 fn loaded(
@@ -1163,6 +1185,9 @@ fn help(action: &str) -> Value {
             "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",
             "mode":"bounded literal scan; optional local reuse receipts"
         }),
+        "grounded-context" => {
+            json!({"usage":"grounded-context --root project --data input.json", "mode":"Read-only citation composition; no task-state changes or command execution."})
+        }
         "context-report" => json!({
             "usage": "context-report --intent implement [--file src/main.py] [--bundle package-root ...]",
             "mode": "selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading",
@@ -1714,6 +1739,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     recorder.package(context["package"].as_str());
     let operation = recorder.start("cli.command", None);
     let command = match action {
+        "grounded-context" => {
+            |o: &Options, r: &mut Recorder, p: &Operation| grounded_context(o, r, p, None)
+        }
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
@@ -1748,6 +1776,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let result = parse(action, args).and_then(|options| {
         if let Some(action) = crate::scratch::Action::from_command(action) {
             return workspace(action, &options, &mut recorder, &operation);
+        }
+        if action == "grounded-context" && context.get("data").is_some() {
+            return grounded_context(&options, &mut recorder, &operation, context.get("data"));
         }
         if matches!(action, "session" | "session-advice") && context.get("data").is_some() {
             return session_status_input(&options, &mut recorder, &operation, context.get("data"));

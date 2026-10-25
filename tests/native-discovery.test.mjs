@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
-import { readSessionState, updateSessionState, addActivity } from '../application/session/activity.mjs';
+import { readSessionState, updateSessionState, addActivity } from './session-state.mjs';
 import { nativeCommand } from '../platform/node/native-command.mjs';
 import { stateFile } from '../platform/index.mjs';
 import { digest } from '../engine/cache/identity.mjs';

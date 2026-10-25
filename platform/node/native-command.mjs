@@ -37,3 +37,6 @@ export const nativeWorkers = input => nativeRequest(process.env.CRAFT_NATIVE_BIN
 
 // One native action phase between trusted asynchronous host callbacks.
 export const nativeActions = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'actions', input, { subject: 'action controller' });
+
+// One native transport journal or retained admission phase.
+export const nativeControl = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'control', input, { subject: 'native control' });

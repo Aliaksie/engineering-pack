@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
-import { activeTask } from '../application/session/activity.mjs';
+import { activeTask } from './session-state.mjs';
 import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { workspaceBoundary, workspaceOperation } from './workspace-cli.mjs';
 import { repositoryRoots, repositoryState, nativeLocate, reviewSnapshot, stateFile } from '../platform/index.mjs';

@@ -5,11 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
-import { readSessionState, activeTask, bindingFile, attemptStatus } from '../application/session/activity.mjs';
+import { readSessionState, activeTask, bindingFile, attemptStatus } from './session-state.mjs';
 import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
 import { renderCommand } from '../cli/render.mjs';
 import { lockState, releaseState, nativeHook } from '../platform/index.mjs';
-import { updateSessionState } from '../application/session/activity.mjs';
+import { updateSessionState } from './session-state.mjs';
 import { readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { readTelemetry } from '../platform/node/telemetry.mjs';
 

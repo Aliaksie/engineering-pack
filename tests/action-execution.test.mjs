@@ -9,7 +9,7 @@ import { stepTask, taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { actionController } from '../hosts/actions.mjs';
 import { decide } from '../application/engine-client.mjs';
-import { readSessionState } from '../application/session/activity.mjs';
+import { readSessionState } from './session-state.mjs';
 
 // task-start runs in the native runtime; tests bind tasks through the CLI.
 const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
@@ -103,7 +103,7 @@ test('native claims reject stale observations, changed binding and a busy bindin
     f.host.observe = async () => observation;
     await assert.rejects(f.controller.execute(f.id), /fresh matching/);
   }
-  const { bindingFile } = await import('../application/session/activity.mjs');
+  const { bindingFile } = await import('./session-state.mjs');
   const lock = `${bindingFile(f.root, 's1', true)}.lock`;
   fs.writeFileSync(lock, '');
   f.host.observe = async () => ({ sessionId: 's1', observedAt: new Date().toISOString(), facts: { allowed: true, supported: true } });

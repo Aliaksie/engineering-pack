@@ -9,7 +9,7 @@ import { taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { workerController } from '../hosts/workers.mjs';
 import { stateFile } from '../platform/index.mjs';
-import { readSessionState, updateSessionState } from '../application/session/activity.mjs';
+import { readSessionState, updateSessionState } from './session-state.mjs';
 
 // task-start runs in the native runtime; tests bind tasks through the CLI.
 const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
