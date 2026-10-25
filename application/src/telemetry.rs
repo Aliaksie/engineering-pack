@@ -162,45 +162,6 @@ impl Recorder {
         }
     }
 
-    /// Join a caller-owned CLI operation; only bounded hexadecimal transport identities pass.
-    pub fn inherit(&mut self, context: &Value) -> Option<Operation> {
-        let trace = context["traceId"].as_str()?;
-        let id = context["operationId"].as_str()?;
-        let hex = |value: &str, len| {
-            value.len() == len
-                && value
-                    .bytes()
-                    .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
-        };
-        let session_id = context["sessionId"].as_str()?;
-        if !hex(trace, 32)
-            || trace.bytes().all(|b| b == b'0')
-            || !hex(session_id, 32)
-            || id.len() != 36
-            || !id.bytes().enumerate().all(|(i, b)| {
-                if [8, 13, 18, 23].contains(&i) {
-                    b == b'-'
-                } else {
-                    matches!(b, b'0'..=b'9' | b'a'..=b'f')
-                }
-            })
-        {
-            return None;
-        }
-        if id.replace('-', "")[..16] == *"0".repeat(16) {
-            return None;
-        }
-        self.trace = trace.to_string();
-        self.session_id = Some(session_id.to_string());
-        self.identity_unavailable = context["identityScope"] != "session" && self.session.is_some();
-        Some(Operation {
-            id: id.to_string(),
-            name: "cli.command",
-            parent: None,
-            started: now_ms(),
-        })
-    }
-
     /// Adopt an identity the command learns from its input: a session when none is valid
     /// yet (later events correlate to it) and a host when none was given.
     pub fn enrich(&mut self, session: Option<&str>, host: Option<&str>) {

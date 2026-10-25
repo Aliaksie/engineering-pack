@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { stateFile, stateLocation, readState, writeState, projectRoot } from '../platform/index.mjs';
 import { prepareEvent } from '../application/context-delivery/prepare.mjs';
 import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
-import { discover } from '../application/discovery/discover.mjs';
+import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 
 function fixture(t) {
@@ -38,12 +38,12 @@ test('default lifecycle and discovery use excluded local state without editing c
   assert.equal(route.routing.intent, 'implement');
   prepareEvent({ cwd: nested, event: 'turn-end', tool: 'other', host: 'codex', session: 's1' });
   assert.equal(readCheckpoint(root, 's1').head, git('rev-parse', 'HEAD'));
-  const scope = { session: 's1', task: 'task-1' };
-  assert.equal(discover(root, { terms: ['SymbolValue'] }, scope).discovery.fresh, 1);
-  assert.equal(discover(root, { terms: ['SymbolValue'] }, scope).discovery.reused, 1);
-  assert.equal(discover(root, { terms: ['SymbolValue'] }, { ...scope, task: 'task-2' }).discovery.reused, 0);
+  const locate = (task = 'task-1') => run(['locate', '--root', root, '--session', 's1', '--task', task, '--term', 'SymbolValue']).discovery;
+  assert.equal(locate().fresh, 1);
+  assert.equal(locate().reused, 1);
+  assert.equal(locate('task-2').reused, 0);
   fs.appendFileSync(path.join(nested, 'value.mjs'), '// source change\n');
-  assert.equal(discover(root, { terms: ['SymbolValue'] }, scope).discovery.reused, 0);
+  assert.equal(locate().reused, 0);
   assert.match(stateFile(root, 'probe.json'), /\.craft[/\\]state[/\\][a-f0-9]{24}[/\\]shared[/\\]/);
   assert.equal(fs.existsSync(path.join(root, '.git', 'craft-state')), false);
   assert.match(git('status', '--porcelain'), /M src\/value.mjs/);
@@ -91,17 +91,16 @@ test('personal reuse controls affect CLI discovery and preference changes invali
   const { root } = fixture(t);
   const preferencesFile = path.join(root, '.git', 'preferences-fixture.json');
   fs.writeFileSync(preferencesFile, '{}', { mode: 0o600 });
-  const scope = { session: 's1', task: 'task-1', preferencesFile };
-  const request = { terms: ['SymbolValue'] };
-  discover(root, request, scope);
-  assert.equal(discover(root, request, scope).discovery.reused, 1);
+  const discover = () => run(['locate', '--root', root, '--session', 's1', '--task', 'task-1', '--preferences', preferencesFile, '--term', 'SymbolValue']);
+  discover();
+  assert.equal(discover().discovery.reused, 1);
   fs.writeFileSync(preferencesFile, JSON.stringify({ efficiency: { lookup: { reuse: false } } }));
-  const disabled = discover(root, request, scope);
+  const disabled = discover();
   assert.equal(disabled.reuse.enabled, false);
   assert.equal(disabled.discovery.reused, 0);
   fs.writeFileSync(preferencesFile, JSON.stringify({ routing: { editHints: false } }));
-  assert.equal(discover(root, request, scope).discovery.reused, 0);
-  assert.equal(discover(root, request, scope).discovery.reused, 1);
+  assert.equal(discover().discovery.reused, 0);
+  assert.equal(discover().discovery.reused, 1);
   assert.throws(() => stateFile(root, '..', true), /filename/);
 });
 

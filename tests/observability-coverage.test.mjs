@@ -14,7 +14,6 @@ import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
 import { execute } from '../cli/requests.mjs';
 import { readProject } from '../application/project/configuration.mjs';
-import { discover } from '../application/discovery/discover.mjs';
 import { readCheckpoint } from '../application/checkpoint.mjs';
 
 const uuid = '12345678-1234-4234-a234-123456789abc';
@@ -53,10 +52,9 @@ test('portable trace and diagnostic contract is deterministic, bounded and seria
 });
 test('project/session isolation honors nested opt-out and separate async contexts',async t=>{
   const outer=fixture(t,{remote:{enabled:true,endpoint:'https://collector.example/v1/traces'}}), disabled=fixture(t,{local:false});
-  withTelemetry(outer,{session:'outer'},()=>execute('route',{session:'inner',intent:'implement',file:[],risk:[]},disabled));
+  withTelemetry(outer,{session:'outer'},()=>execute('worker-status',{session:'inner',task:'task',file:[],risk:[]},disabled));
   withTelemetry(outer,{session:'outer'},()=>{
     readProject(disabled);
-    assert.throws(()=>discover(disabled,{}),/invalid locator terms/);
     readCheckpoint(disabled,'inner');
   });
   assert.deepEqual(readTelemetry(outer),[]); assert.deepEqual(readTelemetry(disabled),[]);
@@ -102,7 +100,7 @@ test('forwarded route preserves one command trace and pseudonym through session 
     }
   }
 });
-test('native route preserves access-denied telemetry when the caller owns the command', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, t => {
+test('native route preserves access-denied telemetry and its I/O code', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, t => {
   const root = fixture(t), file = path.join(root, '.craft/project.json');
   fs.writeFileSync(file, '{}', { mode: 0 });
   assert.throws(() => command(root, 'route', '--intent', 'implement'), { code: 'EACCES' });

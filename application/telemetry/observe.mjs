@@ -184,11 +184,6 @@ export function observe(name, callback, summarize = () => ({}), options = {}) {
     } catch (error) { complete(undefined,error,true); throw error; }
   });
 }
-// Carry a command's correlation through its native call; flush earlier local children first.
-export function commandTelemetry() {
-  const frame = telemetryContext(); frame?.handle.flushLocal();
-  return frame?.operation?.name === 'cli.command' ? { traceId:frame.handle.trace(), operationId:frame.operation.id, ...frame.handle.correlation() } : undefined;
-}
 // Native events bound for export; the next flush posts them under the same pseudonym.
 export function forwardTelemetry(exported) {
   if (!exported) return;

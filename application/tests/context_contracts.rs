@@ -82,6 +82,19 @@ fn argv(request: &Value, project: &Path, bundles: &[String]) -> Vec<String> {
     argv
 }
 
+/// The activity counters of task `t` in session `s`.
+fn activity(project: &Path) -> Value {
+    let name = format!(
+        "session-{}.json",
+        &craft_engine::digest(&json!(["s", "t"]))[..24]
+    );
+    let file = craft_platform::state::file(project, &name, false, Some("s")).unwrap();
+    craft_platform::state::read(&file, 131_072)
+        .unwrap()
+        .unwrap_or_default()["activity"]
+        .clone()
+}
+
 #[test]
 fn frozen_context_cases_replay_through_the_command() {
     let scratch = Scratch(
@@ -116,7 +129,10 @@ fn frozen_context_cases_replay_through_the_command() {
                     .to_string()
             })
             .collect();
-        let outcome = cli::run(&argv(request, &project, &bundles));
+        // The activity a bound task records is part of the frozen response.
+        let mut argv = argv(request, &project, &bundles);
+        argv.extend(["--session", "s", "--task", "t"].map(String::from));
+        let outcome = cli::run(&argv);
         let response = &case["response"];
         if response["ok"] == true {
             let mut expected = response["result"].clone();
@@ -129,8 +145,8 @@ fn frozen_context_cases_replay_through_the_command() {
                     "{id}: exit {} {}\n  expected {expected}\n  actual   {}",
                     outcome.exit_code, outcome.stderr, outcome.stdout
                 ));
-            } else if outcome.activity != Some(response["activity"].clone()) {
-                failures.push(format!("{id}: activity {:?}", outcome.activity));
+            } else if activity(&project) != response["activity"] {
+                failures.push(format!("{id}: activity {}", activity(&project)));
             }
         } else if outcome.exit_code != 2 || !outcome.stdout.is_empty() {
             failures.push(format!(
@@ -163,5 +179,4 @@ fn direct_invocation_requires_an_explicit_bundle() {
     ]);
     assert_eq!(outcome.exit_code, 2);
     assert!(outcome.stderr.contains("1 to 16 explicit bundle roots"));
-    assert_eq!(json!(outcome.activity), Value::Null);
 }

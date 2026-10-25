@@ -7,7 +7,7 @@ import { execute } from './requests.mjs';
 import { renderCommand } from './render.mjs';
 import { nativeCommand, bundleRoot } from '../platform/index.mjs';
 
-const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'task-step', 'task-offer', 'task-decision', 'task-action-check', 'task-feature', 'task-features', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
+const native = new Set(['settings', 'operation', 'prepare-services', 'model-advice', 'lookup', 'route', 'context-report', 'locate', 'checkpoint-save', 'checkpoint-read', 'session', 'session-advice', 'session-attempt', 'task-start', 'task-step', 'task-offer', 'task-decision', 'task-action-check', 'task-feature', 'task-features', 'workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean']); // complete use cases in the native runtime
 
 const help = {
   'worker-status': { usage: 'worker-status --root project --session id [--task id]', mode: 'shared task-tree reservations and host observations; no dispatch' },
@@ -19,8 +19,7 @@ const help = {
 export function run(argv) {
   const [action, ...args] = argv;
   // Session guidance is accounted against this installed bundle unless the caller names roots.
-  if (native.has(action)) { const outcome = nativeCommand(['session', 'session-advice', 'task-step', 'task-offer', 'task-action-check'].includes(action) && !args.includes('--bundle') ? [...argv, '--bundle', bundleRoot()] : argv, { structured: true }); forwardTelemetry(outcome.export); if (outcome.exitCode) throw new Error(outcome.stderr.trimEnd()); return JSON.parse(outcome.stdout); }
-  if (['locate', 'context-report'].includes(action) && args.includes('--help')) { const outcome = nativeCommand(argv); return JSON.parse(outcome.stdout); }
+  if (native.has(action)) { const outcome = nativeCommand(['context-report', 'session', 'session-advice', 'task-step', 'task-offer', 'task-action-check'].includes(action) && !args.includes('--bundle') ? [...argv, '--bundle', bundleRoot()] : argv, { structured: true }); forwardTelemetry(outcome.export); if (outcome.exitCode) throw Object.assign(new Error(outcome.stderr.trimEnd()), { code: outcome.errorCode ?? undefined }); return JSON.parse(outcome.stdout); }
   if (action === 'help' || action === '--help' || args.includes('--help')) return { ...(help[action] ?? { commands: ['workspace-open', 'workspace-write', 'workspace-promote', 'workspace-release', 'workspace-clean', 'worker-status', 'task-feature', 'task-features', 'telemetry-capture', 'telemetry-forget', 'telemetry-report', 'task-offer', 'task-decision', 'task-action-check', 'task-start', 'task-step', 'settings', 'route', 'context-report', 'session', 'session-advice', 'session-attempt', 'model-advice', 'lookup', 'locate', 'prepare-services', 'operation', 'checkpoint-save', 'checkpoint-read'], detail: 'Use <command> --help or docs/SESSION.md for session policy.' }), output: 'Routine receipts are compact by default; --json or --verbose returns the full structured result.' };
   const hint = flag => { const index = args.indexOf(flag); const value = args[index+1]; return index >= 0 && typeof value === 'string' && !value.startsWith('--') ? value : undefined; };
   return withTelemetry(path.resolve(hint('--root') ?? '.'), { session:hint('--session'), host:hint('--host') },

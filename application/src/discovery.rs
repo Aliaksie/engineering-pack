@@ -1,4 +1,4 @@
-//! One discovery invocation: validated session observations are supplied by the W2 bridge.
+//! One discovery invocation over the task's saved scope, with conditional reuse receipts.
 use crate::{
     cli::Failure,
     project,
@@ -23,7 +23,50 @@ pub struct Context<'a> {
     pub session: Option<&'a str>,
     pub task: Option<&'a str>,
     pub preferences: Option<&'a Path>,
-    pub bridge: &'a Value,
+    /// The task state (`state`) and saved repository scope read before discovery; reuse
+    /// receipts are written only while the locked state still equals this observation.
+    pub observed: &'a Value,
+}
+
+/// The task state and repository scope for discovery. Unreadable state keeps the bound
+/// repositories as scope and reports why reuse is unavailable.
+pub fn observation(
+    root: &Path,
+    session: Option<&str>,
+    task: Option<&str>,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Value {
+    let mut observed = json!({});
+    let (Some(session), Some(task)) = (session, task) else {
+        return observed;
+    };
+    match crate::session::read_state(root, session, task, recorder, parent) {
+        Ok(state) => {
+            if let Some(repositories) = state["taskRecord"].get("repositories") {
+                observed["repositories"] = repositories.clone();
+            }
+            observed["state"] = state;
+        }
+        Err(failure) => {
+            observed["diagnostic"] = json!(failure.message);
+            let binding = (|| -> Result<Option<Value>, Failure> {
+                let file = crate::session::binding_file(root, session, false)?;
+                let saved = crate::session::read_record(&file, crate::session::BINDING_BYTES)?;
+                Ok(craft_engine::session::binding(&saved, None)?)
+            })();
+            match binding {
+                Ok(Some(binding)) if binding["task"] == task => {
+                    if let Some(repositories) = binding.get("repositories") {
+                        observed["repositories"] = repositories.clone();
+                    }
+                }
+                Ok(_) => {}
+                Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), parent),
+            }
+        }
+    }
+    observed
 }
 
 pub fn run(
@@ -70,16 +113,13 @@ fn discover(
         session,
         task,
         preferences,
-        bridge,
+        observed,
     } = context;
     if !input.is_object() {
         return Err("invalid bounded locator request".into());
     }
-    if session.is_some() && bridge.is_null() {
-        return Err("session lookup requires validated task context".into());
-    }
     let mut input = input.clone();
-    let repositories = bridge
+    let repositories = observed
         .get("repositories")
         .map(craft_engine::repository::scopes)
         .transpose()?;
@@ -115,10 +155,10 @@ fn discover(
         && task.is_some()
         && settings["efficiency"]["lookup"]["enabled"] == true
         && settings["efficiency"]["lookup"]["reuse"] == true;
-    let state = bridge.get("state").cloned().unwrap_or(Value::Null);
+    let state = observed.get("state").cloned().unwrap_or(Value::Null);
     let mut diagnostic = Value::Null;
     if enabled && state.is_null() {
-        diagnostic = bridge
+        diagnostic = observed
             .get("diagnostic")
             .cloned()
             .unwrap_or(json!("validated session state unavailable"));
@@ -276,4 +316,67 @@ pub fn number(text: &str) -> Value {
     };
     n.and_then(serde_json::Number::from_f64)
         .map_or(Value::Null, Value::Number)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    /// A receipt written after the observation was read is preserved, not overwritten.
+    #[test]
+    fn a_newer_session_receipt_is_preserved() {
+        let root =
+            std::env::temp_dir().join(format!("craft-discovery-newer-{}", std::process::id()));
+        std::fs::create_dir_all(root.join(".craft")).unwrap();
+        let root = std::fs::canonicalize(&root).unwrap();
+        std::fs::write(root.join(".craft/telemetry.json"), r#"{"local":false}"#).unwrap();
+        std::fs::write(root.join("source.txt"), "needle\n").unwrap();
+        let git = |args: &[&str]| {
+            let status = Command::new("git")
+                .args([
+                    "-c",
+                    "user.name=f",
+                    "-c",
+                    "user.email=f@x",
+                    "-c",
+                    "commit.gpgsign=false",
+                ])
+                .args(args)
+                .current_dir(&root)
+                .status()
+                .unwrap();
+            assert!(status.success());
+        };
+        git(&["init", "-q"]);
+        git(&["add", "source.txt"]);
+        git(&["commit", "-qm", "fixture"]);
+        let mut recorder = Recorder::open(&root, Some("s"), None);
+        let parent = recorder.start("cli.command", None);
+        let observed = observation(&root, Some("s"), Some("t"), &mut recorder, &parent);
+        assert!(observed["state"].is_object());
+        let values = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
+        assert!(
+            crate::session::add_activity(&root, "s", "t", &values, &mut recorder, &parent)
+                .is_none()
+        );
+        let newer = crate::session::read_state(&root, "s", "t", &mut recorder, &parent).unwrap();
+        let context = Context {
+            root: &root,
+            session: Some("s"),
+            task: Some("t"),
+            preferences: None,
+            observed: &observed,
+        };
+        let request = json!({"terms": ["needle"], "paths": ["source.txt"]});
+        let result = run(&request, context, &mut recorder, &parent).unwrap();
+        assert_eq!(result["discovery"]["fresh"], 1);
+        assert_eq!(
+            result["reuse"]["diagnostic"],
+            "session state changed during discovery; receipt preserved"
+        );
+        let after = crate::session::read_state(&root, "s", "t", &mut recorder, &parent).unwrap();
+        assert_eq!(after, newer);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }

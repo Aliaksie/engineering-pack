@@ -5,7 +5,6 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { discover } from '../application/discovery/discover.mjs';
 import { attemptStatus } from '../application/session/activity.mjs';
 import { readSessionState } from '../application/session/activity.mjs';
 import { sessionStatus } from '../application/session/status.mjs';
@@ -13,6 +12,15 @@ import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
 import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
 import { run } from '../cli/main.mjs';
+
+// Discovery through the public locate command; `request` is its --data document.
+let requestCount = 0;
+function discover(root, request, { session, task, preferencesFile } = {}) {
+  const data = path.join(requests, `${requestCount++}.json`);
+  fs.writeFileSync(data, JSON.stringify(request));
+  const scope = Object.entries({ session, task, preferences: preferencesFile }).filter(([, value]) => value !== undefined).flatMap(([key, value]) => [`--${key}`, value]);
+  return run(['locate', '--root', root, ...scope, '--data', data]);
+}
 
 // The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
 const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });

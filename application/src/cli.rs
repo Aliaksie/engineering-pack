@@ -204,14 +204,11 @@ pub struct Outcome {
     pub stderr: String,
     /// Remote-bound telemetry for the caller to post, when configured.
     pub export: Option<Value>,
-    /// Session activity counters for the caller that owns session state until W2.
-    pub activity: Option<Value>,
 }
 
 #[derive(Default)]
 struct Options {
     values: Map<String, Value>,
-    discovery: Value,
 }
 
 impl Options {
@@ -525,19 +522,71 @@ pub(crate) fn routed(
     Ok(result?)
 }
 
-fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
-    let settings = loaded(options, recorder, parent)?;
-    let risks = strings(options, "risk");
-    let request = route_request(options, files(options), &risks);
-    routed(&settings, &request, recorder, parent)
+/// The explicit `--task`, else the session's bound task. Advisory commands continue
+/// without a task when the binding cannot be read.
+fn advisory_task(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Option<String> {
+    if let Some(task) = options.get("task").filter(|t| !t.is_empty()) {
+        return Some(task.to_string());
+    }
+    let session = options.get("session").filter(|s| !s.is_empty())?;
+    match crate::session::active_task(&root(options), Some(session)) {
+        Ok(task) => task,
+        Err(_) => {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), parent);
+            None
+        }
+    }
 }
 
-/// Selected guidance accounting, and the session activity counters it implies.
+/// Count `values` for the session's task, if both are known; a failure becomes
+/// `activityDiagnostic` on `result`.
+fn count_activity(
+    options: &Options,
+    task: Option<&str>,
+    values: Map<String, Value>,
+    result: &mut Value,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) {
+    let session = options.get("session").filter(|s| !s.is_empty());
+    let (Some(session), Some(task)) = (session, task) else {
+        return;
+    };
+    if let Some(warning) =
+        crate::session::add_activity(&root(options), session, task, &values, recorder, parent)
+    {
+        result["activityDiagnostic"] = json!(warning);
+    }
+}
+
+fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
+    let task = advisory_task(options, recorder, parent);
+    let settings = loaded(options, recorder, parent)?;
+    let risks = strings(options, "risk");
+    let request = routing::Request {
+        task: task.as_deref(),
+        ..route_request(options, files(options), &risks)
+    };
+    let mut plan = routed(&settings, &request, recorder, parent)?;
+    let values = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
+    count_activity(
+        options,
+        task.as_deref(),
+        values,
+        &mut plan,
+        recorder,
+        parent,
+    );
+    Ok(plan)
+}
+
+/// Selected guidance accounting, counted as requested files and references for the task.
 fn context_report(
     options: &Options,
     recorder: &mut Recorder,
     parent: &Operation,
-) -> Result<(Value, Value), Failure> {
+) -> Result<Value, Failure> {
+    let task = advisory_task(options, recorder, parent);
     let settings = loaded(options, recorder, parent)?;
     let risks = strings(options, "risk");
     // Guidance accounting neither delegates nor reads the task.
@@ -548,7 +597,7 @@ fn context_report(
     };
     let plan = routed(&settings, &request, recorder, parent)?;
     let budget = options.get("budget-bytes").map(crate::discovery::number);
-    let report = guidance_report(
+    let mut report = guidance_report(
         &plan,
         &strings(options, "bundle"),
         budget.as_ref(),
@@ -556,9 +605,22 @@ fn context_report(
         parent,
     )?;
     let references = plan["references"].as_array().map_or(0, Vec::len);
-    let activity =
-        json!({ "filesRequested": report["totals"]["files"], "referencesRequested": references });
-    Ok((report, activity))
+    let values = Map::from_iter([
+        (
+            "filesRequested".to_string(),
+            report["totals"]["files"].clone(),
+        ),
+        ("referencesRequested".to_string(), json!(references)),
+    ]);
+    count_activity(
+        options,
+        task.as_deref(),
+        values,
+        &mut report,
+        recorder,
+        parent,
+    );
+    Ok(report)
 }
 
 /// Selected guidance files for `plan` in the verified `bundles`, observed as `context.observed`.
@@ -600,36 +662,36 @@ fn locate(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    let request = if let Some(request) = options.discovery.get("request") {
-        request.clone()
-    } else {
-        match options.get("data") {
-            Some(file) => input(recorder, parent, file)?,
-            None => {
-                let mut request =
-                    json!({"terms":strings(options,"term"),"paths":strings(options,"path")});
-                for (flag, field) in [
-                    ("max-files", "maxFiles"),
-                    ("max-matches", "maxMatches"),
-                    ("max-bytes", "maxBytes"),
-                    ("max-output-bytes", "maxOutputBytes"),
-                ] {
-                    if let Some(value) = options.get(flag) {
-                        request[field] = crate::discovery::number(value);
-                    }
+    let task = advisory_task(options, recorder, parent);
+    let session = options.get("session").filter(|s| !s.is_empty());
+    let observed =
+        crate::discovery::observation(&root(options), session, task.as_deref(), recorder, parent);
+    let request = match options.get("data") {
+        Some(file) => input(recorder, parent, file)?,
+        None => {
+            let mut request =
+                json!({"terms":strings(options,"term"),"paths":strings(options,"path")});
+            for (flag, field) in [
+                ("max-files", "maxFiles"),
+                ("max-matches", "maxMatches"),
+                ("max-bytes", "maxBytes"),
+                ("max-output-bytes", "maxOutputBytes"),
+            ] {
+                if let Some(value) = options.get(flag) {
+                    request[field] = crate::discovery::number(value);
                 }
-                request
             }
+            request
         }
     };
     crate::discovery::run(
         &request,
         crate::discovery::Context {
             root: &root(options),
-            session: options.get("session"),
-            task: options.get("task"),
+            session,
+            task: task.as_deref(),
             preferences: options.get("preferences").map(Path::new),
-            bridge: &options.discovery,
+            observed: &observed,
         },
         recorder,
         parent,
@@ -1566,9 +1628,8 @@ pub fn run(argv: &[String]) -> Outcome {
     run_in_context(argv, &Value::Null)
 }
 
-/// A forwarded command can share the JS command's operation (`context.telemetry`), receive
-/// the session observation its W2 owner validated (`context.discovery`) and ask for the
-/// JSON result instead of a compact receipt (`context.structured`).
+/// A forwarded command can ask for the JSON result instead of a compact receipt
+/// (`context.structured`).
 pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let (action, args) = match argv.split_first() {
         Some((action, args)) if COMMANDS.contains(&action.as_str()) => (action.as_str(), args),
@@ -1579,7 +1640,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 stdout: String::new(),
                 stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
                 export: None,
-                activity: None,
             };
         }
     };
@@ -1590,7 +1650,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             stdout: render(&help(action)),
             stderr: String::new(),
             export: None,
-            activity: None,
         };
     }
     let hint = |flag: &str| {
@@ -1604,15 +1663,14 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         hint("--session"),
         hint("--host"),
     );
-    let inherited = recorder.inherit(&context["telemetry"]);
-    let forwarded = inherited.is_some();
-    let operation = inherited.unwrap_or_else(|| recorder.start("cli.command", None));
+    let operation = recorder.start("cli.command", None);
     let command = match action {
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
         "lookup" => lookup,
         "route" => route,
+        "context-report" => context_report,
         "locate" => locate,
         "checkpoint-save" => checkpoint_save,
         "checkpoint-read" => checkpoint_read,
@@ -1637,28 +1695,19 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         }
         _ => settings,
     };
-    let mut activity = None;
-    let result = parse(action, args).and_then(|mut options| {
-        options.discovery = context["discovery"].clone();
+    let result = parse(action, args).and_then(|options| {
         if let Some(action) = crate::scratch::Action::from_command(action) {
             return workspace(action, &options, &mut recorder, &operation);
-        }
-        if action == "context-report" {
-            let (report, counters) = context_report(&options, &mut recorder, &operation)?;
-            activity = Some(counters);
-            return Ok(report);
         }
         command(&options, &mut recorder, &operation)
     });
     let outcome = match &result {
         Ok(value) => {
-            if !forwarded {
-                recorder.complete(
-                    operation,
-                    Map::from_iter([("command".to_string(), json!(action))]),
-                    None,
-                );
-            }
+            recorder.complete(
+                operation,
+                Map::from_iter([("command".to_string(), json!(action))]),
+                None,
+            );
             let compact = context["structured"] != true
                 && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
             let text = match action {
@@ -1684,9 +1733,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             (0, text, String::new())
         }
         Err(failure) => {
-            if !forwarded {
-                recorder.complete(operation, Map::new(), Some(failure.code("INVALID_INPUT")));
-            }
+            recorder.complete(operation, Map::new(), Some(failure.code("INVALID_INPUT")));
             (2, String::new(), format!("{}\n", failure.message))
         }
     };
@@ -1704,6 +1751,5 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         stdout: outcome.1,
         stderr: outcome.2,
         export: recorder.finish(),
-        activity,
     }
 }

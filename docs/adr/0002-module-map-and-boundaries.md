@@ -62,14 +62,10 @@ native request per invocation plus handing native results back to the remaining 
 telemetry export until bounded HTTP is native). Each such raise is recorded with its slice and is
 recovered when the forwarded module retires. Behavior never moves into JavaScript this way.
 
-W1h forwards `route` while its existing session binding and activity remain with the W2 owner. CLI transport adds one line
-(337→338); application telemetry transport adds five lines (1320→1325) to carry the existing
-command trace and pseudonym across the process boundary. Both retire with their JS owners.
-
-W1i moves bounded discovery into Rust. Its temporary session bridge resolves task scope and
-validates the session observation. The native writer uses the shared lock and writes only if
-that observation is still current; a concurrent receipt is preserved with an explicit diagnostic.
-The bridge retires when W2 takes session validation and binding.
+A forwarded command passes only its arguments to `craft`; session binding, task state and
+activity are read and written natively. Discovery writes its reuse receipt under the shared lock
+only if the state it observed is still current; a concurrent receipt is preserved with a
+diagnostic.
 
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
