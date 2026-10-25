@@ -30,11 +30,11 @@ function sessionStatusOperation(input = {}, project = { formatVersion: 1 }, { ro
       observations.repository = { gitAvailable: false, head: null, checkout: null, fingerprints: { complete: false, index: null, workingTree: null } };
     }
     const context = decide('task-context', { state: observations.state, repository: observations.repository });
-    input = { ...input, ...(observations.state.notice && input.previous === undefined ? { previous: observations.state.notice } : {}), task: { ...context.task, ...input.task } };
+    // The saved record owns these task fields, including their absence; declarations fill only the rest.
+    input = { ...input, ...(observations.state.notice && input.previous === undefined ? { previous: observations.state.notice } : {}), task: { ...Object.fromEntries(Object.entries(input.task).filter(([key]) => !['stage', 'status', 'goalComplete', 'files', 'revision', 'verification', 'verificationRevision', 'safeBoundary', 'nextStep', 'risks', 'reviewRequested'].includes(key))), ...context.task } };
     observations.taskStale = context.stale;
     observations.acceptance = context.acceptance;
     observations.evidenceDigest = context.evidenceDigest;
-    if (observations.state.taskRecord.engineeringContract) input.task = { ...input.task, goalComplete: context.task.goalComplete, verification: context.task.verification, safeBoundary: context.task.safeBoundary };
     observations.taskContract = context.taskContract;
     observations.binding = context.binding;
   }

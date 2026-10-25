@@ -308,7 +308,10 @@ With an explicit `--session` and `--task`, `route`, `context-report`, `locate` a
 `checkpoint-save` record their own bounded activity. Without a complete explicit or bound identity, these operations
 retain their ordinary behavior without task activity writes. `session` reads existing records;
 it does not increment counters simply for displaying status. Recorded counts take precedence
-over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
+over caller declarations. Likewise, a saved task record owns its stage, status, completion,
+files, revision, verification, safe boundary, next step, risks and review request, even when a
+field is absent or reset as stale; `--data` task declarations fill only the remaining fields.
+Read/lock failures never establish reuse or checkpoint freshness.
 Git and non-Git roots use the same version 2 storage layout:
 
 ```text

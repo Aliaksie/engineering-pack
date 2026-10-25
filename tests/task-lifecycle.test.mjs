@@ -87,6 +87,20 @@ test('source edits invalidate stored acceptance and native tool success never cr
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
 });
 
+test('session declarations fill only fields a saved task record does not own', t => {
+  const { root, command, start, step } = fixture(t);
+  start(); step();
+  fs.appendFileSync(path.join(root, 'value.mjs'), '// new source\n');
+  const data = path.join(root, 'declared.json');
+  fs.writeFileSync(data, JSON.stringify({ task: { status: 'completed', goalComplete: true, verification: 'passed', safeBoundary: true, stage: 'plan', almostComplete: true } }));
+  const status = command('session', '--data', data);
+  assert.equal(status.taskEvidenceStale, true);
+  assert.deepEqual([status.task.status, status.task.goalComplete, status.task.verification, status.task.safeBoundary, status.task.stage],
+    ['working', false, 'unknown', false, 'implement']);
+  assert.equal(status.task.almostComplete, true);
+  assert.notEqual(status.recommendation?.action, 'summarize-evidence');
+});
+
 test('task-step accounts separately installed guidance with verified bundle roots', t => {
   const { command, start } = fixture(t); start();
   const delivery = path.resolve('dist/codex/packages/craft-delivery');
