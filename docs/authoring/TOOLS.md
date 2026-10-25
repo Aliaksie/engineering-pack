@@ -44,7 +44,8 @@ changed trees after recovery. Host adapters report whether each mapped event can
 context or deny a tool call. Automatic behavior requires loaded, trusted hooks; observing
 an event does not imply enforcement or authorize delegation.
 
-The read-only review guard recognizes simple direct publishing commands, quoted arguments,
+The read-only review guard recognizes simple direct publishing commands (including pull/merge
+request and issue creation, and `api` calls whose field or input flags imply a write), quoted arguments,
 command separators, Git global options, literal scripts passed to supported shells with
 `-c` and active `$()`/backtick substitutions. Nested inspection stops at 16 levels and
 denies deeper scripts in read-only sessions. It is a limited guardrail: aliases, arbitrary

@@ -18,11 +18,11 @@ function publishes(words, depth) {
     return args[index] === 'push';
   }
   if (!['gh', 'glab'].includes(executable)) return false;
-  if (['pr', 'mr', 'issue'].includes(args[0]) && ['comment', 'note', 'review', 'approve', 'merge', 'close', 'reopen', 'edit'].includes(args[1])) return true;
-  if (args[0] !== 'api') return false;
-  return args.some((argument, index) => /\bmutation\b/.test(argument)
-    || (/^(?:-X|--method)$/.test(argument) && /^(?:POST|PUT|PATCH|DELETE)$/i.test(args[index + 1] ?? ''))
-    || /^(?:-X|--method)=(?:POST|PUT|PATCH|DELETE)$/i.test(argument));
+  if (['pr', 'mr', 'issue'].includes(args[0]) && ['create', 'comment', 'note', 'review', 'approve', 'merge', 'close', 'reopen', 'edit'].includes(args[1])) return true;
+  if (args[0] !== 'api') return false; // Fields/input imply POST unless a method is named; GraphQL reads always POST.
+  const methods = args.map((argument, index) => /^(?:-X|--method)$/.test(argument) ? args[index + 1] ?? '' : /^(?:-X=?|--method=)(.*)$/.exec(argument)?.[1]).filter(method => method !== undefined);
+  return args.some(argument => /\bmutation\b/.test(argument)) || methods.some(method => /^(?:POST|PUT|PATCH|DELETE)$/i.test(method))
+    || (!methods.length && !args.includes('graphql') && args.some(argument => /^(?:-[fF]|--field|--raw-field|--input)(?:=|$)|^-[fF]./.test(argument)));
 }
 
 
