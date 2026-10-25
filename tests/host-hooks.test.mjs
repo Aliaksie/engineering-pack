@@ -51,6 +51,19 @@ test('all native wrappers map read-only review denials without imposing a global
   }
 });
 
+// Hosts treat a failing hook (exit 1) as non-blocking, so unread input must deny explicitly.
+test('read-only review denies shell input it could not read in full', (t) => {
+  const guarded = fixture(t, { review: { readOnly: true } });
+  const unrestricted = fixture(t);
+  for (const host of native) {
+    const command = `gh pr comment 42 --body ${'x'.repeat(70000)}`;
+    const result = invoke(host, 'craft-review', 'read-only', payload(host, guarded, command), guarded);
+    assert.equal(decision(host, result), 'deny', `${host}: ${result.stderr}`);
+    assert.equal(result.status, host === 'claude' ? 2 : 0, `${host}: ${result.stderr}`);
+    assert.notEqual(decision(host, invoke(host, 'craft-review', 'read-only', payload(host, unrestricted, command), unrestricted)), 'deny');
+  }
+});
+
 test('malformed payloads and unrelated tools produce valid nonblocking wire responses', (t) => {
   const dir = fixture(t, { review: { readOnly: true } });
   for (const host of native) for (const input of ['bad json', 'null', '[]', JSON.stringify({ ...payload(host, dir, 'gh pr comment 1'), tool_name: 'Read', toolName: 'view' })]) {

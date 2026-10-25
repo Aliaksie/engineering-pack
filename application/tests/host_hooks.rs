@@ -145,6 +145,32 @@ fn unread_input_fails_the_hook_and_invalid_input_is_diagnosed() {
 }
 
 #[test]
+fn an_enabled_shell_guard_denies_input_it_could_not_read() {
+    let denied = json!({"decision": "deny", "reason": "Policy could not be evaluated: hook input could not be read in full", "failed": true, "export": null});
+    let guarded = project(
+        "unread-guarded",
+        Some(r#"{"formatVersion":1,"review":{"readOnly":true}}"#),
+    );
+    let invalid = project("unread-invalid", Some("{"));
+    for status in ["oversized", "read-failure"] {
+        for fixture in [&guarded, &invalid] {
+            let result = hook(facts(
+                &fixture.0,
+                "review-read-only",
+                json!({"inputStatus": status}),
+            ));
+            assert_eq!(result, denied);
+        }
+        // Only shell enforcement before a tool call denies; other scopes keep failing open.
+        for extra in [json!({"scope": "any"}), json!({"lifecycle": "after-tool"})] {
+            let mut input = facts(&guarded.0, "review-read-only", extra);
+            input["inputStatus"] = json!(status);
+            assert_eq!(hook(input), json!({"failed": true, "export": null}));
+        }
+    }
+}
+
+#[test]
 fn read_only_review_denies_publishing_shell_commands_only_when_configured() {
     let guarded = project(
         "guarded",

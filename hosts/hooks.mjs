@@ -88,7 +88,7 @@ export async function runNativeHook(handler, platform, definition, packageName, 
       result = enforcement ? { decision: 'deny', reason: `Policy could not be evaluated: ${error.message}` }
         : observational ? { decision: 'allow' } : { decision: 'allow', context: { kind: 'unavailable', data: error.message } };
     }
-    if (inputError && !observational) throw inputError;
+    if (inputError && !observational && result.decision !== 'deny') throw inputError;
     const wire = observational ? { output: '', error: '', exitCode: 0 } : serialize(result, platform, definition);
     if (wire.output) process.stdout.write(wire.output);
     if (wire.error) process.stderr.write(wire.error);

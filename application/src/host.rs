@@ -138,8 +138,21 @@ pub fn run(input: &Value) -> Result<Value, String> {
         } else {
             Map::new()
         };
+        // Hosts continue after a failing hook, so an enabled shell guard denies explicitly.
+        let guarded = facts.handler == Handler::ReviewReadOnly
+            && facts.shell_only
+            && facts.lifecycle == "before-tool"
+            && project::settings(&root, None)
+                .map_or(true, |settings| settings["review"]["readOnly"] == true);
         recorder.complete(hook, summary, Some("HOOK_FAILED"));
-        return Ok(json!({"failed": true, "export": recorder.finish()}));
+        let mut result = if guarded {
+            craft_engine::delivery::failure(true, "hook input could not be read in full")
+        } else {
+            json!({})
+        };
+        result["failed"] = json!(true);
+        result["export"] = json!(recorder.finish());
+        return Ok(result);
     }
     let mut decision = json!({"decision": "allow"});
     let mut failed = false;
