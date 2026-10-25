@@ -376,8 +376,9 @@ mod tests {
         let closed = TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://127.0.0.1:{}/", closed.local_addr().unwrap().port());
         drop(closed);
+        // Windows retries a refused loopback connection for about two seconds.
         assert_eq!(
-            post(&url, b"{}", Duration::from_secs(1)),
+            post(&url, b"{}", Duration::from_secs(5)),
             json!({"ok": false, "failure": "transport"})
         );
     }
