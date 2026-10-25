@@ -1,46 +1,15 @@
 import { decide } from '../engine-client.mjs';
 import { readProject } from '../project/configuration.mjs';
-import { route } from '../routing/select.mjs';
-import { readSessionState, updateSessionState, addActivity, bindingFile, activeTask, taskRepository } from './activity.mjs';
-import { repositorySnapshot } from '../repositories.mjs';
+import { readSessionState, updateSessionState, bindingFile, activeTask, taskRepository } from './activity.mjs';
 import { workspaceBoundary } from '../workspace.mjs';
 import { sessionStatus } from './status.mjs';
 import { saveCheckpoint } from '../checkpoint.mjs';
-import { writeState, lockState, releaseState, clock, uniqueId } from '../../platform/index.mjs';
+import { lockState, releaseState, clock, uniqueId } from '../../platform/index.mjs';
 
 function checkpoint(root, session, task, project, continuation, expectedSource) {
   if (!project.checkpoint.enabled) return { status: 'disabled' };
   try { return saveCheckpoint(root, session, { taskId: task, taskContract: decide('task-contract', { record: readSessionState(root, session, task).taskRecord }), ...(continuation ? { continuation } : {}) }, { expectedSource }); }
   catch (error) { return { status: 'unavailable', reason: error.message }; }
-}
-export function startTask(root, session, task, input, { host, preferencesFile } = {}) {
-  decide('activity-identity', { session, task });
-  const project = readProject(root, { preferencesFile });
-  const file = bindingFile(root, session, true);
-  const ticket = lockState(file);
-  if (!ticket) throw new Error('active task writer is busy');
-  try {
-    const previous = readSessionState(root, session, task);
-    const repositories = input.repositories === undefined ? previous.taskRecord?.repositories : decide('repository-scopes', { repositories: input.repositories });
-    const repository = repositorySnapshot(root, repositories);
-    const started = decide('task-start', { state: previous, input: { ...input, id: task }, repository });
-    const routing = route({ intent: started.intent,
-      files: started.state.taskRecord.files, risks: started.state.taskRecord.risks, project, host });
-    const revision = repository.head;
-    const model = revision && ['locator', 'researcher', 'implementer', 'reviewer', 'planner', 'verifier'].includes(routing.execution.role)
-      ? decide('model-advice', { input: { host: host ?? 'unknown', role: routing.execution.role, task, revision, capabilityClass: routing.capability.class }, project })
-      : { decision: 'unavailable', reasons: ['A supported role and source revision are required; retain current execution.'] };
-    updateSessionState(root, session, task, state => {
-      // Revalidate under the task-state lock; a concurrent step must not be overwritten.
-      const current = decide('task-start', { state, input: { ...input, id: task }, repository });
-      Object.assign(state, current.state); addActivity(state, { routingDecisions: 1 });
-    });
-    writeState(file, { formatVersion: 1, task, checkout: repository.checkout, ...(repositories ? { repositories } : {}) }, 16384);
-    const context = decide('task-context', { state: readSessionState(root, session, task), repository });
-    const workspace = workspaceBoundary(root, session, task, 'maintain', project);
-    return { session, task, ...(repositories ? { repositories } : {}), routing, modelAdvice: model, acceptance: context.acceptance, evidenceDigest: context.evidenceDigest, taskContract: context.taskContract, binding: context.binding, checkpoint: checkpoint(root, session, task, project), workspace,
-      authorization: 'Local task binding and snapshot only; no acceptance, worker, model switch or remote action was inferred.' };
-  } finally { releaseState(ticket); }
 }
 export function stepTask(root, session, task, input, { host, preferencesFile, bundle } = {}) {
   decide('activity-identity', { session, task });

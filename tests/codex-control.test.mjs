@@ -6,7 +6,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createCodexControls, openCodexControls } from '../hosts/codex/control.mjs';
-import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
+import { stepTask, taskAction } from '../application/session/task.mjs';
+import { run } from '../cli/main.mjs';
+
+// task-start runs in the native runtime; tests bind tasks through the CLI.
+const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
+  ...risks.flatMap(risk => ['--risk', risk]), ...(contract ? ['--contract', contract] : []), ...(host ? ['--host', host] : [])]);
 
 // Protocol fixture only: no native process, credentials or model calls.
 function protocol() {

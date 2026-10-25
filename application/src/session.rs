@@ -7,17 +7,17 @@ use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const BINDING_BYTES: usize = 16384;
+pub(crate) const BINDING_BYTES: usize = 16384;
 const STATE_BYTES: usize = 131_072;
 
 fn short(value: &Value) -> String {
     digest(value)[..24].to_string()
 }
 
-fn binding_file(root: &Path, session: &str) -> Result<PathBuf, Failure> {
+pub(crate) fn binding_file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {
     session::identity(&json!(session), &json!("active-binding"))?;
     let name = format!("active-{}.json", short(&json!(session)));
-    Ok(state::file(root, &name, false, Some(session))?)
+    Ok(state::file(root, &name, create, Some(session))?)
 }
 
 fn state_file(root: &Path, session: &str, task: &str, create: bool) -> Result<PathBuf, Failure> {
@@ -39,7 +39,7 @@ pub fn active_task(root: &Path, session: Option<&str>) -> Result<Option<String>,
     let Some(session) = session else {
         return Ok(None);
     };
-    let saved = read_record(&binding_file(root, session)?, BINDING_BYTES)?;
+    let saved = read_record(&binding_file(root, session, false)?, BINDING_BYTES)?;
     let Some(binding) = session::binding(&saved, None)? else {
         return Ok(None);
     };

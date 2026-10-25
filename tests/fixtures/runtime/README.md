@@ -124,3 +124,13 @@ refusal (resolution rules, open-attempt capacity, closed-history eviction, count
 It includes the seven `attempt-receipt`/`attempt-append` cases retired from
 `engine-contracts.json`. The Rust replay (`cargo test -p craft-engine --test attempt_contracts`)
 has no corrections.
+
+`task-contracts.json` freezes 235 JavaScript engine `task-start` responses at `7d8a0ac`: input
+validation of every field, new and repeated tasks, every change dimension (stage, files, risks,
+repositories, engineering contract, checkout) with its acceptance reset, and the returned intent
+and task context. It includes the two legacy lifecycle starts used by
+`acceptance-contract.test.mjs` and the five `task-start` cases retired from
+`engine-contracts.json`. Results compare as serialized JSON, so key order is contractual, and
+error messages compare exactly. The Rust replay (`cargo test -p craft-engine --test task_contracts`)
+lists one message correction: a non-string task file is reported as JSON rather than
+`[object Object]`.

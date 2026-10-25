@@ -14,7 +14,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 2219,
+        "jsLines": 2177,
         "dependsOn": [],
         "entryPoints": ["engine/index.mjs"]
       }
@@ -46,7 +46,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 1279,
+        "jsLines": 1248,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
           "application/context-delivery/prepare.mjs",
@@ -82,7 +82,7 @@
       "responsibility": "Legacy JS command parsing and display that moves into the application crate.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 292,
+      "jsLines": 287,
       "dependsOn": ["application", "platform"],
       "shipped": true,
       "runtimeRoots": ["cli/main.mjs", "cli/project-evidence.mjs"]

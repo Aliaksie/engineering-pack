@@ -4,10 +4,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
+import { fileURLToPath } from 'node:url';
+import { stepTask, taskAction } from '../application/session/task.mjs';
+import { run } from '../cli/main.mjs';
 import { actionController } from '../application/session/actions.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { readSessionState } from '../application/session/activity.mjs';
+
+// task-start runs in the native runtime; tests bind tasks through the CLI.
+const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
+  ...risks.flatMap(risk => ['--risk', risk]), ...(contract ? ['--contract', contract] : []), ...(host ? ['--host', host] : [])]);
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-action-')));
@@ -80,8 +86,7 @@ test('source mutation rejects execution and malformed completion does not claim 
 
 test('amended task criteria invalidate an existing approval without a source edit', async t => {
   const f = fixture(t); f.decideOffer('approved');
-  const contract = JSON.parse(fs.readFileSync(new URL('./fixtures/acceptance/contract.json', import.meta.url)));
-  startTask(f.root, 's1', 'T1', { goal: 'Verify the scoped change', engineeringContract: contract });
+  startTask(f.root, 's1', 'T1', { goal: 'Verify the scoped change', contract: fileURLToPath(new URL('./fixtures/acceptance/contract.json', import.meta.url)) });
   await assert.rejects(f.controller.execute(f.id), /stale.*contract/);
   assert.equal(f.calls.length, 0);
   assert.equal(readSessionState(f.root, 's1', 'T1').taskRecord.goalComplete, false);

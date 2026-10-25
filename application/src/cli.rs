@@ -21,6 +21,7 @@ pub const COMMANDS: &[&str] = &[
     "checkpoint-save",
     "checkpoint-read",
     "session-attempt",
+    "task-start",
     "workspace-open",
     "workspace-write",
     "workspace-promote",
@@ -482,7 +483,7 @@ fn files(options: &Options) -> &[Value] {
 }
 
 /// The route with its `routing.completed` operation and `guidance.selected` observations.
-fn routed(
+pub(crate) fn routed(
     settings: &Value,
     request: &routing::Request,
     recorder: &mut Recorder,
@@ -704,6 +705,50 @@ fn session_attempt(
     }))
 }
 
+/// Bind, route and snapshot one task; `--file`, `--risk`, `--stage` and `--repository` rescope
+/// a repeated start, and omitted ones keep the saved values.
+fn task_start(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let given = |name: &str| options.get(name).filter(|value| !value.is_empty());
+    let (Some(session), Some(task), Some(goal)) = (given("session"), given("task"), given("goal"))
+    else {
+        return Err("task-start requires --session, --task and --goal".into());
+    };
+    let mut start = Map::from_iter([("goal".to_string(), json!(goal))]);
+    if let Some(file) = given("contract") {
+        start.insert("engineeringContract".into(), input(recorder, parent, file)?);
+    }
+    if let Some(repositories) = options.values.get("repository") {
+        start.insert("repositories".into(), repositories.clone());
+    }
+    if let Some(risks) = options.values.get("risk") {
+        start.insert("risks".into(), risks.clone());
+    }
+    if let Some(authorization) = given("review-authorization") {
+        start.insert("reviewAuthorization".into(), json!(authorization));
+    }
+    if let Some(stage) = given("stage") {
+        start.insert("stage".into(), json!(stage));
+    }
+    if let Some(files) = options.values.get("file") {
+        start.insert("files".into(), files.clone());
+    }
+    craft_engine::session::identity(&json!(session), &json!(task))?;
+    let settings = loaded(options, recorder, parent)?;
+    let request = crate::task::Start {
+        root: &root(options),
+        session,
+        task,
+        input: start,
+        host: options.get("host"),
+        settings: &settings,
+    };
+    crate::task::start(request, recorder, parent)
+}
+
 /// One `workspace-*` action for the explicit or bound task: `--data` supplies the artifact
 /// or promotion, `--operation` the owner scope.
 fn workspace(
@@ -786,6 +831,10 @@ fn help(action: &str) -> Value {
             "usage": "checkpoint-read --root project --session id",
             "mode": "read-only recovery comparison",
         }),
+        "task-start" => json!({
+            "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
+            "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees",
+        }),
         "session-attempt" => json!({
             "usage": "session-attempt --root project --session id --task task-id --data attempt.json",
             "example": {"operation": "implement", "target": "acceptance:regression", "approach": "bounded-fix", "evidence": "artifacts/check.json", "outcome": "passed"},
@@ -835,8 +884,18 @@ fn render(value: &Value) -> String {
     )
 }
 
-/// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.
-fn receipt(saved: &Value) -> String {
+fn nonempty(value: &Value) -> Option<&str> {
+    value.as_str().filter(|text| !text.is_empty())
+}
+
+/// A saved, unchanged, disabled or unavailable checkpoint in one line.
+fn checkpoint_line(saved: &Value) -> String {
+    if let Some(status) = nonempty(&saved["status"]) {
+        return match nonempty(&saved["reason"]) {
+            Some(reason) => format!("Checkpoint: {status} — {reason}"),
+            None => format!("Checkpoint: {status}"),
+        };
+    }
     let incomplete = if saved["state"]["fingerprints"]["complete"] == false {
         " (repository inspection incomplete)"
     } else {
@@ -848,9 +907,90 @@ fn receipt(saved: &Value) -> String {
         "saved"
     };
     let mut text = format!("Checkpoint: {status}{incomplete}");
-    if let Some(file) = saved["file"].as_str().filter(|f| !f.is_empty()) {
+    if let Some(file) = nonempty(&saved["file"]) {
         text.push_str(&format!(" — {file}"));
     }
+    text
+}
+
+fn joined(value: &Value) -> Option<String> {
+    let items: Vec<&str> = value.as_array()?.iter().filter_map(Value::as_str).collect();
+    (!items.is_empty()).then(|| items.join(", "))
+}
+
+/// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
+fn task_receipt(result: &Value) -> String {
+    let routing = &result["routing"];
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let mut lines = vec![
+        format!("Task bound: {}", text(&result["task"])),
+        format!(
+            "Execution: {} / {}",
+            text(&routing["execution"]["mode"]),
+            text(&routing["execution"]["role"])
+        ),
+    ];
+    for (label, value) in [
+        ("Repositories", &result["repositories"]),
+        ("Skills", &routing["skills"]),
+        ("References", &routing["references"]),
+    ] {
+        if let Some(items) = joined(value) {
+            lines.push(format!("{label}: {items}"));
+        }
+    }
+    lines.push(checkpoint_line(&result["checkpoint"]));
+    let model = &result["modelAdvice"];
+    if model.is_object() {
+        let profile = nonempty(&model["profile"]).map_or(String::new(), |p| format!(" / {p}"));
+        let limitation = nonempty(&model["mainModel"]["limitation"])
+            .map_or(" (recommendation only)".to_string(), |l| format!(" — {l}"));
+        lines.push(format!(
+            "Model advice: {}{profile}{limitation}",
+            text(&model["decision"])
+        ));
+    }
+    for missing in routing["missing"].as_array().into_iter().flatten() {
+        lines.push(format!("Missing: {}", text(missing)));
+    }
+    let acceptance = &result["acceptance"];
+    if acceptance.is_object() {
+        lines.push(format!("Acceptance: {}", text(&acceptance["assurance"])));
+        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
+            let optional = if criterion["required"] == true {
+                ""
+            } else {
+                " (optional)"
+            };
+            lines.push(format!(
+                "Criterion: {} — {}{optional}",
+                text(&criterion["id"]),
+                text(&criterion["status"])
+            ));
+        }
+    }
+    if let Some(contract) = nonempty(&result["taskContract"]) {
+        lines.push(format!("Task contract: {contract}"));
+    }
+    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
+        lines.push(format!("Evidence digest: {digest}"));
+    }
+    if result["binding"].is_object() {
+        let source = nonempty(&result["binding"]["identity"]).unwrap_or("unknown");
+        lines.push(format!("Source: {source}"));
+    }
+    if result["workspace"]["status"] == "retained"
+        && let Some(reason) = nonempty(&result["workspace"]["reason"])
+    {
+        lines.push(format!("Workspace retained: {reason}"));
+    }
+    lines.retain(|line| !line.is_empty());
+    format!("{}\n", lines.join("\n"))
+}
+
+/// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.
+fn receipt(saved: &Value) -> String {
+    let mut text = checkpoint_line(saved);
     if let Some(warning) = saved["activityDiagnostic"]
         .as_str()
         .filter(|w| !w.is_empty())
@@ -917,6 +1057,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "checkpoint-save" => checkpoint_save,
         "checkpoint-read" => checkpoint_read,
         "session-attempt" => session_attempt,
+        "task-start" => task_start,
         _ => settings,
     };
     let mut activity = None;
@@ -945,6 +1086,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
             let text = match action {
                 "checkpoint-save" if compact => receipt(value),
+                "task-start" if compact => task_receipt(value),
                 "session-attempt" if compact => {
                     let recorded = &value["recorded"];
                     let field =

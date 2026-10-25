@@ -22,7 +22,7 @@ pub fn private_path(path: &str) -> bool {
             .any(|pair| [".craft", ".capabilities"].contains(&pair[0]) && pair[1] == "state")
 }
 
-fn member(file: &str, directory: &str) -> bool {
+pub(crate) fn member(file: &str, directory: &str) -> bool {
     directory == "."
         || file == directory
         || file

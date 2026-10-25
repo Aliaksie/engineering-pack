@@ -1,7 +1,9 @@
 //! Task-scoped session records: identities, validation, attempts and the bound task context.
 use crate::{
-    contracts::{js_length, safe_integer},
-    digest, repository, timestamp,
+    contracts::{js_length, relative_file, safe_integer},
+    digest, repository,
+    routing::{member, private_path},
+    timestamp,
 };
 use serde_json::{Map, Value, json};
 
@@ -401,6 +403,177 @@ pub fn binding(value: &Value, checkout: Option<&Value>) -> Result<Option<Value>>
         Some(current) if map.get("checkout") != Some(current) => None,
         _ => Some(value.clone()),
     })
+}
+
+const START_FIELDS: &[&str] = &[
+    "id",
+    "goal",
+    "stage",
+    "files",
+    "risks",
+    "reviewAuthorization",
+    "repositories",
+    "engineeringContract",
+];
+
+/// `value ?? fallback`: JSON null is absent.
+fn given(value: Option<&Value>) -> Option<&Value> {
+    value.filter(|v| !v.is_null())
+}
+
+/// Serialized as `JSON.stringify` compares it; absent is distinct from null.
+fn same(a: Option<&Value>, b: Option<&Value>) -> bool {
+    a.map(Value::to_string) == b.map(Value::to_string)
+}
+
+fn optional_digest(contract: Option<&Value>) -> Result<Option<String>> {
+    contract
+        .filter(|c| truthy(c))
+        .map(acceptance::contract_digest)
+        .transpose()
+}
+
+/// Create or re-scope the task record for `input`; returns the routing intent of its stage.
+/// A changed stage, file set, risk set, repository selection, contract or checkout reopens
+/// the task and clears its verification and acceptance evidence.
+pub fn start(state: &mut Value, input: &Value, repository: &Value) -> Result<&'static str> {
+    let input = input
+        .as_object()
+        .filter(|m| m.keys().all(|k| START_FIELDS.contains(&k.as_str())))
+        .ok_or("invalid task start")?;
+    let field = |name: &str| input.get(name);
+    identity(&json!("task"), field("id").unwrap_or(&Value::Null))?;
+    if !text(field("goal").unwrap_or(&Value::Null)) {
+        return Err("task goal must be 1..512 characters without control characters".into());
+    }
+    let previous = state.get("taskRecord").filter(|r| truthy(r));
+    if previous.is_some_and(|r| r.get("id") != field("id") || r.get("goal") != field("goal")) {
+        return Err("task identity already has a different goal; use a new task id".into());
+    }
+    let saved = |name: &str| previous.and_then(|r| given(r.get(name)));
+    if let Some(contract) = field("engineeringContract") {
+        acceptance::validate_contract(contract)?;
+    }
+    let contract = given(field("engineeringContract"))
+        .or_else(|| saved("engineeringContract"))
+        .cloned();
+    let selected = stage(
+        given(field("stage"))
+            .or_else(|| saved("stage"))
+            .unwrap_or(&json!("implement")),
+    )?;
+    let files = given(field("files"))
+        .or_else(|| saved("files"))
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    let files = files
+        .as_array()
+        .filter(|f| f.len() <= 32)
+        .ok_or("task files must be a bounded array")?
+        .iter()
+        .map(relative_file)
+        .collect::<Result<Vec<_>>>()?;
+    if files.iter().any(|f| private_path(f)) {
+        return Err("private workspace files are not task source".into());
+    }
+    let repositories = match field("repositories") {
+        None => previous.and_then(|r| r.get("repositories")).cloned(),
+        Some(value) => Some(json!(repository::scopes(value)?)),
+    };
+    if let Some(scopes) = repositories.as_ref().filter(|r| truthy(r)) {
+        let scopes: Vec<&str> = scopes
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if !files
+            .iter()
+            .all(|f| scopes.iter().any(|scope| member(f, scope)))
+        {
+            return Err("task files must belong to a selected repository".into());
+        }
+    }
+    if let Some(risks) = field("risks")
+        && !risks
+            .as_array()
+            .is_some_and(|r| r.len() <= 16 && r.iter().all(text))
+    {
+        return Err("invalid task risks".into());
+    }
+    if field("reviewAuthorization").is_some_and(|a| !text(a)) {
+        return Err("invalid review authorization evidence".into());
+    }
+    let risks = given(field("risks"))
+        .or_else(|| saved("risks"))
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    let files = json!(files);
+    let checkout = given(repository.get("checkout"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    if previous.is_none() {
+        state["taskRecord"] = json!({
+            "id": field("id"), "goal": field("goal"), "status": "working", "goalComplete": false,
+        });
+    }
+    let record = state["taskRecord"]
+        .as_object_mut()
+        .ok_or("invalid session state")?;
+    let changed = record.get("stage").is_some_and(truthy)
+        && (record.get("stage") != Some(&json!(selected))
+            || !same(
+                given(record.get("files")).or(Some(&json!([]))),
+                Some(&files),
+            )
+            || !same(
+                given(record.get("risks")).or(Some(&json!([]))),
+                Some(&risks),
+            )
+            || !same(record.get("repositories"), repositories.as_ref())
+            || optional_digest(contract.as_ref())?
+                != optional_digest(record.get("engineeringContract"))?
+            || record.get("checkout") != Some(&checkout));
+    if changed {
+        record.insert("status".into(), json!("working"));
+        record.insert("goalComplete".into(), json!(false));
+        record.shift_remove("verification");
+        record.shift_remove("verificationRevision");
+        if contract.as_ref().is_some_and(truthy) {
+            record.insert(
+                "acceptanceEvidence".into(),
+                json!({"formatVersion": 1, "records": []}),
+            );
+        }
+        record.shift_remove("completed");
+        record.insert("safeBoundary".into(), json!(false));
+    }
+    record.insert("stage".into(), json!(selected));
+    record.insert("files".into(), files);
+    record.insert("risks".into(), risks);
+    record.insert("checkout".into(), checkout);
+    if let Some(authorization) = field("reviewAuthorization") {
+        record.insert("reviewAuthorization".into(), authorization.clone());
+        record.insert("reviewRequested".into(), json!(true));
+    }
+    if let Some(repositories) = repositories {
+        record.insert("repositories".into(), repositories);
+    }
+    if let Some(contract) = contract.filter(truthy) {
+        record.insert("engineeringContract".into(), contract);
+        if given(record.get("acceptanceEvidence")).is_none() {
+            record.insert(
+                "acceptanceEvidence".into(),
+                json!({"formatVersion": 1, "records": []}),
+            );
+        }
+        state["formatVersion"] = json!(2);
+    }
+    Ok(STAGES
+        .iter()
+        .find(|(name, _)| *name == selected)
+        .map(|(_, intent)| *intent)
+        .expect("validated stage"))
 }
 
 /// Identity of the task definition: goal, stage, files, risks, checkout, repositories, contract.

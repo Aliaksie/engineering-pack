@@ -5,10 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { startTask, taskAction } from '../application/session/task.mjs';
+import { taskAction } from '../application/session/task.mjs';
+import { run } from '../cli/main.mjs';
 import { workerController } from '../application/session/workers.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { readSessionState, updateSessionState } from '../application/session/activity.mjs';
+
+// task-start runs in the native runtime; tests bind tasks through the CLI.
+const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
+  ...risks.flatMap(risk => ['--risk', risk]), ...(contract ? ['--contract', contract] : []), ...(host ? ['--host', host] : [])]);
 
 const brief = { goal: 'Inspect one independent source', sources: ['value.mjs'], acceptance: ['Return source evidence'], restrictions: ['Read only'], returnShape: 'Findings and evidence' };
 function fixture(t, maxWorkers = 3) {

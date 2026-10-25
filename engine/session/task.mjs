@@ -1,14 +1,12 @@
-import { validateEngineeringContract, validateAcceptanceEvidence, engineeringContractDigest, acceptanceCoverage } from './acceptance.mjs';
+import { validateAcceptanceEvidence, engineeringContractDigest, acceptanceCoverage } from './acceptance.mjs';
 import { activityIdentity, appendAttempt, attemptReceipt, unresolvedAttempts } from './activity.mjs';
 import { validateMetadata } from '../checkpoint.mjs';
-import { relativeFile } from '../contracts/project.mjs';
 import { digest } from '../cache/identity.mjs';
 import { repositoryScopes } from '../repositories.mjs';
-import { privatePath } from '../contracts/paths.mjs';
 
-export const taskIntents = { plan: 'plan', implement: 'implement', verify: 'verify', review: 'review', locate: 'locate', explore: 'verify', architecture: 'investigate', story: 'story' };
+const stages = ['plan', 'implement', 'verify', 'review', 'locate', 'explore', 'architecture', 'story'];
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);
-function stage(value) { if (!Object.hasOwn(taskIntents, value)) throw new Error('invalid task stage'); return value; }
+function stage(value) { if (!stages.includes(value)) throw new Error('invalid task stage'); return value; }
 function keys(value, allowed, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key))) throw new Error(`invalid ${label}`);
 }
@@ -27,45 +25,6 @@ export function taskContract(record) {
 export function taskSource(repository) {
   return repository?.gitAvailable && repository.fingerprints?.complete
     ? digest([repository.head, repository.fingerprints.index, repository.fingerprints.workingTree]) : null;
-}
-export function startTask(state, input, repository) {
-  keys(input, ['id', 'goal', 'stage', 'files', 'risks', 'reviewAuthorization', 'repositories', 'engineeringContract'], 'task start');
-  activityIdentity('task', input.id);
-  if (!text(input.goal)) throw new Error('task goal must be 1..512 characters without control characters');
-  if (state.taskRecord && (state.taskRecord.id !== input.id || state.taskRecord.goal !== input.goal)) throw new Error('task identity already has a different goal; use a new task id');
-  if (input.engineeringContract !== undefined) validateEngineeringContract(input.engineeringContract);
-  const contract = input.engineeringContract ?? state.taskRecord?.engineeringContract;
-  const selected = stage(input.stage ?? state.taskRecord?.stage ?? 'implement');
-  const given = input.files ?? state.taskRecord?.files ?? [];
-  if (!Array.isArray(given) || given.length > 32) throw new Error('task files must be a bounded array');
-  const files = given.map(relativeFile);
-  if (files.some(privatePath)) throw new Error('private workspace files are not task source');
-  const repositories = input.repositories === undefined ? state.taskRecord?.repositories : repositoryScopes(input.repositories);
-  if (repositories && files.some(file => !repositories.some(scope => scope === '.' || file === scope || file.startsWith(`${scope}/`)))) throw new Error('task files must belong to a selected repository');
-  if (input.risks !== undefined && (!Array.isArray(input.risks) || input.risks.length > 16 || input.risks.some(value => !text(value)))) throw new Error('invalid task risks');
-  if (input.reviewAuthorization !== undefined && !text(input.reviewAuthorization)) throw new Error('invalid review authorization evidence');
-  state.taskRecord ??= { id: input.id, goal: input.goal, status: 'working', goalComplete: false };
-  const risks = input.risks ?? state.taskRecord.risks ?? [];
-  const changed = state.taskRecord.stage && (state.taskRecord.stage !== selected
-    || JSON.stringify(state.taskRecord.files ?? []) !== JSON.stringify(files)
-    || JSON.stringify(state.taskRecord.risks ?? []) !== JSON.stringify(risks)
-    || JSON.stringify(state.taskRecord.repositories) !== JSON.stringify(repositories)
-    || (contract ? engineeringContractDigest(contract) : null) !== (state.taskRecord.engineeringContract ? engineeringContractDigest(state.taskRecord.engineeringContract) : null)
-    || state.taskRecord.checkout !== (repository.checkout ?? null));
-  if (changed) {
-    Object.assign(state.taskRecord, { status: 'working', goalComplete: false });
-    delete state.taskRecord.verification; delete state.taskRecord.verificationRevision;
-    if (contract) state.taskRecord.acceptanceEvidence = { formatVersion: 1, records: [] };
-    delete state.taskRecord.completed; state.taskRecord.safeBoundary = false;
-  }
-  Object.assign(state.taskRecord, { stage: selected, files, risks, checkout: repository.checkout ?? null, ...(input.reviewAuthorization ? { reviewAuthorization: input.reviewAuthorization, reviewRequested: true } : {}) });
-  if (repositories !== undefined) state.taskRecord.repositories = repositories;
-  if (contract) {
-    state.formatVersion = 2;
-    state.taskRecord.engineeringContract = contract;
-    state.taskRecord.acceptanceEvidence ??= { formatVersion: 1, records: [] };
-  }
-  return { state, intent: taskIntents[selected], context: taskContext(state, repository) };
 }
 export function taskContext(state, repository) {
   const record = state.taskRecord;

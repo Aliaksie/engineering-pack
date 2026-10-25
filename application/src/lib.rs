@@ -8,6 +8,7 @@ mod evidence;
 mod project;
 mod scratch;
 mod session;
+mod task;
 mod telemetry;
 mod workspace;
 

@@ -7,7 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createHostControls, openHostControls } from '../hosts/control.mjs';
 import { featureSupport } from '../hosts/capabilities.mjs';
-import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
+import { stepTask, taskAction } from '../application/session/task.mjs';
+import { run } from '../cli/main.mjs';
+
+// task-start runs in the native runtime; tests bind tasks through the CLI.
+const startTask = (root, session, task, { goal, risks = [], contract }, { host } = {}) => run(['task-start', '--root', root, '--session', session, '--task', task, '--goal', goal,
+  ...risks.flatMap(risk => ['--risk', risk]), ...(contract ? ['--contract', contract] : []), ...(host ? ['--host', host] : [])]);
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const brief = { goal: 'Inspect bounded source', sources: ['value.mjs'], acceptance: ['Return real source evidence'], restrictions: ['Read only'], returnShape: 'Findings' };

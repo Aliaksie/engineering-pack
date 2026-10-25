@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import { evaluate } from '../engine/index.mjs';
 
 const fixture = name => JSON.parse(fs.readFileSync(new URL(`./fixtures/acceptance/${name}.json`, import.meta.url), 'utf8'));
+// task-start runs in the native runtime; its frozen corpus holds these legacy starts.
+const taskStarts = JSON.parse(fs.readFileSync(new URL('./fixtures/runtime/task-contracts.json', import.meta.url), 'utf8')).cases;
+const started = id => taskStarts.find(entry => entry.id === `task-start:${id}`).response.result;
 function call(operation, input) {
   const response = evaluate({ formatVersion: 1, operation, input });
   assert.equal(response.ok, true, JSON.stringify(response));
@@ -119,8 +122,7 @@ test('invalid, ambiguous, unsupported and oversized payloads fail explicitly', (
 
 test('legacy lifecycle and checkpoint fixtures retain declared completion without inferred coverage', () => {
   const legacy = fixture('legacy');
-  const started = call('task-start', { state: legacy.state, input: legacy.start, repository: legacy.repository });
-  const stepped = call('task-step', { state: started.state, input: legacy.step, repository: legacy.repository, id: 'legacy-pass', at: legacy.at });
+  const stepped = call('task-step', { state: started('legacy-start').state, input: legacy.step, repository: legacy.repository, id: 'legacy-pass', at: legacy.at });
   const frozen = fixture('legacy-completed');
   assert.deepEqual(stepped.state, frozen.state);
   assert.equal(call('task-contract', { record: stepped.state.taskRecord }), frozen.checkpoint.taskContract);
@@ -135,7 +137,7 @@ test('legacy lifecycle and checkpoint fixtures retain declared completion withou
   invalid('activity-validate', { state: { ...legacy.state, formatVersion: 2 } });
   const augmented = { ...frozen.state, taskRecord: { ...frozen.state.taskRecord, engineeringContract: fixture('contract') } };
   invalid('activity-validate', { state: augmented });
-  const upgraded = call('task-start', { state: frozen.state, input: { ...legacy.start, engineeringContract: fixture('contract') }, repository: legacy.repository });
+  const upgraded = started('legacy-contract-upgrade');
   assert.equal(upgraded.state.formatVersion, 2);
   assert.equal(upgraded.state.taskRecord.goalComplete, false);
   assert.equal(call('activity-validate', { state: upgraded.state }).formatVersion, 2);

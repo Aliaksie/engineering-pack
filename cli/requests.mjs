@@ -1,4 +1,4 @@
-import { startTask, stepTask, taskAction } from '../application/session/task.mjs';
+import { stepTask, taskAction } from '../application/session/task.mjs';
 import { telemetryReport } from '../application/telemetry/report.mjs';
 import { captureTelemetry, readTelemetryCapture, forgetTelemetryCapture } from '../application/telemetry/capture.mjs';
 import { taskFeatures } from '../application/session/features.mjs';
@@ -40,10 +40,6 @@ function executeRequest(action, options, root) {
       : { id: options.offer, ...(action === 'task-decision' ? { decision: options.decision, evidence: options.evidence } : {}) };
     return taskAction(root, options.session, options.task, { 'task-offer': 'action-propose', 'task-decision': 'action-decide', 'task-action-check': 'action-check' }[action], input,
       options.data ? readInput(options.data) : {}, { preferencesFile: options.preferences, bundle: options.bundle });
-  }
-  if (action === 'task-start') {
-    if (!options.session || !options.task || !options.goal) throw new Error('task-start requires --session, --task and --goal');
-    return startTask(root, options.session, options.task, { goal: options.goal, ...(options.contract ? { engineeringContract: readInput(options.contract) } : {}), ...(options.repository ? { repositories: options.repository } : {}), ...(options.risk?.length ? { risks: options.risk } : {}), ...(options['review-authorization'] ? { reviewAuthorization: options['review-authorization'] } : {}), ...(options.stage ? { stage: options.stage } : {}), ...(options.file?.length ? { files: options.file } : {}) }, { host: options.host, preferencesFile: options.preferences });
   }
   if (action === 'task-step') {
     if (!options.session || !options.task) throw new Error('task-step requires --session and an explicit --task or a task-start binding');
