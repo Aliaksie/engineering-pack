@@ -2,11 +2,19 @@ use super::lifecycle::*;
 use serde_json::{Value, json};
 #[test]
 fn frozen_worker_decisions() {
-    let corpus: Value = serde_json::from_str(include_str!(
-        "../../../tests/fixtures/runtime/worker-contracts.json"
-    ))
-    .unwrap();
-    for c in corpus["cases"].as_array().unwrap() {
+    // Reconcile cases are a separate file: each stays under the 2 MiB per-file limit of
+    // working-tree snapshots, so checkpoints of this repository can complete.
+    let corpora: [Value; 2] = [
+        include_str!("../../../tests/fixtures/runtime/worker-contracts.json"),
+        include_str!("../../../tests/fixtures/runtime/worker-reconcile-contracts.json"),
+    ]
+    .map(|text| serde_json::from_str(text).unwrap());
+    let cases: Vec<&Value> = corpora
+        .iter()
+        .flat_map(|corpus| corpus["cases"].as_array().unwrap())
+        .collect();
+    assert_eq!(cases.len(), 953);
+    for c in cases {
         let a = &c["input"];
         let mut state = a["state"].clone();
         let result = match c["operation"].as_str().unwrap() {
