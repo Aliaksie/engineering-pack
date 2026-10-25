@@ -324,3 +324,25 @@ fn unknown_holders_are_abandoned_only_on_windows_after_the_lock_age() {
         "a fresh lock is never abandoned"
     );
 }
+
+#[test]
+fn a_lock_released_or_still_deleting_during_reclaim_defers_instead_of_failing() {
+    let error = |kind: ErrorKind| Err(io::Error::from(kind));
+    for windows in [false, true] {
+        assert!(gone(&io::Error::from(ErrorKind::NotFound), windows));
+        assert!(reclaimed(Ok(()), windows).unwrap());
+        assert!(
+            reclaimed(error(ErrorKind::NotFound), windows).unwrap(),
+            "a concurrent reclaimer removed it first"
+        );
+        assert!(reclaimed(error(ErrorKind::Other), windows).is_err());
+    }
+    let denied = || io::Error::from(ErrorKind::PermissionDenied);
+    assert!(
+        gone(&denied(), true),
+        "Windows denies a lock its holder is deleting"
+    );
+    assert!(!gone(&denied(), false));
+    assert!(!reclaimed(Err(denied()), true).unwrap());
+    assert!(reclaimed(Err(denied()), false).is_err());
+}

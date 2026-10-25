@@ -253,7 +253,7 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
         let file = Path::new(&name);
         let seen = match fs::symlink_metadata(file) {
             Ok(metadata) => metadata,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(error) if gone(&error, cfg!(windows)) => return Ok(None),
             Err(error) => return Err(error),
         };
         let owner: Value = match read_bounded(file, LOCK_BYTES) {
@@ -262,7 +262,7 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
                 // The holder has created but not yet recorded its lock.
                 Err(_) => return Ok(None),
             },
-            Err(ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(ReadError::Io(error)) if gone(&error, cfg!(windows)) => return Ok(None),
             Err(ReadError::Io(error)) => return Err(error),
             Err(_) => return Err(refused("invalid bounded state file")),
         };
@@ -276,11 +276,13 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
             return Ok(None);
         }
         // Remove only the lock that was inspected; a replacement belongs to a new holder.
-        match fs::symlink_metadata(file) {
-            Ok(current) if same(&seen, &current) => fs::remove_file(file)?,
+        let removed = match fs::symlink_metadata(file) {
+            Ok(current) if same(&seen, &current) => fs::remove_file(file),
             Ok(_) => return Ok(None),
-            Err(error) if error.kind() == ErrorKind::NotFound => {}
-            Err(error) => return Err(error),
+            Err(error) => Err(error),
+        };
+        if !reclaimed(removed, cfg!(windows))? {
+            return Ok(None);
         }
         ticket = state::lock(anchor).map_err(io::Error::other)?;
     }
@@ -290,6 +292,23 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
         held.record(owner.to_string().as_bytes())?;
     }
     Ok(ticket)
+}
+
+/// An inspected lock that vanished was released; on Windows a denied one is still being
+/// deleted by its holder. Either way this attempt defers.
+fn gone(error: &io::Error, windows: bool) -> bool {
+    error.kind() == ErrorKind::NotFound || (windows && error.kind() == ErrorKind::PermissionDenied)
+}
+
+/// Whether reclaiming may take the lock: removed here or already released by a concurrent
+/// reclaimer. A lock still being deleted on Windows defers (`false`).
+fn reclaimed(removal: io::Result<()>, windows: bool) -> io::Result<bool> {
+    match removal {
+        Ok(()) => Ok(true),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(true),
+        Err(error) if gone(&error, windows) => Ok(false),
+        Err(error) => Err(error),
+    }
 }
 
 fn abandoned(liveness: Liveness, _lock: &fs::Metadata) -> bool {
