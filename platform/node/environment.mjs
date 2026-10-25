@@ -13,7 +13,7 @@ export function projectRoot(cwd) {
   }
   return path.resolve(cwd);
 }
-export const realRoot = root => fs.realpathSync(root);
+export const realRoot = root => fs.realpathSync.native(root);
 export const bundleRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', path.basename(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')) === 'support' ? '..' : '.');
 export const clock = () => { const ms = Date.now(); return { ms, iso: new Date(ms).toISOString() }; };
 export const uniqueId = () => randomUUID();

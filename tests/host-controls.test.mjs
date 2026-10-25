@@ -320,6 +320,18 @@ for (const host of ['cursor', 'claude']) test(`${host}: premature release create
   assert.equal((await controls.release(id)).duplicate, true);
 });
 
+// Windows short names (RUNNER~1) and case-insensitive volumes give one directory several
+// spellings; the controller must bind the physical root the native runtime reports.
+test('host controls bind an aliased project root to its physical path', async t => {
+  const f = repository(t, 'claude'), p = claude();
+  const alias = path.join(path.dirname(f.root), path.basename(f.root).toUpperCase());
+  if (!fs.existsSync(alias) || fs.realpathSync(alias) === fs.realpathSync.native(alias)) return t.skip('no aliased spelling of the root on this filesystem');
+  const controls = f.install(createHostControls('claude', { ...f.options, root: alias, query: p.query }));
+  const result = await controls.workers.dispatch(f.assignment(await f.offer('delegate')));
+  assert.equal(result.dispatchAttempted, true, JSON.stringify(result));
+  assert.equal(result.executionObserved, true, JSON.stringify(result));
+});
+
 test('uncertain ACP release reconciles actual metadata without replaying the effect', async t => {
   const f = repository(t, 'cursor'), p = acp();
   const controls = f.install(createHostControls('cursor', { ...f.options, client: p.client, protocolVersion: 1, coordinatorState: p.state,
