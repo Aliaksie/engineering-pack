@@ -307,18 +307,9 @@ fn only_a_recognized_dead_holder_is_reclaimed() {
     );
     fs::write(lock_file(&fixture), holder(2_147_483_647)).unwrap();
     let reclaimed = lock(&anchor).unwrap();
-    #[cfg(unix)]
-    {
-        assert!(reclaimed.is_some(), "a dead holder's lock is reclaimed");
-        let recorded: Value =
-            serde_json::from_slice(&fs::read(lock_file(&fixture)).unwrap()).unwrap();
-        assert_eq!(recorded["pid"], std::process::id());
-    }
-    #[cfg(not(unix))]
-    assert!(
-        reclaimed.is_none(),
-        "an unobservable holder's fresh lock waits"
-    );
+    assert!(reclaimed.is_some(), "a dead holder's lock is reclaimed");
+    let recorded: Value = serde_json::from_slice(&fs::read(lock_file(&fixture)).unwrap()).unwrap();
+    assert_eq!(recorded["pid"], std::process::id());
 }
 
 #[test]
