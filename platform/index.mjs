@@ -7,7 +7,7 @@ export { workspaceOperation } from './node/workspace.mjs';
 export { contextFiles, groundingFiles } from './node/resources/context.mjs';
 export { projectData, preferenceData, preferenceFile } from './node/resources/project.mjs';
 export { readSessionInput } from './node/resources/session-input.mjs';
-export { realRoot, relativePath, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
+export { realRoot, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
 export { reviewSnapshot } from './node/repository/review.mjs';
 export { runtimeVersion } from './node/environment.mjs';
 export { rpcProcess } from './node/rpc-process.mjs';

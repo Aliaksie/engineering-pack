@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { route } from '../application/routing/select.mjs';
+import { route } from './native-route.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
 import { route as engineRoute } from '../engine/routing/route.mjs';
 

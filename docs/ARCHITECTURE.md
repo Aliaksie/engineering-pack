@@ -26,7 +26,7 @@ flowchart TD
 | `engine/policy/` | Model advice, context delivery, review and inbox decisions |
 | `engine/checkpoint.mjs` | Small continuation contracts, source binding and comparison |
 | `application/` | Observation collection and execution of concrete local use cases |
-| `application/{routing,discovery,session,context-delivery}/` | Related use cases grouped by feature |
+| `application/{routing,discovery,session}/` | Related use cases grouped by feature |
 | `platform/index.mjs` | Wiring for bounded observation/storage operations |
 | `platform/node/` | Concrete Node ports; repository and resource observations are grouped separately |
 | `integrations/` | External Git/codehost command syntax, observation normalization and output projections |
@@ -110,9 +110,9 @@ proposal cleanup. No executable adapter is loaded from project configuration. Se
 The engine returns plans and advice. It does not call models, switch profiles, execute
 remote operations, compact a host session or publish findings. Context-delivery policy
 receives lifecycle facts, not hook event names. Hosts parse payloads, run native hooks and
-serialize their wire output. Lifecycle observation and the read-only review guard run in
-`craft` (one request per hook); context delivery still translates lifecycle events in the
-JavaScript application.
+serialize their wire output. Lifecycle observation, the read-only review guard and context
+delivery (routing hints, checkpoints, service metadata and hint reuse) run in `craft`, one
+request per hook.
 Host lifecycle controls belong to `hosts/`; external service mappings belong to
 `integrations/`. Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
 

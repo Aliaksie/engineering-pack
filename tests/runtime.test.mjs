@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { route } from '../application/routing/select.mjs';
+import { route } from './native-route.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
@@ -180,12 +180,10 @@ test('all built-in routed skills resolve to actual capability source', () => {
     ...manifest.workflows.map((file) => `${manifest.name}:workflow-${path.basename(file, '.md')}`)
   ]));
   for (const intent of ['implement', 'review', 'plan', 'story', 'research', 'verify', 'locate', 'status', 'explore']) {
-    const result = route({ intent, files: ['agents/assistant/main.py', 'ui/Orders.tsx', 'services/orders/Order.java'], project, risks: ['auth'], availableSkills: [...ids] });
+    const result = route({ intent, files: ['agents/assistant/main.py', 'ui/Orders.tsx', 'services/orders/Order.java'], project, risks: ['auth'] });
     for (const skill of result.skills) assert.ok(ids.has(skill), skill);
     assert.deepEqual(result.missing, []);
   }
-  const unavailable = route({ intent: 'review', availableSkills: [] });
-  assert.ok(unavailable.missing.some((message) => message.includes('skill not installed')));
 });
 
 // `operation` runs in the native runtime; plan through the public command line.

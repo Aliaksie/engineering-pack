@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { contextReport } from '../application/session/context.mjs';
-import { route } from '../application/routing/select.mjs';
+import { route } from './native-route.mjs';
 import { run } from '../cli/main.mjs';
 
 const root = path.resolve('.');

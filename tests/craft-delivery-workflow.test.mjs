@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
-import { route } from '../application/routing/select.mjs';
+import { route } from './native-route.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { snapshot, validateReview } from '../application/review.mjs';
 
@@ -67,8 +67,6 @@ test('local story and missing optional guidance do not require a tracker or auth
   assert.ok(story.skills.every((skill) => skill.startsWith('craft-stories:')));
   assert.deepEqual(story.loading.specializations, []);
   assert.deepEqual(story.operations, []);
-  const unavailable = route({ intent: 'implement', files: ['src/total.mjs'], project: readProject(root), availableSkills: [] });
-  assert.ok(unavailable.missing.some((item) => item.startsWith('skill not installed:')));
   const tracker = run(['route', '--root', root, '--intent', 'plan', '--task', 'TASK-1']);
   assert.ok(tracker.missing.some((item) => item.includes('missing tasks binding')));
   assert.throws(() => run(['operation', '--root', root, '--operation', 'git.push']), /not enabled/);

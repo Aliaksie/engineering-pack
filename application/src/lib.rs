@@ -4,6 +4,7 @@ mod actions;
 mod budget;
 mod checkpoint;
 pub mod cli;
+mod delivery;
 mod discovery;
 mod evidence;
 mod host;

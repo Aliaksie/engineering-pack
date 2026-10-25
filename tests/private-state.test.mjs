@@ -5,8 +5,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { stateFile, stateLocation, readState, writeState, projectRoot } from '../platform/index.mjs';
-import { prepareEvent } from '../application/context-delivery/prepare.mjs';
+import { stateFile, stateLocation, readState, writeState, projectRoot, nativeHook } from '../platform/index.mjs';
 import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
 import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
@@ -27,6 +26,9 @@ function fixture(t) {
   git('add', '.'); git('commit', '-qm', 'fixture');
   return { root, git };
 }
+// One native delivery hook event; the structured decision, before host serialization.
+const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 's1', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
+  package: null, lifecycle, scope: 'any', inputStatus: 'complete', tool, contextSupported: true, cwd, session, file, prompt: '' });
 const continuation = Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, key]));
 
 test('default lifecycle and discovery use excluded local state without editing consumer ignores', t => {
@@ -34,9 +36,9 @@ test('default lifecycle and discovery use excluded local state without editing c
   const nested = path.join(root, 'src');
   assert.equal(projectRoot(nested), root);
   assert.equal(readProject(root).routing.editHints, true);
-  const route = prepareEvent({ cwd: nested, event: 'before-tool', tool: 'edit', file: path.join(nested, 'value.mjs'), host: 'codex', session: 's1' });
-  assert.equal(route.routing.intent, 'implement');
-  prepareEvent({ cwd: nested, event: 'turn-end', tool: 'other', host: 'codex', session: 's1' });
+  const route = deliver(nested, 'before-tool', { tool: 'edit', file: path.join(nested, 'value.mjs') });
+  assert.equal(route.context.data.intent, 'implement');
+  deliver(nested, 'turn-end');
   assert.equal(readCheckpoint(root, 's1').head, git('rev-parse', 'HEAD'));
   const locate = (task = 'task-1') => run(['locate', '--root', root, '--session', 's1', '--task', task, '--term', 'SymbolValue']).discovery;
   assert.equal(locate().fresh, 1);
@@ -54,12 +56,13 @@ test('edits outside the project root skip edit-hint routing instead of failing d
   const { root } = fixture(t);
   const nested = path.join(root, 'src');
   const outside = path.join(path.dirname(root), 'elsewhere', 'notes.md');
-  const event = file => prepareEvent({ cwd: nested, event: 'before-tool', tool: 'edit', file, host: 'claude', session: 's1' });
-  assert.equal(event(outside).routing, undefined);
-  assert.equal(event(path.join(root, '..', path.basename(root), 'src', 'value.mjs')).routing.intent, 'implement');
+  // Without a session, hint reuse cannot suppress the repeated routes compared below.
+  const event = file => deliver(nested, 'before-tool', { tool: 'edit', file, host: 'claude', session: null });
+  assert.deepEqual(event(outside), { decision: 'allow', failed: false, export: null });
+  assert.equal(event(path.join(root, '..', path.basename(root), 'src', 'value.mjs')).context.data.intent, 'implement');
   // A relative tool path names a file below the hook's working directory.
-  assert.deepEqual(event('value.mjs').routing, event(path.join(nested, 'value.mjs')).routing);
-  assert.equal(event('../../elsewhere/notes.md').routing, undefined);
+  assert.deepEqual(event('value.mjs').context, event(path.join(nested, 'value.mjs')).context);
+  assert.equal(event('../../elsewhere/notes.md').context, undefined);
 });
 
 test('unchanged snapshots are deduplicated and task transitions discard old continuation', t => {

@@ -14,7 +14,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 2092,
+        "jsLines": 2046,
         "dependsOn": [],
         "entryPoints": ["engine/index.mjs"]
       }
@@ -30,7 +30,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 952,
+        "jsLines": 951,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -46,10 +46,9 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 1088,
+        "jsLines": 959,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
-          "application/context-delivery/prepare.mjs",
           "application/engine-client.mjs",
           "application/inbox.mjs",
           "application/project-evidence.mjs",
@@ -65,7 +64,6 @@
           "application/telemetry/report.mjs"
         ],
         "runtimeRoots": [
-          "application/context-delivery/prepare.mjs",
           "application/project/configuration.mjs",
           "application/session/grounding.mjs",
           "application/session/status.mjs",
@@ -88,22 +86,21 @@
       "responsibility": "Legacy external command, service and OTLP mappings that dissolve into application, platform and review owners.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 278,
+      "jsLines": 233,
       "dependsOn": [],
       "shipped": true,
       "entryPoints": [
         "integrations/inbox-guard.mjs",
         "integrations/inbox-output.mjs",
         "integrations/otel/traces.mjs",
-        "integrations/review-inbox.mjs",
-        "integrations/services.mjs"
+        "integrations/review-inbox.mjs"
       ]
     },
     "hosts": {
       "kind": "host-adapter",
       "responsibility": "Per-host payload parsing, native invocation and host wire output, the only runtime JavaScript after migration.",
       "allow": ["**/*.mjs"],
-      "jsLines": 1119,
+      "jsLines": 1075,
       "maxFileLines": 300,
       "dependsOn": ["application", "platform"],
       "shipped": true,
@@ -113,7 +110,7 @@
       "kind": "content",
       "responsibility": "Capability guidance, skills, workflows, standards, evals and thin package entry points.",
       "allow": ["**/*.md", "**/*.json", "*/hooks/*.mjs", "*/bin/*.mjs"],
-      "jsLines": 49,
+      "jsLines": 48,
       "dependsOn": ["application"],
       "shipped": true,
       "runtimeRoots": ["packages/*/hooks/*.mjs", "packages/*/bin/*.mjs"]

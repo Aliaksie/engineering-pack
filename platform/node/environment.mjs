@@ -14,7 +14,6 @@ export function projectRoot(cwd) {
   return path.resolve(cwd);
 }
 export const realRoot = root => fs.realpathSync(root);
-export const relativePath = (root, file, cwd, relative = file && path.relative(root, path.resolve(cwd, file))) => !file || !/^\.\.(?:[\\/]|$)/.test(relative) && !path.isAbsolute(relative) ? relative?.split(path.sep).join('/') ?? file : null;
 export const bundleRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..', path.basename(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')) === 'support' ? '..' : '.');
 export const clock = () => { const ms = Date.now(); return { ms, iso: new Date(ms).toISOString() }; };
 export const uniqueId = () => randomUUID();

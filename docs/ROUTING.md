@@ -28,8 +28,8 @@ Logical playbook IDs such as `runtime:jvm` map to focused reference targets such
 `craft-engineering:foundations/references/languages/jvm.md`. Other selections load skills.
 These targets are independent of native skill names. Hook
 adapters add the host-native names; interactive callers resolve them through their host’s
-skill list. `availableSkills` can be passed to the library to check actual installation.
-Without that list the result explicitly says availability is unverified.
+skill list. Routing does not check which skills are installed; the result says
+availability is unverified.
 
 Module paths match directory boundaries. `dependsOn` supplies impact propagation, not
 permission to edit every dependent. Module checks are command/argv records; the router does

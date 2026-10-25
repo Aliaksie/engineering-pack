@@ -2,8 +2,8 @@
 //! host-neutral facts and serialize the decision for their wire format; observation
 //! hooks never supply a permission decision or context.
 use crate::cli::{Failure, observe, resolve};
-use crate::project;
 use crate::telemetry::Recorder;
+use crate::{delivery, project};
 use craft_engine::review;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -26,6 +26,8 @@ enum Handler {
     Observe,
     /// The read-only review publication guard for shell tool calls.
     ReviewReadOnly,
+    /// Routing hints, checkpoints and service metadata at lifecycle boundaries.
+    Deliver,
 }
 
 struct Facts<'a> {
@@ -41,6 +43,8 @@ struct Facts<'a> {
     session: Option<&'a str>,
     package: Option<&'a str>,
     command: &'a Value,
+    file: Option<&'a str>,
+    prompt: Option<&'a str>,
 }
 
 fn one_of<'a>(input: &'a Value, name: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -60,6 +64,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         handler: match input["handler"].as_str() {
             Some("observe") => Handler::Observe,
             Some("review-read-only") => Handler::ReviewReadOnly,
+            Some("deliver") => Handler::Deliver,
             _ => return Err("unknown hook handler".into()),
         },
         host: input["host"].as_str().ok_or("invalid hook host")?,
@@ -74,6 +79,8 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         session: optional("session")?,
         package: optional("package")?,
         command: &input["command"],
+        file: optional("file")?,
+        prompt: optional("prompt")?,
     })
 }
 
@@ -103,7 +110,8 @@ fn attributes(pairs: &[(&str, Value)]) -> Map<String, Value> {
 /// One hook event: `{decision, reason?, failed, export}`.
 pub fn run(input: &Value) -> Result<Value, String> {
     let facts = facts(input)?;
-    let root = project_root(&resolve(facts.cwd));
+    let cwd = resolve(facts.cwd);
+    let root = project_root(&cwd);
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));
     recorder.package(facts.package);
     let hook = recorder.start("host.hook", None);
@@ -141,28 +149,41 @@ pub fn run(input: &Value) -> Result<Value, String> {
             ("contextSupported", json!(facts.context_supported)),
         ]);
         recorder.observe("host.observed", observed, &hook, &[]);
-        if facts.handler == Handler::ReviewReadOnly {
-            let settings = observe(
+        let evaluated = match facts.handler {
+            Handler::Observe => Ok(decision.clone()),
+            Handler::ReviewReadOnly => observe(
                 &mut recorder,
                 "project.loaded",
                 &hook,
                 "CONFIG_INVALID",
                 Map::new(),
                 |_, _| project::settings(&root, None),
-            );
-            match settings {
-                Ok(settings) => {
-                    decision =
-                        review::read_only_decision(&settings, facts.tool == "shell", facts.command)
-                }
-                Err(Failure { message, .. }) => {
-                    recorder.report("host", "HOOK_FAILED", Map::new(), &hook);
-                    failed = true;
-                    decision = failure(
-                        facts.shell_only && facts.lifecycle == "before-tool",
-                        &message,
-                    );
-                }
+            )
+            .map(|settings| {
+                review::read_only_decision(&settings, facts.tool == "shell", facts.command)
+            }),
+            Handler::Deliver => {
+                let event = delivery::Event {
+                    root: &root,
+                    cwd: &cwd,
+                    host: facts.host,
+                    lifecycle: facts.lifecycle,
+                    session: facts.session,
+                    edit: facts.tool == "edit",
+                    file: facts.file,
+                    prompt: facts.prompt,
+                    context_supported: facts.context_supported,
+                };
+                delivery::run(&event, &mut recorder, &hook)
+            }
+        };
+        match evaluated {
+            Ok(evaluated) => decision = evaluated,
+            Err(Failure { message, .. }) => {
+                recorder.report("host", "HOOK_FAILED", Map::new(), &hook);
+                failed = true;
+                let enforcement = facts.shell_only && facts.lifecycle == "before-tool";
+                decision = craft_engine::delivery::failure(enforcement, &message);
             }
         }
     }
@@ -175,14 +196,4 @@ pub fn run(input: &Value) -> Result<Value, String> {
     decision["failed"] = json!(failed);
     decision["export"] = json!(recorder.finish());
     Ok(decision)
-}
-
-/// A hook that could not be evaluated: shell policy fails closed, other hooks continue
-/// and report why their context is unavailable.
-fn failure(enforcement: bool, message: &str) -> Value {
-    if enforcement {
-        json!({"decision": "deny", "reason": format!("Policy could not be evaluated: {message}")})
-    } else {
-        json!({"decision": "allow", "context": {"kind": "unavailable", "data": message}})
-    }
 }

@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
 
@@ -109,30 +108,6 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.equal(fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8'), before);
   });
 }
-
-test('observational preparation and scope failures stay silent without invoking policy fallback', t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'observation failure '));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const runner = path.join(root, 'runner.mjs');
-  const fallbackMarker = path.join(root, 'policy-fallback');
-  const module = pathToFileURL(path.resolve('hosts/hooks.mjs')).href;
-  fs.writeFileSync(runner, `import { runHook } from ${JSON.stringify(module)};
-import fs from 'node:fs';
-const fail = () => { throw new Error('PRIVATE_FAILURE_MARKER'); };
-if (process.argv[2] === 'read') process.stdin[Symbol.asyncIterator] = async function* () { fail(); };
-await runHook(fail, 'copilot', { event: 'before-tool', tool: 'any' }, process.argv[2] === 'evaluate' ? event => event : fail, {
-  observational: true, default: () => ({ decision: 'allow' }),
-  failure: () => { fs.writeFileSync(process.argv[3], 'called'); return { decision: 'deny' }; },
-  ...(process.argv[2] === 'scope' ? { run: fail } : {})
-});\n`);
-  for (const phase of ['prepare', 'evaluate', 'scope', 'read']) {
-    const result = spawnSync(process.execPath, [runner, phase, fallbackMarker], { input: '{}', encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, '');
-    assert.equal(result.stderr, '');
-    assert.ok(!fs.existsSync(fallbackMarker));
-  }
-});
 
 test('oversized inputs still fail existing policy hooks on every hook-capable adapter', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'policy input bound '));

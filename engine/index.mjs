@@ -21,8 +21,6 @@ import { sessionStatus, sessionObservationPlan } from './session/status.mjs';
 import { validateMetadata, validateCheckpoint, checkpointState, checkpointUnchanged, compareCheckpoint } from './checkpoint.mjs';
 import { activityUpdate, attemptStatus, validateActivityState, activityIdentity } from './session/activity.mjs';
 import { contextRequests, summarizeContext } from './session/context.mjs';
-import { contextDeliveryPlan, contextDelivery, deliveryFailure } from './policy/context-delivery.mjs';
-import { hintValid, validateHint, hintEligible } from './cache/reuse.mjs';
 import { digest, hash } from './cache/identity.mjs';
 import { repositoryScopes, repositorySnapshot, repositoryCheckout } from './repositories.mjs';
 
@@ -41,8 +39,6 @@ const operations = {
   'repository-snapshot': a => repositorySnapshot(a.repositories),
   'repository-checkout': a => repositoryCheckout(a.repositories),
   'checkpoint-validate': a => validateCheckpoint(a.state),
-  'hint-validate': a => validateHint(a.state),
-  'delivery-default': () => ({ decision: 'allow' }),
   'inbox-policy': a => inboxPolicy(a),
   'inbox-status': a => inboxStatus(a),
   'review-snapshot': a => validateSnapshot(a.snapshot),
@@ -87,11 +83,6 @@ const operations = {
   'attempt-status': a => attemptStatus(a.records, a.operation),
   'context-requests': a => contextRequests(a.plan),
   'context-summary': a => summarizeContext(a.entries, a.missing, a.budgetBytes),
-  'context-delivery-plan': a => contextDeliveryPlan(a.facts, a.project),
-  'context-delivery': a => contextDelivery(a),
-  'delivery-failure': a => deliveryFailure(a.enforcementRequired, a.message),
-  'hint-eligible': a => hintEligible(a.event, a.result),
-  'hint-valid': a => hintValid(a.previous, a.key, a.now),
   digest: a => digest(a.value), hash: a => hash(a.text)
 };
 

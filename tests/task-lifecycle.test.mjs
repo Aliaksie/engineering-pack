@@ -8,11 +8,14 @@ import { run } from '../cli/main.mjs';
 import { readSessionState, activeTask, bindingFile, attemptStatus } from '../application/session/activity.mjs';
 import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
 import { renderCommand } from '../cli/render.mjs';
-import { lockState, releaseState } from '../platform/index.mjs';
+import { lockState, releaseState, nativeHook } from '../platform/index.mjs';
 import { updateSessionState } from '../application/session/activity.mjs';
 import { readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { prepareEvent } from '../application/context-delivery/prepare.mjs';
 import { readTelemetry } from '../platform/node/telemetry.mjs';
+
+// One native delivery hook event; the structured decision, before host serialization.
+const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 'host-session', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
+  package: null, lifecycle, scope: 'any', inputStatus: 'complete', tool, contextSupported: true, cwd, session, file, prompt: '' });
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-lifecycle-')));
@@ -82,8 +85,8 @@ test('source edits invalidate stored acceptance and native tool success never cr
   assert.equal(status.taskEvidenceStale, true);
   assert.equal(status.task.goalComplete, false);
   assert.equal(status.task.verification, 'unknown');
-  const prepared = prepareEvent({ cwd: root, event: 'after-tool', tool: 'shell', host: 'codex', session: 'host-session' });
-  assert.equal(prepared.taskIdentity.task, 'fix-value');
+  const delivered = deliver(root, 'before-tool', { tool: 'edit', file: path.join(root, 'value.mjs') });
+  assert.equal(delivered.context.data.taskIdentity.task, 'fix-value');
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
 });
 
@@ -335,7 +338,7 @@ test('compaction recovery reloads current criterion gaps without renewing eviden
   const { root, start, submit, records, command, contract, contractFile } = structuredFixture(t);
   start();
   submit(records().slice(0, 1));
-  const recover = () => prepareEvent({ cwd: root, session: 'host-session', host: 'claude', event: 'after-compact' }).checkpoint.taskRecovery;
+  const recover = () => deliver(root, 'after-compact', { host: 'claude' }).context.data.taskRecovery;
   const pending = recover();
   assert.equal(pending.status, 'available');
   assert.equal(pending.checkpointTaskMatches, true);

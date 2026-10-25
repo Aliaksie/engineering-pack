@@ -69,7 +69,8 @@ async function readPayload() {
 }
 
 // A hook whose use case runs natively: one runtime invocation with host-neutral facts.
-// Only shell-scoped hooks receive the command. Unread input still fails policy hooks.
+// Only shell-scoped hooks receive the command and only delivery the file and prompt.
+// Unread input still fails policy hooks.
 export async function runNativeHook(handler, platform, definition, packageName, runtime) {
   if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
   const { payload, inputError, inputStatus } = await readPayload();
@@ -79,64 +80,19 @@ export async function runNativeHook(handler, platform, definition, packageName, 
   try {
     try {
       result = runtime.invoke({ handler: handler.native, host: platform, package: packageName, lifecycle: event.event, scope: definition.tool === 'shell' ? 'shell' : 'any',
-        inputStatus, tool: event.tool, contextSupported: event.contextSupported, cwd: event.cwd, session: event.session ?? null, ...(definition.tool === 'shell' ? { command: event.command } : {}) });
+        inputStatus, tool: event.tool, contextSupported: event.contextSupported, cwd: event.cwd, session: event.session ?? null, ...(definition.tool === 'shell' ? { command: event.command } : {}),
+        ...(handler.native === 'deliver' ? { file: event.file ?? null, prompt: event.prompt } : {}) });
       runtime.forward(result.export);
     } catch (error) {
-      // Without a runtime decision, shell enforcement still fails closed.
-      result = enforcement ? { decision: 'deny', reason: `Policy could not be evaluated: ${error.message}` } : { decision: 'allow' };
+      // Without a runtime decision, shell enforcement still fails closed and delivery says why.
+      result = enforcement ? { decision: 'deny', reason: `Policy could not be evaluated: ${error.message}` }
+        : observational ? { decision: 'allow' } : { decision: 'allow', context: { kind: 'unavailable', data: error.message } };
     }
     if (inputError && !observational) throw inputError;
     const wire = observational ? { output: '', error: '', exitCode: 0 } : serialize(result, platform, definition);
     if (wire.output) process.stdout.write(wire.output);
     if (wire.error) process.stderr.write(wire.error);
+    if (result.warning && !observational) process.stderr.write(`${result.warning}\n`);
     process.exitCode = wire.exitCode;
   } finally { try { await runtime.flush(); } catch { /* Advisory export. */ } }
-}
-
-export async function runHook(evaluate, platform, definition = { name: 'policy', event: 'before-tool', tool: 'shell' }, prepare = (event) => event, delivery = {}) {
-  if (!Object.hasOwn(HOSTS, platform)) throw new Error(`unknown hook platform ${platform}`);
-  const observational = delivery.observational === true;
-  const { payload, valid, inputError, inputStatus } = await readPayload();
-  const event = normalize(payload, platform, definition);
-  event.inputStatus = inputStatus;
-  const invoke = () => {
-    if (inputError) {
-      delivery.diagnostic?.(inputStatus === 'oversized' ? 'INPUT_TOO_LARGE' : 'INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
-      if (!observational) throw inputError;
-      process.exitCode = 0;
-      return { failed: true };
-    }
-    if (!valid) delivery.diagnostic?.('INVALID_INPUT', { inputStatus:event.inputStatus, lifecycle:event.event });
-    let result = delivery.default(), pending, failed = false;
-    if (valid && (definition.tool !== 'shell' || event.tool === 'shell')) {
-      try {
-        const prepared = prepare(event);
-        result = evaluate(prepared);
-        result = { ...result, ...(result.context ? { context:renderContext(result.context,platform) } : {}) };
-        if (delivery.reuse) { pending = delivery.reuse(prepared,result); result = pending.result; }
-      } catch (error) {
-        failed = true; delivery.diagnostic?.('HOOK_FAILED');
-        result = observational ? { decision: 'allow' } : delivery.failure(definition,error.message);
-      }
-    }
-    // Observation never supplies a host permission decision or injected context.
-    const wire = observational ? { output: '', error: '', exitCode: 0 } : serialize(result,platform,definition);
-    if (wire.output) process.stdout.write(wire.output);
-    if (wire.error) process.stderr.write(wire.error);
-    if (pending?.diagnostic) process.stderr.write(`${pending.diagnostic}\n`);
-    if (pending && delivery.commit) {
-      try { delivery.commit(pending,Boolean(wire.output && result.context && hookMapping(platform,definition)?.context)); }
-      catch (error) { delivery.diagnostic?.('CACHE_UNAVAILABLE'); process.stderr.write(`Routing hint reuse unavailable: ${error.message}\n`); }
-    }
-    process.exitCode = wire.exitCode;
-    return { decision:result.decision, failed };
-  };
-  try { return delivery.run ? delivery.run(event,invoke) : invoke(); }
-  catch (error) {
-    if (!observational) throw error;
-    delivery.diagnostic?.('HOOK_FAILED');
-    process.exitCode = 0;
-    return { failed: true };
-  }
-  finally { if (delivery.flush) { try { await delivery.flush(); } catch { /* Advisory export. */ } } }
 }

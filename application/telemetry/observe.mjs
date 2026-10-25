@@ -211,3 +211,8 @@ export async function flushTelemetry(transport = postTelemetry) {
     }
   }));
 }
+
+// Host status-line helpers: diagnostics and a `host.session` operation around one status read.
+export const hookDiagnostic = (reasonCode, attributes) => diagnostic('host', reasonCode, attributes);
+export const observeNativeSession = (root, host, callback, packageName) => withTelemetry(root, { host, packageName },
+  () => observe('host.session', callback, () => ({}), { failureCode:'INVALID_INPUT', outcome:result => result?.failed ? 'failure' : 'success' }));

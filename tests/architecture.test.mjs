@@ -58,7 +58,7 @@ test('host runtime and external transports cannot depend on build tooling or pri
 });
 
 test('delivery policy uses lifecycle facts rather than host hook event names', () => {
-  const source = fs.readFileSync(path.join(root,'engine/policy/context-delivery.mjs'),'utf8');
+  const source = fs.readFileSync(path.join(root,'engine/src/delivery.rs'),'utf8');
   assert.doesNotMatch(source,/before-tool|before-prompt|before-compact|after-compact|session-start|turn-end/);
 });
 

@@ -371,6 +371,20 @@ fn prepare_services(
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let settings = loaded(options, recorder, parent)?;
+    let commands = options.values.get("available-command");
+    let tools = options.values.get("available-mcp-tool");
+    prepared_services(&settings, commands, tools, recorder, parent)
+}
+
+/// Configured service metadata under `integration.prepared`, reporting operations whose
+/// command or tool was not observed.
+pub(crate) fn prepared_services(
+    settings: &Value,
+    commands: Option<&Value>,
+    tools: Option<&Value>,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
     observe(
         recorder,
         "integration.prepared",
@@ -378,11 +392,7 @@ fn prepare_services(
         "INTEGRATION_UNAVAILABLE",
         Map::new(),
         |recorder, operation| {
-            let result = services::prepare(
-                &settings,
-                options.values.get("available-command"),
-                options.values.get("available-mcp-tool"),
-            )?;
+            let result = services::prepare(settings, commands, tools)?;
             let unavailable = result["services"]
                 .as_array()
                 .into_iter()
