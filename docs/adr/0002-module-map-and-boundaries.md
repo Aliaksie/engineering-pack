@@ -73,6 +73,13 @@ file and prompt. The adapter keeps payload parsing, the input bound and wire out
 runtime cannot answer, a shell enforcement hook still denies, observation stays silent and
 delivery reports its context as unavailable.
 
+The worker callback adapter lives in `hosts/`; it passes explicit observations to native
+phases for admission, reconciliation and result recording. Rust owns the worker ledger
+and shares the binding lock with task-start during admission. Host callbacks run outside
+that lock. Moving the callback sequence adds 72 host JavaScript lines and three platform
+forwarder lines while removing its application implementation; no worker decisions or
+persistence remain in the adapter.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.

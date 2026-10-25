@@ -12,7 +12,6 @@ import { telemetryEvent, traceContext } from '../application/telemetry/events.mj
 import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
-import { execute } from '../cli/requests.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { readCheckpoint } from '../application/checkpoint.mjs';
 
@@ -52,7 +51,7 @@ test('portable trace and diagnostic contract is deterministic, bounded and seria
 });
 test('project/session isolation honors nested opt-out and separate async contexts',async t=>{
   const outer=fixture(t,{remote:{enabled:true,endpoint:'https://collector.example/v1/traces'}}), disabled=fixture(t,{local:false});
-  withTelemetry(outer,{session:'outer'},()=>execute('worker-status',{session:'inner',task:'task',file:[],risk:[]},disabled));
+  withTelemetry(outer,{session:'outer'},()=>run(['worker-status','--root',disabled,'--session','inner','--task','task']));
   withTelemetry(outer,{session:'outer'},()=>{
     readProject(disabled);
     readCheckpoint(disabled,'inner');

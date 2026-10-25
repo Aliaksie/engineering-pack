@@ -67,7 +67,7 @@ test('relocated standalone runtime exposes controllers and persists feature outc
   const support = path.join(root, 'support');
   fs.cpSync(path.resolve('dist/codex/packages/craft-delivery/support'), support, { recursive: true });
   const options = { session: 'standalone-session', task: 'standalone-task' };
-  const { workerController } = await import(pathToFileURL(path.join(support, 'application/session/workers.mjs')));
+  const { workerController } = await import(pathToFileURL(path.join(support, 'hosts/workers.mjs')));
   const { actionController } = await import(pathToFileURL(path.join(support, 'application/session/actions.mjs')));
   assert.equal(workerController(root, options).supported, false);
   assert.equal(actionController(root, options).supported, false);

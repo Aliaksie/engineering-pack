@@ -7,8 +7,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
-import { workerController } from '../application/session/workers.mjs';
-import { decide } from '../application/engine-client.mjs';
+import { workerController } from '../hosts/workers.mjs';
+import { stateFile } from '../platform/index.mjs';
 import { readSessionState, updateSessionState } from '../application/session/activity.mjs';
 
 // task-start runs in the native runtime; tests bind tasks through the CLI.
@@ -141,7 +141,8 @@ test('negative lookup requires fencing, and a late dispatch result cannot overwr
   assert.equal(f.controller.status().requests[0].status, 'cancelled');
   const snapshot = await f.host.observe();
   snapshot.requests = [{ key: 'a'.repeat(64), status: 'not-started', workerId: null, evidence: 'host:missing' }];
-  assert.throws(() => decide('worker-snapshot', { snapshot, session: 's1', now: Date.now() }), /fence/);
+  f.host.observe = async () => snapshot;
+  await assert.rejects(f.controller.reconcile(), /fence/);
 });
 
 test('a native model mismatch remains visible and worker completion never marks task acceptance', async t => {
@@ -178,8 +179,11 @@ test('worker evidence retains its task contract and becomes stale after source o
   assert.equal(retained.requests[0].taskContract, bound);
   assert.equal(retained.requests[0].freshness, 'stale');
   const requests = retained.requests.map(({ freshness, ...request }) => request);
-  assert.throws(() => decide('worker-state', { state: { formatVersion: 1, tree: retained.tree, requests }, tree: retained.tree }), /incompatible worker state version/);
-  assert.equal(decide('worker-state', { state: { formatVersion: 2, tree: retained.tree, requests }, tree: retained.tree }).requests[0].taskContract, bound);
+  const file = stateFile(f.root, `workers-${retained.tree.slice(0, 24)}.json`, false, 's1');
+  fs.writeFileSync(file, JSON.stringify({ formatVersion: 1, tree: retained.tree, requests }));
+  assert.throws(() => f.controller.status(), /incompatible worker state version/);
+  fs.writeFileSync(file, JSON.stringify({ formatVersion: 2, tree: retained.tree, requests }));
+  assert.equal(f.controller.status().requests[0].taskContract, bound);
 });
 
 test('simultaneous controllers share one tree ledger and never both pass a one-worker ceiling', async t => {
@@ -208,7 +212,7 @@ test('pending cancellation remains exclusive across idle observations and blocks
 
 test('cross-process reservations reject a second dispatch even when both host snapshots omit the first worker', async t => {
   const f = fixture(t, 1), offer = await f.offer();
-  const module = pathToFileURL(path.resolve('application/session/workers.mjs')).href;
+  const module = pathToFileURL(path.resolve('hosts/workers.mjs')).href;
   const script = `import fs from 'node:fs'; import path from 'node:path'; import {workerController} from ${JSON.stringify(module)};
 const root=process.argv[1], input=JSON.parse(process.argv[2]);
 const host={authorize:async()=>({allowed:true,evidence:'fixture:scope'}),observe:async()=>({host:'fixture',capacity:4,occupiedSlots:1,taskWorkers:0,allowed:true,sessionId:'s1',observedAt:new Date().toISOString(),source:'fixture:stale-but-fresh-inventory',workers:[],requests:[]}),dispatch:async call=>{fs.writeFileSync(path.join(root,'.git','effect-'+call.key),'one',{flag:'wx'});return {workerId:call.key,model:call.model,status:'running',occupiesSlot:true,evidence:'fixture:effect'};}};
@@ -221,4 +225,34 @@ try{console.log(JSON.stringify(await workerController(root,{session:'s1',task:'T
   })));
   assert.equal(fs.readdirSync(path.join(f.root, '.git')).filter(name => name.startsWith('effect-')).length, 1);
   assert.equal(results.filter(value => value.rejected).length, 1);
+});
+
+test('an assignment is frozen before awaiting host authorization', async t => {
+  const f = fixture(t), input = f.assignment('one', await f.offer(), { brief: structuredClone(brief) });
+  let resume, entered;
+  const ready = new Promise(resolve => { entered = resolve; });
+  f.host.authorize = async () => { entered(); await new Promise(resolve => { resume = resolve; }); return { allowed: true, evidence: 'user:original-assignment' }; };
+  const pending = f.controller.dispatch(input); await ready;
+  input.brief.goal = 'A different task after approval';
+  resume();
+  assert.equal((await pending).executionObserved, true);
+  assert.equal(f.calls[0].brief.goal, brief.goal);
+});
+
+test('worker contract freshness survives an unavailable repository observation', async t => {
+  const f = fixture(t), offer = await f.offer();
+  await f.controller.dispatch(f.assignment('one', offer));
+  updateSessionState(f.root, 's1', 'T1', state => {
+    state.taskRecord.goal = 'Amended task';
+    state.taskRecord.repositories = ['missing-repository'];
+  });
+  assert.equal(f.controller.status().requests[0].freshness, 'stale');
+});
+
+test('an unsupported controller validates input without reading a corrupt worker ledger', async t => {
+  const f = fixture(t), offer = await f.offer(), { tree } = f.controller.status();
+  const unsupported = workerController(f.root, { session: 's1', task: 'T1' });
+  fs.writeFileSync(stateFile(f.root, `workers-${tree.slice(0, 24)}.json`, true, 's1'), '{');
+  assert.equal((await unsupported.dispatch(f.assignment('one', offer))).supported, false);
+  await assert.rejects(unsupported.dispatch({ id: 'bad' }), /assignment/);
 });

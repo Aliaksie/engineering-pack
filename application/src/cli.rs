@@ -10,6 +10,7 @@ use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
 pub const COMMANDS: &[&str] = &[
+    "worker-status",
     "settings",
     "operation",
     "prepare-services",
@@ -1030,6 +1031,29 @@ fn task_features(
     )
 }
 
+/// Worker evidence for the explicit or bound task, without dispatch.
+fn worker_status(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let name = options.get("session").filter(|s| !s.is_empty()).ok_or(
+        "task outcome/worker view requires --session and a task binding or explicit --task",
+    )?;
+    let task = match options.get("task").filter(|s| !s.is_empty()) {
+        Some(t) => Some(t.to_string()),
+        None => match crate::session::active_task(&root(options), Some(name)) {
+            Ok(t) => t,
+            Err(_) => {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), parent);
+                None
+            }
+        },
+    }
+    .ok_or("task outcome/worker view requires --session and a task binding or explicit --task")?;
+    crate::workers::status(&root(options), name, &task, recorder, parent)
+}
+
 /// Session status and advice for the explicit or bound task; `--data` declares the rest.
 fn session_status(
     options: &Options,
@@ -1184,6 +1208,9 @@ fn help(action: &str) -> Value {
             "usage": "task-feature --session id --feature feature-id --feature-status used|eligible-but-skipped|disabled|unsupported|not-applicable|failed --reason reason --evidence reference",
             "mode": "explicit evaluation classification only; normal delivery uses runtime observations and leaves missing evidence unknown",
         }),
+        "worker-status" => {
+            json!({"usage":"worker-status --root project --session id [--task id]", "mode":"shared task-tree reservations and host observations; no dispatch"})
+        }
         "task-features" => json!({
             "usage": "task-features --session id [--task id]",
             "mode": "all feature outcomes, provenance, missing evidence and stale-source markers",
@@ -1679,6 +1706,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
         "lookup" => lookup,
+        "worker-status" => worker_status,
         "route" => route,
         "context-report" => context_report,
         "locate" => locate,

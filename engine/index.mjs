@@ -4,7 +4,6 @@ import { productProjection } from './session/product.mjs';
 import { actionFacts, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
-import { workerInput, workerState, workerSnapshot, workerAdmission, workerTransition, reconcileWorkers, workerEvidence } from './session/workers.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
 import { taskBinding, taskContract, taskContext, taskSource } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
@@ -47,13 +46,6 @@ const operations = {
   'worker-budget': a => workerBudget(a.project, a.facts, a.options),
   'feature-record': a => recordFeature(a.state, a.input, Object.hasOwn(a, 'source') ? a.source : taskSource(a.repository), a.at, a.provenance),
   'feature-report': a => featureReport(a.state, taskSource(a.repository)),
-  'worker-input': a => workerInput(a.input),
-  'worker-state': a => workerState(a.state, a.tree),
-  'worker-evidence': a => workerEvidence(a.state, a.taskState, a.repository),
-  'worker-snapshot': a => workerSnapshot(a.snapshot, a.session, a.now),
-  'worker-admit': a => workerAdmission(a),
-  'worker-transition': a => workerTransition(a.state, a.id, a.result),
-  'worker-reconcile': a => reconcileWorkers(a.state, a.snapshot, a.targets),
   'action-facts': a => actionFacts(a.facts),
   'action-check': a => checkAction(a),
   'action-claim': a => claimAction(a),

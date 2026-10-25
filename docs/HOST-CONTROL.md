@@ -1,9 +1,10 @@
 # Trusted host controllers
 
-The standalone runtime exports `application/session/workers.mjs` and
+The standalone runtime exports `hosts/workers.mjs` and
 `application/session/actions.mjs` under each package's `support/` directory. These explicit
-JavaScript APIs accept trusted adapter functions. Project JSON cannot load adapters or
-grant permission. CLI recommendations remain advice; the shipped hooks supply no native
+JavaScript APIs accept trusted adapter functions. The worker adapter invokes native phases
+for ledger reads, admission, reconciliation and result recording. Project JSON cannot load
+adapters or grant permission. CLI recommendations remain advice; the shipped hooks supply no native
 worker, review or compaction transport. Explicit native bindings are provided for Codex
 App Server, Claude Agent SDK and ACP agents. Model switching remains a host/manual operation.
 
@@ -24,7 +25,8 @@ Construct `workerController(root, { session, task, preferencesFile }, host)` wit
 | `dispatch(context)` | Use the exact supplied model/profile/role and bounded brief; return actual `{ workerId, model, status, occupiesSlot, evidence }`. |
 | `cancel(context)` (optional) | Cancel the specified native worker using the supplied cancellation key; return an actual observation, including whether its slot remains occupied. |
 
-Call `dispatch({ id, offer, scope, parent?, reuseWorker?, brief })`; `brief` contains `goal`,
+Call `dispatch({ id, offer, scope, parent?, reuseWorker?, brief })`; the assignment is copied
+before awaiting authorization. `brief` contains `goal`,
 `sources`, `acceptance`, `restrictions` and `returnShape`. The offer must have a current
 recorded decision, matching source/policy/scope and a configured host/model mapping. Parent
 assignment IDs belong to the same ledger. Reusing an observed idle worker is possible at

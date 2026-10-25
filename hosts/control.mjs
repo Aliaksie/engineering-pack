@@ -2,7 +2,7 @@ import { createCodexControls, openCodexControls } from './codex/control.mjs';
 import { createClaudeControls } from './claude/control.mjs';
 import { ACP_HOSTS, createAcpControls, openAcpControls } from './acp/control.mjs';
 import { featureSupport } from './capabilities.mjs';
-import { workerController } from '../application/session/workers.mjs';
+import { workerController } from './workers.mjs';
 import { actionController } from '../application/session/actions.mjs';
 
 function target(adapter, options) {

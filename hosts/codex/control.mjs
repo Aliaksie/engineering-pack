@@ -1,7 +1,7 @@
 import { decide, digest } from '../../application/engine-client.mjs';
 import { taskRepository } from '../../application/session/activity.mjs';
 import { withTaskAdmission } from '../../application/session/admission.mjs';
-import { workerController } from '../../application/session/workers.mjs';
+import { workerController } from '../workers.mjs';
 import { actionController } from '../../application/session/actions.mjs';
 import { clock, realRoot, rpcProcess, runtimeVersion, stateFile, readState, writeState, lockState, releaseState } from '../../platform/index.mjs';
 

@@ -14,6 +14,7 @@ mod session;
 mod status;
 mod task;
 mod telemetry;
+mod workers;
 mod workspace;
 
 pub fn evaluate(request: Value) -> Value {
@@ -44,6 +45,7 @@ pub fn evaluate(request: Value) -> Value {
         },
         // One host hook event; the adapter serializes the decision and posts `export`.
         Some("host") => host::run(&request["input"]),
+        Some("workers") => workers::run(&request["input"]),
         Some("locate") => {
             let result = (|| -> Result<Value, craft_platform::search::SearchError> {
                 let input = &request["input"];
