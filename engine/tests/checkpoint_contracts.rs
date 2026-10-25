@@ -1,4 +1,4 @@
-//! Replay of the frozen W2a corpus (`tests/fixtures/runtime/checkpoint-contracts.json`)
+//! Replay of the frozen corpus (`tests/fixtures/runtime/checkpoint-contracts.json`)
 //! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons are.
 use craft_engine::{checkpoint, hash, repository, session, session::acceptance};
 use serde_json::{Map, Value, json};

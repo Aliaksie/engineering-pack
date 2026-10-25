@@ -1,4 +1,4 @@
-//! Replay of the frozen W2d corpus (`tests/fixtures/runtime/task-contracts.json`) captured
+//! Replay of the frozen corpus (`tests/fixtures/runtime/task-contracts.json`) captured
 //! from the JS engine `task-start` decision. Results compare as serialized JSON, so key order
 //! is part of the contract; error messages reach stderr and compare exactly.
 use craft_engine::{contracts, session};

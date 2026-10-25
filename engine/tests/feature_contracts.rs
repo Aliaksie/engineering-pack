@@ -1,4 +1,4 @@
-//! Replay of the frozen W2g corpus (`tests/fixtures/runtime/feature-contracts.json`) captured
+//! Replay of the frozen corpus (`tests/fixtures/runtime/feature-contracts.json`) captured
 //! from the JS engine: feature outcome records and the feature report. Results, including the
 //! updated state, compare as serialized JSON, so key order is part of the contract; error
 //! messages reach stderr and compare exactly.
@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID.
 const CORRECTIONS: &[(&str, &str)] = &[
-    // Local date-times and impossible calendar dates are not timestamps (W2a, W2e).
+    // Local date-times and impossible calendar dates are not timestamps.
     ("record:at-local", "invalid feature outcome record"),
     ("record:at-impossible", "invalid feature outcome record"),
     ("record:saved-local-time", "invalid feature outcome record"),

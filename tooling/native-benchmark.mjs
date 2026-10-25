@@ -49,6 +49,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(JSON.stringify({ formatVersion: 1, measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.version,
       candidate: benchmarkNativeBundle(candidate), ...(baseline ? { baseline: benchmarkNativeBundle(baseline) } : {}),
       limits: ['Fresh processes with OS caches retained; six repeated samples per operation.', 'Measures the installed Node adapter, version handshake and actual release binary together.',
-        'No speedup threshold, RSS or process-tree measurement; retained PR9 evidence supplies the broader baseline.'] }, null, 2));
+        'No speedup threshold, RSS or process-tree measurement.'] }, null, 2));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

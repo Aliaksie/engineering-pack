@@ -1,4 +1,4 @@
-//! Replay of the frozen W2f corpus (`tests/fixtures/runtime/step-contracts.json`) captured
+//! Replay of the frozen corpus (`tests/fixtures/runtime/step-contracts.json`) captured
 //! from the JS engine: the `task-step` receipt and the action offer decisions. Results,
 //! including the updated state, compare as serialized JSON, so key order is part of the
 //! contract; error messages reach stderr and compare exactly.

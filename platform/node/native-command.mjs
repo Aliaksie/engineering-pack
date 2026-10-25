@@ -25,7 +25,7 @@ export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, 
   return result;
 }
 
-// Bounded search for legacy session/discovery callers until their W2 cutover.
+// One bounded native search without session state (tests and tooling).
 export function nativeLocate(root, request, repositories) {
   return nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'locate', { root, request, ...(repositories ? { repositories } : {}) });
 }

@@ -1,4 +1,4 @@
-//! Session records shared with the JS session owner until W2 completes: the active task
+//! Session records shared with the remaining JS callers: the active task
 //! binding, task state reads and locked task state updates.
 use crate::cli::{Failure, observe};
 use crate::telemetry::{Operation, Recorder};

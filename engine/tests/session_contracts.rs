@@ -1,4 +1,4 @@
-//! Replay of the frozen W2e corpus (`tests/fixtures/runtime/session-contracts.json`) captured
+//! Replay of the frozen corpus (`tests/fixtures/runtime/session-contracts.json`) captured
 //! from the JS engine: session advice, attempt status, feature report, capability, the
 //! observation plan and unified status. Results compare as serialized JSON, so key order is
 //! part of the contract; error messages reach stderr and compare exactly.

@@ -1,4 +1,4 @@
-//! Replay of the frozen W2b corpus (`tests/fixtures/runtime/attempt-contracts.json`) captured
+//! Replay of the frozen corpus (`tests/fixtures/runtime/attempt-contracts.json`) captured
 //! from the JS engine: receipt validation and identity, and append walks whose every step
 //! records the saved attempt IDs and counters, or the refusal.
 use craft_engine::session;
@@ -33,7 +33,7 @@ fn frozen_attempt_contracts() {
                 input["at"].as_str().unwrap_or_default(),
             )
             .map_err(|message| json!({"message": message})),
-            // Retired R0 engine cases: one receipt appended to `state`.
+            // Former engine-contract cases: one receipt appended to `state`.
             "attempt-append" if input.get("initial").is_none() => {
                 let mut state = input["state"].clone();
                 session::append_attempt(&mut state, input["receipt"].clone())
@@ -58,7 +58,7 @@ fn frozen_attempt_contracts() {
         };
         let matches = match (&actual, expected["ok"].as_bool().unwrap()) {
             (Ok(result), true) => result == &expected["result"],
-            // R0 engine cases froze only the error code, not the prose.
+            // Former engine-contract cases froze only the error code, not the prose.
             (Err(error), false) => expected["error"]
                 .get("message")
                 .is_none_or(|message| message == &error["message"]),

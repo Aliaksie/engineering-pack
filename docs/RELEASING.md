@@ -53,7 +53,7 @@ pushes and refuses a source revision that is no longer `main`. Write permission 
 to the main-branch publish job; pull requests and forks cannot publish. Distribution commits
 contain no workflow, and CI ignores pushes to that branch.
 
-To compare a release-mode candidate against a retained PR9 native bundle, use:
+To compare a release-mode candidate against a retained earlier native bundle, use:
 
 ```sh
 node tooling/native-benchmark.mjs <candidate-runtime-root> <baseline-runtime-root>
@@ -62,7 +62,7 @@ node tooling/native-benchmark.mjs <candidate-runtime-root> <baseline-runtime-roo
 Each root contains `cli/project-evidence.mjs`; an installed plugin uses its `support/`
 root. The driver runs real version, refresh/reuse and verified query operations in
 separate disposable consumers. It reports fresh-process latency without asserting a
-speedup; retained PR9 process/RSS measurements remain the broader comparison baseline.
+speedup; process-tree and RSS comparisons need separate measurements.
 
 ## Updates and releases
 

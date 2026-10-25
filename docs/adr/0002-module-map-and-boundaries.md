@@ -18,7 +18,7 @@ disagree or when the tree breaks a rule.
 Final target: three Rust crates (`engine` ← `platform` ← `application`, with `application` also
 using `engine`), `hosts/` as the only runtime JavaScript, and build tooling, content, schemas,
 docs, tests and examples around them. `cli/` and `integrations/` dissolve into their owners;
-the JavaScript inside the crate folders is legacy and retires by wave W4 of the migration.
+the JavaScript inside the crate folders is legacy and is removed as its callers move to Rust.
 
 ## Module map
 
