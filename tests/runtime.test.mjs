@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { route } from './native-route.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
-import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
+import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { snapshot, validateReview, publicationPlan } from '../application/review.mjs';
 import { loadCapabilities } from '../tooling/lib/capabilities.mjs';

@@ -3,7 +3,7 @@ import { createClaudeControls } from './claude/control.mjs';
 import { ACP_HOSTS, createAcpControls, openAcpControls } from './acp/control.mjs';
 import { featureSupport } from './capabilities.mjs';
 import { workerController } from './workers.mjs';
-import { actionController } from '../application/session/actions.mjs';
+import { actionController } from './actions.mjs';
 
 function target(adapter, options) {
   featureSupport(adapter); // Validate even when no transport is requested.

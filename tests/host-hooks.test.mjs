@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { HOSTS } from '../hosts/registry.mjs';
-import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
+import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 
 const stateNames = root => {
   const base = path.join(root, '.craft', 'state');

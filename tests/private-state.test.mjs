@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { stateFile, stateLocation, readState, writeState, projectRoot, nativeHook } from '../platform/index.mjs';
-import { saveCheckpoint, readCheckpoint } from '../application/checkpoint.mjs';
+import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 

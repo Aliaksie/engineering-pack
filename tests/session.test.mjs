@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
 import { renderSessionStatus } from '../cli/render.mjs';
+import { readTelemetry } from '../platform/index.mjs';
 import { sessionCapabilities, sessionObservation, renderSession } from '../hosts/session.mjs';
 
 // The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
@@ -108,6 +109,9 @@ test('each export exposes the same portable advisor and honest adapter capabilit
       assert.equal(nativeStatus.sessionHost.model, 'fixture-native-model');
       assert.equal(nativeStatus.sessionHost.name, 'claude');
       assert.equal(nativeStatus.usage.confidence, 'observed');
+      const events = readTelemetry(root).filter(event => event.name === 'session.observed' && event.host === 'claude');
+      assert.ok(events.length > 0);
+      assert.ok(events.every(event => event.attributes.package === 'craft-delivery'));
       const mismatch = spawnSync(process.execPath, [cli, '--root', root, '--data', input, '--native-stdin'], { encoding: 'utf8', input: payload });
       assert.equal(mismatch.status, 2);
       assert.match(mismatch.stderr, /does not identify this native session/);

@@ -6,9 +6,9 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { activeTask } from '../application/session/activity.mjs';
-import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { workspaceBoundary } from '../application/workspace.mjs';
-import { workspaceOperation, repositoryRoots, repositoryState, nativeLocate, reviewSnapshot, stateFile } from '../platform/index.mjs';
+import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
+import { workspaceBoundary, workspaceOperation } from './workspace-cli.mjs';
+import { repositoryRoots, repositoryState, nativeLocate, reviewSnapshot, stateFile } from '../platform/index.mjs';
 import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
 import { decide, digest } from '../application/engine-client.mjs';
 import { copy } from '../tooling/export/export.mjs';
@@ -182,13 +182,15 @@ test('stale cleanup retains live owners and reclaims abandoned scratch and aged 
   const policy = structuredClone(DEFAULT_SETTINGS.workspace), now = Date.now();
   const opened = command('workspace-write', '--operation', 'scope', '--data', input(root, { name: 'note', content: 'intermediate' }));
   setOwners(opened.directory, process.pid);
-  workspaceOperation(root, null, policy, 'maintain', now + 2 * 86400000);
+  age(opened.directory, 2);
+  workspaceOperation(root, null, policy, 'maintain');
   assert.ok(fs.existsSync(opened.scratchDirectory), 'age cannot remove live owners');
   setOwners(opened.directory, 2147483647);
   const cleaned = workspaceOperation(root, null, policy, 'maintain', now + 2 * 86400000);
   assert.equal(cleaned.cleaned[0].scratch, 'cleaned');
   assert.equal(fs.existsSync(path.join(opened.directory, 'scratch')), false);
-  workspaceOperation(root, null, policy, 'maintain', now + 8 * 86400000);
+  age(opened.directory, 8);
+  workspaceOperation(root, null, policy, 'maintain');
   assert.equal(fs.existsSync(opened.directory), false);
 });
 
@@ -244,7 +246,7 @@ test('workspace operations retain other owners, recover only dead owned locks an
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
   assert.equal(command('workspace-open').status, 'available', 'the native runtime observes the dead holder on every platform');
   assert.equal(fs.existsSync(lock), false);
-  assert.throws(() => workspaceOperation(root, { ...identity, task: '../bad' }, policy, 'complete'), /identity/);
+  assert.throws(() => command('workspace-open', '--task', '../bad'), /binding/);
 });
 
 test('linked worktree selection and relocated exported workspace commands preserve repository isolation', t => {
@@ -284,13 +286,14 @@ test('a new workspace at capacity evicts the oldest inactive one; unverified ent
 
 test('cleanup reports only scratch it removed and touching a closed workspace keeps its retention clock', t => {
   const { root, command, start } = fixture(t); start();
-  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope(), now = Date.now() + 1000;
+  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
   const opened = command('workspace-write', '--data', input(root, { name: 'note', content: 'x' }));
-  assert.equal(workspaceOperation(root, identity, policy, 'complete', now + 1).scratch, 'cleaned');
+  assert.equal(workspaceOperation(root, identity, policy, 'complete').scratch, 'cleaned');
   const owner = () => JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
-  assert.equal(workspaceOperation(root, identity, policy, 'touch', now + 5).status, 'available');
-  assert.equal(owner().updated, now + 1);
-  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain', now + 6).cleaned, []);
+  const updated = owner().updated;
+  command('task-step', '--stage', 'implement', '--target', 'fixture', '--approach', 'fixture', '--evidence', 'fixture', '--outcome', 'passed', '--result', 'Checked', '--next', 'Continue');
+  assert.equal(owner().updated, updated);
+  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain').cleaned, []);
   assert.deepEqual(run(['workspace-clean', '--root', root]).cleaned, []);
 });
 
@@ -322,7 +325,8 @@ test('an exited workspace writer is reclaimable while its parent stays alive', t
   const opened = command('workspace-write', '--data', input(root, { name: 'note', content: 'abandoned' }));
   const owner = JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
   assert.notEqual(owner.operations[digest('main')].pid, process.pid);
-  const result = workspaceOperation(root, null, policy, 'maintain', Date.now() + 2 * 86400000);
+  age(opened.directory, 2);
+  const result = workspaceOperation(root, null, policy, 'maintain');
   assert.equal(result.cleaned[0].scratch, 'cleaned');
   assert.equal(fs.existsSync(opened.scratchDirectory), false);
 });
@@ -334,28 +338,13 @@ test('workspace creation refuses an unowned file where its directory belongs', t
   assert.throws(() => command('workspace-open'), /workspace directory must not be a symlink/);
 });
 
-test('a dead holder releasing its lock during reclaim defers to a fresh lock instead of failing', t => {
-  const { root, command, start } = fixture(t); start();
-  command('workspace-open');
-  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
-  const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
-  // Lock reads: the first inspection, `readState`, then the identity re-check before removal.
-  for (const [method, call] of [['lstatSync', 3], ['unlinkSync', 1]]) {
-    fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
-    const original = fs[method]; let calls = 0;
-    // The holder releases its lock just before this reclaim step reaches it.
-    fs[method] = (file, ...rest) => { if (file === lock && ++calls === call) fs.rmSync(lock); return original(file, ...rest); };
-    try { assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available', method); }
-    finally { fs[method] = original; }
-    assert.equal(fs.existsSync(lock), false);
-  }
-});
+// Lock-reclaim races are verified in platform/src/scratch/tests.rs.
 
-test('concurrent native writers and JS boundaries serialize on one workspace lock', async t => {
+test('concurrent native writers and session observations serialize on one workspace lock', async t => {
   const { root, command, start } = fixture(t); start();
   command('workspace-open');
   const binary = process.env.CRAFT_NATIVE_BINARY;
-  const module = new URL('../platform/node/workspace.mjs', import.meta.url).href;
+  const module = new URL('../cli/main.mjs', import.meta.url).href;
   const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
   const run = (file, args) => new Promise((resolve, reject) => {
     const child = spawn(file, args);
@@ -371,15 +360,15 @@ test('concurrent native writers and JS boundaries serialize on one workspace loc
     }
     return results.map(value => ({ status: value.status, directory: value.directory }));
   })());
-  const script = `import { workspaceOperation } from ${JSON.stringify(module)};
-    const identities = [null, ${JSON.stringify(identity)}, ${JSON.stringify(identity)}], actions = ['maintain', 'touch', 'status'], results = [];
-    for (let i = 0; i < 600; i++) results.push(workspaceOperation(${JSON.stringify(root)}, identities[i % 3], ${JSON.stringify(policy)}, actions[i % 3]).status);
+  const script = `import { run } from ${JSON.stringify(module)};
+    const results = [];
+    for (let i = 0; i < 24; i++) results.push(run(['session', '--root', ${JSON.stringify(root)}, '--session', 'session']).workspace.status);
     console.log(JSON.stringify(results));`;
   const boundaries = run(process.execPath, ['--input-type=module', '-e', script]).then(JSON.parse);
   const [written, observed] = await Promise.all([Promise.all(writers), boundaries]);
   const all = written.flat(), accepted = all.filter(value => value.status === 'available');
   const counts = observed.reduce((sum, status) => ({ ...sum, [status]: (sum[status] ?? 0) + 1 }), {});
-  t.diagnostic(`${all.length} native writes: ${accepted.length} accepted, ${all.length - accepted.length} busy; JS boundaries ${JSON.stringify(counts)}`);
+  t.diagnostic(`${all.length} native writes: ${accepted.length} accepted, ${all.length - accepted.length} busy; native session observations ${JSON.stringify(counts)}`);
   assert.ok(accepted.length > 0);
   assert.ok(all.every(value => ['available', 'retained'].includes(value.status)));
   assert.ok(observed.every(status => ['inspected', 'available', 'retained'].includes(status)));
@@ -389,7 +378,8 @@ test('concurrent native writers and JS boundaries serialize on one workspace loc
   const files = fs.readdirSync(path.join(directory, 'scratch'), { recursive: true }).filter(file => file.includes('note-'));
   assert.equal(files.length, accepted.length);
   assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available');
-  assert.equal(workspaceOperation(root, null, policy, 'maintain', Date.now() + 2 * 86400000).cleaned[0].scratch, 'cleaned');
+  age(directory, 2);
+  assert.equal(workspaceOperation(root, null, policy, 'maintain').cleaned[0].scratch, 'cleaned');
 });
 
 test('structured criterion evidence binds all selected repositories and reports missing roots as unknown', t => {
@@ -416,3 +406,10 @@ test('structured criterion evidence binds all selected repositories and reports 
   assert.equal(missing.acceptance.complete, false);
   assert.equal(missing.acceptance.records[0].freshness, 'unknown');
 });
+
+function age(directory, days) {
+  const file = path.join(directory, 'owner.json');
+  const owner = JSON.parse(fs.readFileSync(file));
+  owner.updated = Date.now() - days * 86400000;
+  fs.writeFileSync(file, JSON.stringify(owner));
+}

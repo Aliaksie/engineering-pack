@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
+import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { gitState } from '../platform/node/repository/snapshot.mjs';
 
 function fixture(t) {

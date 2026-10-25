@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { gitState } from '../application/checkpoint.mjs';
+import { repositorySnapshot as gitState } from '../application/repositories.mjs';
 
 const sha = (content) => createHash('sha256').update(content).digest('hex');
 const writeJson = (file, data) => fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, { flag: 'wx' });

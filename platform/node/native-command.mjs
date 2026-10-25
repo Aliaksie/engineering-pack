@@ -19,8 +19,8 @@ export function nativeRequest(executable, operation, input, { timeoutMs = 120000
 }
 
 // A migrated CLI invocation (`structured`: JSON, not a compact receipt). CRAFT_NATIVE_BINARY selects a development build.
-export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, structured } = {}) {
-  const result = nativeRequest(binary || nativeArtifact(), 'cli', { argv, structured });
+export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, structured, data, packageName } = {}) {
+  const result = nativeRequest(binary || nativeArtifact(), 'cli', { argv, structured, package: packageName, ...(data === undefined ? {} : { data }) });
   if (!Number.isInteger(result?.exitCode)) throw new Error('incompatible native runtime protocol');
   return result;
 }
@@ -34,3 +34,6 @@ export const nativeHook = facts => nativeRequest(process.env.CRAFT_NATIVE_BINARY
 
 // One native worker phase between trusted asynchronous host callbacks.
 export const nativeWorkers = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'workers', input, { subject: 'worker controller' });
+
+// One native action phase between trusted asynchronous host callbacks.
+export const nativeActions = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'actions', input, { subject: 'action controller' });

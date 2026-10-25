@@ -10,7 +10,7 @@ import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
 import { renderCommand } from '../cli/render.mjs';
 import { lockState, releaseState, nativeHook } from '../platform/index.mjs';
 import { updateSessionState } from '../application/session/activity.mjs';
-import { readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
+import { readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { readTelemetry } from '../platform/node/telemetry.mjs';
 
 // One native delivery hook event; the structured decision, before host serialization.

@@ -2,7 +2,7 @@ import { decide, digest } from '../application/engine-client.mjs';
 import { taskRepository } from '../application/session/activity.mjs';
 import { withTaskAdmission } from '../application/session/admission.mjs';
 import { workerController } from './workers.mjs';
-import { actionController } from '../application/session/actions.mjs';
+import { actionController } from './actions.mjs';
 import { clock, realRoot, stateFile, readState, writeState, lockState, releaseState } from '../platform/index.mjs';
 
 export const nativeText = value => typeof value === 'string' && value.length > 0 && value.length <= 512 && !/[\x00-\x1f\x7f]/.test(value);

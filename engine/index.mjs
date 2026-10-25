@@ -1,7 +1,6 @@
 import { groundingRequest, composeTaskContext } from './session/grounding.mjs';
 import { qaProjection } from './session/qa.mjs';
 import { productProjection } from './session/product.mjs';
-import { actionFacts, checkAction, claimAction, finishAction } from './session/recommendations.mjs';
 import { validateTaskContext, validateEngineeringContract, engineeringContractDigest, validateAcceptanceEvidence, acceptanceCoverage } from './session/acceptance.mjs';
 import { workerBudget } from './routing/worker-budget.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
@@ -46,10 +45,6 @@ const operations = {
   'worker-budget': a => workerBudget(a.project, a.facts, a.options),
   'feature-record': a => recordFeature(a.state, a.input, Object.hasOwn(a, 'source') ? a.source : taskSource(a.repository), a.at, a.provenance),
   'feature-report': a => featureReport(a.state, taskSource(a.repository)),
-  'action-facts': a => actionFacts(a.facts),
-  'action-check': a => checkAction(a),
-  'action-claim': a => claimAction(a),
-  'action-finish': a => finishAction(a),
   'task-binding': a => taskBinding(a.state, a.repository),
   'task-contract': a => taskContract(a.record),
   'task-source': a => taskSource(a.repository),

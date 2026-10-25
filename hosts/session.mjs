@@ -24,13 +24,13 @@ export function renderSession(advice, platform) {
   const command = sessionCapabilities(platform).commands[suggestion.action];
   return `${status} | Next: ${command ?? suggestion.action}${suggestion.checks ? ` (${suggestion.checks.length} declared check(s); inspect JSON for argv)` : ''}`;
 }
-export async function runSession(advisor, readInput, readProject, platform, observation = {}) {
+export async function runSession(advisor, readInput, platform, observation = {}) {
   const args = process.argv.slice(2), index = args.indexOf('--root');
   const hint = index >= 0 && args[index+1] && !args[index+1].startsWith('--') ? args[index+1] : process.cwd();
-  return observation.run ? observation.run(hint,platform,() => session(advisor,readInput,readProject,platform,observation))
-    : session(advisor,readInput,readProject,platform,observation);
+  return observation.run ? observation.run(hint,platform,() => session(advisor,readInput,platform,observation))
+    : session(advisor,readInput,platform,observation);
 }
-async function session(advisor, readInput, readProject, platform, observation) {
+async function session(advisor, readInput, platform, observation) {
   try {
     let data, root = process.cwd(), json = false, nativeStdin = false;
     const args = process.argv.slice(2);
@@ -70,7 +70,7 @@ async function session(advisor, readInput, readProject, platform, observation) {
         host: { ...input.host, ...(knownModel ? { model } : {}) } };
       if (knownModel === false && input.host) delete input.host.model;
     }
-    const advice = advisor({ ...input, host: { reliableCompaction: Boolean(sessionCapabilities(platform).commands.compact), ...input.host, name: platform } }, readProject(root), { root });
+    const advice = advisor({ ...input, host: { reliableCompaction: Boolean(sessionCapabilities(platform).commands.compact), ...input.host, name: platform } }, { root });
     process.stdout.write(`${json ? JSON.stringify({ ...advice, sessionHost: advice.host, host: sessionCapabilities(platform) }, null, 2) : renderSession(advice, platform)}\n`);
   } catch (error) { observation.diagnostic?.('INVALID_INPUT'); process.stderr.write(`${error.message}\n`); process.exitCode = 2; return { failed:true }; }
 }

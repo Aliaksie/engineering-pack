@@ -1060,9 +1060,20 @@ fn session_status(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    let data = match options.get("data") {
-        Some(file) => input(recorder, parent, file)?,
-        None => json!({}),
+    session_status_input(options, recorder, parent, None)
+}
+
+fn session_status_input(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+    forwarded: Option<&Value>,
+) -> Result<Value, Failure> {
+    let data = match (forwarded, options.get("data")) {
+        (Some(_), Some(_)) => return Err("choose forwarded session input or --data".into()),
+        (Some(data), None) => data.clone(),
+        (None, Some(file)) => input(recorder, parent, file)?,
+        (None, None) => json!({}),
     };
     if !data.is_object() {
         return Err("session input must be a JSON object".into());
@@ -1700,6 +1711,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         hint("--session"),
         hint("--host"),
     );
+    recorder.package(context["package"].as_str());
     let operation = recorder.start("cli.command", None);
     let command = match action {
         "operation" => plan_operation,
@@ -1736,6 +1748,9 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let result = parse(action, args).and_then(|options| {
         if let Some(action) = crate::scratch::Action::from_command(action) {
             return workspace(action, &options, &mut recorder, &operation);
+        }
+        if matches!(action, "session" | "session-advice") && context.get("data").is_some() {
+            return session_status_input(&options, &mut recorder, &operation, context.get("data"));
         }
         command(&options, &mut recorder, &operation)
     });

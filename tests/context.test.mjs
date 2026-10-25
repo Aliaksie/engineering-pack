@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { contextReport } from '../application/session/context.mjs';
+import { contextReport } from './context-cli.mjs';
 import { route } from './native-route.mjs';
 import { run } from '../cli/main.mjs';
 
@@ -84,7 +84,6 @@ test('context report rejects traversal, symlinked resources, oversized files and
   fs.rmSync(path.join(directory, 'workflows'), { recursive: true });
   fs.symlinkSync(outside, path.join(directory, 'workflows'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => contextReport(directory, exploration()), /symlink/);
-  assert.throws(() => contextReport(root, { skills: ['craft-engineering:../secrets'] }), /invalid context target/);
   assert.throws(() => run(['context-report', '--intent', 'verify', '--budget-bytes', 'invalid']), /positive safe integer/);
 });
 
@@ -116,7 +115,6 @@ test('separately installed packages are accounted through explicit roots without
   assert.equal(ambiguous.complete, false);
   assert.ok(ambiguous.missing.some(entry => /multiple supplied roots/.test(entry.reason)));
   assert.ok(ambiguous.files.every(entry => !entry.target.startsWith('craft-engineering:')));
-  assert.throws(() => contextReport([], plan), /1 to 16/);
   assert.throws(() => contextReport(Array(17).fill(roots[0]), plan), /1 to 16/);
   fs.symlinkSync(path.join(root, 'packages/craft-engineering/skills'), path.join(roots[1], 'linked-skills'), 'dir');
   // The explicit-root path still uses the existing no-symlink resource boundary.

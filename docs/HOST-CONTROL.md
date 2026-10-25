@@ -1,9 +1,9 @@
 # Trusted host controllers
 
 The standalone runtime exports `hosts/workers.mjs` and
-`application/session/actions.mjs` under each package's `support/` directory. These explicit
-JavaScript APIs accept trusted adapter functions. The worker adapter invokes native phases
-for ledger reads, admission, reconciliation and result recording. Project JSON cannot load
+`hosts/actions.mjs` under each package's `support/` directory. These explicit
+JavaScript APIs accept trusted adapter functions. The adapters invoke native phases
+for ledger reads, claims, admission, reconciliation and result recording. Project JSON cannot load
 adapters or grant permission. CLI recommendations remain advice; the shipped hooks supply no native
 worker, review or compaction transport. Explicit native bindings are provided for Codex
 App Server, Claude Agent SDK and ACP agents. Model switching remains a host/manual operation.

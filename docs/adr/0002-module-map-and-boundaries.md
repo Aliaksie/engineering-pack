@@ -80,6 +80,12 @@ that lock. Moving the callback sequence adds 72 host JavaScript lines and three 
 forwarder lines while removing its application implementation; no worker decisions or
 persistence remain in the adapter.
 
+The action callback adapter also lives in `hosts/`; native phases validate fresh observations,
+claim under the binding lock, save the accepted-source compaction checkpoint and settle
+receipts with runtime-observed feature evidence. Moving the callback sequence adds 46 host
+JavaScript lines while retiring its application implementation. Status-line adapters pass
+parsed host observations to the native `session` command; Rust owns status aggregation.
+
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.

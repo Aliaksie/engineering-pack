@@ -477,3 +477,134 @@ pub fn check(state: &Value, input: &Value, context: &Context) -> Result<Value> {
         "reason": reason,
     }))
 }
+
+/// Reserve one durable execution identity before calling a trusted host.
+pub fn claim(
+    state: &mut Value,
+    input: &Value,
+    context: &Context,
+    checkpoint: &Value,
+) -> Result<Value> {
+    let checked = check(state, input, context)?;
+    let offer = &checked["offer"];
+    if offer["action"] != "review" && offer["action"] != "compact" {
+        return Err("worker execution uses the shared worker controller".into());
+    }
+    if truthy(offer.get("executionReceipt")) {
+        return Ok(json!({"state":state,"receipt":offer["executionReceipt"],"duplicate":true}));
+    }
+    if checked["ready"] != true {
+        return Err(checked["reason"].as_str().unwrap_or_default().into());
+    }
+    if offer["action"] == "compact"
+        && !checkpoint.as_str().is_some_and(|s| {
+            s.len() == 64
+                && s.bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
+    {
+        return Err("compaction requires a bound checkpoint identity".into());
+    }
+    let id = input["id"].as_str().expect("checked offer");
+    let receipt = json!({"key":digest(&json!([offer["id"],"execute"])),"state":"dispatching","source":offer["source"],"checkpoint":checkpoint,"generation":0,"evidence":null,"acceptanceEvidence":null});
+    state["recommendations"][id]["executionReceipt"] = receipt.clone();
+    state["recommendations"][id]["execution"] = json!("dispatching");
+    Ok(json!({"state":state,"receipt":receipt,"duplicate":false}))
+}
+
+/// Settle only the current generation; terminal and superseded receipts cannot regress.
+pub fn finish(
+    state: &mut Value,
+    id: &Value,
+    key: &Value,
+    generation: &Value,
+    result: &Value,
+) -> Result<Value> {
+    let offer = id
+        .as_str()
+        .and_then(|id| state["recommendations"].get(id))
+        .ok_or("unknown action execution")?;
+    let receipt = offer
+        .get("executionReceipt")
+        .filter(|r| r.get("key") == Some(key))
+        .ok_or("unknown action execution")?;
+    if receipt.get("generation") != Some(generation)
+        || receipt["state"] == "completed"
+        || receipt["state"] == "not-started"
+    {
+        return Ok(json!({"state":state,"receipt":receipt,"ignored":true}));
+    }
+    let map = fields(
+        result,
+        &[
+            "state",
+            "evidence",
+            "source",
+            "checkpoint",
+            "resumed",
+            "acceptanceEvidence",
+            "fenced",
+        ],
+        "native action result",
+    )?;
+    if !["started", "completed", "not-started", "uncertain"]
+        .iter()
+        .any(|s| result["state"] == *s)
+    {
+        return Err("invalid native action state".into());
+    }
+    for field in ["evidence", "acceptanceEvidence"] {
+        if map.get(field).is_some_and(|v| !v.is_null() && !text(v)) {
+            return Err(format!("invalid native action {field}"));
+        }
+    }
+    if map
+        .get("source")
+        .is_some_and(|v| Some(v) != receipt.get("source"))
+        || map
+            .get("checkpoint")
+            .is_some_and(|v| Some(v) != receipt.get("checkpoint"))
+        || ["resumed", "fenced"]
+            .iter()
+            .any(|f| map.get(*f).is_some_and(|v| !v.is_boolean()))
+    {
+        return Err("invalid native action binding".into());
+    }
+    if result["state"] != "uncertain"
+        && (!result.get("evidence").is_some_and(text)
+            || result.get("source") != receipt.get("source"))
+    {
+        return Err("native action result must identify its actual source/evidence".into());
+    }
+    if result["state"] == "not-started" && result["fenced"] != true {
+        return Err("negative action lookup must fence late execution".into());
+    }
+    if result["state"] == "completed"
+        && offer["action"] == "compact"
+        && (result.get("checkpoint") != receipt.get("checkpoint")
+            || result["resumed"] != true
+            || !result.get("acceptanceEvidence").is_some_and(text))
+    {
+        return Err(
+            "compaction completion requires matching resumed checkpoint and acceptance evidence"
+                .into(),
+        );
+    }
+    let next = safe_integer(&receipt["generation"])
+        .filter(|generation| (0..9_007_199_254_740_991).contains(generation))
+        .ok_or("invalid action generation")?
+        + 1;
+    let offer = &mut state["recommendations"][id.as_str().unwrap()];
+    let receipt = &mut offer["executionReceipt"];
+    receipt["state"] = result["state"].clone();
+    receipt["evidence"] = result["evidence"].clone();
+    receipt["acceptanceEvidence"] = result["acceptanceEvidence"].clone();
+    receipt["generation"] = json!(next);
+    let receipt = receipt.clone();
+    offer["execution"] = if result["state"] == "completed" {
+        json!("host-observed")
+    } else {
+        result["state"].clone()
+    };
+    Ok(json!({"state":state,"receipt":receipt,"ignored":false}))
+}

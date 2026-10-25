@@ -7,10 +7,10 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { attemptStatus } from '../application/session/activity.mjs';
 import { readSessionState } from '../application/session/activity.mjs';
-import { sessionStatus } from '../application/session/status.mjs';
+import { sessionStatus } from './session-cli.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
-import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
+import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { run } from '../cli/main.mjs';
 
 // Discovery through the public locate command; `request` is its --data document.
@@ -50,7 +50,7 @@ function recordAttempt(root, session, task, attempt) {
 }
 const continuation = () => Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, `${key}: concise resume evidence`]));
 const receipt = extra => ({ operation: 'implement', target: 'acceptance:regression', approach: 'bounded-fix', evidence: 'artifacts/check-1.json', outcome: 'quality-failure', ...extra });
-const now = Date.parse('2026-10-18T12:00:00Z');
+const now = Date.now();
 const observed = tokens => ({ sessionId: 's1', host: { name: 'fixture', reliableCompaction: true }, usage: {
   kind: 'current-context', currentTokens: tokens, capacityTokens: 100, source: 'fixture-current-context', observedAt: new Date(now).toISOString(), sessionId: 's1'
 } });
@@ -284,6 +284,8 @@ test('known host mappings identify an unnecessarily strong profile for mechanica
     profiles: { small: { class: 'economical', capabilities: [] }, deep: { class: 'strong', capabilities: [] } },
     hosts: { fixture: { delegation: true, models: { small: 'consumer-a', deep: 'consumer-b' } } }
   } };
+  fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify(project));
   const status = sessionStatus({ host: { name: 'fixture', model: 'consumer-b' }, task: { id: scope.task, stage: 'locate', revision: 'r1' } }, project, { root });
   assert.equal(status.capability.currentClass, 'strong');
   assert.equal(status.capability.recommendation, 'use-deterministic-tool-or-economical-profile');
@@ -373,6 +375,8 @@ function retryProject() {
 test('a completed series cannot suppress escalation or retain a resolved denial in a later series', t => {
   const { root, git } = fixture(t);
   const project = retryProject();
+  fs.mkdirSync(path.join(root, ".craft"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".craft/project.json"), JSON.stringify(project));
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision: git('rev-parse', 'HEAD') } };
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine', outcome: 'permission-denied' }));
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine', outcome: 'passed' }));
@@ -392,6 +396,8 @@ test('a completed series cannot suppress escalation or retain a resolved denial 
 test('unrelated completed operations cannot evict active blockers or escalation evidence', t => {
   const { root, git } = fixture(t);
   const project = retryProject();
+  fs.mkdirSync(path.join(root, ".craft"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".craft/project.json"), JSON.stringify(project));
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision: git('rev-parse', 'HEAD') } };
   const unrelated = () => {
     for (let i = 0; i < 24; i++) recordAttempt(root, scope.session, scope.task, receipt({ operation: 'verify', target: `check:${i}`, outcome: 'passed' }));

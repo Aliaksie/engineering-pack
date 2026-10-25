@@ -13,7 +13,7 @@ import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
-import { readCheckpoint } from '../application/checkpoint.mjs';
+import { readCheckpoint } from './checkpoint-cli.mjs';
 
 const uuid = '12345678-1234-4234-a234-123456789abc';
 function fixture(t, telemetry) {

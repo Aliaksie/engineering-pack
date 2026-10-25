@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { stepTask, taskAction } from './task-cli.mjs';
 import { run } from '../cli/main.mjs';
-import { actionController } from '../application/session/actions.mjs';
+import { actionController } from '../hosts/actions.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { readSessionState } from '../application/session/activity.mjs';
 
@@ -92,15 +92,66 @@ test('amended task criteria invalidate an existing approval without a source edi
   assert.equal(readSessionState(f.root, 's1', 'T1').taskRecord.goalComplete, false);
 });
 
-test('compaction completion requires actual resume/acceptance references and negative action lookup requires fencing', () => {
-  const id = 'a'.repeat(64), source = 'b'.repeat(64), key = 'c'.repeat(64), checkpoint = 'd'.repeat(64);
-  const state = { recommendations: { [id]: { action: 'compact', executionReceipt: { key, source, checkpoint, generation: 0, state: 'dispatching' } } } };
-  const finish = result => decide('action-finish', { state, id, key, generation: 0, result });
-  assert.throws(() => finish({ state: 'completed', source, evidence: 'host:compact-issued' }), /resumed checkpoint/);
-  assert.throws(() => finish({ state: 'not-started', source, evidence: 'host:missing' }), /fence/);
-  const completed = finish({ state: 'completed', source, checkpoint, resumed: true, evidence: 'host:resumed', acceptanceEvidence: 'checks:resumed-task' });
-  assert.equal(completed.receipt.state, 'completed');
-  assert.equal(Object.hasOwn(state.recommendations[id], 'execution'), false);
-  const later = decide('action-finish', { state: completed.state, id, key, generation: 0, result: { state: 'uncertain' } });
-  assert.equal(later.ignored, true); assert.equal(later.receipt.state, 'completed');
+
+test('native claims reject stale observations, changed binding and a busy binding writer before dispatch', async t => {
+  const f = fixture(t); f.decideOffer('approved');
+  for (const observation of [
+    { sessionId: 's1', observedAt: new Date(Date.now() - 31000).toISOString(), facts: { allowed: true, supported: true } },
+    { sessionId: 's1', observedAt: new Date(Date.now() + 60000).toISOString(), facts: { allowed: true, supported: true } },
+    { sessionId: 'other', observedAt: new Date().toISOString(), facts: {} },
+  ]) {
+    f.host.observe = async () => observation;
+    await assert.rejects(f.controller.execute(f.id), /fresh matching/);
+  }
+  const { bindingFile } = await import('../application/session/activity.mjs');
+  const lock = `${bindingFile(f.root, 's1', true)}.lock`;
+  fs.writeFileSync(lock, '');
+  f.host.observe = async () => ({ sessionId: 's1', observedAt: new Date().toISOString(), facts: { allowed: true, supported: true } });
+  try { await assert.rejects(f.controller.execute(f.id), /writer is busy/); }
+  finally { fs.unlinkSync(lock); }
+  f.host.observe = async () => {
+    startTask(f.root, 's1', 'T2', { goal: 'Another outcome' });
+    return { sessionId: 's1', observedAt: new Date().toISOString(), facts: { allowed: true, supported: true } };
+  };
+  await assert.rejects(f.controller.execute(f.id), /active coordinator task/);
+  assert.equal(f.calls.length, 0);
+});
+
+test('native compaction binds the checkpoint and records use only after matching resume evidence', async t => {
+  const f = fixture(t);
+  const facts = () => ({ allowed: true, supported: true, observations: {
+    sessionId: 's1', host: { name: 'fixture', reliableCompaction: true },
+    usage: { kind: 'current-context', currentTokens: 90, capacityTokens: 100, sessionId: 's1', source: 'host:context', observedAt: new Date().toISOString() },
+  } });
+  const offered = taskAction(f.root, 's1', 'T1', 'action-propose', { action: 'compact', scope: 'Current task', benefit: 'Continue with bounded context', evidence: 'host:context' }, facts());
+  const id = offered.offer.id;
+  taskAction(f.root, 's1', 'T1', 'action-decide', { id, decision: 'approved', evidence: 'user:compact' });
+  f.host.observe = async () => ({ sessionId: 's1', observedAt: new Date().toISOString(), facts: facts() });
+  f.host.execute = async input => ({ state: 'completed', source: input.source, evidence: 'host:issued' });
+  const unconfirmed = await f.controller.execute(id);
+  assert.equal(unconfirmed.uncertain, true);
+  assert.equal(readSessionState(f.root, 's1', 'T1').featureOutcomes?.compaction, undefined);
+  f.host.lookup = async input => ({ state: 'completed', source: input.source, checkpoint: input.checkpoint, resumed: true, evidence: 'host:resumed', acceptanceEvidence: 'checks:after-resume' });
+  const result = await f.controller.reconcile(id);
+  assert.equal(result.executed, true);
+  assert.equal(readSessionState(f.root, 's1', 'T1').featureOutcomes.compaction.provenance, 'runtime-observed');
+  assert.equal(result.receipt.checkpoint, decide('digest', { value: run(['checkpoint-read', '--root', f.root, '--session', 's1']).saved }));
+});
+
+test('authorization receives an isolated offer and native completion preserves a durable recovery key on storage failure', async t => {
+  const f = fixture(t); f.decideOffer('approved');
+  f.host.authorize = async ({ offer }) => { offer.scope = 'Changed scope'; return { allowed: true }; };
+  const file = path.join(path.dirname((await import('../platform/index.mjs')).stateFile(f.root, 'probe', false, 's1')), `session-${decide('digest', { value: ['s1', 'T1'] }).slice(0,24)}.json`);
+  f.host.execute = async input => {
+    f.calls.push(input);
+    fs.writeFileSync(`${file}.lock`, '');
+    return { state: 'completed', source: input.source, evidence: 'host:completed' };
+  };
+  const result = await f.controller.execute(f.id);
+  fs.unlinkSync(`${file}.lock`);
+  assert.equal(result.uncertain, true);
+  assert.equal(result.recoveryKey, f.calls[0].key);
+  assert.notEqual(f.calls[0].scope, 'Changed scope');
+  assert.equal((await f.controller.execute(f.id)).duplicate, true);
+  assert.equal(f.calls.length, 1);
 });
