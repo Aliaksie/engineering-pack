@@ -71,8 +71,8 @@ export function recordTaskStep(state, input, repository, id, at) {
   Object.assign(record, { stage: selected, status: input.outcome === 'passed' ? 'completed' : input.outcome === 'quality-failure' ? 'failed' : input.outcome === 'prerequisite-resolved' ? 'working' : 'blocked',
     goalComplete: input.complete === true, revision: repository.head, source: receipt.source, safeBoundary: true,
     summary: input.result, nextStep: input.nextStep });
-  if (selected === 'verify' && input.outcome !== 'prerequisite-resolved') Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
-  else { delete record.verification; delete record.verificationRevision; }
+  if (selected === 'verify' && ['passed', 'quality-failure'].includes(input.outcome)) Object.assign(record, { verification: input.outcome === 'passed' ? 'passed' : 'failed', verificationRevision: repository.head });
+  else { delete record.verification; delete record.verificationRevision; } // blockers and resolutions did not run the check
   record.acceptedContract = taskContract(record);
   if (input.outcome === 'passed' && !record.completed?.endsWith(input.result)) record.completed = [record.completed, input.result].filter(Boolean).join('\n').slice(-1024);
   const continuation = { goal: record.goal, currentState: input.result,

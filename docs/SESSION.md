@@ -150,7 +150,8 @@ an acceptance receipt. Unchanged repository snapshots cannot renew older semanti
 
 Use `--complete` only for accepted overall completion. A failed receipt or unresolved
 acceptance target prevents that declaration. Success closes only the matching operation and
-target; unrelated success cannot erase a failure series. Source edits invalidate stored
+target; unrelated success cannot erase a failure series. A blocker outcome on a verify step
+leaves verification unrecorded: the check did not run. Source edits invalidate stored
 completion and verification when status is read, even if HEAD did not change. Context
 occupancy remains unknown unless a supported observation supplies it.
 

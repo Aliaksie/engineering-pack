@@ -87,6 +87,20 @@ test('source edits invalidate stored acceptance and native tool success never cr
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
 });
 
+test('a blocked verify step records no verification result', t => {
+  const { root, command, start } = fixture(t);
+  start();
+  const verify = outcome => command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', outcome, '--result', 'Checked', '--next', 'Retry');
+  verify('passed');
+  for (const outcome of ['permission-denied', 'tool-unavailable', 'blocked']) {
+    verify(outcome);
+    const record = readSessionState(root, 'host-session', 'fix-value').taskRecord;
+    assert.deepEqual([record.status, record.verification, record.verificationRevision], ['blocked', undefined, undefined], outcome);
+  }
+  verify('quality-failure');
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.verification, 'failed');
+});
+
 test('session declarations fill only fields a saved task record does not own', t => {
   const { root, command, start, step } = fixture(t);
   start(); step();
