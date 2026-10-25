@@ -25,7 +25,7 @@ export function startTask(root, session, task, input, { host, preferencesFile } 
     const repository = repositorySnapshot(root, repositories);
     const started = decide('task-start', { state: previous, input: { ...input, id: task }, repository });
     const routing = route({ intent: started.intent,
-      files: started.state.taskRecord.files, project, host });
+      files: started.state.taskRecord.files, risks: started.state.taskRecord.risks, project, host });
     const revision = repository.head;
     const model = revision && ['locator', 'researcher', 'implementer', 'reviewer', 'planner', 'verifier'].includes(routing.execution.role)
       ? decide('model-advice', { input: { host: host ?? 'unknown', role: routing.execution.role, task, revision, capabilityClass: routing.capability.class }, project })

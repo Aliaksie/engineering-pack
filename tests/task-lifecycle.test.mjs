@@ -54,6 +54,14 @@ test('ordinary lifecycle binds discovery, records semantic acceptance, saves con
   assert.equal(git('status', '--porcelain'), '?? .craft/');
 });
 
+test('declared task risks select the route capability and persist across task-start', t => {
+  const { command } = fixture(t);
+  const begun = command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--file', 'value.mjs', '--risk', 'security-sensitive');
+  assert.equal(begun.routing.capability.class, 'strong');
+  const repeated = command('task-start', '--task', 'fix-value', '--goal', 'Fix the value');
+  assert.equal(repeated.routing.capability.class, 'strong');
+});
+
 test('source edits invalidate stored acceptance and native tool success never creates a receipt', t => {
   const { root, command, start } = fixture(t);
   start();
