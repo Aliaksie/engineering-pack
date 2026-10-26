@@ -1390,7 +1390,7 @@ fn help(action: &str) -> Value {
         }),
         "workspace-clean" => json!({
             "usage": "workspace-clean --root project",
-            "mode": "reclaim closed or stale abandoned storage; live or unverified owners are retained",
+            "mode": "reclaim closed or stale storage; open operations are retained until stale",
         }),
         "task-offer" => json!({
             "usage": "task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]",

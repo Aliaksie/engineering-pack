@@ -124,11 +124,6 @@ function input(root, value) {
   const file = path.join(root, `input-${++inputs}.json`);
   fs.writeFileSync(file, JSON.stringify(value)); return file;
 }
-const setOwners = (directory, pid) => {
-  const file = path.join(directory, 'owner.json'), owner = JSON.parse(fs.readFileSync(file));
-  for (const op of Object.values(owner.operations)) op.pid = pid;
-  fs.writeFileSync(file, JSON.stringify(owner));
-};
 
 test('workspace is lazy, isolated by session/task/operation, promotes selective evidence and cleans on completion', t => {
   const { root, command, start, accept } = fixture(t);
@@ -177,14 +172,12 @@ test('workspace bounds, settings merge and ownership checks fail closed', t => {
   assert.ok(fs.existsSync(opened.directory));
 });
 
-test('stale cleanup retains live owners and reclaims abandoned scratch and aged evidence', t => {
+test('stale cleanup retains open operations and reclaims abandoned scratch and aged evidence', t => {
   const { root, command, start } = fixture(t); start();
   const opened = command('workspace-write', '--operation', 'scope', '--data', input(root, { name: 'note', content: 'intermediate' }));
-  setOwners(opened.directory, process.pid);
-  age(opened.directory, 2);
   workspaceOperation(root, 'maintain');
-  assert.ok(fs.existsSync(opened.scratchDirectory), 'age cannot remove live owners');
-  setOwners(opened.directory, 2147483647);
+  assert.ok(fs.existsSync(opened.scratchDirectory), 'an open operation keeps fresh scratch');
+  age(opened.directory, 2);
   const cleaned = workspaceOperation(root, 'maintain');
   assert.equal(cleaned.cleaned[0].scratch, 'cleaned');
   assert.equal(fs.existsSync(path.join(opened.directory, 'scratch')), false);
@@ -214,20 +207,21 @@ for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirec
   assert.equal(fs.existsSync(path.join(output, '.git')), false);
 });
 
-test('workspace operations retain other owners, recover only dead owned locks and enforce count limits', t => {
+test('workspace operations retain open operations, recover only dead owned locks and enforce count limits', t => {
   const { root, command, start } = fixture(t); start();
   fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, workspace: { maxSessions: 1 } }));
   const opened = command('workspace-open');
   const ownerFile = path.join(opened.directory, 'owner.json');
   const owner = JSON.parse(fs.readFileSync(ownerFile));
+  // A recorded pid decides nothing: the operation identity is its owner.
   owner.operations[digest('other-worker')] = { pid: process.ppid, closed: false };
   fs.writeFileSync(ownerFile, JSON.stringify(owner));
-  assert.equal(workspaceOperation(root, 'complete').scratch, 'retained');
+  assert.equal(workspaceOperation(root, 'complete').scratch, 'retained', 'an open operation keeps the scratch');
   assert.ok(fs.existsSync(opened.scratchDirectory));
-  assert.throws(() => command('workspace-write', '--operation', 'other-worker', '--data', input(root, { name: 'collision', content: 'x' })), /another active owner/);
+  assert.equal(command('workspace-write', '--operation', 'other-worker', '--data', input(root, { name: 'resumed', content: 'x' })).status, 'available');
   start(['kit'], 'another');
-  assert.throws(() => command('workspace-open'), /capacity/);
+  assert.deepEqual(command('workspace-open').cleaned.filter(item => item.removed), [{ entry: path.basename(opened.directory), removed: true }], 'capacity evicts the open workspace of another task');
   start();
   const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
   fs.writeFileSync(lock, ''); // Another writer has created but not yet published its lock.
@@ -238,7 +232,7 @@ test('workspace operations retain other owners, recover only dead owned locks an
   assert.equal(workspaceOperation(root, 'complete').status, 'retained');
   assert.equal(command('workspace-open').status, 'retained');
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
-  assert.equal(workspaceOperation(root, 'status').status, 'available');
+  assert.equal(workspaceOperation(root, 'status').status, 'absent', 'evicted above; the dead lock no longer blocks');
   assert.equal(fs.existsSync(lock), false);
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
   assert.equal(command('workspace-open').status, 'available', 'the native runtime observes the dead holder on every platform');
@@ -263,7 +257,7 @@ test('linked worktree selection and exported workspace commands preserve reposit
   assert.equal(fs.existsSync(path.join(root, 'linked/.craft')), false);
 });
 
-test('a new workspace at capacity evicts the oldest inactive one; unverified entries occupy capacity', t => {
+test('a new workspace at capacity evicts inactive, then open workspaces of other tasks; unverified entries occupy capacity', t => {
   const { root, command, start } = fixture(t);
   fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, workspace: { maxSessions: 2 } }));
@@ -275,9 +269,10 @@ test('a new workspace at capacity evicts the oldest inactive one; unverified ent
   const opened = command('workspace-open');
   assert.equal(opened.status, 'available');
   assert.deepEqual(opened.cleaned.filter(item => item.removed), [{ entry: path.basename(old.directory), removed: true }]);
-  setOwners(opened.directory, process.pid);
   start(['kit'], 'third');
-  assert.throws(() => command('workspace-open'), /capacity/, 'live and unverified entries are never evicted');
+  const third = command('workspace-open');
+  assert.deepEqual(third.cleaned.filter(item => item.removed), [{ entry: path.basename(opened.directory), removed: true }], 'an open workspace of another task goes when capacity requires');
+  assert.ok(fs.existsSync(path.join(path.dirname(old.directory), 'unverified')), 'unverified entries are never evicted');
 });
 
 test('cleanup reports only scratch it removed and touching a closed workspace keeps its retention clock', t => {
@@ -314,11 +309,10 @@ test('capacity eviction refuses a workspace holding unknown files', t => {
   assert.ok(fs.existsSync(path.join(old.directory, 'stray')));
 });
 
-test('an exited workspace writer is reclaimable while its parent stays alive', t => {
+test('an abandoned open workspace is reclaimed once stale', t => {
   const { root, command, start } = fixture(t); start();
   const opened = command('workspace-write', '--data', input(root, { name: 'note', content: 'abandoned' }));
-  const owner = JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
-  assert.notEqual(owner.operations[digest('main')].pid, process.pid);
+  assert.equal(workspaceOperation(root, 'maintain').cleaned.length, 0, 'a fresh open workspace is retained');
   age(opened.directory, 2);
   const result = workspaceOperation(root, 'maintain');
   assert.equal(result.cleaned[0].scratch, 'cleaned');

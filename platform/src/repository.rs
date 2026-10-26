@@ -72,17 +72,7 @@ pub fn database_guard(path: &Path) -> Result<File, String> {
         current = current.parent().ok_or("invalid state path")?;
     }
     for directory in missing.iter().rev() {
-        let mut builder = fs::DirBuilder::new();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::DirBuilderExt;
-            builder.mode(0o700);
-        }
-        match builder.create(directory) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(error.to_string()),
-        }
+        crate::files::create_private_directory(directory).map_err(|error| error.to_string())?;
         let metadata = fs::symlink_metadata(directory).map_err(|e| e.to_string())?;
         if !metadata.is_dir() || metadata.file_type().is_symlink() {
             return Err("unsafe state directory".into());

@@ -30,17 +30,7 @@ pub fn directory(path: &Path, create: bool) -> io::Result<bool> {
         Err(error) => return Err(error),
     };
     if metadata.is_none() && create {
-        let mut builder = fs::DirBuilder::new();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::DirBuilderExt;
-            builder.mode(0o700);
-        }
-        match builder.create(path) {
-            Ok(()) => {}
-            Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(error),
-        }
+        crate::files::create_private_directory(path)?;
         metadata = Some(fs::symlink_metadata(path)?);
     }
     match metadata {

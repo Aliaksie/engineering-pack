@@ -70,26 +70,20 @@ fn identity_matches_the_js_digests() {
 }
 
 #[test]
-fn owners_hold_while_live_and_unknown_owners_until_stale() {
+fn open_operations_hold_the_workspace_until_stale() {
     let policy = policy(json!({}));
-    let fresh = manifest_at(1_000, false);
+    let mut open = manifest_at(1_000, false);
+    open["operations"] = json!({"a": {"pid": 1, "closed": false}});
+    assert!(active(&open, 1_000 + policy.stale_ms - 1, &policy));
     assert!(
-        holds(Liveness::Live, &fresh, 1_000 + 10 * DAY_MS, &policy),
-        "age never evicts a live owner"
+        !active(&open, 1_000 + policy.stale_ms, &policy),
+        "an abandoned operation never holds forever"
     );
-    assert!(!holds(Liveness::Dead, &fresh, 1_000, &policy));
-    assert!(holds(
-        Liveness::Unknown,
-        &fresh,
-        1_000 + policy.stale_ms - 1,
-        &policy
-    ));
-    assert!(!holds(
-        Liveness::Unknown,
-        &fresh,
-        1_000 + policy.stale_ms,
-        &policy
-    ));
+    open["operations"]["a"]["closed"] = json!(true);
+    assert!(
+        !active(&open, 1_000, &policy),
+        "closed operations hold nothing"
+    );
 }
 
 #[test]
@@ -185,13 +179,13 @@ fn manifests_validate_every_field() {
 }
 
 #[test]
-fn new_manifests_validate_and_list_open_owners() {
+fn new_manifests_validate_and_list_open_operations() {
     let identity = Identity::new("session", "task", Some(&json!(["kit"])), None);
     let mut created = manifest("p", &identity, 7);
     assert_eq!(validate(&created, "p", KEY), Ok(()));
     created["operations"] =
         json!({"a": {"pid": 3, "closed": false}, "b": {"pid": 4, "closed": true}});
-    assert_eq!(open_owners(&created), vec![("a".to_string(), 3)]);
+    assert_eq!(open_operations(&created), vec!["a".to_string()]);
 }
 
 #[test]

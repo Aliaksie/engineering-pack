@@ -53,15 +53,11 @@ pub enum Liveness {
     Unknown,
 }
 
-/// A recorded owner holds the workspace while its process lives. An owner whose liveness
-/// cannot be observed holds it only until the workspace goes stale, so it is never
-/// retained forever and never reclaimed early.
-pub fn holds(liveness: Liveness, manifest: &Value, now: i64, policy: &Policy) -> bool {
-    match liveness {
-        Liveness::Live => true,
-        Liveness::Dead => false,
-        Liveness::Unknown => !stale(manifest, now, policy),
-    }
+/// Open operations hold the workspace until it goes stale. An operation's owner is its
+/// session/task/operation identity, not a process: every `craft` call exits at once, so a
+/// recorded pid that still answers can only be a reused one.
+pub fn active(manifest: &Value, now: i64, policy: &Policy) -> bool {
+    !open_operations(manifest).is_empty() && !stale(manifest, now, policy)
 }
 
 fn age(manifest: &Value, now: i64) -> i64 {
@@ -178,14 +174,14 @@ pub fn validate(value: &Value, project: &str, entry: &str) -> Result {
     if valid { Ok(()) } else { Err(invalid()) }
 }
 
-/// Recorded owners: `(operation id, pid)` for operations not yet closed.
-pub fn open_owners(manifest: &Value) -> Vec<(String, i64)> {
+/// Operations not yet closed.
+pub fn open_operations(manifest: &Value) -> Vec<String> {
     manifest["operations"]
         .as_object()
         .into_iter()
         .flatten()
         .filter(|(_, operation)| operation["closed"] == false)
-        .filter_map(|(id, operation)| Some((id.clone(), operation["pid"].as_i64()?)))
+        .map(|(id, _)| id.clone())
         .collect()
 }
 

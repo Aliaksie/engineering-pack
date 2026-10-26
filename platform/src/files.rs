@@ -19,6 +19,20 @@ impl std::fmt::Display for ReadError {
     }
 }
 
+/// Create one directory readable only by its owner where the platform supports modes. An
+/// existing entry is accepted; callers verify what the path resolves to.
+pub fn create_private_directory(path: &Path) -> io::Result<()> {
+    #[cfg(unix)]
+    let created =
+        std::os::unix::fs::DirBuilderExt::mode(&mut fs::DirBuilder::new(), 0o700).create(path);
+    #[cfg(not(unix))]
+    let created = fs::create_dir(path);
+    match created {
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        result => result,
+    }
+}
+
 /// Read a regular file within a byte budget. Refuse special files before opening
 /// them: opening a FIFO for reading can otherwise wait indefinitely for a writer.
 /// Callers own directory traversal and namespace policy.

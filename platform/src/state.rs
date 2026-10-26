@@ -64,17 +64,7 @@ fn directory(path: &Path, create: bool) -> Result<bool, String> {
             if !create {
                 return Ok(false);
             }
-            let mut builder = fs::DirBuilder::new();
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::DirBuilderExt;
-                builder.mode(0o700);
-            }
-            match builder.create(path) {
-                Ok(()) => {}
-                Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
-                Err(error) => return Err(error.to_string()),
-            }
+            crate::files::create_private_directory(path).map_err(|error| error.to_string())?;
             directory(path, false)
         }
         Err(error) => Err(error.to_string()),

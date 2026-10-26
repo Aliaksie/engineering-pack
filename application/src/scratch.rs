@@ -5,7 +5,7 @@ use crate::session;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::scratch::{self, Identity, MANIFEST_BYTES, MANIFEST_ENTRIES, Policy};
 use craft_platform::repository::snapshot;
-use craft_platform::scratch::{self as files, Processes, Usage};
+use craft_platform::scratch::{self as files, Usage};
 use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::io;
@@ -24,7 +24,8 @@ pub enum Action {
     Status,
     /// A task step: refresh the retention clock of an open workspace.
     Touch,
-    /// Task completion: close the workspace and clean its scratch unless another owner holds it.
+    /// Task completion: close the workspace and its main operation; scratch is cleaned once no
+    /// other operation of the task is still open.
     Complete,
 }
 
@@ -192,17 +193,6 @@ fn io(error: io::Error) -> Failure {
     Failure::from_io(error)
 }
 
-fn pid() -> i64 {
-    i64::from(std::process::id())
-}
-
-/// Whether any recorded, still-open owner holds the workspace.
-fn active(processes: &Processes, manifest: &Value, now: i64, policy: &Policy) -> bool {
-    scratch::open_owners(manifest)
-        .into_iter()
-        .any(|(_, pid)| scratch::holds(processes.liveness(pid), manifest, now, policy))
-}
-
 fn read_manifest(file: &Path, project: &str, entry: &str) -> Result<Value, Failure> {
     let value = session::read_record(file, MANIFEST_BYTES)?;
     scratch::validate(&value, project, entry)?;
@@ -219,8 +209,9 @@ struct Owned {
     manifest: Value,
 }
 
-/// All cooperating writers and cleanup serialize on one project-private lock. A live owner
-/// is retained even when old; age alone never establishes abandonment.
+/// All cooperating writers and cleanup serialize on one project-private lock. Calls with the
+/// same session/task/operation identity are one owner. Routine cleanup keeps workspaces with
+/// open operations until stale; capacity may evict the oldest open one of another task.
 fn operate(
     root: &Path,
     identity: Option<&Identity>,
@@ -240,7 +231,6 @@ fn operate(
     let Some(_lock) = files::lock(&anchor).map_err(io)? else {
         return Ok(json!({"status": "retained", "reason": "workspace is in use"}));
     };
-    let processes = Processes::default();
     let project = craft_engine::hash(state::canonical_root(root)?.to_string_lossy().as_bytes());
     let mut entries = files::names(&sessions, SESSION_ENTRIES).map_err(io)?;
     entries.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
@@ -277,15 +267,19 @@ fn operate(
         let room =
             i64::from(action.creates() && key.as_ref().is_some_and(|key| !entries.contains(key)));
         owned.sort_by_key(|item| item.manifest["updated"].as_i64().unwrap_or(0));
-        for item in &owned {
-            if key.as_deref() == Some(item.entry.as_str())
-                || active(&processes, &item.manifest, now, policy)
-            {
-                continue;
-            }
-            let over = |cleaned: &[Value]| total - removed(cleaned) + room > policy.max_sessions;
-            if let Err(error) = sweep(item, now, policy, &mut cleaned, over) {
-                retained.push(json!({"entry": item.entry, "reason": error.to_string()}));
+        let over = |cleaned: &[Value]| total - removed(cleaned) + room > policy.max_sessions;
+        // Inactive workspaces first; an open one of another task only when capacity requires.
+        for evict_open in [false, true] {
+            for item in &owned {
+                if key.as_deref() == Some(item.entry.as_str())
+                    || scratch::active(&item.manifest, now, policy) != evict_open
+                    || (evict_open && !over(&cleaned))
+                {
+                    continue;
+                }
+                if let Err(error) = sweep(item, now, policy, &mut cleaned, over) {
+                    retained.push(json!({"entry": item.entry, "reason": error.to_string()}));
+                }
             }
         }
     }
@@ -320,21 +314,7 @@ fn operate(
     let scratch_dir = folder.join("scratch");
     let evidence = folder.join("evidence");
     let scope = scratch_dir.join(&identity.operation);
-    let foreign = |operation: &Value, value: &Value| {
-        operation["pid"].as_i64().is_some_and(|owner| {
-            owner != pid() && scratch::holds(processes.liveness(owner), value, now, policy)
-        })
-    };
     let current = value["operations"].get(&identity.operation).cloned();
-    if matches!(
-        action,
-        Action::Open | Action::Write | Action::Promote | Action::Release
-    ) && current
-        .as_ref()
-        .is_some_and(|op| op["closed"] == false && foreign(op, &value))
-    {
-        return Err("workspace operation belongs to another active owner".into());
-    }
     if action.creates() {
         let operations = value["operations"]
             .as_object_mut()
@@ -344,9 +324,10 @@ fn operate(
         }
         files::directory(&scratch_dir, true).map_err(io)?;
         files::directory(&scope, true).map_err(io)?;
+        // Format 1 requires a pid; it records the writer and decides nothing.
         operations.insert(
             identity.operation.clone(),
-            json!({"pid": pid(), "closed": false}),
+            json!({"pid": std::process::id(), "closed": false}),
         );
         value["closed"] = json!(false);
     }
@@ -390,14 +371,10 @@ fn operate(
     }
     let mut cleanup = "retained";
     if action == Action::Release {
-        if current.as_ref().is_some_and(|op| foreign(op, &value)) {
-            return Err("workspace operation belongs to another active owner".into());
-        }
         if current.is_some() {
             value["operations"][&identity.operation]["closed"] = json!(true);
         }
-        let closed = value["closed"] == true || scratch::open_owners(&value).is_empty();
-        if closed && !active(&processes, &value, now, policy) {
+        if scratch::open_operations(&value).is_empty() {
             match files::remove(&scratch_dir) {
                 Ok(()) => cleanup = "cleaned",
                 Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
@@ -406,16 +383,10 @@ fn operate(
     }
     if action == Action::Complete {
         value["closed"] = json!(true);
-        for operation in value["operations"]
-            .as_object_mut()
-            .into_iter()
-            .flat_map(|o| o.values_mut())
-        {
-            if operation["pid"].as_i64() == Some(pid()) {
-                operation["closed"] = json!(true);
-            }
+        if current.is_some() {
+            value["operations"][&identity.operation]["closed"] = json!(true);
         }
-        if !active(&processes, &value, now, policy) {
+        if scratch::open_operations(&value).is_empty() {
             match files::remove(&scratch_dir) {
                 Ok(()) => cleanup = "cleaned",
                 Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
@@ -451,7 +422,7 @@ fn operate(
         },
         "state": "existing checkpoint/session stores",
         "diskBytes": scratch_usage.bytes + evidence_usage.bytes + manifest_bytes,
-        "active": active(&processes, &value, now, policy),
+        "active": scratch::active(&value, now, policy),
         "cleaned": cleaned,
         "retained": retained,
     }))
