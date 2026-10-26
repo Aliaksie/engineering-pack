@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
-import { route } from '../application/routing/select.mjs';
-import { readProject } from '../application/project/configuration.mjs';
-import { snapshot, validateReview } from '../application/review.mjs';
+import { launch, run } from './craft.mjs';
+import { route } from './native-route.mjs';
+import { readProject } from './project-settings.mjs';
+import { prepareSnapshot, checkReview } from './review-tools.mjs';
 
 function command(binary, args, cwd) {
   return spawnSync(binary, args, { cwd, shell: false, encoding: 'utf8' });
@@ -51,9 +51,11 @@ test('delivery tool path supports investigate/plan → implement → actual veri
   assert.equal(command(check.command, check.args, checkDirectory).status, 0, 'actual configured check verifies the corrected result');
   git('add', '--', 'src/total.mjs'); git('commit', '-qm', 'correct multiplication');
   const head = git('rev-parse', 'HEAD');
-  const input = snapshot({ root, base, head });
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'delivery review '));
+  t.after(() => fs.rmSync(artifacts, { recursive: true, force: true }));
+  const input = prepareSnapshot(artifacts, { root, base, head });
   assert.deepEqual(input.files, ['src/total.mjs']);
-  assert.equal(validateReview(input, { baseSha: base, headSha: head, summary: 'Fixture tool-chain review', recommendation: 'needs-verification', findings: [], verification: ['Node assertion command ran against the committed fixture; no semantic model review performed.'] }).valid, true);
+  assert.equal(checkReview(artifacts, input, { baseSha: base, headSha: head, summary: 'Fixture tool-chain review', recommendation: 'needs-verification', findings: [], verification: ['Node assertion command ran against the committed fixture; no semantic model review performed.'] }).valid, true);
   const saved = run(['checkpoint-save', '--root', root, '--session', 'delivery']);
   assert.equal(saved.state.head, head);
   assert.equal(run(['checkpoint-read', '--root', root, '--session', 'delivery']).changed, false);
@@ -67,25 +69,23 @@ test('local story and missing optional guidance do not require a tracker or auth
   assert.ok(story.skills.every((skill) => skill.startsWith('craft-stories:')));
   assert.deepEqual(story.loading.specializations, []);
   assert.deepEqual(story.operations, []);
-  const unavailable = route({ intent: 'implement', files: ['src/total.mjs'], project: readProject(root), availableSkills: [] });
-  assert.ok(unavailable.missing.some((item) => item.startsWith('skill not installed:')));
   const tracker = run(['route', '--root', root, '--intent', 'plan', '--task', 'TASK-1']);
   assert.ok(tracker.missing.some((item) => item.includes('missing tasks binding')));
   assert.throws(() => run(['operation', '--root', root, '--operation', 'git.push']), /not enabled/);
 });
 
-test('each host export exposes the standalone delivery CLI without shell entry points', (t) => {
+test('each host export runs the delivery commands through its package launcher', (t) => {
   const { root } = fixture(t);
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     const folder = host === 'claude' ? 'plugins' : 'packages';
-    const cli = path.resolve('dist', host, folder, 'craft-delivery/support/cli/main.mjs');
-    const result = command(process.execPath, [cli, 'route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], root);
+    const pkg = path.resolve('dist', host, folder, 'craft-delivery');
+    const result = launch(pkg, ['route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], { cwd: root });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).loading.workflow, 'workflow:implement');
-    const located = command(process.execPath, [cli, 'locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2'], root);
+    const located = launch(pkg, ['locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2'], { cwd: root });
     assert.equal(located.status, 0, located.stderr);
     assert.equal(JSON.parse(located.stdout).matches[0].path, 'src/total.mjs');
-    const prepared = command(process.execPath, [cli, 'prepare-services', '--root', root, '--available-command', 'git'], root);
+    const prepared = launch(pkg, ['prepare-services', '--root', root, '--available-command', 'git'], { cwd: root });
     assert.equal(prepared.status, 0, prepared.stderr);
     const status = JSON.parse(prepared.stdout).services[0].operations.find(entry => entry.operation === 'git.status');
     assert.equal(status.availability, 'observed-available');

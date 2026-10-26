@@ -1,0 +1,785 @@
+{
+  "baseline": "09d74ead129008575f8483f68bd5412d2627c839",
+  "cases": [
+    {
+      "id": "command-catalog",
+      "entry": "craft",
+      "args": [
+        "--help"
+      ],
+      "mode": "catalog",
+      "status": 0,
+      "response": {
+        "commands": [
+          "workspace-open",
+          "workspace-write",
+          "workspace-promote",
+          "workspace-release",
+          "workspace-clean",
+          "grounded-context",
+          "worker-status",
+          "task-feature",
+          "task-features",
+          "telemetry-capture",
+          "telemetry-forget",
+          "telemetry-report",
+          "task-offer",
+          "task-decision",
+          "task-action-check",
+          "task-start",
+          "task-step",
+          "settings",
+          "route",
+          "context-report",
+          "session",
+          "session-advice",
+          "session-attempt",
+          "model-advice",
+          "lookup",
+          "locate",
+          "prepare-services",
+          "operation",
+          "checkpoint-save",
+          "checkpoint-read",
+          "review-prepare",
+          "review-check",
+          "review-publication",
+          "review-followup",
+          "acceptance-view",
+          "project-evidence"
+        ]
+      },
+      "correction": "the one installed entry also lists the review, acceptance-view and project-evidence commands it runs"
+    },
+    {
+      "id": "help-before-validation",
+      "entry": "craft",
+      "args": [
+        "task-start",
+        "--unknown",
+        "--help"
+      ],
+      "mode": "usage",
+      "status": 0,
+      "response": {
+        "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
+      }
+    },
+    {
+      "id": "unknown-command",
+      "entry": "craft",
+      "args": [
+        "absent"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]"
+    },
+    {
+      "id": "positional-argument",
+      "entry": "craft",
+      "args": [
+        "route",
+        "extra"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "unknown argument: extra"
+    },
+    {
+      "id": "unknown-option",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--absent"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "unknown argument: --absent"
+    },
+    {
+      "id": "missing-value",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--intent"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "missing value for --intent"
+    },
+    {
+      "id": "flag-as-value",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--intent",
+        "--json"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "missing value for --intent"
+    },
+    {
+      "id": "duplicate-scalar",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--intent",
+        "implement",
+        "--intent",
+        "review"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "duplicate option --intent"
+    },
+    {
+      "id": "duplicate-boolean",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--json",
+        "--json"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "duplicate option --json"
+    },
+    {
+      "id": "contract-wrong-command",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--contract",
+        "missing.json"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "--contract is supported by task-start"
+    },
+    {
+      "id": "evidence-wrong-command",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--acceptance-evidence",
+        "missing.json"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "structured evidence options require task-step"
+    },
+    {
+      "id": "repository-wrong-command",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--repository",
+        "."
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "--repository is supported by task-start and checkpoint-save; other commands reuse the saved scope"
+    },
+    {
+      "id": "task-required-fields",
+      "entry": "craft",
+      "args": [
+        "task-start",
+        "--session",
+        "fixture"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "task-start requires --session, --task and --goal"
+    },
+    {
+      "id": "attempt-required-fields",
+      "entry": "craft",
+      "args": [
+        "session-attempt"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "session-attempt requires --session, --task and --data"
+    },
+    {
+      "id": "model-required-input",
+      "entry": "craft",
+      "args": [
+        "model-advice"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "model-advice requires --data <request.json>"
+    },
+    {
+      "id": "exclusive-telemetry-input",
+      "entry": "craft",
+      "args": [
+        "telemetry-report",
+        "--capture",
+        "one",
+        "--session",
+        "two"
+      ],
+      "mode": "failure",
+      "status": 2,
+      "diagnostic": "choose --capture or --session for telemetry-report"
+    },
+    {
+      "id": "route-repeat-files",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--intent",
+        "implement",
+        "--file",
+        "src/α.rs",
+        "--file",
+        "src/β.rs",
+        "--risk",
+        "security",
+        "--json"
+      ],
+      "mode": "json",
+      "status": 0,
+      "response": {
+        "intent": "implement",
+        "capability": {
+          "class": "standard",
+          "execution": "recommendation-only",
+          "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+          "pricing": "unknown; classes are not measured cost or capability",
+          "authorization": "no model switch or delegation executed"
+        },
+        "skills": [
+          "craft-delivery:apply-change",
+          "craft-engineering:foundations",
+          "craft-engineering:testing-engineering"
+        ],
+        "skillAvailability": "not-verified",
+        "execution": {
+          "mode": "main",
+          "role": "implementer"
+        },
+        "files": [
+          "src/α.rs",
+          "src/β.rs"
+        ],
+        "languages": [],
+        "layers": [],
+        "references": [],
+        "loading": {
+          "workflow": "workflow:implement",
+          "practices": [
+            "practice:foundations",
+            "practice:testing"
+          ],
+          "specializations": [],
+          "selections": [
+            {
+              "id": "workflow:implement",
+              "skills": [
+                "craft-delivery:apply-change"
+              ],
+              "references": [],
+              "when": {
+                "intents": [
+                  "implement"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "implement"
+                ]
+              }
+            },
+            {
+              "id": "practice:foundations",
+              "skills": [
+                "craft-engineering:foundations"
+              ],
+              "references": [],
+              "when": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              }
+            },
+            {
+              "id": "practice:testing",
+              "skills": [
+                "craft-engineering:testing-engineering"
+              ],
+              "references": [],
+              "when": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "implement"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              }
+            }
+          ],
+          "documentationQuestions": [],
+          "unavailable": [],
+          "evidence": [
+            {
+              "dimension": "intents",
+              "values": [
+                "implement"
+              ],
+              "source": "request",
+              "inferred": false
+            },
+            {
+              "dimension": "risks",
+              "values": [
+                "security"
+              ],
+              "source": "request",
+              "inferred": false
+            }
+          ],
+          "missingContext": [],
+          "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+        },
+        "modules": [],
+        "affectedDependents": [],
+        "checks": [],
+        "operations": [],
+        "missing": [],
+        "reasons": [
+          {
+            "id": "workflow:implement",
+            "selectors": {
+              "intents": [
+                "implement"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "implement"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          },
+          {
+            "id": "practice:foundations",
+            "selectors": {
+              "intents": [
+                "implement",
+                "review"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "implement"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          },
+          {
+            "id": "practice:testing",
+            "selectors": {
+              "intents": [
+                "implement",
+                "review",
+                "verify"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "implement"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          }
+        ],
+        "authorization": "route-only; host permissions and original user scope still apply"
+      }
+    },
+    {
+      "id": "route-verbose",
+      "entry": "craft",
+      "args": [
+        "route",
+        "--intent",
+        "review",
+        "--file",
+        "src/main.rs",
+        "--verbose"
+      ],
+      "mode": "json",
+      "status": 0,
+      "response": {
+        "intent": "review",
+        "capability": {
+          "class": "standard",
+          "execution": "recommendation-only",
+          "reason": "Routine bounded engineering work normally starts with the configured standard profile.",
+          "pricing": "unknown; classes are not measured cost or capability",
+          "authorization": "no model switch or delegation executed"
+        },
+        "skills": [
+          "craft-review:review-change",
+          "craft-engineering:foundations",
+          "craft-engineering:testing-engineering"
+        ],
+        "skillAvailability": "not-verified",
+        "execution": {
+          "mode": "main",
+          "role": "reviewer"
+        },
+        "files": [
+          "src/main.rs"
+        ],
+        "languages": [],
+        "layers": [],
+        "references": [],
+        "loading": {
+          "workflow": "workflow:review",
+          "practices": [
+            "practice:foundations",
+            "practice:testing"
+          ],
+          "specializations": [],
+          "selections": [
+            {
+              "id": "workflow:review",
+              "skills": [
+                "craft-review:review-change"
+              ],
+              "fallbackSkills": {
+                "craft-review:review-change": "craft-delivery:review-code"
+              },
+              "references": [],
+              "when": {
+                "intents": [
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "review"
+                ]
+              }
+            },
+            {
+              "id": "practice:foundations",
+              "skills": [
+                "craft-engineering:foundations"
+              ],
+              "references": [],
+              "when": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "implement",
+                  "review"
+                ]
+              }
+            },
+            {
+              "id": "practice:testing",
+              "skills": [
+                "craft-engineering:testing-engineering"
+              ],
+              "references": [],
+              "when": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              },
+              "evidence": [
+                {
+                  "dimension": "intents",
+                  "values": [
+                    "review"
+                  ],
+                  "source": "request",
+                  "inferred": false
+                }
+              ],
+              "reason": {
+                "intents": [
+                  "implement",
+                  "review",
+                  "verify"
+                ]
+              }
+            }
+          ],
+          "documentationQuestions": [],
+          "unavailable": [],
+          "evidence": [
+            {
+              "dimension": "intents",
+              "values": [
+                "review"
+              ],
+              "source": "request",
+              "inferred": false
+            },
+            {
+              "dimension": "risks",
+              "values": [],
+              "source": "request",
+              "inferred": false
+            }
+          ],
+          "missingContext": [],
+          "evidencePolicy": "Declarations and extension inference require repository verification. Existing behavior is evidence, not accepted policy; surface conflicts with project instructions."
+        },
+        "modules": [],
+        "affectedDependents": [],
+        "checks": [],
+        "operations": [],
+        "missing": [],
+        "reasons": [
+          {
+            "id": "workflow:review",
+            "selectors": {
+              "intents": [
+                "review"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "review"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          },
+          {
+            "id": "practice:foundations",
+            "selectors": {
+              "intents": [
+                "implement",
+                "review"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "review"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          },
+          {
+            "id": "practice:testing",
+            "selectors": {
+              "intents": [
+                "implement",
+                "review",
+                "verify"
+              ]
+            },
+            "evidence": [
+              {
+                "dimension": "intents",
+                "values": [
+                  "review"
+                ],
+                "source": "request",
+                "inferred": false
+              }
+            ]
+          }
+        ],
+        "authorization": "route-only; host permissions and original user scope still apply"
+      }
+    },
+    {
+      "id": "native-disabled",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--json"
+      ],
+      "mode": "json",
+      "status": 0,
+      "response": {
+        "enabled": false,
+        "reason": "Project evidence is disabled"
+      }
+    },
+    {
+      "id": "native-binary-option",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--binary",
+        "/nonexistent/craft-fixture",
+        "--json"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: unknown or incomplete option: --binary",
+      "errorCode": "PROJECT_EVIDENCE_ERROR",
+      "correction": "project evidence runs in the executable itself; there is no other binary to select"
+    },
+    {
+      "id": "native-missing-value",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--limit"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: unknown or incomplete option: --limit",
+      "errorCode": "PROJECT_EVIDENCE_ERROR"
+    },
+    {
+      "id": "native-invalid-limit",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--limit",
+        "201"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: limit must be between 1 and 200",
+      "errorCode": "PROJECT_EVIDENCE_ERROR"
+    },
+    {
+      "id": "native-invalid-budget",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "refresh",
+        "--max-files",
+        "0"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: max-files must be a positive safe integer",
+      "errorCode": "PROJECT_EVIDENCE_ERROR"
+    },
+    {
+      "id": "native-invalid-member",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--member",
+        "invalid"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: member must be id=absolute-root",
+      "errorCode": "PROJECT_EVIDENCE_ERROR"
+    },
+    {
+      "id": "native-unknown-option",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
+        "query",
+        "--absent"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: unknown or incomplete option: --absent",
+      "errorCode": "PROJECT_EVIDENCE_ERROR"
+    }
+  ]
+}

@@ -1,30 +1,37 @@
 # Documentation
 
-To install a built bundle, start with [adapters](ADAPTERS.md#installation-by-host).
-To configure a target project, read [routing](ROUTING.md) and [integrations](INTEGRATIONS.md).
-Contributors can start with [contributing](CONTRIBUTING.md) and [package format](PACKAGE-FORMAT.md).
+New here? Start with [installation](INSTALL.md), then [commands](COMMANDS.md). To configure a
+project, read [routing](ROUTING.md) and [integrations](INTEGRATIONS.md). Contributors start
+with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
+
+## Using it
 
 | Document | Purpose |
 |---|---|
-| [Architecture](ARCHITECTURE.md) | Engine, application, platform, host, integration and tooling ownership |
-| [Naming](NAMING.md) | Repository, package, skill, workflow and tool conventions |
-| [Engineering guidance](ENGINEERING-GUIDANCE.md) | Shared concepts and language/runtime specialization |
-| [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
-| [Session status](SESSION.md) | Task lifecycle, context, activity and execution budgets |
-| [Acceptance contracts](ACCEPTANCE.md) | Opt-in portable context, criterion/evidence validation and coverage limits |
-| [Host controls](HOST-CONTROL.md) | Native worker, review and compaction bindings and limits |
-| [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |
-| [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
-| [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |
+| [Installation](INSTALL.md) | Channels, per-host installation, first use, updates and local builds |
+| [Commands](COMMANDS.md) | Every `craft` command, its purpose and effects |
+| [Routing](ROUTING.md) | Module and guidance selection, lookup, execution roles and model advice |
+| [Sessions](SESSION.md) | Task lifecycle, checkpoints, state storage, reuse and session advice |
+| [Acceptance contracts](ACCEPTANCE.md) | Criteria, evidence, coverage and reader views |
 | [Review](REVIEW.md) | Revision-bound local review and bot integration |
-| [Package format](PACKAGE-FORMAT.md) | Manifest, skills, workflows, tools, hooks and MCP |
-| [Adapters](ADAPTERS.md) | Host feature support, event mapping and installation limits |
-| [Evals](EVALS.md) | Shared scenarios and recorded evidence |
-| [Evaluation protocol](EVALUATION.md) | Matched baseline/candidate runs and limits on model-quality claims |
-| [Tool and hook audit](authoring/TOOLS.md) | Deterministic tool effects, guard limitations and measurement scope |
-| [Contributing](CONTRIBUTING.md) | Authoring and local checks |
+| [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |
+| [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
+| [Project evidence](PROJECT-EVIDENCE.md) | Opt-in local index of declarations and imports |
 | [Observability](OBSERVABILITY.md) | Local usage events, privacy, retention and OTLP opt-in |
-| [Security](SECURITY.md) | Trust and execution boundaries |
-| [Releasing](RELEASING.md) | Sharing requirements and output layout |
+| [Security](SECURITY.md) | Trust and execution boundaries, read-only review guard |
 
-[Target platform installation and support](PLATFORMS.md) covers Codex, Claude, Gemini and JetBrains.
+## Extending it
+
+| Document | Purpose |
+|---|---|
+| [Architecture](ARCHITECTURE.md) | Components, interaction and constraints |
+| [Rust core runtime](adr/0001-rust-core-runtime.md) | Why the runtime is one native executable |
+| [Module map](adr/0002-module-map-and-boundaries.md) | Declared modules and the rules the checker enforces |
+| [Adapters](ADAPTERS.md) | Export layouts, hook support and context injection per host |
+| [Host controls](HOST-CONTROL.md) | Native worker, review and compaction phases for integrations |
+| [Package format](PACKAGE-FORMAT.md) | Manifest, skills, workflows, tools, hooks and MCP |
+| [Playbook catalog](PLAYBOOKS.md) | Logical identities, selection rules and shared engineering concepts |
+| [Naming](NAMING.md) | Package, skill, workflow and configuration naming |
+| [Evaluation](EVALUATION.md) | Package scenarios, paired runs and limits on model-quality claims |
+| [Contributing](CONTRIBUTING.md) | Prerequisites, local checks, CI and diagnostics |
+| [Releasing](RELEASING.md) | Channels, publication and versioned releases |

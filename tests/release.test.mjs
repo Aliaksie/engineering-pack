@@ -1,4 +1,3 @@
-import { stateFile } from '../platform/index.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +6,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseVersion, incrementVersion, packVersion, synchronizeVersion } from '../tooling/version.mjs';
 import { prepareRelease, publishReleaseRefs, releaseGuard } from '../tooling/release.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { run } from './craft.mjs';
+import { stateFile } from './state.mjs';
 import { changelogNotes } from '../tooling/release-notes.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -19,8 +19,7 @@ function fixture(t) {
   for (const name of ['craft-delivery','craft-engineering','craft-review','craft-stories']) {
     fs.mkdirSync(path.join(root,'packages',name),{recursive:true}); fs.writeFileSync(path.join(root,'packages',name,'capability.json'),'{"version":"0.0.2"}\n');
   }
-  fs.mkdirSync(path.join(root,'platform/node'),{recursive:true});
-  for(const file of ['package.json','platform/node/pack-version.json']) fs.writeFileSync(path.join(root,file),'{"version":"0.0.2"}\n');
+  fs.writeFileSync(path.join(root,'package.json'),'{"version":"0.0.2"}\n');
   fs.writeFileSync(path.join(root,'CHANGELOG.md'),'# Changelog\n\n## 0.0.2\n\n- Reviewed release changes.\n');
   fs.writeFileSync(path.join(root,'.gitignore'),'dist/\n'); git(root,'add','.'); git(root,'commit','-m','Initial'); git(root,'remote','add','origin',remote); git(root,'push','origin','main');
   return {root,remote,source:git(root,'rev-parse','HEAD')};
@@ -34,7 +33,7 @@ test('stable SemVer parsing and increments reject ambiguous or unsafe versions',
 test('canonical source version and projections agree; drift is rejected',t=>{
   const {root}=fixture(t); synchronizeVersion(root,'0.1.0'); assert.equal(packVersion(root),'0.1.0');
   synchronizeVersion(root,undefined,true);
-  fs.writeFileSync(path.join(root,'platform/node/pack-version.json'),'{"version":"9.9.9"}'); assert.throws(()=>synchronizeVersion(root,undefined,true),/drift/);
+  fs.writeFileSync(path.join(root,'packages/craft-review/capability.json'),'{"version":"9.9.9"}'); assert.throws(()=>synchronizeVersion(root,undefined,true),/drift/);
   synchronizeVersion(process.cwd(),undefined,true);
 });
 test('current releases publish merged 0.0.2 without incrementing; tags and main agree',t=>{
@@ -76,7 +75,7 @@ test('telemetry from a nested consumer leaves release preparation clean without 
   git(root,'add','.'); git(root,'commit','-m','Add consumer fixture and repository ignore rules');
   git(root,'push','origin','main');
   const source=git(root,'rev-parse','HEAD');
-  readProject(consumer);
+  run(['settings','--root',consumer]);
   assert.ok(fs.existsSync(stateFile(consumer,'telemetry.jsonl')));
   assert.equal(git(root,'status','--porcelain'),'');
   assert.equal(prepareRelease(root,source,'current').revision,source);
@@ -101,7 +100,7 @@ test('unvalidated revision or inconsistent distribution cannot publish refs',t=>
 });
 
 test('version synchronization validates every path before modifying projections',t=>{
-  const {root}=fixture(t), file=path.join(root,'platform/node/pack-version.json');
+  const {root}=fixture(t), file=path.join(root,'packages/craft-stories/capability.json');
   const outside=path.join(root,'outside.json'); fs.writeFileSync(outside,'{"version":"0.0.2"}');
   fs.unlinkSync(file); fs.symlinkSync(outside,file);
   assert.throws(()=>synchronizeVersion(root,'0.0.3'),/symlink/);

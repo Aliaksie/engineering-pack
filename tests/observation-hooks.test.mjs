@@ -1,13 +1,13 @@
-import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
+import { hookPackage, runHook } from './hook-command.mjs';
+import { stateFile } from './state.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const events = root => {
@@ -40,19 +40,19 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       const mapping = HOSTS[host].events[definition.event];
       if (!mapping) continue;
       const handlers = config.hooks[mapping.name].flatMap(group => group.hooks ?? [group]);
-      const matches = handlers.filter(handler => {
-        const command = handler.command ?? handler.bash;
-        return command.includes(`/${definition.name}.mjs`)
-          && (['claude', 'codex'].includes(host) || command.includes(`/packages/${pkg}/`));
-      });
+      const expected = `hook ${host} ${definition.event} --package ${pkg} --handler observe --scope any`;
+      const matches = handlers.filter(handler => (handler.command ?? handler.bash).endsWith(` ${expected}`)
+        && (['claude', 'codex'].includes(host) || (handler.command ?? handler.bash).includes(`/packages/${pkg}/`)));
       assert.equal(matches.length, 1, `${host}: missing or duplicate registration for ${definition.event}`);
       const command = matches[0].command ?? matches[0].bash;
-      if (host === 'copilot') assert.equal(matches[0].powershell, command);
-      const match = /^node "([^"]+)"$/.exec(command);
+      if (host === 'copilot') assert.equal(matches[0].powershell, `& ${command.replace('/bin/craft"', '/bin/craft.cmd"')}`);
+      // The registered command exactly: the launcher (quoted except for Gemini's PowerShell-safe
+      // relative path) and plain arguments, no Node.js.
+      const match = (host === 'gemini' ? /^(\.\/packages\/[a-z0-9-]+\/bin\/craft) (hook .+)$/ : /^"([^"]+)" (hook .+)$/).exec(command);
       assert.ok(match, command);
-      const entry = match[1].replace('${CLAUDE_PLUGIN_ROOT}', packageRoot).replace('${PLUGIN_ROOT}', packageRoot);
-      const result = spawnSync(process.execPath, [entry], {
-        cwd: root, encoding: 'utf8', input: JSON.stringify({
+      const launcher = match[1].replace('${CLAUDE_PLUGIN_ROOT}', packageRoot).replace('${PLUGIN_ROOT}', packageRoot).replace(/^\.\/packages\//, `${root}/packages/`);
+      const result = spawnSync(process.platform === 'win32' ? `"${launcher}.cmd"` : launcher, match[2].split(' '), {
+        cwd: root, encoding: 'utf8', shell: process.platform === 'win32', input: JSON.stringify({
           cwd: root, session_id: 'PRIVATE_SESSION_MARKER', tool_name: 'Read',
           prompt: 'PRIVATE_PROMPT_MARKER', tool_input: { file_path: 'PRIVATE_PATH_MARKER' }
         })
@@ -76,12 +76,11 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     assert.ok(!JSON.stringify(recorded).includes('INVALID_PROJECT_MARKER'));
     assert.deepEqual(fs.readdirSync(path.dirname(stateFile(root, 'probe.json'))).sort(),
       ['telemetry-key.json', 'telemetry.jsonl']);
-    const beforeTool = path.join(packageRoot, 'platform-hooks/observe-before-tool.mjs');
     for (const input of ['INVALID_JSON_MARKER', JSON.stringify({
       cwd: root, sessionId: 'PRIVATE_SESSION_MARKER', toolName: 'write_file',
       toolArgs: { path: 'PRIVATE_PATH_MARKER', content: 'PRIVATE_CONTENT_MARKER'.repeat(4000) }
     })]) {
-      const result = spawnSync(process.execPath, [beforeTool], { cwd: root, input, encoding: 'utf8' });
+      const result = runHook(packageRoot, host, 'observe-before-tool', { cwd: root, input });
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stdout, '');
       assert.equal(result.stderr, '');
@@ -102,46 +101,18 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
     const first = definitions[0];
     const before = fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8');
-    const off = spawnSync(process.execPath, [path.join(packageRoot, `platform-hooks/${first.name}.mjs`)], {
-      cwd: root, encoding: 'utf8', input: JSON.stringify({ cwd: root, session_id: 'PRIVATE_SESSION_MARKER' })
-    });
+    const off = runHook(packageRoot, host, first.name, { cwd: root, input: JSON.stringify({ cwd: root, session_id: 'PRIVATE_SESSION_MARKER' }) });
     assert.equal(off.status, 0, off.stderr);
     assert.equal(fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8'), before);
   });
 }
-
-test('observational preparation and scope failures stay silent without invoking policy fallback', t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'observation failure '));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const runner = path.join(root, 'runner.mjs');
-  const fallbackMarker = path.join(root, 'policy-fallback');
-  const module = pathToFileURL(path.resolve('hosts/hooks.mjs')).href;
-  fs.writeFileSync(runner, `import { runHook } from ${JSON.stringify(module)};
-import fs from 'node:fs';
-const fail = () => { throw new Error('PRIVATE_FAILURE_MARKER'); };
-if (process.argv[2] === 'read') process.stdin[Symbol.asyncIterator] = async function* () { fail(); };
-await runHook(fail, 'copilot', { event: 'before-tool', tool: 'any' }, process.argv[2] === 'evaluate' ? event => event : fail, {
-  observational: true, default: () => ({ decision: 'allow' }),
-  failure: () => { fs.writeFileSync(process.argv[3], 'called'); return { decision: 'deny' }; },
-  ...(process.argv[2] === 'scope' ? { run: fail } : {})
-});\n`);
-  for (const phase of ['prepare', 'evaluate', 'scope', 'read']) {
-    const result = spawnSync(process.execPath, [runner, phase, fallbackMarker], { input: '{}', encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, '');
-    assert.equal(result.stderr, '');
-    assert.ok(!fs.existsSync(fallbackMarker));
-  }
-});
 
 test('oversized inputs still fail existing policy hooks on every hook-capable adapter', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'policy input bound '));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const input = JSON.stringify({ cwd: root, tool_name: 'Bash', tool_input: { command: 'x'.repeat(70000) } });
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini']) {
-    const entry = path.resolve('dist', host, host === 'claude' ? 'plugins' : 'packages',
-      'craft-review/platform-hooks/read-only.mjs');
-    const result = spawnSync(process.execPath, [entry], { cwd: root, input, encoding: 'utf8' });
+    const result = runHook(hookPackage(path.resolve('dist', host), host, 'craft-review'), host, 'read-only', { cwd: root, input });
     assert.equal(result.status, 1, `${host}: policy input rejection changed`);
     assert.match(result.stderr, /hook input exceeds 64 KiB/);
   }
@@ -154,6 +125,9 @@ test('guidance-only adapters report unsupported observational hooks without regi
       assert.match(report.hooks, /unsupported|guidance/);
       assert.ok(report.hookMappings.every(mapping => mapping.supported === false));
       assert.ok(!fs.existsSync(path.join(output, `packages/${report.package}/platform-hooks`)));
+      // The launcher runs native tools and the status line; it answers no hook here.
+      const launcher = fs.readFileSync(path.join(output, `packages/${report.package}/bin/craft`), 'utf8');
+      assert.doesNotMatch(launcher, /^  'hook [a-z]/m, report.package);
     }
   }
 });

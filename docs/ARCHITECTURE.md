@@ -1,155 +1,82 @@
 # Architecture
 
-Capability content lives in `packages/`. Four installation units cover engineering,
-delivery, review and product stories. Languages and application/provider disciplines
-remain independently selected guidance within craft-engineering.
+Craft Capabilities has two halves: agent-facing content (skills, workflows, standards) and
+one native executable, `craft`, that makes the deterministic decisions behind them. The
+build turns both into a bundle per host.
 
 ```mermaid
 flowchart TD
-  CLI[cli/ and hosts/] --> APP[application/: use cases]
-  APP --> ENGINE[engine/: portable JSON decisions]
-  APP --> PORTS[platform/: runtime ports]
-  PORTS --> NODE[platform/node: filesystem / Git / search / state]
-  APP --> EXT[integrations/: external transports]
-  BUILD[tooling/: build and export] --> CONTENT[packages/: guidance plus bundled runtime]
+  HOST[host hook / status line / skill command] --> LAUNCH[package bin/craft launcher]
+  LAUNCH --> APP[application: craft executable, use cases]
+  APP --> ENGINE[engine: pure decisions over explicit facts]
+  APP --> PLATFORM[platform: filesystem, state, Git, search, HTTP]
+  PLATFORM --> ENGINE
+  BUILD[tooling: build and export] --> CONTENT[packages: guidance, hook declarations]
+  BUILD --> TABLES[hosts: host tables]
+  BUILD --> LAUNCH
 ```
 
-## Ownership
+## Components
 
 | Location | Owns |
 |---|---|
-| `engine/contracts/` | Project/catalog contracts and portable path validation |
-| `engine/routing/` | Guidance selection, module/delegation decisions, generic operation plans |
-| `engine/discovery/` | Independent lookup batches, bounded matching and compact results |
-| `engine/cache/` | Reuse validity and deterministic identities |
-| `engine/session/` | Context estimates, occupancy recommendations, activity and attempt budgets |
-| `engine/policy/` | Model advice, context delivery, review and inbox decisions |
-| `engine/checkpoint.mjs` | Small continuation contracts, source binding and comparison |
-| `application/` | Observation collection and execution of concrete local use cases |
-| `application/{routing,discovery,session,context-delivery}/` | Related use cases grouped by feature |
-| `platform/index.mjs` | Wiring for bounded observation/storage operations |
-| `platform/node/` | Concrete Node ports; repository and resource observations are grouped separately |
-| `integrations/` | External Git/codehost command syntax, observation normalization and output projections |
-| `hosts/` | Native host payloads, telemetry, capability declarations, controls and wire output |
-| `cli/` | Arguments, help and text display |
-| `tooling/export/` | Build-time platform exporters |
+| `packages/` | Four installation units (engineering, delivery, review, stories): guidance, workflows, standards, evals and hook declarations |
+| `engine/` (`craft-engine`) | Pure decisions over explicit JSON facts: project contracts and effective settings, routing and the embedded catalog, discovery plans, sessions, tasks, attempts and acceptance coverage, checkpoints, workers and actions, review artifacts and the read-only guard, model advice, service plans, telemetry envelopes and OTLP mapping |
+| `platform/` (`craft-platform`) | Filesystem, bounded documents, state records and their lock protocol, Git observation, processes, literal search, Project Intelligence storage and syntax providers, bounded HTTP, the local telemetry store |
+| `application/` (`craft-application`) | The `craft` executable: CLI parsing and rendering, host hook payloads and wire output, the status line, and each use case that combines observations, decisions and persistence |
+| `hosts/` | Host hook mapping, session and feature tables; the build reads them and `craft` embeds them |
+| `tooling/` | Build, export, release, validation and evaluation drivers |
+| `schemas/` | Published authoring schemas for capability manifests, the catalog and project configuration |
 
-Folders represent features with multiple responsibilities. Small features remain files.
-Top-level names identify ownership: `engine/` decides, `application/` orchestrates,
-`platform/` implements runtime/OS access, `hosts/` adapts coding-agent hosts,
-`integrations/` maps external systems, `cli/` handles human input/output,
-`tooling/` builds and validates, and `packages/` contains agent-facing guidance.
-No former runtime, adapter or script paths are retained as forwarding modules.
+`engine/` decides, `platform/` observes and persists, `application/` orchestrates and owns
+the executable. `architecture.json` declares the module map, dependency directions and the
+remaining JavaScript budgets; `npm run architecture` enforces them
+([ADR 0002](adr/0002-module-map-and-boundaries.md)). The runtime is Rust
+([ADR 0001](adr/0001-rust-core-runtime.md)); no runtime JavaScript ships.
 
-## Engine contract
+## Interaction
 
-`engine/index.mjs` exports `evaluate(request)`. Requests and responses contain only JSON:
+Every runtime path is one `craft` process started through the package launcher:
 
-```json
-{"formatVersion":1,"operation":"attempt-status","input":{"operation":"implement","records":[]}}
-```
+- **Hooks.** The host runs `craft hook <host> <lifecycle>`. `craft` reads the payload
+  (64 KiB bound), maps it to host-neutral lifecycle facts with the embedded host table, runs
+  observation, the read-only review guard or context delivery (routing hints, checkpoints,
+  service metadata, hint reuse), and writes the host's wire output.
+- **Commands.** Skills and users run `craft <command>` for routing, lookup, sessions, tasks,
+  checkpoints, service plans, review artifacts, acceptance views and telemetry reports
+  ([commands](COMMANDS.md)).
+- **Status line.** `craft statusline <host>` reads the host's status-line payload and writes
+  one line of session status.
+- **Host controls.** An integration the consumer owns drives worker, review and compaction
+  phases as JSON requests on standard input; its own transport acts between phases, outside
+  every lock ([host controls](HOST-CONTROL.md)).
 
-Success returns `{ "formatVersion": 1, "ok": true, "result": ... }`. Failure returns
-`ok: false` with a stable `error.code` (`UNSUPPORTED_VERSION`, `UNKNOWN_OPERATION`, or
-`INVALID_INPUT`) and a diagnostic message. Callers must not branch on message prose.
-Inputs are copied before evaluation; no caller-owned objects are mutated. Clocks,
-repository versions, file observations, host capabilities and catalog data are explicit
-inputs. Time-sensitive advice requires an explicit clock value.
+Remote telemetry, when configured, is posted after the process writes its output
+([observability](OBSERVABILITY.md)).
 
-The engine imports only its own portable modules. It does not read files, invoke Git,
-use Node globals, inspect environment variables or interpret native host payloads.
-Application use cases call the public boundary through `application/engine-client.mjs`,
-which only serializes requests and unwraps responses. Catalog loading and provider facts
-belong to the relevant use cases;
-Node implementations do not import application logic or engine policy. Application code
-imports only `platform/index.mjs`, never `platform/node/` details. The platform entry point
-wires the current Node implementation without introducing a second infrastructure layer. Port callbacks stay within application/Node orchestration; they never cross the JSON engine boundary.
+## Constraints
 
-A future Rust implementation can replace `evaluate` while retaining observation collection,
-CLI output and host adapters. No native bridge, process protocol or second implementation
-is required now. JavaScript remains a supported long-term implementation. Contract replay
-and dependency tests enforce the useful boundary independently of implementation language.
+- The engine reads no files, processes, environment or clock; time-sensitive decisions take
+  an explicit clock value. Callers branch on stable error codes, never on diagnostic prose.
+- `craft` returns plans and advice. It does not call models, switch profiles, execute remote
+  operations, compact a host session or publish findings. Nothing in a package or project
+  configuration grants permission or loads executable code.
+- Missing or incomplete observations stay unknown: guidance size is not context occupancy,
+  pack activity is not provider usage, and a hook file is not proof that hooks run
+  ([sessions](SESSION.md)).
+- State is private, bounded, symlink-checked and atomically replaced under one lock protocol
+  ([state storage](SESSION.md#state-storage)). Cached evidence is bound to the session, task,
+  revision and scoped file versions that produced it.
+- Unsupported host enforcement and observations remain visible in each export's adapter
+  report rather than being simulated ([adapters](ADAPTERS.md)).
 
-## Evidence and effects
+## Exports
 
-Pack context measures selected guidance; current occupancy requires fresh, session-bound
-host observations. Pack activity counts its own receipts, never provider usage. Missing or
-incomplete observations stay unknown. See [session behavior](SESSION.md).
-
-Discovery batches only known independent literal lookups. Cached evidence is bound to
-session/task, HEAD, scoped inventory/file versions, manifests/config and implementation
-identity. Unavailable evidence triggers fresh discovery. Hint reuse separately records only
-successfully emitted context; lifecycle invalidation survives an in-flight delivery.
-
-Checkpoint, activity and hint state share bounded, symlink-checked, atomic file storage,
-with separate formats and lifecycles. Automatic Git snapshots cannot renew the source
-binding of older continuation notes. A reset recommendation requires a fresh continuation.
-
-Opt-in engineering contracts and criterion evidence share the existing locked task state.
-The engine computes coverage from the observed source and attributed assessments; the
-application observes Git and persists decisions atomically. Structured session version 2
-rejects incompatible writers, while legacy tasks retain version 1 and declared assurance.
-The evidence ledger survives attempt-history eviction; contract and ledger digests fence
-replacement writes. See [acceptance contracts](ACCEPTANCE.md).
-
-Worker reservations use one bounded private ledger per coordinator root/session/task across
-processes. Application controllers persist intent and release locks before calling trusted
-host functions; the engine decides admission and reconciliation from explicit JSON facts.
-Review/compaction execution receipts live with their existing action proposals and survive
-proposal cleanup. No executable adapter is loaded from project configuration. See the
-[host controller contract](HOST-CONTROL.md) for operation keys, fencing and native limits.
-
-The engine returns plans and advice. It does not call models, switch profiles, execute
-remote operations, compact a host session or publish findings. Context-delivery policy
-receives lifecycle facts, not hook event names. Application code
-translates lifecycle events and collects delivery evidence; hosts parse and run native hooks.
-Host lifecycle controls belong to `hosts/`; external service mappings belong to
-`integrations/`. Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
-
-## Packages and exports
-
-Package names, manifests and useful bin/hook entry points remain external interfaces.
-The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/`, `hosts/` and `cli/` into
-each package's `support/`, and rebases shared imports in package entry points. Installed
-packages run after relocation without authoring scripts or sibling package dependencies.
-Full bundles also expose these directories at their root. No legacy runtime paths or
-fallback loaders are retained. Generated host glue remains in `platform-runtime/`;
-that name describes an installed host interface rather than the old source tree.
-
-The optional inbox remains under `tools/craft-review-inbox/` because it owns separate
-consumer configuration, remote pagination, checkout and review-artifact lifecycles. Its
-shared status and authorization decisions now use the engine, and external command
-recognition uses integrations. It runs from the repository checkout and stays excluded
-from default exports. Its separate I/O is retained rather than merging remote inbox state
-with session checkpoint state.
-
-Builds validate source, stage exports and refuse unmanaged or symlinked output. The canonical pack version is `package.json.version`; package and runtime
-metadata are synchronized projections checked before every build. Deterministic checks establish packaging and contract correctness; they do
-not establish model quality or an efficiency improvement.
-
-## Supporting telemetry
-
-`application/telemetry/events.mjs` defines a bounded JSON envelope and metadata allowlists.
-Application use cases emit at operation boundaries. `platform/index.mjs` exposes local
-storage, scoped identity, version, clock and bounded HTTP ports; their Node implementations
-remain under `platform/node/`. `integrations/otel/` maps sanitized envelopes to OTLP JSON.
-The engine imports neither telemetry runtime nor providers. Provider objects never cross
-its JSON boundary or enter the application event contract. No separate top-level telemetry
-subsystem or event bus is needed. See [observability and privacy](OBSERVABILITY.md).
-
-Telemetry trace scopes use public platform context ports; Node implements async context
-isolation in its existing telemetry module. The portable event/context contract remains
-plain JSON. Application boundaries own spans and reason codes; transport mappings own
-OTLP serialization. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
-for diagnostics, bounded loss behavior and the zero-model-cost contract.
-
-## Developer acceptance flow
-
-The developer slice composes context through `application/session/grounding.mjs`,
-then uses existing task-start/step/status operations for contracts and evidence.
-The caller interprets constraints and assesses check adequacy/artifact availability;
-the engine projects attributed criterion coverage against the checked binding.
-No new scheduler, role store or check executor is introduced. The fixed
-developer pilot in source-checkout `examples/evals/developer-acceptance/README.md` exercises that
-composition with real behavior checks; guidance-only work retains the same evidence
-limits manually. Structured persistence stays opt-in.
+Each exported package is self-contained: its skills, resources, hook configuration, the
+generated `bin/craft` and `bin/craft.cmd` launchers and the native executables under
+`support/native-bin/<target>/`. Installed packages run after relocation without Node,
+authoring scripts or sibling packages. Builds validate source, stage output and refuse
+unmanaged or symlinked targets. `package.json` holds the pack version; package and runtime
+metadata are synchronized projections checked before every build. Deterministic checks
+establish packaging and contract correctness, not model quality
+([evaluation](EVALUATION.md)).

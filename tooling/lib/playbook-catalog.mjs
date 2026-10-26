@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { validatePlaybookCatalog } from '../../application/routing/catalog.mjs';
 import { json, localPath } from './capabilities.mjs';
 
+// The catalog shape is validated where `craft` embeds it; authoring resolves its load targets.
 export function validateCatalogSources(repo, packages) {
-  const catalog = validatePlaybookCatalog(json(path.join(repo, 'engine/routing/catalog.json')));
+  const catalog = json(path.join(repo, 'engine/routing/catalog.json'));
   const byName = new Map(packages.map((entry) => [entry.manifest.name, entry]));
   for (const entry of catalog.entries) for (const target of [...entry.skills, ...Object.values(entry.fallbackSkills ?? {}), ...entry.references]) {
     const [name, local] = target.split(':');

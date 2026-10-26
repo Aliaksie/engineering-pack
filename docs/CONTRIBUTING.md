@@ -1,128 +1,88 @@
 # Contributing
 
-Use Node 24 for development and run `npm run check`. The minimum supported runtime is Node 22; CI also checks Node 26 for forward compatibility. No npm install is needed. `npm test` builds exports first.
-Review skill changes for useful decision criteria, selective references and clear scope.
-Keep examples portable and verify any executable behavior affected by the change.
-
-Keep canonical content in `packages/` and native host behavior in `hosts/`. Generated output is
-ignored and reproducible; never repair it by hand. Build refuses to overwrite unmanaged output.
-
-Read [package format](PACKAGE-FORMAT.md), [adapters](ADAPTERS.md) and [security](SECURITY.md)
-before adding a component. Use common principles, language discipline, application-layer
-advice and provider references independently. A stack example does not impose that stack.
-
-Keep initial source versions at 0.0.1 until a version change is requested; adapter manifests are generated.
-Change the engineering craft bar in `packages/craft-engineering/standards/craft-bar.md`,
-then run `npm run sync:craft-bar`. It applies to reference-index craft skills, not every
-standalone method. Add focused behavioral cases for changes with material risk.
-
-Script lint rejects shell executables and checks Node ESM syntax. Use `npm run test:unit`
-only after building; `npm test` and `npm run check` build automatically.
-Use `npm run validate:claude` after building when Claude Code is available. Native validation
-complements isolated build tests; neither proves actual model behavior. Use [eval cases](EVALS.md)
-for workflow and instruction changes, and record any live checks honestly.
-
-Portable decisions belong in `engine/`, orchestration in `application/`, Node I/O behind
-`platform/index.mjs`, wire behavior in `hosts/`, and workflow guidance in `packages/`.
-External system mappings belong in `integrations/`; build, export, validation and release
-code belongs in `tooling/`. Keep folders feature-oriented and the engine JSON boundary
-independent of Node so another implementation can replace it without migrating use cases. Exercise real Git snapshots and hostile/partial hook payloads with isolated
-fixtures. Service planning tests must never contact a real tracker or codehost.
-
-## GitHub Actions
-
-Install [actionlint](https://github.com/rhysd/actionlint/blob/main/docs/install.md)
-1.7.12 locally, then run `npm run lint:workflows` and `npm run test:workflows`.
-Install ShellCheck to lint embedded shell scripts and run the integration smoke test. These are separate from
-`npm run check`, so normal Node development needs no additional tools.
-CI runs both commands in a dedicated job with checksum-verified actionlint and
-ShellCheck. The smoke tests verify valid workflows pass and malformed YAML,
-invalid expression contexts, missing job dependencies and unsafe shell expansion fail. Packaging and
-publication depend on this job passing. When updating actionlint, update its
-version and archive checksum together in `ci.yml`.
-
-CI runs on push, pull request and manual dispatch. It validates manifests, catalog and source targets,
-checks generated guidance, lints portable scripts, builds eight host exports and the GitHub distribution, validates exports
-and runs tests on Linux/macOS/Windows with primary Node 24, plus Linux with the Node 22 minimum and Node 26 forward check.
-No dependency installation, cloud credentials or model runner is required.
-
-After every matrix check succeeds, the packaging job rebuilds and uploads `dist/` as
-`craft-capabilities-<commit-sha>` for 14 days. Hidden generated manifests are included because
-the host layouts require them. The upload contains generated bundles only, not local plans
-or personal state. On eligible main-branch runs, a separate job publishes the generated GitHub installation branch; see [publishing](RELEASING.md). It does not publish npm packages or create versioned releases.
-
-The workflow defaults to read-only repository permissions and SHA-pinned official actions. Action
-runtime versions are separate from the Node versions tested by this project. Local checks and hosted CI results are reported separately.
-
-Pinned action releases: [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1),
-[setup-node v7.1.0](https://github.com/actions/setup-node/releases/tag/v7.1.0),
-and [upload-artifact v7.0.2](https://github.com/actions/upload-artifact/releases/tag/v7.0.2).
-
-Each successful matrix job also runs `npm run hooks:report` and uploads a separate source-
-identified hook diagnostic artifact. Its hand-labeled corpus can report false/missed blocks;
-collection success is not a policy-enforcement pass. See the
-[tool/hook audit](authoring/TOOLS.md) for the measured scope and current matcher limitations.
-
-### Performance diagnostics
-
-The separate **Performance** workflow runs on pushes to `main` and manual dispatch,
-with no pull-request trigger. For [manual dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow), select **Performance → Run workflow** and
-choose a branch when a focused run is needed. The workflow becomes available after
-its definition reaches the default branch. It measures the selected commit on native
-Ubuntu, macOS and Windows with the same pinned Node 24.21.0 patch; update that pin
-across the matrix together when refreshing the reference environment.
-
-Each platform retains raw JSON, environment and source/harness hashes, an assessment
-and a Markdown summary for 14 days. The job summary shows synthetic turn median/p95
-and telemetry diagnostics. Process/assertion failures, changed wire or selected task
-state, incomplete measurements and modified exports fail the benchmark job. Timing
-has no hard threshold: hosted hardware/cache variability and reported telemetry
-loss remain visible diagnostics. This workflow is independent of packaging and
-publication and is not a release prerequisite.
-
-For a local run against a clean checkout, use a new output directory outside that checkout:
+You need Node 24 (22 minimum), Rust 1.89+ with Cargo (CI pins 1.99.1) and a C compiler for the
+bundled SQLite and Tree-sitter sources. There is no npm install.
 
 ```sh
-node .github/benchmarks/run.mjs <clean-checkout> <new-results-directory>
+npm run check        # validate, build exports, check architecture, lint, test
+npm test             # build exports and the debug craft executable, then run the tests
+cargo test --workspace --locked
 ```
 
-The default is 30 repetitions plus a separate first sample. Set
-`PERFORMANCE_ROUNDS=1` only for a quick integration check, not a performance baseline.
-The suite measures process/Git operations, equal-byte file-count workloads, state
-primitives and synthetic parallel hook turns. It excludes actual tools/models and
-native host scheduling. Compare matching source/harness/runtime identities and retain
-runner differences; do not interpret a green job as lossless telemetry or a latency
-budget pass. The first telemetry reference can itself be lossy, inflating mismatch
-counts; reported dropped events and affected turns are shown separately.
+Tests use the debug `craft` build, or `CRAFT_NATIVE_BINARY` when set. Generated output in
+`dist/` is reproducible; never edit it by hand.
 
-The grounded lifecycle workload composes context, starts a structured task, checks the
-real developer fixture, records acceptance, and verifies rejection after a source edit.
-Each round launches a fresh Node process and measures its first (`cold`) and repeated
-(`warm`) lifecycle separately. Imports/setup are excluded from those sample spans; the
-separate process wall includes launch, imports, setup and both phases. OS caches remain
-uncontrolled. CPU and cumulative maximum RSS describe the benchmark child only, excluding
-spawned Git/test processes; whole-process-tree CPU and peak memory remain unknown.
+## Where changes go
 
-Run just this workload from the source checkout with a new output path:
+| Change | Location |
+|---|---|
+| Guidance, workflows, standards, evals | `packages/<name>/`, registered in its `capability.json` ([package format](PACKAGE-FORMAT.md)) |
+| Decisions over explicit facts (no I/O, no clock) | `engine/` |
+| Use cases, CLI, hook handling | `application/` |
+| Filesystem, Git, processes, network | `platform/` |
+| Host hook mapping and feature tables | `hosts/` |
+| Build, export, validation, release | `tooling/` |
+
+Runtime behavior is Rust; JavaScript stays in tooling, tests and the small build-time host
+tables and hook declarations ([ADR 0001](adr/0001-rust-core-runtime.md)). New top-level
+modules follow [ADR 0002](adr/0002-module-map-and-boundaries.md).
+
+- Keep common principles, language, application-layer and provider guidance independent; a
+  stack example does not impose that stack.
+- Change the craft bar in `packages/craft-engineering/standards/craft-bar.md`, then run
+  `npm run sync:craft-bar`.
+- Keep the current version until a release is requested ([releasing](RELEASING.md)).
+- Test behavior, not prose. Use real Git fixtures and hostile hook payloads; service tests
+  never contact a real tracker or code host. Workflow and instruction changes need
+  [eval cases](EVALUATION.md#package-scenarios) with recorded responses.
+- `npm run validate:claude` runs the official Claude validator when Claude Code is installed.
+
+## CI
+
+The **CI** workflow runs on pushes, pull requests and manual dispatch:
+
+| Job | Does |
+|---|---|
+| Workflows | actionlint 1.7.12 and ShellCheck, including rejection of invalid workflows |
+| Check (linux/macos/windows, Node 24; linux Node 22 and 26) | Validation, exports, architecture and the test suite |
+| Native / Rust format | `cargo fmt` |
+| Native (linux/macos/windows) | Clippy, Rust tests, release bundle and relocated-install tests |
+| Package | Bundles with all native runtimes, uploaded as `craft-capabilities-<sha>` |
+| Publish | `distribution-next`, on `main` only ([releasing](RELEASING.md)) |
+
+Actions are pinned by SHA and permissions default to read-only. Rust builds are cached per OS
+and `Cargo.lock`. Locally, run `npm run lint:workflows` and `npm run test:workflows` with
+actionlint and ShellCheck installed. When updating actionlint, change its version and checksum
+together in `ci.yml`.
+
+### Hook diagnostics
+
+`npm run hooks:report -- --output <new-file>` samples the generated read-only hook launcher
+against a small hand-labeled corpus and records exported source hashes. Exit 0 means the
+report was collected, even if cases miss. Outcomes other than `allow` or `deny` are counted
+as `unexpectedDecisions`. Timings include process start and are not production rates. CI
+uploads one report per OS. See the [guard limits](SECURITY.md#read-only-review-guard).
+
+### Performance
+
+The **Performance** workflow runs on pushes to `main` and manual dispatch. It measures a
+release `craft` build on Linux, macOS and Windows, covering process and Git operations,
+filesystem workloads, synthetic hook turns and a grounded task lifecycle, and keeps raw
+results for 14 days. Timing is diagnostic, with no thresholds; only incorrect or incomplete
+measurements fail the job. Locally:
 
 ```sh
-node .github/benchmarks/lifecycle.mjs <new-output.json> 10
+cargo build --release --locked -p craft-application --bin craft
+CRAFT_NATIVE_BINARY=$PWD/target/release/craft node .github/benchmarks/run.mjs <clean-checkout> <new-results-directory>
 ```
 
-Retain at least ten samples per phase for each runner class before freezing an absolute
-budget and relative regression threshold. Local calibration cannot stand in for hosted
-Linux, macOS or Windows results. Until those baselines and their rationale are recorded,
-timing remains diagnostic and only correctness/completeness can fail the job.
+`PERFORMANCE_ROUNDS=1` gives a quick integration run instead of the default 30 rounds.
 
-With a local Codex executable available, run the optional discovery regression after building:
+### Codex hook discovery
 
 ```sh
 CRAFT_CODEX_SMOKE=1 node --test tests/codex-hook-discovery.test.mjs
 ```
 
-It installs all four generated packages into a temporary, isolated Codex home and checks
-the real host's hook inventory. It makes no model requests and neither trusts nor executes
-hooks. Codex 0.163.0 discovered 29 hooks with the native manifest export; the portable
-Agent Plugins 1.0 manifest export returned zero. Default checks skip this optional host
-test; registration/runtime tests run for every hook-capable adapter. Actual automatic
-dispatch in other hosts still needs a trusted live session and fresh telemetry.
+This optional test installs the generated packages into an isolated Codex home and checks the
+host's hook inventory. It makes no model requests and does not trust or run hooks.

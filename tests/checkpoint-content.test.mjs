@@ -4,8 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { saveCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { gitState } from '../platform/node/repository/snapshot.mjs';
+import { saveCheckpoint, recoverCheckpoint, repositoryState as gitState } from './checkpoint-cli.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'checkpoint-content-'));

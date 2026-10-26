@@ -5,13 +5,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { route, lookup } from '../application/routing/select.mjs';
-import { planOperation } from '../application/services.mjs';
-import { readProject } from '../application/project/configuration.mjs';
-import { validateProject } from '../application/project/configuration.mjs';
-import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { run } from '../cli/main.mjs';
-import { snapshot, validateReview, publicationPlan } from '../application/review.mjs';
+import { route } from './native-route.mjs';
+import { readProject } from './project-settings.mjs';
+import { validateProject } from './project-settings.mjs';
+import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
+import { run } from './craft.mjs';
+import { craft, prepareSnapshot, checkReview, planPublication } from './review-tools.mjs';
 import { loadCapabilities } from '../tooling/lib/capabilities.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,6 +25,16 @@ function git(root, ...args) {
   const result = spawnSync('git', ['-c', `core.hooksPath=${path.join(root, 'no-hooks')}`, '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-C', root, ...args], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+// `lookup` runs in the native runtime; select through the public command line.
+function lookup(config, { file, module } = {}) {
+  const configured = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(configured, '.craft'));
+    fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    return run(['lookup', '--root', configured, '--preferences', path.join(configured, 'absent.json'),
+      ...(file === undefined ? [] : ['--file', file]), ...(module === undefined ? [] : ['--module', module])]);
+  } finally { fs.rmSync(configured, { recursive: true, force: true }); }
 }
 function repository(t) {
   const dir = temp(t);
@@ -76,6 +85,32 @@ test('module lookup uses path boundaries, specificity and transitive declared im
   assert.deepEqual(result.languages, ['jvm']);
   assert.deepEqual(result.affectedDependents, ['client', 'console']);
   assert.throws(() => lookup(config, { module: 'absent' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: '' }), /unknown module/);
+  assert.throws(() => lookup(config, { module: 'api', file: 'src/api/a.java' }), /choose --file or --module/);
+  const files = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lookup-'));
+  try {
+    fs.mkdirSync(path.join(files, '.craft'));
+    fs.writeFileSync(path.join(files, '.craft/project.json'), JSON.stringify(config));
+    const selected = run(['lookup', '--root', files, '--preferences', path.join(files, 'absent.json'), '--file', 'client/a', '--file', '.git/b', '--file', 'src/api/c']);
+    assert.deepEqual(selected.modules.map((entry) => entry.name), ['client', 'api']);
+  } finally { fs.rmSync(files, { recursive: true, force: true }); }
+});
+
+test('native route takes the task from a session binding and records session activity', t => {
+  const dir = temp(t);
+  git(dir, 'init', '-q');
+  fs.mkdirSync(path.join(dir, '.craft'));
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1,
+    services: { tasks: { provider: 'tracker', transport: 'cli', command: 'tracker', operations: { 'task.read': { args: ['read', '{id}'] } } } } }));
+  const routed = (...args) => run(['route', '--root', dir, '--intent', 'implement', ...args]);
+  assert.deepEqual(routed('--session', 's1').operations, []);
+  run(['task-start', '--root', dir, '--session', 's1', '--task', 'T-1', '--goal', 'route the bound task']);
+  const activity = (task) => run(['session', '--root', dir, '--session', 's1', '--task', task]).activity.routingDecisions ?? 0;
+  const started = activity('T-1');
+  assert.deepEqual(routed('--session', 's1').operations.map((operation) => operation.args), [['read', 'T-1']]);
+  assert.deepEqual(routed('--session', 's1', '--task', 'T-2').operations.map((operation) => operation.args), [['read', 'T-2']]);
+  assert.equal(activity('T-1'), started + 1);
+  assert.equal(activity('T-2'), 1);
 });
 
 test('equivalent module paths preserve ownership, checks and stack guidance without changing configuration', () => {
@@ -145,21 +180,32 @@ test('all built-in routed skills resolve to actual capability source', () => {
     ...manifest.workflows.map((file) => `${manifest.name}:workflow-${path.basename(file, '.md')}`)
   ]));
   for (const intent of ['implement', 'review', 'plan', 'story', 'research', 'verify', 'locate', 'status', 'explore']) {
-    const result = route({ intent, files: ['agents/assistant/main.py', 'ui/Orders.tsx', 'services/orders/Order.java'], project, risks: ['auth'], availableSkills: [...ids] });
+    const result = route({ intent, files: ['agents/assistant/main.py', 'ui/Orders.tsx', 'services/orders/Order.java'], project, risks: ['auth'] });
     for (const skill of result.skills) assert.ok(ids.has(skill), skill);
     assert.deepEqual(result.missing, []);
   }
-  const unavailable = route({ intent: 'review', availableSkills: [] });
-  assert.ok(unavailable.missing.some((message) => message.includes('skill not installed')));
 });
+
+// `operation` runs in the native runtime; plan through the public command line.
+function planOperation(config, name, params) {
+  const configured = typeof config === 'string' ? config : fs.mkdtempSync(path.join(os.tmpdir(), 'craft-operation-'));
+  try {
+    if (configured !== config) {
+      fs.mkdirSync(path.join(configured, '.craft'));
+      fs.writeFileSync(path.join(configured, '.craft/project.json'), JSON.stringify(config));
+    }
+    return run(['operation', '--root', configured, '--preferences', path.join(configured, 'absent.json'), '--operation', name, '--params', JSON.stringify(params)]);
+  } finally { if (configured !== config) fs.rmSync(configured, { recursive: true, force: true }); }
+}
+const example = path.join(root, 'examples/project');
 
 test('bindings distinguish local Git, codehost and tracker and preserve argument boundaries', () => {
   const github = { formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', host: 'github.example.com', repository: 'team/repo' } } };
   assert.deepEqual(planOperation(github, 'change.read', { id: 42 }).args, ['pr', 'view', '42', '--repo', 'github.example.com/team/repo', '--json', 'number,title,body,baseRefOid,headRefOid']);
-  const gitlab = planOperation(project, 'change.read', { id: 42 });
+  const gitlab = planOperation(example, 'change.read', { id: 42 });
   assert.deepEqual(gitlab.args, ['mr', 'view', '42', '--repo', 'https://gitlab.example.com/team/project', '--output', 'json']);
   const hostile = 'TEAM-1; $(touch /tmp/never-run)';
-  const cli = planOperation(project, 'task.read', { id: hostile });
+  const cli = planOperation(example, 'task.read', { id: hostile });
   assert.deepEqual(cli.args, ['read', hostile]);
   assert.equal(cli.shell, false);
   assert.equal(cli.availability, 'not-verified');
@@ -223,32 +269,41 @@ test('checkpoint writes reject symlinked paths and concurrent writers', (t) => {
 
 test('review snapshots pin actual Git revisions without running project code', (t) => {
   const { dir, base, head } = repository(t);
-  const input = snapshot({ root: dir, base, head, provider: 'gitlab', repository: 'team/repo', changeId: 42 });
+  const input = prepareSnapshot(temp(t), { root: dir, base, head, provider: 'gitlab', repository: 'team/repo', changeId: 42 });
+  const work = temp(t);
   assert.equal(input.baseSha, base); assert.equal(input.headSha, head); assert.equal(input.mergeBase, base);
   assert.deepEqual(input.files, ['orders.py']); assert.match(input.diff, /value = 2/);
   const result = { baseSha: base, headSha: head, summary: 'Static review', recommendation: 'request-changes', verification: ['Tests not run.'], findings: [{ id: 'F1', severity: 'medium', path: 'orders.py', side: 'new', line: 1, summary: 'Fixture finding', evidence: 'Synthetic validation fixture.' }] };
-  assert.equal(validateReview(input, result).valid, true);
+  assert.equal(checkReview(work, input, result).valid, true);
   for (const bad of [
     { ...result, headSha: base }, { ...result, verification: [] },
     { ...result, findings: [{ ...result.findings[0], path: 'not-changed.py' }] },
     { ...result, findings: [{ ...result.findings[0], line: 0 }] },
     { ...result, findings: [...result.findings, result.findings[0]] }
-  ]) assert.throws(() => validateReview(input, bad));
-  assert.throws(() => publicationPlan(input, result, { currentHead: head, currentBase: base }), /authorization/);
-  assert.throws(() => publicationPlan(input, result, { currentHead: head, currentBase: base, authorized: 'false' }), /authorization/);
-  assert.throws(() => publicationPlan(input, result, { currentHead: base, currentBase: base, authorized: true }), /changed/);
-  assert.equal(publicationPlan(input, result, { currentHead: head, currentBase: base, authorized: true }).execution, 'not-published');
+  ]) assert.throws(() => checkReview(work, input, bad));
+  assert.throws(() => planPublication(work, input, result, { currentHead: head, currentBase: base }), /authorization/);
+    assert.throws(() => planPublication(work, input, result, { currentHead: base, currentBase: base, authorized: true }), /changed/);
+  assert.equal(planPublication(work, input, result, { currentHead: head, currentBase: base, authorized: true }).execution, 'not-published');
+});
+
+test('every native package tool names a command of the bundled runtime', () => {
+  const tools = loadCapabilities(root).flatMap(({ manifest }) => manifest.tools.filter(tool => tool.runtime === 'native'));
+  assert.ok(tools.length);
+  for (const tool of tools) {
+    const help = craft([tool.command, '--help']);
+    assert.equal(help.status, 0, `${tool.name}: ${help.stderr}`);
+    assert.match(JSON.parse(help.stdout).usage, new RegExp(`^${tool.command} `));
+  }
 });
 
 test('review snapshot CLI saves a new artifact and prints only compact metadata', (t) => {
   const { dir, base, head } = repository(t);
-  const command = path.join(root, 'packages/craft-review/bin/prepare-review.mjs');
   const artifact = path.join(dir, 'review-snapshot.json');
-  const result = spawnSync(process.execPath, [command, '--root', dir, '--base', base, '--head', head, '--output', artifact], { encoding: 'utf8' });
+  const result = craft(['review-prepare', '--root', dir, '--base', base, '--head', head, '--output', artifact]);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).files, 1);
   assert.ok(!result.stdout.includes('value = 2'));
   assert.equal(JSON.parse(fs.readFileSync(artifact, 'utf8')).headSha, head);
-  const overwrite = spawnSync(process.execPath, [command, '--root', dir, '--base', base, '--head', head, '--output', artifact], { encoding: 'utf8' });
+  const overwrite = craft(['review-prepare', '--root', dir, '--base', base, '--head', head, '--output', artifact]);
   assert.equal(overwrite.status, 2);
 });

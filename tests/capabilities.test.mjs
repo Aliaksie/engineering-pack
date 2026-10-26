@@ -9,9 +9,9 @@ import { ADAPTERS, build, checkBuild } from '../tooling/build.mjs';
 import { files, frontmatter, json, loadCapabilities, validateCapability } from '../tooling/lib/capabilities.mjs';
 import { evaluateReport } from '../tooling/eval-report.mjs';
 import { copy } from '../tooling/export/export.mjs';
-import { evaluateReviewPublication } from '../application/review.mjs';
-const reviewPolicy = event => evaluateReviewPublication(event);
 import { HOSTS } from '../hosts/registry.mjs';
+import { featureSupport } from '../hosts/capabilities.mjs';
+import { runHook } from './hook-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packages = loadCapabilities(root);
@@ -23,7 +23,6 @@ function fixture(t) {
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
   copy(path.join(root, 'hosts'), path.join(repo, 'hosts'));
   copy(path.join(root, 'docs'), path.join(repo, 'docs'));
-  for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(root, folder), path.join(repo, folder));
   fs.copyFileSync(path.join(root,'package.json'),path.join(repo,'package.json'));
   const source = byName('craft-review');
   const packageRoot = path.join(repo, 'packages', source.manifest.name);
@@ -67,6 +66,14 @@ test('unregistered skills and symlinked assets cannot be shipped', (t) => {
   assert.ok(validateCapability(packageRoot, manifest).some((error) => /symlink/.test(error)));
 });
 
+test('every adapter describes each feature with its support, activation and evidence', () => {
+  const table = JSON.parse(fs.readFileSync(path.join(root, 'hosts/capabilities.json'), 'utf8'));
+  for (const [adapter, support] of Object.entries(table)) {
+    assert.equal(Object.keys(support.features).length, 18, adapter);
+    assert.ok(Object.values(support.features).every(feature => feature.support && feature.activation && feature.evidence), adapter);
+  }
+});
+
 test('all adapters preserve resources, separate names, and report actual feature coverage', () => {
   for (const target of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     assert.deepEqual(checkBuild(root, target), []);
@@ -82,6 +89,7 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.equal(entry.evals, 'included-not-executed');
       const setup = json(path.join(directory, 'SETUP.json'));
       assert.equal(setup.adapter, target);
+      assert.deepEqual(setup.featureSupport, featureSupport(target));
       assert.equal(setup.hooks, entry.hooks);
       assert.ok(fs.existsSync(path.join(directory, setup.sessionAdvice.entry)));
       const setupPage = fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8');
@@ -90,7 +98,7 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.deepEqual(notice, { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
         controls: { surface: setup.controls.surface, commands: setup.controls.commands } });
       if (target !== 'codex') assert.deepEqual(setup.controls.commands, {});
-      for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.path)]) {
+      for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.runtime === 'native' ? 'bin/craft' : tool.path)]) {
         assert.ok(fs.existsSync(path.join(directory, asset)), `${target}: missing ${asset}`);
       }
       for (const name of entry.skills) {
@@ -125,8 +133,7 @@ test('generated host exports run after relocation without source-tree imports', 
     const setup = json(path.join(standalone, 'SETUP.json'));
     assert.ok(fs.existsSync(path.join(standalone, 'SETUP.md')));
     assert.ok(fs.existsSync(path.join(standalone, setup.sessionAdvice.entry)));
-    const hook = path.join(moved, target === 'claude' ? 'plugins' : 'packages', 'craft-review', 'platform-hooks/read-only.mjs');
-    const result = spawnSync(process.execPath, [hook], { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }), encoding: 'utf8' });
+    const result = runHook(standalone, target, 'read-only', { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }) });
     if (target === 'claude') { assert.equal(result.status, 2); assert.match(result.stderr, /read-only review/); }
     else { assert.equal(result.status, 0); assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny'); }
   }

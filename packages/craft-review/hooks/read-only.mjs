@@ -1,3 +1,2 @@
-// Package entry point; exported imports resolve to the bundled application.
-import { evaluateReviewPublication } from '../../../application/review.mjs';
-export const evaluate = event => evaluateReviewPublication(event);
+// Package entry point; the read-only review publication guard runs natively.
+export const native = 'review-read-only';

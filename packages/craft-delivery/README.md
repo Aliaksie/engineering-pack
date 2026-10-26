@@ -4,7 +4,7 @@ Plan, implement, verify and maintain project context. Use `route-work` for modul
 routing and `resolve-service` for Git, codehost or task-tracker tool selection. Pasted tasks
 and local files work without a tracker; remote operations need explicit service bindings.
 
-The shared runtime is copied into exported packages at `support/{engine,application,platform,integrations,hosts,cli}/`. It produces
+Exported packages run the bundled native `craft` through `bin/craft`. It produces
 routing/tool plans without executing work. Optional lifecycle hooks provide routing hints
 and default milestone checkpoint snapshots; they do not force skills to load on every host.
 Edit hints and hint deduplication default to enabled and can be disabled. Service metadata

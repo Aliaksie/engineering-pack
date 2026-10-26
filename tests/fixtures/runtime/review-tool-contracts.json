@@ -1,0 +1,4701 @@
+{
+  "formatVersion": 1,
+  "source": "packages/craft-review/bin/{prepare,check}-review.mjs and the review publication plan at a84479e",
+  "placeholders": {
+    "<ROOT>": "repository built from `repository`",
+    "<OUT>": "new artifact path",
+    "<EXISTING>": "an existing file",
+    "<USAGE>": "a usage diagnostic",
+    "<GIT>": "a Git snapshot failure",
+    "<EXISTS>": "an existing-output failure",
+    "<JSON>": "a JSON parse failure"
+  },
+  "repository": [
+    {
+      "git": [
+        "init",
+        "-q",
+        "--initial-branch=main"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "user.name",
+        "Craft"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "user.email",
+        "craft@example.test"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "commit.gpgsign",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "core.autocrlf",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "core.quotePath",
+        "true"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.noprefix",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.mnemonicPrefix",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.relative",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.algorithm",
+        "myers"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.interHunkContext",
+        "0"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "diff.suppressBlankEmpty",
+        "false"
+      ]
+    },
+    {
+      "git": [
+        "config",
+        "core.fsmonitor",
+        "false"
+      ]
+    },
+    {
+      "write": "a.txt",
+      "text": "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\n"
+    },
+    {
+      "write": "dir/b.txt",
+      "text": "b\n"
+    },
+    {
+      "write": "keep.txt",
+      "text": "kept content\n"
+    },
+    {
+      "write": "space name.txt",
+      "text": "space\n"
+    },
+    {
+      "write": "ünï.txt",
+      "text": "unicode\n"
+    },
+    {
+      "write": "bin.dat",
+      "bytes": [
+        0,
+        1,
+        2,
+        255,
+        0,
+        10
+      ]
+    },
+    {
+      "write": ".craft/project.json",
+      "text": "{\"formatVersion\":1}\n"
+    },
+    {
+      "write": ".craft/state/s.json",
+      "text": "{}\n"
+    },
+    {
+      "write": "nested/.craft/state/t.json",
+      "text": "{}\n"
+    },
+    {
+      "write": ".capabilities/state/u",
+      "text": "u\n"
+    },
+    {
+      "git": [
+        "add",
+        "-A"
+      ]
+    },
+    {
+      "git": [
+        "commit",
+        "-q",
+        "-m",
+        "base"
+      ],
+      "date": "2026-01-01T00:00:00Z"
+    },
+    {
+      "git": [
+        "tag",
+        "v1"
+      ]
+    },
+    {
+      "git": [
+        "checkout",
+        "-q",
+        "-b",
+        "feature"
+      ]
+    },
+    {
+      "write": "a.txt",
+      "text": "one\nTWO\nthree\nfour\nfive\nsix\nseven\nEIGHT\nnine\n"
+    },
+    {
+      "remove": "dir/b.txt"
+    },
+    {
+      "remove": "keep.txt"
+    },
+    {
+      "write": "moved/keep.txt",
+      "text": "kept content\n"
+    },
+    {
+      "write": "ünï.txt",
+      "text": "unicode changed\n"
+    },
+    {
+      "write": "bin.dat",
+      "bytes": [
+        0,
+        1,
+        3,
+        255,
+        0,
+        10
+      ]
+    },
+    {
+      "write": "new file.txt",
+      "text": "new\n"
+    },
+    {
+      "write": ".craft/project.json",
+      "text": "{\"formatVersion\":1,\"review\":{\"readOnly\":true}}\n"
+    },
+    {
+      "write": ".craft/state/s.json",
+      "text": "{\"changed\":true}\n"
+    },
+    {
+      "write": "nested/.craft/state/t.json",
+      "text": "{\"changed\":true}\n"
+    },
+    {
+      "write": ".capabilities/state/u",
+      "text": "changed\n"
+    },
+    {
+      "git": [
+        "add",
+        "-A"
+      ]
+    },
+    {
+      "git": [
+        "commit",
+        "-q",
+        "-m",
+        "feature"
+      ],
+      "date": "2026-01-02T00:00:00Z"
+    },
+    {
+      "git": [
+        "checkout",
+        "-q",
+        "main"
+      ]
+    },
+    {
+      "write": "space name.txt",
+      "text": "space advanced\n"
+    },
+    {
+      "git": [
+        "commit",
+        "-q",
+        "-am",
+        "advance"
+      ],
+      "date": "2026-01-03T00:00:00Z"
+    },
+    {
+      "git": [
+        "checkout",
+        "-q",
+        "--orphan",
+        "lonely"
+      ]
+    },
+    {
+      "git": [
+        "rm",
+        "-q",
+        "-rf",
+        "."
+      ]
+    },
+    {
+      "write": "alone.txt",
+      "text": "alone\n"
+    },
+    {
+      "git": [
+        "add",
+        "-A"
+      ]
+    },
+    {
+      "git": [
+        "commit",
+        "-q",
+        "-m",
+        "lonely"
+      ],
+      "date": "2026-01-04T00:00:00Z"
+    },
+    {
+      "git": [
+        "checkout",
+        "-q",
+        "-f",
+        "main"
+      ]
+    }
+  ],
+  "prepare": [
+    {
+      "id": "merge-base",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "files": 8
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "local",
+        "changeId": null,
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [
+          ".craft/project.json",
+          "a.txt",
+          "bin.dat",
+          "dir/b.txt",
+          "keep.txt",
+          "moved/keep.txt",
+          "new file.txt",
+          "ünï.txt"
+        ],
+        "diff": "diff --git a/.craft/project.json b/.craft/project.json\nindex 5c5b548..79fb761 100644\n--- a/.craft/project.json\n+++ b/.craft/project.json\n@@ -1 +1 @@\n-{\"formatVersion\":1}\n+{\"formatVersion\":1,\"review\":{\"readOnly\":true}}\ndiff --git a/a.txt b/a.txt\nindex b00a0f1..445ab96 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,8 +1,9 @@\n one\n-two\n+TWO\n three\n four\n five\n six\n seven\n-eight\n+EIGHT\n+nine\ndiff --git a/bin.dat b/bin.dat\nindex 62667d5..adc7826 100644\nBinary files a/bin.dat and b/bin.dat differ\ndiff --git a/dir/b.txt b/dir/b.txt\ndeleted file mode 100644\nindex 6178079..0000000\n--- a/dir/b.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-b\ndiff --git a/keep.txt b/keep.txt\ndeleted file mode 100644\nindex 61c8a16..0000000\n--- a/keep.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-kept content\ndiff --git a/moved/keep.txt b/moved/keep.txt\nnew file mode 100644\nindex 0000000..61c8a16\n--- /dev/null\n+++ b/moved/keep.txt\n@@ -0,0 +1 @@\n+kept content\ndiff --git a/new file.txt b/new file.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/new file.txt\t\n@@ -0,0 +1 @@\n+new\ndiff --git \"a/\\303\\274n\\303\\257.txt\" \"b/\\303\\274n\\303\\257.txt\"\nindex 4de4f93..a727bb1 100644\n--- \"a/\\303\\274n\\303\\257.txt\"\n+++ \"b/\\303\\274n\\303\\257.txt\"\n@@ -1 +1 @@\n-unicode\n+unicode changed\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "remote-github",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "v1",
+        "--head",
+        "feature",
+        "--provider",
+        "github",
+        "--repository",
+        "owner/repo",
+        "--change-id",
+        "7",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "files": 8
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [
+          ".craft/project.json",
+          "a.txt",
+          "bin.dat",
+          "dir/b.txt",
+          "keep.txt",
+          "moved/keep.txt",
+          "new file.txt",
+          "ünï.txt"
+        ],
+        "diff": "diff --git a/.craft/project.json b/.craft/project.json\nindex 5c5b548..79fb761 100644\n--- a/.craft/project.json\n+++ b/.craft/project.json\n@@ -1 +1 @@\n-{\"formatVersion\":1}\n+{\"formatVersion\":1,\"review\":{\"readOnly\":true}}\ndiff --git a/a.txt b/a.txt\nindex b00a0f1..445ab96 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,8 +1,9 @@\n one\n-two\n+TWO\n three\n four\n five\n six\n seven\n-eight\n+EIGHT\n+nine\ndiff --git a/bin.dat b/bin.dat\nindex 62667d5..adc7826 100644\nBinary files a/bin.dat and b/bin.dat differ\ndiff --git a/dir/b.txt b/dir/b.txt\ndeleted file mode 100644\nindex 6178079..0000000\n--- a/dir/b.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-b\ndiff --git a/keep.txt b/keep.txt\ndeleted file mode 100644\nindex 61c8a16..0000000\n--- a/keep.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-kept content\ndiff --git a/moved/keep.txt b/moved/keep.txt\nnew file mode 100644\nindex 0000000..61c8a16\n--- /dev/null\n+++ b/moved/keep.txt\n@@ -0,0 +1 @@\n+kept content\ndiff --git a/new file.txt b/new file.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/new file.txt\t\n@@ -0,0 +1 @@\n+new\ndiff --git \"a/\\303\\274n\\303\\257.txt\" \"b/\\303\\274n\\303\\257.txt\"\nindex 4de4f93..a727bb1 100644\n--- \"a/\\303\\274n\\303\\257.txt\"\n+++ \"b/\\303\\274n\\303\\257.txt\"\n@@ -1 +1 @@\n-unicode\n+unicode changed\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "remote-gitlab",
+      "args": [
+        "--output",
+        "<OUT>",
+        "--provider",
+        "gitlab",
+        "--change-id",
+        "42",
+        "--repository",
+        "group/sub/repo",
+        "--root",
+        "<ROOT>",
+        "--base",
+        "feature",
+        "--head",
+        "main"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "files": 1
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "gitlab",
+        "repository": "group/sub/repo",
+        "changeId": "42",
+        "baseSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [
+          "space name.txt"
+        ],
+        "diff": "diff --git a/space name.txt b/space name.txt\nindex 9495c3c..f59c317 100644\n--- a/space name.txt\t\n+++ b/space name.txt\t\n@@ -1 +1 @@\n-space\n+space advanced\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "reverse",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "feature",
+        "--head",
+        "main",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "files": 1
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "local",
+        "changeId": null,
+        "baseSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [
+          "space name.txt"
+        ],
+        "diff": "diff --git a/space name.txt b/space name.txt\nindex 9495c3c..f59c317 100644\n--- a/space name.txt\t\n+++ b/space name.txt\t\n@@ -1 +1 @@\n-space\n+space advanced\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "empty-range",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "HEAD",
+        "--head",
+        "HEAD",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "files": 0
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "local",
+        "changeId": null,
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "mergeBase": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "files": [],
+        "diff": "",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "sha-refs",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "v1",
+        "--head",
+        "v1~0",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "headSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": 0
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "local",
+        "changeId": null,
+        "baseSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "headSha": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [],
+        "diff": "",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "local-with-change-id",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--change-id",
+        "12",
+        "--repository",
+        "mine",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 0,
+      "stdout": {
+        "artifact": "<OUT>",
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "files": 8
+      },
+      "artifact": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "mine",
+        "changeId": "12",
+        "baseSha": "972068f0e805aa1e75840f3f4942a402d8e4ecd0",
+        "headSha": "9275f4685c13533c643d7cfd665768421b491083",
+        "mergeBase": "2b838c8d4041a6c2d4fb1860507da7841ae63cc3",
+        "files": [
+          ".craft/project.json",
+          "a.txt",
+          "bin.dat",
+          "dir/b.txt",
+          "keep.txt",
+          "moved/keep.txt",
+          "new file.txt",
+          "ünï.txt"
+        ],
+        "diff": "diff --git a/.craft/project.json b/.craft/project.json\nindex 5c5b548..79fb761 100644\n--- a/.craft/project.json\n+++ b/.craft/project.json\n@@ -1 +1 @@\n-{\"formatVersion\":1}\n+{\"formatVersion\":1,\"review\":{\"readOnly\":true}}\ndiff --git a/a.txt b/a.txt\nindex b00a0f1..445ab96 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,8 +1,9 @@\n one\n-two\n+TWO\n three\n four\n five\n six\n seven\n-eight\n+EIGHT\n+nine\ndiff --git a/bin.dat b/bin.dat\nindex 62667d5..adc7826 100644\nBinary files a/bin.dat and b/bin.dat differ\ndiff --git a/dir/b.txt b/dir/b.txt\ndeleted file mode 100644\nindex 6178079..0000000\n--- a/dir/b.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-b\ndiff --git a/keep.txt b/keep.txt\ndeleted file mode 100644\nindex 61c8a16..0000000\n--- a/keep.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-kept content\ndiff --git a/moved/keep.txt b/moved/keep.txt\nnew file mode 100644\nindex 0000000..61c8a16\n--- /dev/null\n+++ b/moved/keep.txt\n@@ -0,0 +1 @@\n+kept content\ndiff --git a/new file.txt b/new file.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/new file.txt\t\n@@ -0,0 +1 @@\n+new\ndiff --git \"a/\\303\\274n\\303\\257.txt\" \"b/\\303\\274n\\303\\257.txt\"\nindex 4de4f93..a727bb1 100644\n--- \"a/\\303\\274n\\303\\257.txt\"\n+++ \"b/\\303\\274n\\303\\257.txt\"\n@@ -1 +1 @@\n-unicode\n+unicode changed\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "mode": "600"
+    },
+    {
+      "id": "remote-without-change-id",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--provider",
+        "gitlab",
+        "--repository",
+        "group/repo",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "remote change id required"
+    },
+    {
+      "id": "remote-zero-change-id",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--provider",
+        "github",
+        "--repository",
+        "o/r",
+        "--change-id",
+        "0",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "remote change id required"
+    },
+    {
+      "id": "remote-signed-change-id",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--provider",
+        "github",
+        "--repository",
+        "o/r",
+        "--change-id",
+        "+3",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "remote change id required"
+    },
+    {
+      "id": "unsupported-provider",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--provider",
+        "bitbucket",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "unsupported review provider"
+    },
+    {
+      "id": "blank-repository",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--provider",
+        "github",
+        "--repository",
+        "  ",
+        "--change-id",
+        "3",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "repository identity required"
+    },
+    {
+      "id": "blank-local-repository",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--repository",
+        " ",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "repository identity required"
+    },
+    {
+      "id": "option-like-ref",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "-x",
+        "--head",
+        "main",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "explicit base and head references required"
+    },
+    {
+      "id": "missing-base",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--head",
+        "main",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "explicit base and head references required"
+    },
+    {
+      "id": "unknown-ref",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "nope",
+        "--head",
+        "main",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<GIT>"
+    },
+    {
+      "id": "tree-ref",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main^{tree}",
+        "--head",
+        "main",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<GIT>"
+    },
+    {
+      "id": "no-merge-base",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "lonely",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<GIT>"
+    },
+    {
+      "id": "not-a-repository",
+      "args": [
+        "--root",
+        "<ROOT>/missing",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<GIT>"
+    },
+    {
+      "id": "missing-output",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature"
+      ],
+      "status": 2,
+      "stderr": "--output is required; keep the diff in an artifact rather than the model transcript"
+    },
+    {
+      "id": "unknown-option",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--intent",
+        "x",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<USAGE>"
+    },
+    {
+      "id": "duplicate-option",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--base",
+        "v1",
+        "--head",
+        "feature",
+        "--output",
+        "<OUT>"
+      ],
+      "status": 2,
+      "stderr": "<USAGE>"
+    },
+    {
+      "id": "missing-value",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--head",
+        "feature",
+        "--output",
+        "<OUT>",
+        "--base"
+      ],
+      "status": 2,
+      "stderr": "<USAGE>"
+    },
+    {
+      "id": "positional",
+      "args": [
+        "snapshot.json",
+        "--root",
+        "<ROOT>"
+      ],
+      "status": 2,
+      "stderr": "<USAGE>"
+    },
+    {
+      "id": "existing-output",
+      "args": [
+        "--root",
+        "<ROOT>",
+        "--base",
+        "main",
+        "--head",
+        "feature",
+        "--output",
+        "<EXISTING>"
+      ],
+      "status": 2,
+      "stderr": "<EXISTS>",
+      "unchanged": true
+    }
+  ],
+  "check": [
+    {
+      "id": "valid",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-sha256",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "mergeBase": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-local-any-identity",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "",
+        "changeId": null,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-numeric-change-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": 42,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-float-format-and-line",
+      "snapshotText": "{\"formatVersion\":1.0,\"provider\":\"github\",\"repository\":\"owner/repo\",\"changeId\":\"7\",\"baseSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"headSha\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"mergeBase\":\"cccccccccccccccccccccccccccccccccccccccc\",\"files\":[\"src/a.js\",\"src/b.py\",\"docs/read me.md\"],\"diff\":\"diff --git a/src/a.js b/src/a.js\\n\",\"verification\":\"source snapshot only; no project code, tests or model executed\"}",
+      "reviewText": "{\"baseSha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"headSha\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"summary\":\"Scope and conclusion.\",\"recommendation\":\"request-changes\",\"verification\":[\"Static inspection only.\"],\"findings\":[{\"id\":\"F1\",\"severity\":\"medium\",\"path\":\"src/a.js\",\"side\":\"new\",\"line\":3.0,\"summary\":\"Concrete defect\",\"evidence\":\"Observed path\"}]}",
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-invalid-utf8-text",
+      "snapshotText": {
+        "bytes": [
+          123,
+          34,
+          102,
+          111,
+          114,
+          109,
+          97,
+          116,
+          86,
+          101,
+          114,
+          115,
+          105,
+          111,
+          110,
+          34,
+          58,
+          49,
+          44,
+          34,
+          112,
+          114,
+          111,
+          118,
+          105,
+          100,
+          101,
+          114,
+          34,
+          58,
+          34,
+          103,
+          105,
+          116,
+          104,
+          117,
+          98,
+          34,
+          44,
+          34,
+          114,
+          101,
+          112,
+          111,
+          115,
+          105,
+          116,
+          111,
+          114,
+          121,
+          34,
+          58,
+          34,
+          111,
+          119,
+          110,
+          101,
+          114,
+          47,
+          114,
+          101,
+          112,
+          111,
+          34,
+          44,
+          34,
+          99,
+          104,
+          97,
+          110,
+          103,
+          101,
+          73,
+          100,
+          34,
+          58,
+          34,
+          55,
+          34,
+          44,
+          34,
+          98,
+          97,
+          115,
+          101,
+          83,
+          104,
+          97,
+          34,
+          58,
+          34,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          97,
+          34,
+          44,
+          34,
+          104,
+          101,
+          97,
+          100,
+          83,
+          104,
+          97,
+          34,
+          58,
+          34,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          98,
+          34,
+          44,
+          34,
+          109,
+          101,
+          114,
+          103,
+          101,
+          66,
+          97,
+          115,
+          101,
+          34,
+          58,
+          34,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          99,
+          34,
+          44,
+          34,
+          102,
+          105,
+          108,
+          101,
+          115,
+          34,
+          58,
+          91,
+          34,
+          115,
+          114,
+          99,
+          47,
+          97,
+          46,
+          106,
+          115,
+          34,
+          44,
+          34,
+          115,
+          114,
+          99,
+          47,
+          98,
+          46,
+          112,
+          121,
+          34,
+          44,
+          34,
+          100,
+          111,
+          99,
+          115,
+          47,
+          114,
+          101,
+          97,
+          100,
+          32,
+          109,
+          101,
+          46,
+          109,
+          100,
+          34,
+          93,
+          44,
+          34,
+          100,
+          105,
+          102,
+          102,
+          34,
+          58,
+          34,
+          100,
+          105,
+          102,
+          102,
+          32,
+          45,
+          45,
+          103,
+          105,
+          116,
+          32,
+          97,
+          47,
+          115,
+          114,
+          99,
+          47,
+          97,
+          46,
+          106,
+          115,
+          32,
+          98,
+          47,
+          115,
+          114,
+          99,
+          47,
+          97,
+          46,
+          106,
+          115,
+          92,
+          110,
+          34,
+          44,
+          34,
+          118,
+          101,
+          114,
+          105,
+          102,
+          105,
+          99,
+          97,
+          116,
+          105,
+          111,
+          110,
+          34,
+          58,
+          34,
+          115,
+          111,
+          117,
+          114,
+          99,
+          101,
+          32,
+          115,
+          110,
+          97,
+          112,
+          115,
+          104,
+          111,
+          116,
+          32,
+          111,
+          110,
+          108,
+          121,
+          59,
+          32,
+          110,
+          111,
+          32,
+          112,
+          114,
+          111,
+          106,
+          101,
+          99,
+          116,
+          32,
+          99,
+          111,
+          100,
+          101,
+          44,
+          32,
+          116,
+          101,
+          115,
+          116,
+          115,
+          32,
+          111,
+          114,
+          32,
+          109,
+          111,
+          100,
+          101,
+          108,
+          32,
+          101,
+          120,
+          101,
+          99,
+          117,
+          116,
+          101,
+          100,
+          34,
+          44,
+          34,
+          110,
+          111,
+          116,
+          101,
+          34,
+          58,
+          34,
+          255,
+          34,
+          125
+        ]
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-empty-findings-approve",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": []
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 0,\n  \"recommendation\": \"approve\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 0,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-low-approve",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "low",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"approve\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 0,\n    \"low\": 1\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-counts",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          },
+          {
+            "id": "F2",
+            "severity": "high",
+            "path": "src/b.py",
+            "side": "old",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          },
+          {
+            "id": "F3",
+            "severity": "low",
+            "path": "docs/read me.md",
+            "side": "new",
+            "line": 9007199254740991,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 3,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 1,\n    \"medium\": 1,\n    \"low\": 1\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-context",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "needs-verification",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": [
+          "ADR 0004 applies."
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"needs-verification\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "valid-extra-fields",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed",
+        "extra": {
+          "nested": [
+            1,
+            2
+          ]
+        }
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path",
+            "note": "kept"
+          }
+        ],
+        "extra": true
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "snapshot-not-object",
+      "snapshot": [],
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-version",
+      "snapshot": {
+        "formatVersion": 2,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-version-string",
+      "snapshot": {
+        "formatVersion": "1",
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-provider",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "bitbucket",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-sha-upper",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-sha-short",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-sha-50",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-repository-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": 5,
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-files-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": "src/a.js",
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-diff-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": null,
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-missing-diff",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid review snapshot"
+    },
+    {
+      "id": "snapshot-remote-null-change",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": null,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required"
+    },
+    {
+      "id": "snapshot-remote-zero-change",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "0",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required"
+    },
+    {
+      "id": "snapshot-remote-decimal-change",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": 4.5,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required"
+    },
+    {
+      "id": "snapshot-remote-blank-repository",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": " \t",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required"
+    },
+    {
+      "id": "snapshot-remote-bom-repository",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "﻿",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required"
+    },
+    {
+      "id": "snapshot-duplicate-files",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/a.js"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "snapshot-empty-file",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          ""
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "snapshot-absolute-file",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "/etc/passwd"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "snapshot-backslash-file",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src\\a.js"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "snapshot-parent-file",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/../a.js"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "snapshot-dotdot-name",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/..a.js",
+          "src/a.js"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 0,
+      "stdout": "{\n  \"valid\": true,\n  \"headSha\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"findings\": 1,\n  \"recommendation\": \"request-changes\",\n  \"severityCounts\": {\n    \"high\": 0,\n    \"medium\": 1,\n    \"low\": 0\n  },\n  \"limitation\": \"Structural validation only. Remote head, line applicability and semantic claims require publisher/reviewer verification.\"\n}\n"
+    },
+    {
+      "id": "snapshot-file-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          7
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "invalid changed file inventory"
+    },
+    {
+      "id": "review-not-object",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": "review",
+      "status": 2,
+      "stderr": "review revisions do not match snapshot; regenerate stale findings"
+    },
+    {
+      "id": "review-null",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": null,
+      "status": 2,
+      "stderr": "review revisions do not match snapshot; regenerate stale findings"
+    },
+    {
+      "id": "review-stale-head",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "cccccccccccccccccccccccccccccccccccccccc",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review revisions do not match snapshot; regenerate stale findings"
+    },
+    {
+      "id": "review-stale-base",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "cccccccccccccccccccccccccccccccccccccccc",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review revisions do not match snapshot; regenerate stale findings"
+    },
+    {
+      "id": "review-blank-summary",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "  ",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-summary-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": 1,
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-findings-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": {}
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-verification-empty",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-verification-blank",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "ok",
+          ""
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-verification-missing",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review summary, findings and verification required"
+    },
+    {
+      "id": "review-recommendation",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "merge",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review recommendation must be approve, request-changes or needs-verification"
+    },
+    {
+      "id": "review-recommendation-missing",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "review recommendation must be approve, request-changes or needs-verification"
+    },
+    {
+      "id": "review-context-null",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": null
+      },
+      "status": 2,
+      "stderr": "review context must be an array of nonempty strings"
+    },
+    {
+      "id": "review-context-blank",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": [
+          "ok",
+          " "
+        ]
+      },
+      "status": 2,
+      "stderr": "review context must be an array of nonempty strings"
+    },
+    {
+      "id": "review-context-type",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": "ADR"
+      },
+      "status": 2,
+      "stderr": "review context must be an array of nonempty strings"
+    },
+    {
+      "id": "finding-null",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          null
+        ]
+      },
+      "status": 2,
+      "stderr": "finding IDs must be unique"
+    },
+    {
+      "id": "finding-number",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          5
+        ]
+      },
+      "status": 2,
+      "stderr": "finding IDs must be unique"
+    },
+    {
+      "id": "finding-empty-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding IDs must be unique"
+    },
+    {
+      "id": "finding-duplicate-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          },
+          {
+            "id": "F1",
+            "severity": "low",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding IDs must be unique"
+    },
+    {
+      "id": "finding-severity",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "critical",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-severity-inherited",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "toString",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-path-outside",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/c.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-line-zero",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 0,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-line-fraction",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 1.5,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-line-unsafe",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 9007199254740992,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-line-string",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": "12",
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-side",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "both",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "finding-blank-summary",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "\n",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding summary required"
+    },
+    {
+      "id": "finding-missing-evidence",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding evidence required"
+    },
+    {
+      "id": "finding-order",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 0,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          },
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "finding location/severity is invalid"
+    },
+    {
+      "id": "approve-with-medium",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "approve recommendation conflicts with high or medium findings"
+    },
+    {
+      "id": "approve-with-high",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "high",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "approve recommendation conflicts with high or medium findings"
+    },
+    {
+      "id": "raw-invalid-snapshot-json",
+      "snapshotText": "{\"formatVersion\":",
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "<JSON>"
+    },
+    {
+      "id": "raw-invalid-review-json",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "reviewText": "not json",
+      "status": 2,
+      "stderr": "<JSON>"
+    },
+    {
+      "id": "correction-array-change-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": [
+          7
+        ],
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required",
+      "correction": "invalid: JS String([7]) is \"7\""
+    },
+    {
+      "id": "correction-unsafe-change-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": 100000000000000000000,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "status": 2,
+      "stderr": "remote review identity required",
+      "correction": "invalid: JS String(1e20) is a digit string beyond the safe integer range"
+    }
+  ],
+  "publication": [
+    {
+      "id": "plan",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "plan": {
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "verification": [
+          "Static inspection only."
+        ],
+        "action": "comment-only",
+        "execution": "not-published"
+      }
+    },
+    {
+      "id": "plan-context",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": [
+          "Linked task unavailable."
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "plan": {
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "context": [
+          "Linked task unavailable."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "verification": [
+          "Static inspection only."
+        ],
+        "action": "comment-only",
+        "execution": "not-published"
+      }
+    },
+    {
+      "id": "plan-empty-context",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "context": []
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "plan": {
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "context": [],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ],
+        "verification": [
+          "Static inspection only."
+        ],
+        "action": "comment-only",
+        "execution": "not-published"
+      }
+    },
+    {
+      "id": "plan-numeric-change-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "gitlab",
+        "repository": "owner/repo",
+        "changeId": 42,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": []
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "plan": {
+        "provider": "gitlab",
+        "repository": "owner/repo",
+        "changeId": 42,
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "approve",
+        "findings": [],
+        "verification": [
+          "Static inspection only."
+        ],
+        "action": "comment-only",
+        "execution": "not-published"
+      }
+    },
+    {
+      "id": "plan-extra-fields",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path",
+            "note": {
+              "kept": [
+                1,
+                "x"
+              ]
+            }
+          }
+        ],
+        "extra": "dropped"
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "plan": {
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path",
+            "note": {
+              "kept": [
+                1,
+                "x"
+              ]
+            }
+          }
+        ],
+        "verification": [
+          "Static inspection only."
+        ],
+        "action": "comment-only",
+        "execution": "not-published"
+      }
+    },
+    {
+      "id": "unauthorized",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": false
+      },
+      "error": "publication requires explicit user or job authorization"
+    },
+    {
+      "id": "head-changed",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "cccccccccccccccccccccccccccccccccccccccc",
+        "authorized": true
+      },
+      "error": "remote base or head changed; do not publish stale findings"
+    },
+    {
+      "id": "base-changed",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "error": "remote base or head changed; do not publish stale findings"
+    },
+    {
+      "id": "invalid-review-first",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "merge",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": false
+      },
+      "error": "review recommendation must be approve, request-changes or needs-verification"
+    },
+    {
+      "id": "authorization-before-revisions",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "github",
+        "repository": "owner/repo",
+        "changeId": "7",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "cccccccccccccccccccccccccccccccccccccccc",
+        "authorized": false
+      },
+      "error": "publication requires explicit user or job authorization"
+    },
+    {
+      "id": "local-provider",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "owner/repo",
+        "changeId": null,
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "error": "remote review identity required for publication"
+    },
+    {
+      "id": "local-provider-with-change-id",
+      "snapshot": {
+        "formatVersion": 1,
+        "provider": "local",
+        "repository": "owner/repo",
+        "changeId": "4",
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeBase": "cccccccccccccccccccccccccccccccccccccccc",
+        "files": [
+          "src/a.js",
+          "src/b.py",
+          "docs/read me.md"
+        ],
+        "diff": "diff --git a/src/a.js b/src/a.js\n",
+        "verification": "source snapshot only; no project code, tests or model executed"
+      },
+      "review": {
+        "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "summary": "Scope and conclusion.",
+        "recommendation": "request-changes",
+        "verification": [
+          "Static inspection only."
+        ],
+        "findings": [
+          {
+            "id": "F1",
+            "severity": "medium",
+            "path": "src/a.js",
+            "side": "new",
+            "line": 12,
+            "summary": "Concrete defect",
+            "evidence": "Observed path"
+          }
+        ]
+      },
+      "target": {
+        "currentBase": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "currentHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authorized": true
+      },
+      "error": "remote review identity required for publication"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ function inspectRepository(repository) {
   if (packages.length === 0) throw new Error('no capability packages');
   const playbooks = validateCatalogSources(repository, packages);
   return [
-    `${playbooks.entries.length} logical playbooks have valid metadata and source targets.`,
+    `${playbooks.entries.length} logical playbooks resolve to registered source targets.`,
     `${packages.length} capability packages are valid.`
   ];
 }

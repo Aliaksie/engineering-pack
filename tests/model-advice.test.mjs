@@ -1,7 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { modelAdvice } from '../application/session/models.mjs';
-import { validateProject } from '../application/project/configuration.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { run } from './craft.mjs';
+import { validateProject } from './project-settings.mjs';
+
+// model-advice runs in the native runtime; these tests use the public command line.
+function modelAdvice(request, project = { formatVersion: 1 }) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-model-advice-'));
+  try {
+    fs.mkdirSync(path.join(root, '.craft'));
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify(project));
+    fs.writeFileSync(path.join(root, 'request.json'), JSON.stringify(request));
+    return run(['model-advice', '--root', root, '--data', path.join(root, 'request.json'), '--preferences', path.join(root, 'absent.json')]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
 
 const config = () => ({ formatVersion: 1, execution: {
   roles: { verifier: { mode: 'delegate', profile: 'bounded' } },
@@ -12,12 +26,11 @@ const request = (extra = {}) => ({ host: 'codex', role: 'verifier', task: 'T1', 
 const attempt = (extra = {}) => ({ id: 'a1', profile: 'bounded', task: 'T1', revision: 'r1', outcome: 'quality-failure', evidence: 'artifacts/acceptance-a1.json', ...extra });
 
 test('model advice selects declared capabilities through existing host/role routing without execution', () => {
-  const project = config(), original = structuredClone(project);
+  const project = config();
   const selected = modelAdvice(request(), project);
   assert.equal(selected.decision, 'recommend');
   assert.equal(selected.execution.model, 'consumer-model-a');
   assert.equal(selected.execution.role, 'verifier');
-  assert.deepEqual(project, original);
   const capable = modelAdvice(request({ requiredCapabilities: ['cross-system'] }), project);
   assert.equal(capable.profile, 'deep');
   assert.equal(capable.execution.model, 'consumer-model-b');
@@ -79,4 +92,37 @@ test('inherited object properties never satisfy explicit profile or exact model 
   assert.equal(modelAdvice(request({ requiredCapabilities: [] }), project).mainModel.decision, 'retain-current-until-authorized');
   delete project.execution.profiles;
   assert.equal(modelAdvice(request({ requiredCapabilities: [] }), project).decision, 'unavailable');
+});
+
+test('logical defaults give useful main-model advice without workers or exact model aliases', () => {
+  const project = { formatVersion: 1, efficiency: { delegation: { maxWorkers: 0 } } };
+  const advice = modelAdvice({ host: 'unknown', role: 'implementer', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
+  assert.equal(advice.profile, 'strong');
+  assert.equal(advice.execution.mode, 'main');
+  assert.equal(advice.mainModel.model, null);
+  assert.equal(advice.mainModel.switchSupported, false);
+  assert.equal(advice.attemptsRemaining, 3);
+  const adequate = modelAdvice({ host: 'unknown', role: 'implementer', task: 'T1', revision: 'r1', currentProfile: 'strong' }, project);
+  assert.equal(adequate.mainModel.decision, 'keep-current');
+  const mapped = { formatVersion: 1, execution: { hosts: { fixture: { mainModelSwitch: true, models: { standard: 'explicit-consumer-model' } } } } };
+  const suggestion = modelAdvice({ host: 'fixture', role: 'implementer', task: 'T1', revision: 'r1' }, mapped);
+  assert.equal(suggestion.mainModel.switchSupported, true);
+  assert.equal(suggestion.mainModel.model, 'explicit-consumer-model');
+  assert.equal(suggestion.execution.mode, 'main');
+});
+
+test('requested capability classes escalate through the configured chain', () => {
+  const project = { formatVersion: 1, execution: {
+    roles: { planner: { mode: 'delegate', profile: 'small' } },
+    profiles: { small: { capabilities: [], class: 'economical', escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong' } },
+    hosts: { fixture: { delegation: true, models: { small: 'consumer-a', deep: 'consumer-b' } } }
+  } };
+  const result = modelAdvice({ host: 'fixture', role: 'planner', task: 'T1', revision: 'r1', capabilityClass: 'strong' }, project);
+  assert.equal(result.profile, 'deep');
+  assert.equal(result.attemptsRemaining, 3);
+});
+
+test('model advice requires a request file and reports invalid requests as usage errors', () => {
+  assert.throws(() => run(['model-advice', '--root', os.tmpdir()]), /requires --data/);
+  assert.throws(() => modelAdvice({ host: 'codex', role: 'writer', task: 'T1', revision: 'r1' }), /role/);
 });

@@ -44,7 +44,7 @@ const operations={
   gitTracked:{command:'git',args:['ls-files','-z'],check:r=>r.stdout.split('\0').filter(Boolean).length===100},
   gitStatus:{command:'git',args:['status','--porcelain=v1','--untracked-files=all'],check:r=>r.stdout===''},
   readHash:{command:process.execPath,args:['-e',readScript],check:r=>{const v=JSON.parse(r.stdout);return v.files===100&&v.bytes===Buffer.byteLength(content)*100&&v.digest===digest;}},
-  cliHelp:{command:process.execPath,args:[path.join(source,'cli/main.mjs'),'--help'],check:r=>Array.isArray(JSON.parse(r.stdout).commands)}
+  cliHelp:{command:process.execPath,args:[path.join(source,'tooling/craft.mjs'),'--help'],check:r=>Array.isArray(JSON.parse(r.stdout).commands)}
 };
 const evidence={schema:1,revision,startedAt:new Date().toISOString(),harnessSha256:createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url))).digest('hex'),scratch,
  environment:{os:os.platform(),release:os.release(),arch:os.arch(),node:process.version,git:checked('git',['--version']),cpu:os.cpus()[0]?.model,logicalCpus:os.cpus().length,memoryBytes:os.totalmem(),filesystemLocation:scratch,execution:'local shell tool; sandbox status supplied by operator',diskCache:'uncontrolled',compileCache:process.env.NODE_COMPILE_CACHE?'configured':'not configured',compileCacheDisabled:process.env.NODE_DISABLE_COMPILE_CACHE??null},

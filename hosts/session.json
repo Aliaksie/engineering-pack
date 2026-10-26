@@ -1,0 +1,49 @@
+{
+  "claude": {
+    "observation": "statusline-current-usage",
+    "display": "optional-native-statusline",
+    "commands": {
+      "compact": "/compact",
+      "start-new-session": "/clear"
+    }
+  },
+  "codex": {
+    "observation": "native-ui-only; no stable usage field in mapped hooks",
+    "display": "native /statusline; explicit CLI advice fallback",
+    "commands": {
+      "inspectUsage": "/statusline",
+      "compact": "/compact",
+      "start-new-session": "/new"
+    }
+  },
+  "cursor": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  },
+  "copilot": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  },
+  "gemini": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  },
+  "gemini-extension": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  },
+  "jetbrains": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  },
+  "agents": {
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {}
+  }
+}

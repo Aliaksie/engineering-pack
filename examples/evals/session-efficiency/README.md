@@ -8,8 +8,9 @@ they are primed again in place. The checkpoint remains content-based. Independen
 symbols can be gathered in one bounded lookup; dependent interpretation still requires reasoning.
 
 Use the existing [paired collector](../../../docs/EVALUATION.md#collect-one-frozen-pair).
-Prepare a local fixture under ignored `.eval-results/`: copy `fixture/`, copy the canonical
-`engine/`, `application/`, `platform/`, `integrations/` and `cli/` into `support/`, initialize a disposable Git repository and commit its inputs.
+Prepare a local fixture under ignored `.eval-results/`: copy `fixture/`, copy `bin/` and
+`support/` from an exported package with its native bundle installed (for example
+`dist/codex/packages/craft-delivery`), initialize a disposable Git repository and commit its inputs.
 Create `.craft/task.json` with sessionId `eval-session` and task id `retry-fix`, stage
 `implement`, status `working` and its actual revision. Use `locate --session eval-session
 --task retry-fix --path src` to prime the first five symbols listed in `prompt.txt`. Record two

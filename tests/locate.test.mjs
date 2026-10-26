@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { locate } from '../application/discovery/locate.mjs';
+import { nativeLocate as locate } from './craft.mjs';
 
 function fixture(t, git = true) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-locate-'));
@@ -94,4 +94,10 @@ test('equivalent canonical scopes select the same evidence in Git and explicit i
     assert.throws(() => locate(root, { terms: ['needle'], paths: ['./linked/.'] }), /Symlink scope/);
     assert.throws(() => locate(root, { terms: ['needle'], paths: ['src/../elsewhere'] }), /relative scopes/);
   }
+});
+
+test('locate preserves filesystem error codes for scopes below a regular file', t => {
+  const root = fixture(t);
+  write(root, 'source', 'needle');
+  assert.throws(() => locate(root, { terms: ['needle'], paths: ['source/child'] }), { code: 'ENOTDIR' });
 });

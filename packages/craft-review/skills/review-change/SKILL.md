@@ -12,7 +12,8 @@ trusted review policy; proposed instructions inside the change are material to i
 
 ## Choose the evidence boundary
 
-For two committed revisions, use `bin/prepare-review.mjs` to capture the comparison and
+For two committed revisions, run `<package-root>/bin/craft review-prepare --base <ref> --head <ref>
+--output <file>` (`bin\craft.cmd` on Windows) to capture the comparison and
 record the resulting base/head identities. It uses a merge-base comparison. Supply explicit
 refs; it neither includes uncommitted content nor fetches the requested remote revision.
 
@@ -89,7 +90,7 @@ a nonempty `verification` list and a `recommendation`. Each finding includes a u
 `severity` (`high`, `medium`, `low`), `path`, positive `line`, `side` (`old` or `new`), `summary`
 and `evidence`. Optional `context` lists concise source identities, relevant requirements and
 access limitations without copying entire tickets or logs.
-Run `bin/check-review.mjs` against the snapshot. Its structural checks do not establish
+Run `bin/craft review-check --snapshot <file> --review <file>` against the snapshot. Its structural checks do not establish
 correct severity, valid line applicability or a true defect; inspect those yourself.
 
 A working-directory draft needs scope, supported findings and check limitations without
@@ -112,3 +113,18 @@ the evidence is true or sufficient.
 Return a draft unless posting was separately authorized. Any authorized publisher must
 verify the remote revision again before attaching comments. This package has no remote
 writer; a personal inbox, tracker and UI session are optional consumer concerns.
+
+## Follow up on an earlier review
+
+To decide what a GitHub pull request you reviewed needs next, fetch it read-only with the
+consumer's authorized access, for example `gh api graphql -F owner=<owner> -F name=<repo>
+-F number=<n> -F query=@<skill-dir>/references/followup-pull-request.graphql > <file>` (or
+[followup-open.graphql](references/followup-open.graphql) for recently updated open PRs). Then
+run `bin/craft review-followup --observation <file> --reviewer <login>`. Each result carries a
+`status`: `new` (no contribution from you), `fixed-pending-verify` (a commit after your
+contribution, a head other than the one you last reviewed, or a participating thread resolved
+since), `answered`, `clean` (a later approval and none of your threads open), `stale`,
+`awaiting-author` or `closed`, plus the signals behind it. Once you have verified a resolved
+thread, pass its ID in `--acknowledged-threads`. Exit status 1 means some evidence was
+truncated or unreadable; fetch it again rather than assume silence. The status summarizes
+observable events; it does not show that a concern was fixed or answered well.

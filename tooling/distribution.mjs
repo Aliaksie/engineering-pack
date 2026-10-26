@@ -49,14 +49,14 @@ export function assembleDistribution(repo) {
         const text = rewriteLinks(fs.readFileSync(file, 'utf8'), file, file, resolved => {
           const relative = path.relative(pluginRoot, resolved);
           if (relative !== '..' && !relative.startsWith(`..${path.sep}`)) return resolved;
-          return `https://github.com/Aliaksie/engineering-pack/blob/distribution/${path.relative(stage, resolved).split(path.sep).map(encodeURIComponent).join('/')}`;
+          return `https://github.com/Aliaksie/engineering-pack/blob/distribution-next/${path.relative(stage, resolved).split(path.sep).map(encodeURIComponent).join('/')}`;
         });
         fs.writeFileSync(file, text);
       }
     }
 
     writeJson(stage, marker, { formatVersion: 1, version, generatedFrom: 'packages/', targets });
-    write(stage, 'README.md', '# Engineering Pack distribution\n\nGenerated from the portable source; do not edit this branch.\n\nSee [installation and updates](docs/PLATFORMS.md).\nFor JetBrains native chat, use the complete [JetBrains bundle](jetbrains/AGENTS.md).\n');
+    write(stage, 'README.md', '# Craft Capabilities distribution\n\nGenerated from the portable source; do not edit this branch.\n\nSee [installation and updates](docs/INSTALL.md).\nFor JetBrains native chat, use the complete [JetBrains bundle](jetbrains/AGENTS.md).\n');
     const errors = validateMarketplace(stage);
     if (errors.length) throw new Error(errors.join('\n'));
     fs.rmSync(output, { recursive: true, force: true });

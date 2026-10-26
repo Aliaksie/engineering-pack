@@ -1,0 +1,2870 @@
+{
+  "formatVersion": 1,
+  "revision": "dc47bf2245f1603a7c5c228dc6bc03020190f29e",
+  "scope": "lookup use case over a project document and one selector; error messages omitted",
+  "cases": [
+    {
+      "id": "all",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "src/api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "shared"
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "all-none-declared",
+      "request": {
+        "project": {
+          "formatVersion": 1
+        },
+        "options": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "all-empty",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": []
+        },
+        "options": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:src/api/a.java",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/api/a.java"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:src/api",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/api"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:src/api2/a.java",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/api2/a.java"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:src/api/v2/x.kt",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/api/v2/x.kt"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api-v2",
+              "path": "src/api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:./src/./api/v2/x.kt",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "./src/./api/v2/x.kt"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api-v2",
+              "path": "src/api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:client/README.md",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "client/README.md"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:shared/x",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "shared/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "shared"
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:README.md",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "README.md"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:.",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "."
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file:a.b/c",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "a.b/c"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file-no-root-unmatched",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "other/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "file-no-root-match",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "client/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:.git/config",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ".git/config"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:src/.git",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/.git"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:.craft/state/x",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ".craft/state/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:pkg/.craft/state",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "pkg/.craft/state"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:.capabilities/state/y",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ".capabilities/state/y"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:.craft/project.json",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ".craft/project.json"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:.gitignore",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ".gitignore"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "private:x.git/y",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "x.git/y"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:/abs",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "/abs"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:../up",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "../up"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:a/../b",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "a/../b"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:a//b",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "a//b"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:a\\b",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "a\\b"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:C:/x",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "C:/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:src/",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "invalid-file:",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "file": ""
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "module",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": "api"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "module-dotted-path",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": "api-v2"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api-v2",
+              "path": "src/api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "module-unknown",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": "absent"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "module-none-declared",
+      "request": {
+        "project": {
+          "formatVersion": 1
+        },
+        "options": {
+          "module": "api"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "module-empty",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": ""
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "src/api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "shared"
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "module-and-file",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": "client",
+          "file": "src/api/a.java"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "module-and-private-file",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "root",
+              "path": ".",
+              "languages": [
+                "typescript"
+              ]
+            },
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "api-team",
+              "languages": [
+                "jvm"
+              ],
+              "layers": [
+                "backend"
+              ],
+              "checks": [
+                {
+                  "command": "verify",
+                  "args": [
+                    "--all"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "api-v2",
+              "path": "./src/./api/v2",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "client",
+              "path": "client",
+              "dependsOn": [
+                "api"
+              ]
+            },
+            {
+              "name": "twin-a",
+              "path": "shared"
+            },
+            {
+              "name": "twin-b",
+              "path": "./shared"
+            }
+          ]
+        },
+        "options": {
+          "module": "client",
+          "file": ".git/x"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "engine:matching-module",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "consumer"
+            },
+            {
+              "name": "other",
+              "path": "other"
+            }
+          ]
+        },
+        "options": {
+          "file": "src/api/λ.rs"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "consumer"
+            }
+          ],
+          "availability": "declarations-only; verify paths and checks in the actual project",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "engine:private-excluded",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "consumer"
+            },
+            {
+              "name": "other",
+              "path": "other"
+            }
+          ]
+        },
+        "options": {
+          "file": ".craft/state/private"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": true,
+        "result": {
+          "modules": [],
+          "availability": "private workspace excluded",
+          "execution": "deterministic-lookup"
+        }
+      }
+    },
+    {
+      "id": "engine:unknown-module",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "api",
+              "path": "src/api",
+              "owner": "consumer"
+            },
+            {
+              "name": "other",
+              "path": "other"
+            }
+          ]
+        },
+        "options": {
+          "module": "missing"
+        }
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    },
+    {
+      "id": "project-invalid",
+      "request": {
+        "project": {
+          "formatVersion": 1,
+          "modules": [
+            {
+              "name": "a",
+              "path": "../x"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "response": {
+        "formatVersion": 1,
+        "ok": false,
+        "error": {
+          "code": "INVALID_INPUT"
+        }
+      }
+    }
+  ]
+}

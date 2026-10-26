@@ -1,0 +1,8654 @@
+{
+ "baseline": "bb12534",
+ "generator": "w3b-delivery-corpus.mjs",
+ "plans": [
+  {
+   "id": "session-start:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": true,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "session-start:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": true,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-prompt:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "prompt": "review this change",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-tool:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-tool:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": true
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "before-compact:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": true,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": true,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": true,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "after-compact:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": true,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:none",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:edit:no-services",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:all",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:none",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:no-edit",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:no-dedupe",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:no-checkpoint",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:session:other:no-services",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": true,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:all",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:none",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:no-edit",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:edit:no-services",
+   "facts": {
+    "session": false,
+    "edit": true,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:all",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:none",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:no-edit",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:no-dedupe",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": false
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:no-checkpoint",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": false
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "turn-end:no-session:other:no-services",
+   "facts": {
+    "session": false,
+    "edit": false,
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": true
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {}
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:0",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:1",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " ",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:2",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:3",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "Review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:4",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "REVIEW",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:5",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review this",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:6",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:7",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "\treview",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:8",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "\nreview",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:9",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:10",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:11",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "﻿review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:12",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:13",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "​review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:14",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "reviewer",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:15",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review_x",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:16",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review1",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:17",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review-x",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:18",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review.",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:19",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review:",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:20",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "reviewé",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:21",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:22",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/Review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:23",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/review now",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:24",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/reviews",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:25",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " /review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:26",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "//review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:27",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review/plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:28",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:29",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "plan it",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:30",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:31",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "planning",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:32",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "Plan:",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:33",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "verify",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "verify",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:34",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "/verify",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "verify",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:35",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "verify!",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "verify",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:36",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "verified",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:37",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "find x",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:38",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "find",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:39",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "finder",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:40",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "locate x",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:41",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "Locate",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:42",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "where is λ",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:43",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "where",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:44",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "whereas",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:45",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "wherever",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:46",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "please review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:47",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "x review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:48",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "λ review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:49",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "rev iew",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:50",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "ſeview",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:51",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "reviewİ",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:52",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "find review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:53",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "review plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "review",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:54",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "plan review",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:55",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "　plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:56",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "᠎plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:57",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": " verify",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "verify",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:58",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "VERIFY",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "verify",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:59",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "Where",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "locate",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "prompt:60",
+   "facts": {
+    "session": true,
+    "edit": false,
+    "prompt": "fınd",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": null,
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "edit-and-prompt:all",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": true,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "implement",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  },
+  {
+   "id": "edit-and-prompt:no-edit",
+   "facts": {
+    "session": true,
+    "edit": true,
+    "prompt": "plan",
+    "started": false,
+    "contextChanging": false,
+    "contextRestored": false,
+    "turnFinished": false
+   },
+   "settings": {
+    "routing": {
+     "editHints": false,
+     "dedupeHints": true
+    },
+    "checkpoint": {
+     "enabled": true
+    },
+    "services": {
+     "git": {
+      "provider": "git"
+     }
+    }
+   },
+   "result": {
+    "intent": "plan",
+    "invalidateHint": false,
+    "services": false,
+    "saveCheckpoint": false,
+    "recoverCheckpoint": false,
+    "readCheckpoint": false
+   }
+  }
+ ],
+ "decisions": [
+  {
+   "id": "routing:saved:services:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:saved:services:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:saved:none:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:saved:none:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:unsaved:services:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": null
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:unsaved:services:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": null
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:unsaved:none:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": null
+   },
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:unsaved:none:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": {
+    "saved": null
+   },
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:none:services:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": null,
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:none:services:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": null,
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:none:none:preserve",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": null,
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "routing:none:none:continue",
+   "routing": {
+    "intent": "implement"
+   },
+   "checkpoint": null,
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "routing",
+     "data": {
+      "intent": "implement"
+     }
+    }
+   }
+  },
+  {
+   "id": "none:saved:services:preserve",
+   "routing": null,
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "checkpoint",
+     "data": {
+      "saved": {
+       "head": "h"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "none:saved:services:continue",
+   "routing": null,
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "checkpoint",
+     "data": {
+      "saved": {
+       "head": "h"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "none:saved:none:preserve",
+   "routing": null,
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "checkpoint",
+     "data": {
+      "saved": {
+       "head": "h"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "none:saved:none:continue",
+   "routing": null,
+   "checkpoint": {
+    "saved": {
+     "head": "h"
+    }
+   },
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "checkpoint",
+     "data": {
+      "saved": {
+       "head": "h"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "none:unsaved:services:preserve",
+   "routing": null,
+   "checkpoint": {
+    "saved": null
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "services",
+     "data": [
+      {
+       "name": "git"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "none:unsaved:services:continue",
+   "routing": null,
+   "checkpoint": {
+    "saved": null
+   },
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "services",
+     "data": [
+      {
+       "name": "git"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "none:unsaved:none:preserve",
+   "routing": null,
+   "checkpoint": {
+    "saved": null
+   },
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "preserve"
+    }
+   }
+  },
+  {
+   "id": "none:unsaved:none:continue",
+   "routing": null,
+   "checkpoint": {
+    "saved": null
+   },
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow"
+   }
+  },
+  {
+   "id": "none:none:services:preserve",
+   "routing": null,
+   "checkpoint": null,
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "services",
+     "data": [
+      {
+       "name": "git"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "none:none:services:continue",
+   "routing": null,
+   "checkpoint": null,
+   "services": {
+    "services": [
+     {
+      "name": "git"
+     }
+    ]
+   },
+   "preserve": false,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "services",
+     "data": [
+      {
+       "name": "git"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "none:none:none:preserve",
+   "routing": null,
+   "checkpoint": null,
+   "services": null,
+   "preserve": true,
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "preserve"
+    }
+   }
+  },
+  {
+   "id": "none:none:none:continue",
+   "routing": null,
+   "checkpoint": null,
+   "services": null,
+   "preserve": false,
+   "result": {
+    "decision": "allow"
+   }
+  }
+ ],
+ "failures": [
+  {
+   "enforcement": true,
+   "message": "",
+   "result": {
+    "decision": "deny",
+    "reason": "Policy could not be evaluated: "
+   }
+  },
+  {
+   "enforcement": true,
+   "message": "boom",
+   "result": {
+    "decision": "deny",
+    "reason": "Policy could not be evaluated: boom"
+   }
+  },
+  {
+   "enforcement": true,
+   "message": "expected project-relative path: ../x",
+   "result": {
+    "decision": "deny",
+    "reason": "Policy could not be evaluated: expected project-relative path: ../x"
+   }
+  },
+  {
+   "enforcement": false,
+   "message": "",
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "unavailable",
+     "data": ""
+    }
+   }
+  },
+  {
+   "enforcement": false,
+   "message": "boom",
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "unavailable",
+     "data": "boom"
+    }
+   }
+  },
+  {
+   "enforcement": false,
+   "message": "expected project-relative path: ../x",
+   "result": {
+    "decision": "allow",
+    "context": {
+     "kind": "unavailable",
+     "data": "expected project-relative path: ../x"
+    }
+   }
+  }
+ ],
+ "validations": [
+  {
+   "state": null,
+   "result": null
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "result": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   }
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 0
+   },
+   "result": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 0
+   }
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": -5.5
+   },
+   "result": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": -5.5
+   }
+  },
+  {
+   "state": {
+    "formatVersion": 2,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": "1",
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": 5,
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "emittedAt": 1
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": "1"
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": null
+   },
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1,
+    "extra": true
+   },
+   "result": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1,
+    "extra": true
+   }
+  },
+  {
+   "state": [],
+   "error": "invalid routing hint state"
+  },
+  {
+   "state": {},
+   "error": "invalid routing hint state"
+  }
+ ],
+ "reuse": [
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1001,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 900999,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000.5,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1001,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 900999,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": null,
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000.5,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000,
+   "result": true
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1001,
+   "result": true
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 900999,
+   "result": true
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000.5,
+   "result": true
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 900999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000.5,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 900999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "now": 1000.5,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 0,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 900999,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901000,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 901001,
+   "result": false
+  },
+  {
+   "previous": {
+    "formatVersion": 1,
+    "key": null,
+    "emittedAt": 1000
+   },
+   "key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "now": 1000.5,
+   "result": false
+  }
+ ]
+}

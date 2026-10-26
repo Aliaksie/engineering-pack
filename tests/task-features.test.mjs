@@ -3,29 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
-import { decide } from '../application/engine-client.mjs';
+import { launch, run } from './craft.mjs';
 
-test('feature evidence is bounded, distinguishes declaration/runtime receipts, and never fills missing applicability', () => {
-  const state = { taskRecord: { id: 'task' }, activity: { routingDecisions: 1, operationsAttempted: 2 } };
-  const record = decide('feature-record', { state, source: 'a'.repeat(64), at: '2026-10-20T00:00:00.000Z',
-    input: { feature: 'compaction', status: 'unsupported', reason: 'No verified host control', evidence: 'host:capabilities' } });
-  const report = decide('feature-report', { state: record.state, repository: {} });
-  assert.equal(report.features.compaction.provenance, 'agent-declared');
-  assert.equal(report.features.compaction.sourceStatus, 'unknown');
-  assert.equal(report.features.routing.provenance, 'runtime-receipt');
-  assert.equal(report.features.routing.sourceStatus, 'historical');
-  assert.equal(report.features.review.status, 'unknown');
-  assert.equal(report.allClassified, false);
-  assert.equal(Object.hasOwn(state, 'featureOutcomes'), false);
-  for (const input of [{ feature: 'unknown', status: 'used' }, { feature: 'review', status: 'passed' },
-    { feature: 'review', status: 'used', reason: 'x'.repeat(513), evidence: 'check:one' }]) {
-    assert.throws(() => decide('feature-record', { state, input, source: null, at: '2026-10-20T00:00:00.000Z' }));
-  }
-});
-
+// Outcome record decisions are pinned by `cargo test -p craft-engine --test feature_outcomes`.
 test('normal task commands retain outcomes and mark changed sources stale without changing the recorded verdict', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-feature-outcomes-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -48,18 +29,15 @@ test('normal task commands retain outcomes and mark changed sources stale withou
   assert.equal(command('task-features').features.review.status, 'unknown');
 });
 
-test('relocated standalone runtime exposes controllers and persists feature outcomes across processes', async t => {
+test('relocated standalone package persists feature outcomes across processes', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-controls-export-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const support = path.join(root, 'support');
-  fs.cpSync(path.resolve('dist/codex/packages/craft-delivery/support'), support, { recursive: true });
+  const pkg = path.join(root, 'package');
+  fs.cpSync(path.resolve('dist/codex/packages/craft-delivery'), pkg, { recursive: true });
   const options = { session: 'standalone-session', task: 'standalone-task' };
-  const { workerController } = await import(pathToFileURL(path.join(support, 'application/session/workers.mjs')));
-  const { actionController } = await import(pathToFileURL(path.join(support, 'application/session/actions.mjs')));
-  assert.equal(workerController(root, options).supported, false);
-  assert.equal(actionController(root, options).supported, false);
+  assert.equal(fs.existsSync(path.join(pkg, 'support/hosts')), false);
   const invoke = (...args) => {
-    const result = spawnSync(process.execPath, [path.join(support, 'cli/main.mjs'), ...args, '--root', root, '--session', options.session, '--json'], { encoding: 'utf8' });
+    const result = launch(pkg, [...args, '--root', root, '--session', options.session, '--json']);
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', options.task, '--goal', 'Inspect portable controls');

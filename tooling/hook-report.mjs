@@ -1,4 +1,3 @@
-import { runtimeImports } from './export/export.mjs';
 // Measure a local deterministic hook path and report a deliberately bounded policy corpus.
 // This does not call a model, run the command text, or install a host hook.
 import fs from 'node:fs';
@@ -6,11 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { files } from './lib/capabilities.mjs';
+import { launchers, hookArguments } from './export/launcher.mjs';
 import { performance } from 'node:perf_hooks';
 import { spawnSync } from 'node:child_process';
-import { evaluateReviewPublication } from '../application/review.mjs';
-const evaluate = event => evaluateReviewPublication(event);
+import { nativeBinary } from './lib/native-binary.mjs';
 
 export const CASES = [
   { id: 'local-read', command: 'git status --short', expected: 'allow' },
@@ -27,9 +25,27 @@ export const CASES = [
   { id: 'indirect-shell-execution', command: 'sh -c "git push"', expected: 'deny' },
   { id: 'command-substitution', command: 'echo "$(git push)"', expected: 'deny' }
 ];
-export function policyReport(policy = evaluate, cases = CASES) {
+// The generated Claude read-only hook as registered: its launcher and arguments.
+export function readOnlyHook(repo) {
+  const packageRoot = path.join(repo, 'dist/claude/plugins/craft-review');
+  const config = path.join(packageRoot, 'platform-hooks/hooks.json');
+  if (!fs.existsSync(config)) throw new Error('build exports before measuring hooks');
+  const command = JSON.parse(fs.readFileSync(config, 'utf8')).hooks.PreToolUse.flatMap(group => group.hooks)
+    .map(hook => /^"\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/craft" (hook claude before-tool .* --handler review-read-only .*)$/.exec(hook.command)).find(Boolean);
+  if (!command) throw new Error('no registered read-only review hook');
+  return { packageRoot, launcher: path.join(packageRoot, 'bin', 'craft'), args: command[1].split(' ') };
+}
+const spawnHook = ({ launcher, args }, options) => process.platform === 'win32'
+  ? spawnSync(`"${launcher}.cmd"`, args, { ...options, shell: true }) : spawnSync(launcher, args, { ...options, shell: false });
+// Decide through the generated Claude read-only hook in a project configured for read-only review.
+export const hookPolicy = (hook, directory, env = process.env) => ({ command }) => {
+  const result = spawnHook(hook, { cwd: directory, env, encoding: 'utf8', timeout: 10000,
+    input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command } }) });
+  return { decision: result.status === 2 ? 'deny' : result.status === 0 ? 'allow' : undefined };
+};
+export function policyReport(policy, cases = CASES) {
   const results = cases.map((entry) => {
-    const observed = policy({ tool: 'shell', command: entry.command, project: { review: { readOnly: true } } }).decision;
+    const observed = policy({ command: entry.command }).decision;
     return { ...entry, observed };
   });
   return {
@@ -42,21 +58,22 @@ export function policyReport(policy = evaluate, cases = CASES) {
 }
 export function localHookReport(repo, iterations = 12) {
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100) throw new Error('iterations must be an integer from 1 to 100');
-  const wrapper = path.join(repo, 'dist/claude/plugins/craft-review/platform-hooks/read-only.mjs');
-  if (!fs.existsSync(wrapper)) throw new Error('build exports before measuring hooks');
-  const packageRoot = path.dirname(path.dirname(wrapper));
-  const pairs = [
-    [path.join(repo, 'packages/craft-review/hooks/read-only.mjs'), path.join(packageRoot, 'hooks/read-only.mjs')],
-    ...[['hooks.mjs','hook.mjs'],['registry.mjs','registry.mjs']].map(([source,name]) => [path.join(repo, 'hosts', source), path.join(packageRoot, 'platform-runtime', name)]),
-    ...['engine', 'application', 'platform', 'integrations', 'cli'].flatMap(folder => files(path.join(repo, folder)).map(source => [source, path.join(packageRoot, 'support', path.relative(repo, source))]))
-  ];
-  const digest = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const hook = readOnlyHook(repo);
+  const source = path.join(repo, 'packages/craft-review');
+  const item = { root: source, manifest: JSON.parse(fs.readFileSync(path.join(source, 'capability.json'), 'utf8')) };
+  const definition = item.manifest.hooks.find(entry => entry.name === 'read-only');
+  const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
+  // The hook path is the package's handler declaration, the generated launcher and the registered arguments.
+  const expected = [[fs.readFileSync(path.join(source, definition.handler), 'utf8'), path.join(hook.packageRoot, definition.handler)],
+    ...launchers(item, 'claude').map(([name, text]) => [text, path.join(hook.packageRoot, name)])];
   const artifactHashes = {};
-  for (const [source, exported] of pairs) {
-    if (createHash('sha256').update(runtimeImports(fs.readFileSync(source,'utf8'), exported, packageRoot)).digest('hex') !== digest(exported)) throw new Error('hook exports are stale; rebuild before measuring');
-    artifactHashes[path.relative(repo, exported).split(path.sep).join('/')] = digest(exported);
+  for (const [text, exported] of expected) {
+    if (!fs.existsSync(exported) || digest(text) !== digest(fs.readFileSync(exported, 'utf8'))) throw new Error('hook exports are stale; rebuild before measuring');
+    artifactHashes[path.relative(repo, exported).split(path.sep).join('/')] = digest(fs.readFileSync(exported));
   }
-  artifactHashes[path.relative(repo, wrapper).split(path.sep).join('/')] = digest(wrapper);
+  if (hookArguments('claude', definition, item).join(' ') !== hook.args.join(' ')) throw new Error('hook exports are stale; rebuild before measuring');
+  // The launcher runs the native runtime under test; without one, shell policy fails closed.
+  const env = { ...process.env, CRAFT_NATIVE_BINARY: nativeBinary() };
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'hook measurement ')));
   try {
     fs.mkdirSync(path.join(directory, '.craft'));
@@ -65,8 +82,8 @@ export function localHookReport(repo, iterations = 12) {
     for (let index = 0; index < iterations; index++) {
       const deny = index % 2 === 1;
       const started = performance.now();
-      const result = spawnSync(process.execPath, [wrapper], {
-        cwd: directory, shell: false, encoding: 'utf8', timeout: 10000,
+      const result = spawnHook(hook, {
+        cwd: directory, env, encoding: 'utf8', timeout: 10000,
         input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command: deny ? 'git push origin feature' : 'git status --short' } })
       });
       const milliseconds = performance.now() - started;
@@ -76,8 +93,8 @@ export function localHookReport(repo, iterations = 12) {
     const sorted = samples.map((sample) => sample.milliseconds).sort((a, b) => a - b);
     return {
       formatVersion: 1, measuredAt: new Date().toISOString(), platform: process.platform, arch: process.arch, node: process.version, artifactHashes,
-      policy: policyReport(),
-      latency: { path: 'fresh Node process → generated Claude wrapper → normalize → project read → policy → serialize', iterations, samples,
+      policy: policyReport(hookPolicy(hook, directory, env)),
+      latency: { path: 'generated Claude launcher → native runtime (payload → project read → policy → wire output)', iterations, samples,
         minMs: sorted[0], medianMs: sorted[Math.floor(sorted.length / 2)], maxMs: sorted.at(-1),
         limitation: 'Local process-wall-time samples only; no host dispatch, model call, checkpoint write or network. Not a cross-platform or production latency claim.' }
     };

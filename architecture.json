@@ -1,0 +1,94 @@
+{
+  "formatVersion": 1,
+  "decision": "docs/adr/0002-module-map-and-boundaries.md",
+  "rootFiles": [".gitattributes", ".gitignore", "AGENTS.md", "CHANGELOG.md", "Cargo.lock", "Cargo.toml", "LICENSE", "README.md", "architecture.json", "package-lock.json", "package.json"],
+  "modules": {
+    "engine": {
+      "kind": "rust-crate",
+      "crate": "craft-engine",
+      "responsibility": "Pure decisions, contracts, identities and transitions over explicit observations.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "routing/catalog.json"],
+      "dependsOn": [],
+      "externalDependencies": ["serde", "serde_json", "sha2"],
+      "shipped": true
+    },
+    "platform": {
+      "kind": "rust-crate",
+      "crate": "craft-platform",
+      "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "dependsOn": ["engine"],
+      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
+      "shipped": true
+    },
+    "application": {
+      "kind": "rust-crate",
+      "crate": "craft-application",
+      "responsibility": "Complete use cases, CLI parsing and rendering, host-neutral lifecycle handling and the craft executable.",
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "dependsOn": ["engine", "platform"],
+      "externalDependencies": ["serde_json"],
+      "shipped": true
+    },
+    "hosts": {
+      "kind": "host-adapter",
+      "responsibility": "Host hook mapping, session and feature capability tables read by the build and embedded in craft.",
+      "allow": ["*.mjs", "capabilities.json", "hooks.json", "session.json"],
+      "jsLines": 29,
+      "maxFileLines": 300,
+      "dependsOn": [],
+      "shipped": false
+    },
+    "packages": {
+      "kind": "content",
+      "responsibility": "Capability guidance, skills, workflows, standards, evals and hook declarations.",
+      "allow": ["**/*.md", "**/*.json", "*/skills/*/references/*.graphql", "*/hooks/*.mjs"],
+      "jsLines": 10,
+      "dependsOn": [],
+      "shipped": true,
+      "runtimeRoots": ["packages/*/hooks/*.mjs"]
+    },
+    "tooling": {
+      "kind": "build-tooling",
+      "responsibility": "Build, export, release, validation, benchmarks and evaluation drivers.",
+      "allow": ["**/*.mjs", "**/*.json", "**/*.md", "native/notices/*"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    "schemas": {
+      "kind": "schema",
+      "responsibility": "Published local authoring schemas.",
+      "allow": ["*.json"],
+      "dependsOn": [],
+      "shipped": true
+    },
+    "docs": {
+      "kind": "docs",
+      "responsibility": "Maintained user, contributor and architecture documentation.",
+      "allow": ["**/*.md"],
+      "dependsOn": [],
+      "shipped": true
+    },
+    "tests": {
+      "kind": "tests",
+      "responsibility": "Repository-level behavior, contract replay and architecture tests.",
+      "allow": ["**/*.mjs", "**/*.json", "**/*.md"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    "examples": {
+      "kind": "examples",
+      "responsibility": "Consumer configuration skeletons and eval fixtures without live connections.",
+      "allow": ["**"],
+      "dependsOn": "*",
+      "shipped": false
+    },
+    ".github": {
+      "kind": "ci-config",
+      "responsibility": "CI workflows and benchmark harnesses.",
+      "allow": ["workflows/*.yml", "benchmarks/*.mjs"],
+      "dependsOn": "*",
+      "shipped": false
+    }
+  }
+}

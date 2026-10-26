@@ -1,3 +1,2 @@
-// Package entry point; exported imports resolve to the bundled application.
-import { evaluateContextDelivery } from '../../../application/context-delivery/prepare.mjs';
-export const evaluate = event => evaluateContextDelivery(event);
+// Package entry point; routing hints, checkpoints and service metadata are delivered natively.
+export const native = 'deliver';

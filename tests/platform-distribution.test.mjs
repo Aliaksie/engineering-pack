@@ -31,7 +31,7 @@ test('Codex marketplace resolves every plugin within the generated bundle', () =
 test('new distributions are reproducible and do not activate hooks or MCP', t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'engineering-distributions-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
-  for (const directory of ['packages', 'hosts', 'tooling/export', 'engine', 'application', 'platform', 'integrations', 'cli', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
+  for (const directory of ['packages', 'hosts', 'tooling/export', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
   fs.copyFileSync(path.join(repo,'package.json'), path.join(fixture,'package.json'));
   for (const host of ['gemini-extension', 'jetbrains']) {
     build(fixture, host);
@@ -73,8 +73,11 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   const codex = read(path.join(output, '.agents/plugins/marketplace.json'));
   for (const plugin of codex.plugins) {
     assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
-    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
+    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'bin/craft')));
   }
+  const remoteLinks = files(output).filter(file => file.endsWith('.md')).flatMap(file => fs.readFileSync(file, 'utf8').match(/https:\/\/github\.com\/Aliaksie\/engineering-pack\/blob\/distribution[^)\s]*/g) ?? []);
+  assert.ok(remoteLinks.some(link => link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution-next/')));
+  assert.ok(remoteLinks.every(link => !link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution/')));
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));
   fs.unlinkSync(path.join(output, '.engineering-distribution.json'));
   assert.throws(() => assembleDistribution(fixture), /unmanaged/);

@@ -9,6 +9,8 @@ const output=process.argv[2],rounds=Number(process.argv[3]??30);
 if(!output||fs.existsSync(output)||!Number.isInteger(rounds)||rounds<1)throw Error('Usage: node harness NEW_OUTPUT [positive rounds]');
 const source=process.cwd(),scratch=fs.mkdtempSync(path.join(os.tmpdir(),'craft-portable-turn-'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
+// Windows runs the generated .cmd launcher, which needs a shell; hook arguments are fixed tokens.
+const windows=process.platform==='win32';
 const run=(cmd,args,cwd=source)=>{const r=spawnSync(cmd,args,{cwd,encoding:'utf8',timeout:30000,maxBuffer:4*1024*1024});if(r.status!==0)throw Error(r.stderr||r.error?.message);return r.stdout.trim();};
 if(run('git',['status','--porcelain']))throw Error('Clean tracked source required');
 const packages=['craft-delivery','craft-engineering','craft-review','craft-stories'];
@@ -20,7 +22,7 @@ const git=(...args)=>run('git',args,root);
 git('init','-q');for(const [k,v] of [['core.autocrlf','false'],['core.hooksPath',path.join(scratch,'no-hooks')],['commit.gpgsign','false']])git('config','--local',k,v);
 for(let i=0;i<100;i++)fs.writeFileSync(path.join(root,`file-${i}.mjs`),'export const value=1;\n'.repeat(20));
 git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.test','commit','-qm','fixture');
-run(process.execPath,[path.join(source,'cli/main.mjs'),'task-start','--root',root,'--session','bench','--task','task','--goal','Fixed synthetic coding turn','--json']);
+run(process.execPath,[path.join(source,'tooling/craft.mjs'),'task-start','--root',root,'--session','bench','--task','task','--goal','Fixed synthetic coding turn','--json']);
 const seed=path.join(scratch,'seed');fs.cpSync(path.join(root,'.craft'),seed,{recursive:true});
 const manifests=Object.fromEntries(packages.map(p=>[p,JSON.parse(fs.readFileSync(path.join(scratch,'exports',p,'platform-hooks/hooks.json')))]));
 const workloads=Object.fromEntries(['nativeReads','shellReads'].map(name=>{
@@ -28,7 +30,7 @@ const workloads=Object.fromEntries(['nativeReads','shellReads'].map(name=>{
  const reads=name==='nativeReads'?[['Read',{file_path:path.join(root,'file-0.mjs')}],['Read',{file_path:path.join(root,'file-1.mjs')}] ]:[['Bash',{command:'cat file-0.mjs'}],['Bash',{command:'cat file-1.mjs'}]];
  for(const [tool_name,tool_input] of [...reads,['Edit',{file_path:path.join(root,'file-0.mjs'),old_string:'1',new_string:'2'}],['Bash',{command:'git status --short'}]])for(const event of ['PreToolUse','PostToolUse'])steps.push({event,payload:{cwd:root,session_id:'bench',tool_name,tool_input}});
  steps.push({event:'Stop',payload:{cwd:root,session_id:'bench'}});
- for(const s of steps)s.wrappers=packages.flatMap(pkg=>(manifests[pkg].hooks[s.event]??[]).filter(e=>!e.matcher||new RegExp(e.matcher).test(s.payload.tool_name??'')).flatMap(e=>e.hooks.map(h=>{const m=/^node "\$\{PLUGIN_ROOT\}\/(.+)"$/.exec(h.command);if(!m)throw Error(h.command);return {pkg,file:m[1]};})));
+ for(const s of steps)s.wrappers=packages.flatMap(pkg=>(manifests[pkg].hooks[s.event]??[]).filter(e=>!e.matcher||new RegExp(e.matcher).test(s.payload.tool_name??'')).flatMap(e=>e.hooks.map(h=>{const m=/^"\$\{PLUGIN_ROOT\}\/(bin\/craft)" (hook .+)$/.exec(h.command);if(!m)throw Error(h.command);return {pkg,file:m[1],args:m[2].split(' ')};})));
  return [name,steps];
 }));
 const normalize=events=>events.map(e=>{const v=structuredClone(e);for(const k of ['timestamp','sessionId','operationId','traceId','parentOperationId','durationMs'])delete v[k];return v;}).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
@@ -40,7 +42,7 @@ for(let round=0;round<=rounds;round++)for(const name of round%2?['shellReads','n
  for(const [stepIndex,s] of workloads[name].entries()){
   const gateStart=performance.now();
   const receipts=await Promise.all(s.wrappers.map(w=>new Promise(resolve=>{
-   const t=performance.now(),child=spawn(process.execPath,[path.join(scratch,'exports',w.pkg,w.file)],{cwd:root,stdio:['pipe','pipe','pipe']});let stdout='',stderr='',settled=false;
+   const t=performance.now(),child=spawn(path.join(scratch,'exports',w.pkg,w.file)+(windows?'.cmd':''),w.args,{cwd:root,stdio:['pipe','pipe','pipe'],shell:windows});let stdout='',stderr='',settled=false;
    const finish=(status,error)=>{if(settled)return;settled=true;clearTimeout(timer);resolve({...w,stepIndex,status,stdout,stderr,error,wallMs:performance.now()-t});};
    const timer=setTimeout(()=>{child.kill();finish(null,'30-second timeout');},30000);
    child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);child.once('error',e=>finish(null,e.message));child.once('close',s=>finish(s));child.stdin.on('error',e=>finish(null,e.message));child.stdin.end(JSON.stringify(s.payload));

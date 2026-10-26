@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
-import { groundedContext } from '../application/session/grounding.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
+import { run } from './craft.mjs';
+import { groundedContext } from './grounding-cli.mjs';
+import { contractDigest as engineeringContractDigest } from './acceptance-view.mjs';
 
 const fixture = new URL('../examples/evals/developer-acceptance/fixture/', import.meta.url);
 const at = '2026-10-22T00:00:00Z';

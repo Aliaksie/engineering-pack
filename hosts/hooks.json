@@ -1,0 +1,206 @@
+{
+  "claude": {
+    "skills": null,
+    "events": {
+      "before-tool": {
+        "name": "PreToolUse",
+        "context": true,
+        "deny": true
+      },
+      "after-tool": {
+        "name": "PostToolUse",
+        "context": true,
+        "deny": false
+      },
+      "before-prompt": {
+        "name": "UserPromptSubmit",
+        "context": true,
+        "deny": false
+      },
+      "session-start": {
+        "name": "SessionStart",
+        "context": true,
+        "deny": false,
+        "matcher": "startup|resume"
+      },
+      "before-compact": {
+        "name": "PreCompact",
+        "context": false,
+        "deny": false
+      },
+      "after-compact": {
+        "name": "SessionStart",
+        "context": true,
+        "deny": false,
+        "matcher": "compact"
+      },
+      "turn-end": {
+        "name": "Stop",
+        "context": false,
+        "deny": false
+      }
+    }
+  },
+  "codex": {
+    "skills": null,
+    "events": {
+      "before-tool": {
+        "name": "PreToolUse",
+        "context": true,
+        "deny": true
+      },
+      "after-tool": {
+        "name": "PostToolUse",
+        "context": true,
+        "deny": false
+      },
+      "before-prompt": {
+        "name": "UserPromptSubmit",
+        "context": true,
+        "deny": false
+      },
+      "session-start": {
+        "name": "SessionStart",
+        "context": true,
+        "deny": false,
+        "matcher": "startup|resume"
+      },
+      "before-compact": {
+        "name": "PreCompact",
+        "context": false,
+        "deny": false
+      },
+      "after-compact": {
+        "name": "SessionStart",
+        "context": true,
+        "deny": false,
+        "matcher": "compact"
+      },
+      "turn-end": {
+        "name": "Stop",
+        "context": false,
+        "deny": false
+      }
+    }
+  },
+  "cursor": {
+    "skills": ".cursor/skills",
+    "config": ".cursor/hooks.json",
+    "events": {
+      "before-tool": {
+        "name": "preToolUse",
+        "context": false,
+        "deny": true
+      },
+      "after-tool": {
+        "name": "postToolUse",
+        "context": true,
+        "deny": false
+      },
+      "before-prompt": {
+        "name": "beforeSubmitPrompt",
+        "context": false,
+        "deny": false
+      },
+      "session-start": {
+        "name": "sessionStart",
+        "context": true,
+        "deny": false
+      },
+      "before-compact": {
+        "name": "preCompact",
+        "context": false,
+        "deny": false
+      },
+      "turn-end": {
+        "name": "stop",
+        "context": false,
+        "deny": false
+      }
+    }
+  },
+  "copilot": {
+    "skills": ".github/skills",
+    "config": ".github/hooks/craft-capabilities.json",
+    "events": {
+      "before-tool": {
+        "name": "preToolUse",
+        "context": false,
+        "deny": true
+      },
+      "after-tool": {
+        "name": "postToolUse",
+        "context": false,
+        "deny": false
+      },
+      "before-prompt": {
+        "name": "userPromptSubmitted",
+        "context": false,
+        "deny": false
+      },
+      "session-start": {
+        "name": "sessionStart",
+        "context": true,
+        "deny": false
+      },
+      "before-compact": {
+        "name": "preCompact",
+        "context": false,
+        "deny": false
+      },
+      "turn-end": {
+        "name": "agentStop",
+        "context": false,
+        "deny": false
+      }
+    }
+  },
+  "gemini": {
+    "skills": ".gemini/skills",
+    "config": ".gemini/settings.json",
+    "events": {
+      "before-tool": {
+        "name": "BeforeTool",
+        "context": false,
+        "deny": true
+      },
+      "after-tool": {
+        "name": "AfterTool",
+        "context": true,
+        "deny": false
+      },
+      "before-prompt": {
+        "name": "BeforeAgent",
+        "context": true,
+        "deny": false
+      },
+      "session-start": {
+        "name": "SessionStart",
+        "context": true,
+        "deny": false
+      },
+      "before-compact": {
+        "name": "PreCompress",
+        "context": false,
+        "deny": false
+      },
+      "turn-end": {
+        "name": "AfterAgent",
+        "context": false,
+        "deny": false
+      }
+    }
+  },
+  "gemini-extension": {
+    "skills": "skills",
+    "events": {}
+  },
+  "jetbrains": {
+    "skills": ".agents/skills",
+    "events": {}
+  },
+  "agents": {
+    "skills": ".agents/skills",
+    "events": {}
+  }
+}

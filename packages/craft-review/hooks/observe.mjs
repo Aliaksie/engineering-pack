@@ -1,2 +1,2 @@
-// Package entry point; lifecycle telemetry is independent of publication policy.
-export { prepare, evaluate, observational } from '../../../application/telemetry/lifecycle.mjs';
+// Package entry point; lifecycle telemetry runs natively and has no delivery or policy effects.
+export const native = 'observe';

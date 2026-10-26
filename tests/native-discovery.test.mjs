@@ -1,0 +1,118 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { run } from './craft.mjs';
+import { readSessionState, sessionFile, updateSessionState, addActivity } from './session-state.mjs';
+import { nativeCommand } from './craft.mjs';
+import { digest } from './state.mjs';
+
+function fixture(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-discovery-native-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const git = (...args) => { const child = spawnSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false', ...args], { cwd: root, encoding: 'utf8' }); assert.equal(child.status, 0, child.stderr); };
+  git('init', '-q'); fs.writeFileSync(path.join(root, 'source.txt'), 'needle alpha\nneedle beta\n'); git('add', '.'); git('commit', '-qm', 'fixture');
+  const binary = process.env.CRAFT_NATIVE_BINARY || path.resolve('target/debug/craft');
+  const data = path.join(root, '.git', 'locate-request.json');
+  const invoke = request => {
+    fs.writeFileSync(data, JSON.stringify(request));
+    const outcome = nativeCommand(['locate', '--root', root, '--session', 'session', '--task', 'task', '--data', data], { binary });
+    assert.equal(outcome.exitCode, 0, outcome.stderr);
+    return JSON.parse(outcome.stdout);
+  };
+  return { root, binary, invoke };
+}
+
+// A receipt that changed after the native read is preserved: see the Rust discovery test.
+test('native discovery writes session receipts and reuses them after another writer changes the record', t => {
+  const { root, invoke } = fixture(t);
+  const request = { terms: ['needle'], paths: ['source.txt'] };
+  assert.equal(invoke(request).discovery.fresh, 1);
+  assert.equal(readSessionState(root, 'session', 'task').activity.freshLookups, 1);
+  const file = sessionFile(root, 'session', 'task');
+  updateSessionState(root, 'session', 'task', state => addActivity(state, { routingDecisions: 1 }));
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('"formatVersion":1', '"formatVersion":1.0'));
+  const reused = invoke(request);
+  assert.equal(reused.discovery.reused, 1);
+  assert.equal(reused.reuse.diagnostic, null);
+  const state = readSessionState(root, 'session', 'task');
+  assert.equal(state.activity.routingDecisions, 1);
+  assert.equal(state.activity.reuseHits, 1);
+});
+
+test('native discovery respects a held session lock and preserves deferred lookup without project reads', t => {
+  const { root, invoke } = fixture(t);
+  const file = sessionFile(root, 'session', 'task', true);
+  fs.writeFileSync(`${file}.lock`, 'held by another writer');
+  const result = invoke({ terms: ['needle'] });
+  assert.match(result.reuse.diagnostic, /busy/);
+  assert.equal(fs.existsSync(file), false);
+  fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.craft/project.json'), '{invalid');
+  const deferred = invoke({ requests: [{ id: 'a', term: 'needle', dependsOn: ['b'] }, { id: 'b', term: 'alpha', dependsOn: ['a'] }] });
+  assert.equal(deferred.discovery.batches, 0);
+  assert.equal(deferred.deferred.length, 2);
+});
+
+test('locate CLI forwards bounded requests to the same native use case', t => {
+  const { root, binary } = fixture(t);
+  const argv = ['locate', '--root', root, '--term', 'needle', '--term', 'alpha', '--path', 'source.txt', '--max-files', '0x10', '--max-output-bytes', '4096'];
+  const direct = spawnSync(binary, argv, { encoding: 'utf8' });
+  assert.equal(direct.status, 0, direct.stderr);
+  const result = JSON.parse(direct.stdout);
+  assert.deepEqual(run(argv), result);
+  assert.deepEqual(result.matches[0].termIndexes, [0, 1]);
+  assert.equal(result.bounds.maxFiles, 16);
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 4096);
+  // Without a bound task the session adds no scope and writes no receipt.
+  const unbound = spawnSync(binary, [...argv, '--session', 'session'], { encoding: 'utf8' });
+  assert.equal(unbound.status, 0, unbound.stderr);
+  assert.deepEqual(JSON.parse(unbound.stdout), result);
+  for (const value of ['-1', 'Infinity', '1.5', 'invalid']) {
+    assert.throws(() => run(['locate', '--root', root, '--term', 'needle', '--max-files', value]));
+  }
+});
+
+test('malformed lookup packets cannot become reused navigation evidence', t => {
+  const { root, invoke } = fixture(t);
+  const request = { terms: ['needle'], paths: ['source.txt'] };
+  invoke(request);
+  updateSessionState(root, 'session', 'task', state => {
+    for (const match of state.lookups[digest(['needle', ['source.txt']])].matches) delete match.snippetTruncated;
+  });
+  assert.equal(invoke(request).discovery.reused, 1);
+  updateSessionState(root, 'session', 'task', state => {
+    state.lookups[digest(['needle', ['source.txt']])].matches = [1];
+  });
+  const result = invoke(request);
+  assert.equal(result.discovery.reused, 0);
+  assert.equal(result.discovery.fresh, 1);
+  assert.ok(result.matches.every(match => match.path === 'source.txt'));
+});
+
+test('same-size edits invalidate packets even when the previous modification time is restored', t => {
+  const { root, invoke } = fixture(t);
+  const request = { terms: ['needle'], paths: ['source.txt'] };
+  invoke(request);
+  assert.equal(invoke(request).discovery.reused, 1);
+  const file = path.join(root, 'source.txt');
+  const before = fs.statSync(file);
+  fs.writeFileSync(file, 'needle gamma\nneedle zeta\n');
+  assert.equal(fs.statSync(file).size, before.size);
+  fs.utimesSync(file, before.atime, before.mtime);
+  const changed = invoke(request);
+  assert.equal(changed.discovery.fresh, 1);
+  assert.equal(changed.matches[0].text, 'needle gamma');
+});
+
+test('numeric CLI bounds apply equally to cached and fresh evidence', t => {
+  const { root } = fixture(t);
+  const args = ['locate', '--root', root, '--session', 'session', '--task', 'task', '--term', 'needle', '--path', 'source.txt'];
+  assert.equal(run(args).matches.length, 2);
+  const cached = run([...args, '--max-matches', '1']);
+  assert.equal(cached.discovery.reused, 1);
+  assert.equal(cached.matches.length, 1);
+  assert.ok(cached.truncation.includes('maxMatches'));
+});

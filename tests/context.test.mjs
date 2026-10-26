@@ -5,9 +5,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { contextReport } from '../application/session/context.mjs';
-import { route } from '../application/routing/select.mjs';
-import { run } from '../cli/main.mjs';
+import { contextReport } from './context-cli.mjs';
+import { route } from './native-route.mjs';
+import { launch, run } from './craft.mjs';
 
 const root = path.resolve('.');
 const exploration = () => route({ intent: 'explore' });
@@ -63,8 +63,7 @@ test('context reporting supports every export and relocated standalone runtime w
     const packagePath = path.join(bundle, host === 'claude' ? 'plugins' : 'packages', 'craft-engineering');
     const relocated = path.join(directory, host);
     fs.cpSync(packagePath, relocated, { recursive: true });
-    const processResult = spawnSync(process.execPath, [path.join(relocated, 'support/cli/main.mjs'),
-      'context-report', '--root', directory, '--intent', 'explore', '--budget-bytes', '1'], { encoding: 'utf8' });
+    const processResult = launch(relocated, ['context-report', '--root', directory, '--intent', 'explore', '--budget-bytes', '1']);
     assert.equal(processResult.status, 0, processResult.stderr);
     const standalone = JSON.parse(processResult.stdout);
     assert.equal(standalone.complete, true, host);
@@ -84,7 +83,6 @@ test('context report rejects traversal, symlinked resources, oversized files and
   fs.rmSync(path.join(directory, 'workflows'), { recursive: true });
   fs.symlinkSync(outside, path.join(directory, 'workflows'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => contextReport(directory, exploration()), /symlink/);
-  assert.throws(() => contextReport(root, { skills: ['craft-engineering:../secrets'] }), /invalid context target/);
   assert.throws(() => run(['context-report', '--intent', 'verify', '--budget-bytes', 'invalid']), /positive safe integer/);
 });
 
@@ -105,9 +103,8 @@ test('separately installed packages are accounted through explicit roots without
     assert.equal(entry.sha256, createHash('sha256').update(content).digest('hex'));
   }
   assert.deepEqual(contextReport([...roots, roots[1]], plan), report, 'repeated physical roots do not double count');
-  const cli = spawnSync(process.execPath, [path.join(roots[0], 'support/cli/main.mjs'),
-    'context-report', '--root', directory, '--intent', 'implement', '--file', 'tasks.py',
-    '--bundle', roots[0], '--bundle', roots[1]], { encoding: 'utf8' });
+  const cli = launch(roots[0], ['context-report', '--root', directory, '--intent', 'implement', '--file', 'tasks.py',
+    '--bundle', roots[0], '--bundle', roots[1]]);
   assert.equal(cli.status, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).complete, true);
   const duplicate = path.join(directory, 'other-engineering');
@@ -116,7 +113,6 @@ test('separately installed packages are accounted through explicit roots without
   assert.equal(ambiguous.complete, false);
   assert.ok(ambiguous.missing.some(entry => /multiple supplied roots/.test(entry.reason)));
   assert.ok(ambiguous.files.every(entry => !entry.target.startsWith('craft-engineering:')));
-  assert.throws(() => contextReport([], plan), /1 to 16/);
   assert.throws(() => contextReport(Array(17).fill(roots[0]), plan), /1 to 16/);
   fs.symlinkSync(path.join(root, 'packages/craft-engineering/skills'), path.join(roots[1], 'linked-skills'), 'dir');
   // The explicit-root path still uses the existing no-symlink resource boundary.
@@ -141,8 +137,7 @@ test('story and exploration context stay independent of configured stack and ris
 });
 
 // Grounding is distinct from package-resource accounting and never executes checks.
-const { groundedContext } = await import('../application/session/grounding.mjs');
-const { evaluate } = await import('../engine/index.mjs');
+const { groundedContext } = await import('./grounding-cli.mjs');
 const at = '2026-10-22T00:00:00Z';
 function cited(reference, identity, overrides = {}) {
   return { id: 'rule', kind: 'instruction', reference, identity, observedAt: at, scope: ['src/api'], provenance: 'observed', status: 'accepted', ...overrides };
@@ -186,21 +181,6 @@ test('grounding invalidates changed/deleted citations and retains lookup coverag
   assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
 });
 
-test('grounding preserves explicit conflicts and external provenance while excluding unrelated sources', () => {
-  const constraint = (id, conflict) => ({ id, description: id, sourceIds: ['rule'], authority: 'project', status: 'accepted', scope: ['src/api'], required: true, conflicts: [conflict] });
-  const response = evaluate({ formatVersion: 1, operation: 'task-context-compose', input: {
-    scope: ['src/api'], project: { formatVersion: 1 }, observations: [], observedAt: at, binding: { kind: 'repository', identity: 'current' },
-    sources: [cited('authorized:decision', 'version-1', { kind: 'external', provenance: 'declared' }), cited('other/AGENTS.md', 'other', { id: 'other', scope: ['other'] }), cited('user-request', 'request-1', { id: 'request', kind: 'request', provenance: 'declared' })],
-    constraints: [constraint('a', 'b'), constraint('b', 'a')]
-  } });
-  assert.equal(response.ok, true, JSON.stringify(response));
-  assert.equal(response.result.sources.length, 2);
-  assert.equal(response.result.sources.find(entry => entry.id === 'request').identity, 'request-1');
-  assert.equal(response.result.sources[0].provenance, 'declared');
-  assert.deepEqual(response.result.constraints.map(entry => entry.conflicts), [['b'], ['a']]);
-  assert.notEqual(response.result.coverage, 'complete');
-});
-
 test('grounding refuses private/traversal sources and exposes symlink and bounded-read failures', t => {
   const directory = temporary(t);
   assert.throws(() => groundedContext(directory, { scope: ['../escape'] }), /relative/);
@@ -229,8 +209,6 @@ test('changed and deleted configuration cannot retain accepted module provenance
   assert.ok(result.context.questions.some(question => question.includes('Source unavailable')));
 });
 
-test('grounding fails explicitly at capacity rather than silently dropping required sources', () => {
-  const response = evaluate({ formatVersion: 1, operation: 'grounding-request', input: { scope: Array.from({ length: 33 }, (_, i) => `module-${i}`) } });
-  assert.equal(response.ok, false);
-  assert.match(response.error.message, /capacity/);
+test('grounding fails explicitly at capacity rather than silently dropping required sources', t => {
+  assert.throws(() => groundedContext(temporary(t), { scope: Array.from({ length: 33 }, (_, i) => `module-${i}`) }), /capacity/);
 });

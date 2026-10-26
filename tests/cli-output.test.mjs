@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { renderCommand } from '../cli/render.mjs';
+import { fileURLToPath } from 'node:url';
+
+const repository = fileURLToPath(new URL('../', import.meta.url));
 
 test('routine CLI output is compact while JSON and verbose retain full acceptance and guidance evidence', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-cli-output-')));
@@ -16,7 +18,8 @@ test('routine CLI output is compact while JSON and verbose retain full acceptanc
   git('init', '-q'); fs.writeFileSync(path.join(root, 'value.mjs'), 'export const value = 1;\n');
   git('add', '.'); git('commit', '-qm', 'fixture');
   const invoke = (action, ...args) => {
-    const result = spawnSync(process.execPath, ['cli/main.mjs', action, '--root', root, '--session', 'cli-session', '--preferences', path.join(root, 'missing-preferences.json'), ...args], { encoding: 'utf8' });
+    const result = spawnSync(process.env.CRAFT_NATIVE_BINARY, [action, '--root', root, '--session', 'cli-session', '--preferences', path.join(root, 'missing-preferences.json'), ...args],
+      { encoding: 'utf8', env: { ...process.env, CRAFT_PACKAGE_ROOT: repository } });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout;
   };
@@ -41,50 +44,30 @@ test('routine CLI output is compact while JSON and verbose retain full acceptanc
   }
   assert.ok(compact.length < json.length / 4, `compact ${compact.length} bytes vs JSON ${json.length}`);
   t.diagnostic(`task-step fixture: ${compact.length} characters compact vs ${json.length} in full JSON`);
-  const failure = spawnSync(process.execPath, ['cli/main.mjs', 'task-step', '--root', root, '--session', 'missing-session'], { encoding: 'utf8' });
+  const failure = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['task-step', '--root', root, '--session', 'missing-session'], { encoding: 'utf8' });
   assert.equal(failure.status, 2);
   assert.equal(failure.stdout, '');
   assert.match(failure.stderr, /task-start binding/);
 });
 
-test('compact receipts preserve failed outcomes, storage diagnostics and action boundaries', () => {
-  for (const outcome of ['quality-failure', 'permission-denied', 'tool-unavailable', 'blocked', 'prerequisite-resolved']) {
-    const text = renderCommand('task-step', { recorded: { operation: 'verify', target: 'acceptance:scope', outcome },
-      result: 'Actual prerequisite detail', checkpoint: { status: 'unavailable', reason: 'EPERM: state write denied' },
-      complete: false, nextStep: null, status: { diagnostics: ['Guidance unavailable'], taskEvidenceStale: true } });
-    assert.ok(text.includes(outcome));
-    assert.match(text, /Actual prerequisite detail/);
-    assert.match(text, /Checkpoint: unavailable.*EPERM/);
-    assert.match(text, /Warning: Guidance unavailable/);
-    assert.match(text, /evidence is stale/);
-    assert.doesNotMatch(text, /Task: complete|Next:/);
-  }
-  const offer = { id: 'offer-1', action: 'review', scope: 'review:current-source', decision: 'pending', execution: 'not-observed' };
-  const blocked = renderCommand('task-action-check', { offer, ready: false, reason: 'Approval is pending' });
-  assert.match(blocked, /Ready: false/);
-  assert.match(blocked, /Approval is pending/);
-  assert.match(blocked, /not execution or a permission grant/);
-  const ready = renderCommand('task-action-check', { offer: { ...offer, decision: 'approved' }, ready: true, reason: 'Current prerequisites present' });
-  assert.match(ready, /Ready: true/);
-  assert.match(ready, /Execution: not-observed/);
-  assert.match(renderCommand('task-offer', { offer: null, applicability: { reason: 'No observed capacity' } }), /No observed capacity/);
-  const suppressed = renderCommand('task-offer', { offer, suppressed: true });
-  assert.match(suppressed, /unchanged; suppressed/);
-  assert.match(suppressed, /No action dispatched/);
-});
-
-test('compact receipt commands preserve structured opt-ins and inspection commands keep their data', () => {
-  const cases = {
-    'checkpoint-save': { file: '/private/state/checkpoint.json', unchanged: true, state: { continuation: { nextStep: 'Resume here' } } },
-    'session-attempt': { recorded: { operation: 'verify', target: 'acceptance:one', outcome: 'blocked' } },
-    'task-decision': { offer: { id: 'offer-1', action: 'compact', scope: 'session:one', decision: 'declined', execution: 'not-observed' } }
+test('compact receipt commands keep structured opt-ins and inspection commands keep their data', t => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-cli-detail-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const craft = (...args) => {
+    const result = spawnSync(process.env.CRAFT_NATIVE_BINARY, [...args, '--root', root, '--session', 's1'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
   };
-  for (const [action, result] of Object.entries(cases)) {
-    assert.doesNotThrow(() => renderCommand(action, result));
-    assert.deepEqual(JSON.parse(renderCommand(action, result, { json: true })), result);
-    assert.deepEqual(JSON.parse(renderCommand(action, result, { verbose: true })), result);
+  assert.match(craft('checkpoint-save'), /^Checkpoint: saved/);
+  for (const detail of ['--json', '--verbose']) assert.equal(JSON.parse(craft('checkpoint-save', detail)).state.formatVersion, 1);
+  // Inspection prints its data whatever the detail requested.
+  assert.equal(JSON.parse(craft('checkpoint-read')).saved.formatVersion, 1);
+  assert.deepEqual(Object.keys(JSON.parse(craft('task-step', '--help'))), ['usage', 'mode', 'output']);
+  // Search results stay on one line whatever the detail requested.
+  fs.writeFileSync(path.join(root, 'needle.txt'), 'needle\n');
+  for (const detail of [[], ['--json'], ['--verbose']]) {
+    const text = craft('locate', '--term', 'needle', '--path', '.', ...detail);
+    assert.equal(text.indexOf('\n'), text.length - 1);
+    assert.equal(JSON.parse(text).matches[0].path, 'needle.txt');
   }
-  const recovery = cases['checkpoint-save'];
-  assert.deepEqual(JSON.parse(renderCommand('checkpoint-read', recovery)), recovery);
-  assert.deepEqual(JSON.parse(renderCommand('task-step', { usage: 'task-step ...' }, { help: true })), { usage: 'task-step ...' });
 });

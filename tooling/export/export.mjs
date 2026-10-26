@@ -2,9 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { hookMapping } from '../../hosts/registry.mjs';
-import { sessionCapabilities } from '../../hosts/session.mjs';
+import { emitLaunchers, hookArguments } from './launcher.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
 import { featureSupport } from '../../hosts/capabilities.mjs';
+
+// Session observation, display and native commands per host; `craft statusline` embeds the same table.
+const SESSION = JSON.parse(fs.readFileSync(new URL('../../hosts/session.json', import.meta.url), 'utf8'));
 
 export function write(root, file, text) {
   const target = path.join(root, file);
@@ -20,14 +23,6 @@ export function copy(source, target) {
     fs.copyFileSync(file, dest);
     fs.chmodSync(dest, fs.statSync(file).mode & 0o777);
   }
-}
-
-// Rebase canonical shared-runtime imports into a self-contained installed package.
-export function runtimeImports(source, file, destination) {
-  return source.replace(/(['"])(?:\.\.\/){3}(application|engine|platform|integrations|cli)\//g, (_match, quote, folder) => {
-    const relative = path.relative(path.dirname(file),path.join(destination,'support',folder)).split(path.sep).join('/');
-    return `${quote}${relative.startsWith('.') ? relative : `./${relative}`}/`;
-  });
 }
 
 export function skillName(pkg, name, platform) {
@@ -110,21 +105,24 @@ export function preparePackage(item, packages, destination, platform) {
       fs.writeFileSync(file, packageDocument(fs.readFileSync(file, 'utf8'), path.join(entry.source, path.relative(target, file)), file, item, packages, destination, platform));
     }
   }
+  // Native tools and the status line run through the package launcher even where no hook is registered.
+  emitLaunchers(item, destination, platform);
   return entries.map((entry) => skillName(manifest.name, entry.name, platform));
 }
 
-export function emitHooks(item, destination, platform, adapterRoot) {
+export function emitHooks(item, destination, platform) {
   if (!item.manifest.hooks.length) return;
-  for (const [source, name] of [['hooks.mjs','hook.mjs'],['registry.mjs','registry.mjs']]) write(destination, `platform-runtime/${name}`, fs.readFileSync(path.join(adapterRoot, source), 'utf8'));
+  emitLaunchers(item, destination, platform);
   const rootVariable = platform === 'claude' ? '${CLAUDE_PLUGIN_ROOT}' : '${PLUGIN_ROOT}';
   const events = {};
   for (const definition of item.manifest.hooks) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
-    const wrapper = `platform-hooks/${definition.name}.mjs`;
-    write(destination, wrapper, `#!/usr/bin/env node\nimport * as handler from '../${definition.handler}';\nimport { runHook } from '../platform-runtime/hook.mjs';\nimport { prepareEvent, reuseRoutingHint, commitRoutingHint, hookFailure, hookDefault, flushTelemetry, observeHook, hookDiagnostic } from '../support/application/context-delivery/prepare.mjs';\nawait runHook(handler.evaluate, '${platform}', ${JSON.stringify(definition)}, handler.prepare ?? prepareEvent, { observational: handler.observational === true, reuse: reuseRoutingHint, commit: commitRoutingHint, failure: hookFailure, default: hookDefault, flush: flushTelemetry, run: (event, callback) => observeHook({ ...event, packageName: ${JSON.stringify(item.manifest.name)} }, callback), diagnostic: hookDiagnostic });\n`);
-    fs.chmodSync(path.join(destination, wrapper), 0o755);
-    const hooks = [{ type: 'command', command: `node "${rootVariable}/${wrapper}"` }];
+    const args = hookArguments(platform, definition, item).join(' ');
+    // Codex runs hooks in the session shell and sets PLUGIN_ROOT only in the environment;
+    // on Windows that shell is PowerShell, which takes `commandWindows` instead.
+    const hooks = [{ type: 'command', command: `"${rootVariable}/bin/craft" ${args}`,
+      ...(platform === 'codex' ? { commandWindows: `& "$env:PLUGIN_ROOT\\bin\\craft.cmd" ${args}; exit $LASTEXITCODE` } : {}) }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);
     (events[mapping.name] ??= []).push({ ...(matcher ? { matcher } : {}), hooks });
   }
@@ -137,6 +135,10 @@ export function mcpServers(manifest, platform) {
   ]));
 }
 
+// The explicit status read an installed package offers on this host.
+export const sessionAdvice = (host, name) => ({ entry: 'bin/craft', args: ['statusline', host, '--package', name], ...SESSION[host],
+  activation: 'explicit-only; no statusline settings or hooks changed' });
+
 export function report(manifest, platform, skills, hookStatus, mcpStatus) {
   return {
     package: manifest.name, version: manifest.version, adapter: platform, sourceManifest: 'source-capability.json', skills,
@@ -144,10 +146,10 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     standards: 'included-on-demand', evals: 'included-not-executed', tools: 'included-not-executed',
     hooks: hookStatus, mcp: mcpStatus,
     hookMappings: manifest.hooks.map((definition) => ({ id: definition.name, normalizedEvent: definition.event, ...(hookMapping(platform, definition) ?? { supported: false }) })),
-    runtime: 'support/cli/main.mjs',
+    runtime: 'bin/craft',
     executionControls: setupControls(platform).execution,
     featureSupport: featureSupport(platform),
-    sessionAdvice: { entry: 'support/session.mjs', ...sessionCapabilities(platform), activation: 'explicit-only; no statusline settings or hooks changed' },
+    sessionAdvice: sessionAdvice(platform, manifest.name),
     limitations: platform === 'agents' ? ['Lifecycle hooks are not installed.', 'MCP declarations require host-specific registration.']
       : platform === 'codex' ? ['Local plugin export; hooks require host support and trust. Live host loading has not been tested.']
       : ['Live host loading has not been tested.']

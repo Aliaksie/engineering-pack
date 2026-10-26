@@ -1,9 +1,0 @@
-{
-  "formatVersion": 1,
-  "host": "github.example.com",
-  "owner": "my-org",
-  "me": "my-login",
-  "repos": { "api": "my-api-service", "web": "my-web-app" },
-  "staleDays": 5,
-  "tickHours": 6
-}

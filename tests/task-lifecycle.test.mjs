@@ -4,15 +4,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
-import { readSessionState, activeTask, bindingFile, attemptStatus } from '../application/session/activity.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
-import { renderCommand } from '../cli/render.mjs';
-import { lockState, releaseState } from '../platform/index.mjs';
-import { updateSessionState } from '../application/session/activity.mjs';
-import { readCheckpoint, recoverCheckpoint } from '../application/checkpoint.mjs';
-import { prepareEvent } from '../application/context-delivery/prepare.mjs';
-import { readTelemetry } from '../platform/node/telemetry.mjs';
+import { launch, run } from './craft.mjs';
+import { readSessionState, activeTask, bindingFile, holdLock } from './session-state.mjs';
+import { contractDigest as engineeringContractDigest } from './acceptance-view.mjs';
+import { nativeHook } from './native-hook.mjs';
+import { updateSessionState } from './session-state.mjs';
+import { readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
+import { readTelemetry } from './state.mjs';
+
+// One native delivery hook event; the structured decision, before host serialization.
+const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 'host-session', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
+  package: null, lifecycle, scope: 'any', inputStatus: 'complete', tool, contextSupported: true, cwd, session, file, prompt: '' });
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-lifecycle-')));
@@ -54,6 +56,23 @@ test('ordinary lifecycle binds discovery, records semantic acceptance, saves con
   assert.equal(git('status', '--porcelain'), '?? .craft/');
 });
 
+test('declared task risks select the route capability and persist across task-start', t => {
+  const { command } = fixture(t);
+  const begun = command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--file', 'value.mjs', '--risk', 'security-sensitive');
+  assert.equal(begun.routing.capability.class, 'strong');
+  const repeated = command('task-start', '--task', 'fix-value', '--goal', 'Fix the value');
+  assert.equal(repeated.routing.capability.class, 'strong');
+});
+
+test('task files are saved in their project-relative form, so a respelling is the same scope', t => {
+  const { root, command } = fixture(t);
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', './value.mjs');
+  assert.deepEqual(readSessionState(root, 'host-session', 'fix-value').taskRecord.files, ['value.mjs']);
+  command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', 'value.mjs');
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.goalComplete, true);
+});
+
 test('source edits invalidate stored acceptance and native tool success never creates a receipt', t => {
   const { root, command, start } = fixture(t);
   start();
@@ -65,9 +84,37 @@ test('source edits invalidate stored acceptance and native tool success never cr
   assert.equal(status.taskEvidenceStale, true);
   assert.equal(status.task.goalComplete, false);
   assert.equal(status.task.verification, 'unknown');
-  const prepared = prepareEvent({ cwd: root, event: 'after-tool', tool: 'shell', host: 'codex', session: 'host-session' });
-  assert.equal(prepared.taskIdentity.task, 'fix-value');
+  const delivered = deliver(root, 'before-tool', { tool: 'edit', file: path.join(root, 'value.mjs') });
+  assert.equal(delivered.context.data.taskIdentity.task, 'fix-value');
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
+});
+
+test('a blocked verify step records no verification result', t => {
+  const { root, command, start } = fixture(t);
+  start();
+  const verify = outcome => command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', outcome, '--result', 'Checked', '--next', 'Retry');
+  verify('passed');
+  for (const outcome of ['permission-denied', 'tool-unavailable', 'blocked']) {
+    verify(outcome);
+    const record = readSessionState(root, 'host-session', 'fix-value').taskRecord;
+    assert.deepEqual([record.status, record.verification, record.verificationRevision], ['blocked', undefined, undefined], outcome);
+  }
+  verify('quality-failure');
+  assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.verification, 'failed');
+});
+
+test('session declarations fill only fields a saved task record does not own', t => {
+  const { root, command, start, step } = fixture(t);
+  start(); step();
+  fs.appendFileSync(path.join(root, 'value.mjs'), '// new source\n');
+  const data = path.join(root, 'declared.json');
+  fs.writeFileSync(data, JSON.stringify({ task: { status: 'completed', goalComplete: true, verification: 'passed', safeBoundary: true, stage: 'plan', almostComplete: true } }));
+  const status = command('session', '--data', data);
+  assert.equal(status.taskEvidenceStale, true);
+  assert.deepEqual([status.task.status, status.task.goalComplete, status.task.verification, status.task.safeBoundary, status.task.stage],
+    ['working', false, 'unknown', false, 'implement']);
+  assert.equal(status.task.almostComplete, true);
+  assert.notEqual(status.recommendation?.action, 'summarize-evidence');
 });
 
 test('task-step accounts separately installed guidance with verified bundle roots', t => {
@@ -101,14 +148,13 @@ test('unrelated acceptance success cannot erase a failure or complete the task',
   const receipt = (target, outcome, extra = []) => command('task-step', '--target', target, '--approach', 'bounded-check', '--evidence', `checks/${target}`, '--outcome', outcome, '--result', 'Observed check outcome', '--next', 'Resolve remaining acceptance', ...extra);
   receipt('acceptance:primary', 'quality-failure');
   receipt('acceptance:secondary', 'passed');
-  let state = readSessionState(root, 'host-session', 'fix-value');
-  assert.equal(attemptStatus(state.attempts, 'implement').attempts, 1);
+  assert.equal(command('session').activity.attempts, 1);
   assert.throws(() => receipt('acceptance:secondary', 'passed', ['--complete']), /unresolved acceptance/);
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 2);
   assert.equal(receipt('acceptance:primary', 'passed', ['--complete']).complete, true);
 });
 
-test('prerequisite resolution clears only matching blockers without certifying acceptance or clearing quality failures', async t => {
+test('prerequisite resolution clears only matching blockers without certifying acceptance or clearing quality failures', t => {
   const { root, command, start } = fixture(t); start();
   const receipt = (target, outcome, extra = []) => command('task-step', '--stage', 'verify', '--target', target,
     '--approach', 'bounded-check', '--evidence', 'checks/prerequisite', '--outcome', outcome,
@@ -121,10 +167,6 @@ test('prerequisite resolution clears only matching blockers without certifying a
   const resolved = receipt('acceptance:scope', 'prerequisite-resolved', ['--profile', 'standard', '--host', 'codex']);
   assert.equal(resolved.complete, false);
   assert.equal(resolved.status.task.verification, undefined);
-  const state = readSessionState(root, 'host-session', 'fix-value');
-  const { unresolvedAttempts } = (await import('../engine/session/activity.mjs'));
-  assert.deepEqual(unresolvedAttempts(state.attempts).map(item => [item.target, item.outcome]),
-    [['acceptance:scope', 'quality-failure'], ['acceptance:other', 'blocked']]);
   assert.throws(() => receipt('acceptance:scope', 'prerequisite-resolved'), /matching unresolved blocker/);
   assert.throws(() => receipt('acceptance:scope', 'passed', ['--complete']), /unresolved/);
   receipt('acceptance:other', 'prerequisite-resolved');
@@ -146,7 +188,7 @@ test('missing or corrupt identity stays limited; disabled snapshots do not disab
   assert.equal(readCheckpoint(root, 'host-session'), null);
   fs.writeFileSync(bindingFile(root, 'host-session'), '{malformed');
   assert.equal(command('locate', '--term', 'SymbolValue').reuse.enabled, false);
-  assert.throws(() => step(), /JSON|property|position/i);
+  assert.throws(() => step(), /JSON|property|position|line \d+ column/i);
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
 });
 
@@ -162,11 +204,11 @@ test('stale explicit task assignments and busy session bindings cannot record a 
   assert.equal(fs.readFileSync(lock, 'utf8'), 'another task writer');
 });
 
-test('standalone exported CLI retains a binding across independent processes', t => {
+test('an exported package launcher retains a binding across independent processes', t => {
   const { root } = fixture(t);
-  const cli = path.resolve('dist/codex/packages/craft-delivery/support/cli/main.mjs');
+  const pkg = path.resolve('dist/codex/packages/craft-delivery');
   const invoke = (action, ...args) => {
-    const result = spawnSync(process.execPath, [cli, action, '--root', root, '--session', 'export-session', ...args, ...(args.includes('--json') ? [] : ['--json'])], { encoding: 'utf8' });
+    const result = launch(pkg, [action, '--root', root, '--session', 'export-session', ...args, ...(args.includes('--json') ? [] : ['--json'])]);
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', 'export-task', '--goal', 'Correct the exported fixture', '--file', 'value.mjs');
@@ -180,26 +222,7 @@ test('standalone exported CLI retains a binding across independent processes', t
   assert.equal(resumed.checkpoint.status, 'fresh');
 });
 
-test('a source change after acceptance cannot freshen a semantic continuation', t => {
-  const { root, start, step } = fixture(t); start();
-  const rename = fs.renameSync;
-  let changed = false;
-  t.mock.method(fs, 'renameSync', (from, to) => {
-    const result = rename(from, to);
-    if (!changed && path.basename(to).startsWith('session-')) {
-      changed = true;
-      fs.appendFileSync(path.join(root, 'value.mjs'), '// concurrent source edit\n');
-    }
-    return result;
-  });
-  const accepted = step();
-  assert.equal(accepted.recorded.outcome, 'passed');
-  assert.equal(accepted.checkpoint.status, 'unavailable');
-  assert.match(accepted.checkpoint.reason, /Source changed/);
-  assert.equal(accepted.status.taskEvidenceStale, true);
-  assert.equal(readCheckpoint(root, 'host-session').continuation, undefined);
-  assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 1);
-});
+// The accepted-source guard on the continuation is covered in application/src/checkpoint.rs.
 
 test('explicit task data and notice inputs take precedence over the session binding', t => {
   const { root, command, start, step } = fixture(t);
@@ -296,7 +319,7 @@ test('structured CLI completion survives restart, attempt eviction and checkpoin
   assert.equal(saved.formatVersion, 2);
   assert.equal(saved.attempts.length, 24);
   assert.equal(saved.taskRecord.acceptanceEvidence.records.length, 2);
-  const restarted = spawnSync(process.execPath, ['cli/main.mjs', 'session', '--root', root, '--session', 'host-session', '--json'], { encoding: 'utf8' });
+  const restarted = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['session', '--root', root, '--session', 'host-session', '--bundle', path.resolve('.'), '--json'], { encoding: 'utf8' });
   assert.equal(restarted.status, 0, restarted.stderr);
   const status = JSON.parse(restarted.stdout);
   assert.equal(status.acceptance.complete, true);
@@ -309,7 +332,7 @@ test('compaction recovery reloads current criterion gaps without renewing eviden
   const { root, start, submit, records, command, contract, contractFile } = structuredFixture(t);
   start();
   submit(records().slice(0, 1));
-  const recover = () => prepareEvent({ cwd: root, session: 'host-session', host: 'claude', event: 'after-compact' }).checkpoint.taskRecovery;
+  const recover = () => deliver(root, 'after-compact', { host: 'claude' }).context.data.taskRecovery;
   const pending = recover();
   assert.equal(pending.status, 'available');
   assert.equal(pending.checkpointTaskMatches, true);
@@ -385,10 +408,8 @@ test('structured evidence reports missing, failed, unavailable, irrelevant and o
   const complete = submit(records().slice(0, 1), ['--complete']);
   assert.equal(complete.complete, true);
   assert.equal(complete.acceptance.criteria[1].status, 'gap');
-  const compact = renderCommand('task-step', complete);
-  assert.match(compact, /error — gap \(optional\)/);
-  assert.match(compact, /attributed criterion evidence/);
-  assert.match(renderCommand('session', command('session')), /value — verified/);
+  assert.equal(complete.acceptance.assurance, 'attributed');
+  assert.equal(command('session').acceptance.criteria[0].status, 'verified');
   assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.acceptanceEvidence.records.length, 1);
 });
 
@@ -420,10 +441,9 @@ test('structured state refuses busy writers and combined capacity overflow witho
   const { root, command, start, submit, records } = structuredFixture(t);
   start(); submit(records());
   const before = readSessionState(root, 'host-session', 'fix-value');
-  const lock = lockState(bindingFile(root, 'host-session'));
-  assert.ok(lock);
+  const release = holdLock(bindingFile(root, 'host-session'));
   try { assert.throws(() => submit(records()), /writer is busy/); }
-  finally { releaseState(lock); }
+  finally { release(); }
   assert.deepEqual(readSessionState(root, 'host-session', 'fix-value'), before);
   updateSessionState(root, 'host-session', 'fix-value', state => { state.padding = 'x'.repeat(121000); });
   const padded = readSessionState(root, 'host-session', 'fix-value');

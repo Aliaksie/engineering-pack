@@ -1,15 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { prepareServices } from '../application/services.mjs';
-import { planOperation } from '../application/services.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { run } from './craft.mjs';
+
+// Both commands run in the native runtime; these tests use the public command line.
+function command(project, ...args) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-services-'));
+  try {
+    fs.mkdirSync(path.join(root, '.craft'));
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify(project));
+    return run([...args, '--root', root, '--preferences', path.join(root, 'absent.json')]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+const inventory = ({ availableCommands = [], availableMcpTools = [] } = {}) => [
+  ...availableCommands.flatMap(name => ['--available-command', name]), ...availableMcpTools.flatMap(name => ['--available-mcp-tool', name])];
+const prepareServices = (project, options) => command(project, 'prepare-services', ...inventory(options));
+const planOperation = (project, name, params) => command(project, 'operation', '--operation', name, '--params', JSON.stringify(params));
 
 const operation = (summary, name) => summary.services.flatMap((service) => service.operations).find((entry) => entry.operation === name);
 
 test('service preparation retains local Git, makes missing bindings explicit, and requires no discovery', () => {
   const project = { formatVersion: 1 };
-  const before = structuredClone(project);
   const result = prepareServices(project);
-  assert.deepEqual(project, before);
   assert.deepEqual(result, prepareServices(project));
   assert.equal(result.services[0].source, 'local-default');
   assert.equal(operation(result, 'git.status').command, 'git');
@@ -52,7 +66,7 @@ test('explicit CLI and MCP mappings reveal parameters and exact names without ex
       'git.commit': { args: ['commit', '-m', '{message}', '--author=private-identity'] }
     } }
   }, permissions: { writeOperations: ['task.comment'] } };
-  const summary = prepareServices(project, { availableCommands: [], availableMcpTools: ['mcp__tracker__read'] });
+  const summary = prepareServices(project, { availableCommands: ['other'], availableMcpTools: ['mcp__tracker__read'] });
   const read = operation(summary, 'task.read');
   assert.deepEqual(read.requiredParameters, ['id', 'owner']);
   assert.equal(read.tool, 'mcp__tracker__read');
@@ -80,10 +94,19 @@ test('provider and tool visibility do not imply identity across different config
 
 test('service preparation validates project and supplied inventories without executing commands', () => {
   assert.throws(() => prepareServices({ formatVersion: 2 }), /formatVersion/);
-  assert.throws(() => prepareServices({ formatVersion: 1 }, { availableCommands: 'git' }), /array/);
-  assert.throws(() => prepareServices({ formatVersion: 1 }, { availableMcpTools: [''] }), /array/);
+  assert.throws(() => prepareServices({ formatVersion: 1 }, { availableCommands: [' '] }), /array/);
+  assert.throws(() => command({ formatVersion: 1 }, 'prepare-services', '--available-mcp-tool', '--json'), /missing value/);
   const project = { formatVersion: 1, services: { tasks: { provider: 'unknown', transport: 'cli', command: 'nonexistent; never-execute-this', operations: { 'task.read': { args: ['{id}'] } } } } };
   const entry = operation(prepareServices(project), 'task.read');
   assert.equal(entry.command, 'nonexistent; never-execute-this');
   assert.equal(entry.availability, 'unverified');
+});
+
+test('plans take built-ins only from their own service and never re-read user values as placeholders', () => {
+  const tasksGithub = { formatVersion: 1, services: { tasks: { provider: 'github', transport: 'cli', command: 'gh', repository: 'o/r' }, codehost: { provider: 'gitlab', transport: 'mcp' } } };
+  assert.throws(() => planOperation(tasksGithub, 'change.read', { id: 1 }), /no mapping for change\.read/);
+  assert.deepEqual(planOperation({ formatVersion: 1 }, 'git.diff', { base: 'v1^{commit}', head: 'HEAD' }).args.at(-2), 'v1^{commit}...HEAD');
+  assert.throws(() => planOperation({ formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', repository: 'o/r' } } }, 'change.read', { id: [5] }), /positive integer/);
+  const configured = { formatVersion: 1, services: { git: { provider: 'git', transport: 'cli', command: 'git', operations: { 'git.status': { args: ['--x={v}'] } } } } };
+  assert.throws(() => planOperation(configured, 'git.status', { v: { a: 1 } }), /string, number or boolean/);
 });

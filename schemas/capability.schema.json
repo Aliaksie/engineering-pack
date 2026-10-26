@@ -59,36 +59,71 @@
       "type": "array",
       "uniqueItems": true,
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-          },
-          "path": {
-            "type": "string",
-            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
-          },
-          "runtime": {
-            "enum": [
-              "node",
-              "bash"
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+              },
+              "runtime": {
+                "enum": [
+                  "node",
+                  "bash"
+                ]
+              },
+              "network": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "path",
+              "runtime",
+              "network"
             ]
           },
-          "network": {
-            "enum": [
-              "none",
-              "read",
-              "write"
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "A command of the package's bundled craft runtime, run as bin/craft <command>.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "command": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "runtime": {
+                "const": "native"
+              },
+              "network": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "command",
+              "runtime",
+              "network"
             ]
           }
-        },
-        "required": [
-          "name",
-          "path",
-          "runtime",
-          "network"
         ]
       }
     },

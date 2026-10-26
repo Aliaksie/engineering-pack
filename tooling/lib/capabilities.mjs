@@ -106,9 +106,12 @@ export function validateCapability(root, manifest) {
   });
   for (const key of ['tools', 'hooks', 'mcp']) check(() => unique(manifest[key].map((entry) => entry.name), key));
   for (const tool of manifest.tools) check(() => {
-    for (const key of Object.keys(tool)) if (!['name', 'path', 'runtime', 'network'].includes(key)) throw new Error(`unknown tool field: ${key}`);
-    if (!NAME.test(tool.name) || !['node', 'bash'].includes(tool.runtime) || !['none', 'read', 'write'].includes(tool.network)) throw new Error('invalid tool declaration');
-    localPath(root, tool.path);
+    // A native tool is a command of the bundled runtime, run as `bin/craft <command>`.
+    const native = tool.runtime === 'native';
+    for (const key of Object.keys(tool)) if (!['name', native ? 'command' : 'path', 'runtime', 'network'].includes(key)) throw new Error(`unknown tool field: ${key}`);
+    if (!NAME.test(tool.name) || !['node', 'bash', 'native'].includes(tool.runtime) || !['none', 'read', 'write'].includes(tool.network)) throw new Error('invalid tool declaration');
+    if (native) { if (typeof tool.command !== 'string' || !NAME.test(tool.command)) throw new Error('native tool command must name a runtime command'); }
+    else localPath(root, tool.path);
   });
   for (const hook of manifest.hooks) check(() => {
     for (const key of Object.keys(hook)) if (!['name', 'event', 'tool', 'handler'].includes(key)) throw new Error(`unknown hook field: ${key}`);

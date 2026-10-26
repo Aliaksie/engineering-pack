@@ -47,8 +47,8 @@ explicit conflicts and unknown coverage. A source hash identifies inspected byte
 it does not accept an ADR, verify a declared check or authorize its execution.
 Reuse bounded lookup observations without promoting literal matches into requirements.
 
-When the question needs a view of an existing contract, the optional `architecture-projection`
-engine operation selects boundary, dependency and operational-consequence constraints by ID.
+When the question needs a view of an existing contract, the optional runtime's
+`bin/craft acceptance-view --view architecture` selects boundary, dependency and operational-consequence constraints by ID.
 It preserves source provenance, ADR status, conflicts and evidence gaps without discovering
 new facts. Keep declared design, observed coupling and inference distinct; cite mixed bases
 individually. With no runtime or code access, give the same brief from supplied facts and
