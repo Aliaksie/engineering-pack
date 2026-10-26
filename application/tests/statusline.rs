@@ -19,7 +19,13 @@ fn scratch() -> &'static Path {
         let dir = std::env::temp_dir().join(format!("craft-statusline-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("bundle")).unwrap();
-        dir.canonicalize().unwrap()
+        // Physical, but without Windows' verbatim prefix: a user's `<root>/../file` keeps
+        // ordinary path resolution, which a `\\?\` path would turn off.
+        let physical = dir.canonicalize().unwrap();
+        match physical.to_str().and_then(|p| p.strip_prefix(r"\\?\")) {
+            Some(plain) => PathBuf::from(plain),
+            None => physical,
+        }
     })
 }
 
@@ -267,10 +273,9 @@ fn statusline_matches_the_frozen_corpus() {
 }
 
 fn status(args: &[&str], stdin: &str, interactive: bool) -> craft_application::cli::Outcome {
-    let root = scratch().join(format!(
-        "direct-{}",
-        args.join("-").replace(['/', ' '], "_")
-    ));
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let next = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let root = scratch().join(format!("direct-{next}"));
     fs::create_dir_all(&root).unwrap();
     let mut argv: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
     argv.extend(["--root".into(), root.to_string_lossy().into_owned()]);
