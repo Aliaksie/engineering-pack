@@ -44,7 +44,6 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `application` | Use-case orchestration; calls public engine and platform boundaries |
 | `platform` | Runtime/OS implementations: Node filesystem, Git, state and processes |
 | `integrations` | External Git/codehost/transport mappings |
-| `tools/craft-review-inbox` | Optional personal GitHub inbox; excluded from default exports |
 | `hosts` | Host hook mapping, session and feature tables read by the build and embedded in `craft` |
 | `tooling` | Build, export, validation, release and evaluation tooling |
 | `examples/project` | Consumer configuration skeleton; no live connections |

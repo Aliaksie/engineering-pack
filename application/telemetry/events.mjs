@@ -16,7 +16,7 @@ const enums = {
   reason: ['observed','unavailable','stale','busy','invalid','disabled','budget-exhausted','deferred','recorded','missing','incomplete'],
   lifecycle: ['session-start','before-prompt','before-tool','after-tool','before-compact','after-compact','turn-end']
 };
-export const eventNames = ['workspace.observed','worker.dispatch','cli.command','host.hook','host.session','project.loaded','input.loaded','search.completed','cache.lookup','cache.invalidated','state.read','state.updated','checkpoint.read','review.command','review.publication-planned','integration.prepared','integration.planned','integration.observed','integration.inbox','telemetry.export','diagnostic','session.observed','routing.completed','guidance.selected','discovery.completed','cache.observed','context.observed','session.advice','model.advice','attempt.recorded','checkpoint.saved','checkpoint.recovered','review.completed','host.observed'];
+export const eventNames = ['workspace.observed','worker.dispatch','cli.command','host.hook','host.session','project.loaded','input.loaded','search.completed','cache.lookup','cache.invalidated','state.read','state.updated','checkpoint.read','review.command','review.publication-planned','integration.prepared','integration.planned','integration.observed','telemetry.export','diagnostic','session.observed','routing.completed','guidance.selected','discovery.completed','cache.observed','context.observed','session.advice','model.advice','attempt.recorded','checkpoint.saved','checkpoint.recovered','review.completed','host.observed'];
 
 // This JSON contract has no runtime, host SDK, or provider dependencies. Legacy
 // schema-1 events without trace fields remain readable; new producers supply them.

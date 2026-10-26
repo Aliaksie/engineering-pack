@@ -23,7 +23,7 @@ flowchart TD
 | `engine/discovery/` | Independent lookup batches, bounded matching and compact results |
 | `engine/cache/` | Reuse validity and deterministic identities |
 | `engine/session/` | Context estimates, occupancy recommendations, activity and attempt budgets |
-| `engine/policy/` | Model advice, context delivery, review and inbox decisions |
+| `engine/policy/` | Model advice, context delivery and review decisions |
 | `engine/checkpoint.mjs` | Small continuation contracts, source binding and comparison |
 | `application/` | Observation collection and execution of concrete local use cases |
 | `application/{routing,discovery,session}/` | Related use cases grouped by feature |
@@ -125,13 +125,6 @@ packages run after relocation without authoring scripts or sibling package depen
 Full bundles also expose these directories at their root. No legacy runtime paths or
 fallback loaders are retained. Each package's generated `bin/craft` and `bin/craft.cmd`
 launchers select its bundled native executable for hooks, native tools and the status line.
-
-The optional inbox remains under `tools/craft-review-inbox/` because it owns separate
-consumer configuration, remote pagination, checkout and review-artifact lifecycles. Its
-shared status and authorization decisions now use the engine, and external command
-recognition uses integrations. It runs from the repository checkout and stays excluded
-from default exports. Its separate I/O is retained rather than merging remote inbox state
-with session checkpoint state.
 
 Builds validate source, stage exports and refuse unmanaged or symlinked output. The canonical pack version is `package.json.version`; package and runtime
 metadata are synchronized projections checked before every build. Deterministic checks establish packaging and contract correctness; they do

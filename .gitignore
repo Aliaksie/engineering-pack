@@ -6,7 +6,6 @@ node_modules/
 .claude/settings.local.json
 .plan/
 /PLAN.md
-.pr-loop/
 **/evals/results/
 .DS_Store
 

@@ -35,6 +35,12 @@
       "command": "review-publication",
       "runtime": "native",
       "network": "none"
+    },
+    {
+      "name": "check-followup",
+      "command": "review-followup",
+      "runtime": "native",
+      "network": "none"
     }
   ],
   "hooks": [

@@ -19,13 +19,15 @@ that need them. A routing or publication plan grants no permission to execute it
 | Review snapshot | Explicit committed base/head → immutable identities and diff | Bounded local Git reads; excludes working-tree changes |
 | Review result checker | Snapshot and result → structural verdict | Reads artifacts; does not judge findings or publish them |
 | Review publication plan | Checked review, current remote revisions and explicit authorization → comment-only plan | Reads artifacts; never contacts a code host |
+| Review follow-up | Fetched GitHub pull request observation and reviewer login → next follow-up status and its signals | Reads one file; stores nothing and never contacts a code host |
 
 The `craft` executable exposes routing, lookup, service plans, context reporting, session status/advice,
 attempt receipts and checkpoint actions. Installed packages run it as `bin/craft`.
 `engine/` owns portable decisions; application use cases orchestrate `platform/` operations.
 `hosts/` owns native callbacks and `tooling/export/` constructs installed bundles.
 `craft review-prepare` writes a new snapshot artifact exclusively; `craft review-check` validates
-recorded results and `craft review-publication` plans an authorized comment. No tool in this table
+recorded results, `craft review-publication` plans an authorized comment and `craft review-followup`
+says what a reviewed pull request needs next. No tool in this table
 posts a review. Checkpoints preserve explicit state,
 not fresh verification or proof of task completion.
 Recovery compares bounded working-tree content and index fingerprints as well as HEAD and
@@ -54,19 +56,6 @@ denies deeper scripts in read-only sessions. It is a limited guardrail: aliases,
 interpreters, other executable paths and variable expansion remain outside its recognizer.
 Use host tool permissions and isolation for actual read-only
 enforcement. Malformed-input and unsupported-host behavior must remain visible in adapters.
-
-## Optional review inbox
-
-`tools/craft-review-inbox/bin/inbox.mjs` provides config, doctor, scan, tick, render, checkout, mark
-and posted-text recording commands. It is excluded from default exports. JSON configuration
-contains explicit identities and repository bindings; credentials stay in the consumer's tools.
-Remote calls are reads through Git and `gh`; local writer actions require explicit invocation.
-
-Local writes use a lock, reject symlinked destinations and atomically replace each file.
-Multi-file updates are not transactional. Repository pagination completes before closure
-inference; incomplete scans do not advance freshness. Checkouts use fresh scratch paths and
-verify the requested head. Reviewed events require a matching head; actual posted text comes
-from file/stdin rather than being assumed equal to a draft.
 
 ## Verification and diagnostics
 

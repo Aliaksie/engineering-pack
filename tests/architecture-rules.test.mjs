@@ -53,7 +53,7 @@ test('glob patterns distinguish one segment from nested paths', () => {
   assert.ok(glob('src/**/*.rs').test('src/lib.rs'));
   assert.ok(glob('src/**/*.rs').test('src/a/b.rs'));
   assert.ok(!glob('*/hooks/*.mjs').test('a/b/hooks/x.mjs'));
-  assert.ok(glob('craft-review-inbox/**').test('craft-review-inbox/bin/x.mjs'));
+  assert.ok(glob('examples/**').test('examples/project/x.json'));
   assert.ok(!glob('*.json').test('a/b.json'));
 });
 

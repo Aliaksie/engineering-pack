@@ -305,10 +305,6 @@ Deliberate limits:
   traces. Root-less application API users must supply a consumer root/identity with
   `withTelemetry`; helpers do not guess a project or authorize effects. Export flush
   occurs at the owning process/lifecycle boundary.
-- The separate personal inbox under `tools/craft-review-inbox` is excluded from pack
-  distributions and retains its own scan/transport diagnostics. Its shared integration
-  decision is observable when called inside a scope; this pass does not change that
-  separate tool's command lifecycle or execute remote probes.
 - Failures before a runnable entry point exists (missing Node, syntax/import corruption)
   remain native process errors. Unknown host occupancy stays unknown. Selection events
   describe pack decisions and do not prove native guidance loading or engineering quality.

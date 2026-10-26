@@ -5,7 +5,6 @@ import { workerBudget } from './routing/worker-budget.mjs';
 import { recordFeature, featureReport } from './session/features.mjs';
 import { taskBinding, taskContract, taskContext, taskSource } from './session/task.mjs';
 import { effectiveSettings } from './policy/effective-settings.mjs';
-import { inboxStatus, inboxPolicy } from './policy/inbox.mjs';
 import { route } from './routing/route.mjs';
 import { validateProject } from './contracts/project.mjs';
 import { validatePlaybookCatalog } from './contracts/catalog.mjs';
@@ -33,8 +32,6 @@ const operations = {
   'repository-snapshot': a => repositorySnapshot(a.repositories),
   'repository-checkout': a => repositoryCheckout(a.repositories),
   'checkpoint-validate': a => validateCheckpoint(a.state),
-  'inbox-policy': a => inboxPolicy(a),
-  'inbox-status': a => inboxStatus(a),
   'worker-budget': a => workerBudget(a.project, a.facts, a.options),
   'feature-record': a => recordFeature(a.state, a.input, Object.hasOwn(a, 'source') ? a.source : taskSource(a.repository), a.at, a.provenance),
   'feature-report': a => featureReport(a.state, taskSource(a.repository)),

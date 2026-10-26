@@ -184,34 +184,6 @@
       }
     },
     {
-      "id": "inbox-policy:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "inbox-policy",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "decision": "allow"
-        }
-      }
-    },
-    {
-      "id": "inbox-status:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "inbox-status",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": "NEW"
-      }
-    },
-    {
       "id": "worker-budget:empty",
       "request": {
         "formatVersion": 1,

@@ -199,3 +199,16 @@ options, `gh`/`glab` request actions and API writes, `-c` shell scripts, substit
 It includes the commands of the former JavaScript policy unit tests and covers the two retired
 `review-publication-policy` cases from `engine-contracts.json`. The Rust replay
 (`cargo test -p craft-engine --test review_contracts`) has no corrections.
+
+`followup-contracts.json` freezes the JavaScript review inbox status derivation at `563d7a3`
+over 185 stateless GitHub pull request observations (no stored record or local draft):
+contribution kinds, later commits, replies, empty and commented approvals, requested changes,
+staleness boundaries, participating and resolved threads, summaries, ties, deleted accounts,
+pending reviews, own and draft pull requests. Field names follow the native result. The
+native `review-followup` check replays it (`cargo test -p craft-engine --test
+followup_contracts`). Eight cases are corrections: bot comments and reviews are not replies;
+a head other than the one in the reviewer's latest review needs verification whatever the
+commit date says; an unreadable time, a truncated connection or a head mismatch leaves the
+pull request undecided instead of being ignored; a pull request that is no longer open is
+`closed`. It covers the `inbox-status` and `inbox-policy` cases retired from
+`engine-contracts.json`; the inbox command guard they served is gone.

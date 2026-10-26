@@ -21,8 +21,7 @@ of file placement. Adapters supply native package prefixes where a host needs th
 content must not maintain separate host-specific name copies.
 
 Workflows use verb-based names such as `deliver-change`, `ship-change` and `prepare-stories`.
-Their generated skill names are adapter-owned. Optional tools use a branded directory, such
-as `tools/craft-review-inbox`, with concise subcommands inside it. Internal JavaScript symbols
+Their generated skill names are adapter-owned. Internal JavaScript symbols
 follow existing code conventions. Consumer identities, service operation names and vendor
 event names retain their actual contracts rather than being renamed for branding.
 

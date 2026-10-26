@@ -134,7 +134,15 @@ const ENUMS: &[(&str, &[&str])] = &[
             "task.comment",
         ],
     ),
-    ("phase", &["prepared", "validated", "publication-planned"]),
+    (
+        "phase",
+        &[
+            "prepared",
+            "validated",
+            "publication-planned",
+            "followup-checked",
+        ],
+    ),
     (
         "intent",
         &[
@@ -257,7 +265,6 @@ pub const EVENT_NAMES: &[&str] = &[
     "integration.prepared",
     "integration.planned",
     "integration.observed",
-    "integration.inbox",
     "telemetry.export",
     "diagnostic",
     "session.observed",

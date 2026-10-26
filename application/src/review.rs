@@ -1,11 +1,15 @@
 //! The revision-bound review tools: `review-prepare` snapshots a committed comparison into a
 //! new artifact, `review-check` validates a returned review against it and
-//! `review-publication` plans a comment for an authorized publisher. None of them posts.
+//! `review-publication` plans a comment for an authorized publisher. `review-followup` reads
+//! a fetched pull request observation and says what its reviewer should do next. None of
+//! them posts or contacts a code host.
 use crate::cli::{Failure, Outcome, observe, resolve};
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::{
     contracts::{js_blank, normalize_numbers},
     review::artifact::{self, PROVIDERS, Target, VERIFICATION},
+    review::followup::{self, Facts},
+    timestamp,
 };
 use craft_platform::{
     files::{ReadError, read_bounded},
@@ -22,12 +26,15 @@ use std::{
 /// A snapshot holds a diff of up to 16 MiB; JSON escaping can grow it several times.
 const SNAPSHOT_BYTES: usize = 128 * 1024 * 1024;
 const REVIEW_BYTES: usize = 8 * 1024 * 1024;
+const OBSERVATION_BYTES: usize = 16 * 1024 * 1024;
+const STALE_DAYS: i64 = 5;
 
 #[derive(Clone, Copy)]
 pub enum Command {
     Prepare,
     Check,
     Publication,
+    Followup,
 }
 
 impl Command {
@@ -36,6 +43,7 @@ impl Command {
             "review-prepare" => Some(Self::Prepare),
             "review-check" => Some(Self::Check),
             "review-publication" => Some(Self::Publication),
+            "review-followup" => Some(Self::Followup),
             _ => None,
         }
     }
@@ -53,6 +61,13 @@ impl Command {
             ],
             Self::Check => &["snapshot", "review"],
             Self::Publication => &["snapshot", "review", "current-base", "current-head"],
+            Self::Followup => &[
+                "observation",
+                "reviewer",
+                "now",
+                "stale-days",
+                "acknowledged-threads",
+            ],
         }
     }
 
@@ -65,6 +80,9 @@ impl Command {
             Self::Publication => {
                 "review-publication --snapshot snapshot.json --review review.json --current-base sha --current-head sha [--authorized]"
             }
+            Self::Followup => {
+                "review-followup --observation response.json --reviewer login [--now time] [--stale-days n] [--acknowledged-threads id,...]"
+            }
         }
     }
 
@@ -73,6 +91,7 @@ impl Command {
             Self::Prepare => "prepared",
             Self::Check => "validated",
             Self::Publication => "publication-planned",
+            Self::Followup => "followup-checked",
         }
     }
 }
@@ -222,14 +241,75 @@ fn prepare(
     Ok(format!("{receipt}\n"))
 }
 
+/// The follow-up check and whether every pull request in it could be decided.
+fn followup(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<(Value, bool), Failure> {
+    let command = Command::Followup;
+    let file = required(options, command, "observation")?;
+    let reviewer = required(options, command, "reviewer")?;
+    let now = match options.get("now") {
+        Some(text) => timestamp::parse(text).ok_or("--now must be an ISO 8601 time")?,
+        None => crate::telemetry::now_ms(),
+    };
+    let stale_days = match options.get("stale-days") {
+        Some(text) => text
+            .parse::<u16>()
+            .map(i64::from)
+            .map_err(|_| "--stale-days must be a whole number of days up to 65535")?,
+        None => STALE_DAYS,
+    };
+    let acknowledged = options
+        .get("acknowledged-threads")
+        .map(|ids| {
+            ids.split(',')
+                .filter(|id| !id.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default();
+    let facts = Facts {
+        reviewer,
+        now,
+        stale_days,
+        acknowledged: &acknowledged,
+    };
+    let response = artifact(file, OBSERVATION_BYTES, "observation")?;
+    let summary = Map::from_iter([("phase".to_string(), json!("followup-checked"))]);
+    let result = observe(
+        recorder,
+        "review.completed",
+        parent,
+        "REVIEW_INVALID",
+        summary,
+        |_, _| Ok(followup::check(&response, &facts)?),
+    )?;
+    let complete = result["complete"] == true;
+    Ok((result, complete))
+}
+
 fn evaluate(
     command: Command,
     options: &Options,
     recorder: &mut Recorder,
     parent: &Operation,
-) -> Result<String, Failure> {
-    if matches!(command, Command::Prepare) {
-        return prepare(options, recorder, parent);
+) -> Result<(String, i32), Failure> {
+    let pretty = |value: &Value| {
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(value).expect("JSON values serialize")
+        )
+    };
+    match command {
+        Command::Prepare => return prepare(options, recorder, parent).map(|text| (text, 0)),
+        // An undecided pull request is a result too; exit 1 tells the caller to refetch it.
+        Command::Followup => {
+            let (result, complete) = followup(options, recorder, parent)?;
+            return Ok((pretty(&result), if complete { 0 } else { 1 }));
+        }
+        Command::Check | Command::Publication => {}
     }
     let snapshot_file = required(options, command, "snapshot")?;
     let review_file = required(options, command, "review")?;
@@ -258,10 +338,7 @@ fn evaluate(
             Ok(artifact::publication_plan(&snapshot, &review, &target)?)
         })?
     };
-    Ok(format!(
-        "{}\n",
-        serde_json::to_string_pretty(&result).expect("JSON values serialize")
-    ))
+    Ok((pretty(&result), 0))
 }
 
 /// One review command under a top-level `review.command` operation.
@@ -299,7 +376,7 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
     };
     recorder.complete(operation, attributes, failure);
     let (exit_code, stdout, stderr, error_code) = match result {
-        Ok(text) => (0, text, String::new(), None),
+        Ok((text, exit_code)) => (exit_code, text, String::new(), None),
         Err(failure) => (
             2,
             String::new(),

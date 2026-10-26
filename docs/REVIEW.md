@@ -100,6 +100,24 @@ verification notes and any supplied context. It never contacts GitHub/GitLab, po
 an approval. Wire it to a host/model runner and an authorized publisher in your CI system.
 No live bot installation or remote publishing is bundled.
 
+A reviewer following up on a GitHub pull request fetches it read-only with the GraphQL
+queries under the skill's `references/` and runs
+
+```text
+craft review-followup --observation response.json --reviewer <login> [--now <time>] [--stale-days 5] [--acknowledged-threads <id>,...]
+```
+
+Each pull request gets the first applicable status: `closed` when it is no longer open; `new`
+without a dated contribution from the reviewer; `fixed-pending-verify` after a later commit, a
+head other than the one in the reviewer's latest review, or a resolved participating thread
+not yet acknowledged; `answered` after substantive text from another person (bots and empty
+approvals do not count); `clean` after a later approval with none of the reviewer's threads
+open; `stale` when the reviewer's latest contribution is older than the interval; otherwise
+`awaiting-author`. Nothing is stored between checks: acknowledged threads come from the caller.
+A truncated connection, unreadable time or head mismatch leaves that pull request undecided
+with a reason, and the command exits 1. The status describes observable events, not whether
+a concern was actually fixed or answered.
+
 The optional `review.readOnly: true` shell hook discourages gh/glab mutations and git push
 in a review session. It is heuristic defense in depth, not a shell sandbox or replacement for
 read-only job credentials. No global restriction is imposed when that setting is absent.

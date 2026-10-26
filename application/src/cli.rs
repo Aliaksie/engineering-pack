@@ -43,6 +43,7 @@ pub const COMMANDS: &[&str] = &[
     "review-prepare",
     "review-check",
     "review-publication",
+    "review-followup",
 ];
 /// Every command the general help lists.
 const ALL_COMMANDS: &[&str] = &[
@@ -79,6 +80,7 @@ const ALL_COMMANDS: &[&str] = &[
     "review-prepare",
     "review-check",
     "review-publication",
+    "review-followup",
     "project-evidence",
 ];
 /// Commands that account the installed package's guidance; the launcher names its root.

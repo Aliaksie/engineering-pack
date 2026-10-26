@@ -17,5 +17,6 @@ missing required evidence prevents that conclusion. Recommendations do not post 
 `bin/craft review-check` validates the returned findings against that snapshot. Publication
 belongs to a separately authorized job, which must check that the remote base and head still
 match; `bin/craft review-publication` turns a checked review into a comment-only plan for it.
-On Windows, use `bin\craft.cmd`.
+`bin/craft review-followup` reads a fetched GitHub pull request and says
+what its reviewer should do next, without storing anything. On Windows, use `bin\craft.cmd`.
 See [review integration](../../docs/REVIEW.md) and [service bindings](../../docs/INTEGRATIONS.md).

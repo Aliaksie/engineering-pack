@@ -14,7 +14,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 1632,
+        "jsLines": 1609,
         "dependsOn": [],
         "entryPoints": ["engine/index.mjs"]
       }
@@ -46,11 +46,9 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 299,
+        "jsLines": 295,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
-          "application/engine-client.mjs",
-          "application/inbox.mjs",
           "application/telemetry/observe.mjs"
         ],
         "runtimeRoots": [
@@ -63,14 +61,11 @@
       "responsibility": "Legacy external command, service and OTLP mappings that dissolve into application, platform and review owners.",
       "allow": ["**/*.mjs"],
       "retireBy": "W4",
-      "jsLines": 233,
+      "jsLines": 38,
       "dependsOn": [],
       "shipped": true,
       "entryPoints": [
-        "integrations/inbox-guard.mjs",
-        "integrations/inbox-output.mjs",
-        "integrations/otel/traces.mjs",
-        "integrations/review-inbox.mjs"
+        "integrations/otel/traces.mjs"
       ]
     },
     "hosts": {
@@ -85,20 +80,11 @@
     "packages": {
       "kind": "content",
       "responsibility": "Capability guidance, skills, workflows, standards, evals and hook declarations.",
-      "allow": ["**/*.md", "**/*.json", "*/hooks/*.mjs"],
+      "allow": ["**/*.md", "**/*.json", "*/skills/*/references/*.graphql", "*/hooks/*.mjs"],
       "jsLines": 10,
       "dependsOn": [],
       "shipped": true,
       "runtimeRoots": ["packages/*/hooks/*.mjs"]
-    },
-    "tools": {
-      "kind": "optional-tool",
-      "responsibility": "Optional personal review inbox, excluded from exports, whose future owner is undecided.",
-      "allow": ["craft-review-inbox/**"],
-      "jsLines": 381,
-      "dependsOn": ["application", "integrations"],
-      "shipped": false,
-      "runtimeRoots": ["tools/craft-review-inbox/bin/*.mjs", "tools/craft-review-inbox/hooks/*.mjs"]
     },
     "tooling": {
       "kind": "build-tooling",

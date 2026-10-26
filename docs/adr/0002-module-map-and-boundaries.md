@@ -30,7 +30,6 @@ the JavaScript inside the crate folders is legacy and is removed as its callers 
 | `integrations/` | retiring | — | — | yes | Legacy external mappings, dissolving into `application`, `platform` and review owners |
 | `hosts/` | host-adapter | — | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
 | `packages/` | content | — | — | yes | Capability guidance and hook declarations |
-| `tools/` | optional-tool | application, integrations | — | no | Optional review inbox; owner undecided |
 | `tooling/` | build-tooling | * | — | no | Build, export, release, validation, benchmarks, eval drivers |
 | `schemas/` | schema | — | — | yes | Published authoring schemas |
 | `docs/` | docs | — | — | yes | Maintained documentation |
