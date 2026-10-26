@@ -38,6 +38,12 @@ project-wide records; ignore `.craft/state/` in Git, which Craft never edits. St
 reject symlinks and use bounded, locked, atomic writes. Checkpoints hold explicit task data
 and Git state, not transcripts or tool output, and are evidence, never authorization.
 
+State left by earlier plugin versions is copied once and never written; the copy refuses
+symlinks, special files, oversized data and a store with a live writer. Windows checks are
+weaker because stable Rust exposes no link count, file ID or change time there: hard-linked
+legacy files are accepted, and a file replaced during a read is detected by size and
+modification time only.
+
 Personal preferences reject symlinks, non-files and oversized data. On POSIX the current user
 must also own the file and its parent, with no group/other write bits, and a file replaced
 while opening is refused. On Windows, account and directory ACLs are relied on unchecked.
