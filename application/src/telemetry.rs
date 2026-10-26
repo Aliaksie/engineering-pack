@@ -1,7 +1,6 @@
-//! Command telemetry with the semantics of `application/telemetry/observe.mjs`: one
-//! trace per invocation, operations nested by explicit parent, local batches under the
-//! shared store lock. Remote export is returned to the caller; until bounded HTTP moves
-//! to Rust, the JS forwarder posts those events.
+//! Command telemetry: one trace per invocation, operations nested by explicit parent,
+//! local batches under the shared store lock. A finished remote export is returned to
+//! the caller, which posts it once the command's output is written.
 use craft_engine::{contracts::js_length, telemetry, timestamp};
 use craft_platform::telemetry as store;
 use serde_json::{Map, Value, json};
@@ -543,6 +542,7 @@ impl Recorder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn remote_endpoints_are_https_or_loopback_http_without_credentials() {
@@ -588,5 +588,40 @@ mod tests {
             assert_eq!(options(&config), Err(()), "{config}");
         }
         assert!(pack_version().is_some());
+    }
+
+    #[test]
+    fn a_full_export_queue_reports_its_drops_locally_and_exports_only_events() {
+        let root = std::env::temp_dir().join(format!("craft-export-queue-{}", std::process::id()));
+        fs::create_dir_all(root.join(".craft")).unwrap();
+        fs::write(
+            root.join(".craft/telemetry.json"),
+            r#"{"remote":{"enabled":true,"endpoint":"https://collector.example/v1/traces"}}"#,
+        )
+        .unwrap();
+        let mut recorder = Recorder::open(&root, None, None);
+        let parent = recorder.start("cli.command", None);
+        for _ in 0..EXPORT_EVENTS + 3 {
+            recorder.observe("session.observed", Map::new(), &parent, &[]);
+        }
+        let export = recorder.finish().unwrap();
+        let exported = export["events"].as_array().unwrap();
+        assert_eq!(exported.len(), EXPORT_EVENTS);
+        assert!(exported.iter().all(|e| e["name"] == "session.observed"));
+        let (records, _) = store::snapshot(&store::root(&root)).unwrap();
+        let drops: Vec<&Value> = records
+            .iter()
+            .filter(|e| e["reasonCode"] == "EXPORT_QUEUE_FULL")
+            .collect();
+        assert_eq!(drops.len(), 1);
+        assert_eq!(drops[0]["attributes"]["droppedEvents"], 3);
+        assert_eq!(
+            records
+                .iter()
+                .filter(|e| e["name"] == "session.observed")
+                .count(),
+            EXPORT_EVENTS + 3
+        );
+        fs::remove_dir_all(&root).unwrap();
     }
 }

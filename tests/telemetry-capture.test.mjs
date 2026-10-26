@@ -5,9 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createTelemetry } from '../application/telemetry/observe.mjs';
 import { launch, run } from './craft.mjs';
-import { stateFile } from '../platform/index.mjs';
+import { recordEvent, stateFile } from './state.mjs';
 
 const CAPTURE_MAX_ENTRIES = 8, CAPTURE_MAX_BYTES = 65536;
 function fixture(t) {
@@ -16,7 +15,7 @@ function fixture(t) {
   return root;
 }
 const file = root => stateFile(root, 'telemetry-captures.json');
-const observe = (root, session = 'PRIVATE_SESSION') => createTelemetry(root, { session }).emit('discovery.completed');
+const observe = (root, session = 'PRIVATE_SESSION') => recordEvent(root, 'discovery.completed', { session });
 // Seeded evidence only: later commands stop recording their own events.
 const seal = root => fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
 const telemetryReport = (root, { session } = {}) => run(['telemetry-report', '--root', root, ...(session === undefined ? [] : ['--session', session])]);
@@ -66,7 +65,7 @@ test('missing identity or invocation-only evidence never creates a capture store
   assert.throws(() => captureTelemetry(root, { session: 'absent' }), /key is unavailable/);
   assert.deepEqual(fs.readdirSync(path.join(root, '.craft')), ['telemetry.json']);
   fs.rmSync(path.join(root, '.craft/telemetry.json'));
-  createTelemetry(root).emit('host.hook'); seal(root);
+  recordEvent(root, 'host.hook'); seal(root);
   assert.throws(() => captureTelemetry(root, { session: 'absent' }), /no retained session/);
   assert.equal(fs.existsSync(file(root)), false);
   assert.throws(() => readTelemetryCapture(root, '../invalid'), /invalid/);

@@ -1,6 +1,5 @@
-//! Filesystem side of private task workspaces, shared with `platform/node/workspace.mjs`
-//! until its last JS caller retires: bounded inspection, verified removal, exclusive
-//! writes, owner liveness and the recoverable workspace lock.
+//! Filesystem side of private task workspaces: bounded inspection, verified removal,
+//! exclusive writes, owner liveness and the recoverable workspace lock.
 use crate::files::{ReadError, read_bounded};
 use crate::state::{self, Lock};
 use craft_engine::scratch::Liveness;

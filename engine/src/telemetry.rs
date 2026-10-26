@@ -1,5 +1,5 @@
-//! Schema-1 telemetry envelope shared with `application/telemetry/events.mjs`. Events
-//! carry bounded counts, closed enums and pseudonymous IDs only; no input bodies.
+//! Schema-1 telemetry envelope. Events carry bounded counts, closed enums and
+//! pseudonymous IDs only; no input bodies.
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
@@ -462,6 +462,87 @@ pub fn session_identity(key: &str, session: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn event(name: &'static str, attributes: Value) -> Event<'static> {
+        Event {
+            name,
+            timestamp: "2026-10-19T00:00:00.000Z".into(),
+            session_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            trace_id: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            operation_id: "12345678-1234-4234-a234-123456789abc".into(),
+            pack_version: Some("0.0.2"),
+            host: Some("codex"),
+            attributes: attributes.as_object().unwrap().clone(),
+            outcome: Some("success"),
+            duration_ms: Some(12),
+            ..Event::default()
+        }
+    }
+
+    #[test]
+    fn envelopes_keep_only_bounded_safe_metadata() {
+        let stored = envelope(
+            &event(
+                "routing.completed",
+                json!({"intent": "implement", "guidanceBytes": 10, "evidenceCount": null, "batchSize": -1,
+                    "sourceCode": "secret", "command": "secret", "host": "secret",
+                    "skill": "consumer:secret", "reason": "token-value", "prompt": "secret"}),
+            ),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            stored["attributes"],
+            json!({"intent": "implement", "guidanceBytes": 10})
+        );
+        assert!(!stored.to_string().contains("secret"));
+        let skill = json!({"skill": "craft-review:review-change"});
+        let named = envelope(
+            &event("routing.completed", skill.clone()),
+            &["craft-review:review-change"],
+        )
+        .unwrap();
+        assert_eq!(named["attributes"], skill);
+        let mut unknown = event("arbitrary", json!({}));
+        assert!(envelope(&unknown, &[]).is_err());
+        unknown.name = "routing.completed";
+        unknown.session_id = "raw-session";
+        assert!(envelope(&unknown, &[]).is_err());
+        let mut version = event("routing.completed", json!({}));
+        version.pack_version = Some("bad");
+        assert!(envelope(&version, &[]).is_err());
+        let mut host = event("routing.completed", json!({}));
+        host.host = Some("secret");
+        assert_eq!(envelope(&host, &[]).unwrap().get("host"), None);
+    }
+
+    #[test]
+    fn trace_context_and_diagnostics_are_validated() {
+        let mut diagnostic = event(
+            "diagnostic",
+            json!({"area": "project", "constructor": "private", "toString": "private", "error": "private",
+                "path": "/private/secret", "command": "rm secret", "droppedEvents": 2}),
+        );
+        diagnostic.reason_code = Some("CONFIG_INVALID");
+        diagnostic.parent_operation_id = Some("87654321-1234-4234-a234-123456789abc".into());
+        let stored = envelope(&diagnostic, &[]).unwrap();
+        assert_eq!(stored, envelope(&diagnostic, &[]).unwrap());
+        assert_eq!(
+            stored["attributes"],
+            json!({"area": "project", "droppedEvents": 2})
+        );
+        assert_eq!(stored["kind"], "diagnostic");
+        assert!(!stored.to_string().contains("private"));
+        let mut raw = diagnostic.clone();
+        raw.reason_code = Some("raw private error");
+        assert!(envelope(&raw, &[]).is_err());
+        let mut zero = diagnostic.clone();
+        zero.trace_id = "00000000000000000000000000000000";
+        assert!(envelope(&zero, &[]).is_err());
+        let mut own_parent = diagnostic;
+        own_parent.parent_operation_id = Some(own_parent.operation_id.clone());
+        assert!(envelope(&own_parent, &[]).is_err());
+    }
 
     #[test]
     fn identity_matches_node_hmac() {

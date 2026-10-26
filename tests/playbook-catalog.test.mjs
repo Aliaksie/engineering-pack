@@ -3,62 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { catalog } from '../application/routing/catalog.mjs';
-import { validatePlaybookCatalog } from '../engine/contracts/catalog.mjs';
 import { validateCatalogSources } from '../tooling/lib/playbook-catalog.mjs';
 import { loadCapabilities } from '../tooling/lib/capabilities.mjs';
 
+// The catalog shape is validated by `craft`, which embeds it (`cargo test -p craft-engine`).
+const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url), 'utf8'));
 const copy = () => structuredClone(catalog);
 
-test('catalog contract rejects ambiguous selectors, missing value and invalid identities', () => {
-  const mutations = [
-    (c) => { c.formatVersion = 2; },
-    (c) => { c.entries.push(c.entries[0]); },
-    (c) => { c.entries[0].id = 'vendor:implement'; },
-    (c) => { c.entries[0].when = {}; },
-    (c) => { c.entries[0].when.framework = ['spring']; },
-    (c) => { c.entries[0].when.intents = ['invent']; },
-    (c) => { c.entries[0].when.intents = ['implement', 'implement']; },
-    (c) => { c.entries[0].when.languages = ['java']; },
-    (c) => { c.entries[0].value.evidence = ' '; },
-    (c) => { delete c.entries[0].value.inputs; },
-    (c) => { c.entries[0].value.permission = 'publish'; },
-    (c) => { c.entries.find((e) => e.id === 'runtime:jvm').when.intents = ['story', 'implement']; },
-    (c) => { c.runtimeImplications.java = 'missing'; },
-    (c) => { c.extensions['java'] = 'java'; },
-    (c) => { c.layerExtensions['.tsx'] = 'react'; }
-  ];
-  for (const mutation of mutations) {
-    const changed = copy(); mutation(changed);
-    assert.throws(() => validatePlaybookCatalog(changed), undefined, mutation.toString());
-  }
-});
-
-test('catalog distinguishes context identity, unavailable guidance and actual load targets', () => {
-  assert.equal(validatePlaybookCatalog(copy()).formatVersion, 1);
-  const changed = copy();
-  delete changed.entries.find((e) => e.id === 'runtime:node').contextOnly;
-  assert.throws(() => validatePlaybookCatalog(changed), /requires load targets/);
-  for (const target of ['other:missing', 'craft-engineering:foundations/../../secret.md']) {
-    const c = copy(); c.entries[0].references = [target];
-    assert.throws(() => validatePlaybookCatalog(c), /references/);
-  }
-  assert.throws(() => validatePlaybookCatalog(copy(), { availableTargets: new Set() }), /unresolved catalog target/);
-});
-
-test('path selectors accept canonical scopes and reject traversal, globs and ambiguous paths', () => {
+test('published path selector pattern accepts canonical scopes and rejects traversal, globs and ambiguous paths', () => {
   const schema=JSON.parse(fs.readFileSync('schemas/playbook-catalog.schema.json','utf8'));
   const pattern=new RegExp(schema.$defs.entry.properties.when.properties.paths.items.pattern);
   for (const [valid,paths] of [
     [true,['.','a','.github/workflows','automation/release.yml']],
     [false,['','..','./ci','ci/../release','ci/./release','ci//release','ci/','/ci','C:/ci','ci\\release','ci/*.yml','ci/**','ci/[ab]','ci/{a,b}','ci?','ci\0file']]
-  ]) for (const scope of paths) {
-    const changed=copy();
-    changed.entries.find(entry=>entry.id==='practice:github-actions-path').when={paths:[scope]};
-    if (valid) assert.doesNotThrow(()=>validatePlaybookCatalog(changed));
-    else assert.throws(()=>validatePlaybookCatalog(changed),undefined,scope);
-    assert.equal(pattern.test(scope),valid,scope);
-  }
+  ]) for (const scope of paths) assert.equal(pattern.test(scope),valid,scope);
 });
 
 test('authoring resolves catalog targets against registered package skills and real references', (t) => {
@@ -74,9 +32,13 @@ test('authoring resolves catalog targets against registered package skills and r
   changed.entries[0].references = ['craft-engineering:testing-engineering/references/absent.md'];
   fs.writeFileSync(path.join(repo, 'engine/routing/catalog.json'), JSON.stringify(changed));
   assert.throws(() => validateCatalogSources(repo, packages), /ENOENT/);
+  const fallback = copy();
+  fallback.entries.find(entry => entry.id === 'workflow:review').fallbackSkills = { 'craft-delivery:review-code': 'craft-delivery:absent' };
+  fs.writeFileSync(path.join(repo, 'engine/routing/catalog.json'), JSON.stringify(fallback));
+  assert.throws(() => validateCatalogSources(repo, packages), /unresolved catalog target: craft-delivery:absent/);
 });
 
-test('published schema and runtime agree on required contract fields', () => {
+test('published schema and catalog agree on required contract fields', () => {
   const schema = JSON.parse(fs.readFileSync('schemas/playbook-catalog.schema.json', 'utf8'));
   assert.deepEqual(Object.keys(catalog).sort(), schema.required.toSorted());
   const required = schema.$defs.entry.properties.value.required;

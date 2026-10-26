@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // Deterministic module-map checks. Rules and their rationale: docs/adr/0002-module-map-and-boundaries.md.
-const KINDS = ['rust-crate', 'host-adapter', 'content', 'build-tooling', 'optional-tool', 'schema', 'docs', 'tests', 'examples', 'ci-config', 'retiring'];
+const KINDS = ['rust-crate', 'host-adapter', 'content', 'build-tooling', 'schema', 'docs', 'tests', 'examples', 'ci-config'];
 const BANNED_RUST_MODULES = ['utils', 'common', 'helpers', 'misc', 'shared', 'core'];
 const IMPURE_ENGINE = /\bstd::(?:fs|process|net|env)\b|\buse\s+std::\{[^}]*\b(?:fs|process|net|env)\b|\b(?:SystemTime|Instant)::now\b/;
 
@@ -57,7 +57,7 @@ function adrModules(text) {
   for (const line of section.split('\n')) {
     const cells = line.split('|').slice(1, -1).map(cell => cell.trim());
     const name = cells[0]?.match(/^`([^`]+)\/`$/)?.[1];
-    if (name && cells.length >= 5) rows.set(name, { kind: cells[1], dependsOn: cells[2], legacy: cells[3], shipped: cells[4] });
+    if (name && cells.length >= 4) rows.set(name, { kind: cells[1], dependsOn: cells[2], shipped: cells[3] });
   }
   return rows;
 }
@@ -71,7 +71,6 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
   const modules = manifest.modules ?? {};
   const files = trackedFiles(root);
   const owner = file => file.includes('/') ? file.split('/')[0] : null;
-  const legacyOf = (name, file) => modules[name]?.legacy && matches(modules[name].legacy.allow, file.slice(name.length + 1));
 
   // A1 every top-level path is declared; A2 files use the module's allowed shapes.
   for (const file of files) {
@@ -80,7 +79,7 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
     const module = modules[name];
     if (!module) { fail('A1', `${name}/`, 'undeclared top-level module; follow "Adding a top-level module" in ADR 0002 and declare it in architecture.json'); continue; }
     const relative = file.slice(name.length + 1);
-    if (!matches(module.allow ?? [], relative) && !legacyOf(name, file)) fail('A2', file, `file shape not allowed in ${module.kind} module ${name}/`);
+    if (!matches(module.allow ?? [], relative)) fail('A2', file, `file shape not allowed in ${module.kind} module ${name}/`);
   }
   for (const [name, module] of Object.entries(modules)) {
     if (!KINDS.includes(module.kind)) fail('A3', `${name}/`, `unknown kind ${module.kind}; new kinds require amending ADR 0002`);
@@ -97,7 +96,7 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
     const rows = adrModules(text) ?? new Map();
     for (const [name, module] of Object.entries(modules)) {
       const row = rows.get(name);
-      const expected = { kind: module.kind, dependsOn: list(module.dependsOn ?? []), legacy: module.legacy ? list(module.legacy.dependsOn) : '—', shipped: module.shipped ? 'yes' : 'no' };
+      const expected = { kind: module.kind, dependsOn: list(module.dependsOn ?? []), shipped: module.shipped ? 'yes' : 'no' };
       if (!row) fail('A3', `${name}/`, `missing from the ADR 0002 module map table`);
       else for (const key of Object.keys(expected)) if (row[key] !== expected[key]) fail('A3', `${name}/`, `ADR 0002 ${key} "${row[key]}" differs from architecture.json "${expected[key]}"`);
     }
@@ -138,24 +137,23 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
   // A6 cross-module JS imports follow dependsOn and target declared entry points.
   const javascript = files.filter(file => file.endsWith('.mjs'));
   const entryPoints = new Map();
-  for (const [name, module] of Object.entries(modules)) for (const entry of [...(module.entryPoints ?? []), ...(module.legacy?.entryPoints ?? [])]) entryPoints.set(entry, name);
+  for (const [name, module] of Object.entries(modules)) for (const entry of module.entryPoints ?? []) entryPoints.set(entry, name);
   const graph = new Map(javascript.map(file => [file, imports(root, file)]));
   const importedAcross = new Set();
   for (const [file, targets] of graph) {
     const from = owner(file);
     const module = modules[from];
     if (!module) continue;
-    const allowed = legacyOf(from, file) ? module.legacy.dependsOn : module.dependsOn;
     for (const target of targets) {
       const to = owner(target);
       if (!to || to === from || !modules[to]) continue;
       if (module.dependsOn === '*') continue;
       importedAcross.add(target);
-      if (!allowed.includes(to)) fail('A6', file, `imports ${target}, but ${from}/ does not depend on ${to}/`);
+      if (!module.dependsOn.includes(to)) fail('A6', file, `imports ${target}, but ${from}/ does not depend on ${to}/`);
       else if (entryPoints.get(target) !== to) fail('A6', file, `imports ${target}, which is not a declared entry point of ${to}/`);
     }
   }
-  const roots = Object.values(modules).flatMap(module => [...(module.runtimeRoots ?? []), ...(module.legacy?.runtimeRoots ?? [])]);
+  const roots = Object.values(modules).flatMap(module => module.runtimeRoots ?? []);
   for (const [entry, name] of entryPoints) if (!importedAcross.has(entry) && !matches(roots, entry)) fail('A6', entry, `stale entry point of ${name}/; no other module imports it`);
 
   // A7 runtime JS must be reachable from a runtime root or a build-time consumer; tests do not keep code alive.
@@ -171,11 +169,11 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
   }
   for (const file of javascript.filter(file => runtime(file) && !reached.has(file))) fail('A7', file, 'runtime JavaScript is unreachable from any runtime root; delete it or declare the root that uses it');
 
-  // A8 JS ratchet; A10 thin host adapters.
+  // A8 JS ratchet and adapters that import nothing; A10 thin host adapters.
   const budgets = {};
   for (const [name, module] of Object.entries(modules)) {
-    const budget = module.legacy?.jsLines ?? module.jsLines;
-    const counted = javascript.filter(file => owner(file) === name && !file.endsWith('.test.mjs') && (!module.legacy || legacyOf(name, file)));
+    const budget = module.jsLines;
+    const counted = javascript.filter(file => owner(file) === name && !file.endsWith('.test.mjs'));
     const actual = counted.reduce((total, file) => total + lines(fs.readFileSync(path.join(root, file), 'utf8')), 0);
     if (budget === undefined) { if (actual && module.dependsOn !== '*' && module.kind !== 'examples') fail('A8', `${name}/`, `${actual} runtime JS lines without a jsLines budget`); continue; }
     budgets[name] = { budget, actual };
@@ -186,8 +184,7 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
       if (count > module.maxFileLines) fail('A10', file, `${count} lines exceeds the ${module.maxFileLines}-line adapter limit; move behavior into the Rust application`);
     }
   }
-  if (!Object.values(modules).some(module => module.legacy || module.kind === 'retiring'))
-    for (const [name, module] of Object.entries(modules)) if (module.kind === 'host-adapter' && module.dependsOn.length) fail('A8', `${name}/`, 'after migration host adapters invoke craft and import no other module');
+  for (const [name, module] of Object.entries(modules)) if (module.kind === 'host-adapter' && module.dependsOn.length) fail('A8', `${name}/`, 'host adapters invoke craft and import no other module');
 
   // A11 exports contain only shipped modules.
   const dist = path.join(root, 'dist');
@@ -198,7 +195,7 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
 
   if (updateBudgets && !errors.some(error => error.rule === 'A8' && /grew/.test(error.message))) {
     let changed = false;
-    for (const [name, { budget, actual }] of Object.entries(budgets)) if (actual < budget) { (modules[name].legacy ?? modules[name]).jsLines = actual; changed = true; }
+    for (const [name, { budget, actual }] of Object.entries(budgets)) if (actual < budget) { modules[name].jsLines = actual; changed = true; }
     if (changed) fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
   }
   return { errors, budgets };

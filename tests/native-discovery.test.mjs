@@ -5,10 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from './craft.mjs';
-import { readSessionState, updateSessionState, addActivity } from './session-state.mjs';
+import { readSessionState, sessionFile, updateSessionState, addActivity } from './session-state.mjs';
 import { nativeCommand } from './craft.mjs';
-import { stateFile } from '../platform/index.mjs';
-import { digest } from '../engine/cache/identity.mjs';
+import { digest } from './state.mjs';
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-discovery-native-'));
@@ -27,12 +26,12 @@ function fixture(t) {
 }
 
 // A receipt that changed after the native read is preserved: see the Rust discovery test.
-test('native discovery writes session receipts Node reads and reuses them after Node writes', t => {
+test('native discovery writes session receipts and reuses them after another writer changes the record', t => {
   const { root, invoke } = fixture(t);
   const request = { terms: ['needle'], paths: ['source.txt'] };
   assert.equal(invoke(request).discovery.fresh, 1);
   assert.equal(readSessionState(root, 'session', 'task').activity.freshLookups, 1);
-  const file = stateFile(root, `session-${digest(['session', 'task']).slice(0, 24)}.json`, false, 'session');
+  const file = sessionFile(root, 'session', 'task');
   updateSessionState(root, 'session', 'task', state => addActivity(state, { routingDecisions: 1 }));
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('"formatVersion":1', '"formatVersion":1.0'));
   const reused = invoke(request);
@@ -43,9 +42,9 @@ test('native discovery writes session receipts Node reads and reuses them after 
   assert.equal(state.activity.reuseHits, 1);
 });
 
-test('native discovery respects the Node session lock and preserves deferred lookup without project reads', t => {
+test('native discovery respects a held session lock and preserves deferred lookup without project reads', t => {
   const { root, invoke } = fixture(t);
-  const file = stateFile(root, `session-${digest(['session', 'task']).slice(0, 24)}.json`, true, 'session');
+  const file = sessionFile(root, 'session', 'task', true);
   fs.writeFileSync(`${file}.lock`, 'held by another writer');
   const result = invoke({ terms: ['needle'] });
   assert.match(result.reuse.diagnostic, /busy/);

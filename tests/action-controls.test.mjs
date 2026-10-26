@@ -5,8 +5,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from './craft.mjs';
-import { decide } from '../application/engine-client.mjs';
-import { validateProject } from './project-settings.mjs';
 
 function fixture(t, config = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-action-controls-')));
@@ -29,19 +27,22 @@ function fixture(t, config = {}) {
 }
 const capacity = (extra = {}) => ({ capacity: 4, occupiedSlots: 1, taskWorkers: 0, allowed: true, sessionId: 's1', observedAt: new Date().toISOString(), source: 'fixture-host-slots', ...extra });
 
-test('task-wide worker budgets honor zero, capacity, occupied idle/nested slots and reductions', () => {
-  const project = validateProject({ formatVersion: 1 });
-  const budget = (facts, policy = project) => decide('worker-budget', { project: policy, facts, options: { session: 's1', now: Date.now() } });
+test('task-wide worker budgets honor zero, capacity, occupied idle/nested slots and reductions', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-worker-budget-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  let inputs = 0;
+  const file = value => { const target = path.join(root, `input-${inputs++}.json`); fs.writeFileSync(target, JSON.stringify(value)); return target; };
+  // The budget `craft settings` reports for host facts under a task-level worker limit.
+  const budget = (facts, maxWorkers) => run(['settings', '--root', root, '--session', 's1', '--facts', file(facts),
+    ...(maxWorkers === undefined ? [] : ['--data', file({ efficiency: { delegation: { maxWorkers } } })])]).workers;
   assert.equal(budget(capacity()).available, 3);
   assert.equal(budget(capacity({ occupiedSlots: 4, taskWorkers: 3 })).available, 0);
   assert.equal(budget(capacity({ occupiedSlots: 3, taskWorkers: 1 })).effectiveLimit, 2);
-  const one = validateProject({ formatVersion: 1, efficiency: { delegation: { maxWorkers: 1 } } });
-  assert.equal(budget(capacity({ occupiedSlots: 2, taskWorkers: 1 }), one).available, 0);
-  const lowered = budget(capacity({ occupiedSlots: 4, taskWorkers: 3 }), one);
+  assert.equal(budget(capacity({ occupiedSlots: 2, taskWorkers: 1 }), 1).available, 0);
+  const lowered = budget(capacity({ occupiedSlots: 4, taskWorkers: 3 }), 1);
   assert.equal(lowered.reason, 'limit-reduced-no-new-assignments');
   assert.equal(lowered.cancelActiveWorkers, false);
-  const zero = validateProject({ formatVersion: 1, efficiency: { delegation: { maxWorkers: 0 } } });
-  assert.equal(budget({}, zero).effectiveLimit, 0);
+  assert.equal(budget({}, 0).effectiveLimit, 0);
   assert.equal(budget(capacity({ allowed: false })).effectiveLimit, 0);
   assert.equal(budget(capacity({ observedAt: '2020-01-01T00:00:00Z' })).effectiveLimit, null);
   assert.equal(budget(capacity({ sessionId: 'another' })).available, 0);

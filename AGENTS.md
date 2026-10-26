@@ -40,11 +40,9 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `packages/<name>/workflows` | Named orchestration procedures exported as skills |
 | `packages/<name>/standards` | Canonical quality guidance |
 | `packages/<name>/evals` | Provider-independent scenarios and rubric criteria |
-| `packages/craft-review/bin` | Revision-bound Git snapshots and review artifact validation |
-| `engine` | Portable JSON decisions: routing, discovery, sessions, budgets and policy |
-| `application` | Use-case orchestration; calls public engine and platform boundaries |
-| `platform` | Runtime/OS implementations: Node filesystem, Git, state and processes |
-| `integrations` | External Git/codehost/transport mappings |
+| `engine` | Rust crate: pure decisions over explicit facts (routing and its catalog, discovery, sessions, budgets, policy) |
+| `application` | Rust crate: the `craft` executable and use-case orchestration over engine and platform |
+| `platform` | Rust crate: filesystem, state, Git, processes, search and bounded HTTP |
 | `hosts` | Host hook mapping, session and feature tables read by the build and embedded in `craft` |
 | `tooling` | Build, export, validation, release and evaluation tooling |
 | `examples/project` | Consumer configuration skeleton; no live connections |

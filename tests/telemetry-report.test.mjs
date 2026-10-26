@@ -5,8 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { launch, run } from './craft.mjs';
-import { createTelemetry } from '../application/telemetry/observe.mjs';
-import { stateFile, readTelemetry } from '../platform/index.mjs';
+import { recordEvent, readTelemetry, stateFile } from './state.mjs';
 
 // Reports read the store before recording their own command event.
 const telemetryReport = (root, { session } = {}) => run(['telemetry-report', '--root', root, ...(session === undefined ? [] : ['--session', session])]);
@@ -35,15 +34,15 @@ test('empty reports do not create a correlation key or invent applicability and 
 
 test('report filters real scoped identities and keeps loss counts separate from observed feature outcomes', t => {
   const root = fixture(t);
-  const first = createTelemetry(root, { session: 'private-one' });
-  first.emit('discovery.completed', { batchSize: 2 });
-  first.emit('attempt.recorded', { recordedAttempts: 40 });
-  first.emit('attempt.recorded', { recordedAttempts: 41 });
-  first.emit('diagnostic', { droppedEvents: 3 }, 'failure', undefined, {}, 'TELEMETRY_EVENTS_DROPPED');
-  first.emit('diagnostic', { droppedEvents: 2 }, 'failure', undefined, {}, 'EXPORT_QUEUE_FULL');
-  first.emit('telemetry.export', {}, 'failure');
-  createTelemetry(root, { session: 'private-two' }).emit('discovery.completed', {}, 'failure');
-  createTelemetry(root).emit('host.hook');
+  const session = 'private-one';
+  recordEvent(root, 'discovery.completed', { session, attributes: { batchSize: 2 } });
+  recordEvent(root, 'attempt.recorded', { session, attributes: { recordedAttempts: 40 } });
+  recordEvent(root, 'attempt.recorded', { session, attributes: { recordedAttempts: 41 } });
+  recordEvent(root, 'diagnostic', { session, attributes: { droppedEvents: 3 }, outcome: 'failure', reasonCode: 'TELEMETRY_EVENTS_DROPPED' });
+  recordEvent(root, 'diagnostic', { session, attributes: { droppedEvents: 2 }, outcome: 'failure', reasonCode: 'EXPORT_QUEUE_FULL' });
+  recordEvent(root, 'telemetry.export', { session, outcome: 'failure' });
+  recordEvent(root, 'discovery.completed', { session: 'private-two', outcome: 'failure' });
+  recordEvent(root, 'host.hook');
   seal(root);
   const result = telemetryReport(root, { session: 'private-one' });
   assert.equal(result.retainedEvents, 6);
@@ -61,7 +60,7 @@ test('report filters real scoped identities and keeps loss counts separate from 
 
 test('bounded storage report exposes rotation and skipped data without leaking raw records', t => {
   const root = fixture(t);
-  createTelemetry(root).emit('session.observed');
+  recordEvent(root, 'session.observed');
   seal(root);
   const file = stateFile(root, 'telemetry.jsonl');
   fs.copyFileSync(file, `${file}.1`);

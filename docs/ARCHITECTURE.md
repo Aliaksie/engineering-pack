@@ -6,76 +6,33 @@ remain independently selected guidance within craft-engineering.
 
 ```mermaid
 flowchart TD
-  CLI[cli/ and hosts/] --> APP[application/: use cases]
-  APP --> ENGINE[engine/: portable JSON decisions]
-  APP --> PORTS[platform/: runtime ports]
-  PORTS --> NODE[platform/node: filesystem / Git / search / state]
-  APP --> EXT[integrations/: external transports]
-  BUILD[tooling/: build and export] --> CONTENT[packages/: guidance plus bundled runtime]
+  HOST[host hook / status line / skill command] --> LAUNCH[package bin/craft launcher]
+  LAUNCH --> APP[application/: craft executable, use cases]
+  APP --> ENGINE[engine/: pure decisions over explicit facts]
+  APP --> PLATFORM[platform/: filesystem, state, Git, search, HTTP]
+  PLATFORM --> ENGINE
+  BUILD[tooling/: build and export] --> CONTENT[packages/: guidance, hook declarations]
+  BUILD --> TABLES[hosts/: host tables]
 ```
 
 ## Ownership
 
 | Location | Owns |
 |---|---|
-| `engine/contracts/` | Project/catalog contracts and portable path validation |
-| `engine/routing/` | Guidance selection, module/delegation decisions, generic operation plans |
-| `engine/discovery/` | Independent lookup batches, bounded matching and compact results |
-| `engine/cache/` | Reuse validity and deterministic identities |
-| `engine/session/` | Context estimates, occupancy recommendations, activity and attempt budgets |
-| `engine/policy/` | Model advice, context delivery and review decisions |
-| `engine/checkpoint.mjs` | Small continuation contracts, source binding and comparison |
-| `application/` | Observation collection and execution of concrete local use cases |
-| `application/{routing,discovery,session}/` | Related use cases grouped by feature |
-| `platform/index.mjs` | Wiring for bounded observation/storage operations |
-| `platform/node/` | Concrete Node ports; repository and resource observations are grouped separately |
-| `integrations/` | External Git/codehost command syntax, observation normalization and output projections |
-| `hosts/` | Native host payloads, telemetry, capability declarations, controls and wire output |
-| `tooling/export/` | Build-time platform exporters |
+| `engine/` (`craft-engine`) | Pure decisions over explicit JSON facts: project contracts and effective settings, routing and the embedded catalog (`engine/routing/catalog.json`), discovery plans, sessions, tasks, attempts and acceptance coverage, checkpoints, workers and actions, review artifacts and the read-only guard, model advice, service plans, telemetry envelopes and OTLP mapping |
+| `platform/` (`craft-platform`) | Filesystem, bounded documents, state records and their lock protocol, Git observation, processes, literal search, Project Intelligence storage and syntax providers, bounded HTTP, the local telemetry store |
+| `application/` (`craft-application`) | The `craft` executable: CLI parsing and rendering, host hook payloads and wire output, the status line, and each use case that combines observations, decisions and persistence |
+| `hosts/` | Host hook mapping, session and feature tables; the build reads them and `craft` embeds them |
+| `packages/` | Agent-facing guidance, workflows, standards, evals and hook declarations |
+| `tooling/` | Build, export, release, validation and evaluation drivers |
 
-Folders represent features with multiple responsibilities. Small features remain files.
-Top-level names identify ownership: `engine/` decides, `application/` orchestrates,
-`platform/` implements runtime/OS access, `hosts/` adapts coding-agent hosts,
-`integrations/` maps external systems, the `craft` executable in `application/` handles commands,
-`tooling/` builds and validates, and `packages/` contains agent-facing guidance.
-No former runtime, adapter or script paths are retained as forwarding modules.
-The accepted module map, dependency directions and runtime JS budgets are declared in
-`architecture.json` and [ADR 0002](adr/0002-module-map-and-boundaries.md); `npm run architecture` enforces them.
-
-## Engine contract
-
-`engine/index.mjs` exports `evaluate(request)`. Requests and responses contain only JSON:
-
-```json
-{"formatVersion":1,"operation":"attempt-status","input":{"operation":"implement","records":[]}}
-```
-
-Success returns `{ "formatVersion": 1, "ok": true, "result": ... }`. Failure returns
-`ok: false` with a stable `error.code` (`UNSUPPORTED_VERSION`, `UNKNOWN_OPERATION`, or
-`INVALID_INPUT`) and a diagnostic message. Callers must not branch on message prose.
-Inputs are copied before evaluation; no caller-owned objects are mutated. Clocks,
-repository versions, file observations, host capabilities and catalog data are explicit
-inputs. Time-sensitive advice requires an explicit clock value.
-
-The engine imports only its own portable modules. It does not read files, invoke Git,
-use Node globals, inspect environment variables or interpret native host payloads.
-Application use cases call the public boundary through `application/engine-client.mjs`,
-which only serializes requests and unwraps responses. Catalog loading and provider facts
-belong to the relevant use cases;
-Node implementations do not import application logic or engine policy. Application code
-imports only `platform/index.mjs`, never `platform/node/` details. The platform entry point
-wires the current Node implementation without introducing a second infrastructure layer. Port callbacks stay within application/Node orchestration; they never cross the JSON engine boundary.
-
-The target core runtime is Rust, as established by [ADR 0001](adr/0001-rust-core-runtime.md).
-This includes local orchestration, state, routing, telemetry, context, cache and persistence,
-as well as pure engine decisions and Project Intelligence. A dedicated incremental
-migration moves complete use cases from JavaScript into Rust, preserving compatibility
-and removing each replaced implementation after verification.
-New runtime capabilities belong in Rust. Host adapters and packaging may remain thin
-JS/TS where needed. The ownership map above describes the current layout, not a requirement
-to reproduce its folders or layers during migration. Simplify structure when useful while
-preserving public contracts and separation of pure decisions from I/O. Contract replay
-and dependency tests continue to protect those boundaries.
+`engine/` decides, `platform/` observes and persists, `application/` orchestrates and owns the
+executable. The engine reads no files, processes, environment or clock; time-sensitive
+decisions take an explicit clock value. Callers branch on stable error codes, never on
+diagnostic prose. The accepted module map, dependency directions and JavaScript budgets are
+declared in `architecture.json` and [ADR 0002](adr/0002-module-map-and-boundaries.md);
+`npm run architecture` enforces them. The core runtime is Rust
+([ADR 0001](adr/0001-rust-core-runtime.md)); no runtime JavaScript ships.
 
 ## Evidence and effects
 
@@ -113,18 +70,16 @@ receives lifecycle facts, not hook event names. Each hook command starts `craft 
 generated launcher; `craft` parses the host payload, runs lifecycle observation, the read-only
 review guard or context delivery (routing hints, checkpoints, service metadata and hint reuse)
 and writes the host's wire output, one process per hook.
-Host lifecycle controls belong to `hosts/`; external service mappings belong to
-`integrations/`. Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
+Host lifecycle tables belong to `hosts/`; external service mappings are plans in the engine.
+Neither grants permission. Unsupported host enforcement and observations remain visible in reports.
 
 ## Packages and exports
 
 Package names, manifests and useful bin/hook entry points remain external interfaces.
-The builder copies canonical `engine/`, `application/`, `platform/` and `integrations/` into
-each package's `support/`, and rebases shared imports in package entry points. Installed
-packages run after relocation without authoring scripts or sibling package dependencies.
-Full bundles also expose these directories at their root. No legacy runtime paths or
-fallback loaders are retained. Each package's generated `bin/craft` and `bin/craft.cmd`
-launchers select its bundled native executable for hooks, native tools and the status line.
+Each exported package carries generated `bin/craft` and `bin/craft.cmd` launchers that select
+its bundled native executable (`support/native-bin/<target>/`) for hooks, commands and the
+status line; installed packages run after relocation without Node, authoring scripts or
+sibling packages. Hook files only name a native handler.
 
 Builds validate source, stage exports and refuse unmanaged or symlinked output. The canonical pack version is `package.json.version`; package and runtime
 metadata are synchronized projections checked before every build. Deterministic checks establish packaging and contract correctness; they do
@@ -132,18 +87,11 @@ not establish model quality or an efficiency improvement.
 
 ## Supporting telemetry
 
-`application/telemetry/events.mjs` defines a bounded JSON envelope and metadata allowlists.
-Application use cases emit at operation boundaries. `platform/index.mjs` exposes local
-storage, scoped identity, version, clock and bounded HTTP ports; their Node implementations
-remain under `platform/node/`. `integrations/otel/` maps sanitized envelopes to OTLP JSON.
-The engine imports neither telemetry runtime nor providers. Provider objects never cross
-its JSON boundary or enter the application event contract. No separate top-level telemetry
-subsystem or event bus is needed. See [observability and privacy](OBSERVABILITY.md).
-
-Telemetry trace scopes use public platform context ports; Node implements async context
-isolation in its existing telemetry module. The portable event/context contract remains
-plain JSON. Application boundaries own spans and reason codes; transport mappings own
-OTLP serialization. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
+The engine defines the bounded schema-1 event envelope and its attribute allowlists and maps
+stored events to OTLP JSON. Use cases record operations and observations under one trace per
+invocation; `platform/` stores them in the private local log and posts an opt-in remote export
+over bounded HTTP after the command's output is written. No provider objects cross the event
+boundary. See the [observability coverage matrix](OBSERVABILITY.md#coverage-and-deliberate-limits)
 for diagnostics, bounded loss behavior and the zero-model-cost contract.
 
 ## Developer acceptance flow

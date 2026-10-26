@@ -8,7 +8,7 @@ export function workspaceBoundary(root, session, task, action) {
     return run(['session', '--root', root, '--session', session, '--task', task]).workspace;
   } catch (error) { return { status: 'retained', reason: error.message }; }
 }
-export function workspaceOperation(root, identity, _policy, action) {
+export function workspaceOperation(root, action) {
   if (action === 'maintain') return run(['workspace-clean', '--root', root]);
   return workspaceBoundary(root, 'session', 'task', action);
 }

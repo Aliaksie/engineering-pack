@@ -25,14 +25,6 @@ export function copy(source, target) {
   }
 }
 
-// Rebase canonical shared-runtime imports into a self-contained installed package.
-export function runtimeImports(source, file, destination) {
-  return source.replace(/(['"])(?:\.\.\/){3}(application|engine|platform|integrations|cli)\//g, (_match, quote, folder) => {
-    const relative = path.relative(path.dirname(file),path.join(destination,'support',folder)).split(path.sep).join('/');
-    return `${quote}${relative.startsWith('.') ? relative : `./${relative}`}/`;
-  });
-}
-
 export function skillName(pkg, name, platform) {
   return platform === 'claude' ? name : `${pkg}-${name}`;
 }

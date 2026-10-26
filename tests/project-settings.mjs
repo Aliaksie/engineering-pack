@@ -1,7 +1,18 @@
-// Effective settings through the JavaScript engine, for tests of the JS readers it still serves.
-import { observe, withTelemetry } from '../application/telemetry/observe.mjs';
-import { projectData, preferenceData, preferenceFile } from '../platform/index.mjs';
-import { decide } from '../application/engine-client.mjs';
-export const validateProject = project => decide('effective-settings', { project }).settings;
-export const readProject = (root, { preferencesFile = preferenceFile() } = {}) => withTelemetry(root, {}, () => observe('project.loaded',
-  () => decide('effective-settings', { project: projectData(root), preferences: preferenceData(preferencesFile) }).settings, () => ({}), { failureCode:'CONFIG_INVALID' }));
+// Effective settings as `craft settings` resolves them for a project root.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { run } from './craft.mjs';
+
+export const readProject = (root, { preferencesFile } = {}) =>
+  run(['settings', '--root', root, ...(preferencesFile ? ['--preferences', preferencesFile] : [])]).settings;
+
+// The settings of a scratch project whose `.craft/project.json` is `project`.
+export function validateProject(project) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-project-'));
+  try {
+    fs.mkdirSync(path.join(root, '.craft'));
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify(project));
+    return readProject(root);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}

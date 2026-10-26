@@ -54,8 +54,8 @@ input size bound or the failure behavior of policy handlers.
 
 A hook module names the native handler the export registers (`export const native = '<handler>'`).
 Hooks and native tools run in the bundled `craft` runtime through the generated `bin/craft`
-launcher (`bin/craft.cmd` on Windows). `tooling/export/` copies the shared `support/` tree into
-each installed package. Installed packages remain self-contained; do not
+launcher (`bin/craft.cmd` on Windows), which selects the executable installed under the
+package's `support/native-bin/`. Installed packages remain self-contained; do not
 import authoring tooling or a sibling package at runtime. Hook tools are
 `shell` or `any`; normalized events are `session-start`, `before-prompt`, `before-tool`,
 `after-tool`, `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where

@@ -1,6 +1,5 @@
-//! Project configuration and effective settings. The JS engine keeps its own copy
-//! (`engine/contracts/project.mjs`, `engine/policy/effective-settings.mjs`) until its
-//! last command migrates; both replay `tests/fixtures/runtime/engine-contracts.json`.
+//! Project configuration and effective settings, replayed against
+//! `tests/fixtures/runtime/settings-contracts.json`.
 use serde_json::{Map, Value, json};
 
 pub const LAYERS: &[&str] = &["ui", "backend", "agent"];

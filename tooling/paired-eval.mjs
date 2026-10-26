@@ -6,8 +6,14 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { repositorySnapshot as gitState } from '../application/repositories.mjs';
+import { nativeBinary } from './lib/native-binary.mjs';
 
+// The source repository state as `craft` observes it for checkpoints.
+function gitState(root) {
+  const child = spawnSync(nativeBinary(), ['checkpoint-read', '--root', root, '--json'], { encoding: 'utf8', shell: false, maxBuffer: 16 * 1024 * 1024 });
+  if (child.error || child.status !== 0) throw new Error(`cannot read source state: ${child.error?.message ?? child.stderr.trim()}`);
+  return JSON.parse(child.stdout).current;
+}
 const sha = (content) => createHash('sha256').update(content).digest('hex');
 const writeJson = (file, data) => fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, { flag: 'wx' });
 function fileBytes(file) {

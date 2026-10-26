@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { run } from './craft.mjs';
 import { groundedContext } from './grounding-cli.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
+import { contractDigest as engineeringContractDigest } from './acceptance-view.mjs';
 
 const fixture = new URL('../examples/evals/developer-acceptance/fixture/', import.meta.url);
 const at = '2026-10-22T00:00:00Z';

@@ -22,7 +22,7 @@ export function packVersion(root) {
 export function versionFiles(root) {
   const packages = fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name));
   if (packages.some(entry => !entry.isDirectory())) throw new Error('expected regular package directories');
-  return ['package.json', ...packages.map(entry => `packages/${entry.name}/capability.json`), 'platform/node/pack-version.json'];
+  return ['package.json', ...packages.map(entry => `packages/${entry.name}/capability.json`)];
 }
 export function synchronizeVersion(root, version = packVersion(root), check = false) {
   parseVersion(version);

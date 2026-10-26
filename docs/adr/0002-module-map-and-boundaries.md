@@ -4,10 +4,9 @@ Status: Accepted — 2026-10-24
 
 ## Context
 
-[ADR 0001](0001-rust-core-runtime.md) makes Rust the owner of the runtime. The repository
-still mixes the target Rust crates with retiring JavaScript layers, and nothing stopped a new
-top-level folder, a new cross-module import or new runtime JavaScript from appearing. Shape
-tests protected individual paths but not the map as a whole.
+[ADR 0001](0001-rust-core-runtime.md) makes Rust the owner of the runtime. Without a declared
+map, nothing stops a new top-level folder, a new cross-module import or new runtime JavaScript
+from appearing; shape tests protect individual paths but not the map as a whole.
 
 ## Decision
 
@@ -15,27 +14,26 @@ The repository has one declared module map. `architecture.json` is its machine f
 below is the accepted decision. `npm run architecture` (part of `npm run check`) fails when they
 disagree or when the tree breaks a rule.
 
-Final target: three Rust crates (`engine` ← `platform` ← `application`, with `application` also
-using `engine`), no runtime JavaScript (`hosts/` holds the host tables that the build reads and
-`craft` embeds), and build tooling, content, schemas, docs, tests and examples around them. `integrations/` dissolves into its owners;
-the JavaScript inside the crate folders is legacy and is removed as its callers move to Rust.
+The runtime is three Rust crates (`engine` ← `platform` ← `application`, with `application`
+also using `engine`). No runtime JavaScript ships: `hosts/` holds the host tables that the build
+reads and `craft` embeds, and package hook files only name a native handler. Build tooling,
+content, schemas, docs, tests and examples sit around the crates.
 
 ## Module map
 
-| Module | Kind | Depends on | Legacy JS depends on | Shipped | Responsibility |
-|---|---|---|---|---|---|
-| `engine/` | rust-crate | — | — | yes | Pure decisions, contracts, identities and transitions |
-| `platform/` | rust-crate | engine | — | yes | Filesystem, state, locks, Git, processes, search, SQLite, HTTP, syntax providers |
-| `application/` | rust-crate | engine, platform | engine, integrations, platform | yes | Use cases, CLI, host-neutral lifecycle handling, `craft` executable |
-| `integrations/` | retiring | — | — | yes | Legacy external mappings, dissolving into `application`, `platform` and review owners |
-| `hosts/` | host-adapter | — | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
-| `packages/` | content | — | — | yes | Capability guidance and hook declarations |
-| `tooling/` | build-tooling | * | — | no | Build, export, release, validation, benchmarks, eval drivers |
-| `schemas/` | schema | — | — | yes | Published authoring schemas |
-| `docs/` | docs | — | — | yes | Maintained documentation |
-| `tests/` | tests | * | — | no | Repository behavior, replay and architecture tests |
-| `examples/` | examples | * | — | no | Consumer skeletons and eval fixtures |
-| `.github/` | ci-config | * | — | no | CI workflows and benchmark harnesses |
+| Module | Kind | Depends on | Shipped | Responsibility |
+|---|---|---|---|---|
+| `engine/` | rust-crate | — | yes | Pure decisions, contracts, identities and transitions; the routing catalog |
+| `platform/` | rust-crate | engine | yes | Filesystem, state, locks, Git, processes, search, SQLite, HTTP, syntax providers |
+| `application/` | rust-crate | engine, platform | yes | Use cases, CLI, host-neutral lifecycle handling, `craft` executable |
+| `hosts/` | host-adapter | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
+| `packages/` | content | — | yes | Capability guidance and hook declarations |
+| `tooling/` | build-tooling | * | no | Build, export, release, validation, benchmarks, eval drivers |
+| `schemas/` | schema | — | yes | Published authoring schemas |
+| `docs/` | docs | — | yes | Maintained documentation |
+| `tests/` | tests | * | no | Repository behavior, replay and architecture tests |
+| `examples/` | examples | * | no | Consumer skeletons and eval fixtures |
+| `.github/` | ci-config | * | no | CI workflows and benchmark harnesses |
 
 `*` means build-time code that may read anything; no shipped module may depend on it.
 
@@ -44,26 +42,23 @@ the JavaScript inside the crate folders is legacy and is removed as its callers 
 | ID | Rule |
 |---|---|
 | A1 | Every tracked or new untracked top-level path is declared (module or `rootFiles`) |
-| A2 | Files match the module's `allow` shapes; legacy JavaScript only where `legacy.allow` permits |
+| A2 | Files match the module's `allow` shapes |
 | A3 | Kinds come from the closed list above; responsibilities are one sentence; this table equals `architecture.json` |
 | A4 | Cargo workspace members are exactly the `rust-crate` modules; path dependencies follow `dependsOn`; external crates are declared; workspace lints and `unsafe_code = "forbid"` apply |
 | A5 | `craft-engine` production code uses no filesystem, process, network, environment or ambient clock |
-| A6 | Cross-module JavaScript imports follow `dependsOn` (or `legacy.dependsOn`) and target declared entry points; unused entry points are removed |
+| A6 | Cross-module JavaScript imports follow `dependsOn` and target declared entry points; unused entry points are removed |
 | A7 | Runtime JavaScript is reachable from a declared runtime root or a build-time consumer; unreachable code is deleted |
-| A8 | Runtime JavaScript per module never exceeds its line budget, and budgets are lowered as code is removed. After migration, host adapters import no other module |
+| A8 | JavaScript per module never exceeds its line budget, and budgets are lowered as code is removed; host adapters import no other module |
 | A9 | Rust modules are named for their domain: no `utils`, `common`, `helpers`, `misc`, `shared`, `core`; no empty modules |
 | A10 | Each host adapter file stays within the module's line limit |
 | A11 | Exports contain no module declared as not shipped |
 
-A budget rises only for the JavaScript forwarder that moves an entry point into `craft`: one
-native request per invocation plus handing native results back to the remaining JS (for example,
-telemetry export until bounded HTTP is native). Each such raise is recorded with its slice and is
-recovered when the forwarded module retires. Behavior never moves into JavaScript this way.
+A budget never rises to move behavior into JavaScript; new runtime behavior belongs in `craft`.
 
-A forwarded command passes only its arguments to `craft`; session binding, task state and
-activity are read and written natively. Discovery writes its reuse receipt under the shared lock
-only if the state it observed is still current; a concurrent receipt is preserved with a
-diagnostic.
+Installed commands run `<package-root>/bin/craft` (`bin\craft.cmd` on Windows); session binding,
+task state and activity are read and written natively. Discovery writes its reuse receipt under
+the shared lock only if the state it observed is still current; a concurrent receipt is
+preserved with a diagnostic.
 
 A host hook runs `craft hook <host> <lifecycle>` through a generated launcher that only selects
 the bundled executable: `bin/craft` for POSIX shells, including Git Bash on Windows, and
@@ -109,12 +104,10 @@ crate cannot (ADR 0001: crates only for useful boundaries).
 
 Steps: amend this ADR's table and rationale, add the `architecture.json` entry, add a negative
 fixture if the change introduces a rule, and pass `npm run architecture`. Removing a module is
-the same change in reverse; mark it `retiring` first when its contents move over time.
+the same change in reverse.
 
 ## Consequences
 
 Structure changes become explicit, reviewed edits to two files instead of side effects. The JS
-budgets make the migration's progress visible and stop runtime JavaScript from growing. Entry
-point and root lists are verbose during migration; they shrink with each wave and disappear with
-the legacy code. A new runtime entry point or shipped file type needs a manifest update, which is
-intended friction.
+budgets stop JavaScript from growing back. A new runtime entry point or shipped file type needs
+a manifest update, which is intended friction.

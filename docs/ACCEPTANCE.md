@@ -33,7 +33,7 @@ All use the existing version-1 engine envelope. Each payload independently uses
 `formatVersion: 1`; this is unrelated to package release versions. Unknown fields and
 unsupported payload versions fail. Contract arrays preserve order in the digest.
 Source-checkout examples live in `tests/fixtures/acceptance/contract.json` (two
-distinct required criteria) and `tests/acceptance-contract.test.mjs` (evidence cases).
+distinct required criteria) and `engine/tests/acceptance_contract.rs` (evidence cases).
 Tests are not included in installed bundles.
 
 ## Shapes and limits
@@ -167,13 +167,12 @@ model-quality evidence.
 
 | Existing reader/writer | Behavior to preserve |
 |---|---|
-| `engine/session/task.mjs` | Strict start/step/binding inputs; existing scope digest and declared receipts unchanged |
-| `engine/session/activity.mjs` | Version-1 session, bounded 24-attempt history; strict receipt fields |
-| `engine/checkpoint.mjs` | Strict metadata fields; existing version-1 checkpoint and continuation source binding |
-| `application/session/{task,activity,status}.mjs` | Locked updates, checkpoint orchestration and task projection through the public engine |
-| `application/{checkpoint,discovery/discover,workspace}.mjs` | Consume existing bindings, snapshots and selected repositories |
-| `engine/session/{status,recommendations,features}.mjs` | Recovery, action and operational feature facts retain their separate meanings |
-| CLI and host entry points | Continue through the existing application task/session operations |
+| Task start, step and binding (`engine/src/session.rs`, `session/step.rs`) | Strict inputs; existing scope digest and declared receipts unchanged |
+| Session activity (`engine/src/session.rs`) | Version-1 session, bounded 24-attempt history; strict receipt fields |
+| Checkpoints (`engine/src/checkpoint.rs`) | Strict metadata fields; existing version-1 checkpoint and continuation source binding |
+| Task, checkpoint, discovery and workspace use cases (`application/src`) | Locked updates, existing bindings, snapshots and selected repositories |
+| Session status, actions and features (`engine/src/session/status.rs`, `engine/src/actions.rs`) | Recovery, action and operational feature facts retain their separate meanings |
+| CLI and host entry points | Continue through the existing task/session operations |
 
 Legacy task/attempt/checkpoint fixtures retain their declared semantics and original
 scope digest. Opting into a structured contract upgrades that session/task state to

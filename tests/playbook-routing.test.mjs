@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { route } from './native-route.mjs';
-import { catalog } from '../application/routing/catalog.mjs';
-import { route as engineRoute } from '../engine/routing/route.mjs';
+
+const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url), 'utf8'));
 
 const select = (file, config = {}, intent = 'implement', risks = []) => route({ intent, files: [file], project: { formatVersion: 1, ...config }, risks });
 
@@ -34,15 +34,7 @@ test('CI/CD guidance uses pipeline paths or explicit risks, never the Git host',
   assert.ok(!route({intent:'verify',files:['.github/workflows/ci.yml'],verificationMode:'manual'}).skills.includes(skill));
 });
 
-test('path selectors cannot borrow provider evidence from another affected module', () => {
-  const configured=structuredClone(catalog);
-  const entry=configured.entries.find(entry=>entry.id==='practice:github-actions-path');
-  entry.when.providers=['bedrock'];
-  const result=engineRoute({intent:'review',files:['.github/workflows/ci.yml','agent/main.py'],catalog:configured,
-    project:{formatVersion:1,modules:[{name:'ci',path:'.github',providers:[]},{name:'agent',path:'agent',providers:['bedrock']}]}});
-  assert.ok(!result.loading.practices.includes(entry.id));
-});
-
+// A provider selector on a path practice: `cargo test -p craft-engine path_selectors_cannot_borrow`.
 test('verification uses reasoning while declared check execution is a minimal tool plan', () => {
   const project = { formatVersion: 1, frameworks: ['react'], layers: ['ui'],
     modules: [{ name: 'ui', path: 'ui', checks: [{ command: 'consumer-test', args: ['--affected'] }] }] };

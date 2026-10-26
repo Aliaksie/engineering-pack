@@ -14,3 +14,5 @@ export function saveCheckpoint(root, session, metadata = {}) {
 }
 export const recoverCheckpoint = (root, session) => run(['checkpoint-read', '--root', root, '--session', session]);
 export const readCheckpoint = (root, session) => recoverCheckpoint(root, session).saved;
+// The current repository observation the checkpoint comparison uses.
+export const repositoryState = root => run(['checkpoint-read', '--root', root]).current;

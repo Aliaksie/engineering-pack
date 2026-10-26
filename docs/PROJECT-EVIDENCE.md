@@ -106,10 +106,8 @@ Java imports retain their spelled qualified names and wildcard suffixes without
 claiming that a selected member supplies the imported type.
 
 `engine/src` owns portable records and identities; `platform/src` owns SQLite,
-Git inventory and the Tree-sitter provider; `application/src` orchestrates operations.
-The Node platform bridge invokes a versioned JSON operation through `application/src/main.rs`.
-The existing JavaScript engine remains in place for unaffected operations under
-[ADR 0001](adr/0001-rust-core-runtime.md).
+Git inventory and the Tree-sitter provider; `application/src` orchestrates operations
+behind `craft project-evidence` and the versioned JSON operations of `craft`.
 
 SQLite state lives in `.craft/state/<worktree-id>/shared/project-evidence.sqlite`.
 The native runtime owns its canonical worktree identity; consumers use paths returned

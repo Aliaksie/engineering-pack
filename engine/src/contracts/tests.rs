@@ -1,10 +1,9 @@
 use super::*;
 use crate::workers;
 
-const ENGINE: &str = include_str!("../../../tests/fixtures/runtime/engine-contracts.json");
 const SETTINGS: &str = include_str!("../../../tests/fixtures/runtime/settings-contracts.json");
 
-/// The JS engine operations this crate replaces, over the same JSON input.
+/// The settings operations of the JS engine, over the same JSON input.
 fn evaluate(operation: &str, input: &Value) -> Option<std::result::Result<Value, String>> {
     let empty = json!({});
     let field = |name: &str| input.get(name).unwrap_or(&Value::Null);
@@ -31,32 +30,30 @@ fn evaluate(operation: &str, input: &Value) -> Option<std::result::Result<Value,
 }
 
 #[test]
-fn frozen_engine_cases_replay() {
+fn frozen_settings_cases_replay() {
     let mut replayed = 0;
-    for corpus in [ENGINE, SETTINGS] {
-        let corpus: Value = serde_json::from_str(corpus).unwrap();
-        for case in corpus["cases"].as_array().unwrap() {
-            let request = &case["request"];
-            let Some(operation) = request.get("operation").and_then(Value::as_str) else {
-                continue;
-            };
-            let mut input = request["input"].clone();
-            normalize_numbers(&mut input);
-            let Some(actual) = evaluate(operation, &input) else {
-                continue;
-            };
-            let response = &case["response"];
-            match (actual, response["ok"].as_bool().unwrap()) {
-                (Ok(result), true) => assert_eq!(result, response["result"], "{}", case["id"]),
-                (Err(_), false) => {
-                    assert_eq!(response["error"]["code"], "INVALID_INPUT", "{}", case["id"])
-                }
-                (actual, _) => panic!("{}: expected {response}, got {actual:?}", case["id"]),
+    let corpus: Value = serde_json::from_str(SETTINGS).unwrap();
+    for case in corpus["cases"].as_array().unwrap() {
+        let request = &case["request"];
+        let Some(operation) = request.get("operation").and_then(Value::as_str) else {
+            continue;
+        };
+        let mut input = request["input"].clone();
+        normalize_numbers(&mut input);
+        let Some(actual) = evaluate(operation, &input) else {
+            continue;
+        };
+        let response = &case["response"];
+        match (actual, response["ok"].as_bool().unwrap()) {
+            (Ok(result), true) => assert_eq!(result, response["result"], "{}", case["id"]),
+            (Err(_), false) => {
+                assert_eq!(response["error"]["code"], "INVALID_INPUT", "{}", case["id"])
             }
-            replayed += 1;
+            (actual, _) => panic!("{}: expected {response}, got {actual:?}", case["id"]),
         }
+        replayed += 1;
     }
-    assert_eq!(replayed, 140);
+    assert_eq!(replayed, 133);
 }
 
 #[test]

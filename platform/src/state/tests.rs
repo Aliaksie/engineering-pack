@@ -252,3 +252,269 @@ fn legacy_hard_links_and_locks_block_migration() {
             .contains("writer is busy")
     );
 }
+
+/// Every file under `directory` with its bytes and modification time.
+fn metadata(directory: &Path) -> Vec<(PathBuf, Vec<u8>, Option<std::time::SystemTime>)> {
+    let mut files = Vec::new();
+    let mut pending = vec![directory.to_path_buf()];
+    while let Some(next) = pending.pop() {
+        for entry in fs::read_dir(&next).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                let modified = fs::metadata(&path).unwrap().modified().ok();
+                files.push((path.clone(), fs::read(&path).unwrap(), modified));
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+fn git_metadata(root: &Path) -> PathBuf {
+    let git = root.join(".git");
+    fs::create_dir_all(git.join("refs")).unwrap();
+    fs::write(git.join("HEAD"), "ref: refs/heads/main\n").unwrap();
+    git
+}
+
+#[test]
+fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
+    for namespace in ["git", "craft", "capabilities"] {
+        let fixture = Fixture::new();
+        let root = &fixture.0;
+        let git = git_metadata(root);
+        fs::create_dir(root.join(".craft")).unwrap();
+        fs::write(
+            root.join(".craft/project.json"),
+            r#"{"consumer":"preserve"}"#,
+        )
+        .unwrap();
+        fs::write(root.join(".craft/telemetry.json"), r#"{"local":false}"#).unwrap();
+        let old = match namespace {
+            "git" => git
+                .join("craft-state")
+                .join(&hash(root.to_str().unwrap().as_bytes())[..24]),
+            "craft" => root.join(".craft/state"),
+            _ => root.join(".capabilities/state"),
+        };
+        fs::create_dir_all(old.join("sessions/owned/evidence")).unwrap();
+        fs::write(old.join("record.json"), "{\"history\":[1,2]}\n").unwrap();
+        fs::write(old.join("telemetry.jsonl"), "{\"schemaVersion\":1}\n").unwrap();
+        fs::write(
+            old.join("telemetry.jsonl.1"),
+            "{\"schemaVersion\":1,\"older\":true}\n",
+        )
+        .unwrap();
+        fs::write(
+            old.join("sessions/owned/evidence/artifact.txt"),
+            "retained evidence",
+        )
+        .unwrap();
+        let before = metadata(&git);
+        let session = Some("existing-session");
+        let record = file(root, "record.json", false, session).unwrap();
+        assert_eq!(
+            read(&record, 1024).unwrap(),
+            Some(json!({"history": [1, 2]})),
+            "{namespace}"
+        );
+        write(&record, &json!({"history": [1, 2, 3]}), 1024, false).unwrap();
+        assert_eq!(file(root, "record.json", false, session).unwrap(), record);
+        let log = file(root, "telemetry.jsonl", false, None).unwrap();
+        assert_eq!(
+            fs::read_to_string(format!("{}.1", log.display())).unwrap(),
+            "{\"schemaVersion\":1,\"older\":true}\n"
+        );
+        let guard = file(root, "workspace-guard.json", false, None).unwrap();
+        assert_eq!(
+            fs::read_to_string(guard.with_file_name("sessions/owned/evidence/artifact.txt"))
+                .unwrap(),
+            "retained evidence"
+        );
+        assert_eq!(
+            metadata(&git),
+            before,
+            "{namespace}: Git metadata unchanged"
+        );
+        assert_eq!(
+            fs::read_to_string(old.join("record.json")).unwrap(),
+            "{\"history\":[1,2]}\n"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join(".craft/project.json")).unwrap(),
+            r#"{"consumer":"preserve"}"#
+        );
+        assert_eq!(
+            fs::read_to_string(root.join(".craft/telemetry.json")).unwrap(),
+            r#"{"local":false}"#
+        );
+        // An older writer resuming on the legacy store cannot silently fork history.
+        fs::write(old.join("record.json"), r#"{"history":[4]}"#).unwrap();
+        assert!(
+            file(root, "record.json", false, session)
+                .unwrap_err()
+                .contains("changed after migration")
+        );
+        assert_eq!(
+            read(&record, 1024).unwrap(),
+            Some(json!({"history": [1, 2, 3]}))
+        );
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_conflicts() {
+    let fixture = Fixture::new();
+    let legacy = fixture.0.join(".craft/state");
+    fs::create_dir_all(&legacy).unwrap();
+    let old = legacy.join("record.json");
+    let target = fixture.record("record.json");
+    fs::write(&old, r#"{"value":1}"#).unwrap();
+    fs::write(legacy.join("record.json.lock"), "").unwrap();
+    assert!(
+        file(&fixture.0, "record.json", true, SESSION)
+            .unwrap_err()
+            .contains("legacy state writer is busy")
+    );
+    fs::remove_file(legacy.join("record.json.lock")).unwrap();
+    fs::write(&old, "broken").unwrap();
+    assert!(file(&fixture.0, "record.json", true, SESSION).is_err());
+    fs::remove_file(&old).unwrap();
+    std::os::unix::fs::symlink(&target, &old).unwrap();
+    assert_eq!(
+        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
+        "unsafe or oversized legacy state"
+    );
+    fs::remove_file(&old).unwrap();
+    fs::write(&old, r#"{"value":1}"#).unwrap();
+    fs::write(&target, r#"{"value":2}"#).unwrap();
+    assert_eq!(
+        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
+        "legacy state destination conflict"
+    );
+    assert_eq!(fs::read_to_string(&target).unwrap(), r#"{"value":2}"#);
+    // A matching file without a published receipt is an interrupted copy.
+    fs::write(&target, r#"{"value":1}"#).unwrap();
+    assert_eq!(
+        file(&fixture.0, "record.json", true, SESSION).unwrap(),
+        target
+    );
+    assert_eq!(read(&target, 1024).unwrap(), Some(json!({"value": 1})));
+}
+
+#[test]
+fn an_overlapping_migration_writer_is_refused_without_partial_copies() {
+    let fixture = Fixture::new();
+    let legacy = fixture.0.join(".craft/state");
+    fs::create_dir_all(&legacy).unwrap();
+    fs::write(legacy.join("record.json"), r#"{"history":[1]}"#).unwrap();
+    let target = location(&fixture.0, SESSION).unwrap().directory;
+    fs::create_dir_all(&target).unwrap();
+    let old = legacy.join("record.json");
+    let receipt = target.join(format!(
+        "migration-{}.json",
+        short(old.to_str().unwrap().as_bytes())
+    ));
+    fs::write(format!("{}.lock", receipt.display()), "").unwrap();
+    assert_eq!(
+        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
+        "state migration is busy"
+    );
+    assert!(!target.join("record.json").exists());
+    fs::remove_file(format!("{}.lock", receipt.display())).unwrap();
+    let record = file(&fixture.0, "record.json", true, SESSION).unwrap();
+    assert_eq!(read(&record, 1024).unwrap(), Some(json!({"history": [1]})));
+    assert!(
+        listing(&target)
+            .iter()
+            .all(|name| !name.ends_with(".tmp") && !name.ends_with(".lock"))
+    );
+}
+
+#[test]
+fn fresh_writes_never_create_or_change_git_metadata() {
+    let fixture = Fixture::new();
+    let git = git_metadata(&fixture.0);
+    let before = metadata(&git);
+    write(
+        &fixture.record("record.json"),
+        &json!({"value": 1}),
+        1024,
+        false,
+    )
+    .unwrap();
+    assert_eq!(metadata(&git), before);
+}
+
+#[test]
+fn linked_worktree_migration_reads_its_own_legacy_git_directory() {
+    let fixture = Fixture::new();
+    let main = git_metadata(&fixture.0);
+    let linked = fixture.0.join("linked");
+    let linked_git = main.join("worktrees/linked");
+    fs::create_dir_all(&linked_git).unwrap();
+    fs::create_dir(&linked).unwrap();
+    fs::write(
+        linked.join(".git"),
+        format!("gitdir: {}\n", linked_git.display()),
+    )
+    .unwrap();
+    let legacy = linked_git
+        .join("craft-state")
+        .join(&hash(linked.to_str().unwrap().as_bytes())[..24]);
+    fs::create_dir_all(&legacy).unwrap();
+    fs::write(legacy.join("record.json"), r#"{"worktree":"linked"}"#).unwrap();
+    let before = metadata(&main);
+    let session = Some("linked-session");
+    let record = file(&linked, "record.json", false, session).unwrap();
+    assert_eq!(
+        read(&record, 1024).unwrap(),
+        Some(json!({"worktree": "linked"}))
+    );
+    let main_record = file(&fixture.0, "record.json", false, session).unwrap();
+    assert_eq!(read(&main_record, 1024).unwrap(), None);
+    assert_eq!(metadata(&main), before);
+}
+
+#[test]
+fn concurrent_writers_serialize_on_one_lock() {
+    const ROUNDS: u64 = 40;
+    const WRITERS: u64 = 4;
+    let fixture = Fixture::new();
+    let record = fixture.record("counter.json");
+    write(&record, &json!({"count": 0}), 1024, false).unwrap();
+    let writers: Vec<_> = (0..WRITERS)
+        .map(|_| {
+            let record = record.clone();
+            std::thread::spawn(move || {
+                let mut done = 0;
+                while done < ROUNDS {
+                    let Some(_ticket) = lock(&record).unwrap() else {
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        continue;
+                    };
+                    let count = read(&record, 1024).unwrap().unwrap()["count"]
+                        .as_u64()
+                        .unwrap();
+                    write(&record, &json!({"count": count + 1}), 1024, false).unwrap();
+                    done += 1;
+                }
+            })
+        })
+        .collect();
+    for writer in writers {
+        writer.join().unwrap();
+    }
+    assert_eq!(
+        read(&record, 1024).unwrap(),
+        Some(json!({"count": WRITERS * ROUNDS}))
+    );
+    assert_eq!(
+        listing(record.parent().unwrap()),
+        ["counter.json"],
+        "no lock or temporary file remains"
+    );
+}

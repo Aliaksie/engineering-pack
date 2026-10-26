@@ -1,4 +1,3 @@
-import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
 import { hookPackage, runHook } from './hook-command.mjs';
+import { stateFile } from './state.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const events = root => {

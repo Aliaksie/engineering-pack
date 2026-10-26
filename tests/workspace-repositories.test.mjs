@@ -5,14 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { launch, run } from './craft.mjs';
-import { activeTask } from './session-state.mjs';
-import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
+import { activeTask, sessionFile } from './session-state.mjs';
+import { saveCheckpoint, recoverCheckpoint, repositoryState } from './checkpoint-cli.mjs';
 import { workspaceBoundary, workspaceOperation } from './workspace-cli.mjs';
-import { repositoryRoots, repositoryState, stateFile } from '../platform/index.mjs';
+import { digest, stateFile } from './state.mjs';
 import { nativeLocate } from './craft.mjs';
 import { prepareSnapshot } from './review-tools.mjs';
-import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
-import { decide, digest } from '../application/engine-client.mjs';
+import { contractDigest } from './acceptance-view.mjs';
 import { copy } from '../tooling/export/export.mjs';
 
 function fixture(t) {
@@ -41,9 +40,9 @@ test('Windows short and expanded workspace paths select the same Git root', { sk
   const short = result.stdout.trim();
   if (path.relative(short, expanded) === '') return t.skip('Windows short names are unavailable on this volume');
   for (const workspace of [short, expanded]) {
-    const [selected] = repositoryRoots(workspace, ['kit']);
-    assert.equal(path.relative(fs.realpathSync.native(selected.root), fs.realpathSync.native(path.join(expanded, 'kit'))), '');
-    assert.throws(() => repositoryRoots(workspace, ['kit/.git']), /Git worktree root/);
+    const found = nativeLocate(workspace, { terms: ['value'], paths: ['kit'] }, ['kit']);
+    assert.ok(found.matches.length && found.matches.every(match => match.path.startsWith('kit/')));
+    assert.throws(() => nativeLocate(workspace, { terms: ['value'], paths: ['kit'] }, ['kit/.git']));
   }
 });
 
@@ -109,7 +108,7 @@ test('explicit repository roots reject traversal, aliases, nonroots and out-of-s
 
 test('a corrupt activity ledger keeps fresh lookup inside the separately saved repository selection', t => {
   const { root, start, command } = fixture(t); start(['kit']);
-  const file = stateFile(root, `session-${digest(['session', 'task']).slice(0, 24)}.json`, false, 'session');
+  const file = sessionFile(root, 'session', 'task');
   fs.writeFileSync(file, '{broken');
   const result = command('locate', '--term', 'value');
   assert.equal(result.discovery.reused, 0);
@@ -125,8 +124,6 @@ function input(root, value) {
   const file = path.join(root, `input-${++inputs}.json`);
   fs.writeFileSync(file, JSON.stringify(value)); return file;
 }
-// The JS boundaries (session/task/host) address the main scope of the bound task.
-const mainScope = (task = 'task', repositories = ['kit']) => ({ session: digest('session'), task: digest([task, repositories]), operation: digest('main') });
 const setOwners = (directory, pid) => {
   const file = path.join(directory, 'owner.json'), owner = JSON.parse(fs.readFileSync(file));
   for (const op of Object.values(owner.operations)) op.pid = pid;
@@ -154,10 +151,11 @@ test('workspace is lazy, isolated by session/task/operation, promotes selective 
 
 test('workspace bounds, settings merge and ownership checks fail closed', t => {
   const { root, command, start } = fixture(t); start();
-  const settings = decide('effective-settings', { project: { formatVersion: 1, workspace: { scratch: { maxBytes: 4 } } } }).settings;
-  assert.equal(settings.workspace.evidence.retentionDays, 7);
   fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, workspace: { scratch: { maxBytes: 4 } } }));
+  const { settings } = run(['settings', '--root', root]);
+  assert.equal(settings.workspace.scratch.maxBytes, 4);
+  assert.equal(settings.workspace.evidence.retentionDays, 7);
   const write = (name, content = 'x') => command('workspace-write', '--data', input(root, { name, content }));
   assert.throws(() => write('large', '12345'), /budget/);
   for (const name of ['../outside', '/tmp/outside']) assert.throws(() => write(name), /safe filename/);
@@ -181,18 +179,17 @@ test('workspace bounds, settings merge and ownership checks fail closed', t => {
 
 test('stale cleanup retains live owners and reclaims abandoned scratch and aged evidence', t => {
   const { root, command, start } = fixture(t); start();
-  const policy = structuredClone(DEFAULT_SETTINGS.workspace), now = Date.now();
   const opened = command('workspace-write', '--operation', 'scope', '--data', input(root, { name: 'note', content: 'intermediate' }));
   setOwners(opened.directory, process.pid);
   age(opened.directory, 2);
-  workspaceOperation(root, null, policy, 'maintain');
+  workspaceOperation(root, 'maintain');
   assert.ok(fs.existsSync(opened.scratchDirectory), 'age cannot remove live owners');
   setOwners(opened.directory, 2147483647);
-  const cleaned = workspaceOperation(root, null, policy, 'maintain', now + 2 * 86400000);
+  const cleaned = workspaceOperation(root, 'maintain');
   assert.equal(cleaned.cleaned[0].scratch, 'cleaned');
   assert.equal(fs.existsSync(path.join(opened.directory, 'scratch')), false);
   age(opened.directory, 8);
-  workspaceOperation(root, null, policy, 'maintain');
+  workspaceOperation(root, 'maintain');
   assert.equal(fs.existsSync(opened.directory), false);
 });
 
@@ -208,8 +205,7 @@ for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirec
   const result = nativeLocate(repo, { terms: ['PRIVATE_NEEDLE'], paths: ['.'], maxFiles: 100, maxMatches: 10, maxBytes: 10000 });
   assert.deepEqual(result.matches, []);
   assert.equal(result.filesScanned, 1);
-  const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url)));
-  assert.deepEqual(decide('route', { intent: 'implement', files: [`nested/${privateDirectory}/state/tempting.py`], project: { formatVersion: 1 }, catalog }).files, []);
+  assert.deepEqual(run(['route', '--root', repo, '--intent', 'implement', '--file', `nested/${privateDirectory}/state/tempting.py`]).files, []);
   const head = git('kit', 'rev-parse', 'HEAD'); git('kit', 'add', '.'); git('kit', 'commit', '-qm', 'private fixture');
   const review = prepareSnapshot(root, { root: repo, base: head, head: 'HEAD' });
   assert.deepEqual(review.files, []); assert.equal(review.diff, '');
@@ -222,13 +218,12 @@ test('workspace operations retain other owners, recover only dead owned locks an
   const { root, command, start } = fixture(t); start();
   fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, workspace: { maxSessions: 1 } }));
-  const policy = { ...DEFAULT_SETTINGS.workspace, maxSessions: 1 }, identity = mainScope();
   const opened = command('workspace-open');
   const ownerFile = path.join(opened.directory, 'owner.json');
   const owner = JSON.parse(fs.readFileSync(ownerFile));
   owner.operations[digest('other-worker')] = { pid: process.ppid, closed: false };
   fs.writeFileSync(ownerFile, JSON.stringify(owner));
-  assert.equal(workspaceOperation(root, identity, policy, 'complete').scratch, 'retained');
+  assert.equal(workspaceOperation(root, 'complete').scratch, 'retained');
   assert.ok(fs.existsSync(opened.scratchDirectory));
   assert.throws(() => command('workspace-write', '--operation', 'other-worker', '--data', input(root, { name: 'collision', content: 'x' })), /another active owner/);
   start(['kit'], 'another');
@@ -236,14 +231,14 @@ test('workspace operations retain other owners, recover only dead owned locks an
   start();
   const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
   fs.writeFileSync(lock, ''); // Another writer has created but not yet published its lock.
-  assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'retained');
+  assert.equal(workspaceOperation(root, 'status').status, 'retained');
   assert.equal(command('workspace-open').status, 'retained');
   assert.equal(fs.existsSync(lock), true);
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: process.pid }));
-  assert.equal(workspaceOperation(root, identity, policy, 'complete').status, 'retained');
+  assert.equal(workspaceOperation(root, 'complete').status, 'retained');
   assert.equal(command('workspace-open').status, 'retained');
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
-  assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available');
+  assert.equal(workspaceOperation(root, 'status').status, 'available');
   assert.equal(fs.existsSync(lock), false);
   fs.writeFileSync(lock, JSON.stringify({ owner: 'craft-workspace-lock', formatVersion: 1, pid: 2147483647 }));
   assert.equal(command('workspace-open').status, 'available', 'the native runtime observes the dead holder on every platform');
@@ -272,11 +267,10 @@ test('a new workspace at capacity evicts the oldest inactive one; unverified ent
   const { root, command, start } = fixture(t);
   fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
   fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, workspace: { maxSessions: 2 } }));
-  const policy = { ...DEFAULT_SETTINGS.workspace, maxSessions: 2 };
   start(['kit'], 'old');
   const old = command('workspace-open'); // its craft owner has exited
   fs.mkdirSync(path.join(path.dirname(old.directory), 'unverified'));
-  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain').cleaned, [], 'maintain at capacity keeps the entry');
+  assert.deepEqual(workspaceOperation(root, 'maintain').cleaned, [], 'maintain at capacity keeps the entry');
   start(['kit'], 'new');
   const opened = command('workspace-open');
   assert.equal(opened.status, 'available');
@@ -288,14 +282,13 @@ test('a new workspace at capacity evicts the oldest inactive one; unverified ent
 
 test('cleanup reports only scratch it removed and touching a closed workspace keeps its retention clock', t => {
   const { root, command, start } = fixture(t); start();
-  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
   const opened = command('workspace-write', '--data', input(root, { name: 'note', content: 'x' }));
-  assert.equal(workspaceOperation(root, identity, policy, 'complete').scratch, 'cleaned');
+  assert.equal(workspaceOperation(root, 'complete').scratch, 'cleaned');
   const owner = () => JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
   const updated = owner().updated;
   command('task-step', '--stage', 'implement', '--target', 'fixture', '--approach', 'fixture', '--evidence', 'fixture', '--outcome', 'passed', '--result', 'Checked', '--next', 'Continue');
   assert.equal(owner().updated, updated);
-  assert.deepEqual(workspaceOperation(root, null, policy, 'maintain').cleaned, []);
+  assert.deepEqual(workspaceOperation(root, 'maintain').cleaned, []);
   assert.deepEqual(run(['workspace-clean', '--root', root]).cleaned, []);
 });
 
@@ -323,12 +316,11 @@ test('capacity eviction refuses a workspace holding unknown files', t => {
 
 test('an exited workspace writer is reclaimable while its parent stays alive', t => {
   const { root, command, start } = fixture(t); start();
-  const policy = DEFAULT_SETTINGS.workspace;
   const opened = command('workspace-write', '--data', input(root, { name: 'note', content: 'abandoned' }));
   const owner = JSON.parse(fs.readFileSync(path.join(opened.directory, 'owner.json')));
   assert.notEqual(owner.operations[digest('main')].pid, process.pid);
   age(opened.directory, 2);
-  const result = workspaceOperation(root, null, policy, 'maintain');
+  const result = workspaceOperation(root, 'maintain');
   assert.equal(result.cleaned[0].scratch, 'cleaned');
   assert.equal(fs.existsSync(opened.scratchDirectory), false);
 });
@@ -347,7 +339,6 @@ test('concurrent native writers and session observations serialize on one worksp
   command('workspace-open');
   const binary = process.env.CRAFT_NATIVE_BINARY;
   const module = new URL('./craft.mjs', import.meta.url).href;
-  const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
   const run = (file, args) => new Promise((resolve, reject) => {
     const child = spawn(file, args);
     let output = '', error = '';
@@ -379,9 +370,9 @@ test('concurrent native writers and session observations serialize on one worksp
   assert.ok(Object.keys(owner.operations).length > 0);
   const files = fs.readdirSync(path.join(directory, 'scratch'), { recursive: true }).filter(file => file.includes('note-'));
   assert.equal(files.length, accepted.length);
-  assert.equal(workspaceOperation(root, identity, policy, 'status').status, 'available');
+  assert.equal(workspaceOperation(root, 'status').status, 'available');
   age(directory, 2);
-  assert.equal(workspaceOperation(root, null, policy, 'maintain').cleaned[0].scratch, 'cleaned');
+  assert.equal(workspaceOperation(root, 'maintain').cleaned[0].scratch, 'cleaned');
 });
 
 test('structured criterion evidence binds all selected repositories and reports missing roots as unknown', t => {
@@ -392,7 +383,7 @@ test('structured criterion evidence binds all selected repositories and reports 
   command('task-start', '--task', 'task', '--goal', 'Update selected repositories', '--repository', 'kit', '--repository', 'profile', '--contract', contractFile);
   const context = command('session');
   const records = contract.criteria.map(c => ({ id: c.id, criterionIds: [c.id], scope: c.scope,
-    contract: decide('engineering-contract-digest', { contract }), binding: context.binding,
+    contract: contractDigest(contract), binding: context.binding,
     checkId: 'value-check', kind: 'check', artifact: 'retained/checks', observedAt: '2026-10-22T00:00:00Z',
     reporter: 'fixture', basis: c.description, support: 'verified', execution: 'passed' }));
   fs.writeFileSync(ledgerFile, JSON.stringify({ formatVersion: 1, records }));

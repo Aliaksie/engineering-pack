@@ -7,17 +7,10 @@
       "kind": "rust-crate",
       "crate": "craft-engine",
       "responsibility": "Pure decisions, contracts, identities and transitions over explicit observations.",
-      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "routing/catalog.json"],
       "dependsOn": [],
       "externalDependencies": ["serde", "serde_json", "sha2"],
-      "shipped": true,
-      "legacy": {
-        "retireBy": "W4",
-        "allow": ["**/*.mjs", "routing/catalog.json"],
-        "jsLines": 1609,
-        "dependsOn": [],
-        "entryPoints": ["engine/index.mjs"]
-      }
+      "shipped": true
     },
     "platform": {
       "kind": "rust-crate",
@@ -26,14 +19,7 @@
       "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
       "dependsOn": ["engine"],
       "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
-      "shipped": true,
-      "legacy": {
-        "retireBy": "W4",
-        "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 483,
-        "dependsOn": [],
-        "entryPoints": ["platform/index.mjs"]
-      }
+      "shipped": true
     },
     "application": {
       "kind": "rust-crate",
@@ -42,31 +28,7 @@
       "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
       "dependsOn": ["engine", "platform"],
       "externalDependencies": ["serde_json"],
-      "shipped": true,
-      "legacy": {
-        "retireBy": "W4",
-        "allow": ["**/*.mjs"],
-        "jsLines": 295,
-        "dependsOn": ["engine", "platform", "integrations"],
-        "entryPoints": [
-          "application/telemetry/observe.mjs"
-        ],
-        "runtimeRoots": [
-          "application/telemetry/observe.mjs"
-        ]
-      }
-    },
-    "integrations": {
-      "kind": "retiring",
-      "responsibility": "Legacy external command, service and OTLP mappings that dissolve into application, platform and review owners.",
-      "allow": ["**/*.mjs"],
-      "retireBy": "W4",
-      "jsLines": 38,
-      "dependsOn": [],
-      "shipped": true,
-      "entryPoints": [
-        "integrations/otel/traces.mjs"
-      ]
+      "shipped": true
     },
     "hosts": {
       "kind": "host-adapter",

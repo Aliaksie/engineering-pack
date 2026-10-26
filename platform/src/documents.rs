@@ -1,6 +1,5 @@
 //! Bounded JSON documents a person supplies: project configuration, private preferences
-//! and command input. `platform/node/resources/` keeps the same rules until its last
-//! command migrates.
+//! and command input.
 use crate::files::{ReadError, read_bounded};
 use serde_json::{Value, json};
 use std::{fmt, fs, io, path::Path};

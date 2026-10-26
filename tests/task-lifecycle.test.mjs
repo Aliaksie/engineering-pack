@@ -5,13 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { launch, run } from './craft.mjs';
-import { readSessionState, activeTask, bindingFile, attemptStatus } from './session-state.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
-import { lockState, releaseState } from '../platform/index.mjs';
+import { readSessionState, activeTask, bindingFile, holdLock } from './session-state.mjs';
+import { contractDigest as engineeringContractDigest } from './acceptance-view.mjs';
 import { nativeHook } from './native-hook.mjs';
 import { updateSessionState } from './session-state.mjs';
 import { readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
-import { readTelemetry } from '../platform/node/telemetry.mjs';
+import { readTelemetry } from './state.mjs';
 
 // One native delivery hook event; the structured decision, before host serialization.
 const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 'host-session', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
@@ -149,14 +148,13 @@ test('unrelated acceptance success cannot erase a failure or complete the task',
   const receipt = (target, outcome, extra = []) => command('task-step', '--target', target, '--approach', 'bounded-check', '--evidence', `checks/${target}`, '--outcome', outcome, '--result', 'Observed check outcome', '--next', 'Resolve remaining acceptance', ...extra);
   receipt('acceptance:primary', 'quality-failure');
   receipt('acceptance:secondary', 'passed');
-  let state = readSessionState(root, 'host-session', 'fix-value');
-  assert.equal(attemptStatus(state.attempts, 'implement').attempts, 1);
+  assert.equal(command('session').activity.attempts, 1);
   assert.throws(() => receipt('acceptance:secondary', 'passed', ['--complete']), /unresolved acceptance/);
   assert.equal(readSessionState(root, 'host-session', 'fix-value').attempts.length, 2);
   assert.equal(receipt('acceptance:primary', 'passed', ['--complete']).complete, true);
 });
 
-test('prerequisite resolution clears only matching blockers without certifying acceptance or clearing quality failures', async t => {
+test('prerequisite resolution clears only matching blockers without certifying acceptance or clearing quality failures', t => {
   const { root, command, start } = fixture(t); start();
   const receipt = (target, outcome, extra = []) => command('task-step', '--stage', 'verify', '--target', target,
     '--approach', 'bounded-check', '--evidence', 'checks/prerequisite', '--outcome', outcome,
@@ -169,10 +167,6 @@ test('prerequisite resolution clears only matching blockers without certifying a
   const resolved = receipt('acceptance:scope', 'prerequisite-resolved', ['--profile', 'standard', '--host', 'codex']);
   assert.equal(resolved.complete, false);
   assert.equal(resolved.status.task.verification, undefined);
-  const state = readSessionState(root, 'host-session', 'fix-value');
-  const { unresolvedAttempts } = (await import('../engine/session/activity.mjs'));
-  assert.deepEqual(unresolvedAttempts(state.attempts).map(item => [item.target, item.outcome]),
-    [['acceptance:scope', 'quality-failure'], ['acceptance:other', 'blocked']]);
   assert.throws(() => receipt('acceptance:scope', 'prerequisite-resolved'), /matching unresolved blocker/);
   assert.throws(() => receipt('acceptance:scope', 'passed', ['--complete']), /unresolved/);
   receipt('acceptance:other', 'prerequisite-resolved');
@@ -447,10 +441,9 @@ test('structured state refuses busy writers and combined capacity overflow witho
   const { root, command, start, submit, records } = structuredFixture(t);
   start(); submit(records());
   const before = readSessionState(root, 'host-session', 'fix-value');
-  const lock = lockState(bindingFile(root, 'host-session'));
-  assert.ok(lock);
+  const release = holdLock(bindingFile(root, 'host-session'));
   try { assert.throws(() => submit(records()), /writer is busy/); }
-  finally { releaseState(lock); }
+  finally { release(); }
   assert.deepEqual(readSessionState(root, 'host-session', 'fix-value'), before);
   updateSessionState(root, 'host-session', 'fix-value', state => { state.padding = 'x'.repeat(121000); });
   const padded = readSessionState(root, 'host-session', 'fix-value');

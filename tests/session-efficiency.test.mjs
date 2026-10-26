@@ -1,15 +1,12 @@
-import { stateFile } from '../platform/index.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { attemptStatus } from './session-state.mjs';
 import { readSessionState } from './session-state.mjs';
+import { stateFile } from './state.mjs';
 import { sessionStatus } from './session-cli.mjs';
-import { decide } from '../application/engine-client.mjs';
-import { catalog } from '../application/routing/catalog.mjs';
 import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { run } from './craft.mjs';
 
@@ -22,8 +19,8 @@ function discover(root, request, { session, task, preferencesFile } = {}) {
   return run(['locate', '--root', root, ...scope, '--data', data]);
 }
 
-// The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
-const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });
+// Attempt counters for the bound task's implement stage, as the session view reports them.
+const implementAttempts = root => sessionStatus({ task: { id: scope.task, stage: 'implement' } }, undefined, { root, session: scope.session }).activity;
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'session-efficiency-'));
@@ -137,18 +134,16 @@ test('large evidence remains within the output cap and truncated packets never i
 test('three equivalent failures stop, a changed approach is distinguished, and pass ends the attempt series', t => {
   const { root, write } = fixture(t);
   for (let i = 0; i < 3; i++) recordAttempt(root, scope.session, scope.task, receipt());
-  let state = readSessionState(root, scope.session, scope.task);
-  assert.equal(attemptStatus(state.attempts, 'implement').noProgressAttempts, 3);
+  assert.equal(implementAttempts(root).noProgressAttempts, 3);
   let status = sessionStatus({ task: { id: scope.task, stage: 'implement' } }, undefined, { root, session: scope.session });
   assert.equal(status.recommendation.action, 'return-control');
   recordAttempt(root, scope.session, scope.task, receipt({ approach: 'different-evidence', maxAttempts: 5 }));
-  state = readSessionState(root, scope.session, scope.task);
-  assert.equal(attemptStatus(state.attempts, 'implement').noProgressAttempts, 1);
+  assert.equal(implementAttempts(root).noProgressAttempts, 1);
   recordAttempt(root, scope.session, scope.task, receipt({ outcome: 'passed' }));
-  assert.equal(attemptStatus(readSessionState(root, scope.session, scope.task).attempts, 'implement').attempts, 0);
+  assert.equal(implementAttempts(root).attempts, 0);
   write('src/names.txt', 'progress\n');
   recordAttempt(root, scope.session, scope.task, receipt());
-  assert.equal(attemptStatus(readSessionState(root, scope.session, scope.task).attempts, 'implement').noProgressAttempts, 1);
+  assert.equal(implementAttempts(root).noProgressAttempts, 1);
   assert.throws(() => recordAttempt(root, scope.session, scope.task, { outcome: 'quality-failure' }), /meaningful attempt/);
 });
 
@@ -176,16 +171,7 @@ test('policy distinguishes healthy progress, unknown telemetry, pressure and cha
   assert.equal(sessionStatus({ ...observed(45), task }, undefined, { root, now }).recommendation, null);
   assert.equal(sessionStatus({ task }, undefined, { root, now }).usage.status, 'unknown');
   assert.equal(sessionStatus({ ...observed(91), task: { ...task, safeBoundary: true, phaseChanged: true } }, undefined, { root, now }).recommendation.action, 'save-handoff');
-  assert.equal(sessionAdvice({ ...observed(91), task }, undefined, { now }).recommendation.action, 'continue-bounded-step');
-});
-
-test('classes use deterministic economical discovery and allow directly requested strong reasoning', () => {
-  const capabilityAdvice = (operation, risks) => decide('capability', { operation, risks });
-  assert.equal(capabilityAdvice('locate').class, 'economical');
-  assert.equal(capabilityAdvice('locate').execution, 'prefer-deterministic-tool');
-  assert.equal(capabilityAdvice('architecture').class, 'strong');
-  assert.equal(capabilityAdvice('implement', ['distributed-consistency']).class, 'strong');
-  assert.equal(capabilityAdvice('implement').class, 'standard');
+  assert.equal(sessionStatus({ ...observed(91), task }, undefined, { root }).recommendation.action, 'continue-bounded-step');
 });
 
 test('session receipts remain opt-in while normal commands record only supporting telemetry', t => {
@@ -260,10 +246,10 @@ test('incomplete repository inspection records budgets while leaving equivalence
   const { root, write } = fixture(t);
   write('oversized.txt', 'x'.repeat(2 * 1024 * 1024 + 1));
   for (let index = 0; index < 3; index++) recordAttempt(root, scope.session, scope.task, receipt());
-  const status = attemptStatus(readSessionState(root, scope.session, scope.task).attempts, 'implement');
+  const status = implementAttempts(root);
   assert.equal(status.attempts, 3);
   assert.equal(status.noProgressAttempts, 0);
-  assert.equal(status.records.at(-1).source, null);
+  assert.equal(readSessionState(root, scope.session, scope.task).attempts.at(-1).source, null);
 });
 
 test('attempt operations are bounded identifiers and help avoids source-code rediscovery', t => {
@@ -303,10 +289,10 @@ test('unavailable optional activity storage does not suppress the routing plan',
   assert.ok(result.activityDiagnostic);
 });
 
-test('empty discovery remains invalid and healthy reuse alone does not imply post-compaction degradation', () => {
-  assert.throws(() => discover('.', { terms: [] }), /terms/);
-  const status = sessionAdvice({ ...observed(91), task: { safeBoundary: true, handoffSaved: true, checkpointFresh: true, compacted: true }, activity: { repeatedLookups: 8, reuseHits: 8 } }, undefined, { now });
-  assert.equal(status.recommendation.action, 'compact');
+// Advice after compaction with healthy reuse is pinned by the Rust session advice test.
+test('empty discovery remains invalid', t => {
+  const { root } = fixture(t);
+  assert.throws(() => discover(root, { terms: [] }), /terms/);
 });
 
 test('escalation starts the new tier budget and configured terminal limits stop before the generic ceiling', t => {
@@ -329,16 +315,6 @@ test('escalation starts the new tier budget and configured terminal limits stop 
   assert.equal(status.activity.attempts, 2);
   assert.equal(status.recommendation.action, 'return-control');
   assert.match(status.recommendation.reason, /No further escalation/);
-});
-
-test('switching profiles cannot clear an unresolved permission failure', () => {
-  const records = [
-    { operation: 'implement', profile: 'routine', outcome: 'permission-denied', evidence: 'denial' },
-    { operation: 'implement', profile: 'deep', outcome: 'quality-failure', evidence: 'check' }
-  ];
-  assert.equal(attemptStatus(records, 'implement').attempts, 1);
-  assert.equal(attemptStatus(records, 'implement').blocked, true);
-  assert.equal(attemptStatus([...records, { operation: 'implement', profile: 'deep', outcome: 'passed' }], 'implement').blocked, false);
 });
 
 test('a mechanical operation within implementation receives economical capability advice', t => {
@@ -428,7 +404,7 @@ test('active receipt capacity fails explicitly without changing persisted eviden
   recordAttempt(root, scope.session, scope.task, receipt());
   const after = readSessionState(root, scope.session, scope.task);
   assert.equal(after.attempts.length, 24);
-  assert.equal(attemptStatus(after.attempts, 'implement').attempts, 1);
-  assert.equal(attemptStatus(after.attempts, 'operation:1').attempts, 1);
+  assert.equal(implementAttempts(root).attempts, 1);
+  assert.deepEqual(after.attempts.filter(attempt => attempt.operation === 'operation:1').map(attempt => attempt.outcome), ['quality-failure']);
 });
 

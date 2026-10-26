@@ -1,6 +1,5 @@
-//! Workspace-local state records shared with `platform/node/state-files.mjs` until
-//! the last JS reader or writer retires. Placement, bytes, the `.lock` protocol and
-//! legacy migration receipts are the compatibility contract; both sides must pass
+//! Workspace-local state records. Placement, bytes, the `.lock` protocol and legacy
+//! migration receipts are a persisted contract that existing stores rely on; see
 //! `tests/fixtures/runtime/state-contracts.json`.
 use crate::files::{ReadError, read_bounded};
 use craft_engine::hash;
@@ -386,7 +385,7 @@ impl Inspection {
             use std::os::unix::fs::MetadataExt;
             meta.is_file() && meta.nlink() > 1
         };
-        // Stable Rust exposes no link count on Windows; Node's check remains there until JS retires.
+        // Stable Rust exposes no link count on Windows, so hard-linked legacy files pass there.
         #[cfg(not(unix))]
         let linked = false;
         if depth > 16

@@ -183,12 +183,51 @@ fn catalog_rejects_invalid_selectors_and_load_targets() {
         ("/entries/0/skills", json!(["invalid"])),
         ("/layerExtensions/.tsx", json!("react")),
         ("/runtimeImplications/python", json!("missing")),
+        ("/runtimeImplications/java", json!("missing")),
+        ("/extensions/java", json!("java")),
+        ("/entries/0/value/permission", json!("publish")),
+        ("/entries/0/references", json!(["other:missing"])),
+        (
+            "/entries/0/fallbackSkills",
+            json!({"unknown:primary": "craft-delivery:review-code"}),
+        ),
     ] {
         let mut changed = original.clone();
         // Mappings need not already contain the test key.
         let (parent, key) = pointer.rsplit_once('/').unwrap();
         changed.pointer_mut(parent).unwrap()[key] = value;
         assert!(catalog::validate(&changed).is_err(), "{pointer}");
+    }
+    fn entry<'a>(catalog: &'a mut Value, id: &str) -> &'a mut Value {
+        catalog["entries"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|entry| entry["id"] == id)
+            .unwrap()
+    }
+    let mut duplicate = original.clone();
+    let first = duplicate["entries"][0].clone();
+    duplicate["entries"].as_array_mut().unwrap().push(first);
+    let mut no_inputs = original.clone();
+    no_inputs["entries"][0]["value"]
+        .as_object_mut()
+        .unwrap()
+        .shift_remove("inputs");
+    let mut story_runtime = original.clone();
+    entry(&mut story_runtime, "runtime:jvm")["when"]["intents"] = json!(["story", "implement"]);
+    let mut loads_nothing = original.clone();
+    entry(&mut loads_nothing, "runtime:node")
+        .as_object_mut()
+        .unwrap()
+        .shift_remove("contextOnly");
+    for (name, changed) in [
+        ("duplicate entry", duplicate),
+        ("missing value field", no_inputs),
+        ("runtime entry for a non-stack intent", story_runtime),
+        ("entry without load targets", loads_nothing),
+    ] {
+        assert!(catalog::validate(&changed).is_err(), "{name}");
     }
     for scope in [".", "a", ".github/workflows", "automation/release.yml"] {
         let mut changed = original.clone();
@@ -206,7 +245,11 @@ fn catalog_rejects_invalid_selectors_and_load_targets() {
         "..",
         "./ci",
         "ci/../release",
+        "ci/./release",
         "ci//release",
+        "ci\\release",
+        "ci/**",
+        "ci\0file",
         "ci/",
         "/ci",
         "C:/ci",
@@ -225,4 +268,39 @@ fn catalog_rejects_invalid_selectors_and_load_targets() {
         entry["when"] = json!({"paths": [scope]});
         assert!(catalog::validate(&changed).is_err(), "{scope}");
     }
+}
+
+#[test]
+fn path_selectors_cannot_borrow_provider_evidence_from_another_module() {
+    let settings = settings(&json!({"formatVersion": 1, "modules": [
+        {"name": "ci", "path": ".github", "providers": []},
+        {"name": "agent", "path": "agent", "providers": ["bedrock"]}]}))
+    .unwrap();
+    let files = vec![
+        ".github/workflows/ci.yml".to_string(),
+        "agent/main.py".to_string(),
+    ];
+    let modules = matching_modules(&settings, &files);
+    let practices = |catalog: &Value| {
+        let request = loading::Request {
+            intent: "review",
+            files: &files,
+            modules: &modules,
+            settings: &settings,
+            risks: &[],
+            verification_mode: None,
+        };
+        loading::plan(&request, catalog)["practices"].clone()
+    };
+    let id = json!("practice:github-actions-path");
+    let mut catalog = catalog::catalog().unwrap().clone();
+    assert!(practices(&catalog).as_array().unwrap().contains(&id));
+    let entry = catalog["entries"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|entry| entry["id"] == id)
+        .unwrap();
+    entry["when"]["providers"] = json!(["bedrock"]);
+    assert!(!practices(&catalog).as_array().unwrap().contains(&id));
 }

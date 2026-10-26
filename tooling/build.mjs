@@ -2,13 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validatePlaybookCatalog } from '../application/routing/catalog.mjs';
 import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
 import { setupControls } from '../hosts/onboarding.mjs';
 import { featureSupport } from '../hosts/capabilities.mjs';
 
-import { copy, rewriteLinks, runtimeImports, skillName, write, writeJson } from './export/export.mjs';
+import { copy, rewriteLinks, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
 import * as codex from './export/codex/index.mjs';
 import * as agents from './export/agents/index.mjs';
@@ -25,7 +24,6 @@ export function build(repo, target) {
   const version = synchronizeVersion(repo, undefined, true);
   if (!Object.hasOwn(ADAPTERS, target)) throw new Error(`unknown adapter ${target}`);
   const packages = loadCapabilities(repo);
-  validatePlaybookCatalog(JSON.parse(fs.readFileSync(path.join(repo, 'engine/routing/catalog.json'), 'utf8')));
   const dist = path.join(repo, 'dist');
   if (fs.existsSync(dist) && fs.lstatSync(dist).isSymbolicLink()) throw new Error('dist must not be a symlink');
   fs.mkdirSync(dist, { recursive: true });
@@ -55,22 +53,12 @@ export function build(repo, target) {
         controls: { surface: setup.controls.surface, commands: setup.controls.commands } };
       const policy = fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8');
       write(destination, 'SETUP.md', `${policy}\n## Export facts\n\n\`\`\`json\n${JSON.stringify(notice, null, 2)}\n\`\`\`\n`);
-      // Host tables configure exports here; `craft` embeds the same data, so hosts/ never ships.
-      for (const folder of ['engine', 'application', 'platform', 'integrations']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
-      // Canonical package entry points import shared runtime source. Installed packages
-      // resolve that same implementation locally, without fallback loaders or siblings.
-      for (const file of files(destination).filter(file => file.endsWith('.mjs') && !path.relative(destination,file).startsWith(`support${path.sep}`))) {
-        const source = fs.readFileSync(file,'utf8');
-        const relocated = runtimeImports(source,file,destination);
-        if (source !== relocated) fs.writeFileSync(file,relocated);
-      }
     }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {
       fs.copyFileSync(license, path.join(stage, 'LICENSE'));
       for (const { manifest } of packages) fs.copyFileSync(license, path.join(stage, packageFolder, manifest.name, 'LICENSE'));
     }
-    for (const folder of ['engine', 'application', 'platform', 'integrations']) copy(path.join(repo, folder), path.join(stage, folder));
     copy(path.join(repo, 'docs'), path.join(stage, 'docs'));
     // Shared documentation can link into any package. Rebase those links to the
     // adapter's package folder and native skill names, just as package docs do.

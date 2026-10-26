@@ -249,8 +249,8 @@ improvement in engineering quality.
 
 ## Portable observation contract
 
-`application/telemetry/events.mjs` is the provider-neutral JSON validation boundary.
-`traceContext` contains only `traceId` (32 hex characters), `operationId` (UUID string)
+The engine's telemetry envelope (`engine/src/telemetry.rs`) is the provider-neutral JSON
+validation boundary. Trace context contains only `traceId` (32 hex characters), `operationId` (UUID string)
 and an optional distinct `parentOperationId`. Events add `schemaVersion=1`, `name`,
 `kind`, UTC `timestamp`, `sessionId`, `packVersion`, bounded allowlisted `attributes`,
 optional known `host`, `outcome`, observed `durationMs` and a recognized `reasonCode`.

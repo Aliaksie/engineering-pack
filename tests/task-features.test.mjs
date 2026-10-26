@@ -5,39 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { launch, run } from './craft.mjs';
-import { decide } from '../application/engine-client.mjs';
 
-test('feature evidence is bounded, distinguishes declaration/runtime receipts, and never fills missing applicability', () => {
-  const state = { taskRecord: { id: 'task' }, activity: { routingDecisions: 1, operationsAttempted: 2 } };
-  const record = decide('feature-record', { state, source: 'a'.repeat(64), at: '2026-10-20T00:00:00.000Z',
-    input: { feature: 'compaction', status: 'unsupported', reason: 'No verified host control', evidence: 'host:capabilities' } });
-  const report = decide('feature-report', { state: record.state, repository: {} });
-  assert.equal(report.features.compaction.provenance, 'agent-declared');
-  assert.equal(report.features.compaction.sourceStatus, 'unknown');
-  assert.equal(report.features.routing.provenance, 'runtime-receipt');
-  assert.equal(report.features.routing.sourceStatus, 'historical');
-  assert.equal(report.features.review.status, 'unknown');
-  assert.equal(report.allClassified, false);
-  assert.equal(Object.hasOwn(state, 'featureOutcomes'), false);
-  for (const input of [{ feature: 'unknown', status: 'used' }, { feature: 'review', status: 'passed' },
-    { feature: 'review', status: 'used', reason: 'x'.repeat(513), evidence: 'check:one' }]) {
-    assert.throws(() => decide('feature-record', { state, input, source: null, at: '2026-10-20T00:00:00.000Z' }));
-  }
-});
-
-test('an agent declaration never replaces a runtime-observed outcome', () => {
-  const at = '2026-10-20T00:00:00.000Z', source = 'a'.repeat(64);
-  const input = { feature: 'review', status: 'disabled', reason: 'Declared afterwards', evidence: 'agent:claim' };
-  const observed = decide('feature-record', { state: { taskRecord: { id: 'task' } }, source, at, provenance: 'runtime-observed',
-    input: { feature: 'review', status: 'used', reason: 'Host adapter reported the scoped action', evidence: 'review:receipt' } }).state;
-  assert.throws(() => decide('feature-record', { state: observed, input, source, at, provenance: 'agent-declared' }), /runtime-observed/);
-  assert.equal(observed.featureOutcomes.review.status, 'used');
-  const declared = decide('feature-record', { state: { taskRecord: { id: 'task' } }, input, source, at, provenance: 'agent-declared' }).state;
-  const replaced = decide('feature-record', { state: declared, source, at, provenance: 'runtime-observed',
-    input: { feature: 'review', status: 'used', reason: 'Host adapter reported the scoped action', evidence: 'review:receipt' } }).state;
-  assert.equal(replaced.featureOutcomes.review.provenance, 'runtime-observed');
-});
-
+// Outcome record decisions are pinned by `cargo test -p craft-engine --test feature_outcomes`.
 test('normal task commands retain outcomes and mark changed sources stale without changing the recorded verdict', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-feature-outcomes-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

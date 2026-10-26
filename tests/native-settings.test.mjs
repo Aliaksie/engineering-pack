@@ -5,9 +5,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { telemetryEvent } from '../application/telemetry/events.mjs';
-import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs';
-import { runtimeVersion, stateLocation } from '../platform/index.mjs';
+import { run } from './craft.mjs';
+import { packVersion, readTelemetry, sessionPseudonym, stateLocation } from './state.mjs';
 
 // `settings` as an installed skill runs it: one `craft` process.
 function fixture(t) {
@@ -80,10 +79,13 @@ test('native telemetry uses the shared store, schema and session pseudonym', asy
   assert.equal((await settings(root, ['--root', '.', '--preferences', preferences, '--session', 'private-session', '--host', 'codex'])).status, 0);
   assert.equal((await settings(root, ['--root', '.', '--absent'])).status, 2);
   const [success, failure] = readTelemetry(root);
-  for (const event of [success, failure]) assert.deepEqual(telemetryEvent(event), event);
+  // Every recorded event passes the report's envelope validation.
+  fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
+  const report = run(['telemetry-report', '--root', root]);
+  assert.deepEqual([report.retainedEvents, report.storage.invalidRecords], [2, 0]);
   assert.deepEqual([success.name, success.outcome, success.attributes, success.host, success.packVersion],
-    ['cli.command', 'success', { command: 'settings', identityScope: 'session' }, 'codex', runtimeVersion()]);
-  assert.equal(success.sessionId, telemetryIdentity(root, 'private-session'));
+    ['cli.command', 'success', { command: 'settings', identityScope: 'session' }, 'codex', packVersion()]);
+  assert.equal(success.sessionId, sessionPseudonym(root, 'private-session'));
   assert.deepEqual([failure.outcome, failure.reasonCode, failure.attributes], ['failure', 'INVALID_INPUT', { identityScope: 'invocation' }]);
   assert.equal(JSON.stringify(readTelemetry(root)).includes('private-session'), false);
 });

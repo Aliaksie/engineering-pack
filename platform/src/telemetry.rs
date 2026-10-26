@@ -1,6 +1,6 @@
-//! Local telemetry store shared with `platform/node/telemetry.mjs`: the optional
-//! `.craft/telemetry.json` configuration, a private per-worktree key and a bounded
-//! JSONL log with one backup, written under the state `.lock` protocol.
+//! Local telemetry store: the optional `.craft/telemetry.json` configuration, a private
+//! per-worktree key and a bounded JSONL log with one backup, written under the state
+//! `.lock` protocol.
 use crate::state;
 use craft_engine::telemetry::report::Storage;
 use serde_json::{Value, json};
@@ -284,6 +284,65 @@ mod tests {
         );
         fs::write(&log, vec![b'x'; MAX_BYTES as usize + 1]).unwrap();
         assert!(!append(&fixture.0, &[json!({ "n": 5 })]));
+    }
+
+    #[test]
+    fn a_writer_waits_for_a_lock_released_within_the_wait() {
+        let fixture = Fixture::new();
+        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        let lock = PathBuf::from(format!("{}.lock", log.display()));
+        fs::write(&lock, "").unwrap();
+        let releaser = {
+            let lock = lock.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(5));
+                fs::remove_file(lock).unwrap();
+            })
+        };
+        assert!(append(&fixture.0, &[json!({ "n": 1 })]));
+        releaser.join().unwrap();
+        assert_eq!(fs::read_to_string(&log).unwrap(), "{\"n\":1}\n");
+    }
+
+    #[test]
+    fn concurrent_batch_writers_append_complete_groups() {
+        let fixture = Fixture::new();
+        let root = fixture.0.clone();
+        let writers: Vec<_> = (0..4)
+            .map(|writer| {
+                let root = root.clone();
+                std::thread::spawn(move || {
+                    (0..8)
+                        .filter(|n| {
+                            let batch: Vec<Value> = (0..5)
+                                .map(|i| json!({ "writer": writer, "n": n, "i": i }))
+                                .collect();
+                            append(&root, &batch)
+                        })
+                        .count()
+                })
+            })
+            .collect();
+        let accepted: usize = writers.into_iter().map(|w| w.join().unwrap()).sum();
+        assert!(accepted > 0);
+        let text = fs::read_to_string(fixture.log()).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        // Each accepted batch is one complete group of five records.
+        assert_eq!(lines.len(), accepted * 5);
+        for line in lines {
+            let event: Value = serde_json::from_str(line).unwrap();
+            assert!(event["writer"].is_u64() && event["n"].is_u64(), "{line}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_log_is_refused_without_creating_its_target() {
+        let fixture = Fixture::new();
+        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        std::os::unix::fs::symlink(fixture.0.join("target"), &log).unwrap();
+        assert!(!append(&fixture.0, &[json!({ "n": 1 })]));
+        assert!(!fixture.0.join("target").exists());
     }
 
     #[test]

@@ -31,7 +31,7 @@ test('Codex marketplace resolves every plugin within the generated bundle', () =
 test('new distributions are reproducible and do not activate hooks or MCP', t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'engineering-distributions-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
-  for (const directory of ['packages', 'hosts', 'tooling/export', 'engine', 'application', 'platform', 'integrations', 'cli', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
+  for (const directory of ['packages', 'hosts', 'tooling/export', 'docs', 'schemas']) copy(path.join(repo, directory), path.join(fixture, directory));
   fs.copyFileSync(path.join(repo,'package.json'), path.join(fixture,'package.json'));
   for (const host of ['gemini-extension', 'jetbrains']) {
     build(fixture, host);
