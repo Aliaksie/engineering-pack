@@ -14,13 +14,11 @@ function fixture(t) {
   for (const target of releaseTargets) {
     const root = path.join(options.input, target);
     fs.mkdirSync(path.join(root, 'native-bin'), { recursive: true });
-    const binary = `native-bin/craft-project-evidence${target.includes('windows') ? '.exe' : ''}`;
-    fs.writeFileSync(path.join(root, binary), 'binary', { mode: 0o755 });
     const primary = `native-bin/craft${target.includes('windows') ? '.exe' : ''}`;
     fs.writeFileSync(path.join(root, primary), 'binary', { mode: 0o755 });
     fs.writeFileSync(path.join(root, 'native-bundle.json'), JSON.stringify({ formatVersion: 1, packVersion: options.version, protocolVersion: 1, profile: 'release', target,
       sourceRevision: options.revision, sourceDirty: false, cargoLockSha256: options.lockSha256, binaryVersion: '0.0.1',
-      files: [binary, primary].map(file => ({ path: file, bytes: 6, sha256: digest('binary') })) }));
+      files: [primary].map(file => ({ path: file, bytes: 6, sha256: digest('binary') })) }));
   }
   return options;
 }
@@ -45,7 +43,7 @@ for (const defect of ['version', 'revision', 'dirty', 'lock', 'target', 'checksu
     const file = path.join(root, 'native-bundle.json'), manifest = JSON.parse(fs.readFileSync(file));
     if (defect === 'version') manifest.packVersion = '9.9.9';
     if (defect === 'primary') {
-      fs.unlinkSync(path.join(root, manifest.files[1].path));
+      fs.unlinkSync(path.join(root, manifest.files[0].path));
       manifest.files.pop();
     }
     if (defect === 'revision') manifest.sourceRevision = 'c'.repeat(40);

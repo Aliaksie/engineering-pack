@@ -18,7 +18,7 @@ function fixture(t) {
   for (const { target, platform } of nativeTargets) {
     const root = path.join(options.input, target);
     fs.mkdirSync(path.join(root, 'native-bin'), { recursive: true });
-    const names = ['craft', 'craft-project-evidence'].map(name => `native-bin/${name}${platform === 'win32' ? '.exe' : ''}`);
+    const names = ['craft'].map(name => `native-bin/${name}${platform === 'win32' ? '.exe' : ''}`);
     for (const name of names) fs.writeFileSync(path.join(root, name), target);
     fs.writeFileSync(path.join(root, 'native-bundle.json'), JSON.stringify({ formatVersion: 1, packVersion: options.version, protocolVersion: 1, profile: 'release',
       target, sourceRevision: options.revision, sourceDirty: false, cargoLockSha256: options.lockSha256,

@@ -97,7 +97,7 @@ export function buildNativeBundle() {
   }
   run(cargo, ['build', '--release', '--locked', '--offline', '--package', 'craft-application', '--target', target]);
   const metadata = JSON.parse(run(cargo, ['metadata', '--format-version', '1', '--locked', '--offline', '--filter-platform', target]));
-  const executable = `craft-project-evidence${process.platform === 'win32' ? '.exe' : ''}`;
+  const executable = `craft${process.platform === 'win32' ? '.exe' : ''}`;
   const binary = path.join(metadata.target_directory, target, 'release', executable);
   const versionResponse = JSON.parse(execFileSync(binary, [], { input: JSON.stringify({ formatVersion: 1, operation: 'version' }), encoding: 'utf8', timeout: 10000 }));
   if (versionResponse.ok !== true || versionResponse.formatVersion !== 1 || versionResponse.result?.schemaVersion !== 1) throw new Error('incompatible native binary');
@@ -105,13 +105,10 @@ export function buildNativeBundle() {
   try {
     fs.copyFileSync(path.join(repository, 'LICENSE'), path.join(stage, 'LICENSE'));
     fs.mkdirSync(path.join(stage, 'native-bin'));
-    for (const name of [executable, `craft${process.platform === 'win32' ? '.exe' : ''}`]) {
-      fs.copyFileSync(path.join(metadata.target_directory, target, 'release', name), path.join(stage, 'native-bin', name));
-      fs.chmodSync(path.join(stage, 'native-bin', name), 0o755);
-    }
+    fs.copyFileSync(binary, path.join(stage, 'native-bin', executable));
+    fs.chmodSync(path.join(stage, 'native-bin', executable), 0o755);
     writeJson(path.join(stage, 'native-bin/runtime.json'), { formatVersion: 1, artifacts: [{
-      target, platform: process.platform, arch: process.arch, executable: `craft${process.platform === 'win32' ? '.exe' : ''}`,
-      sha256: digest(path.join(stage, 'native-bin', `craft${process.platform === 'win32' ? '.exe' : ''}`))
+      target, platform: process.platform, arch: process.arch, executable, sha256: digest(path.join(stage, 'native-bin', executable))
     }] });
     notices(metadata, stage);
     const craft = `native-bin/craft${process.platform === 'win32' ? '.exe' : ''}`;

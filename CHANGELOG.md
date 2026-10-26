@@ -14,7 +14,8 @@ Native runtime (published to `distribution-next`):
 - Remote OTLP export is posted natively over HTTPS, with certificates verified by the
   operating system.
 - Removed: the JavaScript host-control transports (worker, review and compaction phases
-  remain as native JSON requests) and the optional personal review inbox.
+  remain as native JSON requests), the optional personal review inbox, and the separate
+  `craft-project-evidence` executable in native bundles (use `craft project-evidence`).
 - Documentation consolidated: installation, a command reference and one evaluation guide.
 
 ## 0.0.2

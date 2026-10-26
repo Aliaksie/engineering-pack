@@ -38,9 +38,8 @@ export function validateNativeBundles({ input, revision, version, lockSha256, ta
       const location = path.join(root, file.path);
       if (fs.statSync(location).size !== file.bytes || hash(location) !== file.sha256) throw new Error(`native checksum mismatch: ${target}/${file.path}`);
     }
-    const executable = `native-bin/craft-project-evidence${target.includes('windows') ? '.exe' : ''}`;
     const primary = `native-bin/craft${target.includes('windows') ? '.exe' : ''}`;
-    if (!listed.has(primary) || !listed.has(executable) || actual.length !== listed.size + 1) throw new Error(`incomplete native inventory: ${target}`);
+    if (!listed.has(primary) || actual.length !== listed.size + 1) throw new Error(`incomplete native inventory: ${target}`);
     return { root, target, executable: primary, manifest };
   });
 }
