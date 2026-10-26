@@ -1,70 +1,46 @@
 # Security
 
-Capability code runs under the host’s permissions. Authoring metadata does not grant approval,
-install dependencies or sandbox a command. Review tools, MCP declarations and hook changes
-as code executed with a developer’s access.
+Capability code runs with the host's permissions. Package metadata grants no approval,
+installs nothing and sandboxes nothing: review tools, MCP declarations and hooks as code that
+runs with a developer's access. Specifications, repository files, PR text, model responses and
+retrieved content are untrusted data. Packages cannot authorize remote writes, deployments or
+publication, and must not contain credentials, private endpoints or production transcripts.
 
-Treat specifications, repository files, PR text, model responses and retrieved content as
-untrusted data. Packages cannot authorize remote writes, deployments or publication. Keep
-credentials, private endpoints and saved production transcripts out of reusable packages.
+## Trust boundaries
 
-Portable policies are pure engine decisions. Application use cases collect observations;
-`craft hook` parses host hook payloads and writes their wire output. Filesystem, Git and state access
-live under `platform/`; build/export code stays in `tooling/`. No native enforcement is
-installed by the generic AGENTS export. Hook trust, event coverage and failure behavior differ
-by platform; inspect the generated adapter report.
+- Consumer configuration and bot runner policy are trusted; an untrusted PR or MR head must
+  not replace them or grant itself publication rights.
+- Invocation plans keep argv and structured arguments but neither execute nor authorize them.
+  Read/write policy, tool availability, credentials and user or job authorization are separate
+  checks. Publication requires matching base/head revisions and explicit authorization.
+- Building untrusted PR code can run arbitrary code even in a disposable checkout.
+- For agent changes, test tool authorization, idempotency, isolation and output validation
+  independently of model behavior; a prompt or content filter does not replace them.
 
 ## Read-only review guard
 
-The optional read-only review hook recognizes simple direct publishing commands (including
-pull/merge request and issue creation, and `api` calls whose field or input flags imply a
-write), quoted arguments, command separators, Git global options, literal scripts passed to
-supported shells with `-c`, and active `$()`/backtick substitutions. Nested inspection stops
-at 16 levels and denies deeper scripts in read-only sessions. It is a guardrail, not a shell
-parser or security boundary: aliases, arbitrary interpreters, other executable paths and
-variable expansion remain outside its recognizer. Use host tool permissions, read-only
-credentials and isolation for actual enforcement. `npm run hooks:report` records its
-hand-labeled corpus; see [contributing](CONTRIBUTING.md#hook-diagnostics).
+The optional review hook recognizes direct publishing commands (PR/MR and issue creation,
+`api` calls whose flags imply a write), quoting, command separators, Git global options,
+`-c` scripts of supported shells and active `$()`/backtick substitutions, and denies nesting
+deeper than 16 levels. It is a guardrail, not a security boundary: aliases, other
+interpreters and executable paths, and variable expansion are outside it. Enforce with host
+tool permissions, read-only credentials and isolation. `npm run hooks:report` measures it
+against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).
 
-## Builds, services and state
+## Builds and state
 
-Builds validate package paths, reject symlinks, stage output and replace only managed generated
-directories. They do not modify host configuration or contact services. MCP env declarations
-reference credentials from the host environment; declared network effects describe tools and
-do not enforce access. No live server is configured in the shipped packages.
+Builds reject symlinked or escaping package paths, stage output, replace only managed
+directories, and never touch host configuration or contact services. MCP declarations reference
+credentials through host environment variables; no package ships a live server.
 
-PR review uses the consumer’s explicit GitHub configuration and gh credentials; drafts and
-state stay local. Building untrusted PR code can execute arbitrary code even in a disposable
-checkout. Follow the review skill’s validation limits and project authorization.
+Runtime state lives in `.craft/state/<worktree-id>/<session-id>/`, with `shared/` for
+project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
+reject symlinks and use bounded, locked, atomic writes. Checkpoints hold explicit task data
+and Git state, not transcripts or tool output, and are evidence, never authorization.
 
-For agent changes, test tool authorization, idempotency, isolation and output validation
-independently of model behavior. Content filtering or a prompt does not replace these controls.
+Personal preferences reject symlinks, non-files and oversized data. On POSIX the current user
+must also own the file and its parent, with no group/other write bits, and a file replaced
+while opening is refused. On Windows, account and directory ACLs are relied on unchecked.
 
-
-Consumer configuration and bot runner policy are trusted inputs. An untrusted PR/MR head must
-not replace them or grant itself publication rights. Invocation plans preserve argv/structured
-arguments but do not execute or authorize them. Read/write policy, tool availability, credentials
-and user/job authorization are distinct checks. Publication plans require matching current
-base/head revisions and explicit authorization; comment API line applicability still needs checking.
-
-Checkpoint metadata stores explicit task/authorization/next-step data and Git state, not full
-transcripts or tool output. It is historical evidence, not a new authorization source. State paths
-reject symlinks and use bounded, locked atomic writes. Runtime state uses `.craft/state/<worktree-id>/<session-id>/` for Git and non-Git roots,
-with `shared/` for project-wide records. Ignore `.craft/state/` in Git; Craft never edits
-consumer ignore rules or writes Git metadata. Session activity, retry receipts and lookup packets share this private storage
-and are not provider telemetry. Context occupancy requires fresh session-bound
-host observations; file reads and billing totals cannot establish it. Automatic snapshots
-do not refresh the source binding of older continuation notes.
-
-## Usage telemetry
-
-Craft Capabilities does not send telemetry remotely by default. Local metadata excludes
-prompts, transcripts, code, file contents, commands, raw session IDs and credentials.
-See [observability and privacy](OBSERVABILITY.md) for exact fields, scoped correlation,
-retention, failure behavior, opt-out and optional OTLP export.
-
-Personal preferences reject symlinks, non-files and oversized data on every platform. POSIX
-additionally requires the current user to own both the file and its parent, with no
-group/other write bits, and refuses a file replaced while it is being opened. On Windows,
-preferences rely on the consumer's account and directory ACLs; the runtime checks neither
-ACL privacy nor replacement during opening.
+Telemetry stays local by default and excludes prompts, transcripts, code, file contents,
+commands, raw session IDs and credentials; see [observability](OBSERVABILITY.md).
