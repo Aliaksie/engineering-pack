@@ -14,20 +14,22 @@ concurrency:
 
 jobs:
   measure:
-    name: Performance (${{ matrix.os }}, Node 24.21.0)
+    name: Performance (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.1'
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - name: Check out benchmark harnesses
+      - name: Checkout harnesses
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: benchmark
-      - name: Check out measured source
+      - name: Checkout measured source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -38,11 +40,21 @@ jobs:
         with:
           node-version: '24.21.0'
           package-manager-cache: false
-      - name: Measure and check portable workloads
+      - name: Build release runtime
+        # Measure the executable installed packages run, not a debug build.
+        shell: bash
+        working-directory: measured-source
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          cargo build --release --locked -p craft-application --bin craft
+          suffix=''
+          if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe'; fi
+          echo "CRAFT_NATIVE_BINARY=$PWD/target/release/craft$suffix" >> "$GITHUB_ENV"
+      - name: Measure
         env:
           PERFORMANCE_REVISION: ${{ github.sha }}
         run: node benchmark/.github/benchmarks/run.mjs measured-source benchmark-results
-      - name: Upload raw benchmark evidence
+      - name: Upload results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -15,15 +15,15 @@ concurrency:
 
 jobs:
   native:
-    name: Verify Rust and installed native runtime
+    name: Native
     uses: ./.github/workflows/native.yml
 
   workflows:
-    name: Validate GitHub workflows
+    name: Workflows
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Install pinned actionlint
+      - name: Install actionlint
         env:
           ACTIONLINT_VERSION: '1.7.12'
           ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
@@ -43,32 +43,32 @@ jobs:
           printf '%s  actionlint.tar.gz\n' "$ACTIONLINT_SHA256" | sha256sum --check
           tar -xzf actionlint.tar.gz actionlint
           echo "${RUNNER_TEMP}/actionlint" >> "$GITHUB_PATH"
-      - name: Verify shell linter is available
+      - name: Check ShellCheck
         run: shellcheck --version
-      - name: Lint workflows and verify invalid workflows are rejected
+      - name: Lint workflows
         run: |
           npm run lint:workflows
           npm run test:workflows
 
   check:
-    name: Check (${{ matrix.os }}, Node ${{ matrix.node }})
+    name: Check (${{ matrix.label }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
-      # Same pin as native.yml; migrated commands run the craft executable in tests.
+      # Same pin as native.yml; tests run the craft executable.
       RUSTUP_TOOLCHAIN: '1.99.1'
+      CARGO_INCREMENTAL: '0'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node: ['24']
         include:
-          - os: ubuntu-latest
-            node: '22'
-          - os: ubuntu-latest
-            node: '26'
+          - { os: ubuntu-latest, label: linux, node: '24' }
+          - { os: macos-latest, label: macos, node: '24' }
+          - { os: windows-latest, label: windows, node: '24' }
+          - { os: ubuntu-latest, label: linux, node: '22' }
+          - { os: ubuntu-latest, label: linux, node: '26' }
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -77,31 +77,42 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
-      - name: Validate manifests, catalog and content audit
+      - name: Validate sources
         run: npm run validate
       - name: Check generated guidance
         run: npm run check:craft-bar
-      - name: Lint portable scripts
+      - name: Lint scripts
         run: npm run lint:scripts
-      - name: Build all host packages
+      - name: Build exports
         run: npm run build
-      - name: Assemble direct-install distribution
+      - name: Build distribution
         run: npm run build:distribution
-      - name: Check module map and boundaries
+      - name: Check architecture
         run: npm run architecture
-      - name: Validate generated exports
+      - name: Validate exports
         run: npm run validate:exports
-      - name: Install pinned Rust toolchain
+      - name: Install Rust
         # Windows runners default to PowerShell, which would expand "$RUSTUP_TOOLCHAIN" to ''.
         shell: bash
         run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
-      - name: Fetch locked dependencies
+      - name: Cache Rust build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          # Dependencies dominate build time; the lockfile key saves once per dependency set.
+          key: cargo-check-${{ runner.os }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
+      - name: Fetch crates
         run: cargo fetch --locked
-      - name: Run tests
+      - name: Test
         run: npm run test:unit
-      - name: Measure local hook diagnostics
+      - name: Hook report
+        if: matrix.node == '24'
         run: npm run hooks:report -- --output .eval-results/hook-report.json
-      - name: Upload hook diagnostics
+      - name: Upload hook report
+        if: matrix.node == '24'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hook-diagnostics-${{ matrix.os }}-node-${{ matrix.node }}-${{ github.sha }}
@@ -111,7 +122,7 @@ jobs:
           retention-days: 14
 
   package:
-    name: Package host bundles
+    name: Package
     permissions:
       contents: read
       actions: read
@@ -119,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -128,11 +139,11 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Build packages
+      - name: Build exports
         run: |
           npm run build
           npm run build:distribution
-      - name: Include checked native runtimes in every host package
+      - name: Add native runtimes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -142,9 +153,9 @@ jobs:
           for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
             node tooling/native-install.mjs .eval-results/native "dist/$target"
           done
-      - name: Validate package output
+      - name: Validate exports
         run: npm run validate:exports
-      - name: Upload host bundles
+      - name: Upload bundles
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: craft-capabilities-${{ github.sha }}
@@ -154,7 +165,7 @@ jobs:
           retention-days: 14
 
   publish:
-    name: Publish candidate installation branch
+    name: Publish
     needs: [check, package]
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -166,7 +177,7 @@ jobs:
       group: engineering-pack-distribution-next
       cancel-in-progress: false
     steps:
-      - name: Check out validated source
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -175,11 +186,11 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Retrieve verified installable distribution
+      - name: Download distribution
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh run download "$GITHUB_RUN_ID" --name "craft-capabilities-${GITHUB_SHA}" --dir dist
-      - name: Publish generated files
+      - name: Publish distribution-next
         run: node tooling/publish-distribution.mjs
         env:
           GH_TOKEN: ${{ github.token }}
