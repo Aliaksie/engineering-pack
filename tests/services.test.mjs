@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 
 // Both commands run in the native runtime; these tests use the public command line.
 function command(project, ...args) {

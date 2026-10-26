@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { nativeTargets } from '../tooling/native-release.mjs';
 import { hookPackage, runHook } from './hook-command.mjs';
+import { launch } from './craft.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const windows = process.platform === 'win32';
@@ -74,6 +75,10 @@ test('without a bundled runtime, launchers answer as a failed runtime would', t 
     const started = run('craft-delivery', 'restore', JSON.stringify({ session_id: 'S-1', cwd: project }));
     assert.equal(started.status, 0, started.stderr);
     assert.match(started.stdout, /Routing\/checkpoint unavailable: bundled native runtime unavailable/);
+    // A command a person or skill runs fails explicitly instead.
+    const command = launch(pkg('craft-delivery'), ['route', '--root', project, '--intent', 'implement'], { cwd: project, env: plain });
+    assert.deepEqual([command.status, command.stdout], [1, '']);
+    assert.match(command.stderr, /^craft: bundled native runtime unavailable\r?\n$/);
     assert.ok(!fs.existsSync(path.join(project, '.craft/state')), 'no runtime ran');
   }
 });

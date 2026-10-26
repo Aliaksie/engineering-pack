@@ -19,7 +19,7 @@ const run = (command, args, cwd) => {
 if (process.argv[2] === '--worker') {
   const source = process.argv[3];
   const { groundedContext } = await import(pathToFileURL(path.join(source, 'application/session/grounding.mjs')));
-  const { nativeCommand } = await import(pathToFileURL(path.join(source, 'platform/index.mjs')));
+  const { nativeCommand } = await import(pathToFileURL(path.join(source, 'tests/craft.mjs')));
   const { engineeringContractDigest } = await import(pathToFileURL(path.join(source, 'engine/session/acceptance.mjs')));
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-lifecycle-bench-')));
   try {

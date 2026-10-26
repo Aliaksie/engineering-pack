@@ -3,7 +3,7 @@
   "cases": [
     {
       "id": "command-catalog",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "--help"
       ],
@@ -40,13 +40,18 @@
           "prepare-services",
           "operation",
           "checkpoint-save",
-          "checkpoint-read"
+          "checkpoint-read",
+          "review-prepare",
+          "review-check",
+          "review-publication",
+          "project-evidence"
         ]
-      }
+      },
+      "correction": "the one installed entry also lists the review and project-evidence commands it runs"
     },
     {
       "id": "help-before-validation",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "task-start",
         "--unknown",
@@ -59,16 +64,8 @@
       }
     },
     {
-      "id": "missing-command",
-      "entry": "cli/main.mjs",
-      "args": [],
-      "mode": "failure",
-      "status": 2,
-      "diagnostic": "usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]"
-    },
-    {
       "id": "unknown-command",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "absent"
       ],
@@ -78,7 +75,7 @@
     },
     {
       "id": "positional-argument",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "extra"
@@ -89,7 +86,7 @@
     },
     {
       "id": "unknown-option",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--absent"
@@ -100,7 +97,7 @@
     },
     {
       "id": "missing-value",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--intent"
@@ -111,7 +108,7 @@
     },
     {
       "id": "flag-as-value",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--intent",
@@ -123,7 +120,7 @@
     },
     {
       "id": "duplicate-scalar",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--intent",
@@ -137,7 +134,7 @@
     },
     {
       "id": "duplicate-boolean",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--json",
@@ -149,7 +146,7 @@
     },
     {
       "id": "contract-wrong-command",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--contract",
@@ -161,7 +158,7 @@
     },
     {
       "id": "evidence-wrong-command",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--acceptance-evidence",
@@ -173,7 +170,7 @@
     },
     {
       "id": "repository-wrong-command",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--repository",
@@ -185,7 +182,7 @@
     },
     {
       "id": "task-required-fields",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "task-start",
         "--session",
@@ -197,7 +194,7 @@
     },
     {
       "id": "attempt-required-fields",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "session-attempt"
       ],
@@ -207,7 +204,7 @@
     },
     {
       "id": "model-required-input",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "model-advice"
       ],
@@ -217,7 +214,7 @@
     },
     {
       "id": "exclusive-telemetry-input",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "telemetry-report",
         "--capture",
@@ -231,7 +228,7 @@
     },
     {
       "id": "route-repeat-files",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--intent",
@@ -460,7 +457,7 @@
     },
     {
       "id": "route-verbose",
-      "entry": "cli/main.mjs",
+      "entry": "craft",
       "args": [
         "route",
         "--intent",
@@ -684,12 +681,11 @@
       }
     },
     {
-      "id": "native-disabled-with-missing-binary",
-      "entry": "cli/project-evidence.mjs",
+      "id": "native-disabled",
+      "entry": "craft",
       "args": [
+        "project-evidence",
         "query",
-        "--binary",
-        "/nonexistent/craft-fixture",
         "--json"
       ],
       "mode": "json",
@@ -700,9 +696,26 @@
       }
     },
     {
-      "id": "native-missing-value",
-      "entry": "cli/project-evidence.mjs",
+      "id": "native-binary-option",
+      "entry": "craft",
       "args": [
+        "project-evidence",
+        "query",
+        "--binary",
+        "/nonexistent/craft-fixture",
+        "--json"
+      ],
+      "mode": "failure",
+      "status": 1,
+      "diagnostic": "PROJECT_EVIDENCE_ERROR: unknown or incomplete option: --binary",
+      "errorCode": "PROJECT_EVIDENCE_ERROR",
+      "correction": "project evidence runs in the executable itself; there is no other binary to select"
+    },
+    {
+      "id": "native-missing-value",
+      "entry": "craft",
+      "args": [
+        "project-evidence",
         "query",
         "--limit"
       ],
@@ -713,8 +726,9 @@
     },
     {
       "id": "native-invalid-limit",
-      "entry": "cli/project-evidence.mjs",
+      "entry": "craft",
       "args": [
+        "project-evidence",
         "query",
         "--limit",
         "201"
@@ -726,8 +740,9 @@
     },
     {
       "id": "native-invalid-budget",
-      "entry": "cli/project-evidence.mjs",
+      "entry": "craft",
       "args": [
+        "project-evidence",
         "refresh",
         "--max-files",
         "0"
@@ -739,8 +754,9 @@
     },
     {
       "id": "native-invalid-member",
-      "entry": "cli/project-evidence.mjs",
+      "entry": "craft",
       "args": [
+        "project-evidence",
         "query",
         "--member",
         "invalid"
@@ -752,8 +768,9 @@
     },
     {
       "id": "native-unknown-option",
-      "entry": "cli/project-evidence.mjs",
+      "entry": "craft",
       "args": [
+        "project-evidence",
         "query",
         "--absent"
       ],

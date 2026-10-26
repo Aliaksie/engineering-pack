@@ -154,7 +154,7 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     standards: 'included-on-demand', evals: 'included-not-executed', tools: 'included-not-executed',
     hooks: hookStatus, mcp: mcpStatus,
     hookMappings: manifest.hooks.map((definition) => ({ id: definition.name, normalizedEvent: definition.event, ...(hookMapping(platform, definition) ?? { supported: false }) })),
-    runtime: 'support/cli/main.mjs',
+    runtime: 'bin/craft',
     executionControls: setupControls(platform).execution,
     featureSupport: featureSupport(platform),
     sessionAdvice: sessionAdvice(platform, manifest.name),

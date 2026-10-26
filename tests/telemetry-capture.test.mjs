@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createTelemetry } from '../application/telemetry/observe.mjs';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { stateFile } from '../platform/index.mjs';
 
 const CAPTURE_MAX_ENTRIES = 8, CAPTURE_MAX_BYTES = 65536;
@@ -102,9 +102,8 @@ test('concurrent processes preserve captures or explicitly report contention, wi
   const root = fixture(t);
   for (let i = 0; i < 4; i++) observe(root, `session-${i}`);
   seal(root);
-  const cli = path.resolve('cli/main.mjs');
   const results = await Promise.all(Array.from({ length: 4 }, (_, index) => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [cli, 'telemetry-capture', '--root', root, '--session', `session-${index}`], { stdio: 'pipe' });
+    const child = spawn(process.env.CRAFT_NATIVE_BINARY, ['telemetry-capture', '--root', root, '--session', `session-${index}`], { stdio: 'pipe' });
     let output = '', error = '';
     child.stdout.on('data', data => output += data); child.stderr.on('data', data => error += data);
     child.on('error', reject);
@@ -115,13 +114,12 @@ test('concurrent processes preserve captures or explicitly report contention, wi
   for (const result of results.filter(result => !result.busy)) assert.equal(readTelemetryCapture(root, result.capture).report.retainedEvents, 1);
 });
 
-test('copied standalone CLI captures, recovers and explicitly forgets session evidence', t => {
+test('a copied package launcher captures, recovers and explicitly forgets session evidence', t => {
   const root = fixture(t), exported = path.join(fixture(t), 'craft-delivery');
   fs.cpSync(path.resolve('dist/codex/packages/craft-delivery'), exported, { recursive: true });
-  const cli = path.join(exported, 'support/cli/main.mjs');
   observe(root);
   const command = args => {
-    const result = spawnSync(process.execPath, [cli, ...args, '--root', root], { encoding: 'utf8' });
+    const result = launch(exported, [...args, '--root', root]);
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout);
   };

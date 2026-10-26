@@ -6,18 +6,15 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { projectEvidence } from '../application/project-evidence.mjs';
+import { nativeRequest } from './craft.mjs';
 
-test('disabled evidence never requires a repository or native binary', () => {
-  assert.equal(projectEvidence({ enabled: false, binary: '/missing', root: '/missing' }).enabled, false);
-});
-
+// Operations through the executable's request protocol; the CLI cases use `project-evidence`.
 const binary = process.env.CRAFT_PROJECT_EVIDENCE_BINARY;
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-evidence-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '--quiet', root]);
-  const run = (operation, input = {}) => projectEvidence({ enabled: true, root, binary, operation, input });
+  const run = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary });
   return { root, run };
 }
 
@@ -253,7 +250,7 @@ test('budget validation precedes state creation and limits are per member throug
   const source = 'export const item = 1;';
   const bytes = Buffer.byteLength(source);
   for (const { root } of [left, right]) fs.writeFileSync(path.join(root, 'a.js'), source);
-  const result = JSON.parse(execFileSync(process.execPath, ['cli/project-evidence.mjs', 'refresh', '--enable', '--binary', binary,
+  const result = JSON.parse(execFileSync(binary, ['project-evidence', 'refresh', '--enable',
     '--member', `left=${left.root}`, '--member', `right=${right.root}`, '--max-files', '1', '--max-bytes', String(bytes),
     '--max-output-bytes', '1024', '--max-duration-ms', '60000', '--json'], { encoding: 'utf8' }));
   for (const member of result.members) {
@@ -339,7 +336,7 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   for (const sourcePath of ['../selected.java', '/selected.java', '', null, 7]) {
     assert.throws(() => run('query', { value: 'ping', sourcePath }), /relative source path/);
   }
-  const cli = JSON.parse(execFileSync(process.execPath, ['cli/project-evidence.mjs', 'query', '--enable', '--binary', binary,
+  const cli = JSON.parse(execFileSync(binary, ['project-evidence', 'query', '--enable',
     '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
   assert.equal(cli.results.length, 4);
 });
@@ -353,7 +350,7 @@ test('native refresh records FIFO sources as unavailable without waiting for a w
   fs.unlinkSync(source);
   execFileSync('mkfifo', [source]);
   // The child deadline keeps this regression bounded even with the old reader.
-  const invoke = (operation, input = {}) => projectEvidence({ enabled: true, root, binary, operation, input, timeoutMs: 3000 });
+  const invoke = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary, timeoutMs: 3000 });
   assert.equal(invoke('query', { value: 'replacedByPipe', verify: true }).results[0].verification, 'stale-or-unavailable');
   assert.equal(invoke('refresh').failed, 1);
   assert.equal(invoke('query', { value: 'replacedByPipe' }).results.length, 0);

@@ -4,10 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { readSessionState, activeTask, bindingFile, attemptStatus } from './session-state.mjs';
 import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
-import { renderCommand } from '../cli/render.mjs';
 import { lockState, releaseState } from '../platform/index.mjs';
 import { nativeHook } from './native-hook.mjs';
 import { updateSessionState } from './session-state.mjs';
@@ -211,11 +210,11 @@ test('stale explicit task assignments and busy session bindings cannot record a 
   assert.equal(fs.readFileSync(lock, 'utf8'), 'another task writer');
 });
 
-test('standalone exported CLI retains a binding across independent processes', t => {
+test('an exported package launcher retains a binding across independent processes', t => {
   const { root } = fixture(t);
-  const cli = path.resolve('dist/codex/packages/craft-delivery/support/cli/main.mjs');
+  const pkg = path.resolve('dist/codex/packages/craft-delivery');
   const invoke = (action, ...args) => {
-    const result = spawnSync(process.execPath, [cli, action, '--root', root, '--session', 'export-session', ...args, ...(args.includes('--json') ? [] : ['--json'])], { encoding: 'utf8' });
+    const result = launch(pkg, [action, '--root', root, '--session', 'export-session', ...args, ...(args.includes('--json') ? [] : ['--json'])]);
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', 'export-task', '--goal', 'Correct the exported fixture', '--file', 'value.mjs');
@@ -326,7 +325,7 @@ test('structured CLI completion survives restart, attempt eviction and checkpoin
   assert.equal(saved.formatVersion, 2);
   assert.equal(saved.attempts.length, 24);
   assert.equal(saved.taskRecord.acceptanceEvidence.records.length, 2);
-  const restarted = spawnSync(process.execPath, ['cli/main.mjs', 'session', '--root', root, '--session', 'host-session', '--json'], { encoding: 'utf8' });
+  const restarted = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['session', '--root', root, '--session', 'host-session', '--bundle', path.resolve('.'), '--json'], { encoding: 'utf8' });
   assert.equal(restarted.status, 0, restarted.stderr);
   const status = JSON.parse(restarted.stdout);
   assert.equal(status.acceptance.complete, true);
@@ -415,10 +414,8 @@ test('structured evidence reports missing, failed, unavailable, irrelevant and o
   const complete = submit(records().slice(0, 1), ['--complete']);
   assert.equal(complete.complete, true);
   assert.equal(complete.acceptance.criteria[1].status, 'gap');
-  const compact = renderCommand('task-step', complete);
-  assert.match(compact, /error — gap \(optional\)/);
-  assert.match(compact, /attributed criterion evidence/);
-  assert.match(renderCommand('session', command('session')), /value — verified/);
+  assert.equal(complete.acceptance.assurance, 'attributed');
+  assert.equal(command('session').acceptance.criteria[0].status, 'verified');
   assert.equal(readSessionState(root, 'host-session', 'fix-value').taskRecord.acceptanceEvidence.records.length, 1);
 });
 

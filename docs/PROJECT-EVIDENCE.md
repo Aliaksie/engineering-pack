@@ -13,14 +13,15 @@ Run from the checkout:
 
 ```sh
 cargo build --workspace --locked
-node cli/project-evidence.mjs refresh --enable --root . --binary "$PWD/target/debug/craft-project-evidence"
-node cli/project-evidence.mjs query --enable --root . --binary "$PWD/target/debug/craft-project-evidence" --value stateFile --verify
-node cli/project-evidence.mjs status --enable --root . --binary "$PWD/target/debug/craft-project-evidence" --json
+target/debug/craft project-evidence refresh --enable --root .
+target/debug/craft project-evidence query --enable --root . --value stateFile --verify
+target/debug/craft project-evidence status --enable --root . --json
 ```
 
-Omitting `--enable` disables native invocation and state access. The wrapper never
-builds or downloads a binary. No automatic host hook is installed.
-`version --enable --binary <absolute-path>` reports binary, schema and active `providers`.
+Omitting `--enable` disables repository and state access. Nothing builds or downloads a
+binary. No automatic host hook is installed. An installed package runs the same command as
+`<package-root>/bin/craft project-evidence`.
+`version --enable` reports binary, schema and active `providers`.
 The legacy `provider` field continues to identify the JavaScript provider.
 
 Queries match an exact occurrence `id`, `name`, source `path`, or syntax `target` using `--field`
@@ -52,10 +53,10 @@ through `CARGO` and `RUSTC` respectively. The command writes
 This developer build is separate from `npm run build`. CI and release packaging include
 the checked prebuilts in each complete host bundle and independently cached plugin.
 
-Move the entire bundle directory to its intended local location. With Node 22+ and
-Git on PATH, run `node <bundle>/cli/project-evidence.mjs version --enable` or the same
-refresh/query commands shown above without `--binary`. No Rust toolchain is needed
-at runtime. The bundle contains the release binary, the small wrapper, dependency
+Move the entire bundle directory to its intended local location. With Git on PATH,
+run `<bundle>/native-bin/craft project-evidence version --enable` or the same
+refresh/query commands shown above. Neither Node nor a Rust toolchain is needed
+at runtime. The bundle contains the release binaries, dependency
 notices and a manifest with protocol/schema/provider versions, target, source revision,
 dirty-state indicator and per-file SHA-256 checksums. The manifest itself is excluded
 from its checksum list. Checksums detect changed content; they are not signatures.
@@ -177,14 +178,14 @@ retires v1 contributions and reacquires them rather than reusing old failure has
 ```sh
 cargo test --workspace --locked
 cargo clippy --workspace --locked --all-targets -- -D warnings
-CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft-project-evidence" node --test tests/project-evidence.test.mjs
-CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft-project-evidence" CRAFT_EVIDENCE_LARGE_SMOKE=1 node --test tests/project-evidence.test.mjs
+CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft" node --test tests/project-evidence.test.mjs
+CRAFT_PROJECT_EVIDENCE_BINARY="$PWD/target/debug/craft" CRAFT_EVIDENCE_LARGE_SMOKE=1 node --test tests/project-evidence.test.mjs
 ```
 
 The large smoke creates 10,001 eligible files and a pathname listing larger than 2 MiB.
 It checks the tail query and unchanged reuse, without making comparative performance claims.
-The default Node test suite checks disabled behavior and skips native cases unless the
-binary is explicitly supplied. Native checks are therefore separate from `npm run check`.
+The default Node test suite skips these native cases unless the binary is explicitly
+supplied; the CLI contract replay checks disabled behavior. Native checks are therefore separate from `npm run check`.
 
 Storage uses [rusqlite](https://docs.rs/crate/rusqlite/0.40.2) with bundled SQLite;
 syntax extraction uses [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) and its
@@ -201,17 +202,16 @@ response on standard output. Both executables use the same application library.
 The request envelope is `{ "formatVersion": 1, "operation": "version", "input": {} }`.
 Operations are `version`, `extract`, `refresh`, `status`, `query`, `backup`,
 `rebuild` and `cli`; operation inputs retain their existing Project Intelligence contracts.
-`cli` runs one migrated command (currently `settings`, `operation`, `prepare-services`,
-`model-advice` and `lookup`) from `{ "argv": [...] }` and returns its `exitCode`, `stdout`, `stderr` and
-any remote-bound telemetry `export`, which `cli/main.mjs` posts until bounded HTTP is native.
-`craft <command> [options]` runs the same command directly with local telemetry only.
+`cli` runs one command from `{ "argv": [...] }` and returns its `exitCode`, `stdout`, `stderr` and
+any remote-bound telemetry `export` for the caller to deliver.
+`craft <command> [options]` runs the same command directly and delivers its own export.
 Successful responses contain `formatVersion`, `ok: true` and `result`. Failures
 contain `formatVersion`, `ok: false` and `error` with `code` and `message`, and exit
 with status 1. Invalid JSON or oversized input returns `INVALID_INPUT`, an
 unsupported envelope version returns `UNSUPPORTED_VERSION`, and an unknown
 operation returns `UNKNOWN_OPERATION`.
 
-The existing Node bridge continues to select `craft-project-evidence`, checks its
-version before invoking an operation, and reports native failures without replay.
-Disabled access bypasses the executable. Missing executables and deadlines remain
-explicit availability errors; signal interruption reports possible partial effects.
+`craft project-evidence <operation> --enable ...` runs these operations in the same process
+and prints `CODE: message` on standard error with exit status 1 on failure. Without `--enable`
+it reads and writes nothing. An installed package's launcher fails explicitly when no
+bundled runtime matches the platform.

@@ -59,8 +59,8 @@ To compare a release-mode candidate against a retained earlier native bundle, us
 node tooling/native-benchmark.mjs <candidate-runtime-root> <baseline-runtime-root>
 ```
 
-Each root contains `cli/project-evidence.mjs`; an installed plugin uses its `support/`
-root. The driver runs real version, refresh/reuse and verified query operations in
+Each root is a native bundle directory (`native-bin/craft`); an installed plugin uses its
+`support/native-bin/<target>/` directory. The driver runs real version, refresh/reuse and verified query operations in
 separate disposable consumers. It reports fresh-process latency without asserting a
 speedup; process-tree and RSS comparisons need separate measurements.
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 
 // Exercise checkpoint behavior through the installed command contract.
 export function saveCheckpoint(root, session, metadata = {}) {

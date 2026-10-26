@@ -11,7 +11,7 @@ import { createTelemetry, telemetryOptions, withTelemetry, observe, flushTelemet
 import { appendTelemetry, readTelemetry, telemetryIdentity, postTelemetry, TELEMETRY_MAX_BYTES } from '../platform/node/telemetry.mjs';
 import { runtimeVersion } from '../platform/index.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { lockState, releaseState, stateFile } from '../platform/node/state-files.mjs';
 
 const envelope = { name:'routing.completed', timestamp:'2026-10-19T00:00:00.000Z', sessionId:'a'.repeat(32), operationId:'12345678-1234-4234-a234-123456789abc', packVersion:'0.0.2', host:'codex', outcome:'success', durationMs:12 };

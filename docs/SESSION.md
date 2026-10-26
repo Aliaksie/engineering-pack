@@ -5,7 +5,7 @@ npm run session -- --root <project> --session <id> --task <task-id> --data <task
 npm run session -- --root <project> --session <id> --task <task-id> --data <task.json> --json
 ```
 
-Installed bundles expose `node support/cli/main.mjs session`. The default is a small
+Installed packages expose `<package-root>/bin/craft session` (`bin\craft.cmd` on Windows). The default is a small
 status and recommendation; `--json` includes evidence, diagnostics and the selected guidance
 report. `session:advice` uses the same display. Its `--data` declarations must be a JSON
 object. No command automatically compacts, resets, switches models, starts workers or invokes
@@ -21,13 +21,13 @@ state and guidance reports. Programmatic callers still receive the complete obje
 For multi-step work, establish a task once using the host-provided session identity:
 
 ```sh
-node cli/main.mjs task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
-node cli/main.mjs locate --root <project> --session <host-id> --term SymbolValue
-node cli/main.mjs task-step --root <project> --session <host-id> --stage implement --target acceptance:value --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
-node cli/main.mjs session --root <project> --session <host-id>
+<package-root>/bin/craft task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
+<package-root>/bin/craft locate --root <project> --session <host-id> --term SymbolValue
+<package-root>/bin/craft task-step --root <project> --session <host-id> --stage implement --target acceptance:value --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
+<package-root>/bin/craft session --root <project> --session <host-id>
 ```
 
-Installed bundles use `support/cli/main.mjs`. `task-start` routes relevant guidance and binds
+Installed packages run these through `bin/craft`. `task-start` routes relevant guidance and binds
 one active task to the session using private runtime state. The binding includes the Git
 symbolic ref or detached state; after changing it, rerun task-start explicitly. Older bindings
 without that checkout identity also require task-start. No branch name is prohibited. Read the selected resources;
@@ -51,9 +51,9 @@ select the task's Git worktree roots explicitly; selection never scans or enroll
 
 ```sh
 # One repository within a non-Git workspace.
-node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-kit --goal "Update the kit" --repository career-kit --file career-kit/src/main.mjs
+<package-root>/bin/craft task-start --root <workspace> --session <host-id> --task update-kit --goal "Update the kit" --repository career-kit --file career-kit/src/main.mjs
 # One coordinated task across two repositories.
-node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-contract --goal "Update producer and consumer" --repository career-kit --repository career-profile
+<package-root>/bin/craft task-start --root <workspace> --session <host-id> --task update-contract --goal "Update producer and consumer" --repository career-kit --repository career-profile
 ```
 
 Repeat `--repository` for at most eight workspace-relative worktree roots, including `.`
@@ -91,10 +91,10 @@ Repository selection also participates in workspace identity, so rebinding a tas
 repositories cannot consume the prior selection's scratch. Prior scoped evidence remains private.
 
 ```sh
-node cli/main.mjs workspace-open --root <workspace> --session <host-id> --operation investigation
-node cli/main.mjs workspace-write --root <workspace> --session <host-id> --operation investigation --data <artifact-input.json>
-node cli/main.mjs workspace-promote --root <workspace> --session <host-id> --operation investigation --data <promotion-input.json>
-node cli/main.mjs workspace-release --root <workspace> --session <host-id> --operation investigation
+<package-root>/bin/craft workspace-open --root <workspace> --session <host-id> --operation investigation
+<package-root>/bin/craft workspace-write --root <workspace> --session <host-id> --operation investigation --data <artifact-input.json>
+<package-root>/bin/craft workspace-promote --root <workspace> --session <host-id> --operation investigation --data <promotion-input.json>
+<package-root>/bin/craft workspace-release --root <workspace> --session <host-id> --operation investigation
 ```
 
 The write input is the JSON object `{ "name": "result.json", "content": "small structured result" }`;
@@ -189,9 +189,9 @@ records. Manual review settings suppress optional offers while explicit review w
 Use the same local task record for optional review, delegation and compaction:
 
 ```sh
-node cli/main.mjs task-offer --session <id> --root <project> --action review --scope review:current-source --benefit "Check the verified change risks" --evidence checks/current --data facts.json
-node cli/main.mjs task-decision --session <id> --root <project> --offer <proposal-id> --decision approved --evidence user-message:12
-node cli/main.mjs task-action-check --session <id> --root <project> --offer <proposal-id> --data facts.json
+<package-root>/bin/craft task-offer --session <id> --root <project> --action review --scope review:current-source --benefit "Check the verified change risks" --evidence checks/current --data facts.json
+<package-root>/bin/craft task-decision --session <id> --root <project> --offer <proposal-id> --decision approved --evidence user-message:12
+<package-root>/bin/craft task-action-check --session <id> --root <project> --offer <proposal-id> --data facts.json
 ```
 
 An offer explains trigger, benefit and scope. Present its question through the actual host's
@@ -545,7 +545,7 @@ and explicit remote opt-in. Telemetry volume never estimates host context usage.
 
 ## Effective default policy
 
-`node cli/main.mjs settings --root <project>` shows the effective policy,
+`<package-root>/bin/craft settings --root <project>` shows the effective policy,
 with the origin of each leaf value and the private state directory. CLI and hooks share
 the same resolver. Routing hints, hint deduplication, milestone snapshots and lookup reuse
 are enabled by default; explicit false disables the respective automatic behavior.

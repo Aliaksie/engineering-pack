@@ -3,7 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const sourceFolders = ['hosts', 'engine', 'application', 'platform', 'integrations', 'cli', 'tooling', 'packages', 'tools'];
+const sourceFolders = ['hosts', 'engine', 'application', 'platform', 'integrations', 'tooling', 'packages', 'tools'];
 export function lintScripts(repo) {
   const errors = [];
   const queue = sourceFolders.map(folder => path.join(repo, folder)).filter(existsSync);

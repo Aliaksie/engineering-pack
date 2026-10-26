@@ -73,7 +73,7 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
   const codex = read(path.join(output, '.agents/plugins/marketplace.json'));
   for (const plugin of codex.plugins) {
     assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
-    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'support/cli/main.mjs')));
+    assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'bin/craft')));
   }
   const remoteLinks = files(output).filter(file => file.endsWith('.md')).flatMap(file => fs.readFileSync(file, 'utf8').match(/https:\/\/github\.com\/Aliaksie\/engineering-pack\/blob\/distribution[^)\s]*/g) ?? []);
   assert.ok(remoteLinks.some(link => link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution-next/')));

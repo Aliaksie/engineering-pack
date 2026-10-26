@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { decide } from '../application/engine-client.mjs';
 
 test('feature evidence is bounded, distinguishes declaration/runtime receipts, and never fills missing applicability', () => {
@@ -60,15 +60,15 @@ test('normal task commands retain outcomes and mark changed sources stale withou
   assert.equal(command('task-features').features.review.status, 'unknown');
 });
 
-test('relocated standalone runtime persists feature outcomes across processes', t => {
+test('relocated standalone package persists feature outcomes across processes', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-controls-export-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const support = path.join(root, 'support');
-  fs.cpSync(path.resolve('dist/codex/packages/craft-delivery/support'), support, { recursive: true });
+  const pkg = path.join(root, 'package');
+  fs.cpSync(path.resolve('dist/codex/packages/craft-delivery'), pkg, { recursive: true });
   const options = { session: 'standalone-session', task: 'standalone-task' };
-  assert.equal(fs.existsSync(path.join(support, 'hosts')), false);
+  assert.equal(fs.existsSync(path.join(pkg, 'support/hosts')), false);
   const invoke = (...args) => {
-    const result = spawnSync(process.execPath, [path.join(support, 'cli/main.mjs'), ...args, '--root', root, '--session', options.session, '--json'], { encoding: 'utf8' });
+    const result = launch(pkg, [...args, '--root', root, '--session', options.session, '--json']);
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   invoke('task-start', '--task', options.task, '--goal', 'Inspect portable controls');

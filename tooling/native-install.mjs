@@ -8,12 +8,13 @@ import { copy } from './export/export.mjs';
 import { files } from './lib/capabilities.mjs';
 import { nativeTargets, releaseTargets, validateNativeBundles } from './native-release.mjs';
 
-// Build-time assembly only. Each independently cached plugin carries its own runtime.
+// Build-time assembly only. Each independently cached plugin carries its own runtime,
+// where its `bin/craft` launcher selects it: `support/native-bin/<target>/`.
 export function installNativeArtifacts({ destination, ...options }) {
   const bundles = validateNativeBundles(options);
-  const roots = files(destination).filter(file => file.endsWith(`${path.sep}platform${path.sep}node${path.sep}project-evidence.mjs`))
-    .map(file => path.resolve(path.dirname(file), '../..'));
-  if (!roots.length) throw new Error('no host runtime found in distribution');
+  const roots = files(destination).filter(file => file.endsWith(`${path.sep}bin${path.sep}craft`))
+    .map(file => path.resolve(path.dirname(file), '../support'));
+  if (!roots.length) throw new Error('no package launcher found in distribution');
   const artifacts = bundles.map(({ target, executable, manifest }) => ({ ...nativeTargets.find(entry => entry.target === target),
     executable: `${target}/${executable}`, sha256: manifest.files.find(entry => entry.path === executable).sha256,
     binaryVersion: manifest.binaryVersion, sourceDirty: manifest.sourceDirty }));

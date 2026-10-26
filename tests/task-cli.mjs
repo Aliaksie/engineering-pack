@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 
 function file(value) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-cli-'));

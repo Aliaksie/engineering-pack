@@ -1,4 +1,4 @@
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 
 export function workspaceBoundary(root, session, task, action) {
   try {

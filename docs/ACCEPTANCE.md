@@ -184,9 +184,9 @@ authorization. These task details are returned to the caller, never telemetry at
 Use existing commands with an actual host session ID and private JSON input files:
 
 ```sh
-node cli/main.mjs task-start --root PROJECT --session SESSION --task TASK --goal "Outcome" --contract contract.json --json
-node cli/main.mjs session --root PROJECT --session SESSION --json
-node cli/main.mjs task-step --root PROJECT --session SESSION --stage verify --target acceptance:criterion --approach assessed-check --evidence retained-output --outcome passed --result "Observed behavior" --next "Report remaining gaps" --acceptance-evidence ledger.json --expected-task-contract TASK_DIGEST --expected-evidence-digest LEDGER_DIGEST --complete --json
+<package-root>/bin/craft task-start --root PROJECT --session SESSION --task TASK --goal "Outcome" --contract contract.json --json
+<package-root>/bin/craft session --root PROJECT --session SESSION --json
+<package-root>/bin/craft task-step --root PROJECT --session SESSION --stage verify --target acceptance:criterion --approach assessed-check --evidence retained-output --outcome passed --result "Observed behavior" --next "Report remaining gaps" --acceptance-evidence ledger.json --expected-task-contract TASK_DIGEST --expected-evidence-digest LEDGER_DIGEST --complete --json
 ```
 
 `--contract` reads the engineering-contract shape above. `--acceptance-evidence` reads
@@ -228,8 +228,7 @@ manually without claiming runtime persistence or enforcement.
 ## Grounded context composition
 
 `craft grounded-context --root project --data input.json` composes opt-in, read-only
-context. The forwarded `support/cli/main.mjs grounded-context` command accepts the same
-options. `input.scope` contains
+context. An installed package runs it as `<package-root>/bin/craft grounded-context`. `input.scope` contains
 1–32 project-relative paths. Optional `sources`, `constraints`, `checks` and `questions`
 use the context shapes above; `discovery` may carry an existing bounded lookup result.
 The native engine validates the request and composes the context packet.

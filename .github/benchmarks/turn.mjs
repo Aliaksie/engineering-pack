@@ -20,7 +20,7 @@ const git=(...args)=>run('git',args,root);
 git('init','-q');for(const [k,v] of [['core.autocrlf','false'],['core.hooksPath',path.join(scratch,'no-hooks')],['commit.gpgsign','false']])git('config','--local',k,v);
 for(let i=0;i<100;i++)fs.writeFileSync(path.join(root,`file-${i}.mjs`),'export const value=1;\n'.repeat(20));
 git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.test','commit','-qm','fixture');
-run(process.execPath,[path.join(source,'cli/main.mjs'),'task-start','--root',root,'--session','bench','--task','task','--goal','Fixed synthetic coding turn','--json']);
+run(process.execPath,[path.join(source,'tooling/craft.mjs'),'task-start','--root',root,'--session','bench','--task','task','--goal','Fixed synthetic coding turn','--json']);
 const seed=path.join(scratch,'seed');fs.cpSync(path.join(root,'.craft'),seed,{recursive:true});
 const manifests=Object.fromEntries(packages.map(p=>[p,JSON.parse(fs.readFileSync(path.join(scratch,'exports',p,'platform-hooks/hooks.json')))]));
 const workloads=Object.fromEntries(['nativeReads','shellReads'].map(name=>{

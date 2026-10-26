@@ -46,7 +46,7 @@ test('Node platform implementations never import use cases or decision policy', 
 });
 
 test('host runtime and external transports cannot depend on build tooling or private policy', () => {
-  for (const directory of ['hosts','integrations','cli']) for (const file of modules(path.join(root,directory))) {
+  for (const directory of ['hosts','integrations']) for (const file of modules(path.join(root,directory))) {
     for (const specifier of imports(fs.readFileSync(file,'utf8'))) {
       const target = path.resolve(path.dirname(file),specifier);
       assert.ok(!inDirectory(target,'tooling'),`${file}: build dependency`);
@@ -54,7 +54,7 @@ test('host runtime and external transports cannot depend on build tooling or pri
       if (directory === 'hosts') assert.ok(!inDirectory(target,'integrations'),`${file}: host depends on external provider integration`);
     }
   }
-  for (const directory of ['runtime','adapters','scripts','application/node']) assert.equal(fs.existsSync(path.join(root,directory)),false,`obsolete ${directory} tree retained`);
+  for (const directory of ['runtime','adapters','scripts','application/node','cli']) assert.equal(fs.existsSync(path.join(root,directory)),false,`obsolete ${directory} tree retained`);
 });
 
 test('delivery policy uses lifecycle facts rather than host hook event names', () => {
@@ -63,7 +63,7 @@ test('delivery policy uses lifecycle facts rather than host hook event names', (
 });
 
 test('only the application engine client imports engine implementation entry points', () => {
-  for (const directory of ['application','platform','hosts','integrations','cli','tooling']) for (const file of modules(path.join(root,directory))) {
+  for (const directory of ['application','platform','hosts','integrations','tooling']) for (const file of modules(path.join(root,directory))) {
     for (const specifier of imports(fs.readFileSync(file,'utf8'))) {
       const target = path.resolve(path.dirname(file),specifier);
       if (inDirectory(target,'engine')) {

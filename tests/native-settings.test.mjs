@@ -5,14 +5,11 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { telemetryEvent } from '../application/telemetry/events.mjs';
 import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs';
 import { runtimeVersion, stateLocation } from '../platform/index.mjs';
 
-// `settings` runs in the native runtime behind the JS command line; these tests use
-// the public entry point exactly as an installed skill does.
-const cli = fileURLToPath(new URL('../cli/main.mjs', import.meta.url));
+// `settings` as an installed skill runs it: one `craft` process.
 function fixture(t) {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-settings-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -24,7 +21,7 @@ function fixture(t) {
 }
 function settings(root, args, env = {}) {
   return new Promise(resolve => {
-    const child = spawn(process.execPath, [cli, 'settings', ...args], { cwd: root, env: { ...process.env, ...env } });
+    const child = spawn(process.env.CRAFT_NATIVE_BINARY, ['settings', ...args], { cwd: root, env: { ...process.env, ...env } });
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
@@ -111,12 +108,4 @@ test('remote export of native events runs through the forwarder', async t => {
   assert.deepEqual([exported.outcome, exported.attributes.exportedEvents, exported.sessionId, exported.traceId, exported.parentOperationId],
     ['success', 2, events[1].sessionId, events[1].traceId, events[1].operationId]);
   assert.equal(spans[1].traceId, events[1].traceId);
-});
-
-test('an unavailable native runtime fails the command explicitly', async t => {
-  const { root } = fixture(t);
-  const result = await settings(root, [], { CRAFT_NATIVE_BINARY: path.join(root, 'missing', 'craft') });
-  assert.equal(result.status, 2);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, /Native runtime unavailable/);
 });

@@ -17,7 +17,7 @@ disagree or when the tree breaks a rule.
 
 Final target: three Rust crates (`engine` ← `platform` ← `application`, with `application` also
 using `engine`), no runtime JavaScript (`hosts/` holds the host tables that the build reads and
-`craft` embeds), and build tooling, content, schemas, docs, tests and examples around them. `cli/` and `integrations/` dissolve into their owners;
+`craft` embeds), and build tooling, content, schemas, docs, tests and examples around them. `integrations/` dissolves into its owners;
 the JavaScript inside the crate folders is legacy and is removed as its callers move to Rust.
 
 ## Module map
@@ -27,7 +27,6 @@ the JavaScript inside the crate folders is legacy and is removed as its callers 
 | `engine/` | rust-crate | — | — | yes | Pure decisions, contracts, identities and transitions |
 | `platform/` | rust-crate | engine | — | yes | Filesystem, state, locks, Git, processes, search, SQLite, HTTP, syntax providers |
 | `application/` | rust-crate | engine, platform | engine, integrations, platform | yes | Use cases, CLI, host-neutral lifecycle handling, `craft` executable |
-| `cli/` | retiring | application, platform | — | yes | Legacy command parsing and display, moving into `application` |
 | `integrations/` | retiring | — | — | yes | Legacy external mappings, dissolving into `application`, `platform` and review owners |
 | `hosts/` | host-adapter | — | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
 | `packages/` | content | — | — | yes | Capability guidance and hook declarations |

@@ -9,7 +9,7 @@ import { route } from './native-route.mjs';
 import { readProject } from './project-settings.mjs';
 import { validateProject } from './project-settings.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { craft, prepareSnapshot, checkReview, planPublication } from './review-tools.mjs';
 import { loadCapabilities } from '../tooling/lib/capabilities.mjs';
 

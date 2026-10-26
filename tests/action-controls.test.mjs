@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { decide } from '../application/engine-client.mjs';
 import { validateProject } from './project-settings.mjs';
 

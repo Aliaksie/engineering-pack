@@ -9,11 +9,10 @@ State the question and likely paths first. Search multiple related literal names
 pass rather than repeatedly loading files into the strongest model's context. Where available:
 
 ```text
-node <package-root>/support/cli/main.mjs locate --root <project> --path src --term Dispatch --term receipt
+<package-root>/bin/craft locate --root <project> --path src --term Dispatch --term receipt
 ```
 
-From the source checkout, use `npm run locate -- ...` or `node cli/main.mjs locate ...`.
-Standalone packages carry `support/cli/main.mjs`; full exports also expose `cli/main.mjs`.
+From the source checkout, use `npm run locate -- ...`. On Windows the launcher is `bin\craft.cmd`.
 With a task already bound by `task-start`, pass the verified `--session` id to reuse
 current packets; no per-lookup task JSON is needed. Without a binding, use explicit session
 and task identities when known, or perform a bounded fresh lookup and report reuse unavailable.

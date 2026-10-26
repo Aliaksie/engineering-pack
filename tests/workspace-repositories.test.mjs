@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { activeTask } from './session-state.mjs';
 import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { workspaceBoundary, workspaceOperation } from './workspace-cli.mjs';
-import { repositoryRoots, repositoryState, nativeLocate, stateFile } from '../platform/index.mjs';
+import { repositoryRoots, repositoryState, stateFile } from '../platform/index.mjs';
+import { nativeLocate } from './craft.mjs';
 import { prepareSnapshot } from './review-tools.mjs';
 import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
 import { decide, digest } from '../application/engine-client.mjs';
@@ -250,12 +251,12 @@ test('workspace operations retain other owners, recover only dead owned locks an
   assert.throws(() => command('workspace-open', '--task', '../bad'), /binding/);
 });
 
-test('linked worktree selection and relocated exported workspace commands preserve repository isolation', t => {
+test('linked worktree selection and exported workspace commands preserve repository isolation', t => {
   const { root, git } = fixture(t);
   git('kit', 'worktree', 'add', '-qb', 'linked-task', path.join(root, 'linked'));
-  const cli = path.resolve('dist/codex/packages/craft-delivery/support/cli/main.mjs');
+  const pkg = path.resolve('dist/codex/packages/craft-delivery');
   const invoke = (action, ...args) => {
-    const result = spawnSync(process.execPath, [cli, action, '--root', root, '--session', 'export-session', '--json', ...args], { encoding: 'utf8' });
+    const result = launch(pkg, [action, '--root', root, '--session', 'export-session', '--json', ...args]);
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);
   };
   const started = invoke('task-start', '--task', 'export-task', '--goal', 'Verify the linked workspace', '--repository', 'linked');
@@ -345,7 +346,7 @@ test('concurrent native writers and session observations serialize on one worksp
   const { root, command, start } = fixture(t); start();
   command('workspace-open');
   const binary = process.env.CRAFT_NATIVE_BINARY;
-  const module = new URL('../cli/main.mjs', import.meta.url).href;
+  const module = new URL('./craft.mjs', import.meta.url).href;
   const policy = DEFAULT_SETTINGS.workspace, identity = mainScope();
   const run = (file, args) => new Promise((resolve, reject) => {
     const child = spawn(file, args);

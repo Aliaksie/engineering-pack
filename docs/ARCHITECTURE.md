@@ -31,13 +31,12 @@ flowchart TD
 | `platform/node/` | Concrete Node ports; repository and resource observations are grouped separately |
 | `integrations/` | External Git/codehost command syntax, observation normalization and output projections |
 | `hosts/` | Native host payloads, telemetry, capability declarations, controls and wire output |
-| `cli/` | Arguments, help and text display |
 | `tooling/export/` | Build-time platform exporters |
 
 Folders represent features with multiple responsibilities. Small features remain files.
 Top-level names identify ownership: `engine/` decides, `application/` orchestrates,
 `platform/` implements runtime/OS access, `hosts/` adapts coding-agent hosts,
-`integrations/` maps external systems, `cli/` handles human input/output,
+`integrations/` maps external systems, the `craft` executable in `application/` handles commands,
 `tooling/` builds and validates, and `packages/` contains agent-facing guidance.
 No former runtime, adapter or script paths are retained as forwarding modules.
 The accepted module map, dependency directions and runtime JS budgets are declared in
@@ -120,7 +119,7 @@ Host lifecycle controls belong to `hosts/`; external service mappings belong to
 ## Packages and exports
 
 Package names, manifests and useful bin/hook entry points remain external interfaces.
-The builder copies canonical `engine/`, `application/`, `platform/`, `integrations/`, `hosts/` and `cli/` into
+The builder copies canonical `engine/`, `application/`, `platform/` and `integrations/` into
 each package's `support/`, and rebases shared imports in package entry points. Installed
 packages run after relocation without authoring scripts or sibling package dependencies.
 Full bundles also expose these directories at their root. No legacy runtime paths or

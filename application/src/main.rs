@@ -1,5 +1,5 @@
 use serde_json::json;
-use std::io::{self, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 
 fn main() {
     // `craft <command> [options]` for people; no arguments reads one JSON envelope on stdin.
@@ -15,7 +15,8 @@ fn main() {
     if argv.first().is_some_and(|command| command == "statusline") {
         std::process::exit(craft_application::statusline::main(&argv[1..]));
     }
-    if !argv.is_empty() {
+    // A person who runs it without a command gets the usage, not a wait for a request.
+    if !argv.is_empty() || io::stdin().is_terminal() {
         std::process::exit(craft_application::cli::main(&argv));
     }
     let mut input = Vec::new();

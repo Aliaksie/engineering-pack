@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { stateFile, stateLocation, readState, writeState, projectRoot } from '../platform/index.mjs';
 import { nativeHook } from './native-hook.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { readProject } from './project-settings.mjs';
 
 function fixture(t) {

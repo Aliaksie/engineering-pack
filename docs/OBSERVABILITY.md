@@ -169,7 +169,7 @@ remote backend retention are separate; the collector/backend owner controls the 
 ## Retained observation report
 
 Run `npm run telemetry:report -- --root <project> [--session <id>]`, or use
-`node <package>/support/cli/main.mjs telemetry-report` in a standalone export.
+`<package-root>/bin/craft telemetry-report` in a standalone export.
 The bounded report counts retained feature observations and their failure/deferred outcomes,
 reported local/queue drops and failed exports. It exposes retained file bytes, backup presence,
 skipped malformed/unsupported/oversized records and invalid event envelopes. Session filtering
@@ -206,7 +206,7 @@ npm run telemetry:forget -- --root <project> --capture <returned-capture-id>
 ```
 
 Standalone packages expose the same `telemetry-capture`, `telemetry-report --capture` and
-`telemetry-forget` commands through `support/cli/main.mjs`. Report reading accepts either a
+`telemetry-forget` commands through `bin/craft`. Report reading accepts either a
 live session filter or a retained capture ID. A capture requires existing session-attributed
 observations and an existing correlation key; it never invents a session for invocation-only data.
 

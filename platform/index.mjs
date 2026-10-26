@@ -6,7 +6,5 @@ export { repositoryRoots } from './node/repository/roots.mjs';
 export { projectData, preferenceData, preferenceFile } from './node/resources/project.mjs';
 export { bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
 export { runtimeVersion } from './node/environment.mjs';
-export { projectEvidenceProcess } from './node/project-evidence.mjs';
-export { nativeCommand, nativeLocate } from './node/native-command.mjs';
 export { TELEMETRY_BATCH_EVENTS, telemetryConfiguration, telemetryIdentity, appendTelemetry, appendTelemetryBatch, readTelemetry, postTelemetry,
   telemetryContext, runTelemetryContext, telemetryRoot } from './node/telemetry.mjs';

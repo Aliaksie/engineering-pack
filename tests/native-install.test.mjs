@@ -5,10 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { installNativeArtifacts } from '../tooling/native-install.mjs';
 import { nativeTargets } from '../tooling/native-release.mjs';
-import { nativeArtifact } from '../platform/node/native-artifact.mjs';
+import { launch } from './craft.mjs';
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const hash = value => createHash('sha256').update(value).digest('hex');
 function fixture(t) {
@@ -24,48 +24,29 @@ function fixture(t) {
       target, sourceRevision: options.revision, sourceDirty: false, cargoLockSha256: options.lockSha256,
       files: names.map(name => ({ path: name, bytes: Buffer.byteLength(target), sha256: hash(target) })) }));
   }
-  for (const root of [options.destination, path.join(options.destination, 'packages/example/support')]) {
-    fs.mkdirSync(path.join(root, 'platform/node'), { recursive: true });
-    for (const name of ['native-artifact.mjs', 'native-command.mjs', 'project-evidence.mjs']) fs.copyFileSync(path.join(repo, 'platform/node', name), path.join(root, 'platform/node', name));
-  }
+  // A package is found by its launcher; the export root has none.
+  fs.mkdirSync(path.join(options.destination, 'packages/example/bin'), { recursive: true });
+  fs.writeFileSync(path.join(options.destination, 'packages/example/bin/craft'), '#!/bin/sh\n');
   return options;
 }
-test('self-contained host and plugin select each prebuilt target and refuse unsupported platforms', async t => {
+test('each package launcher gets every prebuilt target where it selects them', t => {
   const options = fixture(t);
-  assert.equal(installNativeArtifacts(options).roots, 2);
-  for (const root of [options.destination, path.join(options.destination, 'packages/example/support')]) {
-    const directory = path.join(root, 'native-bin');
-    for (const entry of nativeTargets) {
-      const binary = nativeArtifact({ directory, platform: entry.platform, arch: entry.arch });
-      assert.equal(fs.readFileSync(binary, 'utf8'), entry.target);
-      assert.match(path.basename(binary), /^craft(?:\.exe)?$/);
-    }
-    for (const [platform, arch] of [['linux', 'arm64'], ['darwin', 'x64'], ['freebsd', 'x64']]) {
-      assert.throws(() => nativeArtifact({ directory, platform, arch }), /Unsupported native platform/);
-    }
-    const invoke = (await import(pathToFileURL(path.join(root, 'platform/node/project-evidence.mjs')).href)).projectEvidenceProcess;
-    fs.rmSync(directory, { recursive: true });
-    assert.equal(invoke({ enabled: false, operation: 'invalid' }).enabled, false);
+  assert.equal(installNativeArtifacts(options).roots, 1);
+  const directory = path.join(options.destination, 'packages/example/support/native-bin');
+  for (const { target, platform } of nativeTargets) {
+    const executable = path.join(directory, target, `native-bin/craft${platform === 'win32' ? '.exe' : ''}`);
+    assert.equal(fs.readFileSync(executable, 'utf8'), target);
   }
-});
-test('damaged binaries and unsafe selection paths fail before activation', t => {
-  const options = fixture(t);
-  installNativeArtifacts(options);
-  const directory = path.join(options.destination, 'native-bin');
-  const entry = nativeTargets[0], select = () => nativeArtifact({ directory, platform: entry.platform, arch: entry.arch });
-  const binary = select();
-  fs.writeFileSync(binary, 'damaged');
-  assert.throws(select, /checksum/);
-  const file = path.join(directory, 'runtime.json'), index = JSON.parse(fs.readFileSync(file));
-  index.artifacts[0].executable = '../outside';
-  fs.writeFileSync(file, JSON.stringify(index));
-  assert.throws(select, /Invalid native artifact/);
+  const index = JSON.parse(fs.readFileSync(path.join(directory, 'runtime.json'), 'utf8'));
+  assert.deepEqual(index.artifacts.map(entry => entry.target), nativeTargets.map(entry => entry.target));
+  assert.equal(fs.existsSync(path.join(options.destination, 'native-bin')), false);
+  assert.throws(() => installNativeArtifacts(options), /already installed/);
 });
 test('incomplete target collection leaves host exports untouched', t => {
   const options = fixture(t);
   fs.rmSync(path.join(options.input, nativeTargets[2].target), { recursive: true });
   assert.throws(() => installNativeArtifacts(options));
-  assert.equal(fs.existsSync(path.join(options.destination, 'native-bin')), false);
+  assert.equal(fs.existsSync(path.join(options.destination, 'packages/example/support/native-bin')), false);
 });
 const bundle = process.env.CRAFT_PROJECT_EVIDENCE_BUNDLE;
 test('cached plugin runs native refresh/query after relocation and bundle rollback', { skip: !bundle }, async t => {
@@ -82,8 +63,15 @@ test('cached plugin runs native refresh/query after relocation and bundle rollba
   fs.writeFileSync(path.join(consumer, 'source.js'), 'export function retained() { return 1; }');
   const moved = path.join(path.dirname(options.destination), 'cached plugin λ');
   fs.renameSync(options.destination, moved);
-  const run = (root, operation, args = []) => JSON.parse(execFileSync(process.execPath,
-    [path.join(root, 'support/cli/project-evidence.mjs'), operation, '--enable', '--root', consumer, '--json', ...args], { cwd: path.dirname(consumer), encoding: 'utf8' }));
+  // The installed launcher selects the bundled runtime; no development override.
+  const env = { ...process.env };
+  delete env.CRAFT_NATIVE_BINARY;
+  const craft = (root, args) => {
+    const result = launch(root, ['project-evidence', ...args], { cwd: path.dirname(consumer), env });
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout);
+  };
+  const run = (root, operation, args = []) => craft(root, [operation, '--enable', '--root', consumer, '--json', ...args]);
   assert.equal(run(moved, 'version').binaryVersion, metadata.binaryVersion);
   assert.equal(run(moved, 'refresh').changed, 1);
   assert.equal(run(moved, 'query', ['--value', 'retained', '--verify']).results[0].verification, 'verified-selected-source');
@@ -92,10 +80,6 @@ test('cached plugin runs native refresh/query after relocation and bundle rollba
   assert.equal(run(replacement, 'refresh').reused, 1);
   fs.rmSync(replacement, { recursive: true });
   assert.equal(run(moved, 'query', ['--value', 'retained', '--verify']).results.length, 1);
-  const directory = path.join(moved, 'support/native-bin');
-  const executable = nativeArtifact({ directory });
-  fs.appendFileSync(executable, 'tampered');
-  assert.throws(() => run(moved, 'version'), /checksum mismatch/);
-  const disabled = JSON.parse(execFileSync(process.execPath, [path.join(moved, 'support/cli/project-evidence.mjs'), 'status', '--json'], { encoding: 'utf8' }));
+  const disabled = craft(moved, ['status', '--json']);
   assert.equal(disabled.enabled, false);
 });

@@ -20,8 +20,8 @@ that need them. A routing or publication plan grants no permission to execute it
 | Review result checker | Snapshot and result → structural verdict | Reads artifacts; does not judge findings or publish them |
 | Review publication plan | Checked review, current remote revisions and explicit authorization → comment-only plan | Reads artifacts; never contacts a code host |
 
-`cli/main.mjs` exposes routing, lookup, service plans, context reporting, session status/advice,
-attempt receipts and checkpoint actions. Installed packages expose `support/cli/main.mjs`.
+The `craft` executable exposes routing, lookup, service plans, context reporting, session status/advice,
+attempt receipts and checkpoint actions. Installed packages run it as `bin/craft`.
 `engine/` owns portable decisions; application use cases orchestrate `platform/` operations.
 `hosts/` owns native callbacks and `tooling/export/` constructs installed bundles.
 `craft review-prepare` writes a new snapshot artifact exclusively; `craft review-check` validates

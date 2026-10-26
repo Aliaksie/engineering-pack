@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { contextReport } from './context-cli.mjs';
 import { route } from './native-route.mjs';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 
 const root = path.resolve('.');
 const exploration = () => route({ intent: 'explore' });
@@ -63,8 +63,7 @@ test('context reporting supports every export and relocated standalone runtime w
     const packagePath = path.join(bundle, host === 'claude' ? 'plugins' : 'packages', 'craft-engineering');
     const relocated = path.join(directory, host);
     fs.cpSync(packagePath, relocated, { recursive: true });
-    const processResult = spawnSync(process.execPath, [path.join(relocated, 'support/cli/main.mjs'),
-      'context-report', '--root', directory, '--intent', 'explore', '--budget-bytes', '1'], { encoding: 'utf8' });
+    const processResult = launch(relocated, ['context-report', '--root', directory, '--intent', 'explore', '--budget-bytes', '1']);
     assert.equal(processResult.status, 0, processResult.stderr);
     const standalone = JSON.parse(processResult.stdout);
     assert.equal(standalone.complete, true, host);
@@ -104,9 +103,8 @@ test('separately installed packages are accounted through explicit roots without
     assert.equal(entry.sha256, createHash('sha256').update(content).digest('hex'));
   }
   assert.deepEqual(contextReport([...roots, roots[1]], plan), report, 'repeated physical roots do not double count');
-  const cli = spawnSync(process.execPath, [path.join(roots[0], 'support/cli/main.mjs'),
-    'context-report', '--root', directory, '--intent', 'implement', '--file', 'tasks.py',
-    '--bundle', roots[0], '--bundle', roots[1]], { encoding: 'utf8' });
+  const cli = launch(roots[0], ['context-report', '--root', directory, '--intent', 'implement', '--file', 'tasks.py',
+    '--bundle', roots[0], '--bundle', roots[1]]);
   assert.equal(cli.status, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).complete, true);
   const duplicate = path.join(directory, 'other-engineering');

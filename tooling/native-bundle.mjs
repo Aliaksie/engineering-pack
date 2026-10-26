@@ -103,12 +103,7 @@ export function buildNativeBundle() {
   if (versionResponse.ok !== true || versionResponse.formatVersion !== 1 || versionResponse.result?.schemaVersion !== 1) throw new Error('incompatible native binary');
   const stage = fs.mkdtempSync(path.join(parent, '.bundle-'));
   try {
-    for (const relative of ['cli/project-evidence.mjs', 'application/project-evidence.mjs', 'platform/node/project-evidence.mjs', 'platform/node/native-command.mjs', 'platform/node/native-artifact.mjs', 'LICENSE']) {
-      fs.mkdirSync(path.dirname(path.join(stage, relative)), { recursive: true });
-      fs.copyFileSync(path.join(repository, relative), path.join(stage, relative));
-    }
-    // Preserve the application's public platform port without shipping unrelated runtime modules.
-    fs.writeFileSync(path.join(stage, 'platform/index.mjs'), "export { projectEvidenceProcess } from './node/project-evidence.mjs';\n");
+    fs.copyFileSync(path.join(repository, 'LICENSE'), path.join(stage, 'LICENSE'));
     fs.mkdirSync(path.join(stage, 'native-bin'));
     for (const name of [executable, `craft${process.platform === 'win32' ? '.exe' : ''}`]) {
       fs.copyFileSync(path.join(metadata.target_directory, target, 'release', name), path.join(stage, 'native-bin', name));
@@ -119,7 +114,8 @@ export function buildNativeBundle() {
       sha256: digest(path.join(stage, 'native-bin', `craft${process.platform === 'win32' ? '.exe' : ''}`))
     }] });
     notices(metadata, stage);
-    fs.writeFileSync(path.join(stage, 'README.md'), `# Project evidence local bundle\n\nTarget: ${target}. Requires Node 22+ and Git on PATH; Rust is not required.\n\nRun from this directory:\n\n\`\`\`sh\nnode cli/project-evidence.mjs version --enable\nnode cli/project-evidence.mjs refresh --enable --root /absolute/repository\nnode cli/project-evidence.mjs query --enable --root /absolute/repository --value symbol --verify\n\`\`\`\n\nMove the whole directory together. Omit --enable to disable native access. No hooks or host configuration are installed. Keep the previous bundle directory for rollback; source evidence remains in each selected repository's private .craft state. Replacing a bundle does not migrate that state. Other targets are unverified. See dependencies.json and notices/ for dependency notices.\n`);
+    const craft = `native-bin/craft${process.platform === 'win32' ? '.exe' : ''}`;
+    fs.writeFileSync(path.join(stage, 'README.md'), `# Project evidence local bundle\n\nTarget: ${target}. Requires Git on PATH; Node and Rust are not required.\n\nRun from this directory:\n\n\`\`\`sh\n${craft} project-evidence version --enable\n${craft} project-evidence refresh --enable --root /absolute/repository\n${craft} project-evidence query --enable --root /absolute/repository --value symbol --verify\n\`\`\`\n\nMove the whole directory together. Omit --enable to disable native access. No hooks or host configuration are installed. Keep the previous bundle directory for rollback; source evidence remains in each selected repository's private .craft state. Replacing a bundle does not migrate that state. Other targets are unverified. See dependencies.json and notices/ for dependency notices.\n`);
     const manifest = { formatVersion: 1, packVersion: packVersion(repository), target, profile: 'release', protocolVersion: 1, ...versionResponse.result,
       compiler: compiler.split('\n')[0], sourceRevision: run('git', ['rev-parse', 'HEAD']).trim(),
       sourceDirty: run('git', ['status', '--porcelain', '--untracked-files=normal']).trim().length > 0,

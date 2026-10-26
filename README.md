@@ -127,11 +127,11 @@ npm run operation -- --root examples/project --operation task.read --params '{"i
 ```
 
 This returns an explicit invocation plan for the example task tool; it does not execute it.
-The JSON quoting shown is for a POSIX shell; adapt it to your shell. In an exported standalone package the CLI is at
-`support/cli/main.mjs`; a full bundle also has `cli/main.mjs`.
+The JSON quoting shown is for a POSIX shell; adapt it to your shell. Each exported package runs the
+same commands as `<package-root>/bin/craft` (`bin\craft.cmd` on Windows), without Node.
 
 Consumer `.craft/project.json` configures modules, Git/codehost/task tools, execution
-profiles and checkpoint behavior. Inspect defaults and overrides with `node cli/main.mjs
+profiles and checkpoint behavior. Inspect defaults and overrides with `<package-root>/bin/craft
 settings --root <project>`; see [effective policy](docs/SESSION.md#effective-default-policy).
 Declare runtime/framework/provider evidence independently
 at project or module level; absent runtime evidence remains an explicit unknown. MCP is one
@@ -155,8 +155,8 @@ indexes the full design. The canonical pack version is **0.0.2**.
 
 Canonical content lives in `packages/`; portable decisions live in `engine/` and use cases
 in `application/`. Filesystem, Git and state access live in `platform/`; external transport
-mappings live in `integrations/`. CLI handling lives in `cli/`, native host translation
-in `hosts/`, and build/export/validation/release tools in `tooling/`. Read [contributing](docs/CONTRIBUTING.md) for authoring checks
+mappings live in `integrations/`. The `craft` executable (commands, hooks, status line) is
+built from `application/`, host tables live in `hosts/`, and build/export/validation/release tools in `tooling/`. Read [contributing](docs/CONTRIBUTING.md) for authoring checks
 and [the architecture](docs/ARCHITECTURE.md) for these boundaries. The
 [logical catalog](docs/PLAYBOOKS.md) explains selective loading.
 

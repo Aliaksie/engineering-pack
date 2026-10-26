@@ -145,3 +145,278 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
         _ => Err("unknown evidence operation".into()),
     }
 }
+
+const OPERATIONS: &[&str] = &["version", "refresh", "status", "query", "backup", "rebuild"];
+const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <repository> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --limit 30 --after <id> --source <relative-path> --verify] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
+
+/// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
+/// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
+pub fn main(args: &[String]) -> i32 {
+    let (code, stdout, stderr) = command(args);
+    print!("{stdout}");
+    eprint!("{stderr}");
+    code
+}
+
+fn command(args: &[String]) -> (i32, String, String) {
+    if args.is_empty() || args.iter().any(|arg| arg == "--help") {
+        return (0, format!("{USAGE}\n"), String::new());
+    }
+    let (json, result) = match request(args) {
+        Ok((json, None)) => (
+            json,
+            Ok(json!({"enabled": false, "reason": "Project evidence is disabled"})),
+        ),
+        Ok((json, Some((operation, input)))) => {
+            let response = crate::evaluate(
+                json!({"formatVersion": craft_engine::PROTOCOL_VERSION, "operation": operation, "input": input}),
+            );
+            let result = if response["ok"] == true {
+                Ok(response["result"].clone())
+            } else {
+                let error = &response["error"];
+                Err(format!(
+                    "{}: {}",
+                    error["code"].as_str().unwrap_or("NATIVE_FAILED"),
+                    error["message"]
+                        .as_str()
+                        .unwrap_or("Native evidence failed")
+                ))
+            };
+            (json, result)
+        }
+        Err(message) => (false, Err(format!("PROJECT_EVIDENCE_ERROR: {message}"))),
+    };
+    match result {
+        Ok(result) => (0, render(&result, json), String::new()),
+        Err(message) => (1, String::new(), format!("{message}\n")),
+    }
+}
+
+/// Whether `--json` was given, and the native operation with its input when enabled.
+type Request = (bool, Option<(String, Value)>);
+
+fn request(args: &[String]) -> Result<Request, String> {
+    let (operation, mut rest) = (args[0].clone(), args[1..].iter());
+    let (mut options, mut members, mut flags) = (serde_json::Map::new(), Vec::new(), Vec::new());
+    const VALUES: &[&str] = &[
+        "--root",
+        "--field",
+        "--value",
+        "--limit",
+        "--after",
+        "--source",
+        "--max-files",
+        "--max-bytes",
+        "--max-output-bytes",
+        "--max-duration-ms",
+    ];
+    while let Some(key) = rest.next() {
+        let key = key.as_str();
+        if matches!(key, "--enable" | "--verify" | "--json") {
+            flags.push(key);
+        } else if key == "--member"
+            && let Some(value) = rest.next()
+        {
+            match value.split_once('=') {
+                Some((id, root)) if !id.is_empty() => members.push(json!({"id": id, "root": root})),
+                _ => return Err("member must be id=absolute-root".into()),
+            }
+        } else if VALUES.contains(&key)
+            && let Some(value) = rest.next()
+        {
+            options.insert(key[2..].to_string(), json!(value));
+        } else {
+            return Err(format!("unknown or incomplete option: {key}"));
+        }
+    }
+    let number = |name: &str| {
+        options
+            .get(name)
+            .and_then(Value::as_str)
+            .map(|text| crate::discovery::number(text).as_f64())
+    };
+    let integral = |value: Option<f64>, max: f64| {
+        value.filter(|n| n.fract() == 0.0 && (1.0..=max).contains(n))
+    };
+    let limit = match number("limit") {
+        None => 30.0,
+        given => integral(given.flatten(), 200.0).ok_or("limit must be between 1 and 200")?,
+    };
+    let mut input = serde_json::Map::new();
+    if !members.is_empty() {
+        input.insert("members".into(), Value::Array(members));
+    }
+    for (flag, field) in [
+        ("max-files", "maxFiles"),
+        ("max-bytes", "maxBytes"),
+        ("max-output-bytes", "maxOutputBytes"),
+        ("max-duration-ms", "maxDurationMs"),
+    ] {
+        if let Some(value) = number(flag) {
+            let value = integral(value, 9_007_199_254_740_991.0)
+                .ok_or(format!("{flag} must be a positive safe integer"))?;
+            input.insert(field.into(), json!(value as u64));
+        }
+    }
+    for (option, field) in [
+        ("source", "sourcePath"),
+        ("field", "field"),
+        ("value", "value"),
+        ("after", "after"),
+    ] {
+        if let Some(value) = options.get(option) {
+            input.insert(field.into(), value.clone());
+        }
+    }
+    input.insert("limit".into(), json!(limit as u64));
+    input.insert("verify".into(), json!(flags.contains(&"--verify")));
+    let json = flags.contains(&"--json");
+    if !flags.contains(&"--enable") {
+        return Ok((json, None));
+    }
+    if !OPERATIONS.contains(&operation.as_str()) {
+        return Err("unknown project evidence operation".into());
+    }
+    let root = options.get("root").and_then(Value::as_str).unwrap_or(".");
+    input.insert(
+        "root".into(),
+        json!(crate::cli::resolve(root).to_string_lossy()),
+    );
+    Ok((json, Some((operation, Value::Object(input)))))
+}
+
+fn render(result: &Value, json: bool) -> String {
+    let Some(rows) = result["results"].as_array().filter(|_| !json) else {
+        return if json {
+            format!("{result}\n")
+        } else {
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(result).expect("JSON values serialize")
+            )
+        };
+    };
+    let coverage = &result["coverage"];
+    let mut text = format!(
+        "{} result(s); {}; inventory {}\n",
+        rows.len(),
+        crate::cli::shown(&coverage["freshness"]),
+        if coverage["inventoryComplete"] == true {
+            "complete"
+        } else {
+            "partial"
+        }
+    );
+    for row in rows {
+        let evidence = &row["evidence"];
+        let verification = row["verification"].as_str().unwrap_or("stored-snapshot");
+        text.push_str(&format!(
+            "{}:{}:{} {} {} [{verification}]\n",
+            crate::cli::shown(&row["path"]),
+            crate::cli::shown(&evidence["line"]),
+            crate::cli::shown(&evidence["column"]),
+            crate::cli::shown(&evidence["kind"]),
+            crate::cli::shown(&evidence["name"]),
+        ));
+    }
+    if let Some(after) = result["continuation"].as_str() {
+        text.push_str(&format!("Continue with --after {after}\n"));
+    }
+    text
+}
+
+#[cfg(test)]
+mod command_tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn numbers_follow_javascript_number_and_bounds() {
+        let input = |limit: &str| {
+            request(&args(&["query", "--enable", "--limit", limit]))
+                .map(|(_, request)| request.unwrap().1)
+        };
+        assert_eq!(input(" 0x10 ").unwrap()["limit"], 16);
+        assert_eq!(input("1e2").unwrap()["limit"], 100);
+        for invalid in ["", "0", "201", "2.5", "abc", "Infinity"] {
+            assert_eq!(
+                input(invalid).unwrap_err(),
+                "limit must be between 1 and 200"
+            );
+        }
+        let budget = |value: &str| request(&args(&["refresh", "--enable", "--max-files", value]));
+        assert_eq!(
+            budget("9007199254740991").unwrap().1.unwrap().1["maxFiles"],
+            9_007_199_254_740_991u64
+        );
+        assert_eq!(
+            budget("9007199254740992").unwrap_err(),
+            "max-files must be a positive safe integer"
+        );
+    }
+
+    #[test]
+    fn disabled_access_names_no_operation_and_reads_nothing() {
+        let (json, enabled) = request(&args(&["bogus", "--root", "/missing", "--json"])).unwrap();
+        assert!(json && enabled.is_none());
+        assert_eq!(
+            request(&args(&["bogus", "--enable"])).unwrap_err(),
+            "unknown project evidence operation"
+        );
+        let (code, stdout, stderr) = command(&args(&["status"]));
+        assert_eq!((code, stderr.as_str()), (0, ""));
+        assert_eq!(
+            serde_json::from_str::<Value>(&stdout).unwrap()["enabled"],
+            false
+        );
+    }
+
+    #[test]
+    fn options_are_validated_before_access() {
+        for (list, message) in [
+            (
+                &["query", "--binary", "/x"][..],
+                "unknown or incomplete option: --binary",
+            ),
+            (
+                &["query", "--limit"][..],
+                "unknown or incomplete option: --limit",
+            ),
+            (
+                &["query", "--member"][..],
+                "unknown or incomplete option: --member",
+            ),
+            (
+                &["query", "--member", "=x"][..],
+                "member must be id=absolute-root",
+            ),
+        ] {
+            let (code, stdout, stderr) = command(&args(list));
+            assert_eq!((code, stdout.as_str()), (1, ""));
+            assert_eq!(stderr, format!("PROJECT_EVIDENCE_ERROR: {message}\n"));
+        }
+        let (_, request) = request(&args(&[
+            "query", "--enable", "--member", "a=b=c", "--verify",
+        ]))
+        .unwrap();
+        let input = request.unwrap().1;
+        assert_eq!(input["members"], json!([{"id": "a", "root": "b=c"}]));
+        assert_eq!(input["verify"], true);
+        assert!(Path::new(input["root"].as_str().unwrap()).is_absolute());
+    }
+
+    #[test]
+    fn query_results_render_one_line_each() {
+        let result = json!({"results": [{"path": "a.js", "evidence": {"line": 2, "column": 8, "kind": "js:declares", "name": "A"}}],
+            "coverage": {"freshness": "stored-snapshot", "inventoryComplete": false}, "continuation": "next"});
+        assert_eq!(
+            render(&result, false),
+            "1 result(s); stored-snapshot; inventory partial\na.js:2:8 js:declares A [stored-snapshot]\nContinue with --after next\n"
+        );
+        assert_eq!(render(&result, true), format!("{result}\n"));
+    }
+}

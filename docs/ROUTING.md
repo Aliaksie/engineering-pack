@@ -9,7 +9,7 @@ conservative hints for explicit review/plan/locate requests.
 npm run route -- --root examples/project --intent review --file services/orders/Order.java
 ```
 
-For a module inventory or direct owner lookup, use `node cli/main.mjs lookup --root
+For a module inventory or direct owner lookup, use `<package-root>/bin/craft lookup --root
 <project> [--file <path> ... | --module <name>]`. The most specific matching module owns a path;
 repeated `--file` selects the owners of every path, and private state or Git paths are skipped.
 
@@ -118,10 +118,10 @@ for live usage, not these file estimates or cumulative billed tokens.
 Full exports measure their package resources; host-discovered overlay copies may contain
 additional wrappers. This report does not claim to measure those copies or native UI rules.
 
-The CLI defaults to its own source/bundle/package root. `--bundle <path>` selects an explicit
+The package launcher defaults to its own package root (`npm run` in a checkout, to the checkout). `--bundle <path>` selects an explicit
 source checkout, full export or standalone package to inspect; `--root` remains the consumer
-project configuration. Installed packages use `node support/cli/main.mjs context-report`.
-Running the `craft` executable directly requires at least one `--bundle`. Repeated roots that
+project configuration. Installed packages use `bin/craft context-report`.
+Running the `craft` executable without a launcher requires at least one `--bundle`. Repeated roots that
 resolve to the same physical directory are counted once, whatever their spelling.
 The shared implementation ships in every adapter and does not inspect user plugin caches,
 activate tools, change models or emit per-tool context reports.

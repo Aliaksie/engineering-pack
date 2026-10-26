@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 
 const artifact = process.env.CRAFT_PROJECT_EVIDENCE_BUNDLE;
 
-test('native bundle works after relocation with checked notices and no authoring runtime', { skip: !artifact }, t => {
+test('native bundle works after relocation with checked notices and no Node runtime', { skip: !artifact }, t => {
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-bundle-')));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
   const bundle = path.join(temporary, 'moved bundle');
@@ -33,14 +33,15 @@ test('native bundle works after relocation with checked notices and no authoring
     for (const notice of dependency.notices) assert.ok(fs.readFileSync(path.join(bundle, notice), 'utf8').length > 100);
   }
   assert.match(fs.readFileSync(path.join(bundle, 'notices/libsqlite3-sys-0.38.2/SQLite-NOTICE'), 'utf8'), /disclaims copyright/);
-  assert.deepEqual(fs.readdirSync(bundle).sort(), ['LICENSE', 'README.md', 'application', 'cli', 'dependencies.json', 'native-bin', 'native-bundle.json', 'notices', 'platform']);
+  assert.deepEqual(fs.readdirSync(bundle).sort(), ['LICENSE', 'README.md', 'dependencies.json', 'native-bin', 'native-bundle.json', 'notices']);
   const root = path.join(temporary, 'selected');
   fs.mkdirSync(root);
   execFileSync('git', ['init', '--quiet', root]);
   fs.writeFileSync(path.join(root, 'source.js'), 'export const saved = 1;');
   fs.writeFileSync(path.join(root, 'Source.java'), 'class Source { void caller() { ping(); } void ping() {} }');
-  const run = (operation, args = [], enable = true) => JSON.parse(execFileSync(process.execPath,
-    [path.join(bundle, 'cli/project-evidence.mjs'), operation, ...(enable ? ['--enable'] : []), '--root', root, '--json', ...args],
+  const craft = path.join(bundle, 'native-bin', `craft${process.platform === 'win32' ? '.exe' : ''}`);
+  const run = (operation, args = [], enable = true) => JSON.parse(execFileSync(craft,
+    ['project-evidence', operation, ...(enable ? ['--enable'] : []), '--root', root, '--json', ...args],
     { cwd: temporary, encoding: 'utf8' }));
   assert.equal(run('version').binaryVersion, manifest.binaryVersion);
   assert.equal(run('refresh').changed, 2);
@@ -49,8 +50,10 @@ test('native bundle works after relocation with checked notices and no authoring
   assert.equal(call.verification, 'verified-selected-source');
   assert.equal(run('query', ['--field', 'id', '--value', call.evidence.container]).results[0].evidence.name, 'caller');
   assert.equal(run('refresh').reused, 2);
+  // Without --enable nothing in the repository or its private state is read or written.
   const sourceBefore = fs.readFileSync(path.join(root, 'source.js'), 'utf8');
-  fs.renameSync(path.join(bundle, 'native-bin'), path.join(bundle, 'disabled-native-bin'));
+  const stateBefore = fs.readdirSync(path.join(root, '.craft'), { recursive: true }).sort();
   assert.equal(run('status', [], false).enabled, false);
   assert.equal(fs.readFileSync(path.join(root, 'source.js'), 'utf8'), sourceBefore);
+  assert.deepEqual(fs.readdirSync(path.join(root, '.craft'), { recursive: true }).sort(), stateBefore);
 });

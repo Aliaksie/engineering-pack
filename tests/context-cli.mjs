@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { routeRequest } from './native-route.mjs';
 
 // Recreate the selected routing request through the public native context command.

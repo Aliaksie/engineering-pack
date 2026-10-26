@@ -11,7 +11,7 @@ import { withTelemetry, observe, emitTelemetry, diagnostic, createTelemetry, flu
 import { telemetryEvent, traceContext } from '../application/telemetry/events.mjs';
 import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { readProject } from './project-settings.mjs';
 import { readCheckpoint } from './checkpoint-cli.mjs';
 import { runHook } from './hook-command.mjs';

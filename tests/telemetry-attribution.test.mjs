@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createTelemetry, withTelemetry, emitTelemetry, flushTelemetry } from '../application/telemetry/observe.mjs';
 import { readTelemetry } from '../platform/index.mjs';
-import { run } from '../cli/main.mjs';
+import { run } from './craft.mjs';
 import { runHook } from './hook-command.mjs';
 
 const report = root => run(['telemetry-report', '--root', root]);

@@ -6,7 +6,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
-import { renderSessionStatus } from '../cli/render.mjs';
 import { readTelemetry } from '../platform/index.mjs';
 
 // The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
@@ -153,7 +152,7 @@ test('execution budget stops loops and preserves unknown activity and model fiel
 test('unified CLI and display preserve unknown fields and recommendations under notice suppression', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'session-status-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const result = spawnSync(process.execPath, ['cli/main.mjs', 'session', '--root', root], { encoding: 'utf8' });
+  const result = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['session', '--root', root, '--bundle', path.resolve('.')], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Host: unknown/);
   assert.match(result.stdout, /Model: unknown/);
@@ -161,6 +160,6 @@ test('unified CLI and display preserve unknown fields and recommendations under 
   const first = advice(observed());
   const suppressed = advice({ ...observed(), previous: first.notice });
   assert.equal(suppressed.suggestion, null);
-  assert.match(renderSessionStatus(suppressed), /Advice: compact/);
+  assert.equal(suppressed.recommendation.action, 'compact');
   assert.equal(advice({ task: { goalComplete: true, verification: 'failed' } }).suggestion.action, 'inspect-failure');
 });

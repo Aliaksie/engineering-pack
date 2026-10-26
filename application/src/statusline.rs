@@ -13,7 +13,7 @@ const MAX_PAYLOAD: usize = 65_536;
 const HOSTS: &str = include_str!("../../hosts/session.json");
 const USAGE: &str = "usage: craft statusline <host> --package name [--root project] [--data task.json] [--json] [--native-stdin] [--bundle root]";
 /// Set by the package launcher: the installed package whose guidance the status accounts.
-const PACKAGE_ROOT: &str = "CRAFT_PACKAGE_ROOT";
+pub(crate) const PACKAGE_ROOT: &str = "CRAFT_PACKAGE_ROOT";
 
 /// The observation, display and native commands a host adapter offers for session advice.
 pub fn capabilities(host: &str) -> Option<Value> {

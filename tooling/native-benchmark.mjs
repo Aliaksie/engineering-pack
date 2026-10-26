@@ -10,13 +10,13 @@ import { fileURLToPath } from 'node:url';
 
 export function benchmarkNativeBundle(bundle) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-benchmark-'));
-  const cli = path.resolve(bundle, 'cli/project-evidence.mjs');
+  const craft = path.resolve(bundle, `native-bin/craft${process.platform === 'win32' ? '.exe' : ''}`);
   try {
     execFileSync('git', ['init', '--quiet', root]);
     for (let i = 0; i < 25; i++) fs.writeFileSync(path.join(root, `source-${i}.js`), `export function item${i}(value) { return value + ${i}; }\n`);
     const run = (operation, args = []) => {
       const start = performance.now();
-      const result = JSON.parse(execFileSync(process.execPath, [cli, operation, '--enable', '--root', root, '--json', ...args], {
+      const result = JSON.parse(execFileSync(craft, ['project-evidence', operation, '--enable', '--root', root, '--json', ...args], {
         cwd: root, encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024
       }));
       return { ms: performance.now() - start, result };

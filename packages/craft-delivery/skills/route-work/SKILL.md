@@ -8,7 +8,7 @@ description: Choose task-relevant modules, guidance and execution roles using pr
 When a task crosses boundaries or the next skill is unclear, ask the deterministic router:
 
 ```text
-node <package-root>/support/cli/main.mjs route --root <project> --intent <intent> --file <path>
+<package-root>/bin/craft route --root <project> --intent <intent> --file <path>
 ```
 
 In the authoring checkout, `npm run route -- ...` invokes the same runtime. Supply a supported

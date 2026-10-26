@@ -56,7 +56,7 @@ export function build(repo, target) {
       const policy = fs.readFileSync(new URL('../packages/craft-engineering/standards/session-setup.md', import.meta.url), 'utf8');
       write(destination, 'SETUP.md', `${policy}\n## Export facts\n\n\`\`\`json\n${JSON.stringify(notice, null, 2)}\n\`\`\`\n`);
       // Host tables configure exports here; `craft` embeds the same data, so hosts/ never ships.
-      for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
+      for (const folder of ['engine', 'application', 'platform', 'integrations']) copy(path.join(repo, folder), path.join(destination, 'support', folder));
       // Canonical package entry points import shared runtime source. Installed packages
       // resolve that same implementation locally, without fallback loaders or siblings.
       for (const file of files(destination).filter(file => file.endsWith('.mjs') && !path.relative(destination,file).startsWith(`support${path.sep}`))) {
@@ -70,7 +70,7 @@ export function build(repo, target) {
       fs.copyFileSync(license, path.join(stage, 'LICENSE'));
       for (const { manifest } of packages) fs.copyFileSync(license, path.join(stage, packageFolder, manifest.name, 'LICENSE'));
     }
-    for (const folder of ['engine', 'application', 'platform', 'integrations', 'cli']) copy(path.join(repo, folder), path.join(stage, folder));
+    for (const folder of ['engine', 'application', 'platform', 'integrations']) copy(path.join(repo, folder), path.join(stage, folder));
     copy(path.join(repo, 'docs'), path.join(stage, 'docs'));
     // Shared documentation can link into any package. Rebase those links to the
     // adapter's package folder and native skill names, just as package docs do.

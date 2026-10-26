@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { createTelemetry } from '../application/telemetry/observe.mjs';
 import { stateFile, readTelemetry } from '../platform/index.mjs';
 
@@ -82,13 +82,12 @@ test('bounded storage report exposes rotation and skipped data without leaking r
   assert.equal(fs.existsSync(path.join(root, 'target')), false);
 });
 
-test('standalone Codex CLI ships the report without needing local authoring modules', t => {
+test('a standalone Codex package launcher reports without local authoring modules', t => {
   const root = fixture(t);
   const exported = path.join(fixture(t), 'craft-delivery');
   fs.cpSync(path.resolve('dist/codex/packages/craft-delivery'), exported, { recursive: true });
-  const cli = path.join(exported, 'support/cli/main.mjs');
-  assert.ok(fs.existsSync(cli), 'build exports before this test');
-  const result = spawnSync(process.execPath, [cli, 'telemetry-report', '--root', root, '--session', 'private'], { encoding: 'utf8' });
+  assert.ok(fs.existsSync(path.join(exported, 'bin/craft')), 'build exports before this test');
+  const result = launch(exported, ['telemetry-report', '--root', root, '--session', 'private']);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).retainedEvents, 0);
 });

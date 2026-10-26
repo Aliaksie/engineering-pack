@@ -1,5 +1,5 @@
-//! Commands owned by the Rust runtime, with the argument rules, output and exit codes of
-//! `cli/main.mjs`, which forwards these commands here.
+//! `craft <command> [options]`: argument rules, rendering and exit codes of every command an
+//! installed package runs through its `bin/craft` launcher.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::{context, contracts, models, routing, services};
@@ -44,7 +44,7 @@ pub const COMMANDS: &[&str] = &[
     "review-check",
     "review-publication",
 ];
-/// Every command `cli/main.mjs` lists in its general help, migrated or not.
+/// Every command the general help lists.
 const ALL_COMMANDS: &[&str] = &[
     "workspace-open",
     "workspace-write",
@@ -76,6 +76,19 @@ const ALL_COMMANDS: &[&str] = &[
     "operation",
     "checkpoint-save",
     "checkpoint-read",
+    "review-prepare",
+    "review-check",
+    "review-publication",
+    "project-evidence",
+];
+/// Commands that account the installed package's guidance; the launcher names its root.
+const BUNDLED: &[&str] = &[
+    "context-report",
+    "session",
+    "session-advice",
+    "task-step",
+    "task-offer",
+    "task-action-check",
 ];
 
 /// Options every command accepts, as the shared JS parser does; each command reads its own.
@@ -1247,7 +1260,7 @@ fn settings(
     project::effective_settings(&root(options), request)
 }
 
-/// Command help as `cli/main.mjs` gives it; commands without an entry get the general list.
+/// Command help; commands without an entry get the general list.
 fn help(action: &str) -> Value {
     let mut help = match action {
         "locate" => json!({
@@ -1403,7 +1416,7 @@ fn joined(value: &Value) -> Option<String> {
 }
 
 /// `String(value)` for a status field; absent and `null` read as unknown.
-fn shown(value: &Value) -> String {
+pub(crate) fn shown(value: &Value) -> String {
     match value {
         Value::Null => "unknown".into(),
         Value::String(text) => text.clone(),
@@ -1784,8 +1797,25 @@ pub fn run(argv: &[String]) -> Outcome {
 }
 
 /// The `craft <command>` process: write the streams, then post the telemetry export.
+/// Without `--bundle`, guidance is accounted against the package whose launcher ran it.
 pub fn main(argv: &[String]) -> i32 {
-    let outcome = run(argv);
+    if argv
+        .first()
+        .is_some_and(|command| command == "project-evidence")
+    {
+        return crate::evidence::main(&argv[1..]);
+    }
+    let mut argv = argv.to_vec();
+    let package = std::env::var(crate::statusline::PACKAGE_ROOT).unwrap_or_default();
+    if argv
+        .first()
+        .is_some_and(|command| BUNDLED.contains(&command.as_str()))
+        && !argv.iter().any(|arg| arg == "--bundle")
+        && !package.is_empty()
+    {
+        argv.extend(["--bundle".into(), package]);
+    }
+    let outcome = run(&argv);
     print!("{}", outcome.stdout);
     eprint!("{}", outcome.stderr);
     crate::telemetry::Recorder::deliver(outcome.export);
@@ -1802,11 +1832,13 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         return crate::review::run(command, args, context);
     }
     let known = COMMANDS.contains(&action);
-    if known && args.iter().any(|arg| arg == "--help") {
+    let asks = args.iter().any(|arg| arg == "--help");
+    if asks || matches!(action, "help" | "--help") {
+        let topic = if known { action } else { "" };
         return Outcome {
             error_code: None,
             exit_code: 0,
-            stdout: render(&help(action)),
+            stdout: render(&help(topic)),
             stderr: String::new(),
             export: None,
         };
@@ -1911,6 +1943,8 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                         field("outcome")
                     )
                 }
+                // Search results stay on one line, whatever the detail requested.
+                "locate" => format!("{value}\n"),
                 _ => render(value),
             };
             (0, text, String::new())
@@ -1926,5 +1960,80 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         stdout: outcome.1,
         stderr: outcome.2,
         export: recorder.finish(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compact_receipts_keep_failed_outcomes_storage_diagnostics_and_action_boundaries() {
+        for outcome in [
+            "quality-failure",
+            "permission-denied",
+            "tool-unavailable",
+            "blocked",
+            "prerequisite-resolved",
+        ] {
+            let text = action_receipt(
+                "task-step",
+                &json!({"recorded": {"operation": "verify", "target": "acceptance:scope", "outcome": outcome},
+                    "result": "Actual prerequisite detail",
+                    "checkpoint": {"status": "unavailable", "reason": "EPERM: state write denied"},
+                    "complete": false, "nextStep": null,
+                    "status": {"diagnostics": ["Guidance unavailable"], "taskEvidenceStale": true}}),
+            );
+            assert!(text.contains(outcome));
+            assert!(text.contains("Result: Actual prerequisite detail"));
+            assert!(text.contains("Checkpoint: unavailable — EPERM"));
+            assert!(text.contains("Warning: Guidance unavailable"));
+            assert!(text.contains("evidence is stale"));
+            assert!(!text.contains("Task: complete") && !text.contains("Next:"));
+        }
+        let offer = json!({"id": "offer-1", "action": "review", "scope": "review:current-source",
+            "decision": "pending", "execution": "not-observed"});
+        let blocked = action_receipt(
+            "task-action-check",
+            &json!({"offer": offer, "ready": false, "reason": "Approval is pending"}),
+        );
+        assert!(blocked.contains("Ready: false") && blocked.contains("Approval is pending"));
+        assert!(blocked.contains("not execution or a permission grant"));
+        let mut approved = offer.clone();
+        approved["decision"] = json!("approved");
+        let ready = action_receipt(
+            "task-action-check",
+            &json!({"offer": approved, "ready": true, "reason": "Current prerequisites present"}),
+        );
+        assert!(ready.contains("Ready: true") && ready.contains("Execution: not-observed"));
+        let unavailable = action_receipt(
+            "task-offer",
+            &json!({"offer": null, "applicability": {"reason": "No observed capacity"}}),
+        );
+        assert!(unavailable.contains("No observed capacity"));
+        let suppressed = action_receipt("task-offer", &json!({"offer": offer, "suppressed": true}));
+        assert!(suppressed.contains("unchanged; suppressed"));
+        assert!(suppressed.contains("No action dispatched"));
+    }
+
+    #[test]
+    fn completion_and_status_views_show_attributed_criteria_and_suppressed_advice() {
+        let acceptance = json!({"assurance": "attributed", "criteria": [
+            {"id": "value", "status": "verified", "required": true},
+            {"id": "error", "status": "gap", "required": false}]});
+        let step = action_receipt(
+            "task-step",
+            &json!({"recorded": {"operation": "verify", "target": "acceptance:value", "outcome": "passed"},
+                "complete": true, "acceptance": acceptance}),
+        );
+        assert!(step.contains("Task: complete (attributed criterion evidence)"));
+        assert!(step.contains("Criterion: error — gap (optional)"));
+        // A suppressed notice still shows the standing recommendation.
+        let status = json!({"usage": {"status": "unknown", "reason": "no observation"}, "host": {"name": "codex", "model": "m"},
+            "packContext": {"estimatedTokens": null}, "activity": {}, "operation": "fix-value",
+            "suggestion": null, "recommendation": {"action": "compact"}, "acceptance": acceptance});
+        let view = session_view(&status);
+        assert!(view.contains("Advice: compact"));
+        assert!(view.contains("Criterion: value — verified"));
     }
 }

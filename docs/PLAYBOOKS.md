@@ -84,8 +84,8 @@ For example, a consumer may declare:
 ```
 
 Save that configuration as `<project>/.craft/project.json`. From this source checkout,
-run `npm run route -- --root <project> --intent implement --file worker/main.ts`, or invoke
-the exported `cli/main.mjs` with `--root` pointing to the same consumer project.
+run `npm run route -- --root <project> --intent implement --file worker/main.ts`, or run an
+exported package's `bin/craft route` with `--root` pointing to the same consumer project.
 
 A playbook must justify its trigger, problem, contribution, inputs, result, boundaries,
 consumer, and evidence. Keep the skill entry concise: decisions, evidence to collect,

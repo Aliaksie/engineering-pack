@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { run } from '../cli/main.mjs';
+import { launch, run } from './craft.mjs';
 import { route } from './native-route.mjs';
 import { readProject } from './project-settings.mjs';
 import { prepareSnapshot, checkReview } from './review-tools.mjs';
@@ -74,18 +74,18 @@ test('local story and missing optional guidance do not require a tracker or auth
   assert.throws(() => run(['operation', '--root', root, '--operation', 'git.push']), /not enabled/);
 });
 
-test('each host export exposes the standalone delivery CLI without shell entry points', (t) => {
+test('each host export runs the delivery commands through its package launcher', (t) => {
   const { root } = fixture(t);
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     const folder = host === 'claude' ? 'plugins' : 'packages';
-    const cli = path.resolve('dist', host, folder, 'craft-delivery/support/cli/main.mjs');
-    const result = command(process.execPath, [cli, 'route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], root);
+    const pkg = path.resolve('dist', host, folder, 'craft-delivery');
+    const result = launch(pkg, ['route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], { cwd: root });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).loading.workflow, 'workflow:implement');
-    const located = command(process.execPath, [cli, 'locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2'], root);
+    const located = launch(pkg, ['locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2'], { cwd: root });
     assert.equal(located.status, 0, located.stderr);
     assert.equal(JSON.parse(located.stdout).matches[0].path, 'src/total.mjs');
-    const prepared = command(process.execPath, [cli, 'prepare-services', '--root', root, '--available-command', 'git'], root);
+    const prepared = launch(pkg, ['prepare-services', '--root', root, '--available-command', 'git'], { cwd: root });
     assert.equal(prepared.status, 0, prepared.stderr);
     const status = JSON.parse(prepared.stdout).services[0].operations.find(entry => entry.operation === 'git.status');
     assert.equal(status.availability, 'observed-available');
