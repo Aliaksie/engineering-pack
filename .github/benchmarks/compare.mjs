@@ -75,7 +75,7 @@ const bash = process.env.BENCHMARK_BASH ?? (windows && fs.existsSync(gitBash) ? 
 const quote = value => `'${value.replaceAll("'", `'\\''`)}'`;
 const shellPath = value => (windows ? value.replaceAll('\\', '/') : value);
 
-const variants = [['baseline', baseline], ['candidate', candidate]].map(([name, exportRoot]) => {
+const variants = [['baseline', path.resolve(baseline)], ['candidate', path.resolve(candidate)]].map(([name, exportRoot]) => {
   const declared = hooksOf(exportRoot);
   const {root, home} = consumer(name);
   const delivery = shellPath(declared['craft-delivery'].directory);

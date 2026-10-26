@@ -9,6 +9,8 @@ const output=process.argv[2],rounds=Number(process.argv[3]??30);
 if(!output||fs.existsSync(output)||!Number.isInteger(rounds)||rounds<1)throw Error('Usage: node harness NEW_OUTPUT [positive rounds]');
 const source=process.cwd(),scratch=fs.mkdtempSync(path.join(os.tmpdir(),'craft-portable-turn-'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
+// Windows runs the generated .cmd launcher, which needs a shell; hook arguments are fixed tokens.
+const windows=process.platform==='win32';
 const run=(cmd,args,cwd=source)=>{const r=spawnSync(cmd,args,{cwd,encoding:'utf8',timeout:30000,maxBuffer:4*1024*1024});if(r.status!==0)throw Error(r.stderr||r.error?.message);return r.stdout.trim();};
 if(run('git',['status','--porcelain']))throw Error('Clean tracked source required');
 const packages=['craft-delivery','craft-engineering','craft-review','craft-stories'];
@@ -40,7 +42,7 @@ for(let round=0;round<=rounds;round++)for(const name of round%2?['shellReads','n
  for(const [stepIndex,s] of workloads[name].entries()){
   const gateStart=performance.now();
   const receipts=await Promise.all(s.wrappers.map(w=>new Promise(resolve=>{
-   const t=performance.now(),child=spawn(path.join(scratch,'exports',w.pkg,w.file),w.args,{cwd:root,stdio:['pipe','pipe','pipe']});let stdout='',stderr='',settled=false;
+   const t=performance.now(),child=spawn(path.join(scratch,'exports',w.pkg,w.file)+(windows?'.cmd':''),w.args,{cwd:root,stdio:['pipe','pipe','pipe'],shell:windows});let stdout='',stderr='',settled=false;
    const finish=(status,error)=>{if(settled)return;settled=true;clearTimeout(timer);resolve({...w,stepIndex,status,stdout,stderr,error,wallMs:performance.now()-t});};
    const timer=setTimeout(()=>{child.kill();finish(null,'30-second timeout');},30000);
    child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);child.once('error',e=>finish(null,e.message));child.once('close',s=>finish(s));child.stdin.on('error',e=>finish(null,e.message));child.stdin.end(JSON.stringify(s.payload));
