@@ -180,6 +180,18 @@ integer, where JavaScript accepted `[7]` and `1e20` after `String()` conversion.
 the nine review cases retired from `engine-contracts.json` and the three review cases
 retired from `cli-contracts.json`.
 
+`statusline-contracts.json` freezes the JavaScript status-line entry (`support/session.mjs`)
+at `d9c34b6`: 108 runs of the Claude, Codex and AGENTS exports over Claude status-line
+payloads (usage counts, capacity, model and session identities, size and JSON failures),
+declared task data, argument failures and the recorded telemetry. `craft statusline`
+replays it (`cargo test -p craft-application --test statusline`), comparing exit status,
+stdout and telemetry without the nested command envelope; usage, missing-file and JSON
+parser prose are classes. Corrections: a Claude read with an empty payload reports what an
+empty declaration reports (JavaScript failed to parse it, and waited on a terminal); a
+non-object payload, declaration or declared host is refused (JavaScript accepted arrays
+and scalars, spread a string host into indexed fields and threw a `TypeError` on a `null`
+payload); a `null` declared host counts as absent, as before.
+
 `review-contracts.json` freezes the JavaScript read-only review guard at `0ecc73d`: 439 shell
 command lines with whether they publish (direct commands, quoting, separators, Git global
 options, `gh`/`glab` request actions and API writes, `-c` shell scripts, substitutions and the

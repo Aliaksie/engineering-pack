@@ -39,14 +39,16 @@ hook invocation. With local telemetry enabled, observe ordinary work for fresh
 directory). Explicit CLI calls and direct wrapper runs verify different paths.
 Missing events alone do not diagnose the cause.
 
-Where shell execution and Node 22+ are available, an explicit status read works
-without hooks:
+Where shell execution is available, an explicit status read works without hooks:
 
 ```sh
-node "<package-root>/support/session.mjs" --root "<project-root>" --json
+"<package-root>/bin/craft" statusline <host> --package <package> --root "<project-root>" --json
 ```
 
-Resolve placeholders from the loaded skill's package links and the target project.
+Resolve placeholders from the loaded skill's package links and the target project; the
+package's `SETUP.json` names the launcher and arguments as `sessionAdvice.entry` and `args`. On Windows, run
+`bin\craft.cmd`. Claude Code can run the same command without `--json` as its status
+line: it reads the status-line payload from standard input.
 This writes operational telemetry by default and does not activate hooks or change
 host settings. Without shell access, use the supported native UI or manual guidance.
 Token counters and current context occupancy are separate observations; unavailable

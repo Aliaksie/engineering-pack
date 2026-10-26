@@ -9,7 +9,7 @@ import { stateFile, stateLocation, readState, writeState, projectRoot } from '..
 import { nativeHook } from './native-hook.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 import { run } from '../cli/main.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { readProject } from './project-settings.mjs';
 
 function fixture(t) {
   // State identity is the physical path; Windows temp paths may contain 8.3 short names.

@@ -22,13 +22,15 @@ hook trust are separate facts. Never enable or trust hooks on the user's behalf.
 
 Users can ask: **"Check Engineering Pack setup, hook activity and session usage."**
 When asked, resolve the actual installed package root from the loaded skill's
-resource links and, where shell execution and Node 22+ are available, run:
+resource links and, where shell execution is available, run `sessionAdvice.entry` with its
+`args` from the export facts and the target project:
 
 ```sh
-node "<package-root>/support/session.mjs" --root "<project-root>" --json
+"<package-root>/bin/craft" statusline <host> --package <package> --root "<project-root>" --json
 ```
 
-Replace both placeholders with verified paths. This is an explicit status read,
+Replace the placeholders with verified paths and the listed host and package; on Windows
+run `bin\craft.cmd`. This is an explicit status read,
 works without hooks, writes local operational telemetry by default, and does not
 configure the host UI. If execution is unavailable, explain the manual fallback
 and continue with guidance. Do not run commands merely to show the setup notice.

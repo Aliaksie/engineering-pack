@@ -11,6 +11,10 @@ fn main() {
     if argv.first().is_some_and(|command| command == "hook") {
         std::process::exit(craft_application::hook::main(&argv[1..]));
     }
+    // A host status line reads the host's own payload on stdin and writes one line.
+    if argv.first().is_some_and(|command| command == "statusline") {
+        std::process::exit(craft_application::statusline::main(&argv[1..]));
+    }
     if !argv.is_empty() {
         std::process::exit(craft_application::cli::main(&argv));
     }

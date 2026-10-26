@@ -3,9 +3,11 @@ import path from 'node:path';
 import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { hookMapping } from '../../hosts/registry.mjs';
 import { emitLaunchers, hookArguments } from './launcher.mjs';
-import { sessionCapabilities } from '../../hosts/session.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
 import { featureSupport } from '../../hosts/capabilities.mjs';
+
+// Session observation, display and native commands per host; `craft statusline` embeds the same table.
+const SESSION = JSON.parse(fs.readFileSync(new URL('../../hosts/session.json', import.meta.url), 'utf8'));
 
 export function write(root, file, text) {
   const target = path.join(root, file);
@@ -111,8 +113,8 @@ export function preparePackage(item, packages, destination, platform) {
       fs.writeFileSync(file, packageDocument(fs.readFileSync(file, 'utf8'), path.join(entry.source, path.relative(target, file)), file, item, packages, destination, platform));
     }
   }
-  // Native tools run through the package launcher even where no hook is registered.
-  if (manifest.tools.some((tool) => tool.runtime === 'native')) emitLaunchers(item, destination, platform);
+  // Native tools and the status line run through the package launcher even where no hook is registered.
+  emitLaunchers(item, destination, platform);
   return entries.map((entry) => skillName(manifest.name, entry.name, platform));
 }
 
@@ -141,6 +143,10 @@ export function mcpServers(manifest, platform) {
   ]));
 }
 
+// The explicit status read an installed package offers on this host.
+export const sessionAdvice = (host, name) => ({ entry: 'bin/craft', args: ['statusline', host, '--package', name], ...SESSION[host],
+  activation: 'explicit-only; no statusline settings or hooks changed' });
+
 export function report(manifest, platform, skills, hookStatus, mcpStatus) {
   return {
     package: manifest.name, version: manifest.version, adapter: platform, sourceManifest: 'source-capability.json', skills,
@@ -151,7 +157,7 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     runtime: 'support/cli/main.mjs',
     executionControls: setupControls(platform).execution,
     featureSupport: featureSupport(platform),
-    sessionAdvice: { entry: 'support/session.mjs', ...sessionCapabilities(platform), activation: 'explicit-only; no statusline settings or hooks changed' },
+    sessionAdvice: sessionAdvice(platform, manifest.name),
     limitations: platform === 'agents' ? ['Lifecycle hooks are not installed.', 'MCP declarations require host-specific registration.']
       : platform === 'codex' ? ['Local plugin export; hooks require host support and trust. Live host loading has not been tested.']
       : ['Live host loading has not been tested.']

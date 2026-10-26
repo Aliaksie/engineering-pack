@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { route } from './native-route.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { readProject } from './project-settings.mjs';
 import { prepareSnapshot, checkReview } from './review-tools.mjs';
 
 function command(binary, args, cwd) {

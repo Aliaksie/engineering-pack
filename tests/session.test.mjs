@@ -8,7 +8,6 @@ import { decide } from '../application/engine-client.mjs';
 import { catalog } from '../application/routing/catalog.mjs';
 import { renderSessionStatus } from '../cli/render.mjs';
 import { readTelemetry } from '../platform/index.mjs';
-import { sessionCapabilities, sessionObservation, renderSession } from '../hosts/session.mjs';
 
 // The CLI reaches session advice through sessionStatus; these cases pin the decision itself.
 const sessionAdvice = (input, project, options = {}) => decide('session-advice', { input, project, catalog, options: { now: Date.now(), ...options } });
@@ -66,21 +65,17 @@ test('notice suppression refreshes after cooldown, revision or action changes an
   assert.throws(() => advice({ command: 'invented' }), /fields/);
 });
 
-test('Claude normalization includes current input/cache tokens, never cumulative or output totals', () => {
-  const payload = { session_id: 's1', context_window: { context_window_size: 100,
-    total_input_tokens: 999999, current_usage: { input_tokens: 30, cache_creation_input_tokens: 10, cache_read_input_tokens: 5, output_tokens: 1000 } } };
-  const usage = sessionObservation(payload, 'claude', now);
-  assert.equal(usage.currentTokens, 45);
-  assert.equal(advice({ sessionId: 's1', usage }).usage.usedRatio, 0.45);
-  assert.equal(sessionObservation(payload, 'codex', now), undefined);
-  assert.equal(sessionObservation({ ...payload, context_window: { current_usage: null } }, 'claude', now), undefined);
-  assert.equal(sessionObservation({ ...payload, context_window: { current_usage: { input_tokens: 40 } } }, 'claude', now), undefined);
-  assert.match(renderSession(advice(observed()), 'codex'), /Next: \/compact/);
-  assert.match(renderSession(advice(), 'agents'), /unknown/);
-  assert.equal(sessionCapabilities('agents').commands.compact, undefined);
-});
+const sessionHosts = JSON.parse(fs.readFileSync(new URL('../hosts/session.json', import.meta.url), 'utf8'));
+// The reported status entry as an installed package runs it: the package launcher, no Node.
+function statusline(packageRoot, { entry: launcher, args: fixed }, args, input = '') {
+  const options = { encoding: 'utf8', input };
+  if (process.platform !== 'win32') return spawnSync(path.join(packageRoot, launcher), [...fixed, ...args], options);
+  // Node starts .cmd files only through a shell, which takes the command line as written.
+  const line = [path.join(packageRoot, `${launcher}.cmd`), ...fixed, ...args].map(arg => `"${arg}"`).join(' ');
+  return spawnSync(line, { ...options, shell: true });
+}
 
-test('each export exposes the same portable advisor and honest adapter capability report after relocation', (t) => {
+test('each export runs its reported status entry after relocation, with honest adapter capabilities', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'session export '));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const input = path.join(root, 'task.json');
@@ -89,21 +84,26 @@ test('each export exposes the same portable advisor and honest adapter capabilit
     const bundle = path.resolve('dist', host);
     const destination = path.join(root, host);
     fs.cpSync(path.join(bundle, host === 'claude' ? 'plugins' : 'packages', 'craft-delivery'), destination, { recursive: true });
-    const cli = path.join(destination, 'support/session.mjs');
-    const result = spawnSync(process.execPath, [cli, '--root', root, '--data', input, '--json'], { encoding: 'utf8' });
+    const report = JSON.parse(fs.readFileSync(path.join(bundle, 'adapter-report.json'), 'utf8')).packages.find((pkg) => pkg.package === 'craft-delivery');
+    assert.deepEqual([report.sessionAdvice.entry, ...report.sessionAdvice.args], ['bin/craft', 'statusline', host, '--package', 'craft-delivery']);
+    const run = (args, stdin) => statusline(destination, report.sessionAdvice, args, stdin);
+    const result = run(['--root', root, '--data', input, '--json']);
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(result.stdout);
     assert.equal(output.suggestion.action, 'summarize-evidence');
     assert.equal(output.usage.status, 'unknown');
-    assert.deepEqual(output.host, sessionCapabilities(host));
-    const report = JSON.parse(fs.readFileSync(path.join(bundle, 'adapter-report.json'), 'utf8')).packages.find((pkg) => pkg.package === 'craft-delivery');
+    assert.deepEqual(output.host, sessionHosts[host]);
     assert.equal(report.sessionAdvice.observation, output.host.observation);
+    // An explicit read without a host payload reports unknown usage on every host.
+    const explicit = run(['--root', root]);
+    assert.equal(explicit.status, 0, explicit.stderr);
+    assert.equal(explicit.stdout, 'Context usage unknown\n');
     if (host === 'claude') {
       const payload = JSON.stringify({ session_id: 's1', model: { id: 'fixture-native-model' }, context_window: { context_window_size: 100, current_usage: { input_tokens: 90, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } });
-      const native = spawnSync(process.execPath, [cli, '--root', root], { encoding: 'utf8', input: payload });
+      const native = run(['--root', root], payload);
       assert.equal(native.status, 0, native.stderr);
       assert.match(native.stdout, /90\/100 tokens.*Next: continue-bounded-step/);
-      const nativeJson = spawnSync(process.execPath, [cli, '--root', root, '--json'], { encoding: 'utf8', input: payload });
+      const nativeJson = run(['--root', root, '--json'], payload);
       assert.equal(nativeJson.status, 0, nativeJson.stderr);
       const nativeStatus = JSON.parse(nativeJson.stdout);
       assert.equal(nativeStatus.sessionHost.model, 'fixture-native-model');
@@ -112,7 +112,7 @@ test('each export exposes the same portable advisor and honest adapter capabilit
       const events = readTelemetry(root).filter(event => event.name === 'session.observed' && event.host === 'claude');
       assert.ok(events.length > 0);
       assert.ok(events.every(event => event.attributes.package === 'craft-delivery'));
-      const mismatch = spawnSync(process.execPath, [cli, '--root', root, '--data', input, '--native-stdin'], { encoding: 'utf8', input: payload });
+      const mismatch = run(['--root', root, '--data', input, '--native-stdin'], payload);
       assert.equal(mismatch.status, 2);
       assert.match(mismatch.stderr, /does not identify this native session/);
     }

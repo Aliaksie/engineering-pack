@@ -7,7 +7,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseVersion, incrementVersion, packVersion, synchronizeVersion } from '../tooling/version.mjs';
 import { prepareRelease, publishReleaseRefs, releaseGuard } from '../tooling/release.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { readProject } from './project-settings.mjs';
 import { changelogNotes } from '../tooling/release-notes.mjs';
 
 const git=(root,...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();

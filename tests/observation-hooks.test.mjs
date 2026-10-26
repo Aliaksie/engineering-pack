@@ -125,9 +125,9 @@ test('guidance-only adapters report unsupported observational hooks without regi
       assert.match(report.hooks, /unsupported|guidance/);
       assert.ok(report.hookMappings.every(mapping => mapping.supported === false));
       assert.ok(!fs.existsSync(path.join(output, `packages/${report.package}/platform-hooks`)));
-      // The launcher exists only to run native tools; it answers no hook here.
-      const native = read(path.join(output, `packages/${report.package}/source-capability.json`)).tools.some(tool => tool.runtime === 'native');
-      assert.equal(fs.existsSync(path.join(output, `packages/${report.package}/bin/craft`)), native, report.package);
+      // The launcher runs native tools and the status line; it answers no hook here.
+      const launcher = fs.readFileSync(path.join(output, `packages/${report.package}/bin/craft`), 'utf8');
+      assert.doesNotMatch(launcher, /^  'hook [a-z]/m, report.package);
     }
   }
 });

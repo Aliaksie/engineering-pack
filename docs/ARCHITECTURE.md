@@ -123,8 +123,8 @@ The builder copies canonical `engine/`, `application/`, `platform/`, `integratio
 each package's `support/`, and rebases shared imports in package entry points. Installed
 packages run after relocation without authoring scripts or sibling package dependencies.
 Full bundles also expose these directories at their root. No legacy runtime paths or
-fallback loaders are retained. Generated host glue remains in `platform-runtime/`;
-that name describes an installed host interface rather than the old source tree.
+fallback loaders are retained. Each package's generated `bin/craft` and `bin/craft.cmd`
+launchers select its bundled native executable for hooks, native tools and the status line.
 
 The optional inbox remains under `tools/craft-review-inbox/` because it owns separate
 consumer configuration, remote pagination, checkout and review-artifact lifecycles. Its

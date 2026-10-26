@@ -6,7 +6,7 @@ import path from 'node:path';
 import { decide } from '../application/engine-client.mjs';
 import { workerBudget } from '../engine/routing/worker-budget.mjs';
 import { validateProject } from '../engine/contracts/project.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { readProject } from './project-settings.mjs';
 const resolve = input => decide('effective-settings', { project: {formatVersion:1}, ...input });
 test('nested precedence retains false, zero and sibling defaults without mutation', () => {
   const input = { project: {formatVersion:1, routing:{editHints:false}}, preferences:{efficiency:{delegation:{maxWorkers:1}}}, overrides:{efficiency:{delegation:{maxWorkers:0}}} };

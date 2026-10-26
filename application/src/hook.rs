@@ -63,7 +63,7 @@ fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
 
 /// JSON text with lone UTF-16 surrogate escapes replaced by U+FFFD. JavaScript accepts
 /// them; rejecting the whole payload would hide the rest of the command from policy.
-fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {
+pub(crate) fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {
     if !text.contains("\\u") {
         return text.into();
     }

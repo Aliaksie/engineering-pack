@@ -88,11 +88,11 @@ For a status read without hooks, the agent can resolve the package root from its
 loaded skill and run:
 
 ```sh
-node "<package-root>/support/session.mjs" --root "<project-root>" --json
+"<package-root>/bin/craft" statusline codex --package <package> --root "<project-root>" --json
 ```
 
-Replace the placeholders with the actual installed package and target project.
-This command requires Node 22+, writes local operational telemetry by default,
+Replace the placeholders with the actual installed package and target project
+(`bin\craft.cmd` on Windows). This command writes local operational telemetry by default,
 and does not activate hooks or configure a token display. The current pack adapter
 has no automatic Codex token-count input: unavailable counts stay unknown. Cumulative
 session tokens and current context occupancy are separate measurements.

@@ -30,7 +30,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 676,
+        "jsLines": 669,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -46,17 +46,15 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["**/*.mjs"],
-        "jsLines": 317,
+        "jsLines": 304,
         "dependsOn": ["engine", "platform", "integrations"],
         "entryPoints": [
           "application/engine-client.mjs",
           "application/inbox.mjs",
           "application/project-evidence.mjs",
-          "application/project/configuration.mjs",
           "application/telemetry/observe.mjs"
         ],
         "runtimeRoots": [
-          "application/project/configuration.mjs",
           "application/telemetry/observe.mjs"
         ]
       }
@@ -88,9 +86,9 @@
     },
     "hosts": {
       "kind": "host-adapter",
-      "responsibility": "Host transports and callbacks for controls and the status line, plus the hook mapping table shared by the build and the native runtime.",
-      "allow": ["**/*.mjs", "capabilities.json", "hooks.json"],
-      "jsLines": 1020,
+      "responsibility": "Host transports and callbacks for controls, plus the hook mapping and session capability tables shared by the build and the native runtime.",
+      "allow": ["**/*.mjs", "capabilities.json", "hooks.json", "session.json"],
+      "jsLines": 944,
       "maxFileLines": 300,
       "dependsOn": ["application", "platform"],
       "shipped": true,

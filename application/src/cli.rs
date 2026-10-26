@@ -328,7 +328,11 @@ pub(crate) fn observe<T>(
     result
 }
 
-fn input(recorder: &mut Recorder, parent: &Operation, file: &str) -> Result<Value, Failure> {
+pub(crate) fn input(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    file: &str,
+) -> Result<Value, Failure> {
     observe(
         recorder,
         "input.loaded",
@@ -1130,6 +1134,34 @@ fn session_status_input(
         session: options.get("session"),
         task: options.get("task"),
         bundles: &bundles,
+    };
+    crate::status::run(request, recorder, parent)
+}
+
+/// Session status over declared `data` with the project's effective settings, for a caller
+/// that parses its own arguments.
+pub(crate) fn session_status_for(
+    root: &Path,
+    data: &Value,
+    bundles: &[String],
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = observe(
+        recorder,
+        "project.loaded",
+        parent,
+        "CONFIG_INVALID",
+        Map::new(),
+        |_, _| project::settings(root, None),
+    )?;
+    let request = crate::status::Request {
+        root,
+        input: data,
+        settings: &settings,
+        session: None,
+        task: None,
+        bundles,
     };
     crate::status::run(request, recorder, parent)
 }

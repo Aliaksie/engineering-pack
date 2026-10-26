@@ -87,8 +87,9 @@ persistence remain in the adapter.
 The action callback adapter also lives in `hosts/`; native phases validate fresh observations,
 claim under the binding lock, save the accepted-source compaction checkpoint and settle
 receipts with runtime-observed feature evidence. Moving the callback sequence adds 46 host
-JavaScript lines while retiring its application implementation. Status-line adapters pass
-parsed host observations to the native `session` command; Rust owns status aggregation.
+JavaScript lines while retiring its application implementation. `craft statusline <host>`
+reads the host's status-line payload and writes the line; the per-host session capability
+table is data in `hosts/`, read by the build and embedded in `craft`.
 
 Native transport journals and asynchronous task admission use retained native leases.
 Rust records the calling host pid and an opaque ticket on the shared lock protocol;

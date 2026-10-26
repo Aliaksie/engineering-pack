@@ -4,7 +4,6 @@ export { stateFile, stateLocation, readState, lockState, releaseState, writeStat
 export { gitState as repositoryState, gitCheckout as repositoryCheckout } from './node/repository/snapshot.mjs';
 export { repositoryRoots } from './node/repository/roots.mjs';
 export { projectData, preferenceData, preferenceFile } from './node/resources/project.mjs';
-export { readSessionInput } from './node/resources/session-input.mjs';
 export { realRoot, sameRoot, bundleRoot, clock, uniqueId, projectRoot, catalogData, sourceIdentity } from './node/environment.mjs';
 export { runtimeVersion } from './node/environment.mjs';
 export { rpcProcess } from './node/rpc-process.mjs';

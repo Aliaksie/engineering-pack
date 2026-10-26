@@ -12,7 +12,7 @@ import { telemetryEvent, traceContext } from '../application/telemetry/events.mj
 import { readTelemetry, telemetryIdentity } from '../platform/node/telemetry.mjs';
 import { otlpTraces } from '../integrations/otel/traces.mjs';
 import { run } from '../cli/main.mjs';
-import { readProject } from '../application/project/configuration.mjs';
+import { readProject } from './project-settings.mjs';
 import { readCheckpoint } from './checkpoint-cli.mjs';
 import { runHook } from './hook-command.mjs';
 import { craft } from './review-tools.mjs';

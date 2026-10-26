@@ -19,7 +19,7 @@ import * as geminiExtension from './export/gemini/extension.mjs';
 import * as jetbrains from './export/jetbrains/index.mjs';
 
 // The hook mapping table configures exports here; `craft` embeds the same data.
-const BUILD_ONLY = ['hosts/registry.mjs', 'hosts/hooks.json'];
+const BUILD_ONLY = ['hosts/registry.mjs', 'hosts/hooks.json', 'hosts/session.json'];
 
 export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents, 'gemini-extension': geminiExtension, jetbrains };
 const MARKER = '.capability-build.json';
@@ -67,8 +67,6 @@ export function build(repo, target) {
         const relocated = runtimeImports(source,file,destination);
         if (source !== relocated) fs.writeFileSync(file,relocated);
       }
-      write(destination, 'platform-runtime/session.mjs', fs.readFileSync(path.join(repo, 'hosts/session.mjs'), 'utf8'));
-      write(destination, 'support/session.mjs', `#!/usr/bin/env node\nimport { nativeCommand, bundleRoot } from './platform/index.mjs';\nimport { flushTelemetry, forwardTelemetry, observeNativeSession, hookDiagnostic } from './application/telemetry/observe.mjs';\nimport { readInput } from './application/project/configuration.mjs';\nimport { runSession } from '../platform-runtime/session.mjs';\nconst advisor = (data, { root }) => {\n  const result = nativeCommand(['session', '--root', root, '--host', ${JSON.stringify(target)}, '--bundle', bundleRoot()], { structured: true, data, packageName: ${JSON.stringify(manifest.name)} });\n  forwardTelemetry(result.export);\n  if (result.exitCode) throw new Error(result.stderr.trimEnd());\n  return JSON.parse(result.stdout);\n};\nawait runSession(advisor, readInput, ${JSON.stringify(target)}, { run:(root, host, callback) => observeNativeSession(root, host, callback, ${JSON.stringify(manifest.name)}), diagnostic:hookDiagnostic });\nawait flushTelemetry();\n`);
     }
     const license = path.join(repo, 'LICENSE');
     if (fs.existsSync(license)) {

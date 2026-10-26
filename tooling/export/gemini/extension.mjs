@@ -1,10 +1,10 @@
 import { emitBundle } from '../agents/index.mjs';
-import { write, writeJson } from '../export.mjs';
+import { sessionAdvice, write, writeJson } from '../export.mjs';
 
 // Guidance-only extension: lifecycle enforcement remains an explicit overlay choice.
 export function emit(item, packages, output, adapterRoot) {
   const result = emitBundle(item, packages, output, adapterRoot, 'agents', 'skills');
-  return { ...result, adapter: 'gemini-extension' };
+  return { ...result, adapter: 'gemini-extension', sessionAdvice: sessionAdvice('gemini-extension', item.manifest.name) };
 }
 export function finish(packages, output) {
   writeJson(output, 'gemini-extension.json', {

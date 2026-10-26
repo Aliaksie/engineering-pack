@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { decide } from '../application/engine-client.mjs';
-import { validateProject } from '../application/project/configuration.mjs';
+import { validateProject } from './project-settings.mjs';
 
 function fixture(t, config = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-action-controls-')));

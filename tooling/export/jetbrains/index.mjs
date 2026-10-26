@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { emitBundle } from '../agents/index.mjs';
 import { frontmatter } from '../../lib/capabilities.mjs';
-import { rewriteLinks, write } from '../export.mjs';
+import { rewriteLinks, sessionAdvice, write } from '../export.mjs';
 
 export function emit(item, packages, output, adapterRoot) {
   const result = emitBundle(item, packages, output, adapterRoot);
-  return { ...result, adapter: 'jetbrains' };
+  return { ...result, adapter: 'jetbrains', sessionAdvice: sessionAdvice('jetbrains', item.manifest.name) };
 }
 export function finish(packages, output) {
   const item = packages.find(({ manifest }) => manifest.name === 'craft-engineering');

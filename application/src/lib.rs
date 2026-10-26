@@ -16,6 +16,7 @@ mod review;
 mod scratch;
 mod session;
 mod status;
+pub mod statusline;
 mod task;
 mod telemetry;
 mod workers;
