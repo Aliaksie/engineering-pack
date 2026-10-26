@@ -45,10 +45,11 @@
           "review-check",
           "review-publication",
           "review-followup",
+          "acceptance-view",
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review and project-evidence commands it runs"
+      "correction": "the one installed entry also lists the review, acceptance-view and project-evidence commands it runs"
     },
     {
       "id": "help-before-validation",

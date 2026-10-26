@@ -1,19 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { evaluate } from '../engine/index.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
+import { acceptanceView, contractDigest } from './acceptance-view.mjs';
 
 const fixture = () => JSON.parse(fs.readFileSync(new URL('../examples/evals/product-views/input.json', import.meta.url), 'utf8'));
-function project(operation, input) {
-  const response = evaluate({ formatVersion: 1, operation, input });
+function project(view, input) {
+  const response = acceptanceView(view, input);
   assert.equal(response.ok, true, JSON.stringify(response));
   return response.result;
 }
 
 test('product and architecture readers share IDs, conflicts, uncertainty and source provenance', () => {
   const input = fixture(), before = JSON.stringify(input);
-  const product = project('product-projection', input), architecture = project('architecture-projection', input);
+  const product = project('product', input), architecture = project('architecture', input);
   for (const field of ['contract', 'criteria', 'sources', 'constraints', 'decisions', 'questions', 'coverage', 'dependencies']) {
     assert.deepEqual(product[field], architecture[field]);
   }
@@ -35,23 +34,23 @@ test('views preserve passed, failed, unavailable and stale evidence without reso
   const input = fixture();
   input.current.identity = 'build-v1';
   const record = { id: 'replay-check', criterionIds: ['single-use'], scope: ['reset'],
-    contract: engineeringContractDigest(input.contract), binding: { ...input.current }, checkId: 'replay',
+    contract: contractDigest(input.contract), binding: { ...input.current }, checkId: 'replay',
     kind: 'manual', artifact: 'Synthetic replay observation', observedAt: '2026-10-22T00:00:00Z',
     reporter: 'fixture author', basis: 'Replay a synthetic link', support: 'verified', execution: 'passed' };
-  for (const operation of ['product-projection', 'architecture-projection']) {
+  for (const view of ['product', 'architecture']) {
     for (const [execution, expected] of [['passed', 'verified'], ['failed', 'failed'], ['not-run', 'gap'], ['not-available', 'gap']]) {
       input.evidence.records = [{ ...record, execution }];
-      const view = project(operation, input);
-      assert.equal(view.criteria[0].acceptance.status, expected);
-      assert.equal(view.coverage.complete, false); // unresolved blocking decision
-      assert.equal(view.coverage.records[0].execution, execution);
+      const result = project(view, input);
+      assert.equal(result.criteria[0].acceptance.status, expected);
+      assert.equal(result.coverage.complete, false); // unresolved blocking decision
+      assert.equal(result.coverage.records[0].execution, execution);
     }
     input.evidence.records = [record];
-    assert.equal(project(operation, { ...input, current: { ...input.current, identity: 'build-v2' } }).coverage.records[0].freshness, 'stale');
-    assert.equal(project(operation, { ...input, current: { ...input.current, identity: null } }).coverage.records[0].freshness, 'unknown');
+    assert.equal(project(view, { ...input, current: { ...input.current, identity: 'build-v2' } }).coverage.records[0].freshness, 'stale');
+    assert.equal(project(view, { ...input, current: { ...input.current, identity: null } }).coverage.records[0].freshness, 'unknown');
     const changed = structuredClone(input);
     changed.contract.context.sources[0].identity = 'request-v2';
-    assert.equal(project(operation, changed).criteria[0].acceptance.status, 'gap');
+    assert.equal(project(view, changed).criteria[0].acceptance.status, 'gap');
   }
 });
 
@@ -60,7 +59,7 @@ test('requirements-only views need neither runtime access nor invented architect
   input.contract.context.constraints = [];
   input.contract.context.sources = [input.contract.context.sources[0]];
   delete input.focus;
-  const view = project('architecture-projection', input);
+  const view = project('architecture', input);
   assert.deepEqual(view.dependencies, []);
   assert.deepEqual(view.adrSources, []);
   assert.deepEqual(view.boundaries, []);
@@ -70,14 +69,14 @@ test('requirements-only views need neither runtime access nor invented architect
 });
 
 test('focus rejects invented facts, dangling references, duplicate IDs and oversized selections', () => {
-  for (const operation of ['product-projection', 'architecture-projection']) {
+  for (const view of ['product', 'architecture']) {
     for (const focus of [null, [], { dependency: [] }, { dependencies: null },
       { dependencies: ['missing'] }, { dependencies: ['shared-store', 'shared-store'] },
       { dependencies: Array(33).fill('shared-store') }, { boundaries: [42] }]) {
-      const response = evaluate({ formatVersion: 1, operation, input: { ...fixture(), focus } });
+      const response = acceptanceView(view, { ...fixture(), focus });
       assert.equal(response.ok, false);
-      assert.equal(response.error.code, 'INVALID_INPUT');
+      assert.match(response.error, /^product:invalid-(focus|reference)$/);
     }
-    assert.equal(evaluate({ formatVersion: 1, operation, input: { ...fixture(), contract: null } }).ok, false);
+    assert.equal(acceptanceView(view, { ...fixture(), contract: null }).error, 'product:missing-contract');
   }
 });

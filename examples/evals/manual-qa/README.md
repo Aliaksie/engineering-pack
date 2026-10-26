@@ -4,9 +4,8 @@ This fixture exercises source plus application access and requirements-only QA u
 the same criterion `single-use`. It is a local synthetic example, not evidence about a
 deployed password-reset service or model performance.
 
-Run `node --test tests/qa-projection.test.mjs` from the source checkout. The public engine's
-`qa-projection` operation consumes [contract.json](contract.json), [probes.json](probes.json)
-and an existing versioned acceptance ledger. No hook, companion package or configured
+`craft acceptance-view --view qa` consumes [contract.json](contract.json),
+[probes.json](probes.json) and an existing versioned acceptance ledger. No hook, companion package or configured
 model is needed. Runtime-free QA can use the charter below directly.
 
 ## Source and application access

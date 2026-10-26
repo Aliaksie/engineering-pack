@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { evaluate } from '../engine/index.mjs';
-import { engineeringContractDigest } from '../engine/session/acceptance.mjs';
+import { acceptanceView, contractDigest } from './acceptance-view.mjs';
 import { resetApplication } from '../examples/evals/manual-qa/fixture/reset.mjs';
 
 const load = name => JSON.parse(fs.readFileSync(new URL(`../examples/evals/manual-qa/${name}.json`, import.meta.url), 'utf8'));
@@ -10,13 +9,13 @@ function fixture() {
   const contract = load('contract'), probes = load('probes');
   const current = { kind: 'environment', identity: 'reset-fixture-v1:isolated-memory' };
   const record = { id: 'qa-replay', criterionIds: ['single-use'], scope: ['reset'],
-    contract: engineeringContractDigest(contract), binding: current, checkId: 'replay', kind: 'manual',
+    contract: contractDigest(contract), binding: current, checkId: 'replay', kind: 'manual',
     artifact: 'tests/qa-projection.test.mjs: executable replay assertions', observedAt: '2026-10-22T00:00:00Z',
     reporter: 'fixture assessor', basis: 'A used reset link cannot be reused', support: 'verified', execution: 'failed' };
   return { contract, probes, current, evidence: { formatVersion: 1, records: [] }, record };
 }
 function project(input) {
-  const response = evaluate({ formatVersion: 1, operation: 'qa-projection', input });
+  const response = acceptanceView('qa', input);
   assert.equal(response.ok, true, JSON.stringify(response));
   return response.result;
 }
@@ -87,9 +86,10 @@ test('QA rejects dangling and misattributed probes and bounds its transient deta
   ];
   input.evidence.records = [record];
   for (const change of invalid) {
-    const response = evaluate({ formatVersion: 1, operation: 'qa-projection', input: { ...input, probes: [change(input.probes[0])] } });
+    const response = acceptanceView('qa', { ...input, probes: [change(input.probes[0])] });
     assert.equal(response.ok, false);
-    assert.equal(response.error.code, 'INVALID_INPUT');
+    assert.equal(response.exitCode, 2);
+    assert.equal(response.error, 'qa:invalid-probes');
   }
-  assert.equal(evaluate({ formatVersion: 1, operation: 'qa-projection', input: { ...input, probes: Array(33).fill(input.probes[0]) } }).ok, false);
+  assert.equal(acceptanceView('qa', { ...input, probes: Array(33).fill(input.probes[0]) }).ok, false);
 });

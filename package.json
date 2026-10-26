@@ -46,6 +46,7 @@
     "session:attempt": "node tooling/craft.mjs session-attempt",
     "session:advice": "node tooling/craft.mjs session-advice",
     "eval:pair": "node tooling/paired-eval.mjs",
+    "acceptance:view": "node tooling/craft.mjs acceptance-view",
     "model:advice": "node tooling/craft.mjs model-advice",
     "version:sync": "node tooling/version.mjs",
     "version:check": "node tooling/version.mjs --check"

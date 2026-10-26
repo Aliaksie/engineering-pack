@@ -2,6 +2,8 @@
 //! installed package runs through its `bin/craft` launcher.
 use crate::project::{self, Settings};
 use crate::telemetry::{Operation, Recorder, retained};
+use craft_engine::contracts::normalize_numbers;
+use craft_engine::session::views::{self, Reader};
 use craft_engine::{context, contracts, models, routing, services};
 use craft_platform::documents::DocumentError;
 use craft_platform::guidance;
@@ -44,6 +46,7 @@ pub const COMMANDS: &[&str] = &[
     "review-check",
     "review-publication",
     "review-followup",
+    "acceptance-view",
 ];
 /// Every command the general help lists.
 const ALL_COMMANDS: &[&str] = &[
@@ -81,6 +84,7 @@ const ALL_COMMANDS: &[&str] = &[
     "review-check",
     "review-publication",
     "review-followup",
+    "acceptance-view",
     "project-evidence",
 ];
 /// Commands that account the installed package's guidance; the launcher names its root.
@@ -97,6 +101,12 @@ const BUNDLED: &[&str] = &[
 const OPTIONS: &[&str] = &[
     "contract",
     "acceptance-evidence",
+    "view",
+    "current-kind",
+    "current-identity",
+    "probes",
+    "focus",
+    "blockers",
     "expected-evidence-digest",
     "expected-task-contract",
     "repository",
@@ -150,7 +160,7 @@ const OPTIONS: &[&str] = &[
     "verbose",
     "max-output-bytes",
 ];
-const FLAGS: &[&str] = &["delegate", "json", "verbose", "complete"];
+const FLAGS: &[&str] = &["delegate", "json", "verbose", "complete", "blockers"];
 const REPEATED: &[&str] = &[
     "repository",
     "file",
@@ -303,19 +313,31 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
         }
     }
     let present = |name: &str| options.values.contains_key(name);
-    if present("contract") && action != "task-start" {
-        return Err("--contract is supported by task-start".into());
+    if present("contract") && !["task-start", "acceptance-view"].contains(&action) {
+        return Err("--contract is supported by task-start and acceptance-view".into());
     }
-    if [
-        "acceptance-evidence",
-        "expected-task-contract",
-        "expected-evidence-digest",
-    ]
-    .iter()
-    .any(|name| present(name))
+    if present("acceptance-evidence") && !["task-step", "acceptance-view"].contains(&action) {
+        return Err("--acceptance-evidence is supported by task-step and acceptance-view".into());
+    }
+    if ["expected-task-contract", "expected-evidence-digest"]
+        .iter()
+        .any(|name| present(name))
         && action != "task-step"
     {
         return Err("structured evidence options require task-step".into());
+    }
+    let view_option = [
+        "view",
+        "current-kind",
+        "current-identity",
+        "probes",
+        "focus",
+        "blockers",
+    ]
+    .iter()
+    .find(|name| present(name));
+    if let Some(name) = view_option.filter(|_| action != "acceptance-view") {
+        return Err(format!("--{name} is supported by acceptance-view").into());
     }
     if present("repository") && !["task-start", "checkpoint-save"].contains(&action) {
         return Err("--repository is supported by task-start and checkpoint-save; other commands reuse the saved scope".into());
@@ -983,6 +1005,57 @@ fn task_step(
     )
 }
 
+/// A reader's view of an engineering contract and its evidence ledger; reads files only.
+fn acceptance_view(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let usage = || Failure::from(format!("usage: craft {}", ACCEPTANCE_VIEW_USAGE));
+    let mut file = |name: &str| -> Result<Option<Value>, Failure> {
+        options
+            .get(name)
+            .map(|file| {
+                let mut value = input(recorder, parent, file)?;
+                normalize_numbers(&mut value);
+                Ok(value)
+            })
+            .transpose()
+    };
+    let contract = file("contract")?.ok_or_else(usage)?;
+    let evidence = file("acceptance-evidence")?.ok_or_else(usage)?;
+    let probes = file("probes")?;
+    let focus = file("focus")?;
+    let current = json!({
+        "kind": options.get("current-kind").ok_or_else(usage)?,
+        "identity": options.get("current-identity"),
+    });
+    let blockers = options.values.get("blockers") == Some(&json!(true));
+    let view = match options.get("view").ok_or_else(usage)? {
+        "qa" if focus.is_none() => views::qa(
+            Some(&contract),
+            Some(&evidence),
+            &current,
+            Some(probes.as_ref().unwrap_or(&json!([]))),
+            blockers,
+        ),
+        view @ ("product" | "architecture") if probes.is_none() => views::reader(
+            if view == "product" {
+                Reader::Product
+            } else {
+                Reader::Architecture
+            },
+            Some(&contract),
+            Some(&evidence),
+            &current,
+            focus.as_ref(),
+            blockers,
+        ),
+        _ => return Err(usage()),
+    };
+    Ok(view?)
+}
+
 /// Propose, decide or check one recommended action for the bound task; `--data` supplies
 /// fresh host facts.
 fn task_action(
@@ -1263,6 +1336,8 @@ fn settings(
 }
 
 /// Command help; commands without an entry get the general list.
+const ACCEPTANCE_VIEW_USAGE: &str = "acceptance-view --view qa|product|architecture --contract contract.json --acceptance-evidence ledger.json --current-kind repository|environment [--current-identity id] [--probes probes.json (qa)] [--focus focus.json (product, architecture)] [--blockers]";
+
 fn help(action: &str) -> Value {
     let mut help = match action {
         "locate" => json!({
@@ -1348,6 +1423,10 @@ fn help(action: &str) -> Value {
             "usage": "session [--root project] [--session id --task task-id] [--data task.json] [--json]",
             "taskFields": ["id", "revision", "stage", "operation", "status", "files", "safeBoundary", "phaseChanged", "almostComplete", "compacted", "staleAssumptions", "risks", "nextStep"],
             "mode": "recommendation-only",
+        }),
+        "acceptance-view" => json!({
+            "usage": ACCEPTANCE_VIEW_USAGE,
+            "mode": "read-only reader view of supplied contract, evidence and probes; executes nothing and writes no task state",
         }),
         "telemetry-capture" => json!({
             "usage": "telemetry-capture --root project --session id",
@@ -1898,6 +1977,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         "task-action-check" => |o: &Options, r: &mut Recorder, p: &Operation| {
             task_action(crate::actions::Kind::Check, o, r, p)
         },
+        "acceptance-view" => acceptance_view,
         "task-feature" => {
             |o: &Options, r: &mut Recorder, p: &Operation| task_features(true, o, r, p)
         }

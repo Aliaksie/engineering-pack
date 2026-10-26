@@ -11,9 +11,23 @@ Existing tasks remain usable with agent-declared completion and unknown criterio
 | `engineering-contract-digest` | `contract` | SHA-256 of recursively key-sorted JSON |
 | `acceptance-evidence-validate` | `evidence` | Validated evidence ledger |
 | `acceptance-coverage` | `contract`, `evidence`, `current`, optional boolean `blockers` | Applicability and per-criterion coverage |
-| `qa-projection` | `contract`, `evidence`, `current`, `probes`, optional boolean `blockers` | Read-only charter/probe view of the same coverage |
-| `product-projection` | `contract`, `evidence`, `current`, optional `focus` and boolean `blockers` | Acceptance gaps, unresolved choices and cited dependencies |
-| `architecture-projection` | Same as product projection | Boundaries, dependencies, consequences, ADR sources and evidence gaps |
+
+`craft acceptance-view` gives readers three views of the same contract and coverage:
+
+| `--view` | Input | Result |
+|---|---|---|
+| `qa` | contract, evidence, current binding, optional `--probes`, `--blockers` | Read-only charter/probe view of the same coverage |
+| `product` | contract, evidence, current binding, optional `--focus`, `--blockers` | Acceptance gaps, unresolved choices and cited dependencies |
+| `architecture` | Same as `product` | Boundaries, dependencies, consequences, ADR sources and evidence gaps |
+
+```sh
+<package-root>/bin/craft acceptance-view --view qa --contract contract.json --acceptance-evidence ledger.json --current-kind environment --current-identity BUILD_AND_ENVIRONMENT --probes probes.json
+```
+
+The current binding is `--current-kind repository|environment` with an optional
+`--current-identity`; without it the identity is null and freshness stays unknown. The
+command reads its files, prints the JSON view and exits 2 on invalid input. It writes no
+task state and executes nothing.
 
 All use the existing version-1 engine envelope. Each payload independently uses
 `formatVersion: 1`; this is unrelated to package release versions. Unknown fields and
@@ -85,16 +99,16 @@ Errors retain the engine's `INVALID_INPUT` code. Payload diagnostics use the pre
 `unsupported-version`, `unknown-reference`, `missing-basis`, `invalid-conflict`,
 `missing-criteria`. Generic JSON/path validation can reject inputs before these checks.
 
-## QA projection
+## QA view
 
-`qa-projection` uses the same contract, criterion IDs, evidence and freshness calculation.
-Call it through `evaluate({formatVersion: 1, operation: 'qa-projection', input})` on the
-public engine boundary. It executes nothing and creates no state or new session format.
-Non-Git QA supplies `current: {kind: 'environment', identity: BUILD_AND_ENVIRONMENT}`;
+The QA view uses the same contract, criterion IDs, evidence and freshness calculation.
+It executes nothing and creates no state or new session format.
+Non-Git QA supplies `--current-kind environment --current-identity BUILD_AND_ENVIRONMENT`;
 include configuration/test-data version when relevant. Null identity cannot verify freshness.
 This explicit environment path does not change the task CLI's repository binding policy.
 
-`probes` is a transient array of up to 32 entries within 32 KiB. Each entry has `id`
+`--probes` names a transient array of up to 32 entries within 32 KiB; without it the view
+has no probes and every criterion is unexplored. Each entry has `id`
 (the check/probe ID), `criterionIds`, `risk`, `flows`, `preconditions`, `actions`,
 `expectedBasis` and `evidenceIds`. Collections contain at most 32 unique strings; strings
 are nonempty, control-free and at most 1024 characters. Preconditions and evidence IDs
@@ -121,16 +135,16 @@ The source checkout contains executable fixtures and a requirements-only charter
 `examples/evals/manual-qa/README.md` (excluded from installed bundles). Deterministic checks
 establish mechanics; usefulness and factual accuracy require a separate human assessment.
 
-## Product and architecture projections
+## Product and architecture views
 
-Both operations read the same contract and ledger through the public `evaluate` boundary.
+Both views read the same contract and ledger.
 They retain identical source, criterion, decision and evidence IDs and use the existing
 coverage/freshness calculation. No role state, discovery, execution or publication occurs.
 Product readers receive `deliveryGaps` and `unresolvedDecisions`; architects receive
 `evidenceGaps` and `adrSources`, including proposed and superseded status. Neither a source
 status nor a successful check resolves a product choice or accepts an ADR.
 
-Optional `focus` selects existing constraint IDs in `boundaries`, `dependencies` and
+Optional `--focus` names a JSON object that selects existing constraint IDs in `boundaries`, `dependencies` and
 `consequences` arrays (at most 32 unique IDs each). Unknown fields, dangling IDs and duplicate
 IDs fail. These are reader selections, not new facts. Each selected constraint includes its
 cited `sources` with their original provenance and status: declared dependencies, observed

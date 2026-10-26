@@ -212,3 +212,13 @@ commit date says; an unreadable time, a truncated connection or a head mismatch 
 pull request undecided instead of being ignored; a pull request that is no longer open is
 `closed`. It covers the `inbox-status` and `inbox-policy` cases retired from
 `engine-contracts.json`; the inbox command guard they served is gone.
+
+`view-contracts.json` freezes the JavaScript acceptance views (`qa-projection`,
+`product-projection`, `architecture-projection`) at `c632948` over 157 inputs: the manual-QA
+and product-views examples, a two-criterion contract, every execution/support combination,
+binding changes, blockers, probe and focus validation branches, size and count bounds, and
+the representative engine cases. Inputs are the operation input objects; `craft
+acceptance-view` reads the same documents from files. The Rust replay (`cargo test -p
+craft-engine --test view_contracts`) compares results as serialized JSON and reasons exactly.
+Three cases are corrections: a QA view without a contract reports `qa:missing-contract`
+instead of `qa:invalid-probes`. It covers the six projection cases of `engine-contracts.json`.

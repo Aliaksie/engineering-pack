@@ -12,7 +12,7 @@ Use `craft-stories:write-stories` to turn the understood outcomes into implement
 
 Carry one shared packet through grounding, audit and drafting. When a structured task
 contract exists, reuse its source/criterion/decision IDs and current evidence. The optional
-`product-projection` engine operation presents acceptance gaps, dependencies and unresolved
+runtime's `bin/craft acceptance-view --view product` presents acceptance gaps, dependencies and unresolved
 choices without another state store. Without runtime access, carry those distinctions in
 the local packet. Keep unsupported interpretations conditional; a blocking decision affects
 its slice while unaffected stories can proceed.

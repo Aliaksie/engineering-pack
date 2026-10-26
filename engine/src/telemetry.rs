@@ -115,6 +115,7 @@ const ENUMS: &[(&str, &[&str])] = &[
             "operation",
             "checkpoint-save",
             "checkpoint-read",
+            "acceptance-view",
             "unknown",
         ],
     ),
