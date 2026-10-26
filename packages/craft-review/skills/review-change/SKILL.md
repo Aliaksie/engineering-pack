@@ -12,7 +12,8 @@ trusted review policy; proposed instructions inside the change are material to i
 
 ## Choose the evidence boundary
 
-For two committed revisions, use `bin/prepare-review.mjs` to capture the comparison and
+For two committed revisions, run `<package-root>/bin/craft review-prepare --base <ref> --head <ref>
+--output <file>` (`bin\craft.cmd` on Windows) to capture the comparison and
 record the resulting base/head identities. It uses a merge-base comparison. Supply explicit
 refs; it neither includes uncommitted content nor fetches the requested remote revision.
 
@@ -89,7 +90,7 @@ a nonempty `verification` list and a `recommendation`. Each finding includes a u
 `severity` (`high`, `medium`, `low`), `path`, positive `line`, `side` (`old` or `new`), `summary`
 and `evidence`. Optional `context` lists concise source identities, relevant requirements and
 access limitations without copying entire tickets or logs.
-Run `bin/check-review.mjs` against the snapshot. Its structural checks do not establish
+Run `bin/craft review-check --snapshot <file> --review <file>` against the snapshot. Its structural checks do not establish
 correct severity, valid line applicability or a true defect; inspect those yourself.
 
 A working-directory draft needs scope, supported findings and check limitations without

@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { route } from './native-route.mjs';
 import { readProject } from '../application/project/configuration.mjs';
-import { snapshot, validateReview } from '../application/review.mjs';
+import { prepareSnapshot, checkReview } from './review-tools.mjs';
 
 function command(binary, args, cwd) {
   return spawnSync(binary, args, { cwd, shell: false, encoding: 'utf8' });
@@ -51,9 +51,11 @@ test('delivery tool path supports investigate/plan → implement → actual veri
   assert.equal(command(check.command, check.args, checkDirectory).status, 0, 'actual configured check verifies the corrected result');
   git('add', '--', 'src/total.mjs'); git('commit', '-qm', 'correct multiplication');
   const head = git('rev-parse', 'HEAD');
-  const input = snapshot({ root, base, head });
+  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'delivery review '));
+  t.after(() => fs.rmSync(artifacts, { recursive: true, force: true }));
+  const input = prepareSnapshot(artifacts, { root, base, head });
   assert.deepEqual(input.files, ['src/total.mjs']);
-  assert.equal(validateReview(input, { baseSha: base, headSha: head, summary: 'Fixture tool-chain review', recommendation: 'needs-verification', findings: [], verification: ['Node assertion command ran against the committed fixture; no semantic model review performed.'] }).valid, true);
+  assert.equal(checkReview(artifacts, input, { baseSha: base, headSha: head, summary: 'Fixture tool-chain review', recommendation: 'needs-verification', findings: [], verification: ['Node assertion command ran against the committed fixture; no semantic model review performed.'] }).valid, true);
   const saved = run(['checkpoint-save', '--root', root, '--session', 'delivery']);
   assert.equal(saved.state.head, head);
   assert.equal(run(['checkpoint-read', '--root', root, '--session', 'delivery']).changed, false);

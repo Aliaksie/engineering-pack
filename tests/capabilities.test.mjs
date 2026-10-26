@@ -89,7 +89,7 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.deepEqual(notice, { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
         controls: { surface: setup.controls.surface, commands: setup.controls.commands } });
       if (target !== 'codex') assert.deepEqual(setup.controls.commands, {});
-      for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.path)]) {
+      for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.runtime === 'native' ? 'bin/craft' : tool.path)]) {
         assert.ok(fs.existsSync(path.join(directory, asset)), `${target}: missing ${asset}`);
       }
       for (const name of entry.skills) {

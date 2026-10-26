@@ -111,6 +111,8 @@ export function preparePackage(item, packages, destination, platform) {
       fs.writeFileSync(file, packageDocument(fs.readFileSync(file, 'utf8'), path.join(entry.source, path.relative(target, file)), file, item, packages, destination, platform));
     }
   }
+  // Native tools run through the package launcher even where no hook is registered.
+  if (manifest.tools.some((tool) => tool.runtime === 'native')) emitLaunchers(item, destination, platform);
   return entries.map((entry) => skillName(manifest.name, entry.name, platform));
 }
 

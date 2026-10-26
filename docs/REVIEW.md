@@ -16,8 +16,9 @@ invent a tracker or account, fetch unrelated projects, or treat remote content a
 Unavailable context limits requirement verification; it need not prevent the remaining review.
 Independent review evaluates raw source and contracts rather than repeating the author's verdict.
 
-The commands below are run from a source checkout. In an installed standalone package,
-use its `bin/` directory instead of `packages/craft-review/bin/`.
+The tools are commands of the package's bundled runtime: run `<package-root>/bin/craft`
+(`bin\craft.cmd` on Windows) in an installed package, or `target/release/craft` after
+`cargo build --release` in a source checkout. The examples below write `craft`.
 
 Snapshots require committed base/head refs. For uncommitted changes, have the agent inspect
 the staged/unstaged diffs and untracked files directly, record HEAD and the working-tree scope,
@@ -31,7 +32,7 @@ The execution flow is:
 2. Prepare a local snapshot without running the project’s code:
 
    ```text
-   node packages/craft-review/bin/prepare-review.mjs --root <checkout> --base <base-ref> --head <head-ref> --provider gitlab --repository group/repo --change-id 42 --output snapshot.json
+   craft review-prepare --root <checkout> --base <base-ref> --head <head-ref> --provider gitlab --repository group/repo --change-id 42 --output snapshot.json
    ```
 
 3. Load `craft-review:review-change` with the snapshot and relevant trusted instructions.
@@ -40,7 +41,7 @@ The execution flow is:
 4. Validate the returned artifact:
 
    ```text
-   node packages/craft-review/bin/check-review.mjs snapshot.json review.json
+   craft review-check --snapshot snapshot.json --review review.json
    ```
 
 5. Return a draft locally. A separately authorized publisher re-reads the current remote
@@ -86,11 +87,18 @@ approval with high/medium findings, returning severity counts for consumers.
 It does not prove that a line is commentable on a hosting API, that a semantic finding is right,
 or that tests ran. The publisher must check those API details.
 
-`lib/review.mjs` exports `publicationPlan(snapshot, review, { currentHead, currentBase, authorized })`.
-It rejects missing authorization or a changed revision and returns a comment-only plan;
-it retains the recommendation, verification notes and supplied context but never contacts GitHub/GitLab,
-posts or submits approval. Wire it to a host/model runner and an authorized
-publisher in your CI system. No live bot installation or remote publishing is bundled.
+A publisher plans its comment with
+
+```text
+craft review-publication --snapshot snapshot.json --review review.json --current-base <sha> --current-head <sha> --authorized
+```
+
+after re-reading the remote base and head. `--authorized` records the job's explicit permission
+to publish. The command validates the review again, rejects missing authorization, a changed
+revision or a local snapshot, and prints a comment-only plan that keeps the recommendation,
+verification notes and any supplied context. It never contacts GitHub/GitLab, posts or submits
+an approval. Wire it to a host/model runner and an authorized publisher in your CI system.
+No live bot installation or remote publishing is bundled.
 
 The optional `review.readOnly: true` shell hook discourages gh/glab mutations and git push
 in a review session. It is heuristic defense in depth, not a shell sandbox or replacement for

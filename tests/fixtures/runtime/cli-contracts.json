@@ -761,35 +761,6 @@
       "status": 1,
       "diagnostic": "PROJECT_EVIDENCE_ERROR: unknown or incomplete option: --absent",
       "errorCode": "PROJECT_EVIDENCE_ERROR"
-    },
-    {
-      "id": "review-check-arity",
-      "entry": "packages/craft-review/bin/check-review.mjs",
-      "args": [],
-      "mode": "failure",
-      "status": 2,
-      "diagnostic": "usage: check-review.mjs <snapshot.json> <review.json>"
-    },
-    {
-      "id": "review-prepare-output-required",
-      "entry": "packages/craft-review/bin/prepare-review.mjs",
-      "args": [],
-      "mode": "failure",
-      "status": 2,
-      "diagnostic": "--output is required; keep the diff in an artifact rather than the model transcript"
-    },
-    {
-      "id": "review-prepare-duplicate",
-      "entry": "packages/craft-review/bin/prepare-review.mjs",
-      "args": [
-        "--base",
-        "one",
-        "--base",
-        "two"
-      ],
-      "mode": "failure",
-      "status": 2,
-      "diagnostic": "usage: prepare-review.mjs --base ref --head ref [--root repo] [--output file]"
     }
   ]
 }

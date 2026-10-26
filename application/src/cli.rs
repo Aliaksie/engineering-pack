@@ -40,6 +40,9 @@ pub const COMMANDS: &[&str] = &[
     "telemetry-report",
     "telemetry-capture",
     "telemetry-forget",
+    "review-prepare",
+    "review-check",
+    "review-publication",
 ];
 /// Every command `cli/main.mjs` lists in its general help, migrated or not.
 const ALL_COMMANDS: &[&str] = &[
@@ -167,6 +170,18 @@ impl Failure {
         Self {
             message: code.into(),
             io,
+        }
+    }
+    /// The Node-style code of an I/O failure, for a caller-owned telemetry envelope.
+    pub(crate) fn node_code(&self) -> Option<&'static str> {
+        match self.io {
+            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
+            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
+            Some(ErrorKind::NotFound) => Some("ENOENT"),
+            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
+            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
+            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
+            _ => None,
         }
     }
     /// The stable reason code `observe` records for this failure.
@@ -1736,12 +1751,24 @@ pub fn run(argv: &[String]) -> Outcome {
     run_in_context(argv, &Value::Null)
 }
 
+/// The `craft <command>` process: write the streams, then post the telemetry export.
+pub fn main(argv: &[String]) -> i32 {
+    let outcome = run(argv);
+    print!("{}", outcome.stdout);
+    eprint!("{}", outcome.stderr);
+    crate::telemetry::Recorder::deliver(outcome.export);
+    outcome.exit_code
+}
+
 /// A forwarded command can ask for the JSON result instead of a compact receipt
 /// (`context.structured`).
 pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
     let (action, args) = argv
         .split_first()
         .map_or(("", &[][..]), |(action, args)| (action.as_str(), args));
+    if let Some(command) = crate::review::Command::from_name(action) {
+        return crate::review::run(command, args, context);
+    }
     let known = COMMANDS.contains(&action);
     if known && args.iter().any(|arg| arg == "--help") {
         return Outcome {
@@ -1862,15 +1889,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         }
     };
     Outcome {
-        error_code: result.err().and_then(|failure| match failure.io {
-            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
-            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
-            Some(ErrorKind::NotFound) => Some("ENOENT"),
-            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
-            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
-            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
-            _ => None,
-        }),
+        error_code: result.err().and_then(|failure| failure.node_code()),
         exit_code: outcome.0,
         stdout: outcome.1,
         stderr: outcome.2,

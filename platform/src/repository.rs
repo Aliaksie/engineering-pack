@@ -1,5 +1,6 @@
 use crate::syntax::MAX_SOURCE_BYTES;
 
+pub mod comparison;
 pub mod snapshot;
 use craft_engine::valid_path;
 use std::{

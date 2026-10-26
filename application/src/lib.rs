@@ -12,6 +12,7 @@ mod grounding;
 pub mod hook;
 mod host;
 mod project;
+mod review;
 mod scratch;
 mod session;
 mod status;

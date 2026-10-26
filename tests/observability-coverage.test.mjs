@@ -15,6 +15,7 @@ import { run } from '../cli/main.mjs';
 import { readProject } from '../application/project/configuration.mjs';
 import { readCheckpoint } from './checkpoint-cli.mjs';
 import { runHook } from './hook-command.mjs';
+import { craft } from './review-tools.mjs';
 
 const uuid = '12345678-1234-4234-a234-123456789abc';
 function fixture(t, telemetry) {
@@ -145,15 +146,32 @@ test('review preparation/validation and checkpoint flows have traced success and
   git('-c','user.name=Test','-c','user.email=test@example.test','commit','-m','fixture');
   command(root,'checkpoint-save'); command(root,'checkpoint-read');
   for (const name of ['checkpoint.saved','checkpoint.recovered','checkpoint.read']) assert.ok(readTelemetry(root).some(event=>event.name===name && event.parentOperationId));
-  const prepare=path.resolve('packages/craft-review/bin/prepare-review.mjs'), check=path.resolve('packages/craft-review/bin/check-review.mjs');
   const artifact=path.join(root,'snapshot.json');
-  const result=spawnSync(process.execPath,[prepare,'--root',root,'--base','HEAD','--head','HEAD','--output',artifact],{cwd:root,encoding:'utf8'});
+  const result=craft(['review-prepare','--root',root,'--base','HEAD','--head','HEAD','--output',artifact],{cwd:root});
   assert.equal(result.status,0,result.stderr);
   const events=readTelemetry(root), {trace}=tree(events,'review.command');
   assert.ok(trace.some(event=>event.name==='review.completed' && event.attributes.phase==='prepared'));
   const invalid=path.join(root,'invalid-review.json'); fs.writeFileSync(invalid,'{}');
-  const failure=spawnSync(process.execPath,[check,artifact,invalid],{cwd:root,encoding:'utf8'}); assert.equal(failure.status,2);
+  const failure=craft(['review-check','--snapshot',artifact,'--review',invalid],{cwd:root}); assert.equal(failure.status,2);
   assert.ok(readTelemetry(root).some(event=>event.name==='review.command' && event.reasonCode==='REVIEW_INVALID'));
+});
+test('a command run directly by the native runtime posts its remote export', async t => {
+  const spans=[];
+  const server=http.createServer((request,response)=>{
+    let body=''; request.on('data',chunk=>{ body+=chunk; });
+    request.on('end',()=>{ spans.push(...JSON.parse(body).resourceSpans.flatMap(entry=>entry.scopeSpans[0].spans)); response.end('{}'); });
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(()=>server.close());
+  const root=fixture(t,{remote:{enabled:true,endpoint:`http://127.0.0.1:${server.address().port}/v1/traces`}});
+  const status=await new Promise((resolve,reject)=>{
+    const child=childProcess.spawn(process.env.CRAFT_NATIVE_BINARY,['review-check','--snapshot','absent.json','--review','absent.json'],{cwd:root,stdio:'ignore'});
+    child.on('error',reject); child.on('close',resolve);
+  });
+  assert.equal(status,2);
+  assert.deepEqual(spans.map(span=>span.name),['review.command']);
+  const exported=readTelemetry(root).find(event=>event.name==='telemetry.export');
+  assert.deepEqual([exported?.outcome,exported?.attributes.exportedEvents],['success',1]);
 });
 test('attempt recording uses cumulative counter beyond bounded receipt retention',t=>{
   const root=fixture(t);

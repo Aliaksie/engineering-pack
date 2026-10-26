@@ -18,13 +18,15 @@ that need them. A routing or publication plan grants no permission to execute it
 | Checkpoints | Session metadata and Git state → saved state or comparison | Local Git reads and atomic state writes; milestone snapshots enabled by default, locked and size-bounded |
 | Review snapshot | Explicit committed base/head → immutable identities and diff | Bounded local Git reads; excludes working-tree changes |
 | Review result checker | Snapshot and result → structural verdict | Reads artifacts; does not judge findings or publish them |
+| Review publication plan | Checked review, current remote revisions and explicit authorization → comment-only plan | Reads artifacts; never contacts a code host |
 
 `cli/main.mjs` exposes routing, lookup, service plans, context reporting, session status/advice,
 attempt receipts and checkpoint actions. Installed packages expose `support/cli/main.mjs`.
 `engine/` owns portable decisions; application use cases orchestrate `platform/` operations.
 `hosts/` owns native callbacks and `tooling/export/` constructs installed bundles.
-`prepare-review.mjs` writes a new snapshot artifact exclusively; `check-review.mjs` validates
-recorded results. No tool in this table posts a review. Checkpoints preserve explicit state,
+`craft review-prepare` writes a new snapshot artifact exclusively; `craft review-check` validates
+recorded results and `craft review-publication` plans an authorized comment. No tool in this table
+posts a review. Checkpoints preserve explicit state,
 not fresh verification or proof of task completion.
 Recovery compares bounded working-tree content and index fingerprints as well as HEAD and
 status. `changeDetection.complete` reports inspection coverage; `changed: null` means that

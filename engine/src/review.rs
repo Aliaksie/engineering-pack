@@ -5,6 +5,8 @@
 use crate::contracts::js_space;
 use serde_json::{Value, json};
 
+pub mod artifact;
+
 const SHELLS: [&str; 10] = [
     "sh",
     "bash",

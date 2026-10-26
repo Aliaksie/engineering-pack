@@ -36,13 +36,13 @@ These use synthetic host observations; they do not execute workers or publish re
 Empty-input rejection is not successful operation coverage; each migrated use case
 still needs its own success, state and installed checks.
 
-`cli-contracts.json` freezes 28 executable cases after verifying CLI, application,
+`cli-contracts.json` freezes 25 executable cases after verifying CLI, application,
 platform, engine and review executable sources unchanged against the same baseline.
 Run `npm run build` then `node --test tests/runtime-cli-replay.test.mjs` to replay
 source and relocated AGENTS exports from disposable working directories with isolated
 user configuration. These cover the command catalog, help precedence, repeated Unicode
-file arguments, JSON/verbose routing, parser and required-input failures, review argument
-rejection, and disabled Project Intelligence with an unavailable binary. Compare exit
+file arguments, JSON/verbose routing, parser and required-input failures and disabled
+Project Intelligence with an unavailable binary. Compare exit
 status, stdout/stderr separation, structured results and native error codes; recorded
 diagnostic prose is evidence only. These checks do not establish signal cancellation,
 enabled native execution, automatic host hook dispatch or other platform support.
@@ -166,6 +166,19 @@ case formerly in `action-execution.test.mjs`, and absorbs the nine `task-step`, 
 and `action-decide` cases retired from `engine-contracts.json`. Results, including the updated state, compare as
 serialized JSON and error messages exactly. The Rust replay
 (`cargo test -p craft-engine --test step_contracts`) has no corrections.
+
+`review-tool-contracts.json` freezes the JavaScript review tools at `a84479e`: 25
+`prepare-review` runs over a repository built from recorded steps with fixed identities and
+dates (merge-base ranges, remote identities, excluded run state, binary, renamed, non-ASCII
+and spaced paths, unresolvable references, missing merge base, argument and existing-output
+failures), 70 `check-review` validations and 12 publication plans. The native
+`review-prepare`, `review-check` and `review-publication` commands replay it
+(`cargo test -p craft-application --test review_tools`), comparing exit status, artifacts,
+mode, stdout and validation messages; usage, Git and JSON parser prose are classes, not text.
+Two cases are corrections: a remote change ID must be a digit string or a safe positive
+integer, where JavaScript accepted `[7]` and `1e20` after `String()` conversion. It covers
+the nine review cases retired from `engine-contracts.json` and the three review cases
+retired from `cli-contracts.json`.
 
 `review-contracts.json` freezes the JavaScript read-only review guard at `0ecc73d`: 439 shell
 command lines with whether they publish (direct commands, quoting, separators, Git global

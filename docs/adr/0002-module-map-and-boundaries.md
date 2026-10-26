@@ -30,7 +30,7 @@ the JavaScript inside the crate folders is legacy and is removed as its callers 
 | `cli/` | retiring | application, platform | — | yes | Legacy command parsing and display, moving into `application` |
 | `integrations/` | retiring | — | — | yes | Legacy external mappings, dissolving into `application`, `platform` and review owners |
 | `hosts/` | host-adapter | application, platform | — | yes | Host payloads, native invocation, host wire output; no dependencies after migration |
-| `packages/` | content | application | — | yes | Capability guidance and thin package entry points |
+| `packages/` | content | — | — | yes | Capability guidance and hook declarations |
 | `tools/` | optional-tool | application, integrations | — | no | Optional review inbox; owner undecided |
 | `tooling/` | build-tooling | * | — | no | Build, export, release, validation, benchmarks, eval drivers |
 | `schemas/` | schema | — | — | yes | Published authoring schemas |

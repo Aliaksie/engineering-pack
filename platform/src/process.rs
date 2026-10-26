@@ -10,13 +10,31 @@ use std::{
 };
 
 pub fn git(root: &Path, args: &[&str], max_bytes: usize) -> Result<Option<Vec<u8>>, String> {
+    git_within(
+        "Git inventory",
+        root,
+        args,
+        max_bytes,
+        Duration::from_secs(5),
+    )
+}
+
+/// Git output when it exits successfully, `None` when it fails or is not installed, and an
+/// error naming `what` when it overflows `max_bytes` or outlives `timeout`.
+pub fn git_within(
+    what: &str,
+    root: &Path,
+    args: &[&str],
+    max_bytes: usize,
+    timeout: Duration,
+) -> Result<Option<Vec<u8>>, String> {
     let mut command = Command::new("git");
     command
         .args(["-c", "core.fsmonitor=false", "-C"])
         .arg(root)
         .args(args)
         .env("GIT_OPTIONAL_LOCKS", "0");
-    capture("Git inventory", command, max_bytes, Duration::from_secs(5))
+    capture(what, command, max_bytes, timeout)
 }
 
 /// The Windows process table as `tasklist` CSV, or `None` when it cannot be listed.

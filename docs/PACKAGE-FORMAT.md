@@ -13,7 +13,7 @@ contract validated by `tooling/lib/capabilities.mjs` and described by
 | `workflows` | Markdown files with name/description frontmatter; exported as workflow skills |
 | `standards` | Canonical quality guidance, loaded when relevant |
 | `evals` | JSON scenarios: id, prompt and named rubric criteria |
-| `tools` | Executable paths with runtime and network effect declarations |
+| `tools` | Executables with runtime and network effect declarations: a package `path` run by `node` or `bash`, or a `native` `command` of the bundled runtime, run as `bin/craft <command>` |
 | `hooks` | Normalized lifecycle handler declarations; v1 supports session, prompt, tool, compaction and turn events |
 | `mcp` | Optional server declarations; no live defaults or credential literals |
 | `optionalDependencies` | Other capabilities useful when installed; absence is a reported limitation |
@@ -52,9 +52,10 @@ handlers also export `observational = true`: their runner produces no host decis
 context and remains nonblocking on input or execution failure. This does not change the
 input size bound or the failure behavior of policy handlers.
 
-The shipped bin/hook entry points import shared application modules. `tooling/export/`
-rebases those imports into the installed package's `support/` tree, which includes the engine,
-application, platform, integrations and CLI. Installed packages remain self-contained; do not
+A hook module names the native handler the export registers (`export const native = '<handler>'`).
+Hooks and native tools run in the bundled `craft` runtime through the generated `bin/craft`
+launcher (`bin/craft.cmd` on Windows). `tooling/export/` copies the shared `support/` tree into
+each installed package. Installed packages remain self-contained; do not
 import authoring tooling or a sibling package at runtime. Hook tools are
 `shell` or `any`; normalized events are `session-start`, `before-prompt`, `before-tool`,
 `after-tool`, `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where

@@ -12,10 +12,7 @@ fn main() {
         std::process::exit(craft_application::hook::main(&argv[1..]));
     }
     if !argv.is_empty() {
-        let outcome = craft_application::cli::run(&argv);
-        print!("{}", outcome.stdout);
-        eprint!("{}", outcome.stderr);
-        std::process::exit(outcome.exit_code);
+        std::process::exit(craft_application::cli::main(&argv));
     }
     let mut input = Vec::new();
     let response = match io::stdin()

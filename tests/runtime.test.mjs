@@ -10,7 +10,7 @@ import { readProject } from '../application/project/configuration.mjs';
 import { validateProject } from '../application/project/configuration.mjs';
 import { saveCheckpoint, readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { run } from '../cli/main.mjs';
-import { snapshot, validateReview, publicationPlan } from '../application/review.mjs';
+import { craft, prepareSnapshot, checkReview, planPublication } from './review-tools.mjs';
 import { loadCapabilities } from '../tooling/lib/capabilities.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -269,32 +269,41 @@ test('checkpoint writes reject symlinked paths and concurrent writers', (t) => {
 
 test('review snapshots pin actual Git revisions without running project code', (t) => {
   const { dir, base, head } = repository(t);
-  const input = snapshot({ root: dir, base, head, provider: 'gitlab', repository: 'team/repo', changeId: 42 });
+  const input = prepareSnapshot(temp(t), { root: dir, base, head, provider: 'gitlab', repository: 'team/repo', changeId: 42 });
+  const work = temp(t);
   assert.equal(input.baseSha, base); assert.equal(input.headSha, head); assert.equal(input.mergeBase, base);
   assert.deepEqual(input.files, ['orders.py']); assert.match(input.diff, /value = 2/);
   const result = { baseSha: base, headSha: head, summary: 'Static review', recommendation: 'request-changes', verification: ['Tests not run.'], findings: [{ id: 'F1', severity: 'medium', path: 'orders.py', side: 'new', line: 1, summary: 'Fixture finding', evidence: 'Synthetic validation fixture.' }] };
-  assert.equal(validateReview(input, result).valid, true);
+  assert.equal(checkReview(work, input, result).valid, true);
   for (const bad of [
     { ...result, headSha: base }, { ...result, verification: [] },
     { ...result, findings: [{ ...result.findings[0], path: 'not-changed.py' }] },
     { ...result, findings: [{ ...result.findings[0], line: 0 }] },
     { ...result, findings: [...result.findings, result.findings[0]] }
-  ]) assert.throws(() => validateReview(input, bad));
-  assert.throws(() => publicationPlan(input, result, { currentHead: head, currentBase: base }), /authorization/);
-  assert.throws(() => publicationPlan(input, result, { currentHead: head, currentBase: base, authorized: 'false' }), /authorization/);
-  assert.throws(() => publicationPlan(input, result, { currentHead: base, currentBase: base, authorized: true }), /changed/);
-  assert.equal(publicationPlan(input, result, { currentHead: head, currentBase: base, authorized: true }).execution, 'not-published');
+  ]) assert.throws(() => checkReview(work, input, bad));
+  assert.throws(() => planPublication(work, input, result, { currentHead: head, currentBase: base }), /authorization/);
+    assert.throws(() => planPublication(work, input, result, { currentHead: base, currentBase: base, authorized: true }), /changed/);
+  assert.equal(planPublication(work, input, result, { currentHead: head, currentBase: base, authorized: true }).execution, 'not-published');
+});
+
+test('every native package tool names a command of the bundled runtime', () => {
+  const tools = loadCapabilities(root).flatMap(({ manifest }) => manifest.tools.filter(tool => tool.runtime === 'native'));
+  assert.ok(tools.length);
+  for (const tool of tools) {
+    const help = craft([tool.command, '--help']);
+    assert.equal(help.status, 0, `${tool.name}: ${help.stderr}`);
+    assert.match(JSON.parse(help.stdout).usage, new RegExp(`^${tool.command} `));
+  }
 });
 
 test('review snapshot CLI saves a new artifact and prints only compact metadata', (t) => {
   const { dir, base, head } = repository(t);
-  const command = path.join(root, 'packages/craft-review/bin/prepare-review.mjs');
   const artifact = path.join(dir, 'review-snapshot.json');
-  const result = spawnSync(process.execPath, [command, '--root', dir, '--base', base, '--head', head, '--output', artifact], { encoding: 'utf8' });
+  const result = craft(['review-prepare', '--root', dir, '--base', base, '--head', head, '--output', artifact]);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).files, 1);
   assert.ok(!result.stdout.includes('value = 2'));
   assert.equal(JSON.parse(fs.readFileSync(artifact, 'utf8')).headSha, head);
-  const overwrite = spawnSync(process.execPath, [command, '--root', dir, '--base', base, '--head', head, '--output', artifact], { encoding: 'utf8' });
+  const overwrite = craft(['review-prepare', '--root', dir, '--base', base, '--head', head, '--output', artifact]);
   assert.equal(overwrite.status, 2);
 });

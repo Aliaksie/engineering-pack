@@ -20,14 +20,20 @@
   "tools": [
     {
       "name": "prepare-review",
-      "path": "bin/prepare-review.mjs",
-      "runtime": "node",
+      "command": "review-prepare",
+      "runtime": "native",
       "network": "none"
     },
     {
       "name": "check-review",
-      "path": "bin/check-review.mjs",
-      "runtime": "node",
+      "command": "review-check",
+      "runtime": "native",
+      "network": "none"
+    },
+    {
+      "name": "plan-publication",
+      "command": "review-publication",
+      "runtime": "native",
       "network": "none"
     }
   ],

@@ -8,7 +8,8 @@ import { run } from '../cli/main.mjs';
 import { activeTask } from './session-state.mjs';
 import { saveCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { workspaceBoundary, workspaceOperation } from './workspace-cli.mjs';
-import { repositoryRoots, repositoryState, nativeLocate, reviewSnapshot, stateFile } from '../platform/index.mjs';
+import { repositoryRoots, repositoryState, nativeLocate, stateFile } from '../platform/index.mjs';
+import { prepareSnapshot } from './review-tools.mjs';
 import { DEFAULT_SETTINGS } from '../engine/policy/effective-settings.mjs';
 import { decide, digest } from '../application/engine-client.mjs';
 import { copy } from '../tooling/export/export.mjs';
@@ -209,7 +210,7 @@ for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirec
   const catalog = JSON.parse(fs.readFileSync(new URL('../engine/routing/catalog.json', import.meta.url)));
   assert.deepEqual(decide('route', { intent: 'implement', files: [`nested/${privateDirectory}/state/tempting.py`], project: { formatVersion: 1 }, catalog }).files, []);
   const head = git('kit', 'rev-parse', 'HEAD'); git('kit', 'add', '.'); git('kit', 'commit', '-qm', 'private fixture');
-  const review = reviewSnapshot({ root: repo, base: head, head: 'HEAD' });
+  const review = prepareSnapshot(root, { root: repo, base: head, head: 'HEAD' });
   assert.deepEqual(review.files, []); assert.equal(review.diff, '');
   const output = path.join(root, 'export'); copy(repo, output);
   assert.equal(fs.existsSync(path.join(output, `nested/${privateDirectory}/state`)), false);
