@@ -1,0 +1,18 @@
+{
+  "id": "ui-policy-boundaries",
+  "prompt": "A React UI uses its documented design-system style prop and a server-backed form with an editable local draft. A token change intentionally alters spacing; one axe check passes. Review the affected state, rendering and accessibility risks without imposing a new bundler, store or test framework.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Distinguishes an intentional editable draft and accepted styling API from unsafe redundant state or a universal inline-style ban."
+    },
+    {
+      "id": "c2",
+      "description": "Requests meaningful affected visual/interaction/focus evidence without claiming that a passing automated accessibility check proves conformance or legal compliance."
+    },
+    {
+      "id": "c3",
+      "description": "Does not guarantee children never render, require zero pixel tolerance or treat a token change as automatically blocking under an invented policy."
+    }
+  ]
+}

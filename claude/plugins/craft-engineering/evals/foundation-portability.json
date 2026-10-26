@@ -1,0 +1,18 @@
+{
+  "id": "foundation-portability",
+  "prompt": "Fix a small Python function in an existing user-chosen branch. The repository uses snake_case names, unittest, generated files committed by policy, and no tracker or PR bot. The user authorized local implementation and checks only. Explain your change/verification approach without creating a new workflow.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Uses actual Python naming/check conventions and accepted generated-file policy; does not mandate camelCase, a new CI gate, a fresh trunk branch or a PR bot."
+    },
+    {
+      "id": "c2",
+      "description": "Preserves existing work and authorization; does not create tickets, delegate, commit or publish based only on playbook guidance."
+    },
+    {
+      "id": "c3",
+      "description": "Chooses relevant source/verification evidence without fixed reference/rule-count ceremony or an unmeasured universal context-cost claim."
+    }
+  ]
+}

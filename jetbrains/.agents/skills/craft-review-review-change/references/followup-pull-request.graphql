@@ -1,0 +1,30 @@
+query FollowUp($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      ...FollowUpPullRequest
+    }
+  }
+}
+fragment FollowUpPullRequest on PullRequest {
+  number url title state isDraft headRefOid
+  author { __typename login }
+  commits(last: 1) { nodes { commit { oid committedDate } } }
+  comments(first: 100) {
+    pageInfo { hasNextPage }
+    nodes { body createdAt author { __typename login } }
+  }
+  reviews(first: 100) {
+    pageInfo { hasNextPage }
+    nodes { body state submittedAt commit { oid } author { __typename login } }
+  }
+  reviewThreads(first: 100) {
+    pageInfo { hasNextPage }
+    nodes {
+      id path line isResolved isOutdated
+      comments(first: 50) {
+        pageInfo { hasNextPage }
+        nodes { body createdAt author { __typename login } }
+      }
+    }
+  }
+}

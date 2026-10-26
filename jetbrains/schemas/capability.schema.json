@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Capability Package authoring format v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 40
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[a-z0-9.-]+)?$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "instructions": {
+      "const": "AGENTS.md"
+    },
+    "skills": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+      }
+    },
+    "workflows": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+      }
+    },
+    "standards": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+      }
+    },
+    "evals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+              },
+              "runtime": {
+                "enum": [
+                  "node",
+                  "bash"
+                ]
+              },
+              "network": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "path",
+              "runtime",
+              "network"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "A command of the package's bundled craft runtime, run as bin/craft <command>.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "command": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "runtime": {
+                "const": "native"
+              },
+              "network": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "command",
+              "runtime",
+              "network"
+            ]
+          }
+        ]
+      }
+    },
+    "hooks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "event": {
+            "enum": [
+              "session-start",
+              "before-prompt",
+              "before-tool",
+              "after-tool",
+              "before-compact",
+              "after-compact",
+              "turn-end"
+            ]
+          },
+          "tool": {
+            "enum": [
+              "shell",
+              "any"
+            ]
+          },
+          "handler": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^/]+(?:/[^/]+)*$"
+          }
+        },
+        "required": [
+          "name",
+          "event",
+          "tool",
+          "handler"
+        ]
+      }
+    },
+    "mcp": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "transport": {
+                "const": "http"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://[^?#]+$"
+              }
+            },
+            "required": [
+              "name",
+              "transport",
+              "url"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "transport": {
+                "const": "stdio"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^\\$\\{[A-Z_][A-Z0-9_]*\\}$"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "transport",
+              "command"
+            ]
+          }
+        ]
+      }
+    },
+    "optionalDependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  "required": [
+    "formatVersion",
+    "name",
+    "version",
+    "description",
+    "instructions",
+    "skills",
+    "workflows",
+    "standards",
+    "evals",
+    "tools",
+    "hooks",
+    "mcp",
+    "optionalDependencies",
+    "author"
+  ]
+}

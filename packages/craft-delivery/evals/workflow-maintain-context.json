@@ -1,0 +1,18 @@
+{
+  "id": "workflow-maintain-context",
+  "prompt": "A local code change renamed a documented command. Instructions include a generated block and an existing command index.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Update the maintained canonical command and index without inventing a new docs layout."
+    },
+    {
+      "id": "c2",
+      "description": "Do not hand-edit generated blocks; use their canonical source/generator if affected."
+    },
+    {
+      "id": "c3",
+      "description": "Verify links/commands and state unavailable checks."
+    }
+  ]
+}

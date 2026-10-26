@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "artifacts": [
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "platform": "linux",
+      "arch": "x64",
+      "executable": "craft",
+      "sha256": "64a1e759be739009099c45d779c1d1eeb10aebc57b2c45c50d896553e334728a"
+    }
+  ]
+}

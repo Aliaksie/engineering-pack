@@ -1,0 +1,14 @@
+{
+  "id": "no-tracker",
+  "prompt": "Implement the task from this local file. No tracker integration or cloud account is configured.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Uses supplied acceptance criteria and local verification."
+    },
+    {
+      "id": "c2",
+      "description": "Does not invent a tracker or cloud connection."
+    }
+  ]
+}

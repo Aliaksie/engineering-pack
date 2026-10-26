@@ -1,0 +1,141 @@
+{
+  "formatVersion": 1,
+  "adapter": "jetbrains",
+  "hooks": "unsupported-not-installed",
+  "sessionAdvice": {
+    "entry": "bin/craft",
+    "args": [
+      "statusline",
+      "jetbrains",
+      "--package",
+      "craft-stories"
+    ],
+    "observation": "unavailable-in-current-adapter",
+    "display": "explicit CLI advice fallback",
+    "commands": {},
+    "activation": "explicit-only; no statusline settings or hooks changed"
+  },
+  "controls": {
+    "surface": "Use the actual host surface and version documentation",
+    "commands": {},
+    "execution": {
+      "surface": "explicit underlying-agent binding; guidance-only without one",
+      "entry": "bin/craft",
+      "nativeHost": null,
+      "workers": "underlying-agent-dependent",
+      "review": "underlying-agent-dependent",
+      "compaction": "underlying-agent-dependent",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+      "liveVerification": "not-established-by-export-or-protocol-tests"
+    }
+  },
+  "featureSupport": {
+    "formatVersion": 1,
+    "adapter": "jetbrains",
+    "features": {
+      "routing": {
+        "support": "portable-command-and-guidance",
+        "activation": "no registered context-injection hooks; explicit invocation",
+        "evidence": "actual delivered/reused context; selection alone is insufficient"
+      },
+      "hint-deduplication": {
+        "support": "portable-command-and-guidance",
+        "activation": "no registered context-injection hooks; explicit invocation",
+        "evidence": "actual delivered/reused context; selection alone is insufficient"
+      },
+      "lookup": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "batching": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "services": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "attempts": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "loop-detection": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "model-advice": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "delegation": {
+        "support": "underlying-agent-dependent",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+      },
+      "checkpoints": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "continuation": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "context-advice": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "next-step": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "compaction": {
+        "support": "underlying-agent-dependent",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+      },
+      "context-accounting": {
+        "support": "portable-estimate-and-native-observation",
+        "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+        "evidence": "unknown when current occupancy is unavailable"
+      },
+      "review": {
+        "support": "underlying-agent-dependent",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+      },
+      "telemetry": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "evaluation": {
+        "support": "explicit-frozen-pair-collector",
+        "activation": "caller-owned isolated native runner and acceptance judgments",
+        "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+      }
+    },
+    "execution": {
+      "surface": "explicit underlying-agent binding; guidance-only without one",
+      "entry": "bin/craft",
+      "nativeHost": null,
+      "workers": "underlying-agent-dependent",
+      "review": "underlying-agent-dependent",
+      "compaction": "underlying-agent-dependent",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+      "liveVerification": "not-established-by-export-or-protocol-tests"
+    },
+    "limitations": [
+      "Native AI Chat project rules do not provide lifecycle/tool control; bind the actual underlying agent when available."
+    ]
+  }
+}

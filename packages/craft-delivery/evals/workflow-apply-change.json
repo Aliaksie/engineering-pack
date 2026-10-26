@@ -1,0 +1,18 @@
+{
+  "id": "workflow-apply-change",
+  "prompt": "A user authorizes a small local Python fix on the current branch. Existing work must be preserved; no tracker or remote action is needed. Carry out the change and verification.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Ground scope and project policy; preserve unrelated work and current authorized flow."
+    },
+    {
+      "id": "c2",
+      "description": "Use relevant independent guidance and meaningful actual check evidence, not a mandatory test ceremony."
+    },
+    {
+      "id": "c3",
+      "description": "Report results and limitations without commit/push/delegation authority inferred from the skill."
+    }
+  ]
+}

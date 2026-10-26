@@ -1,0 +1,56 @@
+{
+  "name": "engineering-pack",
+  "interface": {
+    "displayName": "Craft Capabilities"
+  },
+  "plugins": [
+    {
+      "name": "craft-delivery",
+      "source": {
+        "source": "local",
+        "path": "./codex/packages/craft-delivery"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "craft-engineering",
+      "source": {
+        "source": "local",
+        "path": "./codex/packages/craft-engineering"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "craft-review",
+      "source": {
+        "source": "local",
+        "path": "./codex/packages/craft-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "craft-stories",
+      "source": {
+        "source": "local",
+        "path": "./codex/packages/craft-stories"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

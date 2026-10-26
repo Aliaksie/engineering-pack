@@ -1,0 +1,91 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex before-tool --package craft-review --handler review-read-only --scope shell",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex before-tool --package craft-review --handler review-read-only --scope shell; exit $LASTEXITCODE"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex before-tool --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex before-tool --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex session-start --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex session-start --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex after-compact --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex after-compact --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex before-prompt --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex before-prompt --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex after-tool --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex after-tool --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex before-compact --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex before-compact --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/bin/craft\" hook codex turn-end --package craft-review --handler observe --scope any",
+            "commandWindows": "& \"$env:PLUGIN_ROOT\\bin\\craft.cmd\" hook codex turn-end --package craft-review --handler observe --scope any; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ]
+  }
+}

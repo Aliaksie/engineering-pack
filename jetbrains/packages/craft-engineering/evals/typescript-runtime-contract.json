@@ -1,0 +1,18 @@
+{
+  "id": "typescript-runtime-contract",
+  "prompt": "A TypeScript package publishes an as-const object and a literal union. A reviewer says enums are always required, as-const objects emit no JavaScript, and a passing compiler check makes an external JSON response safe. Evaluate those claims using the actual compiler and contract ownership.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Does not impose an enum/interface style rule or claim a normal const value object disappears at runtime."
+    },
+    {
+      "id": "c2",
+      "description": "Distinguishes type declarations/assertions from runtime validation and considers actual compiler/module configuration."
+    },
+    {
+      "id": "c3",
+      "description": "Traces relevant JavaScript/dynamic/external consumers instead of treating compiler errors as an exhaustive refactor worklist."
+    }
+  ]
+}

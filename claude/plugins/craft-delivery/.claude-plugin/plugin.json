@@ -1,0 +1,9 @@
+{
+  "name": "craft-delivery",
+  "version": "0.0.2",
+  "description": "Project-grounded planning, implementation, review and repository context.",
+  "author": {
+    "name": "craft-capabilities contributors"
+  },
+  "hooks": "./platform-hooks/hooks.json"
+}

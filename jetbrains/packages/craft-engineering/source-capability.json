@@ -1,0 +1,100 @@
+{
+  "formatVersion": 1,
+  "name": "craft-engineering",
+  "version": "0.0.2",
+  "description": "Engineering discipline across languages, UI, backend and agent systems, with selective provider guidance.",
+  "instructions": "AGENTS.md",
+  "skills": [
+    "skills/design-agent",
+    "skills/evaluate-agent",
+    "skills/backend-engineering",
+    "skills/backend-foundations",
+    "skills/foundations",
+    "skills/infrastructure-engineering",
+    "skills/react-engineering",
+    "skills/locate-code",
+    "skills/security-engineering",
+    "skills/testing-engineering",
+    "skills/ui-foundations"
+  ],
+  "workflows": [
+    "workflows/change-agent.md",
+    "workflows/review-change.md",
+    "workflows/select-discipline.md",
+    "workflows/explore-testing.md",
+    "workflows/verify-feature.md"
+  ],
+  "standards": [
+    "standards/craft-bar.md",
+    "standards/session-setup.md"
+  ],
+  "evals": [
+    "evals/local-conventions.json",
+    "evals/mixed-stack.json",
+    "evals/provider-boundary.json",
+    "evals/failure-policy.json",
+    "evals/verification-boundary.json",
+    "evals/test-reliability.json",
+    "evals/exploratory-testing.json",
+    "evals/testing-only.json",
+    "evals/delivery-windows.json",
+    "evals/telemetry-failure.json",
+    "evals/foundation-portability.json",
+    "evals/ui-policy-boundaries.json",
+    "evals/interpreter-boundaries.json",
+    "evals/typescript-runtime-contract.json",
+    "evals/ci-cd-boundaries.json"
+  ],
+  "tools": [],
+  "hooks": [
+    {
+      "name": "observe-session-start",
+      "event": "session-start",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-prompt",
+      "event": "before-prompt",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-tool",
+      "event": "before-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-tool",
+      "event": "after-tool",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-before-compact",
+      "event": "before-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-after-compact",
+      "event": "after-compact",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    },
+    {
+      "name": "observe-turn-end",
+      "event": "turn-end",
+      "tool": "any",
+      "handler": "hooks/observe.mjs"
+    }
+  ],
+  "mcp": [],
+  "optionalDependencies": [
+    "craft-delivery"
+  ],
+  "author": {
+    "name": "craft-capabilities contributors"
+  }
+}

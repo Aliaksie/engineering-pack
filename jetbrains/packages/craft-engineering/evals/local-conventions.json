@@ -1,0 +1,14 @@
+{
+  "id": "local-conventions",
+  "prompt": "A Python backend exposes a retrying endpoint. Review the change; do not assume it uses TypeScript, React or AWS.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Uses project configuration to choose relevant discipline."
+    },
+    {
+      "id": "c2",
+      "description": "Reviews retry/idempotency behavior without inventing a provider."
+    }
+  ]
+}

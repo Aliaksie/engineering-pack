@@ -1,0 +1,108 @@
+# Keep changes reviewable and repository actions explicit
+
+Inspect the branch, index and working tree before changing Git state. Identify pre-existing
+work and the paths belonging to the task. Follow the consumer's branching, commit and merge
+policy. Carry forward the user's existing authorization and standing consumer commit policy;
+do not ask again for each completed unit. A package cannot grant Git permissions. Respect
+explicit no-commit scope; without commit authorization preserve a reviewable diff. Local
+commit scope does not authorize push, force-push, history rewrite or merge.
+
+Before the first implementation edit, inspect branch, index, working tree and relevant existing
+changes. Establish a safe change boundary under the consumer's branching/workspace policy and
+repository protection. Discover the actual default/protected branches from repository evidence;
+branch names alone do not establish protection. Do not modify them when policy or protection
+forbids it. Preserve unrelated work without reset or clean.
+
+Use a task branch or worktree when policy, protection, isolation or concurrency requires it.
+A task branch is a useful fallback when policy is unspecified, not a universal prerequisite.
+Trunk-based work, host-managed workspaces, patches, ephemeral checkouts and intentional detached
+HEAD can be valid when the consumer workflow permits them and the result remains recoverable
+and reviewable. Existing policy may authorize direct default-branch work; no additional
+per-task exception is needed when it already covers the action.
+
+Use existing consumer branch guards and server-side protection where available. When asked
+to establish enforcement, inspect existing hooks before installing or composing guards; never
+overwrite them silently. Git pre-commit/pre-push hooks guard Git actions, not file edits, and
+can be bypassed; host pre-tool enforcement applies only to supported tools/events. Report
+coverage honestly. Builds and package installation must not silently activate policy hooks.
+
+## Commit a coherent outcome
+
+When commits are authorized and useful to the consumer workflow, preserve coherent, verified
+change boundaries for review and rollback. Follow its commit strategy: several task commits,
+one final commit, squash, externally managed commits or no autonomous commits are valid.
+Include implementation, meaningful tests and necessary documentation together; avoid mixing
+unrelated outcomes. File, tool-call and worker counts do not determine commit count.
+
+Stage only the intended paths or hunks and inspect the actual staged diff. Preserve unrelated
+staged work; never include it just to obtain a clean status. Check generated files, secrets,
+private evidence and accidental deletions. Internal plans/checklists/session records must
+remain untracked unless explicitly requested as versioned deliverables. Verify ignored status
+before using checkout-local plan storage; otherwise keep it outside the checkout. Never use
+force-add for internal notes. Inspect shipped code, docs and commit messages for references to
+private plan paths or task tracking; explain durable rationale without those references. Verify the version being committed, and distinguish
+pre-existing failures from regressions. Do not amend or squash another person's work without
+the applicable authorization.
+
+Follow the repository's message convention. If none is established, use
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): a type, optional scope
+and concise description of the resulting behavior.
+
+```text
+fix(reservations): preserve operation identity during recovery
+
+Reconcile a lost response before issuing another reservation.
+Verify recovery of a committed result and rejection of duplicate effects.
+```
+
+Use `feat` for a feature and `fix` for a defect; types such as `docs`, `test`, `refactor`,
+`perf`, `build` and `ci` distinguish other work. Describe impact and rationale in the body
+when useful. Mark an actual incompatible contract change with `!` or a `BREAKING CHANGE:`
+footer, explaining the consumer impact. Only claim checks that ran. Message conventions do
+not authorize a release, version bump or automatic publication.
+
+## Parallel changes and worktrees
+
+Use tools or bounded read-only workers for retrieval; a read-only assignment normally needs
+no branch or worktree. Workers must not change the shared checkout, index or branch while
+performing lookup. A working tree can change underneath a reader: retain revision/scope
+identity and refresh affected evidence after edits.
+
+For concurrent writing, prefer a separate branch and Git worktree for each independent
+assignment. First establish the base revision, task-owned paths, acceptance conditions and
+integration owner. Inspect existing worktrees and choose unused paths and branch names.
+Do not force Git to check out an already-used branch. Overlapping edits or dependent tasks
+need sequencing or one owner even when separate worktrees are available.
+
+Example commands, after confirming that current `HEAD` is the intended committed base and
+the sample branch/path are unused:
+
+```text
+git worktree list --porcelain
+git worktree add -b task/reservation-recovery ../reservation-recovery HEAD
+git -C ../reservation-recovery status --short
+```
+
+Uncommitted changes in the original checkout are not copied into the new worktree. Supply
+needed task inputs deliberately; do not commit or copy unrelated work to make them appear.
+Worktrees separate checked-out files and indexes, but share repository objects, refs and
+some configuration. They do not isolate ports, external services, credentials or processes.
+Give tests/builds independent resources where needed, and use real isolation for untrusted code.
+See the [Git worktree manual](https://git-scm.com/docs/git-worktree).
+
+The integration owner inspects each returned diff, resolves conflicts against applicable
+contracts and runs affected checks on the combined state. A worker's passing check does not
+prove the integrated change. Use the consumer's authorized patch/merge/cherry-pick process;
+workers commit only if their assignment includes it. Remove only task-owned worktrees after
+changes are safely integrated or preserved and the worktree is clean. Never use forced
+removal or broad pruning to hide unfinished work.
+
+## Remote actions
+
+Confirm destination, branch and included revisions before a remote action. Do not force-push,
+reset, clean or discard changes as a routine repair. Resolve conflicts with affected contracts
+in mind and rerun checks justified by the resolution. Report the resulting commit identifiers,
+actual verification and remaining work; distinguish local checks from hosted CI. Record commit
+IDs, acceptance evidence and remaining work in the existing private task record. Coherent
+commits provide rollback boundaries; reverting an external effect still needs its own recovery
+and authorization.

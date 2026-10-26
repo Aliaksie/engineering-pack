@@ -1,0 +1,18 @@
+{
+  "id": "workflow-implement-story",
+  "prompt": "Implement a pasted story with observable acceptance criteria and no configured task tracker. Local implementation and checks are authorized.",
+  "criteria": [
+    {
+      "id": "c1",
+      "description": "Accept local story text without requiring a tracker binding."
+    },
+    {
+      "id": "c2",
+      "description": "Map implementation and actual verification to supplied criteria."
+    },
+    {
+      "id": "c3",
+      "description": "Do not update or invent a tracker operation."
+    }
+  ]
+}

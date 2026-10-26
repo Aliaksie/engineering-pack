@@ -1,0 +1,49 @@
+---
+name: testing-engineering
+description: "Choose meaningful verification or diagnose a failing check from observable behavior."
+---
+
+<!-- Generated from packages/; edit the portable source and rebuild. -->
+
+Read the shared [package instructions](../../AGENTS.md) when using this capability.
+
+# Testing Engineering
+
+State the claim that verification should establish. For automated checks, inspect the real runner configuration and an affected test before choosing a boundary. For manual observations, establish the application/build, environment, expected behavior and available test data; source access is optional. Use existing adequate evidence; introduce a new test when it protects behavior or resolves uncertainty, rather than to inflate coverage or mirror code.
+
+For a bounded manual exploration, use `craft-engineering:workflow-explore-testing` when available. Planning checks, executing declared checks and interpreting their adequacy are distinct tasks; a successful command does not establish acceptance by itself.
+
+**Which references bind a change:** Select the pages whose contracts or risks are affected; size alone does not determine applicability. Read their decision criteria before relying on them.
+
+<!-- craft-bar:begin — generated from packages/craft-engineering/standards/craft-bar.md. Edit the source, not this block. -->
+## Applying the references
+
+Choose a reference because the current task needs its decision criteria. Read that page
+before using its detailed advice; an unchanged copy already in context can be reused.
+The index is a menu, not a checklist to load in full.
+
+Establish the consumer's constraints from its accepted instructions, configuration and
+contracts. Compare those constraints with what the code actually does. Report disagreement
+instead of converting a prevalent pattern into a requirement. Examples illustrate an idea;
+they do not select the consumer's language, runtime or provider.
+
+Connect a material recommendation to the affected behavior, supporting evidence and useful
+verification. When a reference materially informs the result, cite `testing-engineering/<reference>`
+so a reader can inspect it. Citation counts are not a quality measure.
+<!-- craft-bar:end -->
+
+## Choose detail
+
+- [testing-strategy](references/testing-strategy.md): Claims, boundaries and acceptance evidence.
+- [test-data-and-flakiness](references/test-data-and-flakiness.md): Isolation, realistic fixtures and nondeterminism.
+- [systematic-debugging](references/systematic-debugging.md): Competing causes and discriminating observations.
+
+For structured task evidence, keep the supplied criterion/check IDs, expected basis,
+checked source or build, reporter and artifact reference together. Verify artifact
+availability and check adequacy before declaring verified support. Failed execution,
+not-run, not-available and unknown support stay distinct; changed sources make earlier
+results stale. Current evidence for one criterion does not certify another. The optional
+runtime computes applicability from these assessments; it does not judge semantic truth.
+Without runtime access, report the same distinctions manually in the existing task record.
+
+Return a proportionate decision or focused change, the evidence that supports it and any unresolved limitation. Opening this skill grants no authority to change external systems.

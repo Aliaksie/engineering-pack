@@ -1,0 +1,145 @@
+{
+  "formatVersion": 1,
+  "adapter": "claude",
+  "hooks": "native-before-tool",
+  "sessionAdvice": {
+    "entry": "bin/craft",
+    "args": [
+      "statusline",
+      "claude",
+      "--package",
+      "craft-delivery"
+    ],
+    "observation": "statusline-current-usage",
+    "display": "optional-native-statusline",
+    "commands": {
+      "compact": "/compact",
+      "start-new-session": "/clear"
+    },
+    "activation": "explicit-only; no statusline settings or hooks changed"
+  },
+  "controls": {
+    "surface": "Use the actual host surface and version documentation",
+    "commands": {},
+    "execution": {
+      "surface": "integration-owned host transport driving the native worker, action and control phases",
+      "entry": "bin/craft",
+      "nativeHost": "claude",
+      "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+      "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+      "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+      "liveVerification": "not-established-by-export-or-protocol-tests"
+    }
+  },
+  "featureSupport": {
+    "formatVersion": 1,
+    "adapter": "claude",
+    "features": {
+      "routing": {
+        "support": "mapped-hooks-and-portable-command",
+        "activation": "native hook discovery/trust required; explicit CLI fallback",
+        "evidence": "actual delivered/reused context; selection alone is insufficient"
+      },
+      "hint-deduplication": {
+        "support": "mapped-hooks-and-portable-command",
+        "activation": "native hook discovery/trust required; explicit CLI fallback",
+        "evidence": "actual delivered/reused context; selection alone is insufficient"
+      },
+      "lookup": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "batching": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "services": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "attempts": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "loop-detection": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "model-advice": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "delegation": {
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+      },
+      "checkpoints": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "continuation": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "context-advice": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "next-step": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "compaction": {
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "native completion, matching checkpoint/resume and acceptance reference"
+      },
+      "context-accounting": {
+        "support": "portable-estimate-and-native-observation",
+        "activation": "fresh matching native usage required for occupancy; selected-file estimates remain separate",
+        "evidence": "unknown when current occupancy is unavailable"
+      },
+      "review": {
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+        "evidence": "scoped decision, native lifecycle/output and separate acceptance"
+      },
+      "telemetry": {
+        "support": "portable-command-and-guidance",
+        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+      },
+      "evaluation": {
+        "support": "explicit-frozen-pair-collector",
+        "activation": "caller-owned isolated native runner and acceptance judgments",
+        "evidence": "real outputs and measurements; protocol fixtures are not model evaluation"
+      }
+    },
+    "execution": {
+      "surface": "integration-owned host transport driving the native worker, action and control phases",
+      "entry": "bin/craft",
+      "nativeHost": "claude",
+      "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+      "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+      "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
+      "liveVerification": "not-established-by-export-or-protocol-tests"
+    },
+    "limitations": [
+      "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+      "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
+    ]
+  }
+}
