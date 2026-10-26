@@ -101,11 +101,12 @@ The evidence ledger survives attempt-history eviction; contract and ledger diges
 replacement writes. See [acceptance contracts](ACCEPTANCE.md).
 
 Worker reservations use one bounded private ledger per coordinator root/session/task across
-processes. Application controllers persist intent and release locks before calling trusted
-host functions; the engine decides admission and reconciliation from explicit JSON facts.
+processes. Native worker and action phases persist intent and release locks before the
+integration's host transport acts; the engine decides admission and reconciliation from
+explicit JSON facts.
 Review/compaction execution receipts live with their existing action proposals and survive
 proposal cleanup. No executable adapter is loaded from project configuration. See the
-[host controller contract](HOST-CONTROL.md) for operation keys, fencing and native limits.
+[host controls](HOST-CONTROL.md) for phases, operation keys, fencing and native limits.
 
 The engine returns plans and advice. It does not call models, switch profiles, execute
 remote operations, compact a host session or publish findings. Context-delivery policy

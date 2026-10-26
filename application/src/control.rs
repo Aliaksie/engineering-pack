@@ -78,10 +78,6 @@ pub fn run(input: &Value) -> Result<Value, String> {
         }
         return Ok(Value::Null);
     }
-    let mode = input["mode"]
-        .as_str()
-        .filter(|m| ["codex", "managed"].contains(m))
-        .ok_or("native journal mode required")?;
     let host = input["host"]
         .as_str()
         .filter(|_| control::text(&input["host"]))
@@ -92,28 +88,18 @@ pub fn run(input: &Value) -> Result<Value, String> {
         .ok_or("native coordinator required")?;
     let tree = digest(&json!([root.to_string_lossy(), name, task]));
     let context = json!({"root":root.to_string_lossy(),"session":name,"task":task,"tree":tree});
-    let filename = if mode == "codex" {
-        format!("codex-control-{}.json", &tree[..24])
-    } else {
-        format!(
-            "native-control-{}.json",
-            &digest(&json!([host, tree]))[..24]
-        )
-    };
+    let filename = format!(
+        "native-control-{}.json",
+        &digest(&json!([host, tree]))[..24]
+    );
     let file = state::file(&root, &filename, true, Some(name))?;
     let validate = |journal: &Value| {
-        control::validate(
-            journal,
-            mode,
-            &json!(tree),
-            &json!(host),
-            &json!(coordinator),
-        )
+        control::validate(journal, &json!(tree), &json!(host), &json!(coordinator))
     };
     let read = || -> Result<Value, String> {
         let saved = session::read_record(&file, BYTES).map_err(|error| error.message)?;
         let journal = if saved.is_null() {
-            control::empty(mode, &tree, host, coordinator)
+            control::empty(&tree, host, coordinator)
         } else {
             saved
         };
@@ -154,13 +140,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                         operation["releaseWorker"]
                     ])));
                 }
-                control::begin(
-                    &mut journal,
-                    mode,
-                    &operation,
-                    &input["kind"],
-                    &input["nativeId"],
-                )?;
+                control::begin(&mut journal, &operation, &input["kind"], &input["nativeId"])?;
             }
             "persist" => {
                 validate(&input["journal"])?;

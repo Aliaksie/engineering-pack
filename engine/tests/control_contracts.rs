@@ -9,7 +9,6 @@ fn frozen_native_journal_validation() {
     for case in corpus["cases"].as_array().unwrap() {
         let result = control::validate(
             &case["journal"],
-            case["mode"].as_str().unwrap(),
             &json!("TREE"),
             &json!("claude"),
             &json!("coordinator"),

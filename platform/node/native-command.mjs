@@ -29,11 +29,3 @@ export function nativeCommand(argv, { binary = process.env.CRAFT_NATIVE_BINARY, 
 export function nativeLocate(root, request, repositories) {
   return nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'locate', { root, request, ...(repositories ? { repositories } : {}) });
 }
-// One native worker phase between trusted asynchronous host callbacks.
-export const nativeWorkers = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'workers', input, { subject: 'worker controller' });
-
-// One native action phase between trusted asynchronous host callbacks.
-export const nativeActions = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'actions', input, { subject: 'action controller' });
-
-// One native transport journal or retained admission phase.
-export const nativeControl = input => nativeRequest(process.env.CRAFT_NATIVE_BINARY || nativeArtifact(), 'control', input, { subject: 'native control' });

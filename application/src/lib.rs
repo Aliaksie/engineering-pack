@@ -22,6 +22,19 @@ mod telemetry;
 mod workers;
 mod workspace;
 
+/// One request read by `craft` itself. Worker and action phases post their own remote
+/// telemetry export once `write` has the response, as hooks do; no caller forwards it.
+pub fn serve(request: Value, write: impl FnOnce(&Value)) {
+    let delivers = matches!(request["operation"].as_str(), Some("workers" | "actions"));
+    let mut response = evaluate(request);
+    let export = match response["result"].as_object_mut() {
+        Some(result) if delivers => result.remove("export"),
+        _ => None,
+    };
+    write(&response);
+    telemetry::Recorder::deliver(export);
+}
+
 pub fn evaluate(request: Value) -> Value {
     if request.get("formatVersion").and_then(Value::as_u64) != Some(PROTOCOL_VERSION.into()) {
         return json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"UNSUPPORTED_VERSION","message":"expected formatVersion 1"}});

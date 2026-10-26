@@ -25,102 +25,62 @@ fn fields(value: &Value, names: &[&str]) -> bool {
 }
 pub fn validate(
     journal: &Value,
-    mode: &str,
     tree: &Value,
     host: &Value,
     coordinator: &Value,
 ) -> Result<(), String> {
-    let codex = mode == "codex";
-    let record_fields: &[&str] = if codex {
-        &["formatVersion", "tree", "threadId", "operations"]
-    } else {
+    let valid = fields(
+        journal,
         &[
             "formatVersion",
             "host",
             "tree",
             "coordinatorId",
             "operations",
-        ]
-    };
-    let operation_fields: &[&str] = if codex {
-        &[
-            "key",
-            "kind",
-            "source",
-            "checkpoint",
-            "threadId",
-            "turnId",
-            "model",
-            "phase",
-            "outcome",
-            "compacted",
-            "evidence",
-        ]
-    } else {
-        &[
-            "key",
-            "kind",
-            "source",
-            "checkpoint",
-            "nativeId",
-            "phase",
-            "released",
-            "acceptanceEvidence",
-        ]
-    };
-    let valid = fields(journal, record_fields)
-        && journal["formatVersion"] == 1
+        ],
+    ) && journal["formatVersion"] == 1
         && journal["tree"] == *tree
-        && journal[if codex { "threadId" } else { "coordinatorId" }] == *coordinator
-        && (codex || journal["host"] == *host)
+        && journal["coordinatorId"] == *coordinator
+        && journal["host"] == *host
         && journal["operations"].as_array().is_some_and(|ops| {
             let mut keys = std::collections::HashSet::new();
             ops.len() <= 192
                 && ops.iter().all(|op| {
-                    fields(op, operation_fields)
-                        && hash(&op["key"])
+                    fields(
+                        op,
+                        &[
+                            "key",
+                            "kind",
+                            "source",
+                            "checkpoint",
+                            "nativeId",
+                            "phase",
+                            "released",
+                            "acceptanceEvidence",
+                        ],
+                    ) && hash(&op["key"])
                         && keys.insert(op["key"].as_str())
                         && choice(
                             &op["kind"],
-                            if codex {
-                                &["worker", "cancel", "review", "compact"]
-                            } else {
-                                &["worker", "cancel", "review", "compact", "release"]
-                            },
+                            &["worker", "cancel", "review", "compact", "release"],
                         )
                         && choice(
                             &op["phase"],
-                            if codex {
-                                &["intent", "acknowledged", "resume-intent", "resumed"]
-                            } else {
-                                &[
-                                    "intent",
-                                    "acknowledged",
-                                    "resume-intent",
-                                    "resumed",
-                                    "completed",
-                                ]
-                            },
+                            &[
+                                "intent",
+                                "acknowledged",
+                                "resume-intent",
+                                "resumed",
+                                "completed",
+                            ],
                         )
                         && ["source", "checkpoint"]
                             .iter()
                             .all(|k| op[k].is_null() || hash(&op[k]))
-                        && if codex {
-                            ["threadId", "turnId", "model", "evidence"]
-                                .iter()
-                                .all(|k| op[k].is_null() || text(&op[k]))
-                                && (op["outcome"].is_null()
-                                    || choice(
-                                        &op["outcome"],
-                                        &["completed", "failed", "interrupted"],
-                                    ))
-                                && op["compacted"].is_boolean()
-                        } else {
-                            ["nativeId", "acceptanceEvidence"]
-                                .iter()
-                                .all(|k| op[k].is_null() || text(&op[k]))
-                                && op["released"].is_boolean()
-                        }
+                        && ["nativeId", "acceptanceEvidence"]
+                            .iter()
+                            .all(|k| op[k].is_null() || text(&op[k]))
+                        && op["released"].is_boolean()
                 })
         });
     if valid {
@@ -129,16 +89,11 @@ pub fn validate(
         Err("invalid bounded native operation journal".into())
     }
 }
-pub fn empty(mode: &str, tree: &str, host: &str, coordinator: &str) -> Value {
-    if mode == "codex" {
-        json!({"formatVersion":1,"tree":tree,"threadId":coordinator,"operations":[]})
-    } else {
-        json!({"formatVersion":1,"host":host,"tree":tree,"coordinatorId":coordinator,"operations":[]})
-    }
+pub fn empty(tree: &str, host: &str, coordinator: &str) -> Value {
+    json!({"formatVersion":1,"host":host,"tree":tree,"coordinatorId":coordinator,"operations":[]})
 }
 pub fn begin(
     journal: &mut Value,
-    mode: &str,
     input: &Value,
     kind: &Value,
     native_id: &Value,
@@ -155,15 +110,8 @@ pub fn begin(
     if ops.len() >= 192 {
         return Err("native operation journal capacity reached; no intent was evicted".into());
     }
-    let common = json!({"key":input["key"],"kind":kind,"source":input["source"],"checkpoint":input["checkpoint"],"phase":"intent"});
-    let mut op = common;
-    let object = op.as_object_mut().unwrap();
-    let extra = if mode == "codex" {
-        json!({"threadId":native_id,"turnId":null,"model":null,"outcome":null,"compacted":false,"evidence":null})
-    } else {
-        json!({"nativeId":native_id,"released":false,"acceptanceEvidence":null})
-    };
-    object.extend(extra.as_object().unwrap().clone());
+    let op = json!({"key":input["key"],"kind":kind,"source":input["source"],"checkpoint":input["checkpoint"],
+        "nativeId":native_id,"phase":"intent","released":false,"acceptanceEvidence":null});
     ops.push(op.clone());
     Ok(op)
 }

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { run } from '../cli/main.mjs';
 import { decide } from '../application/engine-client.mjs';
@@ -61,16 +60,13 @@ test('normal task commands retain outcomes and mark changed sources stale withou
   assert.equal(command('task-features').features.review.status, 'unknown');
 });
 
-test('relocated standalone runtime exposes controllers and persists feature outcomes across processes', async t => {
+test('relocated standalone runtime persists feature outcomes across processes', t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-controls-export-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const support = path.join(root, 'support');
   fs.cpSync(path.resolve('dist/codex/packages/craft-delivery/support'), support, { recursive: true });
   const options = { session: 'standalone-session', task: 'standalone-task' };
-  const { workerController } = await import(pathToFileURL(path.join(support, 'hosts/workers.mjs')));
-  const { actionController } = await import(pathToFileURL(path.join(support, 'hosts/actions.mjs')));
-  assert.equal(workerController(root, options).supported, false);
-  assert.equal(actionController(root, options).supported, false);
+  assert.equal(fs.existsSync(path.join(support, 'hosts')), false);
   const invoke = (...args) => {
     const result = spawnSync(process.execPath, [path.join(support, 'cli/main.mjs'), ...args, '--root', root, '--session', options.session, '--json'], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout);

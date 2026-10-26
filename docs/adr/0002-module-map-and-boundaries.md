@@ -16,8 +16,8 @@ below is the accepted decision. `npm run architecture` (part of `npm run check`)
 disagree or when the tree breaks a rule.
 
 Final target: three Rust crates (`engine` ← `platform` ← `application`, with `application` also
-using `engine`), `hosts/` as the only runtime JavaScript, and build tooling, content, schemas,
-docs, tests and examples around them. `cli/` and `integrations/` dissolve into their owners;
+using `engine`), no runtime JavaScript (`hosts/` holds the host tables that the build reads and
+`craft` embeds), and build tooling, content, schemas, docs, tests and examples around them. `cli/` and `integrations/` dissolve into their owners;
 the JavaScript inside the crate folders is legacy and is removed as its callers move to Rust.
 
 ## Module map
@@ -29,7 +29,7 @@ the JavaScript inside the crate folders is legacy and is removed as its callers 
 | `application/` | rust-crate | engine, platform | engine, integrations, platform | yes | Use cases, CLI, host-neutral lifecycle handling, `craft` executable |
 | `cli/` | retiring | application, platform | — | yes | Legacy command parsing and display, moving into `application` |
 | `integrations/` | retiring | — | — | yes | Legacy external mappings, dissolving into `application`, `platform` and review owners |
-| `hosts/` | host-adapter | application, platform | — | yes | Host payloads, native invocation, host wire output; no dependencies after migration |
+| `hosts/` | host-adapter | — | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
 | `packages/` | content | — | — | yes | Capability guidance and hook declarations |
 | `tools/` | optional-tool | application, integrations | — | no | Optional review inbox; owner undecided |
 | `tooling/` | build-tooling | * | — | no | Build, export, release, validation, benchmarks, eval drivers |
@@ -77,25 +77,19 @@ Without a bundled runtime for the platform, the launcher answers as a failed run
 shell enforcement hook denies, observation stays silent and delivery reports its context as
 unavailable. Executable checksums are verified when bundles are assembled, not per hook call.
 
-The worker callback adapter lives in `hosts/`; it passes explicit observations to native
-phases for admission, reconciliation and result recording. Rust owns the worker ledger
-and shares the binding lock with task-start during admission. Host callbacks run outside
-that lock. Moving the callback sequence adds 72 host JavaScript lines and three platform
-forwarder lines while removing its application implementation; no worker decisions or
-persistence remain in the adapter.
-
-The action callback adapter also lives in `hosts/`; native phases validate fresh observations,
-claim under the binding lock, save the accepted-source compaction checkpoint and settle
-receipts with runtime-observed feature evidence. Moving the callback sequence adds 46 host
-JavaScript lines while retiring its application implementation. `craft statusline <host>`
-reads the host's status-line payload and writes the line; the per-host session capability
-table is data in `hosts/`, read by the build and embedded in `craft`.
+Worker, review and compaction controls are native phases (`workers`, `actions`, `control`),
+each one JSON request to `craft`. The host transport that starts, observes and cancels native
+work belongs to an integration the consumer owns; no package ships one. Rust owns the worker
+ledger, action claims and receipts, and shares the binding lock with task-start during
+admission; transport callbacks run between phases, outside every lock. `craft statusline
+<host>` reads the host's status-line payload and writes the line; the per-host session
+capability table is data in `hosts/`, read by the build and embedded in `craft`.
 
 Native transport journals and asynchronous task admission use retained native leases.
 Rust records the calling host pid and an opaque ticket on the shared lock protocol;
 ordinary state writers reclaim a recognized lease only after observing its owner dead.
 Live, unknown, malformed and legacy ownerless locks remain busy. Native journal phases
-validate the bounded record and its revision before writing. Adapters hold transport
+validate the bounded record and its revision before writing. Integrations hold transport
 observations and tickets; they do not open state files or own lock cleanup. Host feature
 support is a single data table read by the builder and embedded in the native engine.
 

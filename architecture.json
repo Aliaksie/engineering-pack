@@ -30,7 +30,7 @@
       "legacy": {
         "retireBy": "W4",
         "allow": ["index.mjs", "node/**/*.mjs", "node/pack-version.json"],
-        "jsLines": 669,
+        "jsLines": 564,
         "dependsOn": [],
         "entryPoints": ["platform/index.mjs"]
       }
@@ -86,13 +86,12 @@
     },
     "hosts": {
       "kind": "host-adapter",
-      "responsibility": "Host transports and callbacks for controls, plus the hook mapping and session capability tables shared by the build and the native runtime.",
-      "allow": ["**/*.mjs", "capabilities.json", "hooks.json", "session.json"],
-      "jsLines": 944,
+      "responsibility": "Host hook mapping, session and feature capability tables read by the build and embedded in craft.",
+      "allow": ["*.mjs", "capabilities.json", "hooks.json", "session.json"],
+      "jsLines": 29,
       "maxFileLines": 300,
-      "dependsOn": ["application", "platform"],
-      "shipped": true,
-      "runtimeRoots": ["hosts/**/*.mjs"]
+      "dependsOn": [],
+      "shipped": false
     },
     "packages": {
       "kind": "content",

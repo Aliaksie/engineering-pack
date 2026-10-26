@@ -14,7 +14,7 @@ Contributors can start with [contributing](CONTRIBUTING.md) and [package format]
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities and selection rules |
 | [Session status](SESSION.md) | Task lifecycle, context, activity and execution budgets |
 | [Acceptance contracts](ACCEPTANCE.md) | Opt-in portable context, criterion/evidence validation and coverage limits |
-| [Host controls](HOST-CONTROL.md) | Native worker, review and compaction bindings and limits |
+| [Host controls](HOST-CONTROL.md) | Native worker, review and compaction phases and limits |
 | [Routing](ROUTING.md) | Module/skill selection, execution roles and checkpoints |
 | [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
 | [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |

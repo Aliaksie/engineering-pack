@@ -10,6 +10,7 @@ import { files, frontmatter, json, loadCapabilities, validateCapability } from '
 import { evaluateReport } from '../tooling/eval-report.mjs';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
+import { featureSupport } from '../hosts/capabilities.mjs';
 import { runHook } from './hook-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,6 +67,14 @@ test('unregistered skills and symlinked assets cannot be shipped', (t) => {
   assert.ok(validateCapability(packageRoot, manifest).some((error) => /symlink/.test(error)));
 });
 
+test('every adapter describes each feature with its support, activation and evidence', () => {
+  const table = JSON.parse(fs.readFileSync(path.join(root, 'hosts/capabilities.json'), 'utf8'));
+  for (const [adapter, support] of Object.entries(table)) {
+    assert.equal(Object.keys(support.features).length, 18, adapter);
+    assert.ok(Object.values(support.features).every(feature => feature.support && feature.activation && feature.evidence), adapter);
+  }
+});
+
 test('all adapters preserve resources, separate names, and report actual feature coverage', () => {
   for (const target of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     assert.deepEqual(checkBuild(root, target), []);
@@ -81,6 +90,7 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.equal(entry.evals, 'included-not-executed');
       const setup = json(path.join(directory, 'SETUP.json'));
       assert.equal(setup.adapter, target);
+      assert.deepEqual(setup.featureSupport, featureSupport(target));
       assert.equal(setup.hooks, entry.hooks);
       assert.ok(fs.existsSync(path.join(directory, setup.sessionAdvice.entry)));
       const setupPage = fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8');

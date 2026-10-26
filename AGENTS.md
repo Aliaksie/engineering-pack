@@ -46,7 +46,7 @@ This repository authors portable AI Capability Packages. Canonical content lives
 | `integrations` | External Git/codehost/transport mappings |
 | `cli` | Argument parsing and display |
 | `tools/craft-review-inbox` | Optional personal GitHub inbox; excluded from default exports |
-| `hosts` | Native coding-agent observations, controls and wire formats |
+| `hosts` | Host hook mapping, session and feature tables read by the build and embedded in `craft` |
 | `tooling` | Build, export, validation, release and evaluation tooling |
 | `examples/project` | Consumer configuration skeleton; no live connections |
 | `schemas` | Published local authoring schema; runtime validator is dependency-free |
