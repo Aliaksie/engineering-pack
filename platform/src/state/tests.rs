@@ -408,7 +408,9 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
 #[test]
 fn an_overlapping_migration_writer_is_refused_without_partial_copies() {
     let fixture = Fixture::new();
-    let legacy = fixture.0.join(".craft/state");
+    // Spell the source as migration does: the receipt name hashes the path text, and on
+    // Windows `join(".craft/state")` keeps the forward slash.
+    let legacy = fixture.0.join(".craft").join("state");
     fs::create_dir_all(&legacy).unwrap();
     fs::write(legacy.join("record.json"), r#"{"history":[1]}"#).unwrap();
     let target = location(&fixture.0, SESSION).unwrap().directory;

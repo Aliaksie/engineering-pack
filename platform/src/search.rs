@@ -331,50 +331,6 @@ pub fn scan(
     )
 }
 
-#[cfg(test)]
-mod scope_tests {
-    use super::*;
-    #[test]
-    fn a_scope_below_a_regular_file_is_not_a_directory_on_every_platform() {
-        let root = std::env::temp_dir().join(format!("craft-search-scope-{}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
-        fs::write(root.join("source"), "needle").unwrap();
-        let error = safe_file(&root, "source/child").unwrap_err();
-        assert_eq!(error.code(), "ENOTDIR");
-        assert_eq!(
-            safe_file(&root, "missing/child").unwrap_err().code(),
-            "ENOENT"
-        );
-        assert!(safe_file(&root, "source").unwrap().is_some());
-        fs::remove_dir_all(&root).unwrap();
-    }
-}
-
-#[cfg(all(test, unix))]
-mod tests {
-    use super::*;
-    #[test]
-    fn opened_symlinks_and_special_files_are_refused_without_blocking() {
-        let root = std::env::temp_dir().join(format!("craft-search-open-{}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
-        let target = root.join("target");
-        fs::write(&target, "outside").unwrap();
-        let link = root.join("link");
-        std::os::unix::fs::symlink(&target, &link).unwrap();
-        assert!(open_source(&link).is_err());
-        let fifo = root.join("fifo");
-        assert!(
-            std::process::Command::new("mkfifo")
-                .arg(&fifo)
-                .status()
-                .unwrap()
-                .success()
-        );
-        assert!(open_source(&fifo).is_err());
-        fs::remove_dir_all(root).unwrap();
-    }
-}
-
 /// A locator-only metadata identity. Unavailable or unsafe observations never certify reuse.
 /// The running artifact participates so a different implementation cannot reuse old packets.
 pub fn identity(root: &Path, scopes: &[String], max_files: usize) -> Option<String> {
@@ -509,4 +465,48 @@ pub fn identity(root: &Path, scopes: &[String], max_files: usize) -> Option<Stri
         String::from_utf8(head).ok()?.trim(),
         versions?
     ])))
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::*;
+    #[test]
+    fn a_scope_below_a_regular_file_is_not_a_directory_on_every_platform() {
+        let root = std::env::temp_dir().join(format!("craft-search-scope-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("source"), "needle").unwrap();
+        let error = safe_file(&root, "source/child").unwrap_err();
+        assert_eq!(error.code(), "ENOTDIR");
+        assert_eq!(
+            safe_file(&root, "missing/child").unwrap_err().code(),
+            "ENOENT"
+        );
+        assert!(safe_file(&root, "source").unwrap().is_some());
+        fs::remove_dir_all(&root).unwrap();
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    #[test]
+    fn opened_symlinks_and_special_files_are_refused_without_blocking() {
+        let root = std::env::temp_dir().join(format!("craft-search-open-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let target = root.join("target");
+        fs::write(&target, "outside").unwrap();
+        let link = root.join("link");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(open_source(&link).is_err());
+        let fifo = root.join("fifo");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&fifo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert!(open_source(&fifo).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
 }
