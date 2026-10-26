@@ -612,7 +612,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
         pack[name] = value.clone();
     }
     let mut recorded =
-        json!({"scope": "caller-declared Engineering Pack activity; not provider usage"});
+        json!({"scope": "caller-declared Craft Capabilities activity; not provider usage"});
     for name in ACTIVITY {
         recorded[*name] = activity.get(*name).cloned().unwrap_or(Value::Null);
     }
@@ -999,7 +999,7 @@ pub fn status(request: Request) -> Result<Value> {
     }
     if state.is_some() {
         status["activity"]["scope"] = json!(
-            "Engineering Pack command receipts plus declarations for unobserved fields; not provider usage"
+            "Craft Capabilities command receipts plus declarations for unobserved fields; not provider usage"
         );
     }
     let task = Value::Object(declared);
@@ -1210,7 +1210,7 @@ pub fn status(request: Request) -> Result<Value> {
         .as_ref()
         .map_or(json!([]), |a| a["evidence"].clone());
     let activity_source = if state.is_some() {
-        "Engineering Pack command receipts; explicit declarations fill unobserved fields"
+        "Craft Capabilities command receipts; explicit declarations fill unobserved fields"
     } else {
         "caller declarations; host-wide activity is unknown"
     };

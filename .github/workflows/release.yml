@@ -84,7 +84,7 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_REVISION: ${{ steps.version.outputs.revision }}
         run: |
-          gh release create "v${RELEASE_VERSION}" --verify-tag --draft --title "Engineering Pack ${RELEASE_VERSION}" --notes-file .eval-results/release-notes.md
+          gh release create "v${RELEASE_VERSION}" --verify-tag --draft --title "Craft Capabilities ${RELEASE_VERSION}" --notes-file .eval-results/release-notes.md
           gh release upload "v${RELEASE_VERSION}" .eval-results/release/*
           gh release view "v${RELEASE_VERSION}" --json assets --jq '.assets | length' > .eval-results/release-asset-count
           test "$(cat .eval-results/release-asset-count)" = 15

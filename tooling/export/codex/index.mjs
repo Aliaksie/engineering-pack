@@ -22,7 +22,7 @@ export function emit(item, packages, output, adapterRoot) {
 export function finish(packages, output) {
   writeJson(output, '.agents/plugins/marketplace.json', {
     name: 'engineering-pack',
-    interface: { displayName: 'Engineering Pack' },
+    interface: { displayName: 'Craft Capabilities' },
     plugins: packages.map(({ manifest }) => ({
       name: manifest.name,
       source: { source: 'local', path: `./packages/${manifest.name}` },

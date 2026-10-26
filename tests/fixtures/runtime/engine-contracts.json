@@ -4457,7 +4457,7 @@
             "references": null
           },
           "activity": {
-            "scope": "caller-declared Engineering Pack activity; not provider usage",
+            "scope": "caller-declared Craft Capabilities activity; not provider usage",
             "discoveryRequests": null,
             "repeatedLookups": null,
             "batchedOperations": null,
@@ -9329,7 +9329,7 @@
             "references": null
           },
           "activity": {
-            "scope": "Engineering Pack command receipts plus declarations for unobserved fields; not provider usage",
+            "scope": "Craft Capabilities command receipts plus declarations for unobserved fields; not provider usage",
             "discoveryRequests": null,
             "repeatedLookups": null,
             "batchedOperations": null,
@@ -9380,7 +9380,7 @@
           "packReport": null,
           "attemptEvidence": [],
           "diagnostics": [],
-          "activitySource": "Engineering Pack command receipts; explicit declarations fill unobserved fields"
+          "activitySource": "Craft Capabilities command receipts; explicit declarations fill unobserved fields"
         }
       }
     },

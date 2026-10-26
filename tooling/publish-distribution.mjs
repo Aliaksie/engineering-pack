@@ -28,7 +28,7 @@ export function publishDistribution(directory, remote, revision, environment = p
       return false;
     } else {
       git(['-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
-        'commit', '-m', `Generate engineering pack from ${revision}`]);
+        'commit', '-m', `Generate Craft Capabilities from ${revision}`]);
       git(['push', 'origin', 'HEAD:refs/heads/distribution-next']);
       return true;
     }

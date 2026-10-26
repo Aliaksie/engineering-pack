@@ -1548,7 +1548,7 @@ fn session_view(status: &Value) -> String {
     };
     let or_unknown = |value: &Value| value.as_str().unwrap_or("unknown").to_string();
     let mut lines = vec![
-        "Engineering Pack — Session".to_string(),
+        "Craft Capabilities — Session".to_string(),
         format!("Pack version: {}", shown(&status["packVersion"])),
         format!(
             "Host: {} | Model: {}",
