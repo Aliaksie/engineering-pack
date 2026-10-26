@@ -55,36 +55,8 @@ content, schemas, docs, tests and examples sit around the crates.
 
 A budget never rises to move behavior into JavaScript; new runtime behavior belongs in `craft`.
 
-Installed commands run `<package-root>/bin/craft` (`bin\craft.cmd` on Windows); session binding,
-task state and activity are read and written natively. Discovery writes its reuse receipt under
-the shared lock only if the state it observed is still current; a concurrent receipt is
-preserved with a diagnostic.
-
-A host hook runs `craft hook <host> <lifecycle>` through a generated launcher that only selects
-the bundled executable: `bin/craft` for POSIX shells, including Git Bash on Windows, and
-`bin/craft.cmd` for cmd and PowerShell. `craft` reads the host payload (64 KiB bound), derives
-host-neutral lifecycle facts with the embedded host mapping table `hosts/hooks.json`, which the
-build also reads, writes the host wire output and posts any remote telemetry export. Only
-shell-scoped hooks evaluate the command text and only delivery hooks the edited file and prompt.
-Without a bundled runtime for the platform, the launcher answers as a failed runtime would: a
-shell enforcement hook denies, observation stays silent and delivery reports its context as
-unavailable. Executable checksums are verified when bundles are assembled, not per hook call.
-
-Worker, review and compaction controls are native phases (`workers`, `actions`, `control`),
-each one JSON request to `craft`. The host transport that starts, observes and cancels native
-work belongs to an integration the consumer owns; no package ships one. Rust owns the worker
-ledger, action claims and receipts, and shares the binding lock with task-start during
-admission; transport callbacks run between phases, outside every lock. `craft statusline
-<host>` reads the host's status-line payload and writes the line; the per-host session
-capability table is data in `hosts/`, read by the build and embedded in `craft`.
-
-Native transport journals and asynchronous task admission use retained native leases.
-Rust records the calling host pid and an opaque ticket on the shared lock protocol;
-ordinary state writers reclaim a recognized lease only after observing its owner dead.
-Live, unknown, malformed and legacy ownerless locks remain busy. Native journal phases
-validate the bounded record and its revision before writing. Integrations hold transport
-observations and tickets; they do not open state files or own lock cleanup. Host feature
-support is a single data table read by the builder and embedded in the native engine.
+How the runtime crates and host entry points interact is described in
+[the architecture](../ARCHITECTURE.md#interaction).
 
 The checker reads only the working tree, Git's file list and the manifest. It needs no network
 or toolchain beyond Node and Git. Each rule has a negative fixture in
@@ -108,6 +80,6 @@ the same change in reverse.
 
 ## Consequences
 
-Structure changes become explicit, reviewed edits to two files instead of side effects. The JS
-budgets stop JavaScript from growing back. A new runtime entry point or shipped file type needs
+Structure changes become explicit, reviewed edits to two files instead of side effects. The JavaScript
+budgets keep tooling-adjacent files in shipped modules from growing into runtime logic. A new runtime entry point or shipped file type needs
 a manifest update, which is intended friction.

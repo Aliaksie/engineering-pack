@@ -1,6 +1,6 @@
 # Observability and privacy
 
-Engineering Pack does not send telemetry remotely by default.
+Craft Capabilities does not send telemetry remotely by default.
 
 Local structured usage telemetry is enabled by default for CLI commands, session views,
 and supported native hooks. It describes pack operations, not the engineering result's
@@ -18,10 +18,11 @@ required; workspace overlays require merging their generated hook configuration.
 Observational hooks produce no permission decisions or injected context. Oversized input
 and runtime observation failures return silently with exit 0; bounded diagnostics are
 recorded when telemetry remains available. Policy hooks retain their existing failure
-behavior. Missing Node or broken imports remain native process failures.
+behavior. Without a runnable bundled executable, the launcher answers as a failed runtime
+would and nothing is recorded.
 AGENTS, Gemini native extension and JetBrains exports remain guidance-only.
 An explicit CLI/session command records its own operation even without automatic hooks;
-it does not prove hook discovery. Direct wrapper tests establish runtime behavior,
+it does not prove hook discovery. Direct launcher tests establish runtime behavior,
 not automatic host invocation.
 
 ## What is recorded
@@ -39,7 +40,7 @@ explicitly unknown. A guidance selection does not prove the agent loaded or foll
 
 Generated hook/session entry points attach the canonical package name from their export,
 using an allowlist of the four bundled packages. Nested package scopes keep separate traces;
-compatible project/session/host identity remains correlated. Generic CLI/API callers without
+compatible project/session/host identity remains correlated. Direct `craft` commands without
 a package declaration remain unattributed to a package. Hook root observations include
 `inputStatus=complete|invalid|oversized|read-failure`. Invalid, interrupted and oversized input
 uses the process working directory and invocation correlation; no partial payload is parsed
@@ -142,24 +143,23 @@ configuration to disable telemetry. Configuration failure never rejects engineer
 
 The integration maps sanitized events into OTLP/HTTP JSON internal spans with
 `service.name=engineering-pack`, `service.version` and optional `engineering-pack.host`
-resource attributes. Each CLI command, native hook/session invocation or review command creates a trace.
-Child operations preserve the real parent relationship through synchronous and
-asynchronous calls; the OTLP mapping uses those IDs. Nested operations targeting a
+resource attributes. Each `craft` invocation (command, hook or status line) creates one
+trace; child operations keep their real parent relationship and the OTLP mapping uses those
+IDs. Nested operations targeting a
 different project or explicit session/host start an isolated scope and re-read that
 consumer's sink configuration. Unspecified identity fields may inherit an existing
 compatible scope. If a real session ID becomes available after input parsing, later
 events can enrich the invocation identity while retaining the same trace. Earlier
 events keep their original identity scope. No incoming remote trace context is invented. Timestamp and ID
 encoding follow the [OTLP specification](https://opentelemetry.io/docs/specs/otlp/).
-The implementation uses Node HTTP transport without an SDK or npm dependency.
+`craft` posts the export itself after writing its output: HTTPS through rustls with the
+operating system verifying each certificate chain, and plain HTTP only to loopback. No
+OpenSSL, SDK or collector agent is involved.
 
 Only fresh events are exported, with at most 32 queued events per process/flush, a 256 KiB
 request bound, a 16 KiB response bound and a 300 ms transport deadline. CLI and installed
 hook/session entry points await a bounded flush. There are no retries, daemon, metrics,
-automatic instrumentation or historical replay. Direct application API callers can
-await `flushTelemetry()` themselves. Root-aware application operations establish or
-reuse a compatible project scope; root-less operations require `withTelemetry(...)`.
-Remote export is best effort and can lose events on process exit. Queue overflow emits local `EXPORT_QUEUE_FULL` diagnostics; when possible
+automatic instrumentation or historical replay. Remote export is best effort and can lose events on process exit. Queue overflow emits local `EXPORT_QUEUE_FULL` diagnostics; when possible
 the bounded queue retains a completed root instead of a leaf so exported children have
 a root. Each flush writes a local `telemetry.export` result with batch size, duration,
 safe failure code and known acceptance/rejection counts. Failed exports do not claim
@@ -261,11 +261,8 @@ Reasons are deterministic codes such as `CONFIG_INVALID`, `INVALID_INPUT`,
 `SEARCH_FAILED`, `SEARCH_INCOMPLETE`, `STATE_BUSY`, `STATE_UNAVAILABLE`,
 `CHECKPOINT_UNAVAILABLE`, `CONTEXT_UNAVAILABLE`, `HOST_CAPABILITY_UNAVAILABLE`, `HOST_OBSERVATION_UNAVAILABLE`,
 `REVIEW_INVALID`, `ATTEMPT_BUDGET_EXHAUSTED`, `EXPORT_TIMEOUT` and
-`EXPORT_PARTIAL_REJECTED`. Exporter transport details stay in the integration mapping;
-Node objects, exception messages/stacks, SDK objects and callbacks are not event fields.
-A Rust implementation can produce the same JSON without adopting the Node context
-storage implementation. Unknown attribute keys (including prototype property names)
-and unrecognized reasons are never copied as arbitrary data.
+`EXPORT_PARTIAL_REJECTED`. Transport details, error messages and stack traces are not event
+fields. Unknown attribute keys and unrecognized reasons are never copied as arbitrary data.
 
 `recordedAttempts` is the existing cumulative `activity.operationsAttempted` counter for
 that session/task; it continues past retained-history eviction. It is not a model-quality
@@ -274,7 +271,7 @@ and session accounting remain the owners of retry/escalation decisions.
 
 ## Coverage and deliberate limits
 
-The following applies to shipped entry points and explicitly scoped application APIs.
+The following applies to every `craft` entry point.
 All observations use the same allowlist before storage or export.
 
 | Runtime area | Success | Failure | Trace correlation | Local | OTEL |
@@ -301,12 +298,10 @@ Deliberate limits:
 - Telemetry/export diagnostics bypass the export queue to avoid recursive failures.
   Remote data remains best effort and may be incomplete; inspect local queue/flush
   diagnostics before interpreting remote totals.
-- Pure engine decisions, trivial getters, CLI help and formatting are not independent
-  traces. Root-less application API users must supply a consumer root/identity with
-  `withTelemetry`; helpers do not guess a project or authorize effects. Export flush
-  occurs at the owning process/lifecycle boundary.
-- Failures before a runnable entry point exists (missing Node, syntax/import corruption)
-  remain native process errors. Unknown host occupancy stays unknown. Selection events
+- Pure engine decisions, CLI help and formatting are not independent traces. Export flush
+  occurs once per process, after its output.
+- Failures before the executable runs (no bundled executable for the platform, a damaged
+  bundle) are answered by the launcher and leave no record. Unknown host occupancy stays unknown. Selection events
   describe pack decisions and do not prove native guidance loading or engineering quality.
 
 ## Performance and model-cost contract

@@ -56,7 +56,7 @@ export function assembleDistribution(repo) {
     }
 
     writeJson(stage, marker, { formatVersion: 1, version, generatedFrom: 'packages/', targets });
-    write(stage, 'README.md', '# Engineering Pack distribution\n\nGenerated from the portable source; do not edit this branch.\n\nSee [installation and updates](docs/PLATFORMS.md).\nFor JetBrains native chat, use the complete [JetBrains bundle](jetbrains/AGENTS.md).\n');
+    write(stage, 'README.md', '# Craft Capabilities distribution\n\nGenerated from the portable source; do not edit this branch.\n\nSee [installation and updates](docs/INSTALL.md).\nFor JetBrains native chat, use the complete [JetBrains bundle](jetbrains/AGENTS.md).\n');
     const errors = validateMarketplace(stage);
     if (errors.length) throw new Error(errors.join('\n'));
     fs.rmSync(output, { recursive: true, force: true });

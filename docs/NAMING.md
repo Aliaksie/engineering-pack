@@ -21,19 +21,17 @@ of file placement. Adapters supply native package prefixes where a host needs th
 content must not maintain separate host-specific name copies.
 
 Workflows use verb-based names such as `deliver-change`, `ship-change` and `prepare-stories`.
-Their generated skill names are adapter-owned. Internal JavaScript symbols
-follow existing code conventions. Consumer identities, service operation names and vendor
+Their generated skill names are adapter-owned. Code symbols follow the conventions of their
+language. Consumer identities, service operation names and vendor
 event names retain their actual contracts rather than being renamed for branding.
 
 Top-level directories name ownership rather than generic adapters or scripts. Follow the
-[architecture map](ARCHITECTURE.md#ownership). Within each layer, group related responsibilities
+[architecture map](ARCHITECTURE.md#components). Within each layer, group related responsibilities
 by feature at shallow depth; keep a single small responsibility as a file until a folder
 has useful components. Internal plans and local evaluation artifacts stay ignored.
 
-Consumer configuration lives in `.craft/project.json` and `.craft/telemetry.json`.
-Git worktrees and non-Git coordination roots both keep generated operational data in
-`.craft/state/<worktree-id>/<session-id>/`, with a reserved `shared/` scope for project-wide
-records. Ignore `.craft/state/` in Git. See [session storage and migration](SESSION.md)
-for identities and legacy-copy behavior. To upgrade configuration, move `.capabilities/`
-configuration to `.craft/`; runtime migration never overwrites consumer configuration.
-Old `.capabilities/state/` remains excluded from source lookup, review and exports.
+Consumer configuration lives in `.craft/project.json` and `.craft/telemetry.json`; generated
+operational data lives under `.craft/state/` (see [state storage](SESSION.md#state-storage)).
+To upgrade configuration, move `.capabilities/` configuration to `.craft/`; the runtime never
+overwrites consumer configuration. Old `.capabilities/state/` remains excluded from source
+lookup, review and exports.

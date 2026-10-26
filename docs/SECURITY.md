@@ -11,10 +11,22 @@ credentials, private endpoints and saved production transcripts out of reusable 
 Portable policies are pure engine decisions. Application use cases collect observations;
 `craft hook` parses host hook payloads and writes their wire output. Filesystem, Git and state access
 live under `platform/`; build/export code stays in `tooling/`. No native enforcement is
-installed by the generic AGENTS export. The review command policies use
-heuristic matching, not a complete shell parser, so they are guardrails rather than a security
-boundary. Host policy and tool-side authorization remain necessary. Hook trust, event coverage
-and failure behavior differ by platform; inspect the generated adapter report.
+installed by the generic AGENTS export. Hook trust, event coverage and failure behavior differ
+by platform; inspect the generated adapter report.
+
+## Read-only review guard
+
+The optional read-only review hook recognizes simple direct publishing commands (including
+pull/merge request and issue creation, and `api` calls whose field or input flags imply a
+write), quoted arguments, command separators, Git global options, literal scripts passed to
+supported shells with `-c`, and active `$()`/backtick substitutions. Nested inspection stops
+at 16 levels and denies deeper scripts in read-only sessions. It is a guardrail, not a shell
+parser or security boundary: aliases, arbitrary interpreters, other executable paths and
+variable expansion remain outside its recognizer. Use host tool permissions, read-only
+credentials and isolation for actual enforcement. `npm run hooks:report` records its
+hand-labeled corpus; see [contributing](CONTRIBUTING.md#hook-diagnostics).
+
+## Builds, services and state
 
 Builds validate package paths, reject symlinks, stage output and replace only managed generated
 directories. They do not modify host configuration or contact services. MCP env declarations
@@ -46,12 +58,13 @@ do not refresh the source binding of older continuation notes.
 
 ## Usage telemetry
 
-Engineering Pack does not send telemetry remotely by default. Local metadata excludes
+Craft Capabilities does not send telemetry remotely by default. Local metadata excludes
 prompts, transcripts, code, file contents, commands, raw session IDs and credentials.
 See [observability and privacy](OBSERVABILITY.md) for exact fields, scoped correlation,
 retention, failure behavior, opt-out and optional OTLP export.
 
-Personal preferences reject symlinks, non-files, oversized data and replacement during opening
-on every platform. POSIX additionally requires the current user to own both the file and its
-parent, with no group/other write bits. On Windows, preferences rely on the consumer's account
-and directory ACLs; Node mode bits do not validate ACL privacy or ownership.
+Personal preferences reject symlinks, non-files and oversized data on every platform. POSIX
+additionally requires the current user to own both the file and its parent, with no
+group/other write bits, and refuses a file replaced while it is being opened. On Windows,
+preferences rely on the consumer's account and directory ACLs; the runtime checks neither
+ACL privacy nor replacement during opening.

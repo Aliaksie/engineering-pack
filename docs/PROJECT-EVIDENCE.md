@@ -66,7 +66,7 @@ directory when replacing an installed copy; rollback selects that directory agai
 Omitting `--enable` disables access without removing data. Removing a bundle leaves
 repository source and private evidence state intact. The native CI gate exercises Linux
 x86-64, Apple Silicon macOS and Windows x86-64; see the
-[supported candidate platforms](PLATFORMS.md#native-runtime-in-candidate-bundles).
+[supported candidate platforms](INSTALL.md#channels).
 
 ## Explicit workspaces
 

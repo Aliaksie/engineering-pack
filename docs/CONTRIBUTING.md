@@ -1,6 +1,9 @@
 # Contributing
 
-Use Node 24 for development and run `npm run check`. The minimum supported runtime is Node 22; CI also checks Node 26 for forward compatibility. No npm install is needed. `npm test` builds exports first.
+Development needs Node 24 for tooling and tests, Rust 1.89 or later with Cargo (CI pins 1.99.1), and a C
+compiler for the bundled SQLite and Tree-sitter sources. Run `npm run check`. Tooling supports
+Node 22 as a minimum; CI also checks Node 26 for forward compatibility. No npm install is
+needed. `npm test` builds exports and the debug `craft` executable first.
 Review skill changes for useful decision criteria, selective references and clear scope.
 Keep examples portable and verify any executable behavior affected by the change.
 
@@ -11,23 +14,26 @@ Read [package format](PACKAGE-FORMAT.md), [adapters](ADAPTERS.md) and [security]
 before adding a component. Use common principles, language discipline, application-layer
 advice and provider references independently. A stack example does not impose that stack.
 
-Keep initial source versions at 0.0.1 until a version change is requested; adapter manifests are generated.
+Keep the current version until a version change is requested; adapter manifests are generated.
 Change the engineering craft bar in `packages/craft-engineering/standards/craft-bar.md`,
 then run `npm run sync:craft-bar`. It applies to reference-index craft skills, not every
 standalone method. Add focused behavioral cases for changes with material risk.
 
-Script lint rejects shell executables and checks Node ESM syntax. Use `npm run test:unit`
+Script lint rejects shell executables and checks the syntax of tooling and test scripts. Use `npm run test:unit`
 only after building; `npm test` and `npm run check` build automatically.
 Use `npm run validate:claude` after building when Claude Code is available. Native validation
-complements isolated build tests; neither proves actual model behavior. Use [eval cases](EVALS.md)
+complements isolated build tests; neither proves actual model behavior. Use [eval cases](EVALUATION.md#package-scenarios)
 for workflow and instruction changes, and record any live checks honestly.
 
-Portable decisions belong in `engine/`, orchestration in `application/`, Node I/O behind
-`platform/index.mjs`, wire behavior in `hosts/`, and workflow guidance in `packages/`.
-External system mappings belong in `integrations/`; build, export, validation and release
-code belongs in `tooling/`. Keep folders feature-oriented and the engine JSON boundary
-independent of Node so another implementation can replace it without migrating use cases. Exercise real Git snapshots and hostile/partial hook payloads with isolated
-fixtures. Service planning tests must never contact a real tracker or codehost.
+Decisions belong in `engine/` (pure, no I/O or ambient clock), use cases and the `craft`
+executable in `application/`, filesystem, Git, process and network access in `platform/`,
+host tables in `hosts/`, guidance in `packages/`, and build, export, validation and release
+code in `tooling/`. Runtime behavior is Rust; JavaScript is limited to tooling, tests and the
+small host-table and hook-declaration files ([ADR 0001](adr/0001-rust-core-runtime.md),
+[ADR 0002](adr/0002-module-map-and-boundaries.md)). `npm test` builds the debug `craft`
+executable, or uses `CRAFT_NATIVE_BINARY` when set. Exercise real Git snapshots and
+hostile/partial hook payloads with isolated fixtures. Service planning tests must never
+contact a real tracker or codehost.
 
 ## GitHub Actions
 
@@ -58,10 +64,8 @@ Pinned action releases: [checkout v7.0.1](https://github.com/actions/checkout/re
 [setup-node v7.1.0](https://github.com/actions/setup-node/releases/tag/v7.1.0),
 and [upload-artifact v7.0.2](https://github.com/actions/upload-artifact/releases/tag/v7.0.2).
 
-Each successful matrix job also runs `npm run hooks:report` and uploads a separate source-
-identified hook diagnostic artifact. Its hand-labeled corpus can report false/missed blocks;
-collection success is not a policy-enforcement pass. See the
-[tool/hook audit](authoring/TOOLS.md) for the measured scope and current matcher limitations.
+Each successful matrix job also uploads a hook diagnostic report; see
+[hook diagnostics](#hook-diagnostics).
 
 ### Performance diagnostics
 
@@ -126,3 +130,14 @@ hooks. Codex 0.163.0 discovered 29 hooks with the native manifest export; the po
 Agent Plugins 1.0 manifest export returned zero. Default checks skip this optional host
 test; registration/runtime tests run for every hook-capable adapter. Actual automatic
 dispatch in other hosts still needs a trusted live session and fresh telemetry.
+
+### Hook diagnostics
+
+`npm run hooks:report -- --output <new-file>` checks exported source hashes, samples the
+generated read-only hook launcher and records a bounded hand-labeled policy corpus. It does
+not execute the corpus commands or install hooks. Exit 0 means collection succeeded, even if
+policy cases expose misses; outcomes other than `allow` and `deny` are counted as
+`unexpectedDecisions`, separately from false and missed blocks. Process wall time includes
+startup and serialization, excluding host dispatch, model calls and network. Neither sample
+latency nor corpus counts establish production rates. See the
+[guard limits](SECURITY.md#read-only-review-guard).

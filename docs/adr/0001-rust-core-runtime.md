@@ -1,69 +1,53 @@
-# ADR 0001: Rust owns the Engineering Pack core runtime
+# ADR 0001: Rust owns the core runtime
 
 Status: Accepted — 2026-10-22
 
 ## Context
 
-The Pack currently implements most local runtime behavior in JavaScript. Project
-Intelligence introduces native parsing and persistent evidence storage. Keeping new
-capabilities split across two runtime implementations would create competing owners
-for state, policy and lifecycle behavior. We need a clear destination while retaining
-working host integrations and allowing incremental delivery.
+Local runtime behavior (routing, state, sessions, telemetry, hooks) was written in
+JavaScript. Project Intelligence needed native parsing and persistent evidence storage.
+Splitting new capabilities across two runtime languages would create competing owners for
+state, policy and lifecycle behavior.
 
 ## Decision
 
-The Engineering Pack core runtime is implemented in Rust. This is the architectural
-target and the rule for new runtime capabilities; it does not claim the existing
-JavaScript runtime has already migrated.
+The core runtime is Rust: engine decisions, Project Intelligence, state, routing, telemetry,
+context, cache and persistence, together with their orchestration and I/O. It ships as one
+prebuilt, relocatable `craft` executable per supported platform.
 
-Rust owns engine decisions, Project Intelligence, state, routing, telemetry, context,
-cache and persistence, including their local application orchestration and runtime I/O.
-Host-specific adapters may use the language required by the host, including
-JavaScript/TypeScript. Packaging and build tooling may remain JavaScript/TypeScript.
-Adapters stay thin: host event translation, native invocation and host response
-serialization. New capabilities must not introduce substantial JavaScript/TypeScript
-runtime logic or move domain decisions into adapters.
+Build tooling, tests and packaging stay JavaScript. Host-specific code is limited to data
+tables read at build time and generated launchers that only select the bundled executable;
+hooks, the status line and every command run `craft` directly. New runtime behavior belongs
+in Rust, never in an adapter.
+
+Structure follows ownership, not history: pure decisions, orchestration and I/O stay
+separate, and a separate crate exists only where it enforces a useful boundary
+([ADR 0002](0002-module-map-and-boundaries.md)).
 
 ```mermaid
 flowchart TD
-    HOST[Host plugin: thin JS/TS where required] --> API[Rust CLI/API]
-    API --> CORE[Engine · Project Intelligence · State · Routing]
-    API --> RUNTIME[Telemetry · Context · Cache · Persistence]
+    HOST[Host hook, status line or skill command] --> LAUNCH[Generated launcher]
+    LAUNCH --> CRAFT[craft: application use cases]
+    CRAFT --> ENGINE[engine: decisions]
+    CRAFT --> PLATFORM[platform: state, Git, search, HTTP, storage]
 ```
-
-Existing JavaScript/TypeScript runtime components migrate through a dedicated,
-incremental migration of complete use cases. Each migration preserves relevant public
-contracts, state compatibility, authorization behavior and observable outcomes, then
-removes the replaced runtime implementation. Legacy components remain authoritative only until their migration slice passes
-compatibility and installed-boundary checks. The completed runtime has no parallel
-JavaScript implementation of Rust-owned behavior; new runtime logic belongs in Rust.
-
-Migration may simplify folders, interfaces and layers when the changed behavior
-demonstrates that they are unnecessary or duplicate ownership. Rust need not reproduce
-the JavaScript directory or abstraction structure. Keep useful separation between pure
-decisions, orchestration, I/O and host transport; use separate crates only when they
-enforce a useful boundary. Structural changes stay scoped, reviewable and verified
-against the contracts they affect.
 
 ## Alternatives
 
-A permanent mixed core would preserve the current language split but leave ambiguous
-ownership for new runtime behavior. A big-bang rewrite would postpone working
-candidates and enlarge the compatibility surface of each change. Neither is the
-selected delivery approach.
+A permanent mixed runtime keeps ownership of new behavior ambiguous. A runtime in
+JavaScript with native extensions keeps Node as an installation requirement for every host
+and every hook call.
 
 ## Consequences
 
-New core capabilities have one implementation owner. Contributors need Rust tooling;
-installed consumers need a compatible, relocatable native artifact rather than a compiler.
-Host adapters and packaging must report unavailable native support explicitly.
+Each runtime behavior has one implementation owner. Contributors need a Rust toolchain;
+consumers need a compatible bundled executable, not a compiler. Platforms without an
+executable are reported explicitly instead of degrading silently. State formats, digest
+identities and error codes are compatibility contracts. Each call starts one process, so
+frequently repeated decisions are batched by their use case rather than by a daemon.
+Language choice alone establishes no performance or model-quality improvement; those need
+measurements.
 
-Temporary coexistence requires explicit contracts and migration tracking. Existing
-state formats, digest identities and error behavior need compatibility checks before
-replacement. Frequently called decisions require a suitable API or batching boundary;
-spawning a CLI process per small decision is not an assumed solution. Language choice
-alone establishes no performance or model-quality improvement.
-
-Revisit this decision if a required host cannot support a practical native boundary or
-measured deployment constraints make the architecture unsuitable. Exceptions require
-an explicit architectural decision, not an expanding adapter implementation.
+Revisit this decision if a required host cannot run a native executable, or measured
+deployment constraints make it unsuitable. Exceptions need their own decision, not a growing
+adapter.

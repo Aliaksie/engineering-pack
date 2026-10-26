@@ -132,36 +132,6 @@ executes them within authorization. Use `explore` for a bounded manual testing c
 actual observations when an application and tools are available. It selects only the
 exploratory workflow, without assuming a language, repository, runner or browser connector.
 
-## Checkpoint and recovery
-
-```text
-npm run checkpoint:save -- --root <project> --session <id> --data <metadata.json>
-npm run checkpoint:read -- --root <project> --session <id>
-```
-
-Metadata may contain `task`, `taskId`, `authorization`, `nextStep`, `sources` and a bounded
-`continuation` object described in [session status](SESSION.md#continuation-checkpoint).
-Application checkpoint use cases add observed Git HEAD, working-tree status, bounded
-working-tree/index fingerprints and a timestamp through platform ports. They do not guess
-task completion, capture prompts/transcripts or turn saved authorization into new authority. Recovery compares
-saved state with the current tree and flags changes; verification evidence must be rechecked
-when its revision no longer matches.
-
-Inspect `changeDetection.complete` before relying on the comparison. `changed: null` means
-unchanged state cannot be established. Inspection limits, read failures, submodules and older
-checkpoints without fingerprints leave coverage incomplete; they do not establish freshness.
-
-Automatic snapshots default to enabled in trusted installations; set `checkpoint.enabled`
-to false to disable them. They run at supported turn-completion and context-transition
-boundaries, rather than after every tool call. Unchanged complete snapshots are deduplicated.
-Writes are atomic and reject symlinked state paths; concurrent writers are reported as busy.
-State lives under `.craft/state/<worktree-id>/<session-id>/` for Git and non-Git roots;
-`settings` shows the shared project directory. Ignore `.craft/state/` in Git.
-Because some hosts expose asynchronous/observational compaction hooks, persist semantic
-metadata at milestones rather than relying on a final callback. Read recovery state explicitly
-on hosts with no after-compaction injection. This preserves continuity; it does not replace
-the host’s summarization algorithm or promise lossless context compression.
-
 Risk tags such as `failure-path`, `timeout`, `retry`, `partial-write` and `cancellation`
 select the cross-language error-handling reference without requiring Node or a provider.
 For example: `npm run route -- --intent implement --file src/Main.java --risk timeout`.

@@ -1,4 +1,4 @@
-# Engineering package
+# Craft Engineering
 
 This package supplies decision support for software work. Select content by the affected
 behavior: language mechanics, application concerns and agent provider are separate choices.

@@ -13,7 +13,7 @@ contract validated by `tooling/lib/capabilities.mjs` and described by
 | `workflows` | Markdown files with name/description frontmatter; exported as workflow skills |
 | `standards` | Canonical quality guidance, loaded when relevant |
 | `evals` | JSON scenarios: id, prompt and named rubric criteria |
-| `tools` | Executables with runtime and network effect declarations: a package `path` run by `node` or `bash`, or a `native` `command` of the bundled runtime, run as `bin/craft <command>` |
+| `tools` | Executables with runtime and network effect declarations: a `native` `command` of the bundled runtime, run as `bin/craft <command>`, or a package `path` run by `node` or `bash` |
 | `hooks` | Normalized lifecycle handler declarations; v1 supports session, prompt, tool, compaction and turn events |
 | `mcp` | Optional server declarations; no live defaults or credential literals |
 | `optionalDependencies` | Other capabilities useful when installed; absence is a reported limitation |
@@ -34,34 +34,28 @@ Long-form workflows, standards, tools and cases also remain available as package
 
 ## Hook interface
 
+A hook declaration names a normalized event, a tool scope and a handler file. The handler
+file only names the native handler that runs it:
+
 ```javascript
-export function evaluate({ event, tool, command, cwd, routing, checkpoint, project }) {
-  return { decision: 'allow' };
-  // or { decision: 'deny', reason: 'actionable explanation' }
-  // or { decision: 'allow', context: 'bounded routing/recovery context' }
-}
+export const native = 'deliver';
 ```
 
-Handlers are synchronous entry points that return decision/context data. Portable decisions
-belong in `engine/`; application use cases translate lifecycle events into facts and collect
-observations. `hosts/` owns native parsing, execution and serialization. The bundled package
-handlers delegate to these shared use cases rather than reimplementing policy.
+| Handler | Behavior |
+|---|---|
+| `deliver` | Routing hints, checkpoints, service metadata and hint reuse |
+| `review-read-only` | Read-only review publication guard (shell scope) |
+| `observe` | Lifecycle telemetry only: no decision, no context, nonblocking on any failure |
 
-A handler can export `prepare` to replace delivery-specific preparation. Telemetry-only
-handlers also export `observational = true`: their runner produces no host decision or
-context and remains nonblocking on input or execution failure. This does not change the
-input size bound or the failure behavior of policy handlers.
-
-A hook module names the native handler the export registers (`export const native = '<handler>'`).
-Hooks and native tools run in the bundled `craft` runtime through the generated `bin/craft`
-launcher (`bin/craft.cmd` on Windows), which selects the executable installed under the
-package's `support/native-bin/`. Installed packages remain self-contained; do not
-import authoring tooling or a sibling package at runtime. Hook tools are
-`shell` or `any`; normalized events are `session-start`, `before-prompt`, `before-tool`,
-`after-tool`, `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where
-the host supports blocking. Context is injected only where its wire schema supports it. Adapters own
-stdin normalization, event/tool mapping, registration and output. A plain AGENTS bundle
-has no lifecycle runtime and therefore installs no hooks.
+Hooks and native tools run in the bundled `craft` executable through the generated
+`bin/craft` launcher (`bin/craft.cmd` on Windows), which selects the executable installed
+under the package's `support/native-bin/`. Installed packages remain self-contained; do not
+import authoring tooling or a sibling package at runtime. Hook tools are `shell` or `any`;
+normalized events are `session-start`, `before-prompt`, `before-tool`, `after-tool`,
+`before-compact`, `after-compact` and `turn-end`. A denial is mapped only where the host
+supports blocking, and context is injected only where its wire schema supports it. `craft
+hook` owns payload normalization, event/tool mapping and output; the build owns registration.
+A plain AGENTS bundle has no lifecycle runtime and therefore installs no hooks.
 
 ## MCP declarations
 

@@ -1,7 +1,10 @@
 # Craft Capabilities
 
 This repository authors portable AI Capability Packages. Canonical content lives in
-`packages/`; native host translation belongs to `hosts/` and export construction to `tooling/export/`. Node 22+ minimum; Node 24 for development and primary CI, Node 26 for forward checks. ESM, no npm dependencies.
+`packages/`; the runtime is the Rust `craft` executable (`engine`, `platform`, `application`);
+host tables live in `hosts/` and export construction in `tooling/export/`. Tooling and tests
+are Node ESM with no npm dependencies: Node 22+ minimum, Node 24 for development and primary
+CI, Node 26 for forward checks. Rust 1.89+ builds the runtime.
 
 ## Commands
 
@@ -51,23 +54,18 @@ This repository authors portable AI Capability Packages. Canonical content lives
 
 ## Rules
 
-- The local Pack core runtime belongs in Rust: engine decisions, Project Intelligence,
-  state, routing, telemetry, context, cache and persistence. Host-specific adapters and
-  packaging may remain thin JS/TS where needed. New capabilities must not add substantial
-  JS/TS runtime logic. Migrate legacy runtime components in verified, incremental slices
-  of complete use cases; remove each replaced implementation after compatibility and
-  installed checks pass. Simplify structure when justified by the changed behavior; preserve useful ownership boundaries and public contracts rather than copying
-  JS layers one-for-one. See [ADR 0001](docs/adr/0001-rust-core-runtime.md).
+- Runtime behavior belongs in Rust: engine decisions, Project Intelligence, state, routing,
+  telemetry, context, cache and persistence. JavaScript is for build tooling, tests, build-time
+  host tables and hook declarations; never add runtime logic to it. See
+  [ADR 0001](docs/adr/0001-rust-core-runtime.md).
 
 - Top-level modules, their kinds and dependencies are declared in `architecture.json` and
   [ADR 0002](docs/adr/0002-module-map-and-boundaries.md). Change both together; never add a
   top-level folder, cross-module import or runtime JS budget increase without them.
 
-- Investigate bugs and suspicious behavior discovered during migration. Fix confirmed
-  defects with regression coverage before migrating the affected behavior; do not preserve
-  known bugs merely to match the baseline. Document intentional contract corrections and
-  update affected compatibility fixtures explicitly. Resolve suspicious behavior before
-  accepting the affected migration slice.
+- Investigate suspicious behavior rather than preserving it. Fix confirmed defects with
+  regression coverage. State formats, digest identities and error codes are compatibility
+  contracts: document intentional corrections and update the affected fixtures explicitly.
 
 - Before implementation edits, inspect Git state, preserve unrelated work and establish a safe
   change boundary under consumer branching/workspace policy and repository protection.
@@ -80,13 +78,14 @@ This repository authors portable AI Capability Packages. Canonical content lives
 - Load common principles, language, application layer and provider guidance independently.
   Examples in a language do not make its compiler rules universal.
 - Keep vendor model aliases, permission grants and cache paths out of shared instructions.
-- Application use cases translate host events into lifecycle facts. The engine returns portable
-  decisions; hosts serialize native responses. Unsupported enforcement stays visible in export reports.
+- `craft hook` translates host payloads into lifecycle facts, the engine returns portable
+  decisions and `craft` writes the host's native response. Unsupported enforcement stays
+  visible in export reports.
 - MCP declarations are opt-in and secret-free. Builds never activate connections or tools.
-- Keep packages self-contained. No runtime imports from authoring scripts or sibling packages. The builder copies the shared
-  runtime into each export; keep one canonical source.
+- Keep packages self-contained. No runtime imports from authoring scripts or sibling packages.
+  The builder bundles the native runtime into each export; keep one canonical source.
 - Use logical `package:skill` references; adapters translate names for the host.
-- Keep this initial iteration at version `0.0.1` until a release/version change is requested.
+- Keep the current version (`package.json`) until a release/version change is requested.
   Build adapter manifests instead of maintaining version copies by hand.
 - Test meaningful behavior and portability, not exact prose. Evals need actual model evidence
   before reporting semantic success. Do not fabricate a pass from static checks.

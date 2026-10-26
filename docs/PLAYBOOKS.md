@@ -1,9 +1,8 @@
 # Portable playbook catalog
 
-`engine/routing/catalog.json` owns engineering selection rules. `tooling/export/` bundles
-the canonical runtime; `hosts/` translates native formats. Neither selects practices or
-infers a stack. Package skill IDs identify loadable content.
-Versions remain `0.0.1`.
+`engine/routing/catalog.json` owns engineering selection rules; `craft` embeds it. Exports
+and host adapters neither select practices nor infer a stack. Package skill IDs identify
+loadable content.
 
 Logical identities use `<kind>:<slug>` with lowercase hyphenated slugs. Supported kinds are
 `workflow`, `practice`, `language`, `runtime`, `framework`, `provider`, and `layer`.
@@ -15,12 +14,12 @@ Selectors are the trigger. `contextOnly: true` explicitly marks an identity used
 selection without independently loadable guidance. These authoring records justify inclusion;
 they are not model evaluation results and are omitted from route output to limit context.
 
-The published contract is `schemas/playbook-catalog.schema.json`. The dependency-free runtime
-validator checks shape, logical IDs, selector dimensions/values, duplicate identities,
+The published contract is `schemas/playbook-catalog.schema.json`. `craft` validates the
+embedded catalog on use: shape, logical IDs, selector dimensions/values, duplicate identities,
 intent boundaries, value fields, target syntax and runtime implications. `npm run validate`
 also resolves every target against registered package skills and existing source files.
-Builds validate catalog shape before replacing generated output. Missing optional packages at
-installation time are still reported through host availability rather than treated as permissions.
+Missing optional packages at installation time are still reported through host availability
+rather than treated as permissions.
 
 Selectors are AND across dimensions and OR within a dimension. Only workflow/practice entries with
 explicit intent selectors run outside `stackIntents`. Stack matches are evaluated per affected
@@ -105,7 +104,7 @@ for explicit invocation or configured module skills. `distributed-system`/`consi
 `replication`/`partition` select distributed-state guidance; `infrastructure`/`deployment`/
 `rollout`/`disaster-recovery` select infrastructure lifecycle guidance. These concepts do not
 require a particular language, backend framework or cloud. See the
-[engineering guidance map](ENGINEERING-GUIDANCE.md).
+[shared engineering concepts](#shared-engineering-concepts).
 
 `ci-cd`/`pipeline`/`build-pipeline`/`release-pipeline` select infrastructure engineering and
 its shared CI/CD reference. Affected `.github/workflows` paths or explicit `github-actions`
@@ -121,3 +120,32 @@ JavaScript, TypeScript, Python, JVM, Go and C# guidance lives in selectively loa
 foundations references. Select those references by the actual language and task, independently
 of runtime, application layer and provider. Use the [paired evaluation protocol](EVALUATION.md)
 when measuring the effect of guidance on model outcomes.
+
+## Shared engineering concepts
+
+Shared guidance holds engineering decisions that apply across languages. Language/runtime
+references hold concrete syntax, compiler behavior and runtime mechanics. Framework/provider
+guidance applies only when that framework/provider is present. A language example does not
+make its implementation pattern a universal rule.
+
+| Concept | Shared guidance |
+|---|---|
+| Design, responsibility, abstraction, coupling and reuse | [Design principles](../packages/craft-engineering/skills/foundations/references/design-principles.md) |
+| Concurrency, synchronization, cancellation and duplicate delivery | [Concurrency](../packages/craft-engineering/skills/backend-engineering/references/async-patterns.md) |
+| Failure contracts, deadlines, retries and unknown outcomes | [Error handling](../packages/craft-engineering/skills/backend-engineering/references/error-handling.md) |
+| Consistency, conflicting writes and cross-resource recovery | [Distributed systems](../packages/craft-engineering/skills/backend-engineering/references/distributed-systems.md) |
+| Signals, correlation, sensitive data and audit semantics | [Observability](../packages/craft-engineering/skills/backend-engineering/references/observability-logging.md) |
+| Desired state, resource lifecycle, rollout and recovery | [Infrastructure](../packages/craft-engineering/skills/foundations/references/infrastructure.md) |
+| Pipeline validation, release gates and automation recovery | [Infrastructure engineering](../packages/craft-engineering/skills/infrastructure-engineering/SKILL.md), with shared [CI/CD](../packages/craft-engineering/skills/infrastructure-engineering/references/ci-cd.md) and conditional [GitHub Actions](../packages/craft-engineering/skills/infrastructure-engineering/references/github-actions.md) detail |
+| Contracts, dependency direction, ownership and resource lifetimes | [Service boundaries](../packages/craft-engineering/skills/backend-engineering/references/service-layers.md) |
+| Capacity, backpressure, caching and performance evidence | [Performance](../packages/craft-engineering/skills/backend-engineering/references/performance-efficiency.md) |
+| Context reuse, prompt/tool caches and logical model profiles | [Execution optimization](../packages/craft-engineering/skills/foundations/references/execution-optimization.md) |
+| Meaningful verification, test reliability and investigation | [Testing](../packages/craft-engineering/skills/testing-engineering/SKILL.md) |
+| Trust boundaries, authorization and safe interpretation | [Security](../packages/craft-engineering/skills/security-engineering/SKILL.md) |
+
+Load only the concept relevant to the changed behavior, then the affected
+[language/runtime reference](../packages/craft-engineering/skills/foundations/SKILL.md#choose-detail).
+Shared examples state assumptions, the protected invariant and observable outcomes. Use
+labeled pseudocode for algorithms and ordered timelines for rollout or crash behavior.
+Concrete examples belong in the matching discipline and explain what they do and do not prove.
+Consumer architecture, access policy and operational targets remain the grounding source.

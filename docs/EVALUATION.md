@@ -1,57 +1,53 @@
-# Paired workflow evaluation
+# Evaluation
 
-## Discovery reuse and persistent knowledge gate
+Deterministic checks establish packaging and contract behavior. Claims about model output
+need actual responses judged against fixed criteria. This page covers package scenarios,
+matched baseline/candidate runs and the gates that decide whether guidance, context or
+profile advice changes.
 
-Measure the existing [bounded lookup reuse](SESSION.md#reuse-before-bounded-discovery)
-before proposing persistent observations. Freeze source and implementation identities,
-query/scope, configuration, runtime and acceptance criteria. Retain raw requests/results,
-timings and the available `telemetry-report`; its retained events are not complete history.
-Use the existing paired-eval protocol below for model comparisons.
+## Package scenarios
 
-Compare fresh batched lookup, validated task-bound reuse and explicit source references.
-Alternate operation order and retain individual samples. Measure end-to-end lookup and
-inventory revalidation separately; inventory timing is a component measurement, not an
-additive estimate of total overhead. Report source bytes read, matches, skipped/truncated
-coverage and exact literal-result agreement. A known-file read with a checked content
-identity measures retrieval only; it cannot replace discovery of unknown callers or prove
-semantic relevance. Filesystem/process timings do not measure model latency or billing.
+Each capability ships versioned scenarios under `evals/`. A scenario contains a self-contained
+prompt and named pass/fail criteria. Use the same scenario against each exported host package;
+record the actual response and evidence, not just a summary saying it worked.
 
-Classify misses using controlled changes or attributable evidence: first lookup, changed
-session/task, changed source/revision/configuration, incomplete coverage, capacity eviction,
-disabled reuse and unavailable state/inventory. Explicit repository selections currently
-scan fresh. The existing telemetry aggregates hits/misses; it does not distinguish all these
-causes. An unattributed production miss stays unknown. Do not infer semantic rediscovery
-from a cache miss, repeated command text or repeated reads.
+Run model evals through your chosen host or eval harness, with live side effects disabled
+unless explicitly authorized. Compare baseline and candidate against the same cases. Include
+provider failures, incomplete runs, latency and cost where relevant in the surrounding evidence.
+No model runner or cloud credential is assumed by this repository.
 
-The initial discovery assessment on 2026-10-22 returned **no-go for persistent knowledge**.
-Ten alternating samples per case replayed frozen source from the development pilot and
-the QA/product projection implementations in disposable Git repositories on macOS/Node 24.
-These are small deterministic source replays, not three real user tasks or cold OS-cache runs.
+The `adapter` must name a supported export: `claude`, `codex`, `cursor`, `copilot`,
+`gemini`, `agents`, `gemini-extension` or `jetbrains`. Selecting a host records where the evidence was obtained; it does
+not certify that host or replace the actual response and criterion evidence.
 
-| Source case | Fresh lookup median | Validated reuse median | Inventory median | Known-source read/hash median | Fresh source bytes |
-|---|---:|---:|---:|---:|---:|
-| Development pilot | 22.27 ms | 87.33 ms | 42.14 ms | 0.071 ms | 4480 |
-| QA projection | 22.21 ms | 87.09 ms | 42.24 ms | 0.053 ms | 3357 |
-| Product/architecture projection | 22.20 ms | 87.49 ms | 42.51 ms | 0.049 ms | 2274 |
+A result consumed by `npm run eval:report -- <file.json>` has this shape:
 
-All 30 warm lookups matched fresh literal results and read zero source bytes. Controlled
-task/session changes, absent identity, source/manifest edits and incomplete prior scans
-all scanned fresh. These results establish local mechanics; the small scopes do not
-establish cache performance on large repositories. Keep timing diagnostic-only.
+```json
+{
+  "package": "craft-engineering",
+  "packageVersion": "0.0.2",
+  "case": "mixed-stack",
+  "adapter": "codex",
+  "model": "actual-model-id",
+  "revision": "source-revision-or-working-tree-id",
+  "evaluator": "human-or-versioned-judge-id",
+  "response": "The actual model response goes here.",
+  "verdicts": [
+    { "criterion": "c1", "passed": true, "evidence": "Observed selection and source citation." },
+    { "criterion": "c2", "passed": false, "evidence": "Observed mismatch and its location." }
+  ]
+}
+```
 
-The retained real development pilot has one task in two model arms: 13/19 completed shell
-commands, with five commands containing read/search operations in each arm and no explicit
-Craft lookup invocation. This lexical classification does not measure semantic effort or
-show that existing reuse was exhausted. QA/product examples are synthetic. Repeated real
-tasks, a useful durable fact with measured retrieval benefit, and held-out acceptance
-quality remain unavailable. Model-cost savings, native-host behavior and cross-OS performance
-are unknown. No runtime behavior or cache policy changed in this assessment.
+The report checker validates case/version identity, complete criterion coverage, boolean
+verdicts and evidence, then summarizes those recorded verdicts. It does not call a model or
+verify that a judge’s reasoning is correct. Exit 0 means all recorded criteria passed;
+1 means a recorded failure; 2 means an invalid report. Never count provider errors or missing
+responses as passes. Keep real transcripts and credentials out of committed results.
 
-Reopen the gate only when repeated costly semantic discovery remains after existing reuse
-and cited source references. Name one bounded observation and its dependencies; compare it
-on held-out real tasks under equal tools/authorization and unchanged acceptance thresholds.
-Require lower measured retrieval/revalidation cost without correctness, freshness or isolation
-regressions. Otherwise retain the no-go and add no persistent-knowledge feature.
+Repository tests exercise deterministic behavior, build portability and report validation.
+They are not semantic evaluations. No cross-platform model quality claim follows until
+actual responses are collected and reviewed.
 
 ## Paired model runs
 
@@ -67,8 +63,7 @@ the baseline. Start each arm with a clean checkout/session and record missing pr
 
 Package scenarios cover failure policy, verification boundaries, test reliability,
 duplicate-delivery/crash windows and required-audit failure.
-These are prompts/rubrics, not model runs. The [tool and hook audit](authoring/TOOLS.md) records static
-behavior and measurement gaps.
+These are prompts/rubrics, not model runs; see [package scenarios](#package-scenarios).
 
 Initial cases:
 
@@ -231,3 +226,56 @@ Record the decision with its evaluated source/profile identities and limits befo
 defaults. Profile recommendations remain advice: unsupported mappings retain viable current
 execution, and permission/tool failures require resolving the prerequisite rather than
 switching models. This protocol adds no dispatcher, billing service or second model router.
+
+## Discovery reuse and persistent knowledge gate
+
+Measure the existing [bounded lookup reuse](SESSION.md#reuse-before-bounded-discovery)
+before proposing persistent observations. Freeze source and implementation identities,
+query/scope, configuration, runtime and acceptance criteria. Retain raw requests/results,
+timings and the available `telemetry-report`; its retained events are not complete history.
+Use the existing paired-eval protocol below for model comparisons.
+
+Compare fresh batched lookup, validated task-bound reuse and explicit source references.
+Alternate operation order and retain individual samples. Measure end-to-end lookup and
+inventory revalidation separately; inventory timing is a component measurement, not an
+additive estimate of total overhead. Report source bytes read, matches, skipped/truncated
+coverage and exact literal-result agreement. A known-file read with a checked content
+identity measures retrieval only; it cannot replace discovery of unknown callers or prove
+semantic relevance. Filesystem/process timings do not measure model latency or billing.
+
+Classify misses using controlled changes or attributable evidence: first lookup, changed
+session/task, changed source/revision/configuration, incomplete coverage, capacity eviction,
+disabled reuse and unavailable state/inventory. Explicit repository selections currently
+scan fresh. The existing telemetry aggregates hits/misses; it does not distinguish all these
+causes. An unattributed production miss stays unknown. Do not infer semantic rediscovery
+from a cache miss, repeated command text or repeated reads.
+
+The initial discovery assessment on 2026-10-22 returned **no-go for persistent knowledge**.
+Ten alternating samples per case replayed frozen source from the development pilot and
+the QA/product projection implementations in disposable Git repositories on macOS/Node 24.
+These are small deterministic source replays, not three real user tasks or cold OS-cache runs.
+
+| Source case | Fresh lookup median | Validated reuse median | Inventory median | Known-source read/hash median | Fresh source bytes |
+|---|---:|---:|---:|---:|---:|
+| Development pilot | 22.27 ms | 87.33 ms | 42.14 ms | 0.071 ms | 4480 |
+| QA projection | 22.21 ms | 87.09 ms | 42.24 ms | 0.053 ms | 3357 |
+| Product/architecture projection | 22.20 ms | 87.49 ms | 42.51 ms | 0.049 ms | 2274 |
+
+All 30 warm lookups matched fresh literal results and read zero source bytes. Controlled
+task/session changes, absent identity, source/manifest edits and incomplete prior scans
+all scanned fresh. These results establish local mechanics; the small scopes do not
+establish cache performance on large repositories. Keep timing diagnostic-only.
+
+The retained real development pilot has one task in two model arms: 13/19 completed shell
+commands, with five commands containing read/search operations in each arm and no explicit
+Craft lookup invocation. This lexical classification does not measure semantic effort or
+show that existing reuse was exhausted. QA/product examples are synthetic. Repeated real
+tasks, a useful durable fact with measured retrieval benefit, and held-out acceptance
+quality remain unavailable. Model-cost savings, native-host behavior and cross-OS performance
+are unknown. No runtime behavior or cache policy changed in this assessment.
+
+Reopen the gate only when repeated costly semantic discovery remains after existing reuse
+and cited source references. Name one bounded observation and its dependencies; compare it
+on held-out real tasks under equal tools/authorization and unchanged acceptance thresholds.
+Require lower measured retrieval/revalidation cost without correctness, freshness or isolation
+regressions. Otherwise retain the no-go and add no persistent-knowledge feature.

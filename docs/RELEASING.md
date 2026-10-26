@@ -1,11 +1,10 @@
 # Sharing and releasing
 
 The source branch is `main`; `packages/` remains the authoritative engineering core.
-The frozen `distribution` branch remains the stable GitHub installation channel.
-Routine CI and manual releases publish candidates only to `distribution-next`, including
-Claude, Codex, Gemini and the downloadable JetBrains overlay. Stable promotion requires
-the explicit `0.0.3` release after comparison and stabilization; neither publisher updates
-`distribution`. npm publication is unnecessary.
+The `distribution` branch is the stable GitHub installation channel. Routine CI and manual
+releases publish candidates only to `distribution-next`, including Claude, Codex, Gemini and
+the downloadable JetBrains overlay. Neither publisher updates `distribution`; promoting a
+candidate to stable is a separate, explicit release decision. npm publication is unnecessary.
 The Claude marketplace identifier stays `craft-capabilities`; Codex uses `engineering-pack`.
 The canonical pack version is `package.json.version`; the initial versioned release is `0.0.2`.
 Capability manifests and the bundled runtime version are mechanically synchronized
@@ -29,7 +28,7 @@ jetbrains/                      → project rule and portable resources
 ```
 
 To test candidates, select `distribution-next` explicitly in the
-[GitHub installation commands](PLATFORMS.md) from a disposable consumer project.
+[installation commands](INSTALL.md) from a disposable consumer project.
 The source branch itself is not the installable extension; preserve the documented branch
 selector in commands. No public marketplace approval or gallery listing is implied.
 
@@ -67,7 +66,7 @@ speedup; process-tree and RSS comparisons need separate measurements.
 ## Updates and releases
 
 Every successful eligible CI run refreshes `distribution-next`. Users update with native
-platform commands; the [installation guide](PLATFORMS.md#updates-and-verification) explains
+platform commands; the [installation guide](INSTALL.md#updates) explains
 rolling-update caching limits. CI records the source revision in each distribution commit.
 Keep `dist/`, local eval results and plans out of source commits. Do not edit the generated
 branch manually. The build contains the [MIT license](../LICENSE).

@@ -328,39 +328,6 @@ Git and non-Git roots use the same version 2 storage layout:
       shared/             # telemetry/key/captures and workspace maintenance
 ```
 
-The platform resolver hashes the canonical selected root into a 24-character worktree ID
-and an explicit session identity into a 24-character session ID. IDs, rather than Git
-metadata location, isolate roots and sessions. Callers resolve invocation subdirectories
-through the normal project-root resolver before accessing state; explicitly selected nested
-or coordination roots keep their own identities. Linked worktrees have distinct root IDs.
-Project-wide records use the reserved `shared` scope; scratch/evidence beneath it retain
-explicit hashed session/task/operation ownership and their existing cleanup policies.
-`settings` shows this shared directory and layout version. Raw session names never become
-path components. File schemas and retention limits remain unchanged. Directories/files use
-0700/0600 where supported; symlinks, unsafe paths and bounded-file violations are refused.
-
-Add `.craft/state/` to the consumer's `.gitignore` before use (this repository already
-ignores it at every depth). Craft does not edit consumer ignores or Git metadata. Source
-lookup, snapshots, review and package export exclude state independently of Git ignores;
-consumer-authored configuration remains visible. Runtime cleanup owns only its existing
-bounded scratch, evidence and telemetry lifecycles, never project/telemetry configuration.
-
-On access, the resolver copies matching legacy records from `.git/craft-state/<root-id>/`
-(or a linked worktree's Git directory), flat `.craft/state/`, and `.capabilities/state/`.
-Session records go to the explicit session scope; project-wide records go to `shared`.
-Workspace scratch/evidence ownership trees, telemetry backups and hint generations are
-preserved. Sources are never deleted or written, and configuration is never migrated.
-Copies are bounded (4 MiB/file, 16 MiB and 4096 entries per record tree, depth 16), reject
-symlinks and hard-linked files, and retain existing record validators. A source fingerprint
-receipt is published after copying; identical interrupted copies can be retried, differing
-destination files are refused. Unused legacy records remain available for later access.
-
-Stop older installed plugins before upgrading. Legacy locks block migration; source
-fingerprints are checked again on access and changed sources cause an explicit reconciliation
-error. Old plugins cannot honor new locks, so simultaneous old/new writers are unsupported.
-Do not clear a lock or conflict without verifying the old writer has stopped and reconciling
-records. Retained legacy sources may be removed only through separately authorized cleanup.
-
 Changing a task's stage, files, risks or checkout invalidates completed acceptance and verification.
 Continuation freshness also requires the saved task contract to match; an automatic snapshot
 cannot renew a continuation written for earlier scope.
@@ -408,7 +375,73 @@ nextStep/sources metadata remains supported; `--task` saves the continuation's `
 
 A new session reads the checkpoint, current repository diff/state and necessary routed
 guidance. It does not replay the previous conversation. Recovery never renews authorization.
-See [checkpoint recovery](ROUTING.md#checkpoint-and-recovery) for incomplete inspection limits.
+See [checkpoint and recovery](#checkpoint-and-recovery) for incomplete inspection limits.
+
+## Checkpoint and recovery
+
+```text
+npm run checkpoint:save -- --root <project> --session <id> --data <metadata.json>
+npm run checkpoint:read -- --root <project> --session <id>
+```
+
+Metadata may contain `task`, `taskId`, `authorization`, `nextStep`, `sources` and a bounded
+`continuation` object described in [continuation checkpoint](#continuation-checkpoint).
+Application checkpoint use cases add observed Git HEAD, working-tree status, bounded
+working-tree/index fingerprints and a timestamp through platform ports. They do not guess
+task completion, capture prompts/transcripts or turn saved authorization into new authority. Recovery compares
+saved state with the current tree and flags changes; verification evidence must be rechecked
+when its revision no longer matches.
+
+Inspect `changeDetection.complete` before relying on the comparison. `changed: null` means
+unchanged state cannot be established. Inspection limits, read failures, submodules and older
+checkpoints without fingerprints leave coverage incomplete; they do not establish freshness.
+
+Automatic snapshots default to enabled in trusted installations; set `checkpoint.enabled`
+to false to disable them. They run at supported turn-completion and context-transition
+boundaries, rather than after every tool call. Unchanged complete snapshots are deduplicated.
+Writes are atomic and reject symlinked state paths; concurrent writers are reported as busy.
+See [state storage](#state-storage) for the layout.
+Because some hosts expose asynchronous/observational compaction hooks, persist semantic
+metadata at milestones rather than relying on a final callback. Read recovery state explicitly
+on hosts with no after-compaction injection. This preserves continuity; it does not replace
+the host’s summarization algorithm or promise lossless context compression.
+
+## State storage
+
+The platform resolver hashes the canonical selected root into a 24-character worktree ID
+and an explicit session identity into a 24-character session ID. IDs, rather than Git
+metadata location, isolate roots and sessions. Callers resolve invocation subdirectories
+through the normal project-root resolver before accessing state; explicitly selected nested
+or coordination roots keep their own identities. Linked worktrees have distinct root IDs.
+Project-wide records use the reserved `shared` scope; scratch/evidence beneath it retain
+explicit hashed session/task/operation ownership and their existing cleanup policies.
+`settings` shows this shared directory and layout version. Raw session names never become
+path components. File schemas and retention limits remain unchanged. Directories/files use
+0700/0600 where supported; symlinks, unsafe paths and bounded-file violations are refused.
+
+Add `.craft/state/` to the consumer's `.gitignore` before use (this repository already
+ignores it at every depth). Craft does not edit consumer ignores or Git metadata. Source
+lookup, snapshots, review and package export exclude state independently of Git ignores;
+consumer-authored configuration remains visible. Runtime cleanup owns only its existing
+bounded scratch, evidence and telemetry lifecycles, never project/telemetry configuration.
+
+### Earlier storage layouts
+
+On access, the resolver copies matching legacy records from `.git/craft-state/<root-id>/`
+(or a linked worktree's Git directory), flat `.craft/state/`, and `.capabilities/state/`.
+Session records go to the explicit session scope; project-wide records go to `shared`.
+Workspace scratch/evidence ownership trees, telemetry backups and hint generations are
+preserved. Sources are never deleted or written, and configuration is never migrated.
+Copies are bounded (4 MiB/file, 16 MiB and 4096 entries per record tree, depth 16), reject
+symlinks (and, on POSIX, hard-linked files) and retain existing record validators. A source fingerprint
+receipt is published after copying; identical interrupted copies can be retried, differing
+destination files are refused. Unused legacy records remain available for later access.
+
+Stop older installed plugins before upgrading. Legacy locks block migration; source
+fingerprints are checked again on access and changed sources cause an explicit reconciliation
+error. Old plugins cannot honor new locks, so simultaneous old/new writers are unsupported.
+Do not clear a lock or conflict without verifying the old writer has stopped and reconciling
+records. Retained legacy sources may be removed only through separately authorized cleanup.
 
 ## Reuse before bounded discovery
 

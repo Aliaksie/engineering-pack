@@ -1,6 +1,6 @@
 # First-use setup and session visibility
 
-On first use of Engineering Pack in a conversation, give one brief setup notice
+On first use of Craft Capabilities in a conversation, give one brief setup notice
 alongside the requested work. Reuse it across pack packages; repeat only when setup
 changes or the user asks. This guidance works when a skill loads the package
 instructions; installation alone cannot guarantee a welcome message. Never rely
@@ -20,7 +20,7 @@ retry unsupported commands. Guidance-only exports must say that automatic hooks
 are not registered. Package installation, project trust, hook registration and
 hook trust are separate facts. Never enable or trust hooks on the user's behalf.
 
-Users can ask: **"Check Engineering Pack setup, hook activity and session usage."**
+Users can ask: **"Check Craft Capabilities setup, hook activity and session usage."**
 When asked, resolve the actual installed package root from the loaded skill's
 resource links and, where shell execution is available, run `sessionAdvice.entry` with its
 `args` from the export facts and the target project:

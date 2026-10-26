@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Native runtime (published to `distribution-next`):
+
+- One bundled `craft` executable per supported platform (macOS Apple Silicon, Linux x86-64,
+  Windows x86-64) runs every hook, command and the status line. Installed packages no longer
+  need Node; generated `bin/craft` and `bin\craft.cmd` launchers select the executable.
+- Skills and documentation invoke `<package-root>/bin/craft <command>`.
+- New commands: `acceptance-view` (QA, product and architecture views of a contract and its
+  evidence), `review-followup` (next status of a reviewed GitHub pull request),
+  `statusline <host>`, and `project-evidence` as a subcommand.
+- Remote OTLP export is posted natively over HTTPS, with certificates verified by the
+  operating system.
+- Removed: the JavaScript host-control transports (worker, review and compaction phases
+  remain as native JSON requests) and the optional personal review inbox.
+- Documentation consolidated: installation, a command reference and one evaluation guide.
+
 ## 0.0.2
 
 First public release, combining the initial 0.0.1 capability set with the release and

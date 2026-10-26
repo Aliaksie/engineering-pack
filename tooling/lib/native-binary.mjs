@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
-// Migrated commands and hooks run in the native runtime. Without an explicit
+// Commands and hooks run in the native runtime. Without an explicit
 // CRAFT_NATIVE_BINARY, build the development executable once and return its path.
 export function nativeBinary(env = process.env) {
   if (env.CRAFT_NATIVE_BINARY) return env.CRAFT_NATIVE_BINARY;
