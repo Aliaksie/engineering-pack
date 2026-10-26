@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      baseline:
+        description: Distribution ref whose installed Claude export is the comparison baseline
+        default: distribution
 
 permissions:
   contents: read
@@ -47,13 +51,31 @@ jobs:
         run: |
           rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
           cargo build --release --locked -p craft-application --bin craft
-          suffix=''
-          if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe'; fi
-          echo "CRAFT_NATIVE_BINARY=$PWD/target/release/craft$suffix" >> "$GITHUB_ENV"
+          suffix='' directory=$PWD
+          # Node spawns this path; on Windows bash's $PWD is an MSYS path Node cannot resolve.
+          if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe' directory=$(cygpath -m "$PWD"); fi
+          echo "CRAFT_NATIVE_BINARY=$directory/target/release/craft$suffix" >> "$GITHUB_ENV"
       - name: Measure
         env:
           PERFORMANCE_REVISION: ${{ github.sha }}
         run: node benchmark/.github/benchmarks/run.mjs measured-source benchmark-results
+      - name: Checkout installed baseline
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.baseline || 'distribution' }}
+          path: baseline
+      - name: Compare installed hooks and CLI with the baseline
+        if: ${{ !cancelled() }}
+        shell: bash
+        working-directory: measured-source
+        run: |
+          cargo fetch --locked
+          npm run build:claude
+          npm run build:native
+          node tooling/native-install.mjs dist/project-evidence dist/claude --current-target
+          node ../benchmark/.github/benchmarks/compare.mjs ../baseline/claude dist/claude ../benchmark-results/compare.json 20
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
