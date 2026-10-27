@@ -652,11 +652,16 @@ fn migrate_legacy(
                 present.push(pair.clone());
             }
         }
-        if present.is_empty() {
-            continue;
-        }
         let old = source.join(&old_name);
         let receipt = receipts.join(format!("migration-{}.json", short(text(&old)?.as_bytes())));
+        if present.is_empty() {
+            // Cleanup removes the previous layout's copied sources; older stores they were
+            // copied from must not become the record's source again.
+            if scoped && exists(&receipt)? {
+                return Ok(());
+            }
+            continue;
+        }
         let stamp = stamp(&source, &present)?;
         let previous = read(&receipt, RECEIPT_BYTES)?;
         // Logs and caches are replaceable: once copied, the copy is authoritative and an
@@ -765,6 +770,49 @@ fn migrate_legacy(
         return write(&receipt, &published, RECEIPT_BYTES, false);
     }
     Ok(())
+}
+
+/// Shared records an earlier layout kept as files directly in `shared/`.
+const SHARED_RECORDS: &[&str] = &[
+    "telemetry/events.jsonl",
+    "telemetry/key.json",
+    "telemetry/captures.json",
+];
+
+/// Names of the previous layout's `shared/` files holding the same record as `old`, once
+/// the record was copied, the source is unchanged since (a log may have grown) and no
+/// writer holds it: their removal loses nothing. Nothing is copied or written here.
+/// `None` when `old` held no shared record.
+pub fn retirable(root: &Path, old: &str) -> Result<Option<Vec<String>>, Error> {
+    let Some((name, old_name, pairs)) = SHARED_RECORDS.iter().find_map(|name| {
+        previous(name, None)
+            .filter(|(_, pairs)| pairs.iter().any(|(previous, _)| previous == old))
+            .map(|(old_name, pairs)| (*name, old_name, pairs))
+    }) else {
+        return Ok(None);
+    };
+    let source = location(root, None)?.directory;
+    let mut present = Vec::new();
+    for pair in pairs {
+        if exists(&source.join(&pair.0))? {
+            if exists(&source.join(format!("{}.lock", pair.0)))? {
+                return Err(busy_legacy());
+            }
+            present.push(pair);
+        }
+    }
+    let receipt = source.join("migrations").join(format!(
+        "migration-{}.json",
+        short(text(&source.join(&old_name))?.as_bytes())
+    ));
+    let receipt =
+        read(&receipt, RECEIPT_BYTES)?.ok_or("not copied yet; it is copied when first used")?;
+    let replaceable = name.starts_with("telemetry/events");
+    if !present.is_empty() && !replaceable && receipt["stamp"] != stamp(&source, &present)?.as_str()
+    {
+        return Err("legacy state changed after migration".into());
+    }
+    Ok(Some(present.into_iter().map(|(old, _)| old).collect()))
 }
 
 pub mod sweep;

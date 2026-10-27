@@ -163,7 +163,7 @@ and exports exclude state regardless of ignores. `craft settings` shows the dire
 
 State from earlier layouts (`.craft/state/<worktree-id>/<session-id>/` and
 `shared/` files, `.git/craft-state/`, flat `.craft/state/`, `.capabilities/state/`) is copied
-on first access under its current name, and the sources are left untouched. The newest
+on first access under its current name; only `state-clean` removes sources it copied. The newest
 layout holding a record is its only source. Workspaces and the evidence database start
 fresh. Stop older installed plugins before upgrading: they do not honor the current locks,
 and a checkpoint, binding or activity record they change after the copy is refused until
@@ -179,8 +179,16 @@ layout with its size and idle days, and removes it with `--apply` only when no r
 changed for 14 days, it holds only records Craft writes, no lock or lease is held and no open
 workspace may belong to it; its checkpoint goes with it. Anything else is kept with a reason.
 A directory is set aside, listed again and removed only if unchanged; an interrupted cleanup
-finishes on the next run. Shared records, including those the previous layout left in
-`shared/`, are only reported.
+finishes on the next run.
+
+Files the previous layout left directly in `shared/` are removed with `--apply` once nothing
+depends on them: a telemetry log once copied, the telemetry key and captures once copied and
+unchanged since, that layout's copy receipts, its evidence database while no process holds
+it (`refresh` rebuilds the current one), and its workspaces when inactive and past evidence
+retention, then their guard. A record never copied, a locked one or an unrecognized file is
+kept with a reason. Removing a copied source never lets an older store become the record's
+source again. Current shared records are not removed here: telemetry rotates, captures and
+workspaces follow their own retention, and the evidence database is rebuilt on request.
 
 ## Lookup reuse
 

@@ -4,9 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { saveCheckpoint } from './checkpoint-cli.mjs';
 import { run } from './craft.mjs';
-import { stateLocation } from './state.mjs';
+import { digest, readTelemetry, stateLocation } from './state.mjs';
 
 const DAY = 86_400_000;
 
@@ -43,7 +44,7 @@ test('state-clean previews, then removes only idle unheld session directories', 
   fs.writeFileSync(path.join(previous, '0123456789abcdef01234567.json'), '{}\n');
   age(previous, 30);
   fs.mkdirSync(path.join(worktree, 'shared'), { recursive: true });
-  fs.writeFileSync(path.join(worktree, 'shared', 'telemetry.jsonl'), '{}\n');
+  fs.writeFileSync(path.join(worktree, 'shared', 'notes.txt'), '{}\n');
 
   const preview = run(['state-clean', '--root', root]);
   assert.equal(preview.status, 'preview');
@@ -57,7 +58,7 @@ test('state-clean previews, then removes only idle unheld session directories', 
   assert.equal(planned['0123456789abcdef01234567'].action, 'remove');
   assert.deepEqual([planned[recent.sessionId].action, planned[recent.sessionId].reason], ['keep', 'written within the retention period']);
   assert.deepEqual([planned[held.sessionId].action, planned[held.sessionId].reason], ['keep', 'held by a writer']);
-  assert.deepEqual(preview.previousShared, [{ name: 'telemetry.jsonl', directory: false, bytes: 3 }]);
+  assert.deepEqual(preview.previousShared, [{ name: 'notes.txt', directory: false, bytes: 3, action: 'keep', reason: 'unrecognized' }]);
   assert.ok(fs.existsSync(idle.directory) && fs.existsSync(previous), 'a preview removes nothing');
 
   const applied = run(['state-clean', '--root', root, '--apply']);
@@ -66,7 +67,7 @@ test('state-clean previews, then removes only idle unheld session directories', 
   assert.equal(bySession(applied)[idle.sessionId].action, 'removed');
   assert.ok(!fs.existsSync(idle.directory) && !fs.existsSync(previous));
   assert.ok(fs.existsSync(recent.directory) && fs.existsSync(held.directory));
-  assert.ok(fs.existsSync(path.join(worktree, 'shared', 'telemetry.jsonl')), 'shared records are only reported');
+  assert.ok(fs.existsSync(path.join(worktree, 'shared', 'notes.txt')), 'an unrecognized shared file is kept');
   assert.deepEqual(fs.readdirSync(path.dirname(idle.directory)).filter(name => name.startsWith('.sweep-')), []);
   assert.equal(run(['state-clean', '--root', root, '--apply']).summary.removed, 0);
 });
@@ -94,4 +95,62 @@ test('an open workspace keeps its idle session, and an interrupted cleanup is fi
   assert.deepEqual([resumed.action, resumed.staged], ['removed', true]);
   assert.ok(!fs.existsSync(staged) && !fs.existsSync(done.directory));
   assert.ok(fs.existsSync(open.directory));
+});
+
+test('state-clean removes what the previous layout left in shared/ once nothing depends on it', t => {
+  const root = fixture(t);
+  const shared = stateLocation(root).directory;
+  const sessions = path.join(shared, 'sessions');
+  const write = (name, text) => {
+    fs.mkdirSync(path.dirname(path.join(shared, name)), { recursive: true });
+    fs.writeFileSync(path.join(shared, name), text);
+  };
+  write('telemetry.jsonl', '{"schemaVersion":1,"previous":true}\n');
+  write('telemetry.jsonl.1', '{"schemaVersion":1,"rotated":true}\n');
+  write('telemetry-captures.json', '{"captures":[]}\n');
+  write('migration-0123456789abcdef01234567.json', '{}\n');
+  write('project-evidence.sqlite', 'not rebuilt\n');
+  write('project-evidence.sqlite.lock', '');
+  write('workspace-guard.json', '{}\n');
+  // A closed workspace whose evidence retention expired long ago, and one nobody can verify.
+  const sha256 = text => createHash('sha256').update(text).digest('hex');
+  const session = digest('w'), task = digest('t'), entry = sha256(`${session}:${task}`);
+  write(path.join('sessions', entry, 'owner.json'), JSON.stringify({ owner: 'craft', formatVersion: 1,
+    project: sha256(fs.realpathSync.native(root)), session, task, updated: 0, closed: true, operations: {}, evidence: [] }));
+  write(path.join('sessions', entry, 'evidence', 'result.txt'), 'old evidence');
+  write(path.join('sessions', 'f'.repeat(64), 'owner.json'), '{"owner":"someone-else"}');
+  // Any command copies the telemetry log into the current layout.
+  saveCheckpoint(root, 'current', {});
+
+  const actions = result => Object.fromEntries(result.previousShared.map(item => [item.name, [item.action, item.reason]]));
+  const preview = actions(run(['state-clean', '--root', root]));
+  assert.deepEqual(preview, {
+    'migration-0123456789abcdef01234567.json': ['remove', undefined],
+    'project-evidence.sqlite': ['remove', undefined],
+    'project-evidence.sqlite.lock': ['remove', undefined],
+    sessions: ['keep', '1 workspace(s) open, unverified or within evidence retention'],
+    'telemetry-captures.json': ['keep', 'not copied yet; it is copied when first used'],
+    'telemetry.jsonl': ['remove', undefined],
+    'telemetry.jsonl.1': ['remove', undefined],
+    'workspace-guard.json': ['keep', 'a workspace of the previous layout remains'],
+  });
+  assert.ok(fs.existsSync(path.join(shared, 'telemetry.jsonl')), 'a preview removes nothing');
+
+  const applied = actions(run(['state-clean', '--root', root, '--apply']));
+  assert.deepEqual(applied['telemetry.jsonl'], ['removed', undefined]);
+  assert.deepEqual(applied['project-evidence.sqlite'], ['removed', undefined]);
+  assert.deepEqual(applied['workspace-guard.json'][0], 'keep');
+  assert.deepEqual(fs.readdirSync(shared).sort(), ['migrations', 'sessions', 'telemetry', 'telemetry-captures.json', 'workspace-guard.json']);
+  assert.deepEqual(fs.readdirSync(sessions), ['f'.repeat(64)], 'the unverified workspace is kept');
+
+  // The copied log stays current, and an older store cannot become its source again.
+  const before = readTelemetry(root).length;
+  saveCheckpoint(root, 'current', { nextStep: 'again' });
+  assert.ok(readTelemetry(root).length > before);
+  assert.ok(readTelemetry(root).some(event => event.previous), 'copied events are kept');
+
+  fs.rmSync(path.join(sessions, 'f'.repeat(64)), { recursive: true });
+  const last = actions(run(['state-clean', '--root', root, '--apply']));
+  assert.deepEqual([last.sessions, last['workspace-guard.json']], [['removed', undefined], ['removed', undefined]]);
+  assert.deepEqual(fs.readdirSync(shared).sort(), ['migrations', 'telemetry', 'telemetry-captures.json']);
 });

@@ -762,3 +762,74 @@ fn an_unchanged_source_is_recognized_by_its_stamp_and_a_changed_one_is_refused()
             .contains("changed after migration")
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_removed_previous_source_does_not_hand_the_record_back_to_an_older_store() {
+    let fixture = Fixture::new();
+    let root = &fixture.0;
+    let worktree = &hash(root.to_str().unwrap().as_bytes())[..24];
+    let older = git_metadata(root).join("craft-state").join(worktree);
+    fs::create_dir_all(&older).unwrap();
+    let checkpoint = format!("{}.json", &hash(b"s")[..24]);
+    for folder in [&older, &previous_session(root, "s")] {
+        fs::write(folder.join(&checkpoint), "{\"n\":1}\n").unwrap();
+    }
+    fs::write(older.join("telemetry-key.json"), "{\"key\":\"older\"}\n").unwrap();
+    let shared = previous_session(root, "s").with_file_name("shared");
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(
+        shared.join("telemetry-key.json"),
+        "{\"key\":\"previous\"}\n",
+    )
+    .unwrap();
+    let record = file(root, "checkpoint.json", false, Some("s")).unwrap();
+    write(&record, &json!({"n": 2}), 64, false).unwrap();
+    let key = file(root, "telemetry/key.json", false, None).unwrap();
+    // Cleanup removes the copied previous sources; the older store still holds both.
+    fs::remove_dir_all(previous_session(root, "s")).unwrap();
+    fs::remove_file(shared.join("telemetry-key.json")).unwrap();
+    assert_eq!(
+        file(root, "checkpoint.json", false, Some("s")).unwrap(),
+        record
+    );
+    assert_eq!(read(&record, 64).unwrap(), Some(json!({"n": 2})));
+    assert_eq!(file(root, "telemetry/key.json", false, None).unwrap(), key);
+    assert_eq!(read(&key, 256).unwrap(), Some(json!({"key": "previous"})));
+}
+
+#[test]
+fn previous_shared_records_are_retirable_only_once_copied_unchanged_and_unheld() {
+    let fixture = Fixture::new();
+    let root = &fixture.0;
+    let shared = previous_session(root, "unused").with_file_name("shared");
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(shared.join("telemetry-key.json"), "{\"key\":\"k\"}\n").unwrap();
+    fs::write(shared.join("telemetry.jsonl.1"), "{\"rotated\":1}\n").unwrap();
+    let pending = |old: &str| retirable(root, old).unwrap_err().to_string();
+    assert!(pending("telemetry-key.json").contains("not copied yet"));
+    assert_eq!(retirable(root, "other.json").unwrap(), None);
+    file(root, "telemetry/key.json", false, None).unwrap();
+    file(root, "telemetry/events.jsonl", false, None).unwrap();
+    assert_eq!(
+        retirable(root, "telemetry-key.json").unwrap(),
+        Some(vec!["telemetry-key.json".to_string()])
+    );
+    // A log an older writer kept appending to is still replaceable.
+    fs::write(shared.join("telemetry.jsonl"), "{\"old\":1}\n").unwrap();
+    assert_eq!(
+        retirable(root, "telemetry.jsonl.1").unwrap(),
+        Some(vec![
+            "telemetry.jsonl".to_string(),
+            "telemetry.jsonl.1".to_string()
+        ])
+    );
+    fs::write(shared.join("telemetry-key.json.lock"), "").unwrap();
+    assert_eq!(
+        retirable(root, "telemetry-key.json").unwrap_err().kind(),
+        Some(ErrorKind::ResourceBusy)
+    );
+    fs::remove_file(shared.join("telemetry-key.json.lock")).unwrap();
+    fs::write(shared.join("telemetry-key.json"), "{\"key\":\"other\"}\n").unwrap();
+    assert!(pending("telemetry-key.json").contains("changed after migration"));
+}

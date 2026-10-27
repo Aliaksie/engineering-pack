@@ -173,3 +173,27 @@ fn manifest_description_requires_its_format() {
         assert_eq!(described(Some(&invalid)), Described::Invalid);
     }
 }
+
+#[test]
+fn previous_shared_entries_are_classified_by_name() {
+    for (name, expected) in [
+        ("telemetry.jsonl", Leftover::Record),
+        ("telemetry.jsonl.1", Leftover::Record),
+        ("telemetry-key.json", Leftover::Record),
+        ("telemetry-captures.json", Leftover::Record),
+        ("migration-0123456789abcdef01234567.json", Leftover::Receipt),
+        ("migration-short.json", Leftover::Unknown),
+        ("project-evidence.sqlite", Leftover::Database),
+        ("project-evidence.sqlite-wal", Leftover::Database),
+        ("project-evidence.sqlite.backup", Leftover::Database),
+        // The database lock is an OS lock whose file outlives its holder.
+        ("project-evidence.sqlite.lock", Leftover::Database),
+        ("telemetry-key.json.lock", Leftover::Lock),
+        ("workspace-guard.json.lock", Leftover::Lock),
+        ("sessions", Leftover::Workspaces),
+        ("workspace-guard.json", Leftover::Guard),
+        ("notes.txt", Leftover::Unknown),
+    ] {
+        assert_eq!(leftover(name), expected, "{name}");
+    }
+}

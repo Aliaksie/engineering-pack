@@ -2,7 +2,7 @@
 //! renamed aside, listed again and removed only when nothing in it changed since inventory.
 use super::{MANIFEST, MANIFEST_BYTES, directory, location, read};
 use crate::Error;
-use craft_engine::retention::{Described, Entry, Layout, SESSION_ENTRIES, described};
+use craft_engine::retention::{DATABASE, Described, Entry, Layout, SESSION_ENTRIES, described};
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -196,6 +196,42 @@ pub fn inventory(root: &Path) -> Result<Inventory, Error> {
         });
     }
     Ok(inventory)
+}
+
+fn remove_file(path: &Path) -> Result<(), Error> {
+    match fs::remove_file(path) {
+        Err(error) if error.kind() != ErrorKind::NotFound => Err(error.into()),
+        _ => Ok(()),
+    }
+}
+
+/// Remove files the previous layout left directly in `shared/`, by name.
+pub fn discard(root: &Path, names: &[String]) -> Result<(), Error> {
+    let shared = location(root, None)?.directory;
+    for name in names {
+        let path = shared.join(name);
+        if fs::symlink_metadata(&path).is_ok_and(|meta| !meta.is_file()) {
+            return Err("previous shared entry is not a regular file".into());
+        }
+        remove_file(&path)?;
+    }
+    Ok(())
+}
+
+/// Remove the previous layout's evidence database and its companions under its lock, so
+/// no writer still has it open.
+pub fn discard_database(root: &Path) -> Result<(), Error> {
+    let shared = location(root, None)?.directory;
+    let database = shared.join(DATABASE[0]);
+    let guard = crate::repository::database_guard(&database)?;
+    let lock = format!("{}.lock", DATABASE[0]);
+    // Companions first: a database left without them is still a valid one.
+    for name in DATABASE.iter().rev().filter(|name| **name != lock) {
+        remove_file(&shared.join(name))?;
+    }
+    // Windows cannot remove a file still open; the lock goes last, once released.
+    drop(guard);
+    remove_file(&shared.join(lock))
 }
 
 /// Set a directory aside under its staged name; a staged directory stays where it is.

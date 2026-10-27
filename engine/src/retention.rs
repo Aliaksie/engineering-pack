@@ -154,6 +154,50 @@ pub fn keep(session: &Session, now: i64, workspaces: &Workspaces) -> Option<&'st
     None
 }
 
+/// What an entry the previous layout left directly in `shared/` holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Leftover {
+    /// A copied record or one of its companions; the platform verifies the copy.
+    Record,
+    /// A copy receipt of that layout; the current layout keeps its own.
+    Receipt,
+    /// The evidence database or a companion; never copied, rebuilt on refresh.
+    Database,
+    /// Workspace directories, removed under workspace retention.
+    Workspaces,
+    /// The workspace guard, needed only while a workspace of that layout remains.
+    Guard,
+    /// A writer's lock on one of these records.
+    Lock,
+    Unknown,
+}
+
+pub fn leftover(name: &str) -> Leftover {
+    match name {
+        "telemetry.jsonl"
+        | "telemetry.jsonl.1"
+        | "telemetry-key.json"
+        | "telemetry-captures.json" => Leftover::Record,
+        "sessions" => Leftover::Workspaces,
+        "workspace-guard.json" => Leftover::Guard,
+        _ if DATABASE.contains(&name) => Leftover::Database,
+        _ if name.ends_with(".lock") => Leftover::Lock,
+        _ if hex_record(name, "migration-", ".json") => Leftover::Receipt,
+        _ => Leftover::Unknown,
+    }
+}
+
+/// The previous evidence database and its companions; its `.lock` is an OS lock whose
+/// file stays behind, not a sign of a writer.
+pub const DATABASE: &[&str] = &[
+    "project-evidence.sqlite",
+    "project-evidence.sqlite-journal",
+    "project-evidence.sqlite-wal",
+    "project-evidence.sqlite-shm",
+    "project-evidence.sqlite.backup",
+    "project-evidence.sqlite.lock",
+];
+
 /// Whole days since the last write, for reports.
 pub fn idle_days(session: &Session, now: i64) -> i64 {
     ((now - session.newest()) / DAY_MS).max(0)
