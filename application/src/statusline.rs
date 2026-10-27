@@ -276,7 +276,6 @@ fn status(
 /// One status read under `host.session`. `interactive` says stdin is a terminal.
 pub fn run(args: &[String], stdin: &mut dyn Read, interactive: bool) -> Outcome {
     let outcome = |exit_code, stdout: String, stderr: String, export| Outcome {
-        error_code: None,
         exit_code,
         stdout,
         stderr,

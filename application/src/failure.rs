@@ -28,18 +28,6 @@ impl Failure {
             io,
         }
     }
-    /// The Node-style code of an I/O failure, for a caller-owned telemetry envelope.
-    pub(crate) fn node_code(&self) -> Option<&'static str> {
-        match self.io {
-            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
-            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
-            Some(ErrorKind::NotFound) => Some("ENOENT"),
-            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
-            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
-            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
-            _ => None,
-        }
-    }
     /// The stable reason code `observe` records for this failure.
     pub fn code(&self, fallback: &'static str) -> &'static str {
         match self.io {
@@ -70,5 +58,28 @@ impl From<DocumentError> for Failure {
             io: error.io_kind(),
             message: error.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn io_failures_record_stable_reason_codes() {
+        let code = |kind| Failure::from_io(std::io::Error::from(kind)).code("FALLBACK");
+        assert_eq!(code(ErrorKind::NotFound), "NOT_FOUND");
+        assert_eq!(code(ErrorKind::PermissionDenied), "ACCESS_DENIED");
+        assert_eq!(code(ErrorKind::AlreadyExists), "STATE_BUSY");
+        assert_eq!(code(ErrorKind::InvalidData), "FALLBACK");
+        assert_eq!(
+            Failure::from_error_code("ENOTDIR").code("FALLBACK"),
+            "FALLBACK"
+        );
+        assert_eq!(
+            Failure::from_error_code("EACCES").code("FALLBACK"),
+            "ACCESS_DENIED"
+        );
+        assert_eq!(Failure::from("message").code("FALLBACK"), "FALLBACK");
     }
 }

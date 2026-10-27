@@ -35,11 +35,7 @@ fn facts(root: &Path, handler: &str, extra: Value) -> Value {
 }
 
 fn hook(input: Value) -> Value {
-    let response = craft_application::evaluate(
-        json!({"formatVersion": 1, "operation": "host", "input": input}),
-    );
-    assert_eq!(response["ok"], true, "{response}");
-    response["result"].clone()
+    craft_application::host::run(&input).unwrap()
 }
 
 fn events(root: &Path) -> Vec<Value> {
@@ -290,11 +286,8 @@ fn malformed_facts_are_rejected() {
         json!({"session": 7}),
         json!({"package": false}),
     ] {
-        let response = craft_application::evaluate(
-            json!({"formatVersion": 1, "operation": "host", "input": facts(&fixture.0, "observe", extra.clone())}),
-        );
-        assert_eq!(response["ok"], false, "{extra}");
-        assert_eq!(response["error"]["code"], "INVALID_INPUT");
+        let decision = craft_application::host::run(&facts(&fixture.0, "observe", extra.clone()));
+        assert!(decision.is_err(), "{extra}");
     }
     assert!(
         !fixture.0.join(".craft").exists(),

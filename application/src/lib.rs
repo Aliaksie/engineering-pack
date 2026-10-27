@@ -11,7 +11,7 @@ mod evidence;
 mod failure;
 mod grounding;
 pub mod hook;
-mod host;
+pub mod host;
 mod project;
 mod review;
 mod scratch;
@@ -48,22 +48,6 @@ pub fn evaluate(request: Value) -> Value {
                 evidence::run(operation, &request["input"])
             }
         }
-        // One migrated CLI invocation; the JS forwarder writes the streams and posts `export`.
-        Some("cli") => match request["input"]["argv"].as_array().and_then(|argv| {
-            argv.iter()
-                .map(|a| a.as_str().map(str::to_string))
-                .collect::<Option<Vec<_>>>()
-        }) {
-            Some(argv) => {
-                let outcome = cli::run_in_context(&argv, &request["input"]);
-                Ok(
-                    json!({"exitCode":outcome.exit_code,"stdout":outcome.stdout,"stderr":outcome.stderr,"export":outcome.export,"errorCode":outcome.error_code}),
-                )
-            }
-            None => Err("cli requires an argv string array".into()),
-        },
-        // One host hook event; the adapter serializes the decision and posts `export`.
-        Some("host") => host::run(&request["input"]),
         Some("workers") => workers::run(&request["input"]),
         Some("actions") => actions::execute(&request["input"]),
         Some("control") => control::run(&request["input"]),

@@ -106,7 +106,8 @@ test('file-scoped lookup reuses evidence and invalidates on file and ancestor ma
       prime();
     }
     fs.unlinkSync(path.join(root, file));
-    assert.throws(() => discover(root, request, scope), { code: 'ENOENT' }, 'a deleted scope must not return cached evidence');
+    // A not-found I/O failure: error 2 (ENOENT, ERROR_FILE_NOT_FOUND) or 3 (ERROR_PATH_NOT_FOUND).
+    assert.throws(() => discover(root, request, scope), /\(os error [23]\)$/, 'a deleted scope must not return cached evidence');
   }
 });
 

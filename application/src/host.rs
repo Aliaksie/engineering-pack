@@ -1,6 +1,6 @@
-//! Host lifecycle hooks: one native invocation per hook event. Host adapters send
-//! host-neutral facts and serialize the decision for their wire format; observation
-//! hooks never supply a permission decision or context.
+//! Host lifecycle hooks: the decision for one hook event over host-neutral facts. `craft
+//! hook` derives the facts from the host payload and serializes the decision for its wire
+//! format; observation hooks never supply a permission decision or context.
 use crate::failure::Failure;
 use crate::project::absolute;
 use crate::telemetry::Recorder;

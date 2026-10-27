@@ -345,11 +345,10 @@ fn evaluate(
 }
 
 /// One review command under a top-level `review.command` operation.
-pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
+pub fn run(command: Command, args: &[String]) -> Outcome {
     if args.iter().any(|arg| arg == "--help") {
         let help = json!({ "usage": command.usage() });
         return Outcome {
-            error_code: None,
             exit_code: 0,
             stdout: format!(
                 "{}\n",
@@ -366,7 +365,6 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
         .filter(|value| !value.starts_with("--"))
         .map_or(".", String::as_str);
     let mut recorder = Recorder::open(&absolute(root), None, None);
-    recorder.package(context["package"].as_str());
     let operation = recorder.start("review.command", None);
     let result = parse(command, args)
         .and_then(|options| evaluate(command, &options, &mut recorder, &operation));
@@ -378,17 +376,11 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
         Err(failure) => (Map::new(), Some(failure.code("REVIEW_INVALID"))),
     };
     recorder.complete(operation, attributes, failure);
-    let (exit_code, stdout, stderr, error_code) = match result {
-        Ok((text, exit_code)) => (exit_code, text, String::new(), None),
-        Err(failure) => (
-            2,
-            String::new(),
-            format!("{}\n", failure.message),
-            failure.node_code(),
-        ),
+    let (exit_code, stdout, stderr) = match result {
+        Ok((text, exit_code)) => (exit_code, text, String::new()),
+        Err(failure) => (2, String::new(), format!("{}\n", failure.message)),
     };
     Outcome {
-        error_code,
         exit_code,
         stdout,
         stderr,

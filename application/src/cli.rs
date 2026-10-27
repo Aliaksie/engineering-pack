@@ -173,8 +173,6 @@ const REPEATED: &[&str] = &[
 ];
 
 pub struct Outcome {
-    /// A portable Node-style I/O code for a caller-owned command telemetry envelope.
-    pub error_code: Option<&'static str>,
     pub exit_code: i32,
     pub stdout: String,
     pub stderr: String,
@@ -267,13 +265,11 @@ fn grounded_context(
     options: &Options,
     recorder: &mut Recorder,
     parent: &Operation,
-    forwarded: Option<&Value>,
 ) -> Result<Value, Failure> {
-    let data = match (forwarded, options.get("data")) {
-        (Some(data), _) => data.clone(),
-        (None, Some(file)) => read_input(recorder, parent, file)?,
-        _ => return Err("grounded-context requires --data input.json".into()),
+    let Some(file) = options.get("data") else {
+        return Err("grounded-context requires --data input.json".into());
     };
+    let data = read_input(recorder, parent, file)?;
     crate::grounding::run(
         &root(options),
         &data,
@@ -1074,20 +1070,9 @@ fn session_status(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    session_status_input(options, recorder, parent, None)
-}
-
-fn session_status_input(
-    options: &Options,
-    recorder: &mut Recorder,
-    parent: &Operation,
-    forwarded: Option<&Value>,
-) -> Result<Value, Failure> {
-    let data = match (forwarded, options.get("data")) {
-        (Some(_), Some(_)) => return Err("choose forwarded session input or --data".into()),
-        (Some(data), None) => data.clone(),
-        (None, Some(file)) => read_input(recorder, parent, file)?,
-        (None, None) => json!({}),
+    let data = match options.get("data") {
+        Some(file) => read_input(recorder, parent, file)?,
+        None => json!({}),
     };
     if !data.is_object() {
         return Err("session input must be a JSON object".into());
@@ -1759,7 +1744,12 @@ fn receipt(saved: &Value) -> String {
 
 /// Run one migrated command. `argv` excludes the executable name.
 pub fn run(argv: &[String]) -> Outcome {
-    run_in_context(argv, &Value::Null)
+    execute(argv, false)
+}
+
+/// `run` with every command's JSON result in place of its compact receipt.
+pub fn run_structured(argv: &[String]) -> Outcome {
+    execute(argv, true)
 }
 
 /// The `craft <command>` process: write the streams, then post the telemetry export.
@@ -1788,21 +1778,18 @@ pub fn main(argv: &[String]) -> i32 {
     outcome.exit_code
 }
 
-/// A forwarded command can ask for the JSON result instead of a compact receipt
-/// (`context.structured`).
-pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
+fn execute(argv: &[String], structured: bool) -> Outcome {
     let (action, args) = argv
         .split_first()
         .map_or(("", &[][..]), |(action, args)| (action.as_str(), args));
     if let Some(command) = crate::review::Command::from_name(action) {
-        return crate::review::run(command, args, context);
+        return crate::review::run(command, args);
     }
     let known = COMMANDS.contains(&action);
     let asks = args.iter().any(|arg| arg == "--help");
     if asks || matches!(action, "help" | "--help") {
         let topic = if known { action } else { "" };
         return Outcome {
-            error_code: None,
             exit_code: 0,
             stdout: render(&help(topic)),
             stderr: String::new(),
@@ -1820,12 +1807,10 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         hint("--session"),
         hint("--host"),
     );
-    recorder.package(context["package"].as_str());
     let operation = recorder.start("cli.command", None);
     if !known {
         recorder.complete(operation, Map::new(), Some("INVALID_INPUT"));
         return Outcome {
-            error_code: None,
             exit_code: 2,
             stdout: String::new(),
             stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
@@ -1833,9 +1818,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         };
     }
     let command = match action {
-        "grounded-context" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| grounded_context(o, r, p, None)
-        }
+        "grounded-context" => grounded_context,
         "operation" => plan_operation,
         "prepare-services" => prepare_services,
         "model-advice" => model_advice,
@@ -1875,12 +1858,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         if let Some(action) = crate::scratch::Action::from_command(action) {
             return workspace(action, &options, &mut recorder, &operation);
         }
-        if action == "grounded-context" && context.get("data").is_some() {
-            return grounded_context(&options, &mut recorder, &operation, context.get("data"));
-        }
-        if matches!(action, "session" | "session-advice") && context.get("data").is_some() {
-            return session_status_input(&options, &mut recorder, &operation, context.get("data"));
-        }
         command(&options, &mut recorder, &operation)
     });
     let outcome = match &result {
@@ -1890,8 +1867,8 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 Map::from_iter([("command".to_string(), json!(action))]),
                 None,
             );
-            let compact = context["structured"] != true
-                && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
+            let compact =
+                !structured && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
             let text = match action {
                 "checkpoint-save" if compact => receipt(value),
                 "task-start" if compact => task_receipt(value),
@@ -1922,7 +1899,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         }
     };
     Outcome {
-        error_code: result.err().and_then(|failure| failure.node_code()),
         exit_code: outcome.0,
         stdout: outcome.1,
         stderr: outcome.2,
