@@ -7,22 +7,26 @@ concurrency:
   group: engineering-pack-distribution-next
   cancel-in-progress: false
 jobs:
+  fast:
+    name: Fast gate
+    uses: ./.github/workflows/fast.yml
   native:
     name: Native
+    needs: fast
     uses: ./.github/workflows/native.yml
-  workflows:
-    name: Workflows
-    uses: ./.github/workflows/workflows.yml
   security:
     name: Security
+    needs: fast
     permissions:
       contents: read
       actions: read
       security-events: write
     uses: ./.github/workflows/security.yml
+    with:
+      skip-dependencies: true
   release:
     name: Release
-    needs: [native, workflows, security]
+    needs: [fast, native, security]
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20

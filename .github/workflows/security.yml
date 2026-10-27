@@ -2,6 +2,11 @@ name: Security
 
 on:
   workflow_call:
+    inputs:
+      skip-dependencies:
+        description: Skip dependency checks when the caller already passed the fast gate
+        type: boolean
+        default: false
   workflow_dispatch:
   schedule:
     - cron: '23 7 * * 2'
@@ -15,31 +20,9 @@ concurrency:
 
 jobs:
   dependencies:
-    name: Rust dependencies
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      RUSTUP_TOOLCHAIN: '1.99.1'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install Rust
-        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
-      - name: Install cargo-deny
-        env:
-          CARGO_DENY_VERSION: '0.20.2'
-          CARGO_DENY_SHA256: '9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f'
-        run: |
-          mkdir -p "${RUNNER_TEMP}/cargo-deny"
-          cd "${RUNNER_TEMP}/cargo-deny"
-          curl --fail --silent --show-error --location "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" --output cargo-deny.tar.gz
-          printf '%s  cargo-deny.tar.gz\n' "$CARGO_DENY_SHA256" | sha256sum --check
-          tar -xzf cargo-deny.tar.gz --strip-components=1 "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
-          echo "${RUNNER_TEMP}/cargo-deny" >> "$GITHUB_PATH"
-      - name: Check advisories, licenses and sources
-        run: cargo deny --locked --config .github/deny.toml check
+    name: Dependencies
+    if: ${{ !inputs.skip-dependencies }}
+    uses: ./.github/workflows/dependencies.yml
 
   codeql:
     name: CodeQL (${{ matrix.language }})
