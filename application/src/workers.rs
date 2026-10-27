@@ -272,12 +272,31 @@ fn phase(
                     Ok(())
                 });
             }
-            Ok(
-                json!({"request":request,"executionObserved":workers::execution_known(&request),"modelMatches":request["modelMatches"]}),
-            )
+            let mut recorded = json!({"request":request,"executionObserved":workers::execution_known(&request),"modelMatches":request["modelMatches"]});
+            if let Some(freed) = freed(root, name, &request) {
+                recorded["planTask"] = freed;
+            }
+            Ok(recorded)
         }
         _ => Err("unknown worker phase".into()),
     }
+}
+/// A worker that ended without finishing frees the plan task assigned to it (assignment
+/// scope `plan:<plan>:<task>`): the assigning session takes it back to pending.
+fn freed(root: &Path, session: &str, request: &Value) -> Option<Value> {
+    let status = request["status"].as_str()?;
+    if !["failed", "cancelled", "not-started"].contains(&status) {
+        return None;
+    }
+    let (plan, task) = request["scope"]
+        .as_str()?
+        .strip_prefix("plan:")?
+        .split_once(':')?;
+    let reason = format!("Its worker ended {status}");
+    Some(
+        crate::plan::release(root, plan, task, session, false, Some(&reason))
+            .unwrap_or_else(|failure| json!({"status": "unchanged", "reason": failure.message})),
+    )
 }
 pub fn run(input: &Value) -> Result<Value, Failure> {
     let root = input["root"]

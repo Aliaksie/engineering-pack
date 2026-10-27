@@ -1,7 +1,8 @@
 // The persisted state layout `craft` writes, as a test oracle: never a runtime reader.
-// `<physical root>/.craft/state/<worktree>/{sessions/<session>/<name>|shared/<family>/<name>}`,
-// where each identity is the first 24 hex digits of SHA-256 over the physical root path or the
-// session ID.
+// `<physical root>/.craft/state/{sessions/<session>/<name>|<family>/<name>}`, where a session
+// identity is the first 24 hex digits of SHA-256 over the session ID. `previousDirectory` is
+// where the layout before it kept records: `<state>/<worktree>/` with the same digest of the
+// physical root path.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
@@ -14,10 +15,10 @@ export const digest = value => sha256(JSON.stringify(value) ?? '');
 
 export function stateLocation(root, session) {
   const canonical = fs.realpathSync.native(root);
-  const worktreeId = identity(canonical), sessionId = session === undefined ? 'shared' : identity(session);
-  const scope = session === undefined ? ['shared'] : ['sessions', sessionId];
-  return { directory: path.join(canonical, '.craft', 'state', worktreeId, ...scope), scope: 'workspace-local', formatVersion: 3,
-    worktreeId, sessionId, legacyDirectory: path.join(canonical, '.craft', 'state') };
+  const base = path.join(canonical, '.craft', 'state'), worktreeId = identity(canonical);
+  const sessionId = session === undefined ? 'shared' : identity(session);
+  return { directory: session === undefined ? base : path.join(base, 'sessions', sessionId), scope: 'workspace-local',
+    formatVersion: 4, worktreeId, sessionId, previousDirectory: path.join(base, worktreeId) };
 }
 
 export function stateFile(root, name, create = false, session) {

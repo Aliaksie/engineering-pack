@@ -9,7 +9,7 @@ use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
 pub(crate) const BINDING_BYTES: usize = 16384;
-const STATE_BYTES: usize = 131_072;
+pub(crate) const STATE_BYTES: usize = 131_072;
 
 fn short(value: &Value) -> String {
     digest(value)[..24].to_string()
@@ -44,13 +44,18 @@ pub fn active_task(root: &Path, session: Option<&str>) -> Result<Option<String>,
     let Some(session) = session else {
         return Ok(None);
     };
+    Ok(active_binding(root, session)?
+        .and_then(|binding| binding["task"].as_str().map(str::to_string)))
+}
+
+/// The binding of `session` for the current checkout: its task, and its plan if any.
+pub fn active_binding(root: &Path, session: &str) -> Result<Option<Value>, Failure> {
     let saved = read_record(&binding_file(root, session, false)?, BINDING_BYTES)?;
     let Some(binding) = session::binding(&saved, None)? else {
         return Ok(None);
     };
     let current = snapshot::workspace(root, binding.get("repositories"), true)?;
-    Ok(session::binding(&binding, Some(&current["checkout"]))?
-        .and_then(|binding| binding["task"].as_str().map(str::to_string)))
+    Ok(session::binding(&binding, Some(&current["checkout"]))?)
 }
 
 fn read(file: &Path) -> Result<Value, Failure> {

@@ -28,7 +28,16 @@
           "task-decision",
           "task-action-check",
           "task-start",
+          "task-adopt",
           "task-step",
+          "plan",
+          "plan-create",
+          "plan-update",
+          "plan-envelope",
+          "plan-next",
+          "plan-release",
+          "plan-assign",
+          "plan-integrate",
           "settings",
           "route",
           "context-report",
@@ -50,7 +59,7 @@
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review, acceptance-view and project-evidence commands it runs"
+      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs"
     },
     {
       "id": "help-before-validation",
@@ -63,8 +72,9 @@
       "mode": "usage",
       "status": 0,
       "response": {
-        "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
-      }
+        "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
+      },
+      "correction": "a plan task supplies its goal, so task-start takes --goal or --plan"
     },
     {
       "id": "unknown-command",

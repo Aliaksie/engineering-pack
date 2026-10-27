@@ -19,6 +19,7 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
     let inventory = sweep::inventory(root)?;
     let policy = Policy::from_settings(settings);
     let workspaces = open_workspaces(root, &inventory, &policy, now)?;
+    let plans = crate::plan::retained(root, apply)?;
     let (mut removable, mut bytes) = (0, 0);
     let mut sessions = Vec::new();
     for found in &inventory.sessions {
@@ -42,7 +43,12 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
         if found.staged {
             item["staged"] = json!(true);
         }
-        let kept = match retention::keep(&session, now, &workspaces) {
+        // A take-over copies the records of the session holding a plan task.
+        let holder = plans
+            .owners
+            .contains(&found.id)
+            .then_some("holds a task of an open plan");
+        let kept = match retention::keep(&session, now, &workspaces).or(holder) {
             // An interrupted cleanup set this directory aside; it no longer qualifies.
             Some(reason) if apply && found.staged => sweep::restore(found, &found.path)
                 .map_or_else(|e| Some(e.to_string()), |()| Some(reason.to_string())),
@@ -107,6 +113,7 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
             "bytes": bytes,
         },
         "sessions": sessions,
+        "plans": plans.plans,
         "shared": shared,
         "previousShared": previous,
     }))
@@ -200,6 +207,9 @@ fn previous_shared(
                     }
                 })
                 .clone(),
+            Leftover::Evidence if apply => sweep::discard_evidence(root).map_err(text),
+            Leftover::Evidence => Ok(()),
+            Leftover::Unmoved => Err("held by a writer; moved on a later access".into()),
             Leftover::Workspaces => {
                 let outcome = previous_workspaces(root, inventory, policy, now, apply);
                 workspaces_left = outcome.is_err();
@@ -237,9 +247,7 @@ fn previous_workspaces(
     if !inventory.workspaces_complete {
         return Err("too many workspaces to inspect".into());
     }
-    let shared = state::location(root, None)
-        .map_err(|e| e.to_string())?
-        .directory;
+    let shared = state::previous_shared(root).map_err(|e| e.to_string())?;
     let folder = shared.join("sessions");
     let project = craft_engine::hash(
         state::canonical_root(root)
@@ -294,7 +302,7 @@ fn retire_guard(root: &Path, apply: bool) -> Result<(), String> {
         return Ok(());
     }
     let text = |error: craft_platform::Error| error.to_string();
-    let shared = state::location(root, None).map_err(text)?.directory;
+    let shared = state::previous_shared(root).map_err(text)?;
     let _lock = files::lock(&shared.join("workspace-guard.json"))
         .map_err(|e| e.to_string())?
         .ok_or("workspace guard is busy")?;

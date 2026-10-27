@@ -17,7 +17,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
         None
     };
     let root = state::canonical_root(Path::new(input["root"].as_str().ok_or("root is required")?))?;
-    let expected = state::shared(&root, "evidence", true)?.join("project.sqlite");
+    let expected = state::shared(&root, "intelligence", true)?.join("project.sqlite");
     let database = input["database"]
         .as_str()
         .map(Path::new)

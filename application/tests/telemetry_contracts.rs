@@ -63,11 +63,10 @@ fn seed(root: &Path, case: &Value) {
 fn normalize(value: &mut Value, root: &Path) {
     if let Some(file) = value.get("file").and_then(Value::as_str) {
         let relative = Path::new(file).strip_prefix(root).unwrap();
-        let mut parts: Vec<String> = relative
+        let parts: Vec<String> = relative
             .components()
             .map(|part| part.as_os_str().to_string_lossy().into_owned())
             .collect();
-        parts[2] = "<W>".into();
         value["file"] = json!(format!("<ROOT>/{}", parts.join("/")));
     }
     if value.get("capturedAt").is_some() {

@@ -95,9 +95,18 @@ const COMMANDS: &[Command] = &[
     .bundled()
     .receipt(action_receipt),
     Command::run("task-start", task_start).receipt(|_, value| task_receipt(value)),
+    Command::run("task-adopt", task_adopt).receipt(|_, value| adopt_receipt(value)),
     Command::run("task-step", task_step)
         .bundled()
         .receipt(action_receipt),
+    Command::run("plan", plan_show).receipt(|_, value| plan_receipt(value)),
+    Command::run("plan-create", plan_create).receipt(|_, value| plan_receipt(value)),
+    Command::run("plan-update", plan_update).receipt(|_, value| plan_receipt(value)),
+    Command::run("plan-envelope", plan_envelope),
+    Command::run("plan-next", plan_next).receipt(|_, value| queue_receipt(value)),
+    Command::run("plan-release", plan_release).receipt(|_, value| release_receipt(value)),
+    Command::run("plan-assign", plan_assign).receipt(|_, value| assign_receipt(value)),
+    Command::run("plan-integrate", plan_integrate).receipt(|_, value| integrate_receipt(value)),
     Command::run("settings", settings),
     Command::run("route", route),
     Command::run("context-report", context_report).bundled(),
@@ -193,9 +202,30 @@ const OPTIONS: &[&str] = &[
     "verbose",
     "max-output-bytes",
     "apply",
+    "from",
+    "plan",
+    "reference",
+    "expected-revision",
+    "take-over",
+    "brief",
+    "ready",
+    "shared",
+    "escalate",
+    "discard",
 ];
 const FLAGS: &[&str] = &[
-    "apply", "delegate", "json", "verbose", "complete", "blockers",
+    "apply",
+    "delegate",
+    "json",
+    "verbose",
+    "complete",
+    "blockers",
+    "take-over",
+    "brief",
+    "ready",
+    "shared",
+    "escalate",
+    "discard",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -206,6 +236,7 @@ const REPEATED: &[&str] = &[
     "available-command",
     "available-mcp-tool",
     "bundle",
+    "reference",
 ];
 
 #[derive(Default)]
@@ -278,6 +309,21 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     .find(|name| present(name));
     if let Some(name) = view_option.filter(|_| action != "acceptance-view") {
         return Err(format!("--{name} is supported by acceptance-view").into());
+    }
+    if present("take-over") && !["task-start", "plan-update", "plan-release"].contains(&action) {
+        return Err("--take-over is supported by task-start, plan-update and plan-release".into());
+    }
+    if present("ready") && action != "task-start" {
+        return Err("--ready is supported by task-start".into());
+    }
+    if present("shared") && action != "plan-assign" {
+        return Err("--shared is supported by plan-assign".into());
+    }
+    if ["escalate", "discard"].iter().any(|name| present(name)) && action != "plan-integrate" {
+        return Err("--escalate and --discard are supported by plan-integrate".into());
+    }
+    if present("brief") && action != "plan-envelope" {
+        return Err("--brief is supported by plan-envelope".into());
     }
     if present("repository") && !["task-start", "checkpoint-save"].contains(&action) {
         return Err("--repository is supported by task-start and checkpoint-save; other commands reuse the saved scope".into());
@@ -679,15 +725,52 @@ fn task_start(
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let given = |name: &str| options.get(name).filter(|value| !value.is_empty());
-    let (Some(session), Some(task), Some(goal)) = (given("session"), given("task"), given("goal"))
-    else {
-        return Err("task-start requires --session, --task and --goal".into());
+    if options.values.contains_key("ready") {
+        return ready_start(options, recorder, parent);
+    }
+    let (Some(session), Some(task)) = (given("session"), given("task")) else {
+        return Err("task-start requires --session, --task and --goal (or --plan)".into());
+    };
+    // A plan task supplies its goal and, unless given here, its files and repositories.
+    let planned = match given("plan") {
+        Some(plan) => Some(crate::plan::task(&root(options), plan, task)?),
+        None if options.values.contains_key("take-over") => {
+            return Err("--take-over requires --plan".into());
+        }
+        None => None,
+    };
+    let goal = match (given("goal"), &planned) {
+        (Some(goal), Some(planned)) if planned["goal"] != goal => {
+            return Err(format!("task {task} of the plan has the goal {}", planned["goal"]).into());
+        }
+        (Some(goal), _) => goal.to_string(),
+        (None, Some(planned)) => planned["goal"].as_str().unwrap_or_default().to_string(),
+        (None, None) => {
+            return Err("task-start requires --session, --task and --goal (or --plan)".into());
+        }
     };
     let mut start = Map::from_iter([("goal".to_string(), json!(goal))]);
-    if let Some(file) = given("contract") {
+    if let Some(planned) = &planned {
+        if let Some(files) = planned["files"].as_array().filter(|f| !f.is_empty()) {
+            start.insert("files".into(), json!(files));
+        }
+        if let Some(repositories) = planned.get("repositories") {
+            start.insert("repositories".into(), repositories.clone());
+        }
+        // A task in worktrees works there: its worktree folders are its repositories.
+        if let Some(work) = planned.get("work") {
+            start.insert("repositories".into(), crate::delegation::scopes(work));
+        }
+    }
+    // An explicit --contract replaces the contract file the plan task names.
+    let planned_contract = planned
+        .as_ref()
+        .and_then(|p| p["contract"].as_str())
+        .map(|file| root(options).join(file).to_string_lossy().into_owned());
+    if let Some(file) = given("contract").map(str::to_string).or(planned_contract) {
         start.insert(
             "engineeringContract".into(),
-            read_input(recorder, parent, file)?,
+            read_input(recorder, parent, &file)?,
         );
     }
     if let Some(repositories) = options.values.get("repository") {
@@ -714,8 +797,252 @@ fn task_start(
         input: start,
         host: options.get("host"),
         settings: &settings,
+        plan: given("plan").map(|id| crate::task::Planned {
+            id,
+            take_over: options.values.contains_key("take-over"),
+        }),
     };
     crate::task::start(request, recorder, parent)
+}
+
+/// Times `--ready` picks again when another session claimed the picked task first.
+const READY_PICKS: usize = 3;
+
+/// `task-start --plan P --ready`: start the first ready task of the plan. The pick reads
+/// the plan; the claim under the plans lock decides, so a pick another session won first
+/// is followed by the next ready task.
+fn ready_start(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(session)) = (options.get("plan"), options.get("session")) else {
+        return Err("task-start --ready requires --plan and --session".into());
+    };
+    if ["task", "goal", "take-over"]
+        .iter()
+        .any(|name| options.values.contains_key(*name))
+    {
+        return Err(
+            "task-start --ready picks the task; omit --task, --goal and --take-over".into(),
+        );
+    }
+    let root = root(options);
+    let own = crate::plan::owner(&root, session)?;
+    let mut tried = Vec::new();
+    loop {
+        let task = crate::plan::next(&root, plan, session)?;
+        if tried.contains(&task) {
+            return Err(format!(
+                "task {task} of plan {plan} could not be claimed; see plan-next --plan {plan}"
+            )
+            .into());
+        }
+        let mut picked = Options {
+            values: options.values.clone(),
+        };
+        picked.values.shift_remove("ready");
+        picked.values.insert("task".into(), json!(task));
+        let outcome = task_start(&picked, recorder, parent);
+        let holder = crate::plan::task(&root, plan, &task)?["owner"]["session"].clone();
+        let lost = holder.is_string() && holder != own.as_str();
+        if outcome.is_ok() || !lost || tried.len() + 1 == READY_PICKS {
+            return outcome;
+        }
+        tried.push(task);
+    }
+}
+
+/// The coordinator's view of one plan for `--session`.
+fn plan_next(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let Some(plan) = options.get("plan") else {
+        return Err("plan-next requires --plan".into());
+    };
+    crate::plan::queue(&root(options), plan, options.get("session"))
+}
+
+/// Return a held plan task to pending.
+fn plan_release(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-release requires --plan, --task and --session".into());
+    };
+    crate::plan::release(
+        &root(options),
+        plan,
+        task,
+        session,
+        options.values.contains_key("take-over"),
+        options.get("reason"),
+    )
+}
+
+/// Delegate a ready plan task to a worker of `--session`, in isolated worktrees unless
+/// `--shared`.
+fn plan_assign(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-assign requires --plan, --task and --session".into());
+    };
+    let settings = loaded(options, recorder, parent)?;
+    crate::delegation::assign(crate::delegation::Assign {
+        root: &root(options),
+        plan,
+        task,
+        session,
+        shared: options.values.contains_key("shared"),
+        settings: &settings,
+    })
+}
+
+/// Merge a completed worktree task, or `--escalate` or `--discard` its integration.
+fn plan_integrate(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-integrate requires --plan, --task and --session".into());
+    };
+    let how = match (
+        options.values.contains_key("escalate"),
+        options.values.contains_key("discard"),
+    ) {
+        (true, true) => return Err("plan-integrate takes --escalate or --discard, not both".into()),
+        (true, false) => crate::delegation::Integration::Escalate(
+            options
+                .get("reason")
+                .ok_or("plan-integrate --escalate requires --reason")?,
+        ),
+        (false, true) => crate::delegation::Integration::Discard,
+        (false, false) => crate::delegation::Integration::Merge,
+    };
+    crate::delegation::integrate(&root(options), plan, task, session, how)
+}
+
+/// One plan as its Markdown view or JSON, the plans linking `--reference`, or all plans.
+fn plan_show(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let references = strings(options, "reference");
+    if references.len() > 1 {
+        return Err("plan takes one --reference".into());
+    }
+    crate::plan::show(
+        &root(options),
+        options.get("plan"),
+        references.first().map(String::as_str),
+    )
+}
+
+/// Create a plan from `--plan`, `--goal`, `--reference` and optional `--data` tasks.
+fn plan_create(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let mut input = match options.get("data") {
+        Some(file) => read_input(recorder, parent, file)?,
+        None => json!({}),
+    };
+    if !input.is_object() {
+        return Err("plan-create --data must hold an object".into());
+    }
+    for (name, flag) in [("id", "plan"), ("goal", "goal")] {
+        if let Some(value) = options.get(flag) {
+            input[name] = json!(value);
+        }
+    }
+    let references = strings(options, "reference");
+    if !references.is_empty() {
+        let mut listed = input["references"].as_array().cloned().unwrap_or_default();
+        for reference in &references {
+            listed.push(craft_engine::plan::reference(reference)?);
+        }
+        input["references"] = json!(listed);
+    }
+    if input.get("id").is_none() || input.get("goal").is_none() {
+        return Err("plan-create requires --plan and --goal".into());
+    }
+    crate::plan::create(&root(options), &input)
+}
+
+/// The small context of one plan task, or with `--brief` the worker brief.
+fn plan_envelope(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task)) = (options.get("plan"), options.get("task")) else {
+        return Err("plan-envelope requires --plan and --task".into());
+    };
+    crate::plan::envelope(
+        &root(options),
+        plan,
+        task,
+        options.values.contains_key("brief"),
+    )
+}
+
+/// Apply `--data` changes to a plan still at `--expected-revision`.
+fn plan_update(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(expected), Some(file)) = (
+        options.get("plan"),
+        options.get("expected-revision"),
+        options.get("data"),
+    ) else {
+        return Err("plan-update requires --plan, --expected-revision and --data".into());
+    };
+    let changes = read_input(recorder, parent, file)?;
+    crate::plan::update(
+        &root(options),
+        plan,
+        expected,
+        &changes,
+        options.get("session"),
+        options.values.contains_key("take-over"),
+    )
+}
+
+/// Copy an earlier session's unfinished task into this session and bind it.
+fn task_adopt(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let given = |name: &str| options.get(name).filter(|value| !value.is_empty());
+    let (Some(session), Some(from)) = (given("session"), given("from")) else {
+        return Err("task-adopt requires --session and --from".into());
+    };
+    crate::handoff::adopt(&root(options), session, from, recorder, parent)
 }
 
 /// The explicit `--task`, else the session's bound task; binding failures are errors.
@@ -1128,8 +1455,39 @@ fn help(action: &str) -> Value {
             "mode": "read-only recovery comparison",
         }),
         "task-start" => json!({
-            "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
+            "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
             "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees",
+        }),
+        "plan" => json!({
+            "usage": "plan [--root project] [--plan id | --reference tracker:PROJ-123] [--json]",
+            "mode": "read-only: one plan as its Markdown view (JSON with --json), the plans linking a reference, or every plan's summary",
+        }),
+        "plan-create" => json!({
+            "usage": "plan-create --plan id --goal \"outcome\" [--reference tracker:PROJ-123 ...] [--data plan.json] [--root project]",
+            "data": {"tasks": [{"id": "a", "goal": "First step", "dependsOn": [], "files": [], "acceptance": []}, {"id": "a1", "goal": "Part of the first step", "parent": "a", "scope": {"paths": ["src/part/**"]}, "contract": "contracts/part.json", "returns": "What changed"}], "decisions": [{"id": "d1", "text": "Decision"}]},
+            "mode": "create a local work plan; references are opaque and nothing is read from a tracker",
+        }),
+        "plan-update" => json!({
+            "usage": "plan-update --plan id --expected-revision N --data changes.json [--session id] [--take-over] [--root project]",
+            "changes": ["goal", "status", "references", "decisions", "tasks"],
+            "taskStates": ["pending", "failed", "abandoned"],
+            "mode": "revision-fenced change; a task another session holds changes only with --take-over",
+        }),
+        "plan-envelope" => json!({
+            "usage": "plan-envelope --plan id --task task-id [--brief] [--root project]",
+            "mode": "read-only: the task's goal, acceptance, owned scope, dependency results, parent checkpoint reference and latest decisions; --brief emits the worker brief",
+        }),
+        "plan-assign" => json!({
+            "usage": "plan-assign --plan id --task task-id --session id [--shared] [--root project]",
+            "mode": "claim a ready task that owns paths for a worker session of this session, in isolated worktrees below .craft/worktrees/<plan>/<task>-<attempt>/ on branch craft/<plan>/<task>-<attempt> unless --shared; refused at efficiency.delegation.maxWorkers or when a running task owns intersecting paths; no worker is started",
+        }),
+        "plan-integrate" => json!({
+            "usage": "plan-integrate --plan id --task task-id --session id [--escalate --reason text | --discard] [--root project]",
+            "mode": "merge a completed worktree task into the coordinator checkout when it merges cleanly (one merge commit per repository, nothing pushed); on conflicts the task runs again in this session to resolve them; --escalate hands it to the user, --discard returns it to pending",
+        }),
+        "task-adopt" => json!({
+            "usage": "task-adopt --session id --from earlier-session [--root project]",
+            "mode": "copy an earlier session's unfinished task and checkpoint into this session and bind it; the earlier session is unchanged and no authorization is renewed",
         }),
         "session-attempt" => json!({
             "usage": "session-attempt --root project --session id --task task-id --data attempt.json",
@@ -1451,6 +1809,17 @@ fn action_receipt(action: &str, result: &Value) -> String {
             shown(&receipt["outcome"])
         ));
         lines.push(checkpoint_line(&result["checkpoint"]));
+        let plan = &result["plan"];
+        if let Some(id) = nonempty(&plan["plan"]) {
+            lines.push(match nonempty(&plan["reason"]) {
+                Some(reason) => format!("Plan {id}: not updated — {reason}"),
+                None => format!(
+                    "Plan {id}: task {} {}",
+                    shown(&plan["task"]),
+                    shown(&plan["state"])
+                ),
+            });
+        }
         if receipt["outcome"] != "passed" {
             lines.push(format!("Result: {}", shown(&result["result"])));
         }
@@ -1517,11 +1886,274 @@ fn action_receipt(action: &str, result: &Value) -> String {
 }
 
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
+fn adopt_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let context = &result["context"];
+    let mut lines = vec![
+        format!(
+            "Task {}: {} (from {})",
+            if result["adopted"] == true {
+                "adopted"
+            } else {
+                "already bound"
+            },
+            text(&result["task"]),
+            text(&result["from"])
+        ),
+        format!(
+            "Stage: {} / {}{}",
+            text(&context["task"]["stage"]),
+            text(&context["task"]["status"]),
+            if context["stale"] == true {
+                " (stale: source changed)"
+            } else {
+                ""
+            }
+        ),
+    ];
+    if let Some(next) = nonempty(&context["nextStep"]) {
+        lines.push(format!("Next: {next}"));
+    }
+    match &result["checkpoint"]["changed"] {
+        Value::Null if result["checkpoint"].is_null() => {
+            lines.push("Checkpoint: none carried".into())
+        }
+        Value::Bool(false) => lines.push("Checkpoint: carried; tree unchanged since".into()),
+        Value::Bool(true) => {
+            lines.push("Checkpoint: carried; tree changed since, recheck evidence".into())
+        }
+        _ => lines.push("Checkpoint: carried; change unknown".into()),
+    }
+    if let Some(families) = joined(&result["notCarried"]) {
+        lines.push(format!(
+            "Not carried (stay with the earlier session): {families}"
+        ));
+    }
+    lines.join("\n")
+}
+
+/// A plan as its Markdown view, or one line per plan of a listing.
+fn plan_receipt(result: &Value) -> String {
+    let Some(plans) = result["plans"].as_array() else {
+        let mut text = craft_engine::plan::markdown(result);
+        if let Some(view) = nonempty(&result["view"]) {
+            text.push_str(&format!("\nView: {view}\n"));
+        }
+        return text;
+    };
+    if plans.is_empty() {
+        return "No plans\n".into();
+    }
+    let lines: Vec<String> = plans
+        .iter()
+        .map(|plan| {
+            let counts = &plan["counts"];
+            let count = |state: &str| counts[state].as_i64().unwrap_or(0);
+            format!(
+                "{} [{}] {} — ready {}, running {}, completed {} (revision {})",
+                plan["id"].as_str().unwrap_or_default(),
+                plan["status"].as_str().unwrap_or_default(),
+                plan["goal"].as_str().unwrap_or_default(),
+                count("ready"),
+                count("running") + count("verifying") + count("blocked"),
+                count("completed"),
+                plan["revision"]
+            )
+        })
+        .collect();
+    format!("{}\n", lines.join("\n"))
+}
+
+/// The queue as short lines: what to start next, then each non-empty group.
+fn queue_receipt(result: &Value) -> String {
+    let plan = result["plan"].as_str().unwrap_or_default();
+    let ids = |group: &str| -> Vec<String> {
+        result[group]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|item| {
+                let id = item
+                    .as_str()
+                    .or_else(|| item["task"].as_str())
+                    .unwrap_or_default();
+                match group {
+                    "elsewhere" => {
+                        let mut text = format!(
+                            "{id} ({}, idle {} min",
+                            item["state"].as_str().unwrap_or_default(),
+                            item["idleMinutes"]
+                        );
+                        if item["orphaned"] == true {
+                            text.push_str(", orphaned");
+                        } else if item["stale"] == true {
+                            text.push_str(", stale");
+                        }
+                        text + ")"
+                    }
+                    "waiting" => {
+                        let on: Vec<String> = item["on"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .map(|d| {
+                                format!(
+                                    "{} {}",
+                                    d["id"].as_str().unwrap_or_default(),
+                                    d["state"].as_str().unwrap_or_default()
+                                )
+                            })
+                            .collect();
+                        format!(
+                            "{id} (on {}{})",
+                            on.join(", "),
+                            if item["stuck"] == true { ", stuck" } else { "" }
+                        )
+                    }
+                    "retry" | "exhausted" => {
+                        format!("{id} ({} of {})", item["attempts"], item["maxAttempts"])
+                    }
+                    _ => id.to_string(),
+                }
+            })
+            .collect()
+    };
+    let mut lines = vec![match result["next"].as_str() {
+        Some(task) => {
+            format!("Next: {task} — craft task-start --plan {plan} --task {task} (or --ready)")
+        }
+        None => format!("Next: none ready in plan {plan}"),
+    }];
+    for (group, label) in [
+        ("ready", "Ready"),
+        ("held", "Held here"),
+        ("elsewhere", "Held elsewhere"),
+        ("waiting", "Waiting"),
+        ("retry", "Failed, may retry"),
+        ("exhausted", "Out of attempts"),
+        ("parents", "Children done, complete the parent"),
+        (
+            "integrate",
+            "Completed in worktrees, integrate with plan-integrate",
+        ),
+        ("needsUser", "Integration needs the user"),
+    ] {
+        let listed = ids(group);
+        if !listed.is_empty() {
+            lines.push(format!("{label}: {}", listed.join("; ")));
+        }
+    }
+    let stale = result["elsewhere"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|i| i["stale"] == true || i["orphaned"] == true);
+    if stale {
+        lines.push(format!("Stale or orphaned claims continue only with: craft task-start --plan {plan} --task <task> --take-over"));
+    }
+    format!("{}\n", lines.join("\n"))
+}
+
+fn assign_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let mut lines = vec![format!(
+        "Assigned: {} of plan {} to worker session {} (revision {})",
+        text(&result["task"]),
+        text(&result["plan"]),
+        text(&result["worker"]["session"]),
+        result["revision"]
+    )];
+    for repository in result["work"]["repositories"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        lines.push(format!(
+            "Worktree: {} on {}",
+            text(&repository["worktree"]),
+            text(&repository["branch"])
+        ));
+    }
+    if result["isolated"] != true {
+        lines.push("Shared checkout: the worker changes only its owned paths here".into());
+    }
+    lines.push(format!(
+        "Worker starts with: {}",
+        text(&result["worker"]["start"])
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn integrate_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let task = text(&result["task"]);
+    let mut lines = Vec::new();
+    if result["integrated"] == true {
+        lines.push(format!(
+            "Integrated: {task} merged into the coordinator checkout"
+        ));
+        let kept = result["worktrees"]["kept"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        lines.extend(kept.iter().map(|k| format!("Kept: {}", text(k))));
+    } else if result["conflicts"].is_array() {
+        let paths: Vec<String> = result["conflicts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(text)
+            .collect();
+        lines.push(format!(
+            "{}: {task} conflicts on {}",
+            if result["integration"]["state"] == "escalated" {
+                "Needs the user"
+            } else {
+                "Conflict"
+            },
+            paths.join(", ")
+        ));
+        lines.push(format!("Next: {}", text(&result["next"])));
+    } else if result["state"] == "pending" {
+        lines.push(format!("Discarded: {task} is pending again"));
+        let kept = result["worktrees"]["kept"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        lines.extend(kept.iter().map(|k| format!("Kept: {}", text(k))));
+    } else {
+        lines.push(format!(
+            "Integration of {task}: {}",
+            text(&result["integration"]["state"])
+        ));
+    }
+    format!("{}\n", lines.join("\n"))
+}
+
+fn release_receipt(result: &Value) -> String {
+    format!(
+        "Released: {} of plan {} is pending (revision {}){}\n",
+        result["task"].as_str().unwrap_or_default(),
+        result["plan"].as_str().unwrap_or_default(),
+        result["revision"],
+        if result["unbound"] == true {
+            "; this session's binding removed"
+        } else {
+            ""
+        }
+    )
+}
+
 fn task_receipt(result: &Value) -> String {
     let routing = &result["routing"];
     let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
     let mut lines = vec![
         format!("Task bound: {}", text(&result["task"])),
+        nonempty(&result["plan"]["id"]).map_or(String::new(), |plan| {
+            let taken = nonempty(&result["plan"]["takenOver"]["from"])
+                .map_or(String::new(), |from| format!(" (taken over from {from})"));
+            format!("Plan: {plan}{taken}")
+        }),
         format!(
             "Execution: {} / {}",
             text(&routing["execution"]["mode"]),
@@ -1537,6 +2169,7 @@ fn task_receipt(result: &Value) -> String {
             lines.push(format!("{label}: {items}"));
         }
     }
+    lines.extend(envelope_lines(&result["plan"]["envelope"]));
     lines.push(checkpoint_line(&result["checkpoint"]));
     let model = &result["modelAdvice"];
     if model.is_object() {
@@ -1559,6 +2192,33 @@ fn task_receipt(result: &Value) -> String {
     }
     lines.retain(|line| !line.is_empty());
     format!("{}\n", lines.join("\n"))
+}
+
+/// What a plan task's envelope adds to the receipt; `plan-envelope` shows all of it.
+fn envelope_lines(envelope: &Value) -> Vec<String> {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let mut lines = Vec::new();
+    let task = &envelope["task"];
+    if let Some(paths) = joined(&task["scope"]["paths"]) {
+        lines.push(format!("Owns: {paths}"));
+    }
+    if let Some(returns) = nonempty(&task["returns"]) {
+        lines.push(format!("Returns: {returns}"));
+    }
+    if let Some(parent) = nonempty(&envelope["parent"]["id"]) {
+        let next = nonempty(&envelope["parent"]["nextStep"])
+            .map_or(String::new(), |n| format!(" — next: {n}"));
+        lines.push(format!("Part of: {parent}{next}"));
+    }
+    for dependency in envelope["dependencies"].as_array().into_iter().flatten() {
+        let result = nonempty(&dependency["result"]).map_or(String::new(), |r| format!(": {r}"));
+        lines.push(format!(
+            "After {} ({}){result}",
+            text(&dependency["id"]),
+            text(&dependency["state"])
+        ));
+    }
+    lines
 }
 
 /// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.

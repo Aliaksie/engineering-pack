@@ -44,7 +44,7 @@ test('default lifecycle and discovery use excluded local state without editing c
   assert.equal(locate('task-2').reused, 0);
   fs.appendFileSync(path.join(nested, 'value.mjs'), '// source change\n');
   assert.equal(locate().reused, 0);
-  assert.match(stateFile(root, 'probe.json'), /\.craft[/\\]state[/\\][a-f0-9]{24}[/\\]shared[/\\]/);
+  assert.match(stateFile(root, 'probe.json'), /\.craft[/\\]state[/\\]probe\.json$/);
   assert.equal(fs.existsSync(path.join(root, '.git', 'craft-state')), false);
   assert.match(git('status', '--porcelain'), /M src\/value.mjs/);
   assert.match(git('status', '--porcelain'), /\?\? \.craft\//);
@@ -82,7 +82,7 @@ test('state identity follows the physical worktree, not the caller spelling', t 
   if (!fs.existsSync(variant)) return t.skip('case-sensitive filesystem');
   const saved = saveCheckpoint(variant, 'session');
   assert.equal(saveCheckpoint(root, 'session').file, saved.file);
-  assert.equal(worktreeOf(saved.file), rootId(root));
+  assert.equal(stateOf(saved.file), rootState(root));
 });
 
 test('linked worktrees isolate session state and metadata symlinks are rejected', t => {
@@ -93,7 +93,7 @@ test('linked worktrees isolate session state and metadata symlinks are rejected'
   const second = saveCheckpoint(linked, 'same-session');
   assert.notEqual(first.file, second.file);
   assert.ok(second.file.startsWith(path.join(linked, '.craft', 'state') + path.sep));
-  assert.notEqual(worktreeOf(first.file), worktreeOf(second.file));
+  assert.notEqual(stateOf(first.file), stateOf(second.file));
   const directory = path.dirname(first.file);
   fs.rmSync(directory, { recursive: true });
   fs.symlinkSync(path.join(root, 'src'), directory, process.platform === 'win32' ? 'junction' : 'dir');
@@ -116,9 +116,9 @@ test('personal reuse controls affect CLI discovery and preference changes invali
   assert.equal(discover().discovery.reused, 1);
 });
 
-const rootId = root => stateLocation(root).worktreeId;
-// `<worktree>/sessions/<session>/<record>`
-function worktreeOf(file) { return path.basename(path.dirname(path.dirname(path.dirname(file)))); }
+const rootState = root => stateLocation(root).directory;
+// `<state>/sessions/<session>/<record>`
+function stateOf(file) { return path.dirname(path.dirname(path.dirname(file))); }
 test('explicit root and session IDs give Git and non-Git roots the same storage model', t => {
   const { root, git } = fixture(t);
   const plain = path.join(root, 'coordination'); fs.mkdirSync(plain);
@@ -127,11 +127,11 @@ test('explicit root and session IDs give Git and non-Git roots the same storage 
     const a = saveCheckpoint(selected, 'a', { taskId: 'task-a' }).file;
     const b = path.join(path.dirname(path.dirname(a)), stateLocation(selected, 'b').sessionId, path.basename(a));
     assert.notEqual(path.dirname(a), path.dirname(b));
-    assert.equal(worktreeOf(a), rootId(selected));
+    assert.equal(stateOf(a), rootState(selected));
     assert.equal(path.basename(path.dirname(path.dirname(a))), 'sessions');
     assert.match(path.basename(path.dirname(a)), /^[a-f0-9]{24}$/);
     const { state } = run(['settings', '--root', selected]);
-    assert.deepEqual([state.scope, state.formatVersion], ['workspace-local', 3]);
+    assert.deepEqual([state.scope, state.formatVersion], ['workspace-local', 4]);
     assert.equal(a.includes(`${path.sep}.git${path.sep}`), false);
     assert.equal(readCheckpoint(selected, 'b'), null);
     files.push(a);
@@ -145,7 +145,7 @@ test('explicit root and session IDs give Git and non-Git roots the same storage 
 test('a migrated checkpoint retains its session history and remains writable', t => {
   const { root } = fixture(t);
   const saved = saveCheckpoint(root, 'migrated-session', { taskId: 'task', continuation });
-  const old = path.join(root, '.git', 'craft-state', rootId(root)); fs.mkdirSync(old, { recursive: true });
+  const old = path.join(root, '.git', 'craft-state', stateLocation(root).worktreeId); fs.mkdirSync(old, { recursive: true });
   const legacyFile = path.join(old, `${stateLocation(root, 'migrated-session').sessionId}.json`);
   fs.copyFileSync(saved.file, legacyFile); fs.unlinkSync(saved.file);
   assert.deepEqual(readCheckpoint(root, 'migrated-session'), saved.state);

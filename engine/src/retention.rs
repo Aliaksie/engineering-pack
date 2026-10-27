@@ -14,7 +14,7 @@ pub const SESSION_ENTRIES: usize = 64;
 /// their size and never removes them.
 pub const SHARED_FAMILIES: &[(&str, &str)] = &[
     ("telemetry", "rotation: one bounded log and one backup"),
-    ("evidence", "rebuildable: project-evidence rebuild"),
+    ("intelligence", "rebuildable: project-evidence rebuild"),
     ("workspaces", "workspace-clean"),
     ("migrations", "kept: receipts stop copies from older stores"),
 ];
@@ -176,6 +176,10 @@ pub enum Leftover {
     Receipt,
     /// The evidence database or a companion; never copied, rebuilt on refresh.
     Database,
+    /// The evidence folder of the layout before the current one; not moved, rebuilt on refresh.
+    Evidence,
+    /// A folder of that layout still waiting to move: a writer held an entry of it.
+    Unmoved,
     /// Workspace directories, removed under workspace retention.
     Workspaces,
     /// The workspace guard, needed only while a workspace of that layout remains.
@@ -192,6 +196,8 @@ pub fn leftover(name: &str) -> Leftover {
         | "telemetry-key.json"
         | "telemetry-captures.json" => Leftover::Record,
         "sessions" => Leftover::Workspaces,
+        "evidence" => Leftover::Evidence,
+        "telemetry" | "workspaces" | "migrations" => Leftover::Unmoved,
         "workspace-guard.json" => Leftover::Guard,
         _ if DATABASE.contains(&name) => Leftover::Database,
         _ if name.ends_with(".lock") => Leftover::Lock,
@@ -209,6 +215,16 @@ pub const DATABASE: &[&str] = &[
     "project-evidence.sqlite-shm",
     "project-evidence.sqlite.backup",
     "project-evidence.sqlite.lock",
+];
+
+/// The evidence folder's database and its companions, as `DATABASE` for its own folder.
+pub const EVIDENCE: &[&str] = &[
+    "project.sqlite",
+    "project.sqlite-journal",
+    "project.sqlite-wal",
+    "project.sqlite-shm",
+    "project.sqlite.backup",
+    "project.sqlite.lock",
 ];
 
 /// Whole days since the last write, for reports.

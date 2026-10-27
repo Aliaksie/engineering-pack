@@ -275,6 +275,126 @@ pub fn state(root: &Path) -> Value {
     })
 }
 
+/// Uncommitted files read by [`changes`]; more leave the changes incomplete.
+const CHANGED_FILES: usize = 256;
+
+/// What changed in one worktree: files committed since a base revision, and uncommitted
+/// files with the digest of their current content.
+pub struct Changes {
+    pub head: Value,
+    /// `None` when there was no base or Git could not compare it with `HEAD`.
+    pub committed: Option<Vec<String>>,
+    pub uncommitted: Vec<(String, String)>,
+    /// False when Git status failed or more than the bounded number of files changed.
+    pub complete: bool,
+}
+
+/// The current content identity of one worktree file: a SHA-256 of its bytes, `missing`, or
+/// for a file too large or unreadable to hash, of its size and modification time.
+fn content_digest(root: &Path, relative: &str) -> String {
+    let mut content = Content {
+        root: root.to_path_buf(),
+        digest: Sha256::new(),
+        files: 0,
+        bytes: 0,
+    };
+    match content.inspect(relative) {
+        Entry::Hashed => format!("{:x}", content.digest.finalize()),
+        Entry::Missing => "missing".into(),
+        Entry::Limit | Entry::Failed => {
+            let meta = fs::symlink_metadata(root.join(relative)).ok();
+            let identity = meta.map(|m| format!("{}:{:?}", m.len(), m.modified().ok()));
+            format!(
+                "{:x}",
+                Sha256::digest(identity.unwrap_or_default().as_bytes())
+            )
+        }
+    }
+}
+
+/// Files changed in the worktree at `root` since the commit `base`, without private state.
+pub fn changes(root: &Path, base: Option<&str>) -> Changes {
+    let head = git(root, &["rev-parse", "--verify", "HEAD"], 16384)
+        .map_or(Value::Null, |h| json!(h.trim()));
+    let committed = base.filter(|b| hex(b)).and_then(|base| {
+        if head == base {
+            return Some(Vec::new());
+        }
+        let range = format!("{base}..HEAD");
+        let names = git(
+            root,
+            &["diff", "--name-only", "--no-renames", "-z", &range],
+            OUTPUT,
+        )?;
+        Some(
+            names
+                .split('\0')
+                .filter(|n| !n.is_empty() && !private_path(n))
+                .map(str::to_string)
+                .collect(),
+        )
+    });
+    let status = git(
+        root,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        OUTPUT,
+    );
+    let mut complete = status.is_some();
+    let mut paths: Vec<String> = Vec::new();
+    let mut entries = status.as_deref().unwrap_or_default().split('\0');
+    while let Some(entry) = entries.next() {
+        if entry.is_empty() {
+            continue;
+        }
+        paths.push(after(entry, 3));
+        // A rename or copy is followed by the path it came from.
+        if matches!(entry.as_bytes().first(), Some(b'R' | b'C')) {
+            paths.extend(entries.next().map(str::to_string));
+        }
+    }
+    paths.retain(|p| !private_path(p));
+    paths.sort();
+    paths.dedup();
+    if paths.len() > CHANGED_FILES {
+        complete = false;
+        paths.truncate(CHANGED_FILES);
+    }
+    let uncommitted = paths
+        .into_iter()
+        .map(|path| {
+            let digest = content_digest(root, &path);
+            (path, digest)
+        })
+        .collect();
+    Changes {
+        head,
+        committed,
+        uncommitted,
+        complete,
+    }
+}
+
+/// [`changes`] for the task's source: the worktree at `root`, or each selected repository
+/// with its paths prefixed by the repository path. `bases` maps a repository path (`""` for
+/// `root`) to its base revision.
+pub fn task_changes(
+    root: &Path,
+    repositories: Option<&Value>,
+    bases: &dyn Fn(&str) -> Option<String>,
+) -> Result<Vec<(String, Changes)>, SearchError> {
+    let Some(repositories) = repositories else {
+        return Ok(vec![(String::new(), changes(root, bases("").as_deref()))]);
+    };
+    let scopes = repository::scopes(repositories)?;
+    Ok(roots(root, &scopes)?
+        .into_iter()
+        .map(|(path, root)| {
+            let found = changes(&root, bases(&path).as_deref());
+            (path, found)
+        })
+        .collect())
+}
+
 /// Explicitly selected worktree roots below `root`; never sibling repositories.
 pub fn roots(root: &Path, scopes: &[String]) -> Result<Vec<(String, PathBuf)>, SearchError> {
     let root = state::canonical_root(root)?;
@@ -380,6 +500,42 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn changes_list_commits_since_a_base_and_uncommitted_content() {
+        let repository = Repository::new(&["a.txt", "b.txt"]);
+        let root = &repository.0;
+        let base = changes(root, None);
+        assert!(base.committed.is_none() && base.uncommitted.is_empty() && base.complete);
+        let head = base.head.as_str().unwrap().to_string();
+        fs::write(root.join("a.txt"), "changed\n").unwrap();
+        fs::create_dir_all(root.join(".craft/state")).unwrap();
+        fs::write(root.join(".craft/state/private.json"), "{}").unwrap();
+        let dirty = changes(root, Some(&head));
+        assert_eq!(dirty.committed, Some(vec![]));
+        assert_eq!(dirty.uncommitted.len(), 1);
+        assert_eq!(dirty.uncommitted[0].0, "a.txt");
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(["-c", "user.name=n", "-c", "user.email=n@x", "-C"])
+                .arg(root)
+                .args(args)
+                .status()
+                .unwrap()
+        };
+        assert!(git(&["mv", "b.txt", "c.txt"]).success());
+        assert!(git(&["commit", "-qam", "move"]).success());
+        let moved = changes(root, Some(&head));
+        assert_eq!(
+            moved.committed,
+            Some(vec!["a.txt".to_string(), "b.txt".into(), "c.txt".into()])
+        );
+        assert!(moved.uncommitted.is_empty());
+        fs::write(root.join("a.txt"), "again\n").unwrap();
+        let again = changes(root, Some(&head));
+        assert_ne!(again.uncommitted[0].1, dirty.uncommitted[0].1);
+        assert!(changes(root, Some("not-a-revision")).committed.is_none());
     }
 
     #[test]

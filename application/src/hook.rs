@@ -276,6 +276,20 @@ fn render(context: &Value, host: &str) -> String {
     }
 }
 
+/// The host session identity, and unfinished tasks of earlier sessions it may adopt.
+fn session_line(session: &Value) -> String {
+    let identity = json!({"id": session["id"], "task": session["task"]});
+    let mut line =
+        format!("Craft session (pass as --session; no authorization implied): {identity}");
+    if let Some(handoff) = session.get("handoff") {
+        line.push_str(&format!("\nUnfinished tasks of earlier sessions in this worktree. Only if the user's request continues one, adopt it with `craft task-adopt --session <id> --from <from>`; records are copied and authorization is not renewed: {handoff}"));
+    }
+    if let Some(plans) = session.get("plans") {
+        line.push_str(&format!("\nOpen work plans in this worktree. Only if the user's request continues one, start a ready task with `craft task-start --session <id> --plan <plan> --task <task>`; a task held in another session (here: false) needs --take-over, as that session may still be working: {plans}"));
+    }
+    line
+}
+
 /// At most 12 000 UTF-16 units of context, cut at a character boundary.
 fn bounded(context: String) -> String {
     if js_length(&context) <= MAX_CONTEXT {
@@ -308,10 +322,17 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
     let denied = result["decision"] == "deny" && mapping["deny"] == true;
     let reason = &result["reason"];
     let context = if mapping["context"] == true {
+        let parts = [
+            result.get("session").map(session_line),
+            result.get("context").map(|c| render(c, host)),
+        ];
         bounded(
-            result
-                .get("context")
-                .map_or_else(String::new, |c| render(c, host)),
+            parts
+                .into_iter()
+                .flatten()
+                .filter(|part| !part.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n"),
         )
     } else {
         String::new()
