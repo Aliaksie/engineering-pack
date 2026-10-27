@@ -30,17 +30,6 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn from_command(command: &str) -> Option<Action> {
-        Some(match command {
-            "workspace-open" => Action::Open,
-            "workspace-write" => Action::Write,
-            "workspace-promote" => Action::Promote,
-            "workspace-release" => Action::Release,
-            "workspace-clean" => Action::Maintain,
-            _ => return None,
-        })
-    }
-
     fn name(self) -> &'static str {
         match self {
             Action::Open => "open",

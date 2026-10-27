@@ -1,7 +1,10 @@
 //! `craft <command> [options]`: argument rules, rendering and exit codes of every command an
 //! installed package runs through its `bin/craft` launcher.
+use crate::actions::Kind;
 use crate::failure::Failure;
 use crate::project::{self, Settings, absolute, read_input};
+use crate::review::Command as Review;
+use crate::scratch::Action;
 use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::contracts::normalize_numbers;
@@ -11,91 +14,119 @@ use craft_platform::guidance;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-pub const COMMANDS: &[&str] = &[
-    "grounded-context",
-    "worker-status",
-    "settings",
-    "operation",
-    "prepare-services",
-    "model-advice",
-    "lookup",
-    "route",
-    "locate",
-    "context-report",
-    "checkpoint-save",
-    "checkpoint-read",
-    "session-attempt",
-    "task-start",
-    "session",
-    "session-advice",
-    "task-step",
-    "task-offer",
-    "task-decision",
-    "task-action-check",
-    "task-feature",
-    "task-features",
-    "workspace-open",
-    "workspace-write",
-    "workspace-promote",
-    "workspace-release",
-    "workspace-clean",
-    "telemetry-report",
-    "telemetry-capture",
-    "telemetry-forget",
-    "review-prepare",
-    "review-check",
-    "review-publication",
-    "review-followup",
-    "acceptance-view",
+type Run = fn(&Options, &mut Recorder, &Operation) -> Result<Value, Failure>;
+
+#[derive(Clone, Copy)]
+enum Handler {
+    Run(Run),
+    Workspace(Action),
+    /// Parses its own options and writes its own usage.
+    Review(crate::review::Command),
+    /// Streams its own output; only `main` runs it.
+    Evidence,
+}
+
+/// How a successful result is written.
+#[derive(Clone, Copy)]
+enum Render {
+    Json,
+    /// One JSON line, whatever the detail requested.
+    Line,
+    /// A compact receipt unless `--json` or `--verbose` asks for the full result.
+    Receipt(fn(&str, &Value) -> String),
+}
+
+struct Command {
+    name: &'static str,
+    handler: Handler,
+    /// Accounts the installed package's guidance; the launcher names its root.
+    bundled: bool,
+    render: Render,
+}
+
+impl Command {
+    const fn new(name: &'static str, handler: Handler) -> Self {
+        Self {
+            name,
+            handler,
+            bundled: false,
+            render: Render::Json,
+        }
+    }
+    const fn run(name: &'static str, run: Run) -> Self {
+        Self::new(name, Handler::Run(run))
+    }
+    const fn bundled(mut self) -> Self {
+        self.bundled = true;
+        self
+    }
+    const fn receipt(mut self, receipt: fn(&str, &Value) -> String) -> Self {
+        self.render = Render::Receipt(receipt);
+        self
+    }
+}
+
+/// Every `craft <command>`, in the order the general help lists them.
+const COMMANDS: &[Command] = &[
+    Command::new("workspace-open", Handler::Workspace(Action::Open)),
+    Command::new("workspace-write", Handler::Workspace(Action::Write)),
+    Command::new("workspace-promote", Handler::Workspace(Action::Promote)),
+    Command::new("workspace-release", Handler::Workspace(Action::Release)),
+    Command::new("workspace-clean", Handler::Workspace(Action::Maintain)),
+    Command::run("grounded-context", grounded_context),
+    Command::run("worker-status", worker_status),
+    Command::run("task-feature", |o, r, p| task_features(true, o, r, p)),
+    Command::run("task-features", |o, r, p| task_features(false, o, r, p)),
+    Command::run("telemetry-capture", telemetry_capture),
+    Command::run("telemetry-forget", telemetry_forget),
+    Command::run("telemetry-report", telemetry_report),
+    Command::run("task-offer", |o, r, p| task_action(Kind::Offer, o, r, p))
+        .bundled()
+        .receipt(action_receipt),
+    Command::run("task-decision", |o, r, p| {
+        task_action(Kind::Decision, o, r, p)
+    })
+    .receipt(action_receipt),
+    Command::run("task-action-check", |o, r, p| {
+        task_action(Kind::Check, o, r, p)
+    })
+    .bundled()
+    .receipt(action_receipt),
+    Command::run("task-start", task_start).receipt(|_, value| task_receipt(value)),
+    Command::run("task-step", task_step)
+        .bundled()
+        .receipt(action_receipt),
+    Command::run("settings", settings),
+    Command::run("route", route),
+    Command::run("context-report", context_report).bundled(),
+    Command::run("session", session_status)
+        .bundled()
+        .receipt(|_, value| session_view(value)),
+    Command::run("session-advice", session_status)
+        .bundled()
+        .receipt(|_, value| session_view(value)),
+    Command::run("session-attempt", session_attempt).receipt(|_, value| attempt_receipt(value)),
+    Command::run("model-advice", model_advice),
+    Command::run("lookup", lookup),
+    Command {
+        render: Render::Line,
+        ..Command::run("locate", locate)
+    },
+    Command::run("prepare-services", prepare_services),
+    Command::run("operation", plan_operation),
+    Command::run("checkpoint-save", checkpoint_save).receipt(|_, value| receipt(value)),
+    Command::run("checkpoint-read", checkpoint_read),
+    Command::new("review-prepare", Handler::Review(Review::Prepare)),
+    Command::new("review-check", Handler::Review(Review::Check)),
+    Command::new("review-publication", Handler::Review(Review::Publication)),
+    Command::new("review-followup", Handler::Review(Review::Followup)),
+    Command::run("acceptance-view", acceptance_view),
+    Command::new("project-evidence", Handler::Evidence),
 ];
-/// Every command the general help lists.
-const ALL_COMMANDS: &[&str] = &[
-    "workspace-open",
-    "workspace-write",
-    "workspace-promote",
-    "workspace-release",
-    "workspace-clean",
-    "grounded-context",
-    "worker-status",
-    "task-feature",
-    "task-features",
-    "telemetry-capture",
-    "telemetry-forget",
-    "telemetry-report",
-    "task-offer",
-    "task-decision",
-    "task-action-check",
-    "task-start",
-    "task-step",
-    "settings",
-    "route",
-    "context-report",
-    "session",
-    "session-advice",
-    "session-attempt",
-    "model-advice",
-    "lookup",
-    "locate",
-    "prepare-services",
-    "operation",
-    "checkpoint-save",
-    "checkpoint-read",
-    "review-prepare",
-    "review-check",
-    "review-publication",
-    "review-followup",
-    "acceptance-view",
-    "project-evidence",
-];
-/// Commands that account the installed package's guidance; the launcher names its root.
-const BUNDLED: &[&str] = &[
-    "context-report",
-    "session",
-    "session-advice",
-    "task-step",
-    "task-offer",
-    "task-action-check",
-];
+
+fn command(name: &str) -> Option<&'static Command> {
+    COMMANDS.iter().find(|command| command.name == name)
+}
 
 /// Options every command accepts, as the shared JS parser does; each command reads its own.
 const OPTIONS: &[&str] = &[
@@ -1315,7 +1346,7 @@ fn help(action: &str) -> Value {
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
         }),
         _ => json!({
-            "commands": ALL_COMMANDS,
+            "commands": COMMANDS.iter().map(|command| command.name).collect::<Vec<_>>(),
             "detail": "Use <command> --help or docs/SESSION.md for session policy.",
         }),
     };
@@ -1730,6 +1761,17 @@ fn task_receipt(result: &Value) -> String {
 }
 
 /// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.
+fn attempt_receipt(result: &Value) -> String {
+    let recorded = &result["recorded"];
+    let field = |name: &str| recorded[name].as_str().unwrap_or_default().to_string();
+    format!(
+        "Attempt recorded: {} / {} — {}\n",
+        field("operation"),
+        field("target"),
+        field("outcome")
+    )
+}
+
 fn receipt(saved: &Value) -> String {
     let mut text = checkpoint_line(saved);
     if let Some(warning) = saved["activityDiagnostic"]
@@ -1755,17 +1797,13 @@ pub fn run_structured(argv: &[String]) -> Outcome {
 /// The `craft <command>` process: write the streams, then post the telemetry export.
 /// Without `--bundle`, guidance is accounted against the package whose launcher ran it.
 pub fn main(argv: &[String]) -> i32 {
-    if argv
-        .first()
-        .is_some_and(|command| command == "project-evidence")
-    {
+    let named = argv.first().and_then(|name| command(name));
+    if named.is_some_and(|command| matches!(command.handler, Handler::Evidence)) {
         return crate::evidence::main(&argv[1..]);
     }
     let mut argv = argv.to_vec();
     let package = std::env::var(crate::statusline::PACKAGE_ROOT).unwrap_or_default();
-    if argv
-        .first()
-        .is_some_and(|command| BUNDLED.contains(&command.as_str()))
+    if named.is_some_and(|command| command.bundled)
         && !argv.iter().any(|arg| arg == "--bundle")
         && !package.is_empty()
     {
@@ -1782,13 +1820,14 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
     let (action, args) = argv
         .split_first()
         .map_or(("", &[][..]), |(action, args)| (action.as_str(), args));
-    if let Some(command) = crate::review::Command::from_name(action) {
-        return crate::review::run(command, args);
+    let command = command(action);
+    if let Some(Handler::Review(review)) = command.map(|command| command.handler) {
+        return crate::review::run(review, args);
     }
-    let known = COMMANDS.contains(&action);
+    let command = command.filter(|command| !matches!(command.handler, Handler::Evidence));
     let asks = args.iter().any(|arg| arg == "--help");
     if asks || matches!(action, "help" | "--help") {
-        let topic = if known { action } else { "" };
+        let topic = if command.is_some() { action } else { "" };
         return Outcome {
             exit_code: 0,
             stdout: render(&help(topic)),
@@ -1808,57 +1847,20 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
         hint("--host"),
     );
     let operation = recorder.start("cli.command", None);
-    if !known {
+    let Some(command) = command else {
         recorder.complete(operation, Map::new(), Some("INVALID_INPUT"));
+        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
         return Outcome {
             exit_code: 2,
             stdout: String::new(),
-            stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
+            stderr: format!("usage: craft <{}> [options]\n", names.join("|")),
             export: recorder.finish(),
         };
-    }
-    let command = match action {
-        "grounded-context" => grounded_context,
-        "operation" => plan_operation,
-        "prepare-services" => prepare_services,
-        "model-advice" => model_advice,
-        "lookup" => lookup,
-        "worker-status" => worker_status,
-        "route" => route,
-        "context-report" => context_report,
-        "locate" => locate,
-        "checkpoint-save" => checkpoint_save,
-        "checkpoint-read" => checkpoint_read,
-        "telemetry-report" => telemetry_report,
-        "telemetry-capture" => telemetry_capture,
-        "telemetry-forget" => telemetry_forget,
-        "session-attempt" => session_attempt,
-        "task-start" => task_start,
-        "session" | "session-advice" => session_status,
-        "task-step" => task_step,
-        "task-offer" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Offer, o, r, p)
-        },
-        "task-decision" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Decision, o, r, p)
-        },
-        "task-action-check" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Check, o, r, p)
-        },
-        "acceptance-view" => acceptance_view,
-        "task-feature" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| task_features(true, o, r, p)
-        }
-        "task-features" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| task_features(false, o, r, p)
-        }
-        _ => settings,
     };
-    let result = parse(action, args).and_then(|options| {
-        if let Some(action) = crate::scratch::Action::from_command(action) {
-            return workspace(action, &options, &mut recorder, &operation);
-        }
-        command(&options, &mut recorder, &operation)
+    let result = parse(action, args).and_then(|options| match command.handler {
+        Handler::Run(run) => run(&options, &mut recorder, &operation),
+        Handler::Workspace(action) => workspace(action, &options, &mut recorder, &operation),
+        Handler::Review(_) | Handler::Evidence => unreachable!("dispatched before parsing"),
     });
     let outcome = match &result {
         Ok(value) => {
@@ -1869,26 +1871,9 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
             );
             let compact =
                 !structured && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
-            let text = match action {
-                "checkpoint-save" if compact => receipt(value),
-                "task-start" if compact => task_receipt(value),
-                "session" | "session-advice" if compact => session_view(value),
-                "task-step" | "task-offer" | "task-decision" | "task-action-check" if compact => {
-                    action_receipt(action, value)
-                }
-                "session-attempt" if compact => {
-                    let recorded = &value["recorded"];
-                    let field =
-                        |name: &str| recorded[name].as_str().unwrap_or_default().to_string();
-                    format!(
-                        "Attempt recorded: {} / {} — {}\n",
-                        field("operation"),
-                        field("target"),
-                        field("outcome")
-                    )
-                }
-                // Search results stay on one line, whatever the detail requested.
-                "locate" => format!("{value}\n"),
+            let text = match command.render {
+                Render::Receipt(receipt) if compact => receipt(action, value),
+                Render::Line => format!("{value}\n"),
                 _ => render(value),
             };
             (0, text, String::new())
@@ -1909,6 +1894,22 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_command_table_names_help_usage_and_dispatch() {
+        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
+        let unique: std::collections::BTreeSet<_> = names.iter().collect();
+        assert_eq!(unique.len(), names.len(), "command names are unique");
+        assert_eq!(help("")["commands"], json!(names));
+        let unknown = run(&["no-such-command".to_string()]);
+        assert_eq!(unknown.exit_code, 2);
+        assert_eq!(
+            unknown.stderr,
+            format!("usage: craft <{}> [options]\n", names.join("|"))
+        );
+        // Evidence streams through `main`; `run` cannot host it and treats it as unknown.
+        assert_eq!(run(&["project-evidence".to_string()]).exit_code, 2);
+    }
 
     #[test]
     fn compact_receipts_keep_failed_outcomes_storage_diagnostics_and_action_boundaries() {

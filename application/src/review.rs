@@ -41,16 +41,6 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "review-prepare" => Some(Self::Prepare),
-            "review-check" => Some(Self::Check),
-            "review-publication" => Some(Self::Publication),
-            "review-followup" => Some(Self::Followup),
-            _ => None,
-        }
-    }
-
     fn options(self) -> &'static [&'static str] {
         match self {
             Self::Prepare => &[
