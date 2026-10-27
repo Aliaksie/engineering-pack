@@ -28,10 +28,7 @@ impl Drop for Fixture {
 }
 
 fn migrations(root: &Path) -> PathBuf {
-    let worktree = &hash(root.to_str().unwrap().as_bytes())[..24];
-    root.join(".craft/state")
-        .join(worktree)
-        .join("shared/migrations")
+    root.join(".craft/state/migrations")
 }
 
 /// A session directory of the previous layout: `<worktree>/<session>/`.
@@ -222,12 +219,9 @@ fn placement_hashes_the_physical_root_and_session() {
     assert_eq!(place.session_id, hash("session λ".as_bytes())[..24]);
     assert_eq!(location(&fixture.0, None).unwrap().session_id, "shared");
     assert!(
-        place.directory.ends_with(
-            Path::new(".craft/state")
-                .join(&place.worktree_id)
-                .join("sessions")
-                .join(&place.session_id)
-        )
+        place
+            .directory
+            .ends_with(Path::new(".craft/state/sessions").join(&place.session_id))
     );
     // 512 UTF-16 units is the bound; one astral character is two units.
     assert!(location(&fixture.0, Some(&"x".repeat(512))).is_ok());
@@ -267,7 +261,7 @@ fn placement_hashes_the_physical_root_and_session() {
     assert!(
         file(&fixture.0, "telemetry/key.json", false, None)
             .unwrap()
-            .ends_with(Path::new("shared/telemetry/key.json"))
+            .ends_with(Path::new(".craft/state/telemetry/key.json"))
     );
     assert_eq!(
         shared(&fixture.0, "sessions", false)
@@ -750,7 +744,7 @@ fn previous_layout_records_are_copied_under_their_new_names() {
     fs::write(shared.join("telemetry.jsonl"), "{\"schemaVersion\":1}\n").unwrap();
     fs::write(shared.join("project-evidence.sqlite.lock"), "").unwrap();
     let key = file(&fixture.0, "telemetry/key.json", false, None).unwrap();
-    assert!(key.ends_with("shared/telemetry/key.json"));
+    assert!(key.ends_with(".craft/state/telemetry/key.json"));
     assert_eq!(read(&key, 256).unwrap(), Some(json!({"key": "k"})));
     let log = file(&fixture.0, "telemetry/events.jsonl", false, None).unwrap();
     assert_eq!(fs::read_to_string(&log).unwrap(), "{\"schemaVersion\":1}\n");
@@ -881,4 +875,69 @@ fn previous_shared_records_are_retirable_only_once_copied_unchanged_and_unheld()
     fs::remove_file(shared.join("telemetry-key.json.lock")).unwrap();
     fs::write(shared.join("telemetry-key.json"), "{\"key\":\"other\"}\n").unwrap();
     assert!(pending("telemetry-key.json").contains("changed after migration"));
+}
+
+/// Records the layout before this one kept under `<worktree-id>/` move into place on the next
+/// access, one entry at a time; a held entry or a taken place waits, evidence stays.
+#[test]
+fn the_worktree_folder_layout_moves_into_place_entry_by_entry() {
+    let fixture = Fixture::new();
+    let root = &fixture.0;
+    let base = root.join(".craft/state");
+    let old = base.join(&hash(root.to_str().unwrap().as_bytes())[..24]);
+    let write = |relative: &str, text: &str| {
+        let path = old.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    };
+    write(
+        "sessions/aaaaaaaaaaaaaaaaaaaaaaaa/checkpoint.json",
+        "{\"a\":1}\n",
+    );
+    write("sessions/bbbbbbbbbbbbbbbbbbbbbbbb/checkpoint.json", "{}\n");
+    write("sessions/bbbbbbbbbbbbbbbbbbbbbbbb/checkpoint.json.lock", "");
+    write("shared/telemetry/events.jsonl", "old\n");
+    write("shared/migrations/migration-x.json", "{}\n");
+    write("shared/workspaces/guard.json", "{}\n");
+    write("shared/evidence/project.sqlite", "db");
+    // A place already taken keeps the earlier entry where it is.
+    fs::create_dir_all(base.join("telemetry")).unwrap();
+    fs::write(base.join("telemetry/events.jsonl"), "new\n").unwrap();
+
+    let place = location(root, None).unwrap();
+    assert_eq!(place.directory, base);
+    assert_eq!(
+        fs::read_to_string(base.join("sessions/aaaaaaaaaaaaaaaaaaaaaaaa/checkpoint.json")).unwrap(),
+        "{\"a\":1}\n"
+    );
+    assert!(
+        old.join("sessions/bbbbbbbbbbbbbbbbbbbbbbbb").exists(),
+        "held"
+    );
+    assert_eq!(
+        fs::read_to_string(base.join("telemetry/events.jsonl")).unwrap(),
+        "new\n"
+    );
+    assert!(
+        old.join("shared/telemetry/events.jsonl").exists(),
+        "place taken"
+    );
+    assert!(base.join("migrations/migration-x.json").exists());
+    assert!(base.join("workspaces/guard.json").exists());
+    assert!(!old.join("shared/migrations").exists() && !old.join("shared/workspaces").exists());
+    assert!(
+        old.join("shared/evidence/project.sqlite").exists(),
+        "evidence is not moved"
+    );
+
+    fs::remove_file(old.join("sessions/bbbbbbbbbbbbbbbbbbbbbbbb/checkpoint.json.lock")).unwrap();
+    location(root, Some("any")).unwrap();
+    assert!(
+        base.join("sessions/bbbbbbbbbbbbbbbbbbbbbbbb/checkpoint.json")
+            .exists()
+    );
+    assert!(
+        !old.join("sessions").exists(),
+        "an emptied folder is removed"
+    );
 }

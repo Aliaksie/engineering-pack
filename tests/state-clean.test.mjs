@@ -38,9 +38,9 @@ test('state-clean previews, then removes only idle unheld session directories', 
   fs.writeFileSync(path.join(held.directory, 'checkpoint.json.lock'), '');
   age(idle.directory, 15); age(held.directory, 15); age(recent.directory, 13);
   // A session directory of the previous layout and a shared record it left behind.
-  const worktree = path.dirname(idle.directory.replace(`${path.sep}sessions${path.sep}`, path.sep));
+  const worktree = stateLocation(root).previousDirectory;
   const previous = path.join(worktree, '0123456789abcdef01234567');
-  fs.mkdirSync(previous);
+  fs.mkdirSync(previous, { recursive: true });
   fs.writeFileSync(path.join(previous, '0123456789abcdef01234567.json'), '{}\n');
   age(previous, 30);
   fs.mkdirSync(path.join(worktree, 'shared'), { recursive: true });
@@ -75,21 +75,21 @@ test('state-clean previews, then removes only idle unheld session directories', 
 test('state-clean measures current shared families and never removes them', t => {
   const root = fixture(t);
   saveCheckpoint(root, 'measured', { nextStep: 'continue' });
-  const shared = path.join(path.dirname(path.dirname(stateLocation(root, 'measured').directory)), 'shared');
-  fs.mkdirSync(path.join(shared, 'evidence'), { recursive: true });
-  fs.writeFileSync(path.join(shared, 'evidence', 'project.sqlite'), 'x'.repeat(10));
+  const shared = stateLocation(root).directory;
+  fs.mkdirSync(path.join(shared, 'intelligence'), { recursive: true });
+  fs.writeFileSync(path.join(shared, 'intelligence', 'project.sqlite'), 'x'.repeat(10));
   fs.mkdirSync(path.join(shared, 'workspaces'), { recursive: true });
   fs.symlinkSync(os.tmpdir(), path.join(shared, 'workspaces', 'linked'));
   const families = result => Object.fromEntries(result.shared.map(item => [item.family, item]));
 
   const reported = families(run(['state-clean', '--root', root, '--apply']));
-  assert.deepEqual(Object.keys(reported), ['telemetry', 'evidence', 'workspaces', 'migrations']);
-  assert.deepEqual([reported.evidence.bytes, reported.evidence.files], [10, 1]);
-  assert.match(reported.evidence.bounded, /rebuild/);
+  assert.deepEqual(Object.keys(reported), ['telemetry', 'intelligence', 'workspaces', 'migrations']);
+  assert.deepEqual([reported.intelligence.bytes, reported.intelligence.files], [10, 1]);
+  assert.match(reported.intelligence.bounded, /rebuild/);
   assert.ok(reported.telemetry.bytes > 0, 'the command itself records telemetry');
   assert.equal(reported.workspaces.bytes, undefined);
   assert.match(reported.workspaces.reason, /symlink/);
-  assert.equal(fs.readFileSync(path.join(shared, 'evidence', 'project.sqlite'), 'utf8'), 'x'.repeat(10));
+  assert.equal(fs.readFileSync(path.join(shared, 'intelligence', 'project.sqlite'), 'utf8'), 'x'.repeat(10));
   assert.ok(fs.lstatSync(path.join(shared, 'workspaces', 'linked')).isSymbolicLink());
 });
 
@@ -120,7 +120,7 @@ test('an open workspace keeps its idle session, and an interrupted cleanup is fi
 
 test('state-clean removes what the previous layout left in shared/ once nothing depends on it', t => {
   const root = fixture(t);
-  const shared = stateLocation(root).directory;
+  const shared = path.join(stateLocation(root).previousDirectory, 'shared');
   const sessions = path.join(shared, 'sessions');
   const write = (name, text) => {
     fs.mkdirSync(path.dirname(path.join(shared, name)), { recursive: true });
@@ -133,6 +133,8 @@ test('state-clean removes what the previous layout left in shared/ once nothing 
   write('project-evidence.sqlite', 'not rebuilt\n');
   write('project-evidence.sqlite.lock', '');
   write('workspace-guard.json', '{}\n');
+  // The evidence folder of the layout before the current one is not moved.
+  write(path.join('evidence', 'project.sqlite'), 'not moved\n');
   // A closed workspace whose evidence retention expired long ago, and one nobody can verify.
   const sha256 = text => createHash('sha256').update(text).digest('hex');
   const session = digest('w'), task = digest('t'), entry = sha256(`${session}:${task}`);
@@ -146,6 +148,7 @@ test('state-clean removes what the previous layout left in shared/ once nothing 
   const actions = result => Object.fromEntries(result.previousShared.map(item => [item.name, [item.action, item.reason]]));
   const preview = actions(run(['state-clean', '--root', root]));
   assert.deepEqual(preview, {
+    evidence: ['remove', undefined],
     'migration-0123456789abcdef01234567.json': ['remove', undefined],
     'project-evidence.sqlite': ['remove', undefined],
     'project-evidence.sqlite.lock': ['remove', undefined],
@@ -161,7 +164,8 @@ test('state-clean removes what the previous layout left in shared/ once nothing 
   assert.deepEqual(applied['telemetry.jsonl'], ['removed', undefined]);
   assert.deepEqual(applied['project-evidence.sqlite'], ['removed', undefined]);
   assert.deepEqual(applied['workspace-guard.json'][0], 'keep');
-  assert.deepEqual(fs.readdirSync(shared).sort(), ['migrations', 'sessions', 'telemetry', 'telemetry-captures.json', 'workspace-guard.json']);
+  assert.deepEqual(applied.evidence, ['removed', undefined]);
+  assert.deepEqual(fs.readdirSync(shared).sort(), ['sessions', 'telemetry-captures.json', 'workspace-guard.json']);
   assert.deepEqual(fs.readdirSync(sessions), ['f'.repeat(64)], 'the unverified workspace is kept');
 
   // The copied log stays current, and an older store cannot become its source again.
@@ -173,7 +177,7 @@ test('state-clean removes what the previous layout left in shared/ once nothing 
   fs.rmSync(path.join(sessions, 'f'.repeat(64)), { recursive: true });
   const last = actions(run(['state-clean', '--root', root, '--apply']));
   assert.deepEqual([last.sessions, last['workspace-guard.json']], [['removed', undefined], ['removed', undefined]]);
-  assert.deepEqual(fs.readdirSync(shared).sort(), ['migrations', 'telemetry', 'telemetry-captures.json']);
+  assert.deepEqual(fs.readdirSync(shared).sort(), ['telemetry-captures.json']);
 });
 
 test('a cleanup interrupted while removing files is finished, not restored', t => {

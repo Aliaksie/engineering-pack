@@ -81,8 +81,18 @@ fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, Error> 
     Ok(folder)
 }
 
-/// Shared record families, one directory each under `shared/`.
-const FAMILIES: &[&str] = &["telemetry", "evidence", "workspaces"];
+/// Shared record families, one directory each beside `sessions/`.
+const FAMILIES: &[&str] = &["telemetry", "intelligence", "workspaces"];
+/// Copy receipts for records taken over from earlier stores.
+const MIGRATIONS: &str = "migrations";
+/// Folders the layout before this one kept under `<worktree-id>/`, and their place now.
+/// Its evidence database is not moved: it is rebuildable and may be held open.
+const RELOCATED: &[(&str, &str)] = &[
+    ("sessions", "sessions"),
+    ("shared/telemetry", "telemetry"),
+    ("shared/workspaces", "workspaces"),
+    ("shared/migrations", MIGRATIONS),
+];
 /// The per-session description, written once when the session directory is created.
 pub const MANIFEST: &str = "manifest.json";
 pub const MANIFEST_BYTES: usize = 1024;
@@ -98,15 +108,15 @@ fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<
         return Err("invalid state session".into());
     }
     let worktree_id = short(text(canonical)?.as_bytes());
-    let worktree = descend(canonical, &[".craft", "state", &worktree_id], create)?;
+    let base = descend(canonical, &[".craft", "state"], create)?;
+    if directory(&base, false)? {
+        relayout(&base, &worktree_id)?;
+    }
     let (directory, session_id) = match session {
-        None => (
-            descend(&worktree, &["shared"], create)?,
-            "shared".to_string(),
-        ),
+        None => (base, "shared".to_string()),
         Some(session) => {
             let id = short(session.as_bytes());
-            let sessions = descend(&worktree, &["sessions"], create)?;
+            let sessions = descend(&base, &["sessions"], create)?;
             let directory = sessions.join(&id);
             if !self::directory(&directory, false)? && create {
                 directory_and_manifest(&directory, session)?;
@@ -119,6 +129,64 @@ fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<
         worktree_id,
         session_id,
     })
+}
+
+/// Whether a folder entry is in use by a writer: a lock beside it, or one inside it.
+fn held(path: &Path) -> bool {
+    let mut lock = path.as_os_str().to_owned();
+    lock.push(".lock");
+    if fs::symlink_metadata(PathBuf::from(lock)).is_ok() {
+        return true;
+    }
+    fs::read_dir(path).is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            name.ends_with(".lock") || name.ends_with(".lease-guard")
+        })
+    })
+}
+
+/// Move what the layout before this one kept under `<worktree-id>/` into place, one entry at
+/// a time: an entry held by a writer, or whose place is taken, stays for a later access.
+/// Emptied folders are removed; nothing is copied or overwritten.
+fn relayout(base: &Path, worktree_id: &str) -> Result<(), Error> {
+    let old = base.join(worktree_id);
+    for (from, to) in RELOCATED {
+        let source = old.join(from);
+        match fs::symlink_metadata(&source) {
+            Ok(meta) if meta.is_dir() && !meta.file_type().is_symlink() => {}
+            _ => continue,
+        }
+        let destination = descend(base, &[to], true)?;
+        for entry in fs::read_dir(&source)? {
+            let name = entry?.file_name();
+            let path = source.join(&name);
+            if name.to_string_lossy().ends_with(".lock") || held(&path) {
+                continue;
+            }
+            let target = destination.join(&name);
+            if fs::symlink_metadata(&target).is_err() {
+                // A writer of the earlier layout may hold it on Windows; retried later.
+                let _ = fs::rename(&path, &target);
+            }
+        }
+        let _ = fs::remove_dir(&source);
+    }
+    let _ = fs::remove_dir(old.join("shared"));
+    let _ = fs::remove_dir(&old);
+    Ok(())
+}
+
+/// Where the layout before this one kept its shared files: `<worktree-id>/shared/`.
+pub fn previous_shared(root: &Path) -> Result<PathBuf, Error> {
+    let canonical = canonical_root(root)?;
+    let worktree_id = short(text(&canonical)?.as_bytes());
+    Ok(canonical
+        .join(".craft")
+        .join("state")
+        .join(worktree_id)
+        .join("shared"))
 }
 
 /// Create a session directory and describe it: creation time, the workspace identity of
@@ -190,7 +258,7 @@ fn segment(name: &str) -> bool {
 }
 
 /// Path of one state record: `sessions/<session>/<name>` for a session, otherwise
-/// `shared/<family>/<name>`. Records of earlier layouts are copied in on first access.
+/// `<family>/<name>`. Records of earlier layouts are copied in on first access.
 pub fn file(
     root: &Path,
     name: &str,
@@ -632,7 +700,7 @@ fn migrate_legacy(
     }
     sources.push((root.join(".craft").join("state"), false));
     sources.push((root.join(".capabilities").join("state"), false));
-    let receipts = worktree.join("shared").join("migrations");
+    let receipts = root.join(".craft").join("state").join(MIGRATIONS);
     for (source, scoped) in sources {
         // Validate every ancestor, including historical namespaces, before reading.
         let mut ancestor = source.as_path();
@@ -791,7 +859,7 @@ pub fn retirable(root: &Path, old: &str) -> Result<Option<Vec<String>>, Error> {
     }) else {
         return Ok(None);
     };
-    let source = location(root, None)?.directory;
+    let source = previous_shared(root)?;
     let mut present = Vec::new();
     for pair in pairs {
         if exists(&source.join(&pair.0))? {
@@ -801,10 +869,13 @@ pub fn retirable(root: &Path, old: &str) -> Result<Option<Vec<String>>, Error> {
             present.push(pair);
         }
     }
-    let receipt = source.join("migrations").join(format!(
-        "migration-{}.json",
-        short(text(&source.join(&old_name))?.as_bytes())
-    ));
+    let receipt = location(root, None)?
+        .directory
+        .join(MIGRATIONS)
+        .join(format!(
+            "migration-{}.json",
+            short(text(&source.join(&old_name))?.as_bytes())
+        ));
     let receipt =
         read(&receipt, RECEIPT_BYTES)?.ok_or("not copied yet; it is copied when first used")?;
     let replaceable = name.starts_with("telemetry/events");

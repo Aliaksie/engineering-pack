@@ -59,16 +59,13 @@ pub(crate) fn absolute(path: &str) -> PathBuf {
 
 /// Paths in the form `stateLocation` reports them; failures are reported, not raised.
 fn state_location(root: &Path) -> Value {
-    let located = state::canonical_root(root)
-        .and_then(|canonical| Ok((state::location(&canonical, None)?, canonical)));
+    let located =
+        state::canonical_root(root).and_then(|canonical| state::location(&canonical, None));
     match located {
-        Ok((location, canonical)) => json!({
+        Ok(location) => json!({
             "directory": location.directory.to_string_lossy(),
             "scope": "workspace-local",
-            "formatVersion": 3,
-            "worktreeId": location.worktree_id,
-            "sessionId": location.session_id,
-            "legacyDirectory": canonical.join(".craft").join("state").to_string_lossy(),
+            "formatVersion": 4,
         }),
         Err(reason) => json!({ "status": "unavailable", "reason": reason.to_string() }),
     }

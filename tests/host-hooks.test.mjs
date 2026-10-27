@@ -9,15 +9,15 @@ import { HOSTS } from '../hosts/registry.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 import { hookPackage, runHook } from './hook-command.mjs';
 
-// Records below the worktree directory: `shared/<family>/<name>` or `sessions/<id>/<name>`.
+// Records below the state directory: `<family>/<name>` or `sessions/<id>/<name>`.
 const stateNames = root => {
   const base = path.join(root, '.craft', 'state');
   const walk = folder => fs.readdirSync(folder, { withFileTypes: true }).flatMap(entry =>
-    entry.isDirectory() ? walk(path.join(folder, entry.name)) : [path.relative(base, path.join(folder, entry.name)).split(path.sep).slice(1).join('/')]);
+    entry.isDirectory() ? walk(path.join(folder, entry.name)) : [path.relative(base, path.join(folder, entry.name)).split(path.sep).join('/')]);
   return fs.existsSync(base) ? walk(base) : [];
 };
 const session = /^sessions\/[0-9a-f]{24}\//;
-const only = (names, allowed) => names.every(name => name.startsWith('shared/telemetry/') || allowed.test(name.replace(session, '')) && session.test(name));
+const only = (names, allowed) => names.every(name => name.startsWith('telemetry/') || allowed.test(name.replace(session, '')) && session.test(name));
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const native = ['claude', 'codex', 'cursor', 'copilot', 'gemini'];

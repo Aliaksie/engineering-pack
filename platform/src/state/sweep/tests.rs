@@ -16,6 +16,11 @@ impl Fixture {
         fs::create_dir(&path).unwrap();
         Self(canonical_root(&path).unwrap())
     }
+    /// The state folder holding current-layout sessions.
+    fn base(&self) -> PathBuf {
+        self.0.join(".craft").join("state")
+    }
+    /// Where the layout before the current one kept its records.
     fn worktree(&self) -> PathBuf {
         let id = &hash(self.0.to_str().unwrap().as_bytes())[..24];
         self.0.join(".craft").join("state").join(id)
@@ -60,7 +65,7 @@ fn inventory_lists_both_layouts_workspaces_and_shared_leftovers_without_creating
     assert!(matches!(current.described, Described::Workspace(_)));
     let worktree = fixture.worktree();
     let previous = worktree.join("0123456789abcdef01234567");
-    fs::create_dir(&previous).unwrap();
+    fs::create_dir_all(&previous).unwrap();
     fs::write(previous.join("0123456789abcdef01234567.json"), "{}").unwrap();
     fs::create_dir(worktree.join(".sweep-89abcdef0123456789abcdef")).unwrap();
     fs::create_dir(worktree.join("not-a-session")).unwrap();
@@ -191,7 +196,7 @@ fn an_interrupted_removal_keeps_the_manifest() {
 fn symlinked_session_directories_are_refused() {
     let fixture = Fixture::new();
     let found = fixture.session("a");
-    let link = fixture.worktree().join("sessions").join("0".repeat(24));
+    let link = fixture.base().join("sessions").join("0".repeat(24));
     std::os::unix::fs::symlink(&found.path, &link).unwrap();
     assert!(inventory(&fixture.0).is_err());
     fs::remove_file(&link).unwrap();
@@ -223,7 +228,7 @@ fn junction(link: &Path, target: &Path) {
 fn junctioned_session_and_state_directories_are_refused() {
     let fixture = Fixture::new();
     let found = fixture.session("a");
-    let link = fixture.worktree().join("sessions").join("0".repeat(24));
+    let link = fixture.base().join("sessions").join("0".repeat(24));
     junction(&link, &found.path);
     assert!(inventory(&fixture.0).is_err());
     fs::remove_dir(&link).unwrap();

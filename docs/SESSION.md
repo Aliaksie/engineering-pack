@@ -168,32 +168,38 @@ continuation at milestones rather than relying on a final callback.
   project.json
   telemetry.json
   state/
-    <worktree-id>/
-      sessions/<session-id>/
-        manifest.json         # created, workspace identity, host when a hook created it
-        checkpoint.json
-        task.json             # active task binding
-        activity-<id>.json    # per-task activity, lookups and attempts
-        workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
-      shared/
-        telemetry/            # events.jsonl(.1), key.json, captures.json
-        evidence/             # project.sqlite(.lock), project.sqlite.backup
-        workspaces/           # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
-        migrations/           # receipts for records copied from earlier layouts
+    sessions/<session-id>/
+      manifest.json         # created, workspace identity, host when a hook created it
+      checkpoint.json
+      task.json             # active task binding
+      activity-<id>.json    # per-task activity, lookups and attempts
+      workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
+    telemetry/              # events.jsonl(.1), key.json, captures.json
+    intelligence/           # project.sqlite(.lock), project.sqlite.backup
+    workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
+    migrations/             # receipts for records copied from earlier layouts
 ```
 
-IDs are hashes of the canonical root and session; raw names never become paths. Git and
-non-Git roots use the same layout; linked worktrees get their own ID. Add `.craft/state/`
-to `.gitignore`; Craft never edits ignore rules or Git metadata. Lookup, snapshots, review
-and exports exclude state regardless of ignores. `craft settings` shows the directory.
+Session IDs are hashes of the host session; raw names never become paths. Each root, whether
+a Git worktree, a folder of repositories or a plain folder, has its own `.craft/state/`;
+linked worktrees have their own. Add `.craft/state/` to `.gitignore`; Craft never edits
+ignore rules or Git metadata. Lookup, snapshots, review and exports exclude state regardless
+of ignores. `craft settings` shows the directory.
+
+The previous layout kept the same folders under `.craft/state/<worktree-id>/` (with
+`shared/` around the families). Its entries move into place one at a time on the next
+access; one held by a writer, or whose place is already taken, waits for a later access and
+`state-clean` reports it. Its evidence database is not moved: `refresh` builds the current
+one and `state-clean` removes the old one.
 
 State from earlier layouts (`.craft/state/<worktree-id>/<session-id>/` and
-`shared/` files, `.git/craft-state/`, flat `.craft/state/`, `.capabilities/state/`) is copied
-on first access under its current name; only `state-clean` removes sources it copied. The newest
-layout holding a record is its only source. Workspaces and the evidence database start
-fresh. Stop older installed plugins before upgrading: they do not honor the current locks,
-and a checkpoint, binding or activity record they change after the copy is refused until
-the stores are reconciled. Telemetry events and routing hints they keep writing are ignored.
+`shared/` files, `.git/craft-state/`, flat `.craft/state/` files, `.capabilities/state/`) is
+copied on first access under its current name; only `state-clean` removes sources it copied.
+The newest layout holding a record is its only source. Workspaces and the evidence database
+start fresh. Stop older installed plugins before upgrading: they do not honor the current
+locks, and a checkpoint, binding or activity record they change after the copy is refused
+until the stores are reconciled. Telemetry events and routing hints they keep writing are
+ignored.
 
 ```sh
 craft state-clean --root <project>            # preview
@@ -207,13 +213,13 @@ workspace may belong to it; its checkpoint goes with it. Anything else is kept w
 A directory is set aside, listed again and removed only if unchanged; an interrupted cleanup
 finishes on the next run.
 
-Files the previous layout left directly in `shared/` are removed with `--apply` once nothing
-depends on them: a telemetry log once copied, the telemetry key and captures once copied and
+Files earlier layouts left in `.craft/state/<worktree-id>/shared/` are removed with
+`--apply` once nothing depends on them: the evidence folder while no process holds it, a telemetry log once copied, the telemetry key and captures once copied and
 unchanged since, that layout's copy receipts, its evidence database while no process holds
 it (`refresh` rebuilds the current one), and its workspaces when inactive and past evidence
 retention, then their guard. A record never copied, a locked one or an unrecognized file is
 kept with a reason. Removing a copied source never lets an older store become the record's
-source again. Current shared families are only measured: `shared` lists each one's bytes
+source again. Current families are only measured: `shared` lists each one's bytes
 and files, or why it could not be measured, and what keeps it bounded. Telemetry rotates,
 workspaces follow `workspace-clean`, the evidence database is rebuilt on request
 (`project-evidence rebuild`, then `refresh`) and copy receipts are kept.
