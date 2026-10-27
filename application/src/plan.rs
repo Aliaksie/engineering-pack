@@ -100,12 +100,12 @@ pub fn summaries(root: &Path) -> Result<Vec<Value>, Failure> {
 }
 
 impl Writer {
-    fn read(&self, id: &str) -> Result<Option<Value>, Failure> {
+    pub(crate) fn read(&self, id: &str) -> Result<Option<Value>, Failure> {
         load(&record(&self.folder, id))
     }
 
     /// Write the record, its Markdown view and its index entry.
-    fn save(&self, root: &Path, saved: &Value) -> Result<(), Failure> {
+    pub(crate) fn save(&self, root: &Path, saved: &Value) -> Result<(), Failure> {
         let id = saved["id"].as_str().expect("validated plan id");
         let folder = state::plans(root, Some(id), true)?;
         state::write(&folder.join(RECORD), saved, plan::RECORD_BYTES, true)?;
@@ -185,9 +185,31 @@ pub fn update(
         )
         .into());
     }
+    let before = saved.clone();
     plan::apply(&mut saved, changes, caller.as_deref(), take_over, now_ms())?;
     writer.save(root, &saved)?;
-    shown(root, &saved)
+    drop(writer);
+    // Tasks set back for new work leave their worktrees; remove what is safe to remove.
+    let mut removed = Vec::new();
+    for task in before["tasks"].as_array().into_iter().flatten() {
+        let Some(work) = task.get("work") else {
+            continue;
+        };
+        let kept = saved["tasks"]
+            .as_array()
+            .and_then(|tasks| tasks.iter().find(|t| t["id"] == task["id"]))
+            .is_some_and(|t| t.get("work").is_some());
+        if !kept {
+            let mut entry = crate::delegation::discarded(&state::canonical_root(root)?, work);
+            entry["task"] = task["id"].clone();
+            removed.push(entry);
+        }
+    }
+    let mut view = shown(root, &saved)?;
+    if !removed.is_empty() {
+        view["worktrees"] = json!(removed);
+    }
+    Ok(view)
 }
 
 /// `plan`: one plan, the plans linking a reference, or every plan's summary.
@@ -242,6 +264,11 @@ fn observed(
             complete: changes.complete,
         })
         .collect())
+}
+
+/// The source of `repositories` (the root when `None`) as a claim records it.
+pub fn source(root: &Path, repositories: Option<&Value>) -> Result<Vec<Observed>, Failure> {
+    observed(root, repositories, None)
 }
 
 /// Claim `task` of plan `id` for `session`; `repositories` is the task's source, which a
@@ -343,17 +370,27 @@ pub fn release(
     };
     let writer = writer(root)?;
     let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let work = saved["tasks"]
+        .as_array()
+        .and_then(|tasks| tasks.iter().find(|t| t["id"] == task))
+        .and_then(|t| t.get("work"))
+        .cloned();
     let holder = plan::release_task(&mut saved, task, &caller, take_over, reason, now_ms())?;
     writer.save(root, &saved)?;
+    drop(writer);
     let bound = crate::session::active_binding(root, session)?
         .is_some_and(|b| b["task"] == task && b["plan"] == id);
     if bound {
         std::fs::remove_file(&file)?;
     }
-    Ok(json!({
+    let mut released = json!({
         "plan": id, "task": task, "state": "pending", "releasedFrom": holder,
         "unbound": bound, "revision": saved["revision"],
-    }))
+    });
+    if let Some(work) = work {
+        released["worktrees"] = crate::delegation::discarded(&state::canonical_root(root)?, &work);
+    }
+    Ok(released)
 }
 
 /// Refuse a step for a plan task this session does not hold.
@@ -375,8 +412,13 @@ pub fn completable(
         .as_array()
         .and_then(|tasks| tasks.iter().find(|t| t["id"] == task))
         .ok_or_else(|| format!("plan {id} has no task {task}"))?;
-    let changed = match found.get("scopeBase") {
-        Some(base) if found["scope"]["paths"].is_array() => {
+    // A task in worktrees is compared there, under its repositories' paths.
+    let changed = match (found.get("scopeBase"), found.get("work")) {
+        (Some(base), Some(work)) if found["scope"]["paths"].is_array() => plan::changed(
+            base,
+            &crate::delegation::observed(&state::canonical_root(root)?, work, Some(base)),
+        ),
+        (Some(base), None) if found["scope"]["paths"].is_array() => {
             plan::changed(base, &observed(root, repositories, Some(base))?)
         }
         _ => None,

@@ -110,9 +110,11 @@ craft plan-release --root <project> --plan checkout-retry --task b --session <ho
 - `plan-next` only reads. It names the `next` task and groups the rest in plan order:
   `ready` (children of a parent this session holds first), `held` here, held `elsewhere`
   (with `idleMinutes`, `stale` after 120 minutes without a step, `orphaned` when the holding
-  session's folder is gone), `waiting` with the unfinished tasks they wait on (`stuck` behind
-  a failed or abandoned one, which only `plan-update` resolves), `retry` (failed with
-  attempts left), `exhausted` and `parents` whose children are all done.
+  session's folder is gone, `worker` when this session assigned it), `waiting` with the
+  unfinished tasks they wait on (`stuck` behind a failed or abandoned one, which only
+  `plan-update` resolves), `retry` (failed with attempts left), `exhausted`, `parents` whose
+  children are all done, `integrate` and `needsUser` (see parallel workers); `workers` counts
+  this session's running workers.
 - `task-start --plan P --ready` claims that next task. The claim under the plans lock
   decides, so two sessions asking at once get different tasks. It never takes over a task
   held elsewhere, stale or not; nothing is released by age.
@@ -150,9 +152,10 @@ and the shape of the result it returns:
   `--contract` is given; [acceptance contracts](ACCEPTANCE.md) then gate completion.
 - `returns` describes the expected result; the result given at completion is what dependent
   tasks see.
-- `scope.worktree` is declared for the task and shown to it; it is not created or enforced.
+- `scope.worktree` is declared for the task and shown to it; it is not created or enforced
+  (worker worktrees come from `plan-assign`, below).
 - `plan` and `plan.md` list unfinished tasks that may work at the same time on intersecting
-  paths under `overlaps`; this is reported, not refused.
+  paths under `overlaps`; this is reported, and refused only when a worker is assigned.
 
 `task-start --plan` returns the task's envelope, also shown by `craft plan-envelope --plan P
 --task T`: the task, its dependencies with their results and latest evidence, its parent
@@ -162,11 +165,58 @@ no conversation, other tasks' work or secrets. `--brief` emits it as a worker `b
 ([host control](HOST-CONTROL.md)): sources are the references and dependency results,
 restrictions the owned paths.
 
+#### Parallel workers
+
+A session may delegate ready tasks that own paths to workers, which the host's agent tool
+runs; `craft` claims, isolates and integrates, and starts nothing itself:
+
+```sh
+craft plan-assign    --root <project> --plan checkout-retry --task api --session <host-id> [--shared]
+craft task-start     --root <project> --session '<host-id>/checkout-retry/api' --plan checkout-retry --task api   # the worker
+craft plan-integrate --root <project> --plan checkout-retry --task api --session <host-id> [--escalate --reason "..." | --discard]
+```
+
+- `plan-assign` claims the task for the worker session `<session>/<plan>/<task>`; the
+  assigning session keeps its own binding. It is refused for a task without `scope.paths`,
+  at `efficiency.delegation.maxWorkers` running workers of this session (default 3, 0
+  disables), and while a running task that may work at the same time owns intersecting
+  paths. It returns the envelope, the worker `brief` and the worker's start command.
+- Isolation: for each repository of the task (its `repositories`, else the root when it is a
+  repository's top folder) a worktree is made at `.craft/worktrees/<plan>/<task>[/<repo>]`
+  on the new branch `craft/<plan>/<task>` from the current `HEAD`. Add `.craft/worktrees/` to
+  `.gitignore`; `plan-assign` refuses until Git ignores it, and refuses when the task's paths
+  hold uncommitted changes that the worktree would miss. An existing branch or folder is
+  refused, never reused. A plain folder, or `--shared`, has no worktree: the worker changes
+  only its owned paths in the shared checkout, which the overlap rule protects.
+- The worker's `task-start` binds its worktrees as repositories, and the scope check of
+  `task-step --complete` runs there. A completion commits what the worktrees hold on their
+  branches (consumer commit hooks apply) and records each branch head it verified.
+- A completed worktree task readies dependents, and lets its parent and the plan complete,
+  only once integrated; `plan-next` lists it under `integrate`. `plan-integrate` (by the
+  assigning session) refuses a branch that moved since verification, a checkout in the middle
+  of a merge or rebase, and uncommitted changes in files the branch changes. It tries the
+  merge without touching the checkout (Git 2.38+); when clean, it merges each repository
+  with one `--no-ff` merge commit, removes the worktrees and deletes the merged branches.
+  Nothing is pushed.
+- On conflicts nothing is merged: the task returns to `running` in the integrating session,
+  counting one attempt, with the conflicted paths and the coordinator commit to merge. That
+  session continues it with `task-start --plan P --task T` (bound to the worktrees), merges
+  the commit in the worktree, resolves, verifies and completes it again, then runs
+  `plan-integrate` again. When no attempt is left, or after `--escalate --reason`, the task
+  `needsUser`: `plan-next` and the session-start line show it until it is integrated or
+  discarded.
+- `--discard` drops the result: the task is `pending` again and its worktrees are removed
+  when clean; the unmerged branch is kept and reported. `plan-release` by the assigning
+  session, or `plan-update` setting a worktree task back, removes its worktrees the same way.
+- A worker assignment recorded through the [host control](HOST-CONTROL.md) with scope
+  `plan:<plan>:<task>` that ends `failed`, `cancelled` or `not-started` releases its task.
+
 Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
 it is regenerated after every change for people to read and is never read back.
 `plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
 `craft` versions refuse it, so stop them before upgrading, as for other state changes. A
-plan is written at the first version holding the fields its tasks use: version 3 once a
+plan is written at the first version holding the fields its tasks use: version 4 once a
+task is assigned to a worker (`owner.parent`, `work`, `integration`); version 3 once a
 task records `attempts` (its first claim), `maxAttempts` or `verified`; version 2 when tasks
 use `parent`, `scope`, `contract` or `returns`; otherwise version 1. Older versions refuse
 newer plans.
@@ -296,8 +346,10 @@ continuation at milestones rather than relying on a final callback.
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether
 a Git worktree, a folder of repositories or a plain folder, has its own `.craft/state/`;
-linked worktrees have their own. Add `.craft/state/` to `.gitignore`; Craft never edits
-ignore rules or Git metadata. Lookup, snapshots, review and exports exclude state regardless
+linked worktrees have their own. Add `.craft/state/` (and `.craft/worktrees/` for parallel
+workers) to `.gitignore`; Craft never edits ignore rules, and changes Git metadata only
+through `plan-assign` and `plan-integrate` (worker worktrees, their branches and merge
+commits). Lookup, snapshots, review and exports exclude state regardless
 of ignores. `craft settings` shows the directory.
 
 The previous layout kept the same folders under `.craft/state/<worktree-id>/` (with

@@ -33,7 +33,10 @@ request continues, start its next ready task with `task-start --plan <plan> --re
 one, only for that continuation, and `plan-release` a task this session stops working on. For work that is multi-step, likely to
 span sessions or delegated, create a plan with `plan-create` and say so. Give a delegated or
 separable task a `parent`, the paths it owns and its acceptance; hand a worker the task's
-`plan-envelope --brief`, not the conversation. Honor effective
+`plan-envelope --brief`, not the conversation. To run such tasks in parallel, `plan-assign`
+each to a worker (isolated worktree, announced in the reply), have the worker start it with
+the returned command, and `plan-integrate` it once completed; resolve reported conflicts in
+the worktree, and escalate to the user what cannot be resolved. Honor effective
 disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
 Explicitly requested receipt commands remain available. Normal
 `route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.

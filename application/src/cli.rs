@@ -105,6 +105,8 @@ const COMMANDS: &[Command] = &[
     Command::run("plan-envelope", plan_envelope),
     Command::run("plan-next", plan_next).receipt(|_, value| queue_receipt(value)),
     Command::run("plan-release", plan_release).receipt(|_, value| release_receipt(value)),
+    Command::run("plan-assign", plan_assign).receipt(|_, value| assign_receipt(value)),
+    Command::run("plan-integrate", plan_integrate).receipt(|_, value| integrate_receipt(value)),
     Command::run("settings", settings),
     Command::run("route", route),
     Command::run("context-report", context_report).bundled(),
@@ -207,6 +209,9 @@ const OPTIONS: &[&str] = &[
     "take-over",
     "brief",
     "ready",
+    "shared",
+    "escalate",
+    "discard",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -218,6 +223,9 @@ const FLAGS: &[&str] = &[
     "take-over",
     "brief",
     "ready",
+    "shared",
+    "escalate",
+    "discard",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -307,6 +315,12 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("ready") && action != "task-start" {
         return Err("--ready is supported by task-start".into());
+    }
+    if present("shared") && action != "plan-assign" {
+        return Err("--shared is supported by plan-assign".into());
+    }
+    if ["escalate", "discard"].iter().any(|name| present(name)) && action != "plan-integrate" {
+        return Err("--escalate and --discard are supported by plan-integrate".into());
     }
     if present("brief") && action != "plan-envelope" {
         return Err("--brief is supported by plan-envelope".into());
@@ -743,6 +757,10 @@ fn task_start(
         if let Some(repositories) = planned.get("repositories") {
             start.insert("repositories".into(), repositories.clone());
         }
+        // A task in worktrees works there: its worktree folders are its repositories.
+        if let Some(work) = planned.get("work") {
+            start.insert("repositories".into(), crate::delegation::scopes(work));
+        }
     }
     // An explicit --contract replaces the contract file the plan task names.
     let planned_contract = planned
@@ -868,6 +886,60 @@ fn plan_release(
         options.values.contains_key("take-over"),
         options.get("reason"),
     )
+}
+
+/// Delegate a ready plan task to a worker of `--session`, in isolated worktrees unless
+/// `--shared`.
+fn plan_assign(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-assign requires --plan, --task and --session".into());
+    };
+    let settings = loaded(options, recorder, parent)?;
+    crate::delegation::assign(crate::delegation::Assign {
+        root: &root(options),
+        plan,
+        task,
+        session,
+        shared: options.values.contains_key("shared"),
+        settings: &settings,
+    })
+}
+
+/// Merge a completed worktree task, or `--escalate` or `--discard` its integration.
+fn plan_integrate(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-integrate requires --plan, --task and --session".into());
+    };
+    let how = match (
+        options.values.contains_key("escalate"),
+        options.values.contains_key("discard"),
+    ) {
+        (true, true) => return Err("plan-integrate takes --escalate or --discard, not both".into()),
+        (true, false) => crate::delegation::Integration::Escalate(
+            options
+                .get("reason")
+                .ok_or("plan-integrate --escalate requires --reason")?,
+        ),
+        (false, true) => crate::delegation::Integration::Discard,
+        (false, false) => crate::delegation::Integration::Merge,
+    };
+    crate::delegation::integrate(&root(options), plan, task, session, how)
 }
 
 /// One plan as its Markdown view or JSON, the plans linking `--reference`, or all plans.
@@ -1404,6 +1476,14 @@ fn help(action: &str) -> Value {
         "plan-envelope" => json!({
             "usage": "plan-envelope --plan id --task task-id [--brief] [--root project]",
             "mode": "read-only: the task's goal, acceptance, owned scope, dependency results, parent checkpoint reference and latest decisions; --brief emits the worker brief",
+        }),
+        "plan-assign" => json!({
+            "usage": "plan-assign --plan id --task task-id --session id [--shared] [--root project]",
+            "mode": "claim a ready task that owns paths for a worker session of this session, in isolated worktrees below .craft/worktrees/<plan>/<task>/ on branch craft/<plan>/<task> unless --shared; refused at efficiency.delegation.maxWorkers or when a running task owns intersecting paths; no worker is started",
+        }),
+        "plan-integrate" => json!({
+            "usage": "plan-integrate --plan id --task task-id --session id [--escalate --reason text | --discard] [--root project]",
+            "mode": "merge a completed worktree task into the coordinator checkout when it merges cleanly (one merge commit per repository, nothing pushed); on conflicts the task runs again in this session to resolve them; --escalate hands it to the user, --discard returns it to pending",
         }),
         "task-adopt" => json!({
             "usage": "task-adopt --session id --from earlier-session [--root project]",
@@ -1952,6 +2032,11 @@ fn queue_receipt(result: &Value) -> String {
         ("retry", "Failed, may retry"),
         ("exhausted", "Out of attempts"),
         ("parents", "Children done, complete the parent"),
+        (
+            "integrate",
+            "Completed in worktrees, integrate with plan-integrate",
+        ),
+        ("needsUser", "Integration needs the user"),
     ] {
         let listed = ids(group);
         if !listed.is_empty() {
@@ -1965,6 +2050,82 @@ fn queue_receipt(result: &Value) -> String {
         .any(|i| i["stale"] == true || i["orphaned"] == true);
     if stale {
         lines.push(format!("Stale or orphaned claims continue only with: craft task-start --plan {plan} --task <task> --take-over"));
+    }
+    format!("{}\n", lines.join("\n"))
+}
+
+fn assign_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let mut lines = vec![format!(
+        "Assigned: {} of plan {} to worker session {} (revision {})",
+        text(&result["task"]),
+        text(&result["plan"]),
+        text(&result["worker"]["session"]),
+        result["revision"]
+    )];
+    for repository in result["work"]["repositories"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        lines.push(format!(
+            "Worktree: {} on {}",
+            text(&repository["worktree"]),
+            text(&repository["branch"])
+        ));
+    }
+    if result["isolated"] != true {
+        lines.push("Shared checkout: the worker changes only its owned paths here".into());
+    }
+    lines.push(format!(
+        "Worker starts with: {}",
+        text(&result["worker"]["start"])
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn integrate_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let task = text(&result["task"]);
+    let mut lines = Vec::new();
+    if result["integrated"] == true {
+        lines.push(format!(
+            "Integrated: {task} merged into the coordinator checkout"
+        ));
+        let kept = result["worktrees"]["kept"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        lines.extend(kept.iter().map(|k| format!("Kept: {}", text(k))));
+    } else if result["conflicts"].is_array() {
+        let paths: Vec<String> = result["conflicts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(text)
+            .collect();
+        lines.push(format!(
+            "{}: {task} conflicts on {}",
+            if result["integration"]["state"] == "escalated" {
+                "Needs the user"
+            } else {
+                "Conflict"
+            },
+            paths.join(", ")
+        ));
+        lines.push(format!("Next: {}", text(&result["next"])));
+    } else if result["state"] == "pending" {
+        lines.push(format!("Discarded: {task} is pending again"));
+        let kept = result["worktrees"]["kept"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        lines.extend(kept.iter().map(|k| format!("Kept: {}", text(k))));
+    } else {
+        lines.push(format!(
+            "Integration of {task}: {}",
+            text(&result["integration"]["state"])
+        ));
     }
     format!("{}\n", lines.join("\n"))
 }

@@ -9,9 +9,10 @@ use serde_json::{Map, Value, json};
 type Result<T = ()> = std::result::Result<T, String>;
 
 /// The plan format; each plan is written at the first version holding the fields it uses.
-pub const FORMAT_VERSION: i64 = 3;
+pub const FORMAT_VERSION: i64 = 4;
 const FIRST_VERSION: i64 = 1;
 const SCOPED_VERSION: i64 = 2;
+const COORDINATED_VERSION: i64 = 3;
 pub const RECORD_BYTES: usize = 131_072;
 pub const TASKS: usize = 64;
 const DEPENDENCIES: usize = 16;
@@ -33,6 +34,11 @@ const ATTEMPTS: i64 = 3;
 const MAX_ATTEMPTS: i64 = 10;
 /// Minutes without a plan step after which a claim is shown stale; never released by age.
 pub const STALE_MINUTES: i64 = 120;
+/// Repositories one worker's isolated worktrees cover, and conflicted paths kept.
+const WORK_REPOSITORIES: usize = 8;
+const CONFLICT_PATHS: usize = 32;
+/// Integration states a worktree task records; without one it waits to be integrated.
+const INTEGRATION_STATES: &[&str] = &["conflict", "integrated", "escalated"];
 
 pub const STATES: &[&str] = &[
     "pending",
@@ -82,10 +88,13 @@ const TASK_FIELDS: &[&str] = &[
     "attempts",
     "maxAttempts",
     "verified",
+    "work",
+    "integration",
 ];
-/// Task fields added at version 2 and at version 3.
+/// Task fields added at version 2, 3 and 4; a worker owner (`owner.parent`) also needs 4.
 const SCOPED_FIELDS: &[&str] = &["parent", "scope", "contract", "returns", "scopeBase"];
 const COORDINATED_FIELDS: &[&str] = &["attempts", "maxAttempts", "verified"];
+const PARALLEL_FIELDS: &[&str] = &["work", "integration"];
 /// Task fields a plan author sets; the rest follow from task work.
 const AUTHORED: &[&str] = &[
     "id",
@@ -339,12 +348,17 @@ fn task(value: &Value, now: &str) -> Result<Value> {
     let owner = match map.get("owner") {
         None | Some(Value::Null) => Value::Null,
         Some(owner) => {
+            let session = |v: Option<&Value>| {
+                v.and_then(Value::as_str)
+                    .is_some_and(|s| crate::values::lower_hex(s, 24))
+            };
             let valid = owner.as_object().is_some_and(|o| {
-                o.len() == 2
-                    && o.get("session")
-                        .and_then(Value::as_str)
-                        .is_some_and(|s| crate::values::lower_hex(s, 24))
+                o.keys()
+                    .all(|k| ["session", "since", "parent"].contains(&k.as_str()))
+                    && session(o.get("session"))
                     && o.get("since").and_then(instant).is_some()
+                    && o.get("parent")
+                        .is_none_or(|p| session(Some(p)) && Some(p) != o.get("session"))
             });
             if !valid {
                 return Err(format!("task {id} owner is invalid"));
@@ -403,8 +417,80 @@ fn task(value: &Value, now: &str) -> Result<Value> {
     if let Some(verified) = given("verified") {
         task["verified"] = self::verified(verified, &id)?;
     }
+    if let Some(work) = given("work") {
+        task["work"] = self::work(work, &id)?;
+    }
+    if let Some(integration) = given("integration") {
+        task["integration"] = self::integration(integration, &id)?;
+    }
     instant(&task["updated"]).ok_or("invalid task time")?;
     Ok(task)
+}
+
+fn revision(value: Option<&Value>) -> bool {
+    value
+        .and_then(Value::as_str)
+        .is_some_and(|h| crate::values::lower_hex(h, h.len()) && matches!(h.len(), 40 | 64))
+}
+
+/// The isolated worktrees a worker works in: per repository of the task (`path`, empty for
+/// the root's own repository) its worktree below the root, branch and base revision, the
+/// branch head its completion was verified at and, once merged, the merge commit.
+fn work(value: &Value, id: &str) -> Result<Value> {
+    let invalid = || format!("task {id} worktree record is invalid");
+    let map = value
+        .as_object()
+        .filter(|m| m.len() == 2)
+        .ok_or_else(invalid)?;
+    let owner = map.get("owner").and_then(Value::as_str);
+    if !owner.is_some_and(|o| crate::values::lower_hex(o, 24)) {
+        return Err(invalid());
+    }
+    let repositories = map
+        .get("repositories")
+        .and_then(Value::as_array)
+        .filter(|r| (1..=WORK_REPOSITORIES).contains(&r.len()))
+        .ok_or_else(invalid)?;
+    for entry in repositories {
+        let valid = entry.as_object().is_some_and(|e| {
+            e.keys().all(|k| {
+                ["path", "worktree", "branch", "base", "head", "merged"].contains(&k.as_str())
+            }) && e.get("path").and_then(Value::as_str).is_some_and(|p| {
+                p.is_empty() || repository::scopes(&json!([p])).is_ok_and(|s| s == [p])
+            }) && e.get("worktree").is_some_and(|w| relative_file(w).is_ok())
+                && e.get("branch").is_some_and(text)
+                && revision(e.get("base"))
+                && ["head", "merged"]
+                    .iter()
+                    .all(|k| e.get(*k).is_none_or(|v| revision(Some(v))))
+        });
+        if !valid {
+            return Err(invalid());
+        }
+    }
+    Ok(value.clone())
+}
+
+/// How a worktree task's branches reached the coordinator: `conflict` while its holder
+/// resolves conflicts, `integrated` once merged, `escalated` when it needs the user.
+fn integration(value: &Value, id: &str) -> Result<Value> {
+    let valid = value.as_object().is_some_and(|v| {
+        v.keys()
+            .all(|k| ["state", "at", "paths", "reason"].contains(&k.as_str()))
+            && v.get("state")
+                .and_then(Value::as_str)
+                .is_some_and(|s| INTEGRATION_STATES.contains(&s))
+            && v.get("at").and_then(instant).is_some()
+            && v.get("paths").is_none_or(|p| {
+                p.as_array()
+                    .is_some_and(|p| p.len() <= CONFLICT_PATHS && p.iter().all(text))
+            })
+            && v.get("reason").is_none_or(text)
+    });
+    if !valid {
+        return Err(format!("task {id} integration record is invalid"));
+    }
+    Ok(value.clone())
 }
 
 /// What verified a completion: the source revision, the engineering contract digest and when.
@@ -612,21 +698,31 @@ pub fn create(input: &Value, now: i64) -> Result<Value> {
     Ok(plan)
 }
 
+/// Whether a completed task's work has reached the coordinator: always, unless it worked
+/// in isolated worktrees that are not integrated yet.
+fn done(task: &Value) -> bool {
+    task["state"] == "completed"
+        && (task.get("work").is_none() || task["integration"]["state"] == "integrated")
+}
+
 /// Whether a task waits for nothing: pending, with attempts left and every dependency
-/// completed.
+/// completed and integrated.
 pub fn ready(plan: &Value, task: &Value) -> bool {
     task["state"] == "pending"
         && attempts_left(task)
-        && task["dependsOn"].as_array().into_iter().flatten().all(|d| {
-            find(plan, d.as_str().unwrap_or_default()).is_some_and(|t| t["state"] == "completed")
-        })
+        && task["dependsOn"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .all(|d| find(plan, d.as_str().unwrap_or_default()).is_some_and(done))
 }
 
-/// Whether every task is completed or abandoned, so the plan may be completed.
+/// Whether every task is completed and integrated, or abandoned, so the plan may be
+/// completed.
 pub fn completable(plan: &Value) -> bool {
     tasks(plan)
         .iter()
-        .all(|t| t["state"] == "completed" || t["state"] == "abandoned")
+        .all(|t| done(t) || t["state"] == "abandoned")
 }
 
 /// The version a plan is written at: the first one holding every field its tasks use, so
@@ -637,8 +733,13 @@ fn format_version(plan: &Value) -> i64 {
             .iter()
             .any(|t| fields.iter().any(|f| t.get(*f).is_some()))
     };
-    if uses(COORDINATED_FIELDS) {
+    let worker = tasks(plan)
+        .iter()
+        .any(|t| t["owner"].get("parent").is_some());
+    if worker || uses(PARALLEL_FIELDS) {
         FORMAT_VERSION
+    } else if uses(COORDINATED_FIELDS) {
+        COORDINATED_VERSION
     } else if uses(SCOPED_FIELDS) {
         SCOPED_VERSION
     } else {
@@ -671,6 +772,13 @@ fn release(task: &mut Value) {
     if let Some(task) = task.as_object_mut() {
         task.remove("scopeBase");
     }
+}
+
+/// A task set back for new work keeps no worktrees; returns those it had, for removal.
+fn unassign(task: &mut Value) -> Option<Value> {
+    let task = task.as_object_mut()?;
+    task.remove("integration");
+    task.remove("work")
 }
 
 fn owned_elsewhere(task: &Value, caller: Option<&str>) -> bool {
@@ -761,6 +869,7 @@ pub fn apply(
                 }
                 if fields.contains_key("state") {
                     release(&mut merged);
+                    unassign(&mut merged);
                 }
                 merged
             }
@@ -779,7 +888,7 @@ pub fn apply(
         match status.as_str() {
             Some("completed") if !completable(plan) => {
                 return Err(
-                    "a plan is completed only when every task is completed or abandoned".into(),
+                    "a plan is completed only when every task is completed or abandoned, and worktree tasks integrated".into(),
                 );
             }
             Some(status) if PLAN_STATUSES.contains(&status) => plan["status"] = json!(status),
@@ -843,10 +952,10 @@ pub fn claim(
                 .into_iter()
                 .flatten()
                 .filter_map(Value::as_str)
-                .filter(|d| find(plan, d).is_some_and(|t| t["state"] != "completed"))
+                .filter(|d| find(plan, d).is_some_and(|t| !done(t)))
                 .collect();
             return Err(format!(
-                "task {task} is not ready: it waits for {}",
+                "task {task} is not ready: it waits for {} (completed and integrated)",
                 waiting.join(", ")
             ));
         }
@@ -893,7 +1002,9 @@ pub fn release_task(
             found["state"].as_str().unwrap_or_default()
         ));
     };
-    if holder != caller && !take_over {
+    // The session that assigned a worker may take its task back.
+    let assigned = found["owner"]["parent"] == caller;
+    if holder != caller && !assigned && !take_over {
         return Err(format!(
             "task {task} is held by another session; pass --take-over to release it (that session may still be working)"
         ));
@@ -912,6 +1023,7 @@ pub fn release_task(
     let entry = find_mut(plan, task).expect("found");
     entry["state"] = json!("pending");
     release(entry);
+    unassign(entry);
     if let Some(note) = note {
         entry["nextStep"] = line(Some(&json!(note)), "release reason")?;
     }
@@ -919,6 +1031,291 @@ pub fn release_task(
     touch(plan, now);
     validate(plan)?;
     Ok(holder)
+}
+
+/// Whether neither task can work at the same time as the other: one waits for the other or
+/// is its parent.
+fn related(plan: &Value, a: &Value, b: &Value) -> bool {
+    a.get("parent") == Some(&b["id"])
+        || b.get("parent") == Some(&a["id"])
+        || reaches(plan, a, b, &mut vec![])
+        || reaches(plan, b, a, &mut vec![])
+}
+
+/// Owned paths of `a` and `b` that may intersect, compared by their literal leading
+/// segments.
+fn shared(a: &Value, b: &Value) -> Vec<String> {
+    let paths = |t: &Value| -> Vec<String> {
+        t["scope"]["paths"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect()
+    };
+    paths(a)
+        .iter()
+        .flat_map(|p| paths(b).into_iter().map(move |q| (p.clone(), q)))
+        .filter(|(p, q)| {
+            let (p, q) = (prefix(p), prefix(q));
+            let n = p.len().min(q.len());
+            p[..n] == q[..n]
+        })
+        .map(|(p, q)| if p == q { p } else { format!("{p} ~ {q}") })
+        .collect()
+}
+
+/// Tasks held for workers that `parent` assigned and that still run.
+fn workers_of<'a>(plan: &'a Value, parent: &str) -> Vec<&'a Value> {
+    tasks(plan)
+        .iter()
+        .filter(|t| t["owner"]["parent"] == parent)
+        .filter(|t| OWNED.contains(&t["state"].as_str().unwrap_or_default()))
+        .collect()
+}
+
+/// One worker assignment: who assigns, who works, at most how many workers run at once,
+/// the claim's source (see [`baseline`]) and the isolated worktrees (see [`work`]), if any.
+pub struct Assignment<'a> {
+    pub parent: &'a str,
+    pub worker: &'a str,
+    pub limit: i64,
+    pub base: Option<Value>,
+    pub work: Option<Value>,
+}
+
+/// Claim the ready task `task` for a worker session that the session `parent` delegates
+/// to. The task must own paths, the parent must have a worker slot left, and no running
+/// task that may work at the same time may own intersecting paths. Never takes over.
+pub fn assign(plan: &mut Value, task: &str, assignment: Assignment, now: i64) -> Result {
+    let Assignment {
+        parent,
+        worker,
+        limit,
+        base,
+        work,
+    } = assignment;
+    if parent == worker {
+        return Err("a worker works under its own session".into());
+    }
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    if !found["scope"]["paths"].is_array() {
+        return Err(format!(
+            "task {task} owns no paths; a worker task needs scope.paths (set them with plan-update)"
+        ));
+    }
+    if !found["owner"].is_null() {
+        return Err(format!(
+            "task {task} is {} in a session already; only a ready task is assigned to a worker",
+            found["state"].as_str().unwrap_or_default()
+        ));
+    }
+    let running = workers_of(plan, parent).len() as i64;
+    if limit <= 0 {
+        return Err(
+            "delegation is disabled (efficiency.delegation.maxWorkers is 0); work the task in this session".into(),
+        );
+    }
+    if running >= limit {
+        return Err(format!(
+            "{running} of {limit} workers already run for this session; integrate or release one first"
+        ));
+    }
+    let clashes: Vec<String> = tasks(plan)
+        .iter()
+        .filter(|t| OWNED.contains(&t["state"].as_str().unwrap_or_default()))
+        .filter(|t| !related(plan, found, t))
+        .filter_map(|t| {
+            let paths = shared(found, t);
+            (!paths.is_empty()).then(|| format!("{} ({})", plain(&t["id"]), paths.join(", ")))
+        })
+        .collect();
+    if !clashes.is_empty() {
+        return Err(format!(
+            "task {task} owns paths that running tasks also own: {}; wait for them or narrow the scopes with plan-update",
+            clashes.join("; ")
+        ));
+    }
+    // The ordinary claim decides readiness and attempts.
+    let claimed = claim(plan, task, worker, false, base, now)?;
+    debug_assert_eq!(claimed, Claim::Started);
+    let entry = find_mut(plan, task).expect("claimed");
+    entry["owner"]["parent"] = json!(parent);
+    if let Some(work) = work {
+        entry["work"] = self::work(&work, task)?;
+    }
+    // The claim counted the revision; the worker fields may need the newer format.
+    plan["formatVersion"] = json!(format_version(plan));
+    validate(plan)
+}
+
+/// The worktree record of `task` for integration by `caller`, the session that assigned
+/// it: the task is completed with its branches' heads recorded and not integrated yet.
+pub fn integrable<'a>(plan: &'a Value, task: &str, caller: &str) -> Result<&'a Value> {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    let work = found
+        .get("work")
+        .ok_or_else(|| format!("task {task} has no worktrees to integrate"))?;
+    if work["owner"] != caller {
+        return Err(format!(
+            "task {task} is integrated by the session that assigned it"
+        ));
+    }
+    if found["integration"]["state"] == "integrated" {
+        return Err(format!("task {task} is integrated already"));
+    }
+    let state = found["state"].as_str().unwrap_or_default();
+    if state != "completed" {
+        return Err(format!(
+            "task {task} is {state}; it is integrated once completed (task-step --complete in its worktree)"
+        ));
+    }
+    Ok(work)
+}
+
+fn integration_entry(state: &str, paths: &[String], reason: Option<&str>, now: i64) -> Value {
+    let mut entry = json!({"state": state, "at": timestamp::format(now)});
+    if !paths.is_empty() {
+        entry["paths"] = json!(
+            paths
+                .iter()
+                .take(CONFLICT_PATHS)
+                .map(|p| clip(p))
+                .collect::<Vec<_>>()
+        );
+    }
+    if let Some(reason) = reason {
+        entry["reason"] = json!(clip(reason));
+    }
+    entry
+}
+
+/// Record the merge commits of `task`'s repositories (`(path, commit)`); once every one is
+/// merged the task is integrated, which readies its dependents.
+pub fn merged(
+    plan: &mut Value,
+    task: &str,
+    commits: &[(String, String)],
+    now: i64,
+) -> Result<bool> {
+    let entry = find_mut(plan, task)
+        .filter(|t| t.get("work").is_some())
+        .ok_or_else(|| format!("task {task} has no worktrees to integrate"))?;
+    let mut all = true;
+    for repository in entry["work"]["repositories"]
+        .as_array_mut()
+        .into_iter()
+        .flatten()
+    {
+        if let Some((_, commit)) = commits
+            .iter()
+            .find(|(path, _)| repository["path"] == path.as_str())
+        {
+            repository["merged"] = json!(commit);
+        }
+        all &= repository.get("merged").is_some();
+    }
+    if all {
+        entry["integration"] = integration_entry("integrated", &[], None, now);
+    }
+    entry["updated"] = json!(timestamp::format(now));
+    touch(plan, now);
+    validate(plan)?;
+    Ok(all)
+}
+
+/// A merge of `task` would conflict on `paths`: the task runs again in the integrating
+/// session `caller`, which resolves the conflicts in its worktrees and completes it again.
+/// Each round counts as an attempt; once none is left the task is escalated instead and
+/// stays completed. Returns whether it was escalated.
+pub fn conflicted(
+    plan: &mut Value,
+    task: &str,
+    caller: &str,
+    paths: &[String],
+    now: i64,
+) -> Result<bool> {
+    integrable(plan, task, caller)?;
+    let at = timestamp::format(now);
+    let entry = find_mut(plan, task).expect("integrable");
+    let escalated = !attempts_left(entry);
+    if escalated {
+        entry["integration"] = integration_entry(
+            "escalated",
+            paths,
+            Some("merge conflicts remain and the attempt budget is spent"),
+            now,
+        );
+    } else {
+        entry["state"] = json!("running");
+        entry["attempts"] = json!(attempts(entry).0 + 1);
+        entry["owner"] = json!({"session": caller, "since": at});
+        if let Some(entry) = entry.as_object_mut() {
+            entry.remove("verified");
+        }
+        entry["integration"] = integration_entry("conflict", paths, None, now);
+    }
+    entry["updated"] = json!(at);
+    touch(plan, now);
+    validate(plan)?;
+    Ok(escalated)
+}
+
+/// Hand `task`'s integration to the user: kept as it is and shown as needing the user
+/// until it is integrated or discarded.
+pub fn escalate(plan: &mut Value, task: &str, caller: &str, reason: &str, now: i64) -> Result {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    if found["work"]["owner"] != caller {
+        return Err(format!(
+            "task {task} has no worktrees this session integrates"
+        ));
+    }
+    if found["integration"]["state"] == "integrated" {
+        return Err(format!("task {task} is integrated already"));
+    }
+    let paths: Vec<String> = found["integration"]["paths"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect();
+    let reason = line(Some(&json!(reason)), "escalation reason")?;
+    let entry = find_mut(plan, task).expect("found");
+    entry["integration"] = integration_entry("escalated", &paths, reason.as_str(), now);
+    entry["updated"] = json!(timestamp::format(now));
+    touch(plan, now);
+    validate(plan)
+}
+
+/// Drop `task`'s worktree result: it returns to pending for another attempt (or to be
+/// abandoned) and its worktrees are returned for removal.
+pub fn discard(plan: &mut Value, task: &str, caller: &str, now: i64) -> Result<Value> {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    if found["work"]["owner"] != caller {
+        return Err(format!(
+            "task {task} has no worktrees this session integrates"
+        ));
+    }
+    if found["integration"]["state"] == "integrated" {
+        return Err(format!("task {task} is integrated already"));
+    }
+    let entry = find_mut(plan, task).expect("found");
+    entry["state"] = json!("pending");
+    release(entry);
+    if let Some(entry) = entry.as_object_mut() {
+        entry.remove("verified");
+    }
+    let work = unassign(entry).expect("worktrees");
+    entry["updated"] = json!(timestamp::format(now));
+    touch(plan, now);
+    validate(plan)?;
+    Ok(work)
 }
 
 /// Refuse task work from a session that does not own `task`.
@@ -944,6 +1341,8 @@ pub struct Progress<'a> {
     pub exhausted: bool,
     /// What verified a completion: `{revision, contract, at}`.
     pub verified: Option<Value>,
+    /// For a task in worktrees, each repository path's branch head the completion verified.
+    pub heads: &'a [(String, String)],
     pub result: Option<&'a str>,
     pub next_step: Option<&'a str>,
     pub evidence: Option<&'a str>,
@@ -980,6 +1379,24 @@ pub fn progress(plan: &mut Value, task: &str, owner: &str, step: &Progress, now:
     }
     if let Some(verified) = step.verified.as_ref().filter(|_| state == "completed") {
         entry["verified"] = verified.clone();
+    }
+    if state == "completed" {
+        for repository in entry
+            .get_mut("work")
+            .and_then(|w| w.get_mut("repositories"))
+            .and_then(Value::as_array_mut)
+            .into_iter()
+            .flatten()
+        {
+            let head = step
+                .heads
+                .iter()
+                .find(|(path, _)| repository["path"] == path.as_str())
+                .ok_or_else(|| {
+                    format!("task {task} completed without the head of its worktree branch")
+                })?;
+            repository["head"] = json!(head.1);
+        }
     }
     if let Some(evidence) = step.evidence {
         let items = entry["evidence"].as_array_mut().expect("validated");
@@ -1125,6 +1542,17 @@ pub fn completion(plan: &Value, task: &str, changed: Option<&[String]>) -> Resul
             ids(&open)
         ));
     }
+    let pending: Vec<&Value> = tasks(plan)
+        .iter()
+        .filter(|t| t.get("parent") == Some(&found["id"]))
+        .filter(|t| t["state"] == "completed" && !done(t))
+        .collect();
+    if !pending.is_empty() {
+        return Err(format!(
+            "task {task} has child tasks whose worktrees are not integrated: {}; run plan-integrate for them",
+            ids(&pending)
+        ));
+    }
     if !found["scope"]["paths"].is_array() {
         return Ok(Value::Null);
     }
@@ -1196,32 +1624,10 @@ pub fn overlaps(plan: &Value) -> Vec<Value> {
     let mut found = Vec::new();
     for (at, a) in open.iter().enumerate() {
         for b in &open[at + 1..] {
-            let related = a.get("parent") == Some(&b["id"])
-                || b.get("parent") == Some(&a["id"])
-                || reaches(plan, a, b, &mut vec![])
-                || reaches(plan, b, a, &mut vec![]);
-            if related {
+            if related(plan, a, b) {
                 continue;
             }
-            let paths = |t: &Value| -> Vec<String> {
-                t["scope"]["paths"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Value::as_str)
-                    .map(str::to_string)
-                    .collect()
-            };
-            let shared: Vec<String> = paths(a)
-                .iter()
-                .flat_map(|p| paths(b).into_iter().map(move |q| (p.clone(), q)))
-                .filter(|(p, q)| {
-                    let (p, q) = (prefix(p), prefix(q));
-                    let n = p.len().min(q.len());
-                    p[..n] == q[..n]
-                })
-                .map(|(p, q)| if p == q { p } else { format!("{p} ~ {q}") })
-                .collect();
+            let shared = shared(a, b);
             if !shared.is_empty() {
                 found.push(json!({"tasks": [a["id"], b["id"]], "paths": shared}));
             }
@@ -1273,6 +1679,8 @@ pub fn envelope(plan: &Value, task: &str, checkpoint: Value) -> Result<Value> {
             "contract",
             "returns",
             "nextStep",
+            "work",
+            "integration",
         ],
     );
     own["ready"] = json!(ready(plan, found));
@@ -1370,6 +1778,17 @@ pub fn brief(envelope: &Value) -> Result<Value> {
     if let Some(worktree) = task["scope"]["worktree"].as_str() {
         restrictions.push(json!(clip(&format!("Work in the worktree {worktree}"))));
     }
+    for repository in task["work"]["repositories"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        restrictions.push(json!(clip(&format!(
+            "Work only in the worktree {} (branch {}); leave other checkouts unchanged",
+            plain(&repository["worktree"]),
+            plain(&repository["branch"])
+        ))));
+    }
     if sources.len() > ITEMS || restrictions.len() > ITEMS {
         return Err(format!(
             "task {} has more than {ITEMS} sources or owned paths for a worker brief",
@@ -1461,7 +1880,17 @@ pub fn listing(mut plans: Vec<Value>, own: &str, now: i64) -> Vec<Value> {
                     json!({"task": t["id"], "state": t["state"], "here": t["owner"]["session"] == own, "idleMinutes": idle, "stale": idle >= STALE_MINUTES})
                 })
                 .collect();
-            json!({"plan": plan["id"], "goal": plan["goal"], "ready": ready, "held": held})
+            let mut entry = json!({"plan": plan["id"], "goal": plan["goal"], "ready": ready, "held": held});
+            let escalated: Vec<&Value> = tasks(plan)
+                .iter()
+                .filter(|t| t["integration"]["state"] == "escalated")
+                .map(|t| &t["id"])
+                .take(LISTED_TASKS)
+                .collect();
+            if !escalated.is_empty() {
+                entry["needsUser"] = json!(escalated);
+            }
+            entry
         })
         .collect()
 }
@@ -1501,6 +1930,7 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
         "next": ready.first().map_or(Value::Null, |t| t["id"].clone()),
         "ready": ready.iter().map(|t| &t["id"]).collect::<Vec<_>>(),
         "held": [], "elsewhere": [], "waiting": [], "retry": [], "exhausted": [], "parents": [],
+        "integrate": [], "needsUser": [], "workers": workers_of(plan, own).len(),
     });
     let push = |out: &mut Value, group: &str, item: Value| {
         out[group].as_array_mut().expect("group").push(item);
@@ -1509,7 +1939,7 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
         let id = &task["id"];
         let state = task["state"].as_str().unwrap_or_default();
         let (made, most) = attempts(task);
-        let done = |t: &Value| t["state"] == "completed" || t["state"] == "abandoned";
+        let done = |t: &Value| self::done(t) || t["state"] == "abandoned";
         let children: Vec<&Value> = tasks(plan)
             .iter()
             .filter(|t| t.get("parent") == Some(id))
@@ -1517,19 +1947,31 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
         if !children.is_empty() && children.iter().all(|c| done(c)) && !done(task) {
             push(&mut out, "parents", json!({"task": id, "state": state}));
         }
+        if task.get("work").is_some() {
+            let integration = &task["integration"];
+            if integration["state"] == "escalated" {
+                push(
+                    &mut out,
+                    "needsUser",
+                    json!({"task": id, "paths": integration["paths"], "reason": integration["reason"]}),
+                );
+            } else if state == "completed" && integration.is_null() {
+                push(&mut out, "integrate", json!({"task": id}));
+            }
+        }
         if let Some(holder) = task["owner"]["session"].as_str() {
             if holder == own {
                 push(&mut out, "held", json!({"task": id, "state": state}));
             } else {
                 let idle = idle_minutes(task, now);
-                push(
-                    &mut out,
-                    "elsewhere",
-                    json!({
-                        "task": id, "state": state, "owner": holder, "idleMinutes": idle,
-                        "stale": idle >= STALE_MINUTES, "orphaned": missing.contains(&holder),
-                    }),
-                );
+                let mut entry = json!({
+                    "task": id, "state": state, "owner": holder, "idleMinutes": idle,
+                    "stale": idle >= STALE_MINUTES, "orphaned": missing.contains(&holder),
+                });
+                if task["owner"]["parent"] == own {
+                    entry["worker"] = json!(true);
+                }
+                push(&mut out, "elsewhere", entry);
             }
             continue;
         }
@@ -1543,7 +1985,7 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
                     .into_iter()
                     .flatten()
                     .filter_map(|d| find(plan, d.as_str()?))
-                    .filter(|d| d["state"] != "completed")
+                    .filter(|d| !self::done(d))
                     .map(|d| json!({"id": d["id"], "state": d["state"]}))
                     .collect();
                 let stuck = on
@@ -1656,6 +2098,27 @@ pub fn markdown(plan: &Value) -> String {
         if item["scope"]["worktree"].is_string() {
             out.push(format!("Worktree: {}", cell(&item["scope"]["worktree"])));
         }
+        for repository in item["work"]["repositories"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            out.push(format!(
+                "Worktree: {} on {}",
+                cell(&repository["worktree"]),
+                cell(&repository["branch"])
+            ));
+        }
+        if item.get("work").is_some() {
+            let integration = &item["integration"];
+            let state = integration["state"].as_str().unwrap_or("pending");
+            let paths = if integration["paths"].is_array() {
+                format!(" on {}", joined(&integration["paths"]))
+            } else {
+                String::new()
+            };
+            out.push(format!("Integration: {state}{paths}"));
+        }
         for (label, key) in [
             ("Files", "files"),
             ("Repositories", "repositories"),
@@ -1726,6 +2189,7 @@ mod tests {
             complete,
             exhausted: false,
             verified: None,
+            heads: &[],
             result: Some("done"),
             next_step: Some("next"),
             evidence: Some("check.log"),
@@ -2216,7 +2680,7 @@ mod tests {
         downgraded["formatVersion"] = json!(1);
         assert!(validate(&downgraded).unwrap_err().contains("version"));
         let mut future = plain.clone();
-        future["formatVersion"] = json!(4);
+        future["formatVersion"] = json!(FORMAT_VERSION + 1);
         assert!(validate(&future).unwrap_err().contains("older writers"));
         validate(&nested()).unwrap();
         assert_eq!(nested()["formatVersion"], 2);
@@ -2418,5 +2882,262 @@ mod tests {
         );
         assert!(reference("PROJ-1").is_err());
         assert!(reference("wiki:x").is_err());
+    }
+
+    const THREE: &str = "cccccccccccccccccccccccc";
+    const BASE: &str = "1111111111111111111111111111111111111111";
+    const HEAD: &str = "2222222222222222222222222222222222222222";
+
+    fn parallel() -> Value {
+        create(
+            &json!({"id": "s7", "goal": "Parallel", "tasks": [
+                {"id": "a", "goal": "A", "acceptance": ["A works"], "scope": {"paths": ["src/a/**"]}},
+                {"id": "b", "goal": "B", "scope": {"paths": ["src/b/**"]}},
+                {"id": "c", "goal": "C", "dependsOn": ["a"], "scope": {"paths": ["src/c/**"]}},
+                {"id": "d", "goal": "D", "scope": {"paths": ["src/a/inner.rs"]}},
+                {"id": "free", "goal": "Owns nothing"},
+            ]}),
+            NOW,
+        )
+        .unwrap()
+    }
+
+    fn worktrees(task: &str) -> Value {
+        json!({"owner": ONE, "repositories": [{"path": "", "worktree": format!(".craft/worktrees/s7/{task}"),
+            "branch": format!("craft/s7/{task}"), "base": BASE}]})
+    }
+
+    fn assigned<'a>(worker: &'a str, limit: i64, work: Option<Value>) -> Assignment<'a> {
+        Assignment {
+            parent: ONE,
+            worker,
+            limit,
+            base: None,
+            work,
+        }
+    }
+
+    fn finish(plan: &mut Value, task: &str, owner: &str) {
+        let heads = [(String::new(), HEAD.to_string())];
+        let mut done = step("verify", "passed", true);
+        done.heads = &heads;
+        progress(plan, task, owner, &done, NOW).unwrap();
+    }
+
+    #[test]
+    fn workers_take_owned_ready_tasks_within_the_limit_and_without_shared_paths() {
+        let mut plan = parallel();
+        let refused = |plan: &mut Value, task: &str, worker: &str, limit: i64| {
+            assign(plan, task, assigned(worker, limit, None), NOW).unwrap_err()
+        };
+        assert!(refused(&mut plan, "free", TWO, 3).contains("owns no paths"));
+        assert!(refused(&mut plan, "a", TWO, 0).contains("delegation is disabled"));
+        assert!(refused(&mut plan, "a", ONE, 3).contains("its own session"));
+        assert!(refused(&mut plan, "c", TWO, 3).contains("not ready"));
+        assign(&mut plan, "a", assigned(TWO, 2, Some(worktrees("a"))), NOW).unwrap();
+        let a = find(&plan, "a").unwrap();
+        assert_eq!(
+            (a["state"].as_str(), a["owner"]["parent"].as_str()),
+            (Some("running"), Some(ONE))
+        );
+        assert_eq!(plan["formatVersion"], 4);
+        assert_eq!(plan["revision"], 2);
+        // d owns a path inside a's paths; b owns its own.
+        assert!(
+            refused(&mut plan, "d", THREE, 3)
+                .contains("running tasks also own: a (src/a/inner.rs ~ src/a/**)")
+        );
+        assign(&mut plan, "b", assigned(THREE, 2, None), NOW).unwrap();
+        let mut more = plan.clone();
+        apply(
+            &mut more,
+            &json!({"tasks": [{"id": "e", "goal": "E", "scope": {"paths": ["docs"]}}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        assert!(refused(&mut more, "e", "dddddddddddddddddddddddd", 2).contains("2 of 2 workers"));
+        assert_eq!(queue(&plan, ONE, &[], NOW)["workers"], 2);
+        assert_eq!(queue(&plan, ONE, &[], NOW)["elsewhere"][0]["worker"], true);
+        // The assigning session may take its worker's task back; the worktrees go with it.
+        assert_eq!(
+            release_task(&mut plan, "a", ONE, false, None, NOW).unwrap(),
+            TWO
+        );
+        let a = find(&plan, "a").unwrap();
+        assert!(a.get("work").is_none() && a["owner"].is_null());
+        validate(&plan).unwrap();
+    }
+
+    #[test]
+    fn a_worktree_task_readies_its_dependents_only_once_integrated() {
+        let mut plan = parallel();
+        assign(&mut plan, "a", assigned(TWO, 3, Some(worktrees("a"))), NOW).unwrap();
+        assert!(integrable(&plan, "a", ONE).unwrap_err().contains("running"));
+        assert!(
+            progress(
+                &mut plan.clone(),
+                "a",
+                TWO,
+                &step("verify", "passed", true),
+                NOW
+            )
+            .unwrap_err()
+            .contains("head of its worktree branch")
+        );
+        finish(&mut plan, "a", TWO);
+        assert_eq!(
+            find(&plan, "a").unwrap()["work"]["repositories"][0]["head"],
+            HEAD
+        );
+        assert!(!ready(&plan, find(&plan, "c").unwrap()));
+        assert!(!completable(&plan));
+        let shown = queue(&plan, ONE, &[], NOW);
+        assert_eq!(shown["integrate"], json!([{"task": "a"}]));
+        assert_eq!(
+            shown["waiting"][0],
+            json!({"task": "c", "on": [{"id": "a", "state": "completed"}], "stuck": false})
+        );
+        assert!(
+            integrable(&plan, "a", TWO)
+                .unwrap_err()
+                .contains("session that assigned it")
+        );
+        integrable(&plan, "a", ONE).unwrap();
+        assert!(merged(&mut plan, "a", &[(String::new(), BASE.to_string())], NOW).unwrap());
+        let a = find(&plan, "a").unwrap();
+        assert_eq!(
+            (
+                a["integration"]["state"].as_str(),
+                a["work"]["repositories"][0]["merged"].as_str()
+            ),
+            (Some("integrated"), Some(BASE))
+        );
+        assert!(ready(&plan, find(&plan, "c").unwrap()));
+        assert!(
+            integrable(&plan, "a", ONE)
+                .unwrap_err()
+                .contains("integrated already")
+        );
+        assert!(markdown(&plan).contains("Integration: integrated"));
+        validate(&plan).unwrap();
+    }
+
+    #[test]
+    fn conflicts_return_the_task_to_its_integrator_until_the_budget_escalates_it() {
+        let mut plan = parallel();
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "goal": "A", "maxAttempts": 2}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        assign(&mut plan, "a", assigned(TWO, 3, Some(worktrees("a"))), NOW).unwrap();
+        finish(&mut plan, "a", TWO);
+        let paths = vec!["src/a/x.rs".to_string()];
+        assert!(!conflicted(&mut plan, "a", ONE, &paths, NOW).unwrap());
+        let a = find(&plan, "a").unwrap().clone();
+        assert_eq!(
+            (
+                a["state"].as_str(),
+                a["owner"]["session"].as_str(),
+                a["attempts"].as_i64()
+            ),
+            (Some("running"), Some(ONE), Some(2))
+        );
+        assert_eq!(a["integration"]["paths"], json!(paths));
+        assert!(a.get("verified").is_none());
+        finish(&mut plan, "a", ONE);
+        assert!(conflicted(&mut plan, "a", ONE, &paths, NOW).unwrap());
+        let a = find(&plan, "a").unwrap();
+        assert_eq!(
+            (a["state"].as_str(), a["integration"]["state"].as_str()),
+            (Some("completed"), Some("escalated"))
+        );
+        assert_eq!(queue(&plan, ONE, &[], NOW)["needsUser"][0]["task"], "a");
+        assert_eq!(
+            listing(vec![plan.clone()], ONE, NOW)[0]["needsUser"],
+            json!(["a"])
+        );
+        // Discarding drops the result: pending again, its worktrees returned for removal.
+        assert!(
+            discard(&mut plan.clone(), "a", TWO, NOW)
+                .unwrap_err()
+                .contains("no worktrees")
+        );
+        let work = discard(&mut plan, "a", ONE, NOW).unwrap();
+        assert_eq!(work["repositories"][0]["branch"], "craft/s7/a");
+        let a = find(&plan, "a").unwrap();
+        assert!(
+            a["state"] == "pending" && a.get("work").is_none() && a.get("integration").is_none()
+        );
+        validate(&plan).unwrap();
+    }
+
+    #[test]
+    fn an_integrator_escalates_by_hand_and_parents_wait_for_integration() {
+        let mut plan = create(
+            &json!({"id": "s7", "goal": "Parallel", "tasks": [
+                {"id": "p", "goal": "Parent", "scope": {"paths": ["src"]}},
+                {"id": "k", "goal": "Child", "parent": "p", "scope": {"paths": ["src/k/**"]}},
+            ]}),
+            NOW,
+        )
+        .unwrap();
+        claim(&mut plan, "p", ONE, false, None, NOW).unwrap();
+        // A child's paths lie inside its parent's; they never block each other.
+        assign(&mut plan, "k", assigned(TWO, 3, Some(worktrees("k"))), NOW).unwrap();
+        finish(&mut plan, "k", TWO);
+        assert!(
+            completion(&plan, "p", None)
+                .unwrap_err()
+                .contains("not integrated: k")
+        );
+        escalate(&mut plan, "k", ONE, "Needs a product decision", NOW).unwrap();
+        assert_eq!(
+            find(&plan, "k").unwrap()["integration"]["reason"],
+            "Needs a product decision"
+        );
+        merged(&mut plan, "k", &[(String::new(), BASE.to_string())], NOW).unwrap();
+        completion(&plan, "p", None).unwrap();
+        // Setting a worktree task back by hand drops its worktrees too.
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "k", "goal": "Child", "state": "pending"}]}),
+            Some(ONE),
+            false,
+            NOW,
+        )
+        .unwrap();
+        assert!(find(&plan, "k").unwrap().get("work").is_none());
+        validate(&plan).unwrap();
+    }
+
+    #[test]
+    fn worker_fields_write_the_fourth_version_only_when_used() {
+        let mut plan = parallel();
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
+        assert_eq!(plan["formatVersion"], 3);
+        let mut forged = plan.clone();
+        forged["tasks"][0]["owner"]["parent"] = json!(TWO);
+        assert!(
+            validate(&forged)
+                .unwrap_err()
+                .contains("version does not match")
+        );
+        forged["formatVersion"] = json!(4);
+        validate(&forged).unwrap();
+        forged["tasks"][0]["owner"]["parent"] = json!(ONE);
+        assert!(validate(&forged).unwrap_err().contains("owner is invalid"));
+        forged["tasks"][0]["owner"]["parent"] = json!(TWO);
+        forged["tasks"][0]["work"] = json!({"owner": ONE, "repositories": [{"path": "../x", "worktree": "w", "branch": "b", "base": BASE}]});
+        assert!(
+            validate(&forged)
+                .unwrap_err()
+                .contains("worktree record is invalid")
+        );
     }
 }

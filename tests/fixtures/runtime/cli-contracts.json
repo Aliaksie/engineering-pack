@@ -36,6 +36,8 @@
           "plan-envelope",
           "plan-next",
           "plan-release",
+          "plan-assign",
+          "plan-integrate",
           "settings",
           "route",
           "context-report",

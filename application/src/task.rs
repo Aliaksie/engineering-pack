@@ -262,6 +262,29 @@ pub fn step(
         }
         _ => Value::Null,
     };
+    // A task in worktrees completes as commits on its branches, which integration merges.
+    let heads = match &planned {
+        Some(plan) if input.get("complete") == Some(&json!(true)) => {
+            let found = crate::plan::task(root, plan, task)?;
+            match found.get("work") {
+                Some(work) => {
+                    let goal: String = found["goal"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .chars()
+                        .take(200)
+                        .collect();
+                    crate::delegation::commit(
+                        &state::canonical_root(root)?,
+                        work,
+                        &format!("craft {plan}/{task}: {goal}"),
+                    )?
+                }
+                None => Vec::new(),
+            }
+        }
+        _ => Vec::new(),
+    };
     let repository = snapshot::workspace(root, repositories, false)?;
     let profile = input.get("profile").and_then(Value::as_str);
     let limit = profile
@@ -393,6 +416,7 @@ pub fn step(
             complete,
             exhausted,
             verified,
+            heads: &heads,
             result: text("result"),
             next_step: text("nextStep"),
             evidence: text("evidence"),

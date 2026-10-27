@@ -2,6 +2,7 @@ use crate::{Error, syntax::MAX_SOURCE_BYTES};
 
 pub mod comparison;
 pub mod snapshot;
+pub mod worktree;
 use craft_engine::valid_path;
 use std::{
     fs::{self, File, OpenOptions},

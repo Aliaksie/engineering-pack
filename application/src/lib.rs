@@ -6,6 +6,7 @@ mod budget;
 mod checkpoint;
 pub mod cli;
 mod control;
+mod delegation;
 mod delivery;
 mod discovery;
 mod evidence;
