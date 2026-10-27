@@ -34,7 +34,7 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       assert.ok(!fs.existsSync(path.join(packageRoot, 'plugin.json')), 'portable manifest would mask native hook discovery');
       config = read(path.resolve(packageRoot, manifest.hooks));
     } else config = read(path.join(output, HOSTS[host].config));
-    const definitions = read(path.join(packageRoot, 'source-capability.json')).hooks.filter(hook => hook.handler === 'hooks/observe.mjs');
+    const definitions = read(path.join(packageRoot, 'source-capability.json')).hooks.filter(hook => hook.handler === 'observe');
     assert.equal(definitions.length, 7);
     for (const definition of definitions) {
       const mapping = HOSTS[host].events[definition.event];

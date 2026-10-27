@@ -63,9 +63,8 @@ export function localHookReport(repo, iterations = 12) {
   const item = { root: source, manifest: JSON.parse(fs.readFileSync(path.join(source, 'capability.json'), 'utf8')) };
   const definition = item.manifest.hooks.find(entry => entry.name === 'read-only');
   const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
-  // The hook path is the package's handler declaration, the generated launcher and the registered arguments.
-  const expected = [[fs.readFileSync(path.join(source, definition.handler), 'utf8'), path.join(hook.packageRoot, definition.handler)],
-    ...launchers(item, 'claude').map(([name, text]) => [text, path.join(hook.packageRoot, name)])];
+  // The hook path is the generated launcher and the registered arguments.
+  const expected = launchers(item, 'claude').map(([name, text]) => [text, path.join(hook.packageRoot, name)]);
   const artifactHashes = {};
   for (const [text, exported] of expected) {
     if (!fs.existsSync(exported) || digest(text) !== digest(fs.readFileSync(exported, 'utf8'))) throw new Error('hook exports are stale; rebuild before measuring');

@@ -4,6 +4,8 @@ import path from 'node:path';
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/;
 const ARRAYS = ['skills', 'workflows', 'standards', 'evals', 'tools', 'hooks', 'mcp', 'optionalDependencies'];
+// Native hook handlers of the bundled runtime (`craft hook --handler`).
+const HANDLERS = ['deliver', 'review-read-only', 'observe'];
 const KEYS = ['formatVersion', 'name', 'version', 'description', 'author', 'instructions', ...ARRAYS];
 export const json = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 export const stringify = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -115,8 +117,7 @@ export function validateCapability(root, manifest) {
   });
   for (const hook of manifest.hooks) check(() => {
     for (const key of Object.keys(hook)) if (!['name', 'event', 'tool', 'handler'].includes(key)) throw new Error(`unknown hook field: ${key}`);
-    if (!NAME.test(hook.name) || !['session-start', 'before-prompt', 'before-tool', 'after-tool', 'before-compact', 'after-compact', 'turn-end'].includes(hook.event) || !['shell', 'any'].includes(hook.tool) || !hook.handler.endsWith('.mjs')) throw new Error('unsupported portable hook contract');
-    localPath(root, hook.handler);
+    if (!NAME.test(hook.name) || !['session-start', 'before-prompt', 'before-tool', 'after-tool', 'before-compact', 'after-compact', 'turn-end'].includes(hook.event) || !['shell', 'any'].includes(hook.tool) || !HANDLERS.includes(hook.handler)) throw new Error('unsupported portable hook contract');
   });
   for (const server of manifest.mcp) check(() => {
     const allowed = server.transport === 'http' ? ['name', 'transport', 'url'] : ['name', 'transport', 'command', 'args', 'env'];

@@ -70,6 +70,7 @@ test('measurement refuses exports that do not match the source being reported', 
   for (const folder of ['packages/craft-review', 'dist/claude/plugins/craft-review']) {
     fs.cpSync(path.resolve(folder), path.join(directory, folder), { recursive: true });
   }
-  fs.appendFileSync(path.join(directory, 'packages/craft-review/hooks/read-only.mjs'), '\n// Changed after export.\n');
+  const manifest = path.join(directory, 'packages/craft-review/capability.json');
+  fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('"handler": "review-read-only"', '"handler": "observe"'));
   assert.throws(() => localHookReport(directory, 1), /exports are stale/);
 });

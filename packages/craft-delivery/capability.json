@@ -41,43 +41,43 @@
       "name": "routing",
       "event": "before-tool",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "prompt-routing",
       "event": "before-prompt",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "restore",
       "event": "session-start",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "checkpoint",
       "event": "before-compact",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "milestone",
       "event": "after-tool",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "turn-checkpoint",
       "event": "turn-end",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "compact-restore",
       "event": "after-compact",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     }
   ],
   "mcp": [],
