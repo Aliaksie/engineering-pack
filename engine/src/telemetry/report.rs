@@ -1,7 +1,8 @@
 //! Summaries of retained telemetry and the explicit captures that preserve them. Counts
 //! describe retained observations, never applicability or semantic success.
 use super::{Event, envelope};
-use crate::{contracts::safe_integer, timestamp};
+use crate::values::lower_hex as hex;
+use crate::{timestamp, values::safe_integer};
 use serde_json::{Map, Value, json};
 
 pub const CAPTURE_MAX_BYTES: usize = 65_536;
@@ -240,10 +241,6 @@ pub fn capture_limits() -> Value {
 /// The identifier of a retained report: the first 24 digits of its digest with the session.
 pub fn capture_id(session_id: &str, report: &Value) -> String {
     crate::digest(&json!([session_id, report]))[..24].to_string()
-}
-
-fn hex(text: &str, length: usize) -> bool {
-    text.len() == length && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
 pub fn valid_capture_id(text: &str) -> bool {

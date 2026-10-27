@@ -2,7 +2,7 @@
 //! from the JS engine: feature outcome records and the feature report. Results, including the
 //! updated state, compare as serialized JSON, so key order is part of the contract; error
 //! messages reach stderr and compare exactly.
-use craft_engine::{contracts, session};
+use craft_engine::{session, values};
 use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID.
@@ -17,8 +17,6 @@ const CORRECTIONS: &[(&str, &str)] = &[
         "task feature outcomes require task-start",
     ),
 ];
-/// JS crashed on a missing state; every Rust caller reports over a validated state record.
-const UNREACHABLE: &[&str] = &["feature-report:empty"];
 
 fn serialized(value: &Value) -> String {
     serde_json::to_string(value).unwrap()
@@ -26,7 +24,7 @@ fn serialized(value: &Value) -> String {
 
 fn replay(request: &Value) -> Result<Value, String> {
     let mut state = request["state"].clone();
-    contracts::normalize_numbers(&mut state);
+    values::normalize_numbers(&mut state);
     match request["engine"].as_str().unwrap() {
         "feature-record" => {
             let source = match request.get("source") {
@@ -65,9 +63,6 @@ fn frozen_feature_contracts() {
     let mut corrected = 0;
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        if UNREACHABLE.contains(&id) {
-            continue;
-        }
         let expected = &case["response"];
         let actual = replay(&case["request"]);
         let matches = match (CORRECTIONS.iter().find(|(case, _)| *case == id), &actual) {

@@ -35,7 +35,7 @@ fn scratch() -> (PathBuf, Value) {
     (dir, input)
 }
 
-fn view(extra: &[&str]) -> cli::Outcome {
+fn view(extra: &[&str]) -> craft_application::Outcome {
     let mut argv = args(&[
         "acceptance-view",
         "--contract",

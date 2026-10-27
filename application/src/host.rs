@@ -1,7 +1,8 @@
-//! Host lifecycle hooks: one native invocation per hook event. Host adapters send
-//! host-neutral facts and serialize the decision for their wire format; observation
-//! hooks never supply a permission decision or context.
-use crate::cli::{Failure, observe, resolve};
+//! Host lifecycle hooks: the decision for one hook event over host-neutral facts. `craft
+//! hook` derives the facts from the host payload and serializes the decision for its wire
+//! format; observation hooks never supply a permission decision or context.
+use crate::failure::Failure;
+use crate::project::absolute;
 use crate::telemetry::Recorder;
 use crate::{delivery, project};
 use craft_engine::review;
@@ -110,7 +111,7 @@ fn attributes(pairs: &[(&str, Value)]) -> Map<String, Value> {
 /// One hook event: `{decision, reason?, failed, export}`.
 pub fn run(input: &Value) -> Result<Value, String> {
     let facts = facts(input)?;
-    let cwd = resolve(facts.cwd);
+    let cwd = absolute(facts.cwd);
     let root = project_root(&cwd);
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));
     recorder.package(facts.package);
@@ -156,25 +157,15 @@ pub fn run(input: &Value) -> Result<Value, String> {
     }
     let mut decision = json!({"decision": "allow"});
     let mut failed = false;
-    if facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell") {
-        let observed = attributes(&[
-            ("lifecycle", lifecycle.clone()),
-            ("contextSupported", json!(facts.context_supported)),
-        ]);
-        recorder.observe("host.observed", observed, &hook, &[]);
+    let applies = facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell");
+    if applies {
         let evaluated = match facts.handler {
             Handler::Observe => Ok(decision.clone()),
-            Handler::ReviewReadOnly => observe(
-                &mut recorder,
-                "project.loaded",
-                &hook,
-                "CONFIG_INVALID",
-                Map::new(),
-                |_, _| project::settings(&root, None),
-            )
-            .map(|settings| {
-                review::read_only_decision(&settings, facts.tool == "shell", facts.command)
-            }),
+            Handler::ReviewReadOnly => {
+                project::loaded(&mut recorder, &hook, &root, None).map(|settings| {
+                    review::read_only_decision(&settings, facts.tool == "shell", facts.command)
+                })
+            }
             Handler::Deliver => {
                 let event = delivery::Event {
                     root: &root,
@@ -200,11 +191,15 @@ pub fn run(input: &Value) -> Result<Value, String> {
             }
         }
     }
-    let summary = attributes(&[
+    let mut summary = attributes(&[
         ("lifecycle", lifecycle),
         ("inputStatus", status),
         ("decision", decision["decision"].clone()),
     ]);
+    // Whether the host can take context is known only for a hook that applied.
+    if applies {
+        summary.insert("contextSupported".into(), json!(facts.context_supported));
+    }
     recorder.complete(hook, summary, failed.then_some("HOOK_FAILED"));
     decision["failed"] = json!(failed);
     decision["export"] = json!(recorder.finish());

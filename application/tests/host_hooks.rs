@@ -35,11 +35,7 @@ fn facts(root: &Path, handler: &str, extra: Value) -> Value {
 }
 
 fn hook(input: Value) -> Value {
-    let response = craft_application::evaluate(
-        json!({"formatVersion": 1, "operation": "host", "input": input}),
-    );
-    assert_eq!(response["ok"], true, "{response}");
-    response["result"].clone()
+    craft_application::host::run(&input).unwrap()
 }
 
 fn events(root: &Path) -> Vec<Value> {
@@ -103,11 +99,10 @@ fn observation_records_the_lifecycle_without_reading_the_project() {
     assert_eq!(
         view(&events(&fixture.0)),
         [
-            r#"host.observed<host.hook> success {"lifecycle":"after-tool","contextSupported":true,"package":"craft-engineering","identityScope":"session"}"#,
-            r#"host.hook<> success {"lifecycle":"after-tool","inputStatus":"complete","decision":"allow","package":"craft-engineering","identityScope":"session"}"#,
+            r#"host.hook<> success {"lifecycle":"after-tool","inputStatus":"complete","decision":"allow","contextSupported":true,"package":"craft-engineering","identityScope":"session"}"#,
         ]
     );
-    let event = &events(&fixture.0)[1];
+    let event = &events(&fixture.0)[0];
     assert_eq!(event["host"], "claude");
     assert_eq!(event["kind"], "operation");
 }
@@ -205,8 +200,12 @@ fn read_only_review_denies_publishing_shell_commands_only_when_configured() {
         .collect();
     // A non-shell call to a shell-scoped hook records the hook only.
     assert_eq!(names.iter().filter(|n| *n == "project.loaded").count(), 3);
-    assert_eq!(names.iter().filter(|n| *n == "host.observed").count(), 3);
     assert_eq!(names.iter().filter(|n| *n == "host.hook").count(), 4);
+    let applied = events(&guarded.0)
+        .iter()
+        .filter(|e| e["attributes"].get("contextSupported").is_some())
+        .count();
+    assert_eq!(applied, 3);
     let plain = project("plain", None);
     assert_eq!(
         hook(facts(
@@ -235,11 +234,11 @@ fn an_unreadable_project_fails_shell_policy_closed() {
             .starts_with("Policy could not be evaluated: ")
     );
     assert_eq!(
-        view(&events(&fixture.0))[1..],
+        view(&events(&fixture.0)),
         [
             r#"project.loaded<host.hook>[CONFIG_INVALID] failure {"package":"craft-review","identityScope":"session"}"#,
             r#"diagnostic<host.hook>[HOOK_FAILED] failure {"area":"host","package":"craft-review","identityScope":"session"}"#,
-            r#"host.hook<>[HOOK_FAILED] failure {"lifecycle":"before-tool","inputStatus":"complete","decision":"deny","package":"craft-review","identityScope":"session"}"#,
+            r#"host.hook<>[HOOK_FAILED] failure {"lifecycle":"before-tool","inputStatus":"complete","decision":"deny","contextSupported":true,"package":"craft-review","identityScope":"session"}"#,
         ]
     );
 }
@@ -259,7 +258,7 @@ fn hooks_resolve_the_project_from_a_nested_working_directory() {
         ))["decision"],
         "deny"
     );
-    assert_eq!(events(&fixture.0).len(), 3);
+    assert_eq!(events(&fixture.0).len(), 2);
     assert!(!nested.join(".craft").exists());
     // Without project markers, the working directory itself is the root.
     let bare = std::env::temp_dir().join(format!("craft-host-bare-{}", std::process::id()));
@@ -271,7 +270,7 @@ fn hooks_resolve_the_project_from_a_nested_working_directory() {
         .any(|a| a.join(".git").exists() || a.join(".craft/project.json").exists())
     {
         hook(facts(&bare.0, "observe", json!({})));
-        assert_eq!(events(&bare.0).len(), 2);
+        assert_eq!(events(&bare.0).len(), 1);
     }
 }
 
@@ -290,11 +289,8 @@ fn malformed_facts_are_rejected() {
         json!({"session": 7}),
         json!({"package": false}),
     ] {
-        let response = craft_application::evaluate(
-            json!({"formatVersion": 1, "operation": "host", "input": facts(&fixture.0, "observe", extra.clone())}),
-        );
-        assert_eq!(response["ok"], false, "{extra}");
-        assert_eq!(response["error"]["code"], "INVALID_INPUT");
+        let decision = craft_application::host::run(&facts(&fixture.0, "observe", extra.clone()));
+        assert!(decision.is_err(), "{extra}");
     }
     assert!(
         !fixture.0.join(".craft").exists(),
@@ -313,7 +309,7 @@ fn a_git_entry_alone_marks_the_project_root() {
     ));
     assert_eq!(
         view(&events(&fixture.0))[0],
-        r#"host.observed<host.hook> success {"lifecycle":"before-tool","contextSupported":false,"package":"craft-review","identityScope":"session"}"#
+        r#"host.hook<> success {"lifecycle":"before-tool","inputStatus":"complete","decision":"allow","contextSupported":false,"package":"craft-review","identityScope":"session"}"#
     );
     assert!(!nested.join(".craft").exists());
 }

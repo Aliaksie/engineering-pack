@@ -1,4 +1,5 @@
 use super::*;
+use crate::values::normalize_numbers;
 use crate::workers;
 
 const SETTINGS: &str = include_str!("../../../tests/fixtures/runtime/settings-contracts.json");

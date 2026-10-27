@@ -1,4 +1,5 @@
 use craft_engine::PROTOCOL_VERSION;
+use failure::Failure;
 use serde_json::{Value, json};
 mod actions;
 mod budget;
@@ -8,10 +9,14 @@ mod control;
 mod delivery;
 mod discovery;
 mod evidence;
+mod failure;
 mod grounding;
+mod guidance;
 pub mod hook;
-mod host;
+pub mod host;
+mod integration;
 mod project;
+mod render;
 mod review;
 mod scratch;
 mod session;
@@ -21,6 +26,15 @@ mod task;
 mod telemetry;
 mod workers;
 mod workspace;
+
+/// What one `craft` invocation writes and exits with.
+pub struct Outcome {
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    /// Remote-bound telemetry for the caller to post, when configured.
+    pub export: Option<Value>,
+}
 
 /// One request read by `craft` itself. Worker and action phases post their own remote
 /// telemetry export once `write` has the response, as hooks do; no caller forwards it.
@@ -35,34 +49,27 @@ pub fn serve(request: Value, write: impl FnOnce(&Value)) {
     telemetry::Recorder::deliver(export);
 }
 
+fn version() -> Value {
+    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE})
+}
+
+/// One Project Intelligence operation over a single repository or explicit members.
+fn project_evidence(operation: &str, input: &Value) -> Result<Value, Failure> {
+    match operation {
+        "version" => Ok(version()),
+        _ if input.get("members").is_some() => workspace::run(operation, input),
+        _ => evidence::run(operation, input),
+    }
+}
+
 pub fn evaluate(request: Value) -> Value {
     if request.get("formatVersion").and_then(Value::as_u64) != Some(PROTOCOL_VERSION.into()) {
         return json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"UNSUPPORTED_VERSION","message":"expected formatVersion 1"}});
     }
     let result = match request.get("operation").and_then(Value::as_str) {
         Some(operation @ ("refresh" | "status" | "query" | "backup" | "rebuild")) => {
-            if request["input"].get("members").is_some() {
-                workspace::run(operation, &request["input"])
-            } else {
-                evidence::run(operation, &request["input"])
-            }
+            project_evidence(operation, &request["input"])
         }
-        // One migrated CLI invocation; the JS forwarder writes the streams and posts `export`.
-        Some("cli") => match request["input"]["argv"].as_array().and_then(|argv| {
-            argv.iter()
-                .map(|a| a.as_str().map(str::to_string))
-                .collect::<Option<Vec<_>>>()
-        }) {
-            Some(argv) => {
-                let outcome = cli::run_in_context(&argv, &request["input"]);
-                Ok(
-                    json!({"exitCode":outcome.exit_code,"stdout":outcome.stdout,"stderr":outcome.stderr,"export":outcome.export,"errorCode":outcome.error_code}),
-                )
-            }
-            None => Err("cli requires an argv string array".into()),
-        },
-        // One host hook event; the adapter serializes the decision and posts `export`.
-        Some("host") => host::run(&request["input"]),
         Some("workers") => workers::run(&request["input"]),
         Some("actions") => actions::execute(&request["input"]),
         Some("control") => control::run(&request["input"]),
@@ -88,15 +95,14 @@ pub fn evaluate(request: Value) -> Value {
                 }
             };
         }
-        Some("version") => Ok(
-            json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE}),
-        ),
+        Some("version") => Ok(version()),
         Some("extract") => {
             let input = &request["input"];
             match (input["path"].as_str(), input["source"].as_str()) {
                 (Some(path), Some(source)) => {
                     craft_platform::providers::extract(path, source.as_bytes())
-                        .and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string()))
+                        .map_err(Failure::from)
+                        .and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string().into()))
                 }
                 _ => Err("extract requires path and source strings".into()),
             }
@@ -107,8 +113,8 @@ pub fn evaluate(request: Value) -> Value {
     };
     match result {
         Ok(result) => json!({"formatVersion":PROTOCOL_VERSION,"ok":true,"result":result}),
-        Err(message) => {
-            json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"INVALID_INPUT","message":message}})
+        Err(failure) => {
+            json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"INVALID_INPUT","message":failure.message}})
         }
     }
 }

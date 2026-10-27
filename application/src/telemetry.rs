@@ -1,7 +1,8 @@
 //! Command telemetry: one trace per invocation, operations nested by explicit parent,
 //! local batches under the shared store lock. A finished remote export is returned to
 //! the caller, which posts it once the command's output is written.
-use craft_engine::{contracts::js_length, telemetry, timestamp};
+use crate::failure::Failure;
+use craft_engine::{telemetry, timestamp, values::js_length};
 use craft_platform::telemetry as store;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -537,6 +538,26 @@ impl Recorder {
             })
         })
     }
+}
+
+/// One child operation of `parent`: success records `summary`, failure the code of its
+/// I/O error or `fallback`.
+pub(crate) fn observe<T>(
+    recorder: &mut Recorder,
+    name: &'static str,
+    parent: &Operation,
+    fallback: &'static str,
+    summary: Map<String, Value>,
+    work: impl FnOnce(&mut Recorder, &Operation) -> Result<T, Failure>,
+) -> Result<T, Failure> {
+    let operation = recorder.start(name, Some(parent));
+    let result = work(recorder, &operation);
+    let (attributes, failure) = match &result {
+        Ok(_) => (summary, None),
+        Err(error) => (Map::new(), Some(error.code(fallback))),
+    };
+    recorder.complete(operation, attributes, failure);
+    result
 }
 
 #[cfg(test)]

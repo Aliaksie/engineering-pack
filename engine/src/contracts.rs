@@ -1,5 +1,6 @@
 //! Project configuration and effective settings, replayed against
 //! `tests/fixtures/runtime/settings-contracts.json`.
+use crate::values::{MAX_SAFE_INTEGER, object, safe_integer};
 use serde_json::{Map, Value, json};
 
 pub const LAYERS: &[&str] = &["ui", "backend", "agent"];
@@ -36,47 +37,7 @@ pub const ROLES: &[&str] = &[
     "planner",
     "verifier",
 ];
-const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
-
 type Result<T = ()> = std::result::Result<T, String>;
-
-/// `Number.isSafeInteger` over a JSON value; integral floats such as `1.0` qualify.
-pub fn safe_integer(value: &Value) -> Option<i64> {
-    let number = value.as_number()?;
-    let integer = match (number.as_i64(), number.as_f64()) {
-        (Some(integer), _) => integer,
-        (None, Some(float)) if float.fract() == 0.0 && float.abs() <= MAX_SAFE_INTEGER as f64 => {
-            float as i64
-        }
-        _ => return None,
-    };
-    (integer.abs() <= MAX_SAFE_INTEGER).then_some(integer)
-}
-
-/// JavaScript string length, which bounds identifiers in UTF-16 code units.
-pub fn js_length(text: &str) -> usize {
-    text.encode_utf16().count()
-}
-
-/// JavaScript whitespace (`\s`, `trim`), which includes U+FEFF but not U+0085.
-pub fn js_space(c: char) -> bool {
-    c == '\u{feff}' || (c.is_whitespace() && c != '\u{85}')
-}
-
-/// Whether `text.trim()` is empty in JavaScript.
-pub fn js_blank(text: &str) -> bool {
-    text.chars().all(js_space)
-}
-
-fn object<'a>(value: &'a Value, allowed: &[&str], label: &str) -> Result<&'a Map<String, Value>> {
-    let map = value
-        .as_object()
-        .ok_or_else(|| format!("{label} must be an object"))?;
-    match map.keys().find(|key| !allowed.contains(&key.as_str())) {
-        Some(key) => Err(format!("unknown {label} field: {key}")),
-        None => Ok(map),
-    }
-}
 
 fn strings(value: Option<&Value>, field: &str, allowed: Option<&[&str]>) -> Result {
     let valid = value.and_then(Value::as_array).is_some_and(|items| {
@@ -646,20 +607,6 @@ fn validate_settings(value: &Value, template: &Value, label: &str) -> Result {
         }
     }
     Ok(())
-}
-
-/// Copy JSON-integral floats as integers, so `1.0` renders as `JSON.stringify` does.
-pub fn normalize_numbers(value: &mut Value) {
-    match value {
-        Value::Number(number) if number.is_f64() => {
-            if let Some(integer) = safe_integer(value) {
-                *value = json!(integer);
-            }
-        }
-        Value::Array(items) => items.iter_mut().for_each(normalize_numbers),
-        Value::Object(map) => map.values_mut().for_each(normalize_numbers),
-        _ => {}
-    }
 }
 
 fn merge(

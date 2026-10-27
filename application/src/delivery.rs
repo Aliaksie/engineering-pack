@@ -1,7 +1,7 @@
 //! Context delivery hooks: lifecycle facts → routing hints, checkpoints, service metadata and
 //! workspace housekeeping, with identical routing hints suppressed under one locked step.
 use crate::checkpoint;
-use crate::cli::{Failure, observe, prepared_services, routed};
+use crate::failure::Failure;
 use crate::project;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
@@ -53,14 +53,7 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let root = event.root;
-    let settings = observe(
-        recorder,
-        "project.loaded",
-        hook,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(root, None),
-    )?;
+    let settings = project::loaded(recorder, hook, root, None)?;
     let session = event.session.filter(|s| !s.is_empty());
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
@@ -106,7 +99,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         invalidate_hint(root, session, event.host, recorder, hook);
     }
     let services = if plan.services {
-        Some(prepared_services(&settings, None, None, recorder, hook)?)
+        Some(crate::integration::prepared(
+            &settings, None, None, recorder, hook,
+        )?)
     } else {
         None
     };
@@ -131,7 +126,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 task: None,
                 verification_mode: None,
             };
-            let mut plan = routed(&settings, &request, recorder, hook)?;
+            let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;
             Some(plan)
         }
@@ -177,9 +172,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     Ok(decision)
 }
 
-fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, String> {
+fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, Failure> {
     let name = format!("routing-{}.json", &identity(&[host, session])[..24]);
-    state::file(root, &name, true, Some(session))
+    Ok(state::file(root, &name, true, Some(session))?)
 }
 
 fn generation_file(file: &Path) -> PathBuf {
@@ -188,7 +183,7 @@ fn generation_file(file: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
-fn read_hint(file: &Path) -> Result<Value, String> {
+fn read_hint(file: &Path) -> Result<Value, Failure> {
     let hint = read_record(file, HINT_BYTES).map_err(|f| f.message)?;
     delivery::validate_hint(&hint)?;
     Ok(hint)
@@ -204,12 +199,12 @@ fn invalidate_hint(
     hook: &Operation,
 ) {
     let operation = recorder.start("cache.invalidated", Some(hook));
-    let result = (|| -> Result<(), String> {
+    let result = (|| -> Result<(), Failure> {
         let file = generation_file(&hint_file(root, session, host)?);
         read_hint(&file)?;
         let key = hash(uuid()?.as_bytes());
         let generation = json!({"formatVersion": 1, "key": key, "emittedAt": now_ms()});
-        state::write(&file, &generation, HINT_BYTES, false)
+        Ok(state::write(&file, &generation, HINT_BYTES, false)?)
     })();
     recorder.complete(
         operation,
@@ -231,7 +226,7 @@ fn reuse_hint(
     decision: &mut Value,
     recorder: &mut Recorder,
     hook: &Operation,
-) -> Result<(), String> {
+) -> Result<(), Failure> {
     let file = hint_file(root, session, host)?;
     let Some(_lock) = state::lock(&file)? else {
         recorder.report("cache", "STATE_BUSY", Map::new(), hook);
@@ -258,7 +253,7 @@ fn reuse_hint(
     }
     // Eligible hints are delivered: the host supports context and the decision carries it.
     let hint = json!({"formatVersion": 1, "key": key, "emittedAt": now});
-    state::write(&file, &hint, HINT_BYTES, false)
+    Ok(state::write(&file, &hint, HINT_BYTES, false)?)
 }
 
 #[cfg(test)]
@@ -324,7 +319,8 @@ mod tests {
                 &mut decision,
                 &mut self.recorder,
                 &self.hook,
-            )?;
+            )
+            .map_err(|failure| failure.message)?;
             Ok(decision.get("context").is_some())
         }
     }

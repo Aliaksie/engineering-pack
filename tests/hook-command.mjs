@@ -10,9 +10,8 @@ export function hookCommand(packageRoot, host, hook) {
   const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'source-capability.json'), 'utf8'));
   const definition = manifest.hooks.find(entry => entry.name === hook);
   if (!definition) throw new Error(`unknown hook ${hook}`);
-  const handler = /^export const native = '([a-z-]+)'/m.exec(fs.readFileSync(path.join(packageRoot, definition.handler), 'utf8'))[1];
   const launcher = path.join(packageRoot, 'bin', 'craft');
-  const args = ['hook', host, definition.event, '--package', manifest.name, '--handler', handler, '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
+  const args = ['hook', host, definition.event, '--package', manifest.name, '--handler', definition.handler, '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
   return { launcher, args, exists: fs.existsSync(launcher) };
 }
 export function runHook(packageRoot, host, hook, { input = '', cwd, env = process.env } = {}) {

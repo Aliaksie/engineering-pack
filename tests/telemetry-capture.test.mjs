@@ -4,9 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { launch, run } from './craft.mjs';
-import { recordEvent, stateFile } from './state.mjs';
+import { digest, recordEvent, stateFile } from './state.mjs';
 
 const CAPTURE_MAX_ENTRIES = 8, CAPTURE_MAX_BYTES = 65536;
 function fixture(t) {
@@ -83,7 +82,7 @@ test('busy locks, symlinks and corrupt reports preserve the existing retained st
   // An extra report field is rejected even when the identifier matches the changed report.
   const corrupt = JSON.parse(before), entry = corrupt.captures[0];
   entry.report.secret = 'PRIVATE_RAW_BODY';
-  entry.id = createHash('sha256').update(JSON.stringify([entry.sessionId, entry.report])).digest('hex').slice(0, 24);
+  entry.id = digest([entry.sessionId, entry.report]).slice(0, 24);
   fs.writeFileSync(file(root), JSON.stringify(corrupt));
   assert.throws(() => readTelemetryCapture(root, entry.id), /invalid retained/);
   assert.throws(() => captureTelemetry(root, { session: 'PRIVATE_SESSION' }), /invalid retained/);

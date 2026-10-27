@@ -3,13 +3,16 @@
 //! `review-publication` plans a comment for an authorized publisher. `review-followup` reads
 //! a fetched pull request observation and says what its reviewer should do next. None of
 //! them posts or contacts a code host.
-use crate::cli::{Failure, Outcome, observe, resolve};
+use crate::Outcome;
+use crate::failure::Failure;
+use crate::project::absolute;
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::{
-    contracts::{js_blank, normalize_numbers},
     review::artifact::{self, PROVIDERS, Target, VERIFICATION},
     review::followup::{self, Facts},
     timestamp,
+    values::{js_blank, normalize_numbers},
 };
 use craft_platform::{
     files::{ReadError, read_bounded},
@@ -38,16 +41,6 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "review-prepare" => Some(Self::Prepare),
-            "review-check" => Some(Self::Check),
-            "review-publication" => Some(Self::Publication),
-            "review-followup" => Some(Self::Followup),
-            _ => None,
-        }
-    }
-
     fn options(self) -> &'static [&'static str] {
         match self {
             Self::Prepare => &[
@@ -144,12 +137,12 @@ fn required<'a>(options: &'a Options, command: Command, name: &str) -> Result<&'
 
 /// An I/O failure that names what was attempted and keeps its kind for telemetry.
 fn described(error: io::Error, action: &str) -> Failure {
-    Failure::from_io(io::Error::new(error.kind(), format!("{action}: {error}")))
+    Failure::from(io::Error::new(error.kind(), format!("{action}: {error}")))
 }
 
 /// A JSON artifact, decoded as text first so invalid UTF-8 is replaced rather than refused.
 fn artifact(file: &str, max_bytes: usize, label: &str) -> Result<Value, Failure> {
-    let bytes = read_bounded(&resolve(file), max_bytes).map_err(|error| match error {
+    let bytes = read_bounded(&absolute(file), max_bytes).map_err(|error| match error {
         ReadError::Io(error) => described(error, &format!("cannot read {label} {file}")),
         _ => format!(
             "{label} exceeds {} MiB or is not a regular file",
@@ -180,7 +173,7 @@ fn snapshot(options: &Options) -> Result<Value, Failure> {
     let [Some(base), Some(head)] = refs.map(|r| r.filter(|r| !r.starts_with('-'))) else {
         return Err("explicit base and head references required".into());
     };
-    let root = resolve(options.get("root").unwrap_or("."));
+    let root = absolute(options.get("root").unwrap_or("."));
     let compared = comparison::compare(&root, base, head)?;
     let snapshot = json!({
         "formatVersion": 1,
@@ -226,7 +219,7 @@ fn prepare(
         summary,
         |_, _| snapshot(options),
     )?;
-    let file = resolve(output);
+    let file = absolute(output);
     let text = format!(
         "{}\n",
         serde_json::to_string_pretty(&snapshot).expect("JSON values serialize")
@@ -342,11 +335,10 @@ fn evaluate(
 }
 
 /// One review command under a top-level `review.command` operation.
-pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
+pub fn run(command: Command, args: &[String]) -> Outcome {
     if args.iter().any(|arg| arg == "--help") {
         let help = json!({ "usage": command.usage() });
         return Outcome {
-            error_code: None,
             exit_code: 0,
             stdout: format!(
                 "{}\n",
@@ -362,8 +354,7 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
         .and_then(|index| args.get(index + 1))
         .filter(|value| !value.starts_with("--"))
         .map_or(".", String::as_str);
-    let mut recorder = Recorder::open(&resolve(root), None, None);
-    recorder.package(context["package"].as_str());
+    let mut recorder = Recorder::open(&absolute(root), None, None);
     let operation = recorder.start("review.command", None);
     let result = parse(command, args)
         .and_then(|options| evaluate(command, &options, &mut recorder, &operation));
@@ -375,17 +366,11 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
         Err(failure) => (Map::new(), Some(failure.code("REVIEW_INVALID"))),
     };
     recorder.complete(operation, attributes, failure);
-    let (exit_code, stdout, stderr, error_code) = match result {
-        Ok((text, exit_code)) => (exit_code, text, String::new(), None),
-        Err(failure) => (
-            2,
-            String::new(),
-            format!("{}\n", failure.message),
-            failure.node_code(),
-        ),
+    let (exit_code, stdout, stderr) = match result {
+        Ok((text, exit_code)) => (exit_code, text, String::new()),
+        Err(failure) => (2, String::new(), format!("{}\n", failure.message)),
     };
     Outcome {
-        error_code,
         exit_code,
         stdout,
         stderr,

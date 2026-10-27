@@ -34,11 +34,10 @@ Long-form workflows, standards, tools and cases also remain available as package
 
 ## Hook interface
 
-A hook declaration names a normalized event, a tool scope and a handler file. The handler
-file only names the native handler that runs it:
+A hook declaration names a normalized event, a tool scope and the native handler that runs it:
 
-```javascript
-export const native = 'deliver';
+```json
+{ "name": "prompt-routing", "event": "before-prompt", "tool": "any", "handler": "deliver" }
 ```
 
 | Handler | Behavior |

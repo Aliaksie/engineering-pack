@@ -1,6 +1,6 @@
 use craft_engine::{
     actions::{self, Context},
-    contracts,
+    values,
 };
 use serde_json::{Value, json};
 #[test]
@@ -12,7 +12,7 @@ fn frozen_action_contracts() {
     let mut failures = Vec::new();
     for case in corpus["cases"].as_array().unwrap() {
         let mut a = case["input"].clone();
-        contracts::normalize_numbers(&mut a);
+        values::normalize_numbers(&mut a);
         let context = Context {
             settings: &a["project"],
             repository: &a["repository"],

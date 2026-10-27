@@ -52,7 +52,8 @@ test('invalid paths, unknown fields and unsupported features are rejected before
     { ...manifest, standards: ['/etc/passwd'] },
     { ...manifest, skills: [null] },
     { ...manifest, instructions: 'untracked-instructions.md' },
-    { ...manifest, hooks: [{ name: 'unsupported', event: 'after-everything', tool: 'shell', handler: 'handler.mjs' }] },
+    { ...manifest, hooks: [{ name: 'unsupported', event: 'after-everything', tool: 'shell', handler: 'observe' }] },
+    { ...manifest, hooks: [{ name: 'module', event: 'before-tool', tool: 'shell', handler: 'hooks/read-only.mjs' }] },
     { ...manifest, mcp: [{ name: 'private', transport: 'http', url: 'https://example.com/mcp?token=secret' }] },
     { ...manifest, mcp: [{ name: 'secret', transport: 'stdio', command: 'server', env: { TOKEN: 'literal-secret' } }] },
     { ...manifest, mcp: [{ name: 'unknown', transport: 'http', url: 'https://example.com/mcp', auth: { type: 'magic' } }] }

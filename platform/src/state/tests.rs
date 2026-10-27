@@ -54,11 +54,13 @@ fn bytes_and_exact_utf8_bounds() {
         );
         assert_eq!(read(&record, bytes).unwrap().as_ref(), Some(&case["value"]));
         assert_eq!(
-            read(&record, bytes - 1).unwrap_err(),
+            read(&record, bytes - 1).unwrap_err().to_string(),
             "invalid bounded state file"
         );
         assert_eq!(
-            write(&record, &case["value"], bytes - 1, pretty).unwrap_err(),
+            write(&record, &case["value"], bytes - 1, pretty)
+                .unwrap_err()
+                .to_string(),
             "state exceeds size limit"
         );
         assert_eq!(fs::read_to_string(&record).unwrap(), expected);
@@ -106,7 +108,10 @@ fn windows_denied_locks_are_busy_while_listed_and_retried_once_released() {
         Err(denied())
     })
     .unwrap_err();
-    assert_eq!((error, attempts), (denied().to_string(), LOCK_ATTEMPTS));
+    assert_eq!(
+        (error.to_string(), attempts),
+        (denied().to_string(), LOCK_ATTEMPTS)
+    );
 
     // The previous holder finished deleting between the denial and the listing.
     let mut attempts = 0;
@@ -144,7 +149,10 @@ fn failed_atomic_publication_preserves_old_bytes_and_removes_temporary_files() {
     FAIL_PUBLISH.with(|fail| fail.set(true));
     let failed = write(&record, &json!({"next": true}), 64, false);
     FAIL_PUBLISH.with(|fail| fail.set(false));
-    assert_eq!(failed.unwrap_err(), "injected publication failure");
+    assert_eq!(
+        failed.unwrap_err().to_string(),
+        "injected publication failure"
+    );
     assert_eq!(fs::read_to_string(&record).unwrap(), "{\"old\":true}\n");
     assert_eq!(listing(record.parent().unwrap()), ["record.json"]);
     write(&record, &json!({"next": true}), 64, false).unwrap();
@@ -177,6 +185,7 @@ fn routing_generation_migrates_with_its_record_and_remains_source_bound() {
     assert!(
         file(&fixture.0, "routing-demo.json", false, SESSION)
             .unwrap_err()
+            .to_string()
             .contains("changed after migration")
     );
     assert_eq!(fs::read_to_string(&generation).unwrap(), "2\n");
@@ -201,13 +210,15 @@ fn placement_hashes_the_physical_root_and_session() {
     assert!(location(&fixture.0, Some(&"x".repeat(512))).is_ok());
     for session in ["".to_string(), "x".repeat(513), "😀".repeat(257)] {
         assert_eq!(
-            location(&fixture.0, Some(&session)).unwrap_err(),
+            location(&fixture.0, Some(&session))
+                .unwrap_err()
+                .to_string(),
             "invalid state session"
         );
     }
     for name in ["", ".", "..", "a/b", "a\\b", "λ.json"] {
         assert_eq!(
-            file(&fixture.0, name, false, None).unwrap_err(),
+            file(&fixture.0, name, false, None).unwrap_err().to_string(),
             "invalid state filename"
         );
     }
@@ -225,7 +236,9 @@ fn symlinked_state_directories_are_refused() {
     fs::create_dir(fixture.0.join(".craft")).unwrap();
     std::os::unix::fs::symlink(&elsewhere.0, fixture.0.join(".craft").join("state")).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, None).unwrap_err(),
+        file(&fixture.0, "record.json", true, None)
+            .unwrap_err()
+            .to_string(),
         "state path must be a directory without symlinks"
     );
     assert!(listing(&elsewhere.0).is_empty());
@@ -240,17 +253,17 @@ fn legacy_hard_links_and_locks_block_migration() {
     fs::write(fixture.0.join("outside.json"), "{}").unwrap();
     fs::hard_link(fixture.0.join("outside.json"), legacy.join("record.json")).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, None).unwrap_err(),
+        file(&fixture.0, "record.json", true, None)
+            .unwrap_err()
+            .to_string(),
         "unsafe or oversized legacy state"
     );
     fs::remove_file(legacy.join("record.json")).unwrap();
     fs::write(legacy.join("record.json"), "{}").unwrap();
     fs::write(legacy.join("other.json.lock"), "").unwrap();
-    assert!(
-        file(&fixture.0, "record.json", true, None)
-            .unwrap_err()
-            .contains("writer is busy")
-    );
+    let busy = file(&fixture.0, "record.json", true, None).unwrap_err();
+    assert!(busy.to_string().contains("writer is busy"));
+    assert_eq!(busy.kind(), Some(ErrorKind::ResourceBusy));
 }
 
 /// Every file under `directory` with its bytes and modification time.
@@ -355,6 +368,7 @@ fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
         assert!(
             file(root, "record.json", false, session)
                 .unwrap_err()
+                .to_string()
                 .contains("changed after migration")
         );
         assert_eq!(
@@ -377,6 +391,7 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     assert!(
         file(&fixture.0, "record.json", true, SESSION)
             .unwrap_err()
+            .to_string()
             .contains("legacy state writer is busy")
     );
     fs::remove_file(legacy.join("record.json.lock")).unwrap();
@@ -385,14 +400,18 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     fs::remove_file(&old).unwrap();
     std::os::unix::fs::symlink(&target, &old).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
+        file(&fixture.0, "record.json", true, SESSION)
+            .unwrap_err()
+            .to_string(),
         "unsafe or oversized legacy state"
     );
     fs::remove_file(&old).unwrap();
     fs::write(&old, r#"{"value":1}"#).unwrap();
     fs::write(&target, r#"{"value":2}"#).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
+        file(&fixture.0, "record.json", true, SESSION)
+            .unwrap_err()
+            .to_string(),
         "legacy state destination conflict"
     );
     assert_eq!(fs::read_to_string(&target).unwrap(), r#"{"value":2}"#);
@@ -421,10 +440,9 @@ fn an_overlapping_migration_writer_is_refused_without_partial_copies() {
         short(old.to_str().unwrap().as_bytes())
     ));
     fs::write(format!("{}.lock", receipt.display()), "").unwrap();
-    assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION).unwrap_err(),
-        "state migration is busy"
-    );
+    let busy = file(&fixture.0, "record.json", true, SESSION).unwrap_err();
+    assert_eq!(busy.to_string(), "state migration is busy");
+    assert_eq!(busy.kind(), Some(ErrorKind::ResourceBusy));
     assert!(!target.join("record.json").exists());
     fs::remove_file(format!("{}.lock", receipt.display())).unwrap();
     let record = file(&fixture.0, "record.json", true, SESSION).unwrap();

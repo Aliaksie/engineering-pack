@@ -1,7 +1,7 @@
 //! Native phases around asynchronous host callbacks. Durable state is updated only here;
 //! admission shares the active binding lock with task-start, never a host callback.
 use crate::{
-    cli::{Failure, observe},
+    failure::Failure,
     project, session,
     telemetry::{Operation, Recorder, now_ms},
 };
@@ -159,14 +159,8 @@ fn phase(
             if session::active_task(root, Some(name))?.as_deref() != Some(task) {
                 return Err("worker dispatch requires the active coordinator task binding".into());
             }
-            let settings = observe(
-                recorder,
-                "project.loaded",
-                parent,
-                "CONFIG_INVALID",
-                Map::new(),
-                |_, _| project::settings(root, input["preferencesFile"].as_str().map(Path::new)),
-            )?;
+            let preferences = input["preferencesFile"].as_str().map(Path::new);
+            let settings = project::loaded(recorder, parent, root, preferences)?;
             let saved = session::read_state(root, name, task, recorder, parent)?;
             let repository =
                 snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)?;
@@ -255,6 +249,8 @@ fn phase(
                 Ok(workers::transition(s, &input["id"], &input["result"])?["request"].take())
             })?;
             if input["result"]["kind"] == "observed" {
+                // The recorded result stands; a failed offer update is recorded by its own
+                // `state.updated` operation.
                 let _ = session::update_state(root, name, task, recorder, parent, |state| {
                     let id = request["offer"].as_str().unwrap_or_default();
                     if let Some(offer) = state["recommendations"].get_mut(id) {
@@ -283,7 +279,7 @@ fn phase(
         _ => Err("unknown worker phase".into()),
     }
 }
-pub fn run(input: &Value) -> Result<Value, String> {
+pub fn run(input: &Value) -> Result<Value, Failure> {
     let root = input["root"]
         .as_str()
         .ok_or("worker operation requires root")?;

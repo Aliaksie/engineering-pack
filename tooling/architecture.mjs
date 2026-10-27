@@ -62,11 +62,11 @@ function adrModules(text) {
   return rows;
 }
 
-export function checkArchitecture(root, { updateBudgets = false } = {}) {
+export function checkArchitecture(root) {
   const errors = [];
   const fail = (rule, subject, message) => errors.push({ rule, subject, message });
   const manifestFile = path.join(root, 'architecture.json');
-  if (!fs.existsSync(manifestFile)) return { errors: [{ rule: 'A1', subject: 'architecture.json', message: 'module manifest is missing' }], budgets: {} };
+  if (!fs.existsSync(manifestFile)) return { errors: [{ rule: 'A1', subject: 'architecture.json', message: 'module manifest is missing' }] };
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   const modules = manifest.modules ?? {};
   const files = trackedFiles(root);
@@ -153,36 +153,27 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
       else if (entryPoints.get(target) !== to) fail('A6', file, `imports ${target}, which is not a declared entry point of ${to}/`);
     }
   }
-  const roots = Object.values(modules).flatMap(module => module.runtimeRoots ?? []);
-  for (const [entry, name] of entryPoints) if (!importedAcross.has(entry) && !matches(roots, entry)) fail('A6', entry, `stale entry point of ${name}/; no other module imports it`);
+  for (const [entry, name] of entryPoints) if (!importedAcross.has(entry)) fail('A6', entry, `stale entry point of ${name}/; no other module imports it`);
 
-  // A7 runtime JS must be reachable from a runtime root or a build-time consumer; tests do not keep code alive.
+  // A7 runtime JS must be reachable from a build-time consumer; tests do not keep code alive.
   const runtime = file => { const module = modules[owner(file)]; return module && module.dependsOn !== '*' && !file.endsWith('.test.mjs'); };
   const reached = new Set();
   const buildTime = file => ['build-tooling', 'ci-config'].includes(modules[owner(file)]?.kind);
-  const stack = javascript.filter(file => matches(roots, file) || buildTime(file));
+  const stack = javascript.filter(buildTime);
   while (stack.length) {
     const file = stack.pop();
     if (reached.has(file) || !graph.has(file)) continue;
     reached.add(file);
     stack.push(...graph.get(file));
   }
-  for (const file of javascript.filter(file => runtime(file) && !reached.has(file))) fail('A7', file, 'runtime JavaScript is unreachable from any runtime root; delete it or declare the root that uses it');
+  for (const file of javascript.filter(file => runtime(file) && !reached.has(file))) fail('A7', file, 'runtime JavaScript is unreachable from any build-time consumer; delete it');
 
-  // A8 JS ratchet and adapters that import nothing; A10 thin host adapters.
-  const budgets = {};
-  for (const [name, module] of Object.entries(modules)) {
-    const budget = module.jsLines;
-    const counted = javascript.filter(file => owner(file) === name && !file.endsWith('.test.mjs'));
-    const actual = counted.reduce((total, file) => total + lines(fs.readFileSync(path.join(root, file), 'utf8')), 0);
-    if (budget === undefined) { if (actual && module.dependsOn !== '*' && module.kind !== 'examples') fail('A8', `${name}/`, `${actual} runtime JS lines without a jsLines budget`); continue; }
-    budgets[name] = { budget, actual };
-    if (actual > budget) fail('A8', `${name}/`, `runtime JS grew to ${actual} lines (budget ${budget}); new runtime behavior belongs in Rust (ADR 0001)`);
-    else if (actual < budget && !updateBudgets) fail('A8', `${name}/`, `runtime JS shrank to ${actual} lines; lower the budget with npm run architecture -- --update-budgets`);
-    if (module.maxFileLines) for (const file of counted) {
-      const count = lines(fs.readFileSync(path.join(root, file), 'utf8'));
-      if (count > module.maxFileLines) fail('A10', file, `${count} lines exceeds the ${module.maxFileLines}-line adapter limit; move behavior into the Rust application`);
-    }
+  // A8 JavaScript only in host adapters and build/test modules, adapters import nothing; A10 thin host adapters.
+  for (const file of javascript.filter(runtime)) {
+    const module = modules[owner(file)];
+    if (module.kind !== 'host-adapter') { fail('A8', file, `JavaScript in ${module.kind} module ${owner(file)}/; runtime behavior belongs in craft (ADR 0001)`); continue; }
+    const count = lines(fs.readFileSync(path.join(root, file), 'utf8'));
+    if (module.maxFileLines && count > module.maxFileLines) fail('A10', file, `${count} lines exceeds the ${module.maxFileLines}-line adapter limit; move behavior into the Rust application`);
   }
   for (const [name, module] of Object.entries(modules)) if (module.kind === 'host-adapter' && module.dependsOn.length) fail('A8', `${name}/`, 'host adapters invoke craft and import no other module');
 
@@ -192,23 +183,16 @@ export function checkArchitecture(root, { updateBudgets = false } = {}) {
     // Dot folders in exports are host configuration (for example Copilot's .github), not repository modules.
     for (const entry of fs.readdirSync(path.join(dist, bundle.name))) if (!entry.startsWith('.') && modules[entry] && !modules[entry].shipped) fail('A11', `dist/${bundle.name}/${entry}`, `${entry}/ is not shipped but appears in an export`);
   }
-
-  if (updateBudgets && !errors.some(error => error.rule === 'A8' && /grew/.test(error.message))) {
-    let changed = false;
-    for (const [name, { budget, actual }] of Object.entries(budgets)) if (actual < budget) { modules[name].jsLines = actual; changed = true; }
-    if (changed) fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
-  }
-  return { errors, budgets };
+  return { errors };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = fileURLToPath(new URL('../', import.meta.url));
-  const { errors, budgets } = checkArchitecture(root, { updateBudgets: process.argv.includes('--update-budgets') });
-  if (process.argv.includes('--json')) process.stdout.write(`${JSON.stringify({ errors, budgets }, null, 2)}\n`);
+  const { errors } = checkArchitecture(root);
+  if (process.argv.includes('--json')) process.stdout.write(`${JSON.stringify({ errors }, null, 2)}\n`);
   else {
     for (const error of errors) process.stderr.write(`${error.rule} ${error.subject}: ${error.message}\n`);
-    const remaining = Object.entries(budgets).map(([name, { actual }]) => `${name} ${actual}`).join(', ');
-    process.stdout.write(errors.length ? '' : `architecture: ok; runtime JS lines: ${remaining}\n`);
+    if (!errors.length) process.stdout.write('architecture: ok\n');
   }
   if (errors.length) process.exitCode = 1;
 }

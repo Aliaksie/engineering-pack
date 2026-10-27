@@ -1,3 +1,5 @@
+use crate::failure::Failure;
+use crate::telemetry::Recorder;
 use craft_engine::hash;
 use craft_platform::{
     providers::{ACTIVE, extract, for_path},
@@ -8,7 +10,7 @@ use craft_platform::{
 use serde_json::{Value, json};
 use std::{path::Path, time::Instant};
 
-pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
+pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     let mut budget = if operation == "refresh" {
         Some(super::budget::Budget::from_input(input)?)
     } else {
@@ -28,7 +30,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
     let _guard = database_guard(database)?;
     let mut store = Store::open(database)?;
     match operation {
-        "status" => store.status(),
+        "status" => Ok(store.status()?),
         "backup" => {
             let backup = database.with_extension("sqlite.backup");
             let _backup_guard = database_guard(&backup)?;
@@ -91,7 +93,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                     continue;
                 }
                 // Git's tracked inventory includes deleted files; completion retires them.
-                if !root.join(&path).try_exists().map_err(|e| e.to_string())? {
+                if !root.join(&path).try_exists()? {
                     continue;
                 }
                 let provider = for_path(&path).ok_or("eligible source has no provider")?;
@@ -100,7 +102,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                 let content = match read_source(&root, &path) {
                     Ok(content) => content,
                     Err(error) => {
-                        store.fail(&path, provider, "", &error, &observed_at, epoch)?;
+                        store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
                         failed += 1;
                         continue;
                     }
@@ -152,51 +154,58 @@ const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuil
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
 pub fn main(args: &[String]) -> i32 {
-    let (code, stdout, stderr) = command(args);
+    let (code, stdout, stderr, export) = command(args);
     print!("{stdout}");
     eprint!("{stderr}");
+    Recorder::deliver(export);
     code
 }
 
-fn command(args: &[String]) -> (i32, String, String) {
+fn command(args: &[String]) -> (i32, String, String, Option<Value>) {
     if args.is_empty() || args.iter().any(|arg| arg == "--help") {
-        return (0, format!("{USAGE}\n"), String::new());
+        return (0, format!("{USAGE}\n"), String::new(), None);
     }
+    let mut export = None;
     let (json, result) = match request(args) {
         Ok((json, None)) => (
             json,
             Ok(json!({"enabled": false, "reason": "Project evidence is disabled"})),
         ),
         Ok((json, Some((operation, input)))) => {
-            let response = crate::evaluate(
-                json!({"formatVersion": craft_engine::PROTOCOL_VERSION, "operation": operation, "input": input}),
-            );
-            let result = if response["ok"] == true {
-                Ok(response["result"].clone())
-            } else {
-                let error = &response["error"];
-                Err(format!(
-                    "{}: {}",
-                    error["code"].as_str().unwrap_or("NATIVE_FAILED"),
-                    error["message"]
-                        .as_str()
-                        .unwrap_or("Native evidence failed")
-                ))
-            };
-            (json, result)
+            let root = input["root"].as_str().unwrap_or(".");
+            let mut recorder = Recorder::open(Path::new(root), None, None);
+            let command = recorder.start("cli.command", None);
+            let result = crate::project_evidence(&operation, &input);
+            match &result {
+                Ok(_) => recorder.complete(
+                    command,
+                    serde_json::Map::from_iter([("command".into(), json!("project-evidence"))]),
+                    None,
+                ),
+                Err(failure) => recorder.complete(
+                    command,
+                    serde_json::Map::new(),
+                    Some(failure.code("INVALID_INPUT")),
+                ),
+            }
+            export = recorder.finish();
+            (
+                json,
+                result.map_err(|failure| format!("INVALID_INPUT: {}", failure.message)),
+            )
         }
         Err(message) => (false, Err(format!("PROJECT_EVIDENCE_ERROR: {message}"))),
     };
     match result {
-        Ok(result) => (0, render(&result, json), String::new()),
-        Err(message) => (1, String::new(), format!("{message}\n")),
+        Ok(result) => (0, render(&result, json), String::new(), export),
+        Err(message) => (1, String::new(), format!("{message}\n"), export),
     }
 }
 
 /// Whether `--json` was given, and the native operation with its input when enabled.
 type Request = (bool, Option<(String, Value)>);
 
-fn request(args: &[String]) -> Result<Request, String> {
+fn request(args: &[String]) -> Result<Request, Failure> {
     let (operation, mut rest) = (args[0].clone(), args[1..].iter());
     let (mut options, mut members, mut flags) = (serde_json::Map::new(), Vec::new(), Vec::new());
     const VALUES: &[&str] = &[
@@ -227,7 +236,7 @@ fn request(args: &[String]) -> Result<Request, String> {
         {
             options.insert(key[2..].to_string(), json!(value));
         } else {
-            return Err(format!("unknown or incomplete option: {key}"));
+            return Err(format!("unknown or incomplete option: {key}").into());
         }
     }
     let number = |name: &str| {
@@ -281,7 +290,7 @@ fn request(args: &[String]) -> Result<Request, String> {
     let root = options.get("root").and_then(Value::as_str).unwrap_or(".");
     input.insert(
         "root".into(),
-        json!(crate::cli::resolve(root).to_string_lossy()),
+        json!(crate::project::absolute(root).to_string_lossy()),
     );
     Ok((json, Some((operation, Value::Object(input)))))
 }
@@ -301,7 +310,7 @@ fn render(result: &Value, json: bool) -> String {
     let mut text = format!(
         "{} result(s); {}; inventory {}\n",
         rows.len(),
-        crate::cli::shown(&coverage["freshness"]),
+        crate::render::shown(&coverage["freshness"]),
         if coverage["inventoryComplete"] == true {
             "complete"
         } else {
@@ -313,11 +322,11 @@ fn render(result: &Value, json: bool) -> String {
         let verification = row["verification"].as_str().unwrap_or("stored-snapshot");
         text.push_str(&format!(
             "{}:{}:{} {} {} [{verification}]\n",
-            crate::cli::shown(&row["path"]),
-            crate::cli::shown(&evidence["line"]),
-            crate::cli::shown(&evidence["column"]),
-            crate::cli::shown(&evidence["kind"]),
-            crate::cli::shown(&evidence["name"]),
+            crate::render::shown(&row["path"]),
+            crate::render::shown(&evidence["line"]),
+            crate::render::shown(&evidence["column"]),
+            crate::render::shown(&evidence["kind"]),
+            crate::render::shown(&evidence["name"]),
         ));
     }
     if let Some(after) = result["continuation"].as_str() {
@@ -344,7 +353,7 @@ mod command_tests {
         assert_eq!(input("1e2").unwrap()["limit"], 100);
         for invalid in ["", "0", "201", "2.5", "abc", "Infinity"] {
             assert_eq!(
-                input(invalid).unwrap_err(),
+                input(invalid).unwrap_err().message,
                 "limit must be between 1 and 200"
             );
         }
@@ -354,7 +363,7 @@ mod command_tests {
             9_007_199_254_740_991u64
         );
         assert_eq!(
-            budget("9007199254740992").unwrap_err(),
+            budget("9007199254740992").unwrap_err().message,
             "max-files must be a positive safe integer"
         );
     }
@@ -364,10 +373,10 @@ mod command_tests {
         let (json, enabled) = request(&args(&["bogus", "--root", "/missing", "--json"])).unwrap();
         assert!(json && enabled.is_none());
         assert_eq!(
-            request(&args(&["bogus", "--enable"])).unwrap_err(),
+            request(&args(&["bogus", "--enable"])).unwrap_err().message,
             "unknown project evidence operation"
         );
-        let (code, stdout, stderr) = command(&args(&["status"]));
+        let (code, stdout, stderr, _) = command(&args(&["status"]));
         assert_eq!((code, stderr.as_str()), (0, ""));
         assert_eq!(
             serde_json::from_str::<Value>(&stdout).unwrap()["enabled"],
@@ -395,7 +404,7 @@ mod command_tests {
                 "member must be id=absolute-root",
             ),
         ] {
-            let (code, stdout, stderr) = command(&args(list));
+            let (code, stdout, stderr, _) = command(&args(list));
             assert_eq!((code, stdout.as_str()), (1, ""));
             assert_eq!(stderr, format!("PROJECT_EVIDENCE_ERROR: {message}\n"));
         }

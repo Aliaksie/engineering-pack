@@ -14,8 +14,9 @@ function baseline() {
       modules: {
         engine: { kind: 'rust-crate', crate: 'craft-engine', responsibility: 'Pure decisions.', allow: ['Cargo.toml', 'src/**/*.rs'], dependsOn: [], externalDependencies: ['serde'], shipped: true },
         application: { kind: 'rust-crate', crate: 'craft-application', responsibility: 'Use cases.', allow: ['Cargo.toml', 'src/**/*.rs'], dependsOn: ['engine'], shipped: true },
-        hosts: { kind: 'host-adapter', responsibility: 'Host tables.', allow: ['*.mjs'], jsLines: 1, maxFileLines: 5, dependsOn: [], shipped: false, entryPoints: ['hosts/table.mjs'] },
-        packages: { kind: 'content', responsibility: 'Hook declarations.', allow: ['*/hooks/*.mjs'], jsLines: 2, dependsOn: ['hosts'], shipped: true, runtimeRoots: ['packages/*/hooks/*.mjs'] },
+        hosts: { kind: 'host-adapter', responsibility: 'Host tables.', allow: ['*.mjs'], maxFileLines: 5, dependsOn: [], shipped: false },
+        packages: { kind: 'content', responsibility: 'Guidance.', allow: ['**/*.md'], dependsOn: [], shipped: true },
+        tooling: { kind: 'build-tooling', responsibility: 'Build.', allow: ['*.mjs'], dependsOn: '*', shipped: false },
         tests: { kind: 'tests', responsibility: 'Tests.', allow: ['**/*.mjs'], dependsOn: '*', shipped: false },
         docs: { kind: 'docs', responsibility: 'Documentation.', allow: ['**/*.md'], dependsOn: [], shipped: true }
       }
@@ -27,14 +28,22 @@ function baseline() {
     'application/Cargo.toml': '[package]\nname = "craft-application"\n\n[dependencies]\ncraft-engine = { path = "../engine" }\n\n[lints]\nworkspace = true\n',
     'application/src/main.rs': 'fn main() {}\n',
     'hosts/table.mjs': 'export const table = 1;\n',
-    'packages/a/hooks/hook.mjs': "import { table } from '../../../hosts/table.mjs';\nexport const native = table;\n",
+    'packages/a/README.md': '# A\n',
+    'tooling/build.mjs': "import { table } from '../hosts/table.mjs';\nexport const build = table;\n",
     'docs/adr/0002.md': ['Status: Accepted', '', '## Module map', '', '| Module | Kind | Depends on | Shipped | Responsibility |', '|---|---|---|---|---|',
       adrRow('engine', 'rust-crate', '—', 'yes'), adrRow('application', 'rust-crate', 'engine', 'yes'), adrRow('hosts', 'host-adapter', '—', 'no'),
-      adrRow('packages', 'content', 'hosts', 'yes'), adrRow('tests', 'tests', '*', 'no'), adrRow('docs', 'docs', '—', 'yes'), ''].join('\n')
+      adrRow('packages', 'content', '—', 'yes'), adrRow('tooling', 'build-tooling', '*', 'no'), adrRow('tests', 'tests', '*', 'no'), adrRow('docs', 'docs', '—', 'yes'), ''].join('\n')
   };
 }
 
-function check(t, mutate = () => {}, options) {
+// A shipped content module that imports a host table (itself an A8 violation; the case checks A6).
+function importTable(files, modules, name) {
+  modules.packages.allow.push('*/*.mjs');
+  files[`hosts/${name}.mjs`] ??= 'export const x = 1;\n';
+  files['packages/a/hook.mjs'] = `import '../../hosts/${name}.mjs';\n`;
+}
+
+function check(t, mutate = () => {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-architecture-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const files = baseline();
@@ -45,7 +54,7 @@ function check(t, mutate = () => {}, options) {
     fs.writeFileSync(path.join(root, file), typeof content === 'string' ? content : `${JSON.stringify(content, null, 2)}\n`);
   }
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const result = checkArchitecture(root, options);
+  const result = checkArchitecture(root);
   return { root, result, rules: [...new Set(result.errors.map(error => error.rule))].sort() };
 }
 
@@ -76,7 +85,7 @@ const violations = {
     ['unexpected file type', files => { files['docs/diagram.txt'] = 'x\n'; }]
   ],
   A3: [
-    ['ADR disagrees with the manifest', files => { files['docs/adr/0002.md'] = files['docs/adr/0002.md'].replace("| `packages/` | content | hosts", '| `packages/` | content | —'); }],
+    ['ADR disagrees with the manifest', files => { files['docs/adr/0002.md'] = files['docs/adr/0002.md'].replace("| `packages/` | content | —", '| `packages/` | content | hosts'); }],
     ['unknown kind', (files, modules) => { modules.docs.kind = 'helpers'; }],
     ['decision not accepted', files => { files['docs/adr/0002.md'] = files['docs/adr/0002.md'].replace('Status: Accepted', 'Status: Proposed'); }],
     ['multi-sentence responsibility', (files, modules) => { modules.docs.responsibility = 'Docs. And more.'; }]
@@ -92,15 +101,15 @@ const violations = {
     ['engine reads the clock', files => { files['engine/src/lib.rs'] = 'use std::time::SystemTime;\npub fn now() -> SystemTime {\n    SystemTime::now()\n}\n'; }]
   ],
   A6: [
-    ['import of a private file', files => { files['hosts/private.mjs'] = 'export const x = 1;\n'; files['packages/a/hooks/hook.mjs'] = "import { x } from '../../../hosts/private.mjs';\nexport const native = x;\n"; }],
-    ['import without a declared dependency', (files, modules) => { modules.packages.dependsOn = []; }]
+    ['import of a private file', (files, modules) => { importTable(files, modules, 'private'); modules.packages.dependsOn = ['hosts']; modules.hosts.entryPoints = ['hosts/table.mjs']; }],
+    ['import without a declared dependency', (files, modules) => { importTable(files, modules, 'table'); }],
+    ['stale entry point', (files, modules) => { modules.hosts.entryPoints = ['hosts/table.mjs']; }]
   ],
   A7: [
     ['runtime JS kept alive only by a test', files => { files['hosts/dead.mjs'] = 'export const dead = 1;\n'; files['tests/dead.test.mjs'] = "import '../hosts/dead.mjs';\n"; }]
   ],
   A8: [
-    ['runtime JS grows', files => { files['packages/a/hooks/hook.mjs'] += 'export const more = 2;\n'; }],
-    ['budget left higher than the code', (files, modules) => { modules.packages.jsLines = 9; }],
+    ['JavaScript in a content module', (files, modules) => { modules.packages.allow.push('*/*.mjs'); files['packages/a/hook.mjs'] = "export const native = 'observe';\n"; }],
     ['host adapter with a module dependency', (files, modules) => { modules.hosts.dependsOn = ['packages']; }]
   ],
   A9: [
@@ -108,7 +117,7 @@ const violations = {
     ['empty module', files => { files['engine/src/routing.rs'] = '\n'; }]
   ],
   A10: [
-    ['fat host adapter', (files, modules) => { files['hosts/table.mjs'] += 'const a = 1;\nconst b = 2;\nconst c = 3;\nconst d = 4;\nconst e = 5;\n'; modules.hosts.jsLines = 6; }]
+    ['fat host adapter', (files, modules) => { files['hosts/table.mjs'] += 'const a = 1;\nconst b = 2;\nconst c = 3;\nconst d = 4;\nconst e = 5;\n'; }]
   ],
   A11: [
     ['unshipped module in an export', files => { files['dist/agents/tests/x.mjs'] = 'export {};\n'; }]
@@ -125,13 +134,4 @@ for (const [rule, cases] of Object.entries(violations)) for (const [name, mutate
 test('A5 ignores test-only filesystem use in the engine', t => {
   const { rules } = check(t, files => { files['engine/src/lib.rs'] += '\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn reads() {\n        let _ = std::fs::metadata(".");\n    }\n}\n'; });
   assert.deepEqual(rules, []);
-});
-
-test('budget updates only lower the recorded line count', t => {
-  const { root, result } = check(t, (files, modules) => { modules.packages.jsLines = 9; }, { updateBudgets: true });
-  assert.deepEqual(result.errors, []);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'architecture.json'), 'utf8')).modules.packages.jsLines, 2);
-  const grown = check(t, files => { files['packages/a/hooks/hook.mjs'] += 'export const more = 2;\n'; }, { updateBudgets: true });
-  assert.ok(grown.rules.includes('A8'));
-  assert.equal(JSON.parse(fs.readFileSync(path.join(grown.root, 'architecture.json'), 'utf8')).modules.packages.jsLines, 2);
 });

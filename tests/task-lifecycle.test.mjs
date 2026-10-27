@@ -7,14 +7,13 @@ import { spawnSync } from 'node:child_process';
 import { launch, run } from './craft.mjs';
 import { readSessionState, activeTask, bindingFile, holdLock } from './session-state.mjs';
 import { contractDigest as engineeringContractDigest } from './acceptance-view.mjs';
-import { nativeHook } from './native-hook.mjs';
+import { deliverHook } from './native-hook.mjs';
 import { updateSessionState } from './session-state.mjs';
 import { readCheckpoint, recoverCheckpoint } from './checkpoint-cli.mjs';
 import { readTelemetry } from './state.mjs';
 
 // One native delivery hook event; the structured decision, before host serialization.
-const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 'host-session', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
-  package: null, lifecycle, scope: 'any', inputStatus: 'complete', tool, contextSupported: true, cwd, session, file, prompt: '' });
+const deliver = (cwd, lifecycle, { session = 'host-session', ...options } = {}) => deliverHook(cwd, lifecycle, { session, ...options });
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-task-lifecycle-')));

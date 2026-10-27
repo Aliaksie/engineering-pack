@@ -1,11 +1,12 @@
 //! `task-offer`, `task-decision` and `task-action-check` for the bound task, under the active
 //! binding lock: offers and decisions are recorded in task state; a check only reads it.
 //! Nothing is dispatched, approved or granted.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session::{active_task, binding_file, read_state, update_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::actions::{self, Context};
 use craft_engine::session;
+use craft_engine::values::lower_hex;
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Value, json};
 use std::path::Path;
@@ -126,11 +127,7 @@ fn execution_phase(
     let find = |state: &Value| -> Result<Value, Failure> {
         let id = id
             .as_str()
-            .filter(|s| {
-                s.len() == 64
-                    && s.bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-            })
+            .filter(|s| lower_hex(s, 64))
             .ok_or("invalid action proposal id")?;
         state["recommendations"]
             .get(id)
@@ -158,16 +155,8 @@ fn execution_phase(
             if active_task(root, Some(name))?.as_deref() != Some(task) {
                 return Err("action execution requires the active coordinator task".into());
             }
-            let settings = crate::cli::observe(
-                recorder,
-                "project.loaded",
-                parent,
-                "CONFIG_INVALID",
-                serde_json::Map::new(),
-                |_, _| {
-                    crate::project::settings(root, input["preferencesFile"].as_str().map(Path::new))
-                },
-            )?;
+            let preferences = input["preferencesFile"].as_str().map(Path::new);
+            let settings = crate::project::loaded(recorder, parent, root, preferences)?;
             let saved = read_state(root, name, task, recorder, parent)?;
             let offer = find(&saved)?;
             let repository =
@@ -262,7 +251,7 @@ fn execution_phase(
 }
 
 /// Native durable phases around trusted asynchronous action callbacks.
-pub fn execute(input: &Value) -> Result<Value, String> {
+pub fn execute(input: &Value) -> Result<Value, Failure> {
     let root = Path::new(
         input["root"]
             .as_str()

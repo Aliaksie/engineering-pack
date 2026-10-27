@@ -1,20 +1,7 @@
 //! Durable native transport journals. Protocol facts may be supplied by an adapter;
 //! record identity, bounded shape and operation admission belong to the runtime.
+use crate::values::{sha256 as hash, text};
 use serde_json::{Value, json};
-pub fn text(value: &Value) -> bool {
-    value.as_str().is_some_and(|s| {
-        !s.is_empty()
-            && s.encode_utf16().count() <= 512
-            && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}')
-    })
-}
-fn hash(value: &Value) -> bool {
-    value.as_str().is_some_and(|s| {
-        s.len() == 64
-            && s.bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-    })
-}
 fn choice(value: &Value, choices: &[&str]) -> bool {
     value.as_str().is_some_and(|s| choices.contains(&s))
 }

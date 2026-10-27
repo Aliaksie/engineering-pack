@@ -1,8 +1,8 @@
 //! Replay of the frozen acceptance-view corpus (`tests/fixtures/runtime/view-contracts.json`)
 //! captured from the JS engine. Results compare as serialized JSON, so key order is part of
 //! the contract; the `qa:`, `product:` and `acceptance:` reasons compare exactly.
-use craft_engine::contracts::normalize_numbers;
 use craft_engine::session::views::{self, Reader};
+use craft_engine::values::normalize_numbers;
 use serde_json::Value;
 
 /// Intentional corrections over the captured JavaScript, by case ID, with the new reason.

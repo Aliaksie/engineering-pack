@@ -1,4 +1,4 @@
-use crate::syntax::MAX_SOURCE_BYTES;
+use crate::{Error, syntax::MAX_SOURCE_BYTES};
 
 pub mod comparison;
 pub mod snapshot;
@@ -19,29 +19,25 @@ pub fn now() -> String {
         .to_string()
 }
 
-pub fn read_source(root: &Path, relative: &str) -> Result<Vec<u8>, String> {
+pub fn read_source(root: &Path, relative: &str) -> Result<Vec<u8>, Error> {
     if !valid_path(relative) {
         return Err("invalid source path".into());
     }
     let mut full = root.to_path_buf();
     for component in relative.split('/') {
         full.push(component);
-        if fs::symlink_metadata(&full)
-            .map_err(|e| e.to_string())?
-            .file_type()
-            .is_symlink()
-        {
+        if fs::symlink_metadata(&full)?.file_type().is_symlink() {
             return Err("source symlinks are unsupported".into());
         }
     }
     crate::files::read_bounded(&full, MAX_SOURCE_BYTES).map_err(|error| match error {
         crate::files::ReadError::Bounds => "source exceeds file/byte bounds".into(),
         crate::files::ReadError::Grew => "source grew beyond byte bound".into(),
-        crate::files::ReadError::Io(error) => error.to_string(),
+        crate::files::ReadError::Io(error) => error.into(),
     })
 }
 
-pub fn database_guard(path: &Path) -> Result<File, String> {
+pub fn database_guard(path: &Path) -> Result<File, Error> {
     for ancestor in path.ancestors() {
         if let Ok(meta) = fs::symlink_metadata(ancestor)
             && meta.file_type().is_symlink()
@@ -72,8 +68,8 @@ pub fn database_guard(path: &Path) -> Result<File, String> {
         current = current.parent().ok_or("invalid state path")?;
     }
     for directory in missing.iter().rev() {
-        crate::files::create_private_directory(directory).map_err(|error| error.to_string())?;
-        let metadata = fs::symlink_metadata(directory).map_err(|e| e.to_string())?;
+        crate::files::create_private_directory(directory)?;
+        let metadata = fs::symlink_metadata(directory)?;
         if !metadata.is_dir() || metadata.file_type().is_symlink() {
             return Err("unsafe state directory".into());
         }
@@ -83,9 +79,9 @@ pub fn database_guard(path: &Path) -> Result<File, String> {
         .truncate(false)
         .read(true)
         .write(true)
-        .open(format!("{}.lock", path.display()))
-        .map_err(|e| e.to_string())?;
-    file.try_lock().map_err(|_| "project evidence is busy")?;
+        .open(format!("{}.lock", path.display()))?;
+    file.try_lock()
+        .map_err(|_| Error::busy("project evidence is busy"))?;
     Ok(file)
 }
 
@@ -95,7 +91,7 @@ pub struct Inventory {
     finished: bool,
 }
 impl Inventory {
-    pub fn start(root: &Path) -> Result<Self, String> {
+    pub fn start(root: &Path) -> Result<Self, Error> {
         let mut child = Command::new("git")
             .args(["-C"])
             .arg(root)
@@ -109,8 +105,7 @@ impl Inventory {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .stdin(Stdio::null())
-            .spawn()
-            .map_err(|e| e.to_string())?;
+            .spawn()?;
         let reader = BufReader::new(child.stdout.take().ok_or("missing Git output")?);
         Ok(Self {
             child,
@@ -118,16 +113,11 @@ impl Inventory {
             finished: false,
         })
     }
-    pub fn next_path(&mut self) -> Result<Option<String>, String> {
+    pub fn next_path(&mut self) -> Result<Option<String>, Error> {
         let mut bytes = Vec::new();
-        let count = self
-            .reader
-            .by_ref()
-            .take(4098)
-            .read_until(0, &mut bytes)
-            .map_err(|e| e.to_string())?;
+        let count = self.reader.by_ref().take(4098).read_until(0, &mut bytes)?;
         if count == 0 {
-            let status = self.child.wait().map_err(|e| e.to_string())?;
+            let status = self.child.wait()?;
             self.finished = true;
             return if status.success() {
                 Ok(None)
@@ -218,7 +208,7 @@ mod tests {
                 .success()
         );
         assert_eq!(
-            read_source(&fixture.0, "pipe.mjs").unwrap_err(),
+            read_source(&fixture.0, "pipe.mjs").unwrap_err().to_string(),
             "source exceeds file/byte bounds"
         );
     }

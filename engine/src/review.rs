@@ -2,7 +2,7 @@
 //! scripts passed to supported shells with `-c` and active `$()`/backtick substitutions.
 //! Aliases, variable expansion and arbitrary interpreters stay outside the recognizer;
 //! tool-side authorization and an isolated runner remain the enforcement boundary.
-use crate::contracts::js_space;
+use crate::values::js_space;
 use serde_json::{Value, json};
 
 pub mod artifact;

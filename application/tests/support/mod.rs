@@ -97,15 +97,11 @@ impl Repo {
         let mut argv = vec![args[0].to_string()];
         argv.extend(["--root".into(), self.path().into()]);
         argv.extend(args[1..].iter().map(|arg| arg.to_string()));
-        let response = craft_application::evaluate(
-            json!({"formatVersion":1,"operation":"cli","input":{"argv":argv,"structured":true}}),
-        );
-        assert_eq!(response["ok"], true, "{response}");
-        let result = &response["result"];
-        if result["exitCode"] != 0 {
-            return Err(result["stderr"].as_str().unwrap().trim_end().to_string());
+        let outcome = craft_application::cli::run_structured(&argv);
+        if outcome.exit_code != 0 {
+            return Err(outcome.stderr.trim_end().to_string());
         }
-        Ok(serde_json::from_str(result["stdout"].as_str().unwrap()).unwrap())
+        Ok(serde_json::from_str(&outcome.stdout).unwrap())
     }
 
     /// A JSON input file outside the repository tree, for `--data` and `--contract`.

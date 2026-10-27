@@ -27,7 +27,7 @@ fn scratch() -> &'static Path {
     })
 }
 
-fn run(args: &[String]) -> cli::Outcome {
+fn run(args: &[String]) -> craft_application::Outcome {
     cli::run(args)
 }
 
@@ -333,7 +333,8 @@ fn usage_and_input_failures_exit_two_without_output() {
         "--review",
         &valid,
     ]));
-    assert_eq!(missing.error_code, Some("ENOENT"));
+    assert_eq!(missing.exit_code, 2);
+    assert!(!missing.stderr.is_empty() && missing.stdout.is_empty());
     let help = run(&args(&["review-check", "--help"]));
     assert_eq!(help.exit_code, 0);
     assert!(

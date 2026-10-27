@@ -1,5 +1,5 @@
 use crate::{
-    cli::Failure,
+    failure::Failure,
     project,
     telemetry::{Operation, Recorder, now_ms},
 };

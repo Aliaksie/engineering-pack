@@ -12,15 +12,8 @@ const UNAVAILABLE = 'bundled native runtime unavailable';
 const PLATFORMS = { 'x86_64-unknown-linux-gnu': ["'Linux x86_64'", 'linux*:x86_64'], 'aarch64-apple-darwin': ["'Darwin arm64'", 'darwin*:arm64'],
   'x86_64-pc-windows-msvc': ["MINGW*' x86_64'", "MSYS*' x86_64'", "CYGWIN*' x86_64'", 'msys:x86_64', 'cygwin:x86_64'] };
 
-// The handler a package hook module declares (`export const native = '<handler>'`).
-export function nativeHandler(item, definition) {
-  const source = fs.readFileSync(path.join(item.root, definition.handler), 'utf8');
-  const match = /^export const native = '([a-z-]+)'/m.exec(source);
-  if (!match) throw new Error(`${item.manifest.name}: ${definition.handler} declares no native hook handler`);
-  return match[1];
-}
 export const hookArguments = (platform, definition, item) =>
-  ['hook', platform, definition.event, '--package', item.manifest.name, '--handler', nativeHandler(item, definition), '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
+  ['hook', platform, definition.event, '--package', item.manifest.name, '--handler', definition.handler, '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
 
 // The wire answer of a hook whose runtime is unavailable: `{stdout, stderr, exitCode}`.
 export function fallback(platform, definition, handler) {

@@ -1,6 +1,6 @@
 //! Private task scratch and retained evidence (`workspace-*`): the verified task binding,
 //! the hashed workspace identity and each action under the shared workspace lock.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::scratch::{self, Identity, MANIFEST_BYTES, MANIFEST_ENTRIES, Policy};
@@ -30,17 +30,6 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn from_command(command: &str) -> Option<Action> {
-        Some(match command {
-            "workspace-open" => Action::Open,
-            "workspace-write" => Action::Write,
-            "workspace-promote" => Action::Promote,
-            "workspace-release" => Action::Release,
-            "workspace-clean" => Action::Maintain,
-            _ => return None,
-        })
-    }
-
     fn name(self) -> &'static str {
         match self {
             Action::Open => "open",
@@ -190,7 +179,7 @@ pub fn run(
 }
 
 fn io(error: io::Error) -> Failure {
-    Failure::from_io(error)
+    Failure::from(error)
 }
 
 fn read_manifest(file: &Path, project: &str, entry: &str) -> Result<Value, Failure> {
@@ -238,7 +227,7 @@ fn operate(
     let mut owned = Vec::new();
     for entry in &entries {
         let folder = sessions.join(entry);
-        let checked = if scratch::is_digest(entry) {
+        let checked = if craft_engine::values::lower_hex(entry, 64) {
             files::directory(&folder, false)
                 .map_err(io)
                 .and_then(|_| read_manifest(&folder.join("owner.json"), &project, entry))
@@ -370,19 +359,10 @@ fn operate(
             }));
     }
     let mut cleanup = "retained";
-    if action == Action::Release {
-        if current.is_some() {
-            value["operations"][&identity.operation]["closed"] = json!(true);
+    if matches!(action, Action::Release | Action::Complete) {
+        if action == Action::Complete {
+            value["closed"] = json!(true);
         }
-        if scratch::open_operations(&value).is_empty() {
-            match files::remove(&scratch_dir) {
-                Ok(()) => cleanup = "cleaned",
-                Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
-            }
-        }
-    }
-    if action == Action::Complete {
-        value["closed"] = json!(true);
         if current.is_some() {
             value["operations"][&identity.operation]["closed"] = json!(true);
         }

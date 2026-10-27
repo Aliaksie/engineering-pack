@@ -17,6 +17,9 @@ Native runtime (published to `distribution-next`):
   remain as native JSON requests), the optional personal review inbox, and the separate
   `craft-project-evidence` executable in native bundles (use `craft project-evidence`).
 - Documentation consolidated: installation, a command reference and one evaluation guide.
+- Package manifests name the native hook handler directly (`"handler": "observe"`,
+  `"deliver"` or `"review-read-only"`); the one-line `hooks/*.mjs` handler files are gone
+  and no longer ship in exports. A handler file path now fails validation.
 
 ## 0.0.2
 

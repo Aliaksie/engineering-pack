@@ -1,8 +1,6 @@
 //! Durable worker assignments and reconciliation of explicitly supplied host evidence.
-use crate::{
-    contracts::{js_length, safe_integer},
-    digest, session, timestamp,
-};
+use crate::values::{lower_hex, sha256 as hash, text};
+use crate::{digest, session, timestamp, values::safe_integer};
 use serde_json::{Value, json};
 use std::collections::HashSet;
 type Result<T> = std::result::Result<T, String>;
@@ -23,11 +21,6 @@ const STATUSES: &[&str] = &[
     "not-started",
     "unknown",
 ];
-fn text(v: &Value) -> bool {
-    v.as_str().is_some_and(|s| {
-        (1..=512).contains(&js_length(s)) && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}')
-    })
-}
 fn identifier(v: &Value) -> bool {
     v.as_str().is_some_and(|s| {
         !s.is_empty()
@@ -35,13 +28,6 @@ fn identifier(v: &Value) -> bool {
             && s.bytes().next().is_some_and(|b| b.is_ascii_alphanumeric())
             && s.bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b"._:-".contains(&b))
-    })
-}
-fn hash(v: &Value) -> bool {
-    v.as_str().is_some_and(|s| {
-        s.len() == 64
-            && s.bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     })
 }
 fn one_of(v: &Value, values: &[&str]) -> bool {
@@ -151,11 +137,8 @@ pub fn state(v: &Value, tree: &Value) -> Result<Value> {
             r.get(name).is_some_and(|v| v.is_null() || check(v))
         };
         let revision = |v: &Value| {
-            v.as_str().is_some_and(|s| {
-                (40..=64).contains(&s.len())
-                    && s.bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-            })
+            v.as_str()
+                .is_some_and(|s| (40..=64).contains(&s.len()) && lower_hex(s, s.len()))
         };
         if !identifier(&r["id"])
             || !seen.insert(r["id"].clone())

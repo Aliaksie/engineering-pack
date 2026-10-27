@@ -272,7 +272,7 @@ fn statusline_matches_the_frozen_corpus() {
     }
 }
 
-fn status(args: &[&str], stdin: &str, interactive: bool) -> craft_application::cli::Outcome {
+fn status(args: &[&str], stdin: &str, interactive: bool) -> craft_application::Outcome {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let next = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let root = scratch().join(format!("direct-{next}"));

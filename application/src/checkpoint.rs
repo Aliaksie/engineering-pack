@@ -1,7 +1,8 @@
 //! Explicit local checkpoints and read-only recovery comparison.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session::{active_task, read_record, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
+use craft_engine::values::truthy;
 use craft_engine::{checkpoint, hash, session, timestamp};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
@@ -41,15 +42,6 @@ pub fn read(
 /// Present and not `null`, as `??` sees a field.
 fn given<'a>(map: &'a Map<String, Value>, field: &str) -> Option<&'a Value> {
     map.get(field).filter(|v| !v.is_null())
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null | Value::Bool(false)) => false,
-        Some(Value::String(s)) => !s.is_empty(),
-        Some(Value::Number(n)) => n.as_f64().is_some_and(|f| f != 0.0),
-        Some(_) => true,
-    }
 }
 
 /// Save a checkpoint unless it is unchanged; `{file, state, unchanged}`. With

@@ -1,11 +1,12 @@
 //! `session`/`session-advice`: one bounded observation of the bound task (its record, source,
 //! checkpoint, routed guidance and workspace) and the engine's advice over it. Read-only:
 //! nothing is compacted, reset, switched, written or executed.
-use crate::cli::{Failure, guidance_report};
+use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms, pack_version};
 use craft_engine::session::status::{self, Observations};
+use craft_engine::values::truthy;
 use craft_engine::{checkpoint, routing, session};
 use craft_platform::repository::snapshot;
 use serde_json::{Map, Value, json};
@@ -35,15 +36,6 @@ pub struct Request<'a> {
     pub task: Option<&'a str>,
     /// Verified installed package roots for guidance accounting.
     pub bundles: &'a [String],
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null | Value::Bool(false)) => false,
-        Some(Value::String(s)) => !s.is_empty(),
-        Some(Value::Number(n)) => n.as_f64().is_some_and(|f| f != 0.0),
-        Some(_) => true,
-    }
 }
 
 /// The session status, observed under `session.observed`.
@@ -102,24 +94,7 @@ fn observe(
         task,
         bundles,
     } = request;
-    let declared_session = input.get("sessionId");
-    let declared_task = input["task"].get("id");
-    if session.is_some_and(|s| !s.is_empty())
-        && truthy(declared_session)
-        && declared_session != Some(&json!(session))
-    {
-        return Err("session input identity mismatch".into());
-    }
-    if task.is_some_and(|t| !t.is_empty())
-        && truthy(declared_task)
-        && declared_task != Some(&json!(task))
-    {
-        return Err("task input identity mismatch".into());
-    }
-    let session_id = session
-        .map(|s| json!(s))
-        .or_else(|| declared_session.cloned());
-    let mut task_id = task.map(|t| json!(t)).or_else(|| declared_task.cloned());
+    let (session_id, mut task_id) = status::identities(input, session, task)?;
     let mut binding_error = None;
     if !truthy(task_id.as_ref()) && truthy(session_id.as_ref()) {
         match identity(session_id.as_ref()).and_then(|s| active_task(root, Some(s))) {
@@ -131,14 +106,14 @@ fn observe(
         }
     }
     let mut input = input.as_object().cloned().unwrap_or_default();
-    if let Some(id) = session_id.as_ref().filter(|s| truthy(Some(s))) {
+    if let Some(id) = session_id.as_ref().filter(|s| truthy(*s)) {
         input.insert("sessionId".into(), id.clone());
     }
     let mut declared = match input.get("task") {
         Some(Value::Object(task)) => task.clone(),
         _ => Map::new(),
     };
-    if let Some(id) = task_id.as_ref().filter(|t| truthy(Some(t))) {
+    if let Some(id) = task_id.as_ref().filter(|t| truthy(*t)) {
         declared.insert("id".into(), id.clone());
     }
     let bound = truthy(session_id.as_ref()) && truthy(task_id.as_ref());
@@ -259,7 +234,7 @@ fn observe(
                     &known,
                 );
             }
-            match guidance_report(&plan, bundles, None, recorder, operation) {
+            match crate::guidance::report(&plan, bundles, None, recorder, operation) {
                 Ok(report) => observations.pack = Some(report),
                 Err(error) => {
                     observations.pack_error = Some(error.message);
@@ -366,7 +341,7 @@ fn observe(
         }
     }
     result["workspace"] = workspace;
-    if let Some(repositories) = repositories.filter(|r| truthy(Some(r))) {
+    if let Some(repositories) = repositories.filter(|r| truthy(r)) {
         result["repositories"] = repositories;
     }
     if let Some(error) = binding_error {
@@ -385,4 +360,25 @@ fn diagnostics(result: &mut Value) -> &mut Vec<Value> {
     result["diagnostics"]
         .as_array_mut()
         .expect("status diagnostics")
+}
+
+/// Session status over declared `data` with the project's effective settings, for a caller
+/// that parses its own arguments.
+pub(crate) fn for_root(
+    root: &Path,
+    data: &Value,
+    bundles: &[String],
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = crate::project::loaded(recorder, parent, root, None)?;
+    let request = Request {
+        root,
+        input: data,
+        settings: &settings,
+        session: None,
+        task: None,
+        bundles,
+    };
+    run(request, recorder, parent)
 }

@@ -1,5 +1,5 @@
 //! Bounded literal navigation requests and UTF-16 line/snippet coordinates.
-use crate::contracts::{js_length, safe_integer};
+use crate::values::{js_length, safe_integer};
 use serde_json::{Value, json};
 
 pub mod planning;

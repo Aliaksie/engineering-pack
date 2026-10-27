@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { nativeHook } from './native-hook.mjs';
+import { deliverHook } from './native-hook.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 import { run } from './craft.mjs';
 import { readProject } from './project-settings.mjs';
@@ -27,8 +27,7 @@ function fixture(t) {
   return { root, git };
 }
 // One native delivery hook event; the structured decision, before host serialization.
-const deliver = (cwd, lifecycle, { tool = 'other', file = null, session = 's1', host = 'codex' } = {}) => nativeHook({ handler: 'deliver', host,
-  package: null, lifecycle, scope: 'any', inputStatus: 'complete', tool, contextSupported: true, cwd, session, file, prompt: '' });
+const deliver = (cwd, lifecycle, { session = 's1', ...options } = {}) => deliverHook(cwd, lifecycle, { session, ...options });
 const continuation = Object.fromEntries(['goal', 'currentState', 'completed', 'approach', 'evidence', 'filesChanged', 'validation', 'remainingWork', 'blockers', 'nextStep'].map(key => [key, key]));
 
 test('default lifecycle and discovery use excluded local state without editing consumer ignores', t => {
@@ -57,7 +56,7 @@ test('edits outside the project root skip edit-hint routing instead of failing d
   const outside = path.join(path.dirname(root), 'elsewhere', 'notes.md');
   // Without a session, hint reuse cannot suppress the repeated routes compared below.
   const event = file => deliver(nested, 'before-tool', { tool: 'edit', file, host: 'claude', session: null });
-  assert.deepEqual(event(outside), { decision: 'allow', failed: false, export: null });
+  assert.equal(event(outside).context, undefined);
   assert.equal(event(path.join(root, '..', path.basename(root), 'src', 'value.mjs')).context.data.intent, 'implement');
   // A relative tool path names a file below the hook's working directory.
   assert.deepEqual(event('value.mjs').context, event(path.join(nested, 'value.mjs')).context);

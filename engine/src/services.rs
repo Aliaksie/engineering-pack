@@ -1,7 +1,10 @@
 //! External service operations: invocation plans and session-level availability metadata
 //! over validated effective settings. Plans describe what a host may run; nothing here
 //! executes, discovers tools or grants authorization.
-use crate::contracts::{READ_OPERATIONS, WRITE_OPERATIONS, safe_integer};
+use crate::{
+    contracts::{READ_OPERATIONS, WRITE_OPERATIONS},
+    values::{number_text, safe_integer},
+};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 
@@ -80,25 +83,6 @@ fn mapping<'a>(service: &str, binding: &'a Value, operation: &str) -> Mapping<'a
             required: &["id"],
             optional: &[],
         },
-    }
-}
-
-/// `String(number)` in JavaScript, for parameters substituted into text and CLI arguments.
-fn number_text(number: &serde_json::Number) -> String {
-    if number.is_i64() || number.is_u64() {
-        return number.to_string();
-    }
-    let float = number.as_f64().unwrap_or_default();
-    let scientific = format!("{float:e}");
-    let (mantissa, exponent) = scientific.split_once('e').expect("exponent form");
-    let exponent: i32 = exponent.parse().expect("integer exponent");
-    if (-6..21).contains(&exponent) {
-        format!("{float}")
-    } else {
-        format!(
-            "{mantissa}e{}{exponent}",
-            if exponent > 0 { "+" } else { "" }
-        )
     }
 }
 

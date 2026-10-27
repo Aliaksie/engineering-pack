@@ -34,7 +34,6 @@
       "kind": "host-adapter",
       "responsibility": "Host hook mapping, session and feature capability tables read by the build and embedded in craft.",
       "allow": ["*.mjs", "capabilities.json", "hooks.json", "session.json"],
-      "jsLines": 29,
       "maxFileLines": 300,
       "dependsOn": [],
       "shipped": false
@@ -42,11 +41,9 @@
     "packages": {
       "kind": "content",
       "responsibility": "Capability guidance, skills, workflows, standards, evals and hook declarations.",
-      "allow": ["**/*.md", "**/*.json", "*/skills/*/references/*.graphql", "*/hooks/*.mjs"],
-      "jsLines": 10,
+      "allow": ["**/*.md", "**/*.json", "*/skills/*/references/*.graphql"],
       "dependsOn": [],
-      "shipped": true,
-      "runtimeRoots": ["packages/*/hooks/*.mjs"]
+      "shipped": true
     },
     "tooling": {
       "kind": "build-tooling",

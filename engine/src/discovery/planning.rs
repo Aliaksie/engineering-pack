@@ -1,6 +1,6 @@
 //! Discovery batches, bounded evidence packets and session lookup receipts.
 use super::{request as search_request, scope};
-use crate::contracts::{js_length, safe_integer};
+use crate::values::{js_length, safe_integer};
 use serde_json::{Value, json};
 
 pub use crate::digest;
@@ -23,7 +23,7 @@ fn metadata_error() -> String {
 
 pub fn request(input: &Value) -> Result<Value, String> {
     let mut normalized = input.clone();
-    crate::contracts::normalize_numbers(&mut normalized);
+    crate::values::normalize_numbers(&mut normalized);
     let input = &normalized;
     let map = input
         .as_object()

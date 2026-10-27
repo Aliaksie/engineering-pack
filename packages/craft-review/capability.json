@@ -48,49 +48,49 @@
       "name": "read-only",
       "event": "before-tool",
       "tool": "shell",
-      "handler": "hooks/read-only.mjs"
+      "handler": "review-read-only"
     },
     {
       "name": "observe-session-start",
       "event": "session-start",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-before-prompt",
       "event": "before-prompt",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-before-tool",
       "event": "before-tool",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-after-tool",
       "event": "after-tool",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-before-compact",
       "event": "before-compact",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-after-compact",
       "event": "after-compact",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     },
     {
       "name": "observe-turn-end",
       "event": "turn-end",
       "tool": "any",
-      "handler": "hooks/observe.mjs"
+      "handler": "observe"
     }
   ],
   "mcp": [],

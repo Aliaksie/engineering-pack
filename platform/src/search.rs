@@ -22,6 +22,12 @@ impl From<std::io::Error> for SearchError {
         Self::Io(error)
     }
 }
+/// Search keeps its own error codes; a state path failure reports as invalid input.
+impl From<crate::Error> for SearchError {
+    fn from(error: crate::Error) -> Self {
+        Self::Invalid(error.to_string())
+    }
+}
 impl From<String> for SearchError {
     fn from(message: String) -> Self {
         Self::Invalid(message)

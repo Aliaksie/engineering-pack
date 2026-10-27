@@ -2,7 +2,7 @@
 //! gaps and architecture constraints. Each view reuses the acceptance coverage and only
 //! selects or links supplied facts; none adds an observation or persists state.
 use super::acceptance::coverage;
-use crate::contracts::{js_blank, js_length};
+use crate::values::{js_blank, line_text, truthy};
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 
@@ -48,9 +48,9 @@ fn extended(value: &Value, extra: impl IntoIterator<Item = (&'static str, Value)
 }
 
 fn text(value: &Value) -> bool {
-    value.as_str().is_some_and(|s| {
-        !js_blank(s) && js_length(s) <= TEXT && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}')
-    })
+    value
+        .as_str()
+        .is_some_and(|s| !js_blank(s) && line_text(s, TEXT))
 }
 
 /// Up to 32 unique texts, nonempty unless `empty` is allowed.
@@ -74,7 +74,7 @@ pub fn qa(
     blockers: bool,
 ) -> Result<Value> {
     let invalid = || "qa:invalid-probes".to_string();
-    let Some(contract) = contract.filter(|c| super::truthy(c)) else {
+    let Some(contract) = contract.filter(|c| truthy(*c)) else {
         return Err("qa:missing-contract".into());
     };
     let coverage = coverage(Some(contract), evidence, current, blockers)?;
@@ -253,7 +253,7 @@ pub fn reader(
     focus: Option<&Value>,
     blockers: bool,
 ) -> Result<Value> {
-    let Some(contract) = contract.filter(|c| super::truthy(c)) else {
+    let Some(contract) = contract.filter(|c| truthy(*c)) else {
         return Err("product:missing-contract".into());
     };
     let coverage = coverage(Some(contract), evidence, current, blockers)?;

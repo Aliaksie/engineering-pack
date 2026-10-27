@@ -4,6 +4,7 @@ use crate::{
     search::{SearchError, open_source, safe_file},
     state,
 };
+use craft_engine::values::lower_hex;
 use craft_engine::{repository, routing::private_path};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -35,10 +36,7 @@ pub fn checkout(root: &Path) -> Value {
 }
 
 fn hex(text: &str) -> bool {
-    matches!(text.len(), 40 | 64)
-        && text
-            .bytes()
-            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    matches!(text.len(), 40 | 64) && lower_hex(text, text.len())
 }
 
 /// `text.slice(units)` in UTF-16 code units.

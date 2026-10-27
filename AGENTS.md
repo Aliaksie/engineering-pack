@@ -15,7 +15,7 @@ CI, Node 26 for forward checks. Rust 1.89+ builds the runtime.
 | `npm test` | Build exports, then run Node tests |
 | `npm run validate` | Validate capability manifests and referenced source files |
 | `npm run validate:exports` | Check generated Claude marketplace and references |
-| `npm run architecture` | Check the declared module map, dependency rules and runtime JS budgets |
+| `npm run architecture` | Check the declared module map, dependency rules and JavaScript placement |
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
@@ -61,7 +61,7 @@ CI, Node 26 for forward checks. Rust 1.89+ builds the runtime.
 
 - Top-level modules, their kinds and dependencies are declared in `architecture.json` and
   [ADR 0002](docs/adr/0002-module-map-and-boundaries.md). Change both together; never add a
-  top-level folder, cross-module import or runtime JS budget increase without them.
+  top-level folder, cross-module import or JavaScript in a shipped module without them.
 
 - Investigate suspicious behavior rather than preserving it. Fix confirmed defects with
   regression coverage. State formats, digest identities and error codes are compatibility

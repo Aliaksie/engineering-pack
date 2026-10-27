@@ -1,6 +1,6 @@
 //! Private task scratch and intentionally retained evidence: names, ownership metadata,
 //! workspace identity and the retention rules every workspace action applies.
-use crate::contracts::safe_integer;
+use crate::values::{lower_hex, safe_integer};
 use crate::{digest, hash};
 use serde_json::{Value, json};
 
@@ -77,13 +77,6 @@ pub fn evidence_expired(manifest: &Value, now: i64, policy: &Policy) -> bool {
     age(manifest, now) >= policy.retention_ms
 }
 
-pub fn is_digest(value: &str) -> bool {
-    value.len() == 64
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-}
-
 /// A safe single path segment: `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`.
 pub fn is_name(value: &Value) -> bool {
     value.as_str().is_some_and(|name| {
@@ -142,7 +135,7 @@ pub fn manifest(project: &str, identity: &Identity, now: i64) -> Value {
 /// Validate a manifest read from the workspace directory `entry` of `project`.
 pub fn validate(value: &Value, project: &str, entry: &str) -> Result {
     let invalid = || "workspace ownership metadata is invalid".to_string();
-    let digest_field = |name: &str| value[name].as_str().filter(|v| is_digest(v));
+    let digest_field = |name: &str| value[name].as_str().filter(|v| lower_hex(v, 64));
     let (Some(session), Some(task)) = (digest_field("session"), digest_field("task")) else {
         return Err(invalid());
     };
@@ -166,7 +159,7 @@ pub fn validate(value: &Value, project: &str, entry: &str) -> Result {
         && operations.is_some_and(|operations| {
             operations.len() <= MANIFEST_ENTRIES
                 && operations.iter().all(|(id, operation)| {
-                    is_digest(id)
+                    lower_hex(id, 64)
                         && natural(&operation["pid"], 1)
                         && operation["closed"].is_boolean()
                 })

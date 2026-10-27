@@ -1,101 +1,133 @@
 //! `craft <command> [options]`: argument rules, rendering and exit codes of every command an
 //! installed package runs through its `bin/craft` launcher.
-use crate::project::{self, Settings};
+use crate::Outcome;
+use crate::actions::Kind;
+use crate::failure::Failure;
+use crate::project::{self, Settings, absolute, read_input};
+use crate::render::shown;
+use crate::review::Command as Review;
+use crate::scratch::Action;
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
-use craft_engine::contracts::normalize_numbers;
 use craft_engine::session::views::{self, Reader};
-use craft_engine::{context, contracts, models, routing, services};
-use craft_platform::documents::DocumentError;
-use craft_platform::guidance;
+use craft_engine::values::{normalize_numbers, truthy};
+use craft_engine::{models, routing, services, values};
 use serde_json::{Map, Value, json};
-use std::io::ErrorKind;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
-pub const COMMANDS: &[&str] = &[
-    "grounded-context",
-    "worker-status",
-    "settings",
-    "operation",
-    "prepare-services",
-    "model-advice",
-    "lookup",
-    "route",
-    "locate",
-    "context-report",
-    "checkpoint-save",
-    "checkpoint-read",
-    "session-attempt",
-    "task-start",
-    "session",
-    "session-advice",
-    "task-step",
-    "task-offer",
-    "task-decision",
-    "task-action-check",
-    "task-feature",
-    "task-features",
-    "workspace-open",
-    "workspace-write",
-    "workspace-promote",
-    "workspace-release",
-    "workspace-clean",
-    "telemetry-report",
-    "telemetry-capture",
-    "telemetry-forget",
-    "review-prepare",
-    "review-check",
-    "review-publication",
-    "review-followup",
-    "acceptance-view",
+type Run = fn(&Options, &mut Recorder, &Operation) -> Result<Value, Failure>;
+
+#[derive(Clone, Copy)]
+enum Handler {
+    Run(Run),
+    Workspace(Action),
+    /// Parses its own options and writes its own usage.
+    Review(crate::review::Command),
+    /// Streams its own output; only `main` runs it.
+    Evidence,
+}
+
+/// How a successful result is written.
+#[derive(Clone, Copy)]
+enum Render {
+    Json,
+    /// One JSON line, whatever the detail requested.
+    Line,
+    /// A compact receipt unless `--json` or `--verbose` asks for the full result.
+    Receipt(fn(&str, &Value) -> String),
+}
+
+struct Command {
+    name: &'static str,
+    handler: Handler,
+    /// Accounts the installed package's guidance; the launcher names its root.
+    bundled: bool,
+    render: Render,
+}
+
+impl Command {
+    const fn new(name: &'static str, handler: Handler) -> Self {
+        Self {
+            name,
+            handler,
+            bundled: false,
+            render: Render::Json,
+        }
+    }
+    const fn run(name: &'static str, run: Run) -> Self {
+        Self::new(name, Handler::Run(run))
+    }
+    const fn bundled(mut self) -> Self {
+        self.bundled = true;
+        self
+    }
+    const fn receipt(mut self, receipt: fn(&str, &Value) -> String) -> Self {
+        self.render = Render::Receipt(receipt);
+        self
+    }
+}
+
+/// Every `craft <command>`, in the order the general help lists them.
+const COMMANDS: &[Command] = &[
+    Command::new("workspace-open", Handler::Workspace(Action::Open)),
+    Command::new("workspace-write", Handler::Workspace(Action::Write)),
+    Command::new("workspace-promote", Handler::Workspace(Action::Promote)),
+    Command::new("workspace-release", Handler::Workspace(Action::Release)),
+    Command::new("workspace-clean", Handler::Workspace(Action::Maintain)),
+    Command::run("grounded-context", grounded_context),
+    Command::run("worker-status", worker_status),
+    Command::run("task-feature", |o, r, p| task_features(true, o, r, p)),
+    Command::run("task-features", |o, r, p| task_features(false, o, r, p)),
+    Command::run("telemetry-capture", telemetry_capture),
+    Command::run("telemetry-forget", telemetry_forget),
+    Command::run("telemetry-report", telemetry_report),
+    Command::run("task-offer", |o, r, p| task_action(Kind::Offer, o, r, p))
+        .bundled()
+        .receipt(action_receipt),
+    Command::run("task-decision", |o, r, p| {
+        task_action(Kind::Decision, o, r, p)
+    })
+    .receipt(action_receipt),
+    Command::run("task-action-check", |o, r, p| {
+        task_action(Kind::Check, o, r, p)
+    })
+    .bundled()
+    .receipt(action_receipt),
+    Command::run("task-start", task_start).receipt(|_, value| task_receipt(value)),
+    Command::run("task-step", task_step)
+        .bundled()
+        .receipt(action_receipt),
+    Command::run("settings", settings),
+    Command::run("route", route),
+    Command::run("context-report", context_report).bundled(),
+    Command::run("session", session_status)
+        .bundled()
+        .receipt(|_, value| session_view(value)),
+    Command::run("session-advice", session_status)
+        .bundled()
+        .receipt(|_, value| session_view(value)),
+    Command::run("session-attempt", session_attempt).receipt(|_, value| attempt_receipt(value)),
+    Command::run("model-advice", model_advice),
+    Command::run("lookup", lookup),
+    Command {
+        render: Render::Line,
+        ..Command::run("locate", locate)
+    },
+    Command::run("prepare-services", prepare_services),
+    Command::run("operation", plan_operation),
+    Command::run("checkpoint-save", checkpoint_save).receipt(|_, value| receipt(value)),
+    Command::run("checkpoint-read", checkpoint_read),
+    Command::new("review-prepare", Handler::Review(Review::Prepare)),
+    Command::new("review-check", Handler::Review(Review::Check)),
+    Command::new("review-publication", Handler::Review(Review::Publication)),
+    Command::new("review-followup", Handler::Review(Review::Followup)),
+    Command::run("acceptance-view", acceptance_view),
+    Command::new("project-evidence", Handler::Evidence),
 ];
-/// Every command the general help lists.
-const ALL_COMMANDS: &[&str] = &[
-    "workspace-open",
-    "workspace-write",
-    "workspace-promote",
-    "workspace-release",
-    "workspace-clean",
-    "grounded-context",
-    "worker-status",
-    "task-feature",
-    "task-features",
-    "telemetry-capture",
-    "telemetry-forget",
-    "telemetry-report",
-    "task-offer",
-    "task-decision",
-    "task-action-check",
-    "task-start",
-    "task-step",
-    "settings",
-    "route",
-    "context-report",
-    "session",
-    "session-advice",
-    "session-attempt",
-    "model-advice",
-    "lookup",
-    "locate",
-    "prepare-services",
-    "operation",
-    "checkpoint-save",
-    "checkpoint-read",
-    "review-prepare",
-    "review-check",
-    "review-publication",
-    "review-followup",
-    "acceptance-view",
-    "project-evidence",
-];
-/// Commands that account the installed package's guidance; the launcher names its root.
-const BUNDLED: &[&str] = &[
-    "context-report",
-    "session",
-    "session-advice",
-    "task-step",
-    "task-offer",
-    "task-action-check",
-];
+
+fn command(name: &str) -> Option<&'static Command> {
+    COMMANDS.iter().find(|command| command.name == name)
+}
 
 /// Options every command accepts, as the shared JS parser does; each command reads its own.
 const OPTIONS: &[&str] = &[
@@ -172,86 +204,6 @@ const REPEATED: &[&str] = &[
     "bundle",
 ];
 
-#[derive(Debug)]
-pub struct Failure {
-    pub message: String,
-    io: Option<ErrorKind>,
-}
-
-impl Failure {
-    pub(crate) fn from_io(error: std::io::Error) -> Self {
-        Self {
-            message: error.to_string(),
-            io: Some(error.kind()),
-        }
-    }
-    pub(crate) fn from_error_code(code: &str) -> Self {
-        let io = match code {
-            "ENOENT" => Some(ErrorKind::NotFound),
-            "EACCES" => Some(ErrorKind::PermissionDenied),
-            "ENOTDIR" => Some(ErrorKind::NotADirectory),
-            _ => None,
-        };
-        Self {
-            message: code.into(),
-            io,
-        }
-    }
-    /// The Node-style code of an I/O failure, for a caller-owned telemetry envelope.
-    pub(crate) fn node_code(&self) -> Option<&'static str> {
-        match self.io {
-            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
-            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
-            Some(ErrorKind::NotFound) => Some("ENOENT"),
-            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
-            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
-            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
-            _ => None,
-        }
-    }
-    /// The stable reason code `observe` records for this failure.
-    pub fn code(&self, fallback: &'static str) -> &'static str {
-        match self.io {
-            Some(ErrorKind::PermissionDenied) => "ACCESS_DENIED",
-            Some(ErrorKind::StorageFull) => "STORAGE_FULL",
-            Some(ErrorKind::NotFound) => "NOT_FOUND",
-            Some(ErrorKind::ResourceBusy | ErrorKind::AlreadyExists) => "STATE_BUSY",
-            _ => fallback,
-        }
-    }
-}
-
-impl From<String> for Failure {
-    fn from(message: String) -> Self {
-        Self { message, io: None }
-    }
-}
-
-impl From<&str> for Failure {
-    fn from(message: &str) -> Self {
-        message.to_string().into()
-    }
-}
-
-impl From<DocumentError> for Failure {
-    fn from(error: DocumentError) -> Self {
-        Self {
-            io: error.io_kind(),
-            message: error.to_string(),
-        }
-    }
-}
-
-pub struct Outcome {
-    /// A portable Node-style I/O code for a caller-owned command telemetry envelope.
-    pub error_code: Option<&'static str>,
-    pub exit_code: i32,
-    pub stdout: String,
-    pub stderr: String,
-    /// Remote-bound telemetry for the caller to post, when configured.
-    pub export: Option<Value>,
-}
-
 #[derive(Default)]
 struct Options {
     values: Map<String, Value>,
@@ -261,22 +213,6 @@ impl Options {
     fn get(&self, name: &str) -> Option<&str> {
         self.values.get(name).and_then(Value::as_str)
     }
-}
-
-/// `path.resolve`: absolute against the working directory, with `.` and `..` removed lexically.
-pub(crate) fn resolve(path: &str) -> PathBuf {
-    let joined = std::env::current_dir().unwrap_or_default().join(path);
-    let mut resolved = PathBuf::new();
-    for component in joined.components() {
-        match component {
-            Component::ParentDir => {
-                resolved.pop();
-            }
-            Component::CurDir => {}
-            other => resolved.push(other),
-        }
-    }
-    resolved
 }
 
 fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
@@ -345,56 +281,19 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     Ok(options)
 }
 
-/// One child operation of `parent`: success records `summary`, failure the code of its
-/// I/O error or `fallback`.
-pub(crate) fn observe<T>(
-    recorder: &mut Recorder,
-    name: &'static str,
-    parent: &Operation,
-    fallback: &'static str,
-    summary: Map<String, Value>,
-    work: impl FnOnce(&mut Recorder, &Operation) -> Result<T, Failure>,
-) -> Result<T, Failure> {
-    let operation = recorder.start(name, Some(parent));
-    let result = work(recorder, &operation);
-    let (attributes, failure) = match &result {
-        Ok(_) => (summary, None),
-        Err(error) => (Map::new(), Some(error.code(fallback))),
-    };
-    recorder.complete(operation, attributes, failure);
-    result
-}
-
-pub(crate) fn input(
-    recorder: &mut Recorder,
-    parent: &Operation,
-    file: &str,
-) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "input.loaded",
-        parent,
-        "INVALID_INPUT",
-        Map::new(),
-        |_, _| project::input(Path::new(file)),
-    )
-}
-
 fn root(options: &Options) -> PathBuf {
-    resolve(options.get("root").unwrap_or("."))
+    absolute(options.get("root").unwrap_or("."))
 }
 
 fn grounded_context(
     options: &Options,
     recorder: &mut Recorder,
     parent: &Operation,
-    forwarded: Option<&Value>,
 ) -> Result<Value, Failure> {
-    let data = match (forwarded, options.get("data")) {
-        (Some(data), _) => data.clone(),
-        (None, Some(file)) => input(recorder, parent, file)?,
-        _ => return Err("grounded-context requires --data input.json".into()),
+    let Some(file) = options.get("data") else {
+        return Err("grounded-context requires --data input.json".into());
     };
+    let data = read_input(recorder, parent, file)?;
     crate::grounding::run(
         &root(options),
         &data,
@@ -409,14 +308,8 @@ fn loaded(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "project.loaded",
-        parent,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(&root(options), options.get("preferences").map(Path::new)),
-    )
+    let preferences = options.get("preferences").map(Path::new);
+    project::loaded(recorder, parent, &root(options), preferences)
 }
 
 fn plan_operation(
@@ -431,7 +324,7 @@ fn plan_operation(
         }
         None => json!({}),
     };
-    contracts::normalize_numbers(&mut params);
+    values::normalize_numbers(&mut params);
     let name = options.get("operation");
     let summary = Map::from_iter(name.map(|name| ("operation".to_string(), json!(name))));
     observe(
@@ -455,46 +348,7 @@ fn prepare_services(
     let settings = loaded(options, recorder, parent)?;
     let commands = options.values.get("available-command");
     let tools = options.values.get("available-mcp-tool");
-    prepared_services(&settings, commands, tools, recorder, parent)
-}
-
-/// Configured service metadata under `integration.prepared`, reporting operations whose
-/// command or tool was not observed.
-pub(crate) fn prepared_services(
-    settings: &Value,
-    commands: Option<&Value>,
-    tools: Option<&Value>,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "integration.prepared",
-        parent,
-        "INTEGRATION_UNAVAILABLE",
-        Map::new(),
-        |recorder, operation| {
-            let result = services::prepare(settings, commands, tools)?;
-            let unavailable = result["services"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .flat_map(|service| service["operations"].as_array().into_iter().flatten())
-                .filter(|operation| operation["availability"] == "not-observed")
-                .count();
-            if unavailable > 0 {
-                let attributes =
-                    Map::from_iter([("unavailableCapabilities".to_string(), json!(unavailable))]);
-                recorder.report(
-                    "integration",
-                    "INTEGRATION_UNAVAILABLE",
-                    attributes,
-                    operation,
-                );
-            }
-            Ok(result)
-        },
-    )
+    crate::integration::prepared(&settings, commands, tools, recorder, parent)
 }
 
 fn model_advice(
@@ -505,7 +359,7 @@ fn model_advice(
     let file = options
         .get("data")
         .ok_or("model-advice requires --data <request.json>")?;
-    let request = input(recorder, parent, file)?;
+    let request = read_input(recorder, parent, file)?;
     let settings = loaded(options, recorder, parent)?;
     let operation = recorder.start("model.advice", Some(parent));
     let result = models::advise(&settings, &request);
@@ -579,41 +433,6 @@ fn files(options: &Options) -> &[Value] {
         .map_or(&[][..], Vec::as_slice)
 }
 
-/// The route with its `routing.completed` operation and `guidance.selected` observations.
-pub(crate) fn routed(
-    settings: &Value,
-    request: &routing::Request,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let operation = recorder.start("routing.completed", Some(parent));
-    let result = routing::route(settings, request);
-    let (attributes, failure) = match &result {
-        Ok(plan) => {
-            let catalog = routing::catalog::catalog()?;
-            let known = routing::catalog::skills(catalog);
-            // Route skills are already unique.
-            let skills = plan["skills"].as_array().map_or(&[][..], Vec::as_slice);
-            for skill in skills.iter().take(32) {
-                let attributes = Map::from_iter([("skill".to_string(), skill.clone())]);
-                recorder.observe("guidance.selected", attributes, &operation, &known);
-            }
-            let attributes = Map::from_iter([
-                ("intent".to_string(), plan["intent"].clone()),
-                (
-                    "capabilityClass".to_string(),
-                    plan["capability"]["class"].clone(),
-                ),
-                ("selectedSkills".to_string(), json!(skills.len())),
-            ]);
-            (attributes, None)
-        }
-        Err(_) => (Map::new(), Some("OPERATION_FAILED")),
-    };
-    recorder.complete(operation, attributes, failure);
-    Ok(result?)
-}
-
 /// The explicit `--task`, else the session's bound task. Advisory commands continue
 /// without a task when the binding cannot be read.
 fn advisory_task(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Option<String> {
@@ -659,7 +478,7 @@ fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Resu
         task: task.as_deref(),
         ..route_request(options, files(options), &risks)
     };
-    let mut plan = routed(&settings, &request, recorder, parent)?;
+    let mut plan = crate::guidance::route(&settings, &request, recorder, parent)?;
     let values = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
     count_activity(
         options,
@@ -687,9 +506,9 @@ fn context_report(
         task: None,
         ..route_request(options, files(options), &risks)
     };
-    let plan = routed(&settings, &request, recorder, parent)?;
+    let plan = crate::guidance::route(&settings, &request, recorder, parent)?;
     let budget = options.get("budget-bytes").map(crate::discovery::number);
-    let mut report = guidance_report(
+    let mut report = crate::guidance::report(
         &plan,
         &strings(options, "bundle"),
         budget.as_ref(),
@@ -715,40 +534,6 @@ fn context_report(
     Ok(report)
 }
 
-/// Selected guidance files for `plan` in the verified `bundles`, observed as `context.observed`.
-pub(crate) fn guidance_report(
-    plan: &Value,
-    bundles: &[String],
-    budget: Option<&Value>,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let operation = recorder.start("context.observed", Some(parent));
-    let result = (|| -> Result<Value, Failure> {
-        let requests = context::requests(plan)?;
-        let (entries, missing) = guidance::measure(bundles, &requests)?;
-        let budget = budget.map(context::budget).transpose()?;
-        Ok(context::summary(entries, missing, budget))
-    })();
-    let (attributes, failure) = match &result {
-        Ok(report) => {
-            let totals = &report["totals"];
-            let attributes = Map::from_iter([
-                ("guidanceFiles".to_string(), totals["files"].clone()),
-                ("guidanceBytes".to_string(), totals["bytes"].clone()),
-                (
-                    "estimatedTokens".to_string(),
-                    totals["estimatedTokens"].clone(),
-                ),
-            ]);
-            (attributes, None)
-        }
-        Err(error) => (Map::new(), Some(error.code("CONTEXT_UNAVAILABLE"))),
-    };
-    recorder.complete(operation, attributes, failure);
-    result
-}
-
 fn locate(
     options: &Options,
     recorder: &mut Recorder,
@@ -759,7 +544,7 @@ fn locate(
     let observed =
         crate::discovery::observation(&root(options), session, task.as_deref(), recorder, parent);
     let request = match options.get("data") {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => {
             let mut request =
                 json!({"terms":strings(options,"term"),"paths":strings(options,"path")});
@@ -798,7 +583,7 @@ fn checkpoint_save(
 ) -> Result<Value, Failure> {
     let root = root(options);
     let mut metadata = match options.get("data") {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     let session = options.get("session").filter(|s| !s.is_empty());
@@ -854,7 +639,7 @@ fn session_attempt(
     else {
         return Err("session-attempt requires --session, --task and --data".into());
     };
-    let attempt = input(recorder, parent, file)?;
+    let attempt = read_input(recorder, parent, file)?;
     let operation = recorder.start("attempt.recorded", Some(parent));
     let result = loaded(options, recorder, &operation).and_then(|settings| {
         crate::session::record_attempt(
@@ -896,7 +681,10 @@ fn task_start(
     };
     let mut start = Map::from_iter([("goal".to_string(), json!(goal))]);
     if let Some(file) = given("contract") {
-        start.insert("engineeringContract".into(), input(recorder, parent, file)?);
+        start.insert(
+            "engineeringContract".into(),
+            read_input(recorder, parent, file)?,
+        );
     }
     if let Some(repositories) = options.values.get("repository") {
         start.insert("repositories".into(), repositories.clone());
@@ -970,7 +758,7 @@ fn task_step(
     if let Some(file) = options.get("acceptance-evidence").filter(|f| !f.is_empty()) {
         input.insert(
             "acceptanceEvidence".into(),
-            crate::cli::input(recorder, parent, file)?,
+            read_input(recorder, parent, file)?,
         );
         for (name, flag) in [
             ("expectedTaskContract", "expected-task-contract"),
@@ -1016,7 +804,7 @@ fn acceptance_view(
         options
             .get(name)
             .map(|file| {
-                let mut value = input(recorder, parent, file)?;
+                let mut value = read_input(recorder, parent, file)?;
                 normalize_numbers(&mut value);
                 Ok(value)
             })
@@ -1096,7 +884,7 @@ fn task_action(
         input.insert("priorAuthorization".into(), json!(prior));
     }
     let facts = match options.get("data").filter(|d| !d.is_empty()) {
-        Some(file) => crate::cli::input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     let bundles = if kind == Kind::Decision {
@@ -1192,20 +980,9 @@ fn session_status(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    session_status_input(options, recorder, parent, None)
-}
-
-fn session_status_input(
-    options: &Options,
-    recorder: &mut Recorder,
-    parent: &Operation,
-    forwarded: Option<&Value>,
-) -> Result<Value, Failure> {
-    let data = match (forwarded, options.get("data")) {
-        (Some(_), Some(_)) => return Err("choose forwarded session input or --data".into()),
-        (Some(data), None) => data.clone(),
-        (None, Some(file)) => input(recorder, parent, file)?,
-        (None, None) => json!({}),
+    let data = match options.get("data") {
+        Some(file) => read_input(recorder, parent, file)?,
+        None => json!({}),
     };
     if !data.is_object() {
         return Err("session input must be a JSON object".into());
@@ -1226,34 +1003,6 @@ fn session_status_input(
     crate::status::run(request, recorder, parent)
 }
 
-/// Session status over declared `data` with the project's effective settings, for a caller
-/// that parses its own arguments.
-pub(crate) fn session_status_for(
-    root: &Path,
-    data: &Value,
-    bundles: &[String],
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let settings = observe(
-        recorder,
-        "project.loaded",
-        parent,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(root, None),
-    )?;
-    let request = crate::status::Request {
-        root,
-        input: data,
-        settings: &settings,
-        session: None,
-        task: None,
-        bundles,
-    };
-    crate::status::run(request, recorder, parent)
-}
-
 /// One `workspace-*` action for the explicit or bound task: `--data` supplies the artifact
 /// or promotion, `--operation` the owner scope.
 fn workspace(
@@ -1263,7 +1012,7 @@ fn workspace(
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let mut data = match options.get("data").filter(|d| !d.is_empty()) {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     if !data.is_object() {
@@ -1288,20 +1037,17 @@ fn telemetry_report(options: &Options, _: &mut Recorder, _: &Operation) -> Resul
     let root = root(options);
     match (options.get("capture"), options.get("session")) {
         (Some(_), Some(_)) => Err("choose --capture or --session for telemetry-report".into()),
-        (Some(capture), None) => Ok(retained::read(&root, capture)?),
-        (None, session) => Ok(retained::report(&root, session)?),
+        (Some(capture), None) => retained::read(&root, capture),
+        (None, session) => retained::report(&root, session),
     }
 }
 
 fn telemetry_capture(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
-    Ok(retained::capture(&root(options), options.get("session"))?)
+    retained::capture(&root(options), options.get("session"))
 }
 
 fn telemetry_forget(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
-    Ok(retained::forget(
-        &root(options),
-        options.get("capture").unwrap_or_default(),
-    )?)
+    retained::forget(&root(options), options.get("capture").unwrap_or_default())
 }
 
 fn checkpoint_read(
@@ -1319,11 +1065,14 @@ fn settings(
     operation: &Operation,
 ) -> Result<Value, Failure> {
     let overrides = match options.get("data") {
-        Some(file) => input(recorder, operation, file)?,
+        Some(file) => read_input(recorder, operation, file)?,
         None => json!({}),
     };
     let workers = match options.get("facts") {
-        Some(file) => Some((input(recorder, operation, file)?, options.get("session"))),
+        Some(file) => Some((
+            read_input(recorder, operation, file)?,
+            options.get("session"),
+        )),
         None => None,
     };
     let preferences = options.get("preferences").map(PathBuf::from);
@@ -1445,7 +1194,7 @@ fn help(action: &str) -> Value {
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
         }),
         _ => json!({
-            "commands": ALL_COMMANDS,
+            "commands": COMMANDS.iter().map(|command| command.name).collect::<Vec<_>>(),
             "detail": "Use <command> --help or docs/SESSION.md for session policy.",
         }),
     };
@@ -1494,21 +1243,6 @@ fn checkpoint_line(saved: &Value) -> String {
 fn joined(value: &Value) -> Option<String> {
     let items: Vec<&str> = value.as_array()?.iter().filter_map(Value::as_str).collect();
     (!items.is_empty()).then(|| items.join(", "))
-}
-
-/// `String(value)` for a status field; absent and `null` read as unknown.
-pub(crate) fn shown(value: &Value) -> String {
-    match value {
-        Value::Null => "unknown".into(),
-        Value::String(text) => text.clone(),
-        Value::Number(number) => match number.as_f64() {
-            Some(float) if float.fract() == 0.0 && float.abs() < 1e21 => {
-                format!("{}", float as i64)
-            }
-            _ => number.to_string(),
-        },
-        other => other.to_string(),
-    }
 }
 
 /// The compact session view: context, guidance, activity, checkpoint and the next action.
@@ -1589,34 +1323,7 @@ fn session_view(status: &Value) -> String {
         ),
         format!("Reason: {reason}"),
     ];
-    let acceptance = &status["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                shown(&criterion["id"]),
-                shown(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&status["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&status["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if status["binding"].is_object() {
-        lines.push(format!(
-            "Source: {}",
-            nonempty(&status["binding"]["identity"]).unwrap_or("unknown")
-        ));
-    }
+    lines.extend(acceptance_lines(status, shown));
     if let Some(advice) = nonempty(&status["capability"]["recommendation"]) {
         lines.push(format!("Model advice: {advice}"));
     }
@@ -1645,6 +1352,41 @@ fn session_view(status: &Value) -> String {
         lines.push(format!("At boundary: {boundary}"));
     }
     format!("{}\n", lines.join("\n"))
+}
+
+/// Acceptance assurance and criteria, task contract, evidence digest and binding source;
+/// `field` renders an assurance, criterion ID or status.
+fn acceptance_lines(result: &Value, field: impl Fn(&Value) -> String) -> Vec<String> {
+    let mut lines = Vec::new();
+    let acceptance = &result["acceptance"];
+    if acceptance.is_object() {
+        lines.push(format!("Acceptance: {}", field(&acceptance["assurance"])));
+        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
+            let optional = if criterion["required"] == true {
+                ""
+            } else {
+                " (optional)"
+            };
+            lines.push(format!(
+                "Criterion: {} — {}{optional}",
+                field(&criterion["id"]),
+                field(&criterion["status"])
+            ));
+        }
+    }
+    if let Some(contract) = nonempty(&result["taskContract"]) {
+        lines.push(format!("Task contract: {contract}"));
+    }
+    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
+        lines.push(format!("Evidence digest: {digest}"));
+    }
+    if result["binding"].is_object() {
+        lines.push(format!(
+            "Source: {}",
+            nonempty(&result["binding"]["identity"]).unwrap_or("unknown")
+        ));
+    }
+    lines
 }
 
 fn offer_lines(result: &Value) -> Vec<String> {
@@ -1729,41 +1471,14 @@ fn action_receipt(action: &str, result: &Value) -> String {
             lines.push("No action dispatched.".into());
         }
     }
-    let acceptance = &result["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                shown(&criterion["id"]),
-                shown(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&result["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if result["binding"].is_object() {
-        lines.push(format!(
-            "Source: {}",
-            nonempty(&result["binding"]["identity"]).unwrap_or("unknown")
-        ));
-    }
+    lines.extend(acceptance_lines(result, shown));
     let status = &result["status"];
     if result["workspace"]["status"] == "retained"
         && let Some(reason) = nonempty(&result["workspace"]["reason"])
     {
         lines.push(format!("Workspace retained: {reason}"));
     }
-    if truthy_value(&status["taskEvidenceStale"]) {
+    if truthy(&status["taskEvidenceStale"]) {
         lines.push("Warning: task evidence is stale.".into());
     }
     let mut warnings: Vec<&Value> = vec![
@@ -1773,20 +1488,11 @@ fn action_receipt(action: &str, result: &Value) -> String {
         &status["noticeDiagnostic"],
     ];
     warnings.extend(status["diagnostics"].as_array().into_iter().flatten());
-    for warning in warnings.into_iter().filter(|w| truthy_value(w)) {
+    for warning in warnings.into_iter().filter(|w| truthy(*w)) {
         lines.push(format!("Warning: {}", shown(warning)));
     }
     lines.retain(|line| !line.is_empty());
     format!("{}\n", lines.join("\n"))
-}
-
-fn truthy_value(value: &Value) -> bool {
-    match value {
-        Value::Null | Value::Bool(false) => false,
-        Value::String(s) => !s.is_empty(),
-        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
-        _ => true,
-    }
 }
 
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
@@ -1824,32 +1530,7 @@ fn task_receipt(result: &Value) -> String {
     for missing in routing["missing"].as_array().into_iter().flatten() {
         lines.push(format!("Missing: {}", text(missing)));
     }
-    let acceptance = &result["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", text(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                text(&criterion["id"]),
-                text(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&result["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if result["binding"].is_object() {
-        let source = nonempty(&result["binding"]["identity"]).unwrap_or("unknown");
-        lines.push(format!("Source: {source}"));
-    }
+    lines.extend(acceptance_lines(result, text));
     if result["workspace"]["status"] == "retained"
         && let Some(reason) = nonempty(&result["workspace"]["reason"])
     {
@@ -1860,6 +1541,17 @@ fn task_receipt(result: &Value) -> String {
 }
 
 /// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.
+fn attempt_receipt(result: &Value) -> String {
+    let recorded = &result["recorded"];
+    let field = |name: &str| recorded[name].as_str().unwrap_or_default().to_string();
+    format!(
+        "Attempt recorded: {} / {} — {}\n",
+        field("operation"),
+        field("target"),
+        field("outcome")
+    )
+}
+
 fn receipt(saved: &Value) -> String {
     let mut text = checkpoint_line(saved);
     if let Some(warning) = saved["activityDiagnostic"]
@@ -1874,23 +1566,24 @@ fn receipt(saved: &Value) -> String {
 
 /// Run one migrated command. `argv` excludes the executable name.
 pub fn run(argv: &[String]) -> Outcome {
-    run_in_context(argv, &Value::Null)
+    execute(argv, false)
+}
+
+/// `run` with every command's JSON result in place of its compact receipt.
+pub fn run_structured(argv: &[String]) -> Outcome {
+    execute(argv, true)
 }
 
 /// The `craft <command>` process: write the streams, then post the telemetry export.
 /// Without `--bundle`, guidance is accounted against the package whose launcher ran it.
 pub fn main(argv: &[String]) -> i32 {
-    if argv
-        .first()
-        .is_some_and(|command| command == "project-evidence")
-    {
+    let named = argv.first().and_then(|name| command(name));
+    if named.is_some_and(|command| matches!(command.handler, Handler::Evidence)) {
         return crate::evidence::main(&argv[1..]);
     }
     let mut argv = argv.to_vec();
     let package = std::env::var(crate::statusline::PACKAGE_ROOT).unwrap_or_default();
-    if argv
-        .first()
-        .is_some_and(|command| BUNDLED.contains(&command.as_str()))
+    if named.is_some_and(|command| command.bundled)
         && !argv.iter().any(|arg| arg == "--bundle")
         && !package.is_empty()
     {
@@ -1903,21 +1596,19 @@ pub fn main(argv: &[String]) -> i32 {
     outcome.exit_code
 }
 
-/// A forwarded command can ask for the JSON result instead of a compact receipt
-/// (`context.structured`).
-pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
+fn execute(argv: &[String], structured: bool) -> Outcome {
     let (action, args) = argv
         .split_first()
         .map_or(("", &[][..]), |(action, args)| (action.as_str(), args));
-    if let Some(command) = crate::review::Command::from_name(action) {
-        return crate::review::run(command, args, context);
+    let command = command(action);
+    if let Some(Handler::Review(review)) = command.map(|command| command.handler) {
+        return crate::review::run(review, args);
     }
-    let known = COMMANDS.contains(&action);
+    let command = command.filter(|command| !matches!(command.handler, Handler::Evidence));
     let asks = args.iter().any(|arg| arg == "--help");
     if asks || matches!(action, "help" | "--help") {
-        let topic = if known { action } else { "" };
+        let topic = if command.is_some() { action } else { "" };
         return Outcome {
-            error_code: None,
             exit_code: 0,
             stdout: render(&help(topic)),
             stderr: String::new(),
@@ -1931,72 +1622,25 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             .map(String::as_str)
     };
     let mut recorder = Recorder::open(
-        &resolve(hint("--root").unwrap_or(".")),
+        &absolute(hint("--root").unwrap_or(".")),
         hint("--session"),
         hint("--host"),
     );
-    recorder.package(context["package"].as_str());
     let operation = recorder.start("cli.command", None);
-    if !known {
+    let Some(command) = command else {
         recorder.complete(operation, Map::new(), Some("INVALID_INPUT"));
+        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
         return Outcome {
-            error_code: None,
             exit_code: 2,
             stdout: String::new(),
-            stderr: format!("usage: craft <{}> [options]\n", COMMANDS.join("|")),
+            stderr: format!("usage: craft <{}> [options]\n", names.join("|")),
             export: recorder.finish(),
         };
-    }
-    let command = match action {
-        "grounded-context" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| grounded_context(o, r, p, None)
-        }
-        "operation" => plan_operation,
-        "prepare-services" => prepare_services,
-        "model-advice" => model_advice,
-        "lookup" => lookup,
-        "worker-status" => worker_status,
-        "route" => route,
-        "context-report" => context_report,
-        "locate" => locate,
-        "checkpoint-save" => checkpoint_save,
-        "checkpoint-read" => checkpoint_read,
-        "telemetry-report" => telemetry_report,
-        "telemetry-capture" => telemetry_capture,
-        "telemetry-forget" => telemetry_forget,
-        "session-attempt" => session_attempt,
-        "task-start" => task_start,
-        "session" | "session-advice" => session_status,
-        "task-step" => task_step,
-        "task-offer" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Offer, o, r, p)
-        },
-        "task-decision" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Decision, o, r, p)
-        },
-        "task-action-check" => |o: &Options, r: &mut Recorder, p: &Operation| {
-            task_action(crate::actions::Kind::Check, o, r, p)
-        },
-        "acceptance-view" => acceptance_view,
-        "task-feature" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| task_features(true, o, r, p)
-        }
-        "task-features" => {
-            |o: &Options, r: &mut Recorder, p: &Operation| task_features(false, o, r, p)
-        }
-        _ => settings,
     };
-    let result = parse(action, args).and_then(|options| {
-        if let Some(action) = crate::scratch::Action::from_command(action) {
-            return workspace(action, &options, &mut recorder, &operation);
-        }
-        if action == "grounded-context" && context.get("data").is_some() {
-            return grounded_context(&options, &mut recorder, &operation, context.get("data"));
-        }
-        if matches!(action, "session" | "session-advice") && context.get("data").is_some() {
-            return session_status_input(&options, &mut recorder, &operation, context.get("data"));
-        }
-        command(&options, &mut recorder, &operation)
+    let result = parse(action, args).and_then(|options| match command.handler {
+        Handler::Run(run) => run(&options, &mut recorder, &operation),
+        Handler::Workspace(action) => workspace(action, &options, &mut recorder, &operation),
+        Handler::Review(_) | Handler::Evidence => unreachable!("dispatched before parsing"),
     });
     let outcome = match &result {
         Ok(value) => {
@@ -2005,28 +1649,11 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
                 Map::from_iter([("command".to_string(), json!(action))]),
                 None,
             );
-            let compact = context["structured"] != true
-                && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
-            let text = match action {
-                "checkpoint-save" if compact => receipt(value),
-                "task-start" if compact => task_receipt(value),
-                "session" | "session-advice" if compact => session_view(value),
-                "task-step" | "task-offer" | "task-decision" | "task-action-check" if compact => {
-                    action_receipt(action, value)
-                }
-                "session-attempt" if compact => {
-                    let recorded = &value["recorded"];
-                    let field =
-                        |name: &str| recorded[name].as_str().unwrap_or_default().to_string();
-                    format!(
-                        "Attempt recorded: {} / {} — {}\n",
-                        field("operation"),
-                        field("target"),
-                        field("outcome")
-                    )
-                }
-                // Search results stay on one line, whatever the detail requested.
-                "locate" => format!("{value}\n"),
+            let compact =
+                !structured && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
+            let text = match command.render {
+                Render::Receipt(receipt) if compact => receipt(action, value),
+                Render::Line => format!("{value}\n"),
                 _ => render(value),
             };
             (0, text, String::new())
@@ -2037,7 +1664,6 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
         }
     };
     Outcome {
-        error_code: result.err().and_then(|failure| failure.node_code()),
         exit_code: outcome.0,
         stdout: outcome.1,
         stderr: outcome.2,
@@ -2048,6 +1674,22 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_command_table_names_help_usage_and_dispatch() {
+        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
+        let unique: std::collections::BTreeSet<_> = names.iter().collect();
+        assert_eq!(unique.len(), names.len(), "command names are unique");
+        assert_eq!(help("")["commands"], json!(names));
+        let unknown = run(&["no-such-command".to_string()]);
+        assert_eq!(unknown.exit_code, 2);
+        assert_eq!(
+            unknown.stderr,
+            format!("usage: craft <{}> [options]\n", names.join("|"))
+        );
+        // Evidence streams through `main`; `run` cannot host it and treats it as unknown.
+        assert_eq!(run(&["project-evidence".to_string()]).exit_code, 2);
+    }
 
     #[test]
     fn compact_receipts_keep_failed_outcomes_storage_diagnostics_and_action_boundaries() {
@@ -2117,5 +1759,27 @@ mod tests {
         let view = session_view(&status);
         assert!(view.contains("Advice: compact"));
         assert!(view.contains("Criterion: value — verified"));
+    }
+
+    #[test]
+    fn acceptance_lines_render_missing_fields_by_view() {
+        let result = json!({
+            "acceptance": {"criteria": [{"id": "value", "status": null}]},
+            "taskContract": "contract", "evidenceDigest": "", "binding": {}
+        });
+        let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+        assert_eq!(
+            acceptance_lines(&result, shown),
+            [
+                "Acceptance: unknown",
+                "Criterion: value — unknown (optional)",
+                "Task contract: contract",
+                "Source: unknown"
+            ]
+        );
+        assert_eq!(
+            acceptance_lines(&result, text)[..2],
+            ["Acceptance: ", "Criterion: value —  (optional)"]
+        );
     }
 }
