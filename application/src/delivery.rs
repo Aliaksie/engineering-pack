@@ -1,12 +1,10 @@
 //! Context delivery hooks: lifecycle facts → routing hints, checkpoints, service metadata and
 //! workspace housekeeping, with identical routing hints suppressed under one locked step.
 use crate::checkpoint;
-use crate::cli::{prepared_services, routed};
 use crate::failure::Failure;
 use crate::project;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
-use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::{delivery, hash, identity, routing};
 use craft_platform::{state, telemetry::uuid};
@@ -55,14 +53,7 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let root = event.root;
-    let settings = observe(
-        recorder,
-        "project.loaded",
-        hook,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(root, None),
-    )?;
+    let settings = project::loaded(recorder, hook, root, None)?;
     let session = event.session.filter(|s| !s.is_empty());
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
@@ -108,7 +99,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         invalidate_hint(root, session, event.host, recorder, hook);
     }
     let services = if plan.services {
-        Some(prepared_services(&settings, None, None, recorder, hook)?)
+        Some(crate::integration::prepared(
+            &settings, None, None, recorder, hook,
+        )?)
     } else {
         None
     };
@@ -133,7 +126,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 task: None,
                 verification_mode: None,
             };
-            let mut plan = routed(&settings, &request, recorder, hook)?;
+            let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;
             Some(plan)
         }

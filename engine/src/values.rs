@@ -93,6 +93,25 @@ pub fn sha256(value: &Value) -> bool {
     value.as_str().is_some_and(|s| lower_hex(s, 64))
 }
 
+/// `String(number)` in JavaScript.
+pub fn number_text(number: &serde_json::Number) -> String {
+    if number.is_i64() || number.is_u64() {
+        return number.to_string();
+    }
+    let float = number.as_f64().unwrap_or_default();
+    let scientific = format!("{float:e}");
+    let (mantissa, exponent) = scientific.split_once('e').expect("exponent form");
+    let exponent: i32 = exponent.parse().expect("integer exponent");
+    if (-6..21).contains(&exponent) {
+        format!("{float}")
+    } else {
+        format!(
+            "{mantissa}e{}{exponent}",
+            if exponent > 0 { "+" } else { "" }
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

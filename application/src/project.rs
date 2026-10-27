@@ -100,6 +100,23 @@ pub fn settings(root: &Path, preferences: Option<&Path>) -> Result<Value, Failur
     Ok(resolve(root, preferences, &json!({}))?["settings"].take())
 }
 
+/// `settings` recorded as a `project.loaded` child operation of `parent`.
+pub(crate) fn loaded(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    root: &Path,
+    preferences: Option<&Path>,
+) -> Result<Value, Failure> {
+    observe(
+        recorder,
+        "project.loaded",
+        parent,
+        "CONFIG_INVALID",
+        Map::new(),
+        |_, _| settings(root, preferences),
+    )
+}
+
 pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failure> {
     let mut result = resolve(root, request.preferences, &request.overrides)?;
     let (facts, session) = request.workers.unwrap_or((json!({}), None));

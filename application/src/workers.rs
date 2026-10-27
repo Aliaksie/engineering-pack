@@ -3,7 +3,6 @@
 use crate::{
     failure::Failure,
     project, session,
-    telemetry::observe,
     telemetry::{Operation, Recorder, now_ms},
 };
 use craft_engine::{
@@ -160,14 +159,8 @@ fn phase(
             if session::active_task(root, Some(name))?.as_deref() != Some(task) {
                 return Err("worker dispatch requires the active coordinator task binding".into());
             }
-            let settings = observe(
-                recorder,
-                "project.loaded",
-                parent,
-                "CONFIG_INVALID",
-                Map::new(),
-                |_, _| project::settings(root, input["preferencesFile"].as_str().map(Path::new)),
-            )?;
+            let preferences = input["preferencesFile"].as_str().map(Path::new);
+            let settings = project::loaded(recorder, parent, root, preferences)?;
             let saved = session::read_state(root, name, task, recorder, parent)?;
             let repository =
                 snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)?;

@@ -11,9 +11,12 @@ mod discovery;
 mod evidence;
 mod failure;
 mod grounding;
+mod guidance;
 pub mod hook;
 pub mod host;
+mod integration;
 mod project;
+mod render;
 mod review;
 mod scratch;
 mod session;
@@ -23,6 +26,15 @@ mod task;
 mod telemetry;
 mod workers;
 mod workspace;
+
+/// What one `craft` invocation writes and exits with.
+pub struct Outcome {
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    /// Remote-bound telemetry for the caller to post, when configured.
+    pub export: Option<Value>,
+}
 
 /// One request read by `craft` itself. Worker and action phases post their own remote
 /// telemetry export once `write` has the response, as hooks do; no caller forwards it.

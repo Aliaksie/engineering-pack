@@ -155,16 +155,8 @@ fn execution_phase(
             if active_task(root, Some(name))?.as_deref() != Some(task) {
                 return Err("action execution requires the active coordinator task".into());
             }
-            let settings = crate::telemetry::observe(
-                recorder,
-                "project.loaded",
-                parent,
-                "CONFIG_INVALID",
-                serde_json::Map::new(),
-                |_, _| {
-                    crate::project::settings(root, input["preferencesFile"].as_str().map(Path::new))
-                },
-            )?;
+            let preferences = input["preferencesFile"].as_str().map(Path::new);
+            let settings = crate::project::loaded(recorder, parent, root, preferences)?;
             let saved = read_state(root, name, task, recorder, parent)?;
             let offer = find(&saved)?;
             let repository =

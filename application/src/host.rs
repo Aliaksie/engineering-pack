@@ -4,7 +4,6 @@
 use crate::failure::Failure;
 use crate::project::absolute;
 use crate::telemetry::Recorder;
-use crate::telemetry::observe;
 use crate::{delivery, project};
 use craft_engine::review;
 use serde_json::{Map, Value, json};
@@ -162,17 +161,11 @@ pub fn run(input: &Value) -> Result<Value, String> {
     if applies {
         let evaluated = match facts.handler {
             Handler::Observe => Ok(decision.clone()),
-            Handler::ReviewReadOnly => observe(
-                &mut recorder,
-                "project.loaded",
-                &hook,
-                "CONFIG_INVALID",
-                Map::new(),
-                |_, _| project::settings(&root, None),
-            )
-            .map(|settings| {
-                review::read_only_decision(&settings, facts.tool == "shell", facts.command)
-            }),
+            Handler::ReviewReadOnly => {
+                project::loaded(&mut recorder, &hook, &root, None).map(|settings| {
+                    review::read_only_decision(&settings, facts.tool == "shell", facts.command)
+                })
+            }
             Handler::Deliver => {
                 let event = delivery::Event {
                     root: &root,

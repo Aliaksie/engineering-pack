@@ -27,7 +27,7 @@ fn scratch() -> &'static Path {
     })
 }
 
-fn run(args: &[String]) -> cli::Outcome {
+fn run(args: &[String]) -> craft_application::Outcome {
     cli::run(args)
 }
 

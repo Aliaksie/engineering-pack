@@ -1,16 +1,17 @@
 //! `craft <command> [options]`: argument rules, rendering and exit codes of every command an
 //! installed package runs through its `bin/craft` launcher.
+use crate::Outcome;
 use crate::actions::Kind;
 use crate::failure::Failure;
 use crate::project::{self, Settings, absolute, read_input};
+use crate::render::shown;
 use crate::review::Command as Review;
 use crate::scratch::Action;
 use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::session::views::{self, Reader};
 use craft_engine::values::{normalize_numbers, truthy};
-use craft_engine::{context, models, routing, services, values};
-use craft_platform::guidance;
+use craft_engine::{models, routing, services, values};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
@@ -203,14 +204,6 @@ const REPEATED: &[&str] = &[
     "bundle",
 ];
 
-pub struct Outcome {
-    pub exit_code: i32,
-    pub stdout: String,
-    pub stderr: String,
-    /// Remote-bound telemetry for the caller to post, when configured.
-    pub export: Option<Value>,
-}
-
 #[derive(Default)]
 struct Options {
     values: Map<String, Value>,
@@ -315,14 +308,8 @@ fn loaded(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "project.loaded",
-        parent,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(&root(options), options.get("preferences").map(Path::new)),
-    )
+    let preferences = options.get("preferences").map(Path::new);
+    project::loaded(recorder, parent, &root(options), preferences)
 }
 
 fn plan_operation(
@@ -361,46 +348,7 @@ fn prepare_services(
     let settings = loaded(options, recorder, parent)?;
     let commands = options.values.get("available-command");
     let tools = options.values.get("available-mcp-tool");
-    prepared_services(&settings, commands, tools, recorder, parent)
-}
-
-/// Configured service metadata under `integration.prepared`, reporting operations whose
-/// command or tool was not observed.
-pub(crate) fn prepared_services(
-    settings: &Value,
-    commands: Option<&Value>,
-    tools: Option<&Value>,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "integration.prepared",
-        parent,
-        "INTEGRATION_UNAVAILABLE",
-        Map::new(),
-        |recorder, operation| {
-            let result = services::prepare(settings, commands, tools)?;
-            let unavailable = result["services"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .flat_map(|service| service["operations"].as_array().into_iter().flatten())
-                .filter(|operation| operation["availability"] == "not-observed")
-                .count();
-            if unavailable > 0 {
-                let attributes =
-                    Map::from_iter([("unavailableCapabilities".to_string(), json!(unavailable))]);
-                recorder.report(
-                    "integration",
-                    "INTEGRATION_UNAVAILABLE",
-                    attributes,
-                    operation,
-                );
-            }
-            Ok(result)
-        },
-    )
+    crate::integration::prepared(&settings, commands, tools, recorder, parent)
 }
 
 fn model_advice(
@@ -485,41 +433,6 @@ fn files(options: &Options) -> &[Value] {
         .map_or(&[][..], Vec::as_slice)
 }
 
-/// The route with its `routing.completed` operation and `guidance.selected` observations.
-pub(crate) fn routed(
-    settings: &Value,
-    request: &routing::Request,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let operation = recorder.start("routing.completed", Some(parent));
-    let result = routing::route(settings, request);
-    let (attributes, failure) = match &result {
-        Ok(plan) => {
-            let catalog = routing::catalog::catalog()?;
-            let known = routing::catalog::skills(catalog);
-            // Route skills are already unique.
-            let skills = plan["skills"].as_array().map_or(&[][..], Vec::as_slice);
-            for skill in skills.iter().take(32) {
-                let attributes = Map::from_iter([("skill".to_string(), skill.clone())]);
-                recorder.observe("guidance.selected", attributes, &operation, &known);
-            }
-            let attributes = Map::from_iter([
-                ("intent".to_string(), plan["intent"].clone()),
-                (
-                    "capabilityClass".to_string(),
-                    plan["capability"]["class"].clone(),
-                ),
-                ("selectedSkills".to_string(), json!(skills.len())),
-            ]);
-            (attributes, None)
-        }
-        Err(_) => (Map::new(), Some("OPERATION_FAILED")),
-    };
-    recorder.complete(operation, attributes, failure);
-    Ok(result?)
-}
-
 /// The explicit `--task`, else the session's bound task. Advisory commands continue
 /// without a task when the binding cannot be read.
 fn advisory_task(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Option<String> {
@@ -565,7 +478,7 @@ fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Resu
         task: task.as_deref(),
         ..route_request(options, files(options), &risks)
     };
-    let mut plan = routed(&settings, &request, recorder, parent)?;
+    let mut plan = crate::guidance::route(&settings, &request, recorder, parent)?;
     let values = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
     count_activity(
         options,
@@ -593,9 +506,9 @@ fn context_report(
         task: None,
         ..route_request(options, files(options), &risks)
     };
-    let plan = routed(&settings, &request, recorder, parent)?;
+    let plan = crate::guidance::route(&settings, &request, recorder, parent)?;
     let budget = options.get("budget-bytes").map(crate::discovery::number);
-    let mut report = guidance_report(
+    let mut report = crate::guidance::report(
         &plan,
         &strings(options, "bundle"),
         budget.as_ref(),
@@ -619,40 +532,6 @@ fn context_report(
         parent,
     );
     Ok(report)
-}
-
-/// Selected guidance files for `plan` in the verified `bundles`, observed as `context.observed`.
-pub(crate) fn guidance_report(
-    plan: &Value,
-    bundles: &[String],
-    budget: Option<&Value>,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let operation = recorder.start("context.observed", Some(parent));
-    let result = (|| -> Result<Value, Failure> {
-        let requests = context::requests(plan)?;
-        let (entries, missing) = guidance::measure(bundles, &requests)?;
-        let budget = budget.map(context::budget).transpose()?;
-        Ok(context::summary(entries, missing, budget))
-    })();
-    let (attributes, failure) = match &result {
-        Ok(report) => {
-            let totals = &report["totals"];
-            let attributes = Map::from_iter([
-                ("guidanceFiles".to_string(), totals["files"].clone()),
-                ("guidanceBytes".to_string(), totals["bytes"].clone()),
-                (
-                    "estimatedTokens".to_string(),
-                    totals["estimatedTokens"].clone(),
-                ),
-            ]);
-            (attributes, None)
-        }
-        Err(error) => (Map::new(), Some(error.code("CONTEXT_UNAVAILABLE"))),
-    };
-    recorder.complete(operation, attributes, failure);
-    result
 }
 
 fn locate(
@@ -1124,34 +1003,6 @@ fn session_status(
     crate::status::run(request, recorder, parent)
 }
 
-/// Session status over declared `data` with the project's effective settings, for a caller
-/// that parses its own arguments.
-pub(crate) fn session_status_for(
-    root: &Path,
-    data: &Value,
-    bundles: &[String],
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let settings = observe(
-        recorder,
-        "project.loaded",
-        parent,
-        "CONFIG_INVALID",
-        Map::new(),
-        |_, _| project::settings(root, None),
-    )?;
-    let request = crate::status::Request {
-        root,
-        input: data,
-        settings: &settings,
-        session: None,
-        task: None,
-        bundles,
-    };
-    crate::status::run(request, recorder, parent)
-}
-
 /// One `workspace-*` action for the explicit or bound task: `--data` supplies the artifact
 /// or promotion, `--operation` the owner scope.
 fn workspace(
@@ -1392,21 +1243,6 @@ fn checkpoint_line(saved: &Value) -> String {
 fn joined(value: &Value) -> Option<String> {
     let items: Vec<&str> = value.as_array()?.iter().filter_map(Value::as_str).collect();
     (!items.is_empty()).then(|| items.join(", "))
-}
-
-/// `String(value)` for a status field; absent and `null` read as unknown.
-pub(crate) fn shown(value: &Value) -> String {
-    match value {
-        Value::Null => "unknown".into(),
-        Value::String(text) => text.clone(),
-        Value::Number(number) => match number.as_f64() {
-            Some(float) if float.fract() == 0.0 && float.abs() < 1e21 => {
-                format!("{}", float as i64)
-            }
-            _ => number.to_string(),
-        },
-        other => other.to_string(),
-    }
 }
 
 /// The compact session view: context, guidance, activity, checkpoint and the next action.

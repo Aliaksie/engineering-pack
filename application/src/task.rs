@@ -1,7 +1,6 @@
 //! `task-start`: bind one task to the session for the current checkout, route its stage,
 //! files and risks, and snapshot its selected source. Nothing is accepted, delegated or
 //! switched; model advice is a recommendation.
-use crate::cli::routed;
 use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
@@ -77,7 +76,7 @@ pub fn start(
         task: None,
         verification_mode: None,
     };
-    let plan = routed(settings, &route, recorder, parent)?;
+    let plan = crate::guidance::route(settings, &route, recorder, parent)?;
     let role = plan["execution"]["role"].as_str().unwrap_or_default();
     let model_advice = if truthy(&repository["head"]) && ADVISED_ROLES.contains(&role) {
         let advice = json!({

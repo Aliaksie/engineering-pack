@@ -310,7 +310,7 @@ fn render(result: &Value, json: bool) -> String {
     let mut text = format!(
         "{} result(s); {}; inventory {}\n",
         rows.len(),
-        crate::cli::shown(&coverage["freshness"]),
+        crate::render::shown(&coverage["freshness"]),
         if coverage["inventoryComplete"] == true {
             "complete"
         } else {
@@ -322,11 +322,11 @@ fn render(result: &Value, json: bool) -> String {
         let verification = row["verification"].as_str().unwrap_or("stored-snapshot");
         text.push_str(&format!(
             "{}:{}:{} {} {} [{verification}]\n",
-            crate::cli::shown(&row["path"]),
-            crate::cli::shown(&evidence["line"]),
-            crate::cli::shown(&evidence["column"]),
-            crate::cli::shown(&evidence["kind"]),
-            crate::cli::shown(&evidence["name"]),
+            crate::render::shown(&row["path"]),
+            crate::render::shown(&evidence["line"]),
+            crate::render::shown(&evidence["column"]),
+            crate::render::shown(&evidence["kind"]),
+            crate::render::shown(&evidence["name"]),
         ));
     }
     if let Some(after) = result["continuation"].as_str() {

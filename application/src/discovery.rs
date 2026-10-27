@@ -149,7 +149,7 @@ fn discover(
         return Ok(planning::deferred(&request)?);
     }
     let root = std::fs::canonicalize(root).map_err(Failure::from)?;
-    let settings = loaded_settings(&root, preferences, recorder, parent)?;
+    let settings = project::loaded(recorder, parent, &root, preferences)?;
     let policy = planning::digest(&settings);
     let enabled = session.is_some()
         && task.is_some()
@@ -236,7 +236,7 @@ fn discover(
     let stable = inventory
         .as_ref()
         .is_some_and(|before| search::identity(&root, &paths, max_files).as_ref() == Some(before))
-        && planning::digest(&loaded_settings(&root, preferences, recorder, parent)?) == policy;
+        && planning::digest(&project::loaded(recorder, parent, &root, preferences)?) == policy;
     let mut facts = json!({"request":request,"scanned":scanned,"state":state,"identity":identity,"reused":reuse["reused"],"fresh":reuse["fresh"],"stable":stable,"enabled":enabled,"diagnostic":diagnostic});
     if enabled && !state.is_null() {
         let operation = recorder.start("state.updated", Some(parent));
@@ -271,22 +271,6 @@ fn discover(
         );
     }
     Ok(planning::result(&facts)?)
-}
-
-fn loaded_settings(
-    root: &Path,
-    preferences: Option<&Path>,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let operation = recorder.start("project.loaded", Some(parent));
-    let result = project::settings(root, preferences);
-    recorder.complete(
-        operation,
-        Map::new(),
-        result.as_ref().err().map(|e| e.code("CONFIG_INVALID")),
-    );
-    result
 }
 
 /// Numeric flags follow JavaScript Number(), including whitespace and radix literals.

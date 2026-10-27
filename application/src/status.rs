@@ -1,7 +1,6 @@
 //! `session`/`session-advice`: one bounded observation of the bound task (its record, source,
 //! checkpoint, routed guidance and workspace) and the engine's advice over it. Read-only:
 //! nothing is compacted, reset, switched, written or executed.
-use crate::cli::guidance_report;
 use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_state};
@@ -252,7 +251,7 @@ fn observe(
                     &known,
                 );
             }
-            match guidance_report(&plan, bundles, None, recorder, operation) {
+            match crate::guidance::report(&plan, bundles, None, recorder, operation) {
                 Ok(report) => observations.pack = Some(report),
                 Err(error) => {
                     observations.pack_error = Some(error.message);
@@ -378,4 +377,25 @@ fn diagnostics(result: &mut Value) -> &mut Vec<Value> {
     result["diagnostics"]
         .as_array_mut()
         .expect("status diagnostics")
+}
+
+/// Session status over declared `data` with the project's effective settings, for a caller
+/// that parses its own arguments.
+pub(crate) fn for_root(
+    root: &Path,
+    data: &Value,
+    bundles: &[String],
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = crate::project::loaded(recorder, parent, root, None)?;
+    let request = Request {
+        root,
+        input: data,
+        settings: &settings,
+        session: None,
+        task: None,
+        bundles,
+    };
+    run(request, recorder, parent)
 }

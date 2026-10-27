@@ -3,7 +3,7 @@
 //! `review-publication` plans a comment for an authorized publisher. `review-followup` reads
 //! a fetched pull request observation and says what its reviewer should do next. None of
 //! them posts or contacts a code host.
-use crate::cli::Outcome;
+use crate::Outcome;
 use crate::failure::Failure;
 use crate::project::absolute;
 use crate::telemetry::observe;

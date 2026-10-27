@@ -3,7 +3,7 @@
 //! Only Claude's status-line payload has a verified contract here; it supplies the session,
 //! model and current context usage. Other hosts use declared data and never scrape private
 //! transcripts for a token count.
-use crate::cli::{Outcome, session_status_for};
+use crate::Outcome;
 use crate::failure::Failure;
 use crate::project::absolute;
 use crate::project::read_input;
@@ -258,7 +258,7 @@ fn status(
     let data = declared(request, stdin, interactive, recorder, parent)?;
     let bundles = bundle(request)?;
     let mut status =
-        session_status_for(&absolute(&request.root), &data, &bundles, recorder, parent)?;
+        crate::status::for_root(&absolute(&request.root), &data, &bundles, recorder, parent)?;
     let capabilities = capabilities(&request.host).expect("parsed host");
     if !request.json {
         return Ok(format!("{}\n", render(&status, &capabilities["commands"])));
