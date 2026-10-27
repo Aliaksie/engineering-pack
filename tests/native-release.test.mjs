@@ -33,8 +33,15 @@ test('release collects checked targets with checksummed archives and binary prov
     assert.equal(asset.binarySha256, digest('binary'));
     const relocated = path.join(options.output, asset.target);
     fs.mkdirSync(relocated);
-    execFileSync('tar', ['-xzf', asset.archive, '-C', relocated], { cwd: options.output });
+    const descriptor = fs.openSync(archive, 'r');
+    try {
+      execFileSync('tar', ['-xzf', '-'], { cwd: relocated, stdio: [descriptor, 'pipe', 'pipe'] });
+    } finally {
+      fs.closeSync(descriptor);
+    }
     assert.equal(JSON.parse(fs.readFileSync(path.join(relocated, 'native-bundle.json'))).target, asset.target);
+    const executable = `native-bin/craft${asset.target.includes('windows') ? '.exe' : ''}`;
+    assert.equal(digest(fs.readFileSync(path.join(relocated, executable))), asset.binarySha256);
   }
 });
 test('release resolves relative bundle and output directories from the caller', t => {
