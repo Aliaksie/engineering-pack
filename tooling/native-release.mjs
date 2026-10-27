@@ -51,7 +51,13 @@ export function assembleNativeRelease(options) {
   const assets = bundles.map(({ root, target, executable, manifest }) => {
     const name = `engineering-pack-${version}-native-${target}.tar.gz`;
     const destination = path.join(output, name);
-    execFileSync('tar', ['-czf', destination, '-C', root, '.'], { timeout: 60000 });
+    // Let Node open native paths; tar receives no drive prefixes or Windows separators.
+    const archive = fs.openSync(destination, 'w');
+    try {
+      execFileSync('tar', ['-czf', '-', '.'], { cwd: root, stdio: ['ignore', archive, 'pipe'], timeout: 60000 });
+    } finally {
+      fs.closeSync(archive);
+    }
     return { target, archive: name, sha256: hash(destination), binaryVersion: manifest.binaryVersion,
       binarySha256: manifest.files.find(file => file.path === executable).sha256 };
   });
