@@ -10,7 +10,15 @@ pub struct Store {
 }
 
 impl Store {
+    /// Open or create the store; a new file is private, and SQLite gives its journal the
+    /// same mode.
     pub fn open(path: &Path) -> Result<Self, Error> {
+        match crate::files::create_private_file(path) {
+            Err(error) if error.kind() != std::io::ErrorKind::AlreadyExists => {
+                return Err(error.into());
+            }
+            _ => {}
+        }
         let connection = Connection::open(path)?;
         Self::initialize(connection)
     }
@@ -193,17 +201,22 @@ impl Store {
         Ok(removed)
     }
 
+    /// Snapshot into a new private file; SQLite accepts an empty target for `VACUUM INTO`.
     pub fn backup(&self, destination: &Path) -> Result<(), Error> {
-        if destination.try_exists()? {
-            return Err(
-                "backup already exists; preserve or remove it before another backup".into(),
-            );
+        let name = destination.to_str().ok_or("non-UTF-8 backup path")?;
+        match crate::files::create_private_file(destination) {
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                return Err(
+                    "backup already exists; preserve or remove it before another backup".into(),
+                );
+            }
+            created => drop(created?),
         }
-        self.connection.execute(
-            "VACUUM INTO ?1",
-            [destination.to_str().ok_or("non-UTF-8 backup path")?],
-        )?;
-        Ok(())
+        let result = self.connection.execute("VACUUM INTO ?1", [name]);
+        if result.is_err() {
+            let _ = std::fs::remove_file(destination);
+        }
+        result.map(drop).map_err(Error::from)
     }
 
     /// Rebuild only derived evidence, preserving the store identity and generation history.

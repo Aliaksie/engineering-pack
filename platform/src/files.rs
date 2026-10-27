@@ -33,6 +33,16 @@ pub fn create_private_directory(path: &Path) -> io::Result<()> {
     }
 }
 
+/// Create one new, empty file readable only by its owner where the platform supports
+/// modes. An existing entry is refused with `AlreadyExists`.
+pub fn create_private_file(path: &Path) -> io::Result<File> {
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    options.open(path)
+}
+
 /// Read a regular file within a byte budget. Refuse special files before opening
 /// them: opening a FIFO for reading can otherwise wait indefinitely for a writer.
 /// Callers own directory traversal and namespace policy.

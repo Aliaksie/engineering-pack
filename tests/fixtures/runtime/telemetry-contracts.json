@@ -320,7 +320,7 @@
       "s1"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -329,7 +329,7 @@
       "s1"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": true,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"30022de9fab9efad8ce4daf3\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": true,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -347,7 +347,7 @@
       "s2"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"b501b18decf31c9fbb3185f2\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"b501b18decf31c9fbb3185f2\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -409,7 +409,7 @@
       "s1"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"6f65382170b5a936c2162f53\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"6f65382170b5a936c2162f53\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -418,7 +418,7 @@
       "s2"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"786b774da74da96ec59aa883\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"786b774da74da96ec59aa883\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -427,7 +427,7 @@
       "s3"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"1f87d78e862815f2478260e5\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"1f87d78e862815f2478260e5\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -436,7 +436,7 @@
       "s4"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"f2e41451d3eb3fe3b0fecd7c\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"f2e41451d3eb3fe3b0fecd7c\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -445,7 +445,7 @@
       "s5"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"92bcf8f1c7396a713a0195fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"92bcf8f1c7396a713a0195fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -454,7 +454,7 @@
       "s6"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"b476d004c941ccbafcf33f33\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"b476d004c941ccbafcf33f33\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -463,7 +463,7 @@
       "s7"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"53b7d6767ebe4f706717ee83\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"53b7d6767ebe4f706717ee83\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -472,7 +472,7 @@
       "s8"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"6eb8aee1f4fae761538981fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"6eb8aee1f4fae761538981fe\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     },
     {
      "args": [
@@ -499,7 +499,7 @@
       "s9"
      ],
      "status": 0,
-     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry-captures.json\",\n  \"capture\": \"8b69f9c02b159cc29aeaf02d\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
+     "stdout": "{\n  \"file\": \"<ROOT>/.craft/state/<W>/shared/telemetry/captures.json\",\n  \"capture\": \"8b69f9c02b159cc29aeaf02d\",\n  \"capturedAt\": \"<T>\",\n  \"unchanged\": false,\n  \"limits\": {\n    \"maxEntries\": 8,\n    \"maxBytes\": 65536,\n    \"automaticEviction\": false\n  }\n}\n"
     }
    ]
   },

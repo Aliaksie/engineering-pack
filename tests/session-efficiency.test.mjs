@@ -215,7 +215,7 @@ test('corrupt or symlinked activity state cannot validate reuse or permit contex
   const { root } = fixture(t);
   discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
   const directory = path.dirname(stateFile(root, 'probe.json', false, scope.session));
-  const file = fs.readdirSync(directory).find(name => name.startsWith('session-'));
+  const file = fs.readdirSync(directory).find(name => name.startsWith('activity-'));
   fs.writeFileSync(path.join(directory, file), '{broken');
   const result = discover(root, { terms: ['Symbol0'], paths: ['src'] }, scope);
   assert.equal(result.discovery.reused, 0);

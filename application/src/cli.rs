@@ -74,6 +74,7 @@ const COMMANDS: &[Command] = &[
     Command::new("workspace-promote", Handler::Workspace(Action::Promote)),
     Command::new("workspace-release", Handler::Workspace(Action::Release)),
     Command::new("workspace-clean", Handler::Workspace(Action::Maintain)),
+    Command::run("state-clean", state_clean),
     Command::run("grounded-context", grounded_context),
     Command::run("worker-status", worker_status),
     Command::run("task-feature", |o, r, p| task_features(true, o, r, p)),
@@ -191,8 +192,11 @@ const OPTIONS: &[&str] = &[
     "json",
     "verbose",
     "max-output-bytes",
+    "apply",
 ];
-const FLAGS: &[&str] = &["delegate", "json", "verbose", "complete", "blockers"];
+const FLAGS: &[&str] = &[
+    "apply", "delegate", "json", "verbose", "complete", "blockers",
+];
 const REPEATED: &[&str] = &[
     "repository",
     "file",
@@ -1050,6 +1054,19 @@ fn telemetry_forget(options: &Options, _: &mut Recorder, _: &Operation) -> Resul
     retained::forget(&root(options), options.get("capture").unwrap_or_default())
 }
 
+fn state_clean(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    crate::retention::run(
+        &root(options),
+        &settings,
+        options.values.contains_key("apply"),
+    )
+}
+
 fn checkpoint_read(
     options: &Options,
     recorder: &mut Recorder,
@@ -1140,6 +1157,10 @@ fn help(action: &str) -> Value {
         "workspace-clean" => json!({
             "usage": "workspace-clean --root project",
             "mode": "reclaim closed or stale storage; open operations are retained until stale",
+        }),
+        "state-clean" => json!({
+            "usage": "state-clean --root project [--apply]",
+            "mode": "preview session directories idle for 14 days with no lock or open workspace; --apply removes them; shared records are only reported",
         }),
         "task-offer" => json!({
             "usage": "task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]",

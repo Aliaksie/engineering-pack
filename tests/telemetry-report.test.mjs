@@ -62,7 +62,7 @@ test('bounded storage report exposes rotation and skipped data without leaking r
   const root = fixture(t);
   recordEvent(root, 'session.observed');
   seal(root);
-  const file = stateFile(root, 'telemetry.jsonl');
+  const file = stateFile(root, 'telemetry/events.jsonl');
   fs.copyFileSync(file, `${file}.1`);
   fs.appendFileSync(file, 'secret-malformed\nnull\n{"schemaVersion":2}\n{"schemaVersion":1,"secret":"private"}\n' + 'x'.repeat(8193) + '\n');
   const result = telemetryReport(root);

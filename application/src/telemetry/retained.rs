@@ -8,7 +8,7 @@ use craft_platform::{state, telemetry as store};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
-const CAPTURES: &str = "telemetry-captures.json";
+const CAPTURES: &str = "telemetry/captures.json";
 
 /// The retained report for the project, or for one session's attributed events.
 pub fn report(root: &Path, session: Option<&str>) -> Result<Value, Failure> {

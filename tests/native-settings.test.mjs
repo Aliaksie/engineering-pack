@@ -44,7 +44,7 @@ test('settings reports precedence, origins, private state placement and worker c
   assert.deepEqual([report.origins['routing.editHints'], report.origins['routing.dedupeHints'], report.origins['efficiency.delegation.maxWorkers']], ['project', 'user', 'task']);
   assert.deepEqual(report.state, stateLocation(root));
   assert.deepEqual([report.workers.effectiveLimit, report.workers.available, report.workers.reason], [1, 1, 'observed']);
-  assert.equal(fs.existsSync(path.join(root, '.craft', 'state', report.state.worktreeId, 'shared', 'telemetry.jsonl')), true);
+  assert.equal(fs.existsSync(path.join(root, '.craft', 'state', report.state.worktreeId, 'shared', 'telemetry', 'events.jsonl')), true);
 });
 
 test('settings rejects unsafe preferences and invalid input with the CLI error contract', async t => {

@@ -13,6 +13,7 @@ pub mod grounding;
 pub mod models;
 pub mod otlp;
 pub mod repository;
+pub mod retention;
 pub mod review;
 pub mod routing;
 pub mod scratch;

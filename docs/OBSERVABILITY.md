@@ -30,10 +30,10 @@ still usage data.
 
 ## Local storage
 
-Events go to `telemetry.jsonl` under `.craft/state/<worktree-id>/shared/` (`craft
-settings` shows the directory). The file rotates at 1 MiB with one backup. The correlation
-key is `telemetry-key.json` beside it: delete the key to reset correlation, and the log files
-to remove events.
+Events go to `events.jsonl` under `.craft/state/<worktree-id>/shared/telemetry/` (`craft
+settings` shows the shared directory). The file rotates at 1 MiB with one backup. The
+correlation key is `key.json` beside it: delete the key to reset correlation, and the log
+files to remove events.
 
 Telemetry is best effort, not an audit log. Lock contention, a full disk or a bad
 configuration can drop events. Drops are reported by a later `TELEMETRY_EVENTS_DROPPED`

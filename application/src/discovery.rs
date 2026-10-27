@@ -244,7 +244,7 @@ fn discover(
             let session = session.unwrap();
             let task = task.unwrap();
             let name = format!(
-                "session-{}.json",
+                "activity-{}.json",
                 &planning::digest(&json!([session, task]))[..24]
             );
             let file = state::file(&root, &name, true, Some(session))?;

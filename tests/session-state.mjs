@@ -4,8 +4,8 @@ import { digest, readJson, stateFile } from './state.mjs';
 import { run } from './craft.mjs';
 
 const empty = () => ({ formatVersion: 1, activity: {}, lookups: {}, attempts: [] });
-export const sessionFile = (root, session, task, create = false) => stateFile(root, `session-${digest([session, task]).slice(0, 24)}.json`, create, session);
-export const bindingFile = (root, session, create = false) => stateFile(root, `active-${digest(session).slice(0, 24)}.json`, create, session);
+export const sessionFile = (root, session, task, create = false) => stateFile(root, `activity-${digest([session, task]).slice(0, 24)}.json`, create, session);
+export const bindingFile = (root, session, create = false) => stateFile(root, 'task.json', create, session);
 export const readSessionState = (root, session, task) => readJson(sessionFile(root, session, task)) ?? empty();
 
 // Another writer's edit, serialized as `craft` writes records.

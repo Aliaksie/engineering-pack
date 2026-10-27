@@ -92,6 +92,7 @@ const ENUMS: &[(&str, &[&str])] = &[
             "workspace-promote",
             "workspace-release",
             "workspace-clean",
+            "state-clean",
             "worker-status",
             "task-feature",
             "task-features",

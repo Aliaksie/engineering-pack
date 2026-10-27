@@ -65,7 +65,7 @@ fn state_location(root: &Path) -> Value {
         Ok((location, canonical)) => json!({
             "directory": location.directory.to_string_lossy(),
             "scope": "workspace-local",
-            "formatVersion": 2,
+            "formatVersion": 3,
             "worktreeId": location.worktree_id,
             "sessionId": location.session_id,
             "legacyDirectory": canonical.join(".craft").join("state").to_string_lossy(),

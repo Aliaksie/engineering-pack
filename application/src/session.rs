@@ -17,8 +17,7 @@ fn short(value: &Value) -> String {
 
 pub(crate) fn binding_file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {
     session::identity(&json!(session), &json!("active-binding"))?;
-    let name = format!("active-{}.json", short(&json!(session)));
-    Ok(state::file(root, &name, create, Some(session))?)
+    Ok(state::file(root, "task.json", create, Some(session))?)
 }
 
 pub(crate) fn state_file(
@@ -28,7 +27,7 @@ pub(crate) fn state_file(
     create: bool,
 ) -> Result<PathBuf, Failure> {
     session::identity(&json!(session), &json!(task))?;
-    let name = format!("session-{}.json", short(&json!([session, task])));
+    let name = format!("activity-{}.json", short(&json!([session, task])));
     Ok(state::file(root, &name, create, Some(session))?)
 }
 

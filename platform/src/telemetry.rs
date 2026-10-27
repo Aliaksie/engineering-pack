@@ -60,7 +60,7 @@ pub fn uuid() -> Result<String, Error> {
 
 /// The worktree's pseudonym for `session`, creating the private key on first use.
 pub fn identity(root: &Path, session: &str) -> Result<String, Error> {
-    let file = state::file(root, "telemetry-key.json", true, None)?;
+    let file = state::file(root, "telemetry/key.json", true, None)?;
     let mut data = state::read(&file, 256)?;
     if data.is_none() {
         let bytes = format!("{}\n", json!({ "key": hex(&random_bytes::<32>()?) }));
@@ -86,7 +86,7 @@ pub fn identity(root: &Path, session: &str) -> Result<String, Error> {
 
 /// The pseudonym for `session` when the worktree key exists; never creates the key.
 pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, Error> {
-    let file = state::file(root, "telemetry-key.json", false, None)?;
+    let file = state::file(root, "telemetry/key.json", false, None)?;
     match state::read(&file, 256)? {
         None | Some(Value::Null) => Ok(None),
         data => pseudonym(data.as_ref(), session).map(Some),
@@ -115,7 +115,7 @@ fn regular(file: &Path) -> Result<u64, Error> {
 /// Retained records of the log and its backup, oldest file first, with storage facts.
 /// Reads take no lock, so a concurrent writer may be partly visible.
 pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), Error> {
-    let file = state::file(root, "telemetry.jsonl", false, None)?;
+    let file = state::file(root, "telemetry/events.jsonl", false, None)?;
     let mut backup = file.as_os_str().to_owned();
     backup.push(".1");
     let mut records = Vec::new();
@@ -171,7 +171,7 @@ fn write_batch(root: &Path, events: &[Value]) -> Result<bool, Error> {
         }
         text.push_str(&line);
     }
-    let file = state::file(root, "telemetry.jsonl", true, None)?;
+    let file = state::file(root, "telemetry/events.jsonl", true, None)?;
     let started = Instant::now();
     let _ticket = loop {
         if let Some(ticket) = state::lock(&file)? {
@@ -231,7 +231,7 @@ mod tests {
             Self(state::canonical_root(&path).unwrap())
         }
         fn log(&self) -> PathBuf {
-            state::file(&self.0, "telemetry.jsonl", false, None).unwrap()
+            state::file(&self.0, "telemetry/events.jsonl", false, None).unwrap()
         }
     }
     impl Drop for Fixture {
@@ -246,7 +246,7 @@ mod tests {
         let first = identity(&fixture.0, "s1").unwrap();
         assert_eq!(identity(&fixture.0, "s1").unwrap(), first);
         assert_ne!(identity(&fixture.0, "s2").unwrap(), first);
-        let key = state::file(&fixture.0, "telemetry-key.json", false, None).unwrap();
+        let key = state::file(&fixture.0, "telemetry/key.json", false, None).unwrap();
         fs::write(&key, "{\"key\":\"short\"}\n").unwrap();
         assert!(identity(&fixture.0, "s1").is_err());
         let id = uuid().unwrap();
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn a_writer_waits_for_a_lock_released_within_the_wait() {
         let fixture = Fixture::new();
-        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        let log = state::file(&fixture.0, "telemetry/events.jsonl", true, None).unwrap();
         let lock = PathBuf::from(format!("{}.lock", log.display()));
         fs::write(&lock, "").unwrap();
         let releaser = {
@@ -339,7 +339,7 @@ mod tests {
     #[test]
     fn a_symlinked_log_is_refused_without_creating_its_target() {
         let fixture = Fixture::new();
-        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        let log = state::file(&fixture.0, "telemetry/events.jsonl", true, None).unwrap();
         std::os::unix::fs::symlink(fixture.0.join("target"), &log).unwrap();
         assert!(!append(&fixture.0, &[json!({ "n": 1 })]));
         assert!(!fixture.0.join("target").exists());
@@ -353,7 +353,7 @@ mod tests {
         assert!(records.is_empty());
         assert_eq!((storage.files, storage.backup_present), (0, false));
         assert!(!fixture.0.join(".craft").exists());
-        let log = state::file(&fixture.0, "telemetry.jsonl", true, None).unwrap();
+        let log = state::file(&fixture.0, "telemetry/events.jsonl", true, None).unwrap();
         fs::write(
             format!("{}.1", log.display()),
             "{\"schemaVersion\":1,\"n\":0}\n",

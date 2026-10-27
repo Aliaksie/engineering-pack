@@ -16,6 +16,7 @@
           "workspace-promote",
           "workspace-release",
           "workspace-clean",
+          "state-clean",
           "grounded-context",
           "worker-status",
           "task-feature",

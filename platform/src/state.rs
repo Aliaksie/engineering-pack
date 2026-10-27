@@ -81,6 +81,12 @@ fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, Error> 
     Ok(folder)
 }
 
+/// Shared record families, one directory each under `shared/`.
+const FAMILIES: &[&str] = &["telemetry", "evidence", "workspaces"];
+/// The per-session description, written once when the session directory is created.
+pub const MANIFEST: &str = "manifest.json";
+pub const MANIFEST_BYTES: usize = 1024;
+
 pub fn location(root: &Path, session: Option<&str>) -> Result<Location, Error> {
     let canonical = canonical_root(root)?;
     location_at(&canonical, session, false)
@@ -92,12 +98,22 @@ fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<
         return Err("invalid state session".into());
     }
     let worktree_id = short(text(canonical)?.as_bytes());
-    let session_id = session.map_or_else(|| "shared".into(), |s| short(s.as_bytes()));
-    let directory = descend(
-        canonical,
-        &[".craft", "state", &worktree_id, &session_id],
-        create,
-    )?;
+    let worktree = descend(canonical, &[".craft", "state", &worktree_id], create)?;
+    let (directory, session_id) = match session {
+        None => (
+            descend(&worktree, &["shared"], create)?,
+            "shared".to_string(),
+        ),
+        Some(session) => {
+            let id = short(session.as_bytes());
+            let sessions = descend(&worktree, &["sessions"], create)?;
+            let directory = sessions.join(&id);
+            if !self::directory(&directory, false)? && create {
+                directory_and_manifest(&directory, session)?;
+            }
+            (directory, id)
+        }
+    };
     Ok(Location {
         directory,
         worktree_id,
@@ -105,27 +121,95 @@ fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<
     })
 }
 
-/// Path of one state record. Legacy records for `name` are copied in on first access.
+/// Create a session directory and describe it: creation time, the workspace identity of
+/// the session and the host when a hook created it. Never the raw session, task or paths.
+fn directory_and_manifest(directory: &Path, session: &str) -> Result<(), Error> {
+    self::directory(directory, true)?;
+    let created = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_millis() as u64);
+    let mut manifest = json!({
+        "formatVersion": 1,
+        "created": created,
+        "workspace": craft_engine::digest(&json!(session)),
+    });
+    let host = HOST.with(|host| host.borrow().clone()).filter(|host| {
+        (1..=32).contains(&host.len())
+            && host
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+    });
+    if let Some(host) = host {
+        manifest["host"] = json!(host);
+    }
+    // The first creator describes the directory; a concurrent one keeps that description.
+    match create_private(&directory.join(MANIFEST), &serialize(&manifest, false)) {
+        Err(error) if error.kind() == Some(ErrorKind::AlreadyExists) => Ok(()),
+        result => result,
+    }
+}
+
+thread_local! {
+    static HOST: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
+/// While held, session directories this thread creates name `host` in their manifest.
+pub struct Describing(Option<String>);
+
+impl Drop for Describing {
+    fn drop(&mut self) {
+        HOST.with(|host| *host.borrow_mut() = self.0.take());
+    }
+}
+
+/// Name the host of the hook running on this thread; nothing is written until a record is.
+pub fn describing(host: &str) -> Describing {
+    Describing(HOST.with(|current| current.borrow_mut().replace(host.to_string())))
+}
+
+/// Directory of one shared family, for records that are not single JSON files.
+pub fn shared(root: &Path, family: &str, create: bool) -> Result<PathBuf, Error> {
+    if !FAMILIES.contains(&family) {
+        return Err("invalid state family".into());
+    }
+    let canonical = canonical_root(root)?;
+    descend(
+        &location_at(&canonical, None, create)?.directory,
+        &[family],
+        create,
+    )
+}
+
+fn segment(name: &str) -> bool {
+    !(name.is_empty()
+        || name == "."
+        || name == ".."
+        || !name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-'))
+}
+
+/// Path of one state record: `sessions/<session>/<name>` for a session, otherwise
+/// `shared/<family>/<name>`. Records of earlier layouts are copied in on first access.
 pub fn file(
     root: &Path,
     name: &str,
     create: bool,
     session: Option<&str>,
 ) -> Result<PathBuf, Error> {
-    if name.is_empty()
-        || name == "."
-        || name == ".."
-        || !name
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
-    {
-        return Err("invalid state filename".into());
-    }
+    let family = match (session, name.split_once('/')) {
+        (Some(_), None) if segment(name) => None,
+        (None, Some((family, file))) if FAMILIES.contains(&family) && segment(file) => Some(family),
+        _ => return Err("invalid state filename".into()),
+    };
     let canonical = canonical_root(root)?;
-    let target = location_at(&canonical, session, create)?
-        .directory
-        .join(name);
-    migrate_legacy(&canonical, &target, name)?;
+    let place = location_at(&canonical, session, create)?;
+    let folder = match family {
+        Some(family) => descend(&place.directory, &[family], create)?,
+        None => place.directory.clone(),
+    };
+    let target = folder.join(name.rsplit('/').next().expect("record name"));
+    migrate_legacy(&canonical, &place, &target, name, session)?;
     Ok(target)
 }
 
@@ -450,12 +534,49 @@ impl Inspection {
     }
 }
 
-fn companions(name: &str) -> Vec<String> {
-    match name {
-        "workspace-guard.json" => vec![name.into(), "sessions".into()],
-        "telemetry.jsonl" => vec![name.into(), format!("{name}.1")],
-        _ if name.starts_with("routing-") => vec![name.into(), format!("{name}.generation")],
-        _ => vec![name.into()],
+/// The name a record had before this layout and its companions as `(previous, current)`
+/// relative paths. Records new to this layout, or not carried over (workspaces and the
+/// rebuildable evidence database), have none.
+fn previous(name: &str, session: Option<&str>) -> Option<(String, Vec<(String, String)>)> {
+    let renamed = |old: String, new: &str| Some((old.clone(), vec![(old, new.to_string())]));
+    match session {
+        Some(session) => match name {
+            "checkpoint.json" => renamed(format!("{}.json", short(session.as_bytes())), name),
+            "task.json" => renamed(
+                format!(
+                    "active-{}.json",
+                    &craft_engine::digest(&json!(session))[..24]
+                ),
+                name,
+            ),
+            _ if name.starts_with("activity-") => {
+                renamed(name.replacen("activity-", "session-", 1), name)
+            }
+            _ if name.starts_with("control-") => {
+                renamed(name.replacen("control-", "native-control-", 1), name)
+            }
+            _ if name.starts_with("workers-") => renamed(name.into(), name),
+            _ if name.starts_with("routing-") => Some((
+                name.into(),
+                vec![
+                    (name.into(), name.into()),
+                    (format!("{name}.generation"), format!("{name}.generation")),
+                ],
+            )),
+            _ => None,
+        },
+        None => match name {
+            "telemetry/events.jsonl" => Some((
+                "telemetry.jsonl".into(),
+                vec![
+                    ("telemetry.jsonl".into(), "events.jsonl".into()),
+                    ("telemetry.jsonl.1".into(), "events.jsonl.1".into()),
+                ],
+            )),
+            "telemetry/key.json" => renamed("telemetry-key.json".into(), "key.json"),
+            "telemetry/captures.json" => renamed("telemetry-captures.json".into(), "captures.json"),
+            _ => None,
+        },
     }
 }
 
@@ -471,17 +592,48 @@ fn receipt_matches(receipt: &Value, fingerprint: &str) -> bool {
     receipt["formatVersion"] == 1 && receipt["source"] == fingerprint
 }
 
-// Legacy stores are read-only. Copy on first access and retain a source digest so an
+/// Size and modification time of every present companion: an unchanged stamp proves an
+/// unchanged source without reading it again on each access.
+fn stamp(source: &Path, present: &[(String, String)]) -> Result<String, Error> {
+    let mut list = Vec::new();
+    for (old, _) in present {
+        let meta = fs::symlink_metadata(source.join(old))?;
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |elapsed| elapsed.as_nanos());
+        list.push(json!([old, meta.len(), modified.to_string()]));
+    }
+    Ok(short(
+        &serde_json::to_vec(&list).expect("JSON values serialize"),
+    ))
+}
+
+// Earlier stores are read-only. Copy on first access and retain a source digest so an
 // older plugin resuming writes cannot silently fork history. Consumers must stop old
 // writers before upgrading; a legacy lock or changed source requires reconciliation.
-fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), Error> {
-    let mut sources = Vec::new();
+// The newest earlier layout holding the record is its only source.
+fn migrate_legacy(
+    root: &Path,
+    place: &Location,
+    target: &Path,
+    name: &str,
+    session: Option<&str>,
+) -> Result<(), Error> {
+    let Some((old_name, pairs)) = previous(name, session) else {
+        return Ok(());
+    };
+    let worktree = root.join(".craft").join("state").join(&place.worktree_id);
+    // (directory, whether only the record's own locks block it)
+    let mut sources = vec![(worktree.join(&place.session_id), true)];
     if let Some(git) = git_directory(root)? {
-        sources.push(git.join("craft-state").join(short(text(root)?.as_bytes())));
+        sources.push((git.join("craft-state").join(&place.worktree_id), false));
     }
-    sources.push(root.join(".craft").join("state"));
-    sources.push(root.join(".capabilities").join("state"));
-    for source in sources {
+    sources.push((root.join(".craft").join("state"), false));
+    sources.push((root.join(".capabilities").join("state"), false));
+    let receipts = worktree.join("shared").join("migrations");
+    for (source, scoped) in sources {
         // Validate every ancestor, including historical namespaces, before reading.
         let mut ancestor = source.as_path();
         while let Some(parent) = ancestor.parent() {
@@ -494,58 +646,93 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), Error> {
             }
             ancestor = parent;
         }
-        let present = companions(name)
-            .into_iter()
-            .filter_map(|item| match exists(&source.join(&item)) {
-                Ok(true) => Some(Ok(item)),
-                Ok(false) => None,
-                Err(error) => Some(Err(error)),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut present = Vec::new();
+        for pair in &pairs {
+            if exists(&source.join(&pair.0))? {
+                present.push(pair.clone());
+            }
+        }
+        let old = source.join(&old_name);
+        let receipt = receipts.join(format!("migration-{}.json", short(text(&old)?.as_bytes())));
         if present.is_empty() {
+            // Cleanup removes the previous layout's copied sources; older stores they were
+            // copied from must not become the record's source again.
+            if scoped && exists(&receipt)? {
+                return Ok(());
+            }
             continue;
         }
-        // Flat legacy stores use per-record locks; any live/unresolved writer blocks migration.
-        for entry in fs::read_dir(&source)? {
-            if entry?.file_name().to_string_lossy().ends_with(".lock") {
-                return Err(busy_legacy());
+        let stamp = stamp(&source, &present)?;
+        let previous = read(&receipt, RECEIPT_BYTES)?;
+        // Logs and caches are replaceable: once copied, the copy is authoritative and an
+        // older writer still appending to the source is ignored, not a fork to refuse.
+        let replaceable = name.starts_with("telemetry/events") || name.starts_with("routing-");
+        if previous
+            .as_ref()
+            .is_some_and(|r| r["stamp"] == stamp.as_str() || replaceable && r["formatVersion"] == 1)
+        {
+            return Ok(());
+        }
+        // The earlier session layout holds other records' live locks; only this record's
+        // count. Flat stores use per-record locks; any unresolved writer blocks migration.
+        if scoped {
+            for (old, _) in &present {
+                if exists(&source.join(format!("{old}.lock")))? {
+                    return Err(busy_legacy());
+                }
+            }
+        } else {
+            for entry in fs::read_dir(&source)? {
+                if entry?.file_name().to_string_lossy().ends_with(".lock") {
+                    return Err(busy_legacy());
+                }
             }
         }
         let mut inspection = Inspection {
             entries: Vec::new(),
             bytes: 0,
         };
-        for item in present {
-            inspection.visit(&source.join(&item), item, 0)?;
+        for (old, new) in &present {
+            inspection.visit(&source.join(old), new.clone(), 0)?;
         }
         let fingerprint = inspection.fingerprint();
-        let destination = target.parent().ok_or("state record parent required")?;
-        let old = source.join(name);
-        let receipt = destination.join(format!("migration-{}.json", short(text(&old)?.as_bytes())));
-        if let Some(previous) = read(&receipt, RECEIPT_BYTES)? {
+        let published = json!({"formatVersion": 1, "source": fingerprint, "stamp": stamp});
+        if let Some(previous) = previous {
             if !receipt_matches(&previous, &fingerprint) {
                 return Err(
                     "legacy state changed after migration; stop older plugins and reconcile stores"
                         .into(),
                 );
             }
-            continue;
+            // Same content under a new stamp (a copy or touch): remember it.
+            return write(&receipt, &published, RECEIPT_BYTES, false);
         }
-        // Create missing destination parents only when there is actual legacy data.
-        let relative = destination
-            .strip_prefix(root)
-            .map_err(|_| "state destination outside root")?;
-        let parts = relative
-            .iter()
-            .map(|part| part.to_str().ok_or("non-UTF-8 state path unsupported"))
-            .collect::<Result<Vec<_>, _>>()?;
-        descend(root, &parts, true)?;
+        // Create the destination and receipt parents only when there is earlier data.
+        let destination = target.parent().ok_or("state record parent required")?;
+        if let Some(session) = session
+            && !directory(&place.directory, false)?
+        {
+            let sessions = place.directory.parent().ok_or("state session parent")?;
+            location_at(root, None, true)?;
+            directory(sessions, true)?;
+            directory_and_manifest(&place.directory, session)?;
+        }
+        for folder in [destination, receipts.as_path()] {
+            let relative = folder
+                .strip_prefix(root)
+                .map_err(|_| "state destination outside root")?;
+            let parts = relative
+                .iter()
+                .map(|part| part.to_str().ok_or("non-UTF-8 state path unsupported"))
+                .collect::<Result<Vec<_>, _>>()?;
+            descend(root, &parts, true)?;
+        }
         let _ticket = lock(&receipt)?.ok_or_else(|| Error::busy("state migration is busy"))?;
         if let Some(current) = read(&receipt, RECEIPT_BYTES)? {
             if current["source"] != fingerprint.as_str() {
                 return Err("legacy migration source conflict".into());
             }
-            continue;
+            return Ok(());
         }
         // Identical files from an interrupted copy are reusable; differing destinations
         // are never overwritten. Publish the receipt only after the complete copy.
@@ -580,15 +767,55 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), Error> {
                 }
             }
         }
-        write(
-            &receipt,
-            &json!({"formatVersion": 1, "source": fingerprint}),
-            RECEIPT_BYTES,
-            false,
-        )?;
+        return write(&receipt, &published, RECEIPT_BYTES, false);
     }
     Ok(())
 }
+
+/// Shared records an earlier layout kept as files directly in `shared/`.
+const SHARED_RECORDS: &[&str] = &[
+    "telemetry/events.jsonl",
+    "telemetry/key.json",
+    "telemetry/captures.json",
+];
+
+/// Names of the previous layout's `shared/` files holding the same record as `old`, once
+/// the record was copied, the source is unchanged since (a log may have grown) and no
+/// writer holds it: their removal loses nothing. Nothing is copied or written here.
+/// `None` when `old` held no shared record.
+pub fn retirable(root: &Path, old: &str) -> Result<Option<Vec<String>>, Error> {
+    let Some((name, old_name, pairs)) = SHARED_RECORDS.iter().find_map(|name| {
+        previous(name, None)
+            .filter(|(_, pairs)| pairs.iter().any(|(previous, _)| previous == old))
+            .map(|(old_name, pairs)| (*name, old_name, pairs))
+    }) else {
+        return Ok(None);
+    };
+    let source = location(root, None)?.directory;
+    let mut present = Vec::new();
+    for pair in pairs {
+        if exists(&source.join(&pair.0))? {
+            if exists(&source.join(format!("{}.lock", pair.0)))? {
+                return Err(busy_legacy());
+            }
+            present.push(pair);
+        }
+    }
+    let receipt = source.join("migrations").join(format!(
+        "migration-{}.json",
+        short(text(&source.join(&old_name))?.as_bytes())
+    ));
+    let receipt =
+        read(&receipt, RECEIPT_BYTES)?.ok_or("not copied yet; it is copied when first used")?;
+    let replaceable = name.starts_with("telemetry/events");
+    if !present.is_empty() && !replaceable && receipt["stamp"] != stamp(&source, &present)?.as_str()
+    {
+        return Err("legacy state changed after migration".into());
+    }
+    Ok(Some(present.into_iter().map(|(old, _)| old).collect()))
+}
+
+pub mod sweep;
 
 #[cfg(test)]
 mod tests;

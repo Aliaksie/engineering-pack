@@ -65,7 +65,7 @@ test('concurrent processes append complete JSONL events within the shared bound'
   const root = fixture(t);
   const results = await Promise.all(Array.from({ length: 8 }, () => craft(['route', '--root', root, '--intent', 'implement'])));
   for (const result of results) assert.equal(result.status, 0, result.stderr);
-  const lines = fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8').trim().split('\n');
+  const lines = fs.readFileSync(stateFile(root, 'telemetry/events.jsonl'), 'utf8').trim().split('\n');
   assert.ok(lines.length > 0);
   for (const line of lines) assert.equal(JSON.parse(line).schemaVersion, 1);
 });

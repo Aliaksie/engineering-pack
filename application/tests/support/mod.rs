@@ -114,13 +114,12 @@ impl Repo {
     }
 
     pub fn session_file(&self, session: &str, task: &str) -> PathBuf {
-        let name = format!("session-{}.json", &digest(&json!([session, task]))[..24]);
+        let name = format!("activity-{}.json", &digest(&json!([session, task]))[..24]);
         state::file(&self.root, &name, true, Some(session)).unwrap()
     }
 
     pub fn binding_file(&self, session: &str) -> PathBuf {
-        let name = format!("active-{}.json", &digest(&json!(session))[..24]);
-        state::file(&self.root, &name, true, Some(session)).unwrap()
+        state::file(&self.root, "task.json", true, Some(session)).unwrap()
     }
 
     pub fn session_state(&self, session: &str, task: &str) -> Value {

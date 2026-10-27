@@ -74,12 +74,11 @@ pub fn database_guard(path: &Path) -> Result<File, Error> {
             return Err("unsafe state directory".into());
         }
     }
-    let file = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .open(format!("{}.lock", path.display()))?;
+    let mut options = OpenOptions::new();
+    options.create(true).truncate(false).read(true).write(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let file = options.open(format!("{}.lock", path.display()))?;
     file.try_lock()
         .map_err(|_| Error::busy("project evidence is busy"))?;
     Ok(file)
@@ -185,6 +184,31 @@ mod tests {
             assert!(read_source(&fixture.0, path).is_err(), "{path}");
         }
         assert!(read_source(&fixture.0, "source.mjs").is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn evidence_database_lock_and_backup_are_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let fixture = Fixture::new("modes");
+        let directory = fixture.0.canonicalize().unwrap().join("evidence");
+        let database = directory.join("project.sqlite");
+        let backup = database.with_extension("sqlite.backup");
+        let _guard = database_guard(&database).unwrap();
+        let store = crate::store::Store::open(&database).unwrap();
+        let _backup_guard = database_guard(&backup).unwrap();
+        store.backup(&backup).unwrap();
+        assert!(store.backup(&backup).is_err());
+        for file in [
+            database.clone(),
+            backup.clone(),
+            directory.join("project.sqlite.lock"),
+            directory.join("project.sqlite.backup.lock"),
+        ] {
+            let mode = fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "{}", file.display());
+        }
+        assert!(crate::store::Store::open(&backup).unwrap().status().is_ok());
     }
 
     #[cfg(unix)]

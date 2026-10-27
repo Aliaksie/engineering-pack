@@ -76,7 +76,7 @@ test('telemetry from a nested consumer leaves release preparation clean without 
   git(root,'push','origin','main');
   const source=git(root,'rev-parse','HEAD');
   run(['settings','--root',consumer]);
-  assert.ok(fs.existsSync(stateFile(consumer,'telemetry.jsonl')));
+  assert.ok(fs.existsSync(stateFile(consumer,'telemetry/events.jsonl')));
   assert.equal(git(root,'status','--porcelain'),'');
   assert.equal(prepareRelease(root,source,'current').revision,source);
   fs.appendFileSync(path.join(consumer,'.craft/project.json'),'\n');

@@ -85,7 +85,7 @@ fn argv(request: &Value, project: &Path, bundles: &[String]) -> Vec<String> {
 /// The activity counters of task `t` in session `s`.
 fn activity(project: &Path) -> Value {
     let name = format!(
-        "session-{}.json",
+        "activity-{}.json",
         &craft_engine::digest(&json!(["s", "t"]))[..24]
     );
     let file = craft_platform::state::file(project, &name, false, Some("s")).unwrap();

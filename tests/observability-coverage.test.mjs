@@ -102,7 +102,7 @@ test('invalid configuration, state and arguments retain original failures and st
   const state=path.dirname(stateFile(root, 'probe.json', false, 'private-session'));
   // A malformed session receipt must remain advisory for the session view.
   command(root,'route','--intent','implement','--task','task');
-  const sessionFile=fs.readdirSync(state).find(name=>name.startsWith('session-')); fs.writeFileSync(path.join(state,sessionFile),'PRIVATE_BAD_STATE');
+  const sessionFile=fs.readdirSync(state).find(name=>name.startsWith('activity-')); fs.writeFileSync(path.join(state,sessionFile),'PRIVATE_BAD_STATE');
   assert.equal(command(root,'session','--task','task').usage.status,'unknown');
   events=readTelemetry(root);
   assert.ok(events.some(event=>event.reasonCode==='STATE_UNAVAILABLE'));
@@ -177,8 +177,8 @@ test('generated native hooks trace success, malformed input and configuration fa
 });
 
 test('an unavailable correlation key yields invocation identities and a safe local diagnostic', t => {
-  const root = fixture(t); fs.mkdirSync(path.dirname(stateFile(root, 'probe.json')), { recursive: true });
-  fs.writeFileSync(stateFile(root, 'telemetry-key.json'), 'PRIVATE_CORRUPT_KEY');
+  const root = fixture(t); fs.mkdirSync(path.dirname(stateFile(root, 'telemetry/key.json')), { recursive: true });
+  fs.writeFileSync(stateFile(root, 'telemetry/key.json'), 'PRIVATE_CORRUPT_KEY');
   run(['route', '--root', root, '--intent', 'implement', '--session', 'PRIVATE_RAW_SESSION']);
   const events = readTelemetry(root);
   assert.ok(events.some(event => event.reasonCode === 'TELEMETRY_IDENTITY_UNAVAILABLE'));

@@ -13,7 +13,7 @@ function fixture(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   return root;
 }
-const file = root => stateFile(root, 'telemetry-captures.json');
+const file = root => stateFile(root, 'telemetry/captures.json');
 const observe = (root, session = 'PRIVATE_SESSION') => recordEvent(root, 'discovery.completed', { session });
 // Seeded evidence only: later commands stop recording their own events.
 const seal = root => fs.writeFileSync(path.join(root, '.craft/telemetry.json'), '{"local":false}');
@@ -29,8 +29,8 @@ test('captured session report survives deletion of rolling logs and never implie
   const captured = captureTelemetry(root, { session: 'PRIVATE_SESSION' });
   assert.equal(captured.unchanged, false);
   assert.equal(captureTelemetry(root, { session: 'PRIVATE_SESSION' }).unchanged, true);
-  fs.unlinkSync(stateFile(root, 'telemetry.jsonl'));
-  fs.unlinkSync(stateFile(root, 'telemetry-key.json'));
+  fs.unlinkSync(stateFile(root, 'telemetry/events.jsonl'));
+  fs.unlinkSync(stateFile(root, 'telemetry/key.json'));
   const saved = readTelemetryCapture(root, captured.capture);
   assert.deepEqual(saved.report, expected);
   assert.equal(saved.report.retainedEvents, 1);
@@ -50,9 +50,9 @@ test('capacity never evicts captures; explicit removal frees one slot without ch
   assert.throws(() => captureTelemetry(root, { session: 'next' }), /capacity reached/);
   assert.equal(fs.readFileSync(file(root), 'utf8'), before);
   for (const id of captures) assert.equal(readTelemetryCapture(root, id).report.retainedEvents, 1);
-  const log = fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8');
+  const log = fs.readFileSync(stateFile(root, 'telemetry/events.jsonl'), 'utf8');
   assert.equal(forgetTelemetryCapture(root, captures[0]).remaining, CAPTURE_MAX_ENTRIES - 1);
-  assert.equal(fs.readFileSync(stateFile(root, 'telemetry.jsonl'), 'utf8'), log);
+  assert.equal(fs.readFileSync(stateFile(root, 'telemetry/events.jsonl'), 'utf8'), log);
   assert.throws(() => readTelemetryCapture(root, captures[0]), /not found/);
   assert.equal(captureTelemetry(root, { session: 'next' }).unchanged, false);
 });
@@ -122,7 +122,7 @@ test('a copied package launcher captures, recovers and explicitly forgets sessio
     return JSON.parse(result.stdout);
   };
   const captured = command(['telemetry-capture', '--session', 'PRIVATE_SESSION']);
-  fs.unlinkSync(stateFile(root, 'telemetry.jsonl'));
+  fs.unlinkSync(stateFile(root, 'telemetry/events.jsonl'));
   assert.equal(command(['telemetry-report', '--capture', captured.capture]).report.retainedEvents, 1);
   assert.equal(command(['telemetry-forget', '--capture', captured.capture]).remaining, 0);
 });
