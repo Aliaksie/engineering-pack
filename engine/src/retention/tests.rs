@@ -23,6 +23,7 @@ fn session<'a>(layout: Layout, entries: &'a [Entry], described: Described) -> Se
         entries,
         complete: true,
         modified: OLD,
+        staged: false,
         described,
     }
 }
@@ -88,6 +89,19 @@ fn any_recent_write_keeps_the_session() {
     touched.modified = recent;
     assert_eq!(
         keep(&touched, NOW, &Workspaces::default()),
+        Some("written within the retention period")
+    );
+    // A cleanup's own removals touch a staged directory; its entries still decide.
+    touched.staged = true;
+    assert_eq!(keep(&touched, NOW, &Workspaces::default()), None);
+    let mut emptied = current(&[]);
+    (emptied.staged, emptied.modified) = (true, recent);
+    assert_eq!(keep(&emptied, NOW, &Workspaces::default()), None);
+    let entries = [entry("checkpoint.json", recent)];
+    let mut written = current(&entries);
+    written.staged = true;
+    assert_eq!(
+        keep(&written, NOW, &Workspaces::default()),
         Some("written within the retention period")
     );
 }

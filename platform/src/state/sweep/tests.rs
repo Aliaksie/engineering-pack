@@ -165,6 +165,27 @@ fn a_recreated_session_or_new_file_keeps_the_staged_directory() {
     );
 }
 
+#[test]
+fn an_interrupted_removal_keeps_the_manifest() {
+    let fixture = Fixture::new();
+    let found = fixture.session("a");
+    let task = file(&fixture.0, "task.json", true, Some("a")).unwrap();
+    fs::write(&task, "{}\n").unwrap();
+    let found = fixture.find(&found.id, Layout::Current);
+    let staged = stage(&found).unwrap();
+    // A record that can no longer be removed as a file stops the removal.
+    fs::remove_file(staged.join("task.json")).unwrap();
+    fs::create_dir(staged.join("task.json")).unwrap();
+    assert!(purge(&found, &staged).is_err());
+    assert_eq!(
+        fs::read_dir(&staged)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect::<std::collections::BTreeSet<_>>(),
+        ["manifest.json".to_string(), "task.json".to_string()].into()
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_session_directories_are_refused() {
@@ -182,4 +203,39 @@ fn symlinked_session_directories_are_refused() {
         .iter()
         .find(|e| e.name.starts_with("routing-"));
     assert!(!entry.unwrap().file);
+}
+
+/// A directory junction, the reparse point Windows creates without extra privileges.
+#[cfg(windows)]
+fn junction(link: &Path, target: &Path) {
+    let status = std::process::Command::new("cmd")
+        .args(["/C", "mklink", "/J"])
+        .arg(link)
+        .arg(target)
+        .stdout(std::process::Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
+#[cfg(windows)]
+#[test]
+fn junctioned_session_and_state_directories_are_refused() {
+    let fixture = Fixture::new();
+    let found = fixture.session("a");
+    let link = fixture.worktree().join("sessions").join("0".repeat(24));
+    junction(&link, &found.path);
+    assert!(inventory(&fixture.0).is_err());
+    fs::remove_dir(&link).unwrap();
+    assert!(found.path.join("checkpoint.json").exists());
+
+    let elsewhere = Fixture::new();
+    let state = elsewhere.0.join(".craft");
+    fs::create_dir(&state).unwrap();
+    junction(
+        &state.join("state"),
+        &fixture.0.join(".craft").join("state"),
+    );
+    assert!(inventory(&elsewhere.0).is_err());
+    assert!(file(&elsewhere.0, "checkpoint.json", true, Some("a")).is_err());
 }

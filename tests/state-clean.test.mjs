@@ -175,3 +175,47 @@ test('state-clean removes what the previous layout left in shared/ once nothing 
   assert.deepEqual([last.sessions, last['workspace-guard.json']], [['removed', undefined], ['removed', undefined]]);
   assert.deepEqual(fs.readdirSync(shared).sort(), ['migrations', 'telemetry', 'telemetry-captures.json']);
 });
+
+test('a cleanup interrupted while removing files is finished, not restored', t => {
+  const root = fixture(t);
+  saveCheckpoint(root, 'done', {});
+  const done = stateLocation(root, 'done');
+  age(done.directory, 20);
+  // Set aside and partly removed: the directory's own time is now the cleanup's.
+  const staged = path.join(path.dirname(done.directory), `.sweep-${done.sessionId}`);
+  fs.renameSync(done.directory, staged);
+  fs.rmSync(path.join(staged, 'checkpoint.json'));
+  const resumed = bySession(run(['state-clean', '--root', root, '--apply']))[done.sessionId];
+  assert.deepEqual([resumed.action, resumed.staged], ['removed', true]);
+  assert.ok(!fs.existsSync(staged) && !fs.existsSync(done.directory));
+
+  // Nothing left but the staged directory itself.
+  saveCheckpoint(root, 'empty', {});
+  const empty = stateLocation(root, 'empty');
+  const emptied = path.join(path.dirname(empty.directory), `.sweep-${empty.sessionId}`);
+  fs.renameSync(empty.directory, emptied);
+  for (const name of fs.readdirSync(emptied)) fs.rmSync(path.join(emptied, name));
+  assert.equal(bySession(run(['state-clean', '--root', root, '--apply']))[empty.sessionId].action, 'removed');
+  assert.ok(!fs.existsSync(emptied) && !fs.existsSync(empty.directory));
+});
+
+test('a record held open during cleanup is removed once released', t => {
+  const root = fixture(t);
+  saveCheckpoint(root, 'open-file', {});
+  const held = stateLocation(root, 'open-file');
+  age(held.directory, 20);
+  const staged = path.join(path.dirname(held.directory), `.sweep-${held.sessionId}`);
+  // Windows refuses to rename or remove what another process holds open; POSIX does not.
+  const descriptor = fs.openSync(path.join(held.directory, 'checkpoint.json'), 'r');
+  let first;
+  try {
+    first = bySession(run(['state-clean', '--root', root, '--apply']))[held.sessionId];
+  } finally {
+    fs.closeSync(descriptor);
+  }
+  if (first.action === 'removed') assert.ok(!fs.existsSync(staged) && !fs.existsSync(held.directory));
+  else assert.equal(typeof first.reason, 'string');
+  const second = bySession(run(['state-clean', '--root', root, '--apply']))[held.sessionId];
+  assert.ok(first.action === 'removed' ? second === undefined : second.action === 'removed', JSON.stringify(second));
+  assert.ok(!fs.existsSync(staged) && !fs.existsSync(held.directory));
+});

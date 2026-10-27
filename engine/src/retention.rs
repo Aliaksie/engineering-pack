@@ -82,6 +82,8 @@ pub struct Session<'a> {
     pub complete: bool,
     /// Modification time of the directory itself.
     pub modified: i64,
+    /// Set aside by a cleanup that may have removed some of its entries already.
+    pub staged: bool,
     pub described: Described,
 }
 
@@ -90,12 +92,14 @@ impl Session<'_> {
         self.entries.iter().map(|entry| entry.bytes).sum()
     }
 
-    /// The most recent write to the directory or any entry.
+    /// The most recent write to the directory or any entry. A staged directory's own time
+    /// records the cleanup's removals, so only its entries count; an empty one has none.
     pub fn newest(&self) -> i64 {
+        let own = if self.staged { 0 } else { self.modified };
         self.entries
             .iter()
             .map(|entry| entry.modified)
-            .fold(self.modified, i64::max)
+            .fold(own, i64::max)
     }
 }
 

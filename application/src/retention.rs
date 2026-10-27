@@ -28,14 +28,17 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
             entries: &found.entries,
             complete: found.complete,
             modified: found.modified,
+            staged: found.staged,
             described: found.described.clone(),
         };
         let mut item = json!({
             "session": found.id,
             "layout": found.layout.name(),
             "bytes": session.bytes(),
-            "idleDays": retention::idle_days(&session, now),
         });
+        if !(found.staged && found.entries.is_empty()) {
+            item["idleDays"] = json!(retention::idle_days(&session, now));
+        }
         if found.staged {
             item["staged"] = json!(true);
         }

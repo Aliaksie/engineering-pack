@@ -299,7 +299,7 @@ fn symlinked_state_directories_are_refused() {
 
 #[cfg(unix)]
 #[test]
-fn legacy_hard_links_and_locks_block_migration() {
+fn legacy_hard_links_block_migration() {
     let fixture = Fixture::new();
     let legacy = fixture.0.join(".capabilities").join("state");
     fs::create_dir_all(&legacy).unwrap();
@@ -315,7 +315,13 @@ fn legacy_hard_links_and_locks_block_migration() {
             .to_string(),
         "unsafe or oversized legacy state"
     );
-    fs::remove_file(legacy.join("telemetry-key.json")).unwrap();
+}
+
+#[test]
+fn any_lock_in_a_flat_legacy_store_blocks_migration() {
+    let fixture = Fixture::new();
+    let legacy = fixture.0.join(".capabilities").join("state");
+    fs::create_dir_all(&legacy).unwrap();
     fs::write(legacy.join("telemetry-key.json"), "{}").unwrap();
     fs::write(legacy.join("other.json.lock"), "").unwrap();
     let busy = file(&fixture.0, "telemetry/key.json", true, None).unwrap_err();
@@ -437,11 +443,10 @@ fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
     }
 }
 
-#[cfg(unix)]
 #[test]
-fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_conflicts() {
+fn migration_refuses_old_locks_malformed_records_and_destination_conflicts() {
     let fixture = Fixture::new();
-    let legacy = fixture.0.join(".craft/state");
+    let legacy = fixture.0.join(".craft").join("state");
     fs::create_dir_all(&legacy).unwrap();
     let old = legacy.join("session-demo.json");
     let target = fixture.record("activity-demo.json");
@@ -456,15 +461,6 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     fs::remove_file(legacy.join("session-demo.json.lock")).unwrap();
     fs::write(&old, "broken").unwrap();
     assert!(file(&fixture.0, "activity-demo.json", true, SESSION).is_err());
-    fs::remove_file(&old).unwrap();
-    std::os::unix::fs::symlink(&target, &old).unwrap();
-    assert_eq!(
-        file(&fixture.0, "activity-demo.json", true, SESSION)
-            .unwrap_err()
-            .to_string(),
-        "unsafe or oversized legacy state"
-    );
-    fs::remove_file(&old).unwrap();
     fs::write(&old, r#"{"value":1}"#).unwrap();
     fs::write(&target, r#"{"value":2}"#).unwrap();
     assert_eq!(
@@ -481,6 +477,59 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
         target
     );
     assert_eq!(read(&target, 1024).unwrap(), Some(json!({"value": 1})));
+}
+
+#[cfg(unix)]
+#[test]
+fn migration_refuses_symlinked_legacy_records() {
+    let fixture = Fixture::new();
+    let legacy = fixture.0.join(".craft").join("state");
+    fs::create_dir_all(&legacy).unwrap();
+    let target = fixture.record("activity-demo.json");
+    std::os::unix::fs::symlink(&target, legacy.join("session-demo.json")).unwrap();
+    assert_eq!(
+        file(&fixture.0, "activity-demo.json", true, SESSION)
+            .unwrap_err()
+            .to_string(),
+        "unsafe or oversized legacy state"
+    );
+}
+
+#[test]
+fn a_copy_interrupted_at_any_step_completes_on_the_next_access() {
+    let fixture = Fixture::new();
+    let root = &fixture.0;
+    let previous = previous_session(root, "s");
+    let routing = format!("routing-{}.json", "0".repeat(24));
+    fs::write(previous.join(&routing), "{\"r\":1}\n").unwrap();
+    fs::write(
+        previous.join(format!("{routing}.generation")),
+        "{\"g\":1}\n",
+    )
+    .unwrap();
+    let session = location(root, Some("s")).unwrap();
+    let sessions = session.directory.parent().unwrap().to_path_buf();
+    fs::create_dir_all(&session.directory).unwrap();
+    // Stopped after staging the first file and publishing it, before its companion and
+    // the receipt: the staged file is left, the published one is reused.
+    fs::write(session.directory.join(&routing), "{\"r\":1}\n").unwrap();
+    let orphan = session
+        .directory
+        .join(format!("{routing}.generation.1-2-0.tmp"));
+    fs::write(&orphan, "{\"g\"").unwrap();
+    let record = file(root, &routing, false, Some("s")).unwrap();
+    assert_eq!(read(&record, 64).unwrap(), Some(json!({"r": 1})));
+    assert_eq!(
+        fs::read_to_string(session.directory.join(format!("{routing}.generation"))).unwrap(),
+        "{\"g\":1}\n"
+    );
+    assert_eq!(listing(&migrations(root)).len(), 1);
+    // A repeated access neither copies nor rewrites anything.
+    let before = metadata(&sessions);
+    assert_eq!(file(root, &routing, false, Some("s")).unwrap(), record);
+    assert_eq!(metadata(&sessions), before);
+    // The orphan is not a record; cleanup keeps the directory for a person to inspect.
+    assert!(orphan.exists());
 }
 
 #[test]

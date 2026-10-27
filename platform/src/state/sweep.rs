@@ -278,9 +278,14 @@ pub fn unchanged(found: &Directory, staged: &Path) -> Result<bool, Error> {
 }
 
 /// Remove the inspected files of a staged directory, then the directory; anything a
-/// writer added meanwhile makes the final removal fail and keeps it.
+/// writer added meanwhile makes the final removal fail and keeps it. The manifest goes
+/// last, so an interrupted removal still describes the session's workspaces.
 pub fn purge(found: &Directory, staged: &Path) -> Result<(), Error> {
-    for entry in &found.entries {
+    let (manifest, records): (Vec<_>, Vec<_>) = found
+        .entries
+        .iter()
+        .partition(|entry| entry.name == MANIFEST);
+    for entry in records.into_iter().chain(manifest) {
         match fs::remove_file(staged.join(&entry.name)) {
             Err(error) if error.kind() != ErrorKind::NotFound => return Err(error.into()),
             _ => {}
