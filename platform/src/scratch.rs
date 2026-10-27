@@ -255,7 +255,7 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
             Err(ReadError::Io(error)) => return Err(error),
             Err(_) => return Err(refused("invalid bounded state file")),
         };
-        let integer = craft_engine::contracts::safe_integer;
+        let integer = craft_engine::values::safe_integer;
         let recognized =
             owner["owner"] == LOCK_OWNER && integer(&owner["formatVersion"]) == Some(1);
         let Some(pid) = integer(&owner["pid"]).filter(|pid| *pid >= 1 && recognized) else {

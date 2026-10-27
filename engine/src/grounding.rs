@@ -1,4 +1,5 @@
 //! Read-only context composition from explicitly observed local citations.
+use crate::values::truthy;
 use crate::{contracts, digest, routing, session::acceptance};
 use serde_json::{Value, json};
 fn items(v: &Value) -> &[Value] {
@@ -15,15 +16,6 @@ fn overlaps(entry: &Value, scope: &[String]) -> bool {
                 .any(|file| member(file, area) || member(area, file))
         })
     })
-}
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(v) => *v,
-        Value::Number(n) => n.as_f64() != Some(0.0),
-        Value::String(s) => !s.is_empty(),
-        _ => true,
-    }
 }
 fn local(source: &Value) -> bool {
     source["kind"] != "external" && source["kind"] != "request"

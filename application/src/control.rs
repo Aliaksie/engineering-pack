@@ -1,7 +1,7 @@
 //! Native ownership phases for a host's asynchronous transport lane. A host pid owns
 //! each retained fence; short native calls validate the opaque ticket before I/O.
 use crate::{failure::Failure, session};
-use craft_engine::{contracts::safe_integer, control, digest, session as decisions};
+use craft_engine::{control, digest, session as decisions, values, values::safe_integer};
 use craft_platform::{lease, repository::snapshot, state};
 use serde_json::{Value, json};
 use std::path::Path;
@@ -77,11 +77,11 @@ pub fn run(input: &Value) -> Result<Value, Failure> {
     }
     let host = input["host"]
         .as_str()
-        .filter(|_| control::text(&input["host"]))
+        .filter(|_| values::text(&input["host"]))
         .ok_or("native host required")?;
     let coordinator = input["coordinator"]
         .as_str()
-        .filter(|_| control::text(&input["coordinator"]))
+        .filter(|_| values::text(&input["coordinator"]))
         .ok_or("native coordinator required")?;
     let tree = digest(&json!([root.to_string_lossy(), name, task]));
     let context = json!({"root":root.to_string_lossy(),"session":name,"task":task,"tree":tree});

@@ -3,7 +3,7 @@
 //! mapping table is the data the build uses to register hooks.
 use crate::host;
 use crate::telemetry::Recorder;
-use craft_engine::contracts::js_length;
+use craft_engine::values::{js_length, truthy};
 use serde_json::{Map, Value, json};
 use std::io::{Read, Write};
 
@@ -274,12 +274,6 @@ fn render(context: &Value, host: &str) -> String {
         Some("unavailable") => format!("Routing/checkpoint unavailable: {}", context["data"].as_str().unwrap_or_default()),
         _ => String::new(),
     }
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    !matches!(value, None | Some(Value::Null) | Some(Value::Bool(false)))
-        && value.and_then(Value::as_str) != Some("")
-        && value.and_then(Value::as_f64) != Some(0.0)
 }
 
 /// At most 12 000 UTF-16 units of context, cut at a character boundary.

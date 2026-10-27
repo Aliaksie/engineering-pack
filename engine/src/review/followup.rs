@@ -1,8 +1,8 @@
 //! Reviewer follow-up: what a reviewer should do next on a pull request, derived only from
 //! a GitHub GraphQL observation and explicit facts. Nothing is stored between checks; a
 //! truncated observation is reported rather than read as a quiet review.
-use crate::contracts::js_blank;
 use crate::timestamp;
+use crate::values::js_blank;
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 

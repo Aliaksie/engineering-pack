@@ -1,17 +1,11 @@
 //! JS engine operations over their captured JSON input, shared by the frozen replays.
-use craft_engine::{checkpoint, hash, repository, session, session::acceptance};
+use craft_engine::{checkpoint, hash, repository, session, session::acceptance, values::truthy};
 use serde_json::{Map, Value, json};
 
 pub fn object(value: &Value) -> Result<&Map<String, Value>, String> {
     value
         .as_object()
         .ok_or_else(|| "expected an object".to_string())
-}
-
-pub fn truthy(value: &Value) -> bool {
-    !matches!(value, Value::Null | Value::Bool(false))
-        && value.as_str() != Some("")
-        && value.as_f64() != Some(0.0)
 }
 
 pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
@@ -84,7 +78,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
             let checkout = input.get("repository").map(|r| &r["checkout"]);
             session::binding(&input["state"], checkout).map(|b| b.unwrap_or(Value::Null))
         }
-        "task-contract" => session::contract(input.get("record").filter(|r| truthy(r))),
+        "task-contract" => session::contract(input.get("record").filter(|r| truthy(*r))),
         "task-source" => Ok(session::source(&input["repository"])),
         "task-context" => session::context(&input["state"], &input["repository"]),
         other => panic!("unmapped operation {other}"),

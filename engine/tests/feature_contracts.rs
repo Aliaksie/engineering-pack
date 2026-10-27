@@ -2,7 +2,7 @@
 //! from the JS engine: feature outcome records and the feature report. Results, including the
 //! updated state, compare as serialized JSON, so key order is part of the contract; error
 //! messages reach stderr and compare exactly.
-use craft_engine::{contracts, session};
+use craft_engine::{session, values};
 use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID.
@@ -26,7 +26,7 @@ fn serialized(value: &Value) -> String {
 
 fn replay(request: &Value) -> Result<Value, String> {
     let mut state = request["state"].clone();
-    contracts::normalize_numbers(&mut state);
+    values::normalize_numbers(&mut state);
     match request["engine"].as_str().unwrap() {
         "feature-record" => {
             let source = match request.get("source") {

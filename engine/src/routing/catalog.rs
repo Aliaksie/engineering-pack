@@ -1,6 +1,9 @@
 //! The playbook catalog: intents, extension inference and the guidance entries routes select.
 //! The catalog ships inside the executable; it is validated once, on first use.
-use crate::contracts::{LANGUAGES, LAYERS, js_blank, kebab, relative_file};
+use crate::{
+    contracts::{LANGUAGES, LAYERS, kebab, relative_file},
+    values::{js_blank, object},
+};
 use serde_json::{Map, Value};
 use std::collections::HashSet;
 use std::sync::OnceLock;
@@ -78,16 +81,6 @@ pub(super) fn lists(catalog: &Value, field: &str, value: &str) -> bool {
     catalog[field]
         .as_array()
         .is_some_and(|items| items.iter().any(|item| item == value))
-}
-
-fn keys<'a>(value: &'a Value, allowed: &[&str], label: &str) -> Result<&'a Map<String, Value>> {
-    let map = value
-        .as_object()
-        .ok_or_else(|| format!("{label} must be an object"))?;
-    match map.keys().find(|key| !allowed.contains(&key.as_str())) {
-        Some(key) => Err(format!("unknown {label} field: {key}")),
-        None => Ok(map),
-    }
 }
 
 fn text<'a>(value: &'a Value, label: &str) -> Result<&'a str> {
@@ -182,7 +175,7 @@ fn mappings(catalog: &Map<String, Value>) -> Result {
 }
 
 fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
-    let map = keys(entry, &ENTRY_FIELDS, "entry")?;
+    let map = object(entry, &ENTRY_FIELDS, "entry")?;
     let id = entry["id"].as_str().unwrap_or_default();
     if !identity(id) || !ids.insert(id.to_string()) {
         return Err(format!("invalid or duplicate logical id: {}", entry["id"]));
@@ -205,7 +198,7 @@ fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
         true,
         reference,
     )?;
-    let selector = keys(&entry["when"], &DIMENSIONS, &format!("{id} selector"))?;
+    let selector = object(&entry["when"], &DIMENSIONS, &format!("{id} selector"))?;
     if selector.is_empty() {
         return Err(format!("{id} requires selectors"));
     }
@@ -251,7 +244,7 @@ fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
             "{id} specialization cannot select non-stack intents"
         ));
     }
-    let value = keys(&entry["value"], &VALUE_FIELDS, &format!("{id} value"))?;
+    let value = object(&entry["value"], &VALUE_FIELDS, &format!("{id} value"))?;
     for field in VALUE_FIELDS {
         text(
             value.get(field).unwrap_or(&Value::Null),
@@ -281,7 +274,7 @@ fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
 
 /// Shape validation of a catalog document; targets are resolved by authoring tooling.
 pub fn validate(catalog: &Value) -> Result {
-    let map = keys(
+    let map = object(
         catalog,
         &[
             "formatVersion",

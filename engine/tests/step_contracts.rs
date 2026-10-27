@@ -3,7 +3,7 @@
 //! including the updated state, compare as serialized JSON, so key order is part of the
 //! contract; error messages reach stderr and compare exactly.
 use craft_engine::actions::{self, Context};
-use craft_engine::{contracts, session};
+use craft_engine::{session, values};
 use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID.
@@ -16,7 +16,7 @@ fn serialized(value: &Value) -> String {
 fn replay(request: &Value, settings: &Value) -> Result<Value, String> {
     let settings = &settings[request["settings"].as_str().unwrap_or("base")];
     let mut state = request["state"].clone();
-    contracts::normalize_numbers(&mut state);
+    values::normalize_numbers(&mut state);
     let none = json!({});
     let context = Context {
         settings,

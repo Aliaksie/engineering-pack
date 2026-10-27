@@ -1,5 +1,6 @@
 //! Schema-1 telemetry envelope. Events carry bounded counts, closed enums and
 //! pseudonymous IDs only; no input bodies.
+use crate::values::lower_hex as hex;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
@@ -372,7 +373,7 @@ pub fn envelope(event: &Event, skills: &[&str]) -> Result<Value, String> {
     for (key, value) in event.attributes.iter().take(64) {
         let enumerated = ENUMS.iter().find(|(name, _)| name == key);
         let safe = if COUNTS.contains(&key.as_str()) {
-            crate::contracts::safe_integer(value).is_some_and(|n| (0..=1_000_000_000).contains(&n))
+            crate::values::safe_integer(value).is_some_and(|n| (0..=1_000_000_000).contains(&n))
         } else if let Some((_, values)) = enumerated {
             value.as_str().is_some_and(|v| values.contains(&v))
         } else if FLAGS.contains(&key.as_str()) {
@@ -415,10 +416,6 @@ pub fn envelope(event: &Event, skills: &[&str]) -> Result<Value, String> {
         map.insert("durationMs".into(), json!(duration));
     }
     Ok(stored)
-}
-
-fn hex(text: &str, length: usize) -> bool {
-    text.len() == length && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
 fn version(text: &str) -> bool {

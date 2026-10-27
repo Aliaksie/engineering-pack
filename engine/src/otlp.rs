@@ -2,6 +2,7 @@
 //! export response. No provider objects cross the event boundary.
 //! <https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding>
 use crate::timestamp;
+use crate::values::truthy;
 use serde_json::{Map, Value, json};
 
 fn attribute(key: &str, value: &Value) -> Value {
@@ -11,16 +12,6 @@ fn attribute(key: &str, value: &Value) -> Value {
         _ => json!({"stringValue": value}),
     };
     json!({"key": key, "value": typed})
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64().is_some_and(|n| n != 0.0),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(_) => true,
-    }
 }
 
 fn compact(id: &Value) -> String {

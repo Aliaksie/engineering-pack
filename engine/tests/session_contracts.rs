@@ -3,7 +3,7 @@
 //! observation plan and unified status. Results compare as serialized JSON, so key order is
 //! part of the contract; error messages reach stderr and compare exactly.
 use craft_engine::session::status::{self, Observations};
-use craft_engine::{contracts, routing, session};
+use craft_engine::{routing, session, values};
 use serde_json::{Value, json};
 
 /// Intentional corrections over the captured JavaScript, by case ID, with the corrected
@@ -43,7 +43,7 @@ fn text(value: &Value) -> Option<String> {
 fn replay(request: &Value, settings: &Value) -> Result<Value, String> {
     let settings = &settings[request["settings"].as_str().unwrap_or("base")];
     let mut input = request["input"].clone();
-    contracts::normalize_numbers(&mut input);
+    values::normalize_numbers(&mut input);
     let now = request["now"].as_i64().unwrap_or(0);
     match request["engine"].as_str().unwrap() {
         "session-advice" => status::advice(&input, settings, now),

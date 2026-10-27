@@ -97,7 +97,7 @@ fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, Error> {
     let key = data
         .and_then(|data| data["key"].as_str())
         .unwrap_or_default();
-    if key.len() != 64 || !key.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
+    if !craft_engine::values::lower_hex(key, 64) {
         return Err("invalid telemetry key".into());
     }
     Ok(craft_engine::telemetry::session_identity(key, session))

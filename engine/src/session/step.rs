@@ -4,6 +4,7 @@
 use super::{
     acceptance, append_attempt, attempt_receipt, contract, stage, task_acceptance, text, unresolved,
 };
+use crate::values::truthy;
 use crate::{checkpoint, digest};
 use serde_json::{Map, Value, json};
 
@@ -81,7 +82,7 @@ pub fn step(
     let field = |name: &str| input.get(name);
     let record = state
         .get("taskRecord")
-        .filter(|r| super::truthy(r))
+        .filter(|r| truthy(*r))
         .ok_or("task-step requires task-start for this session and task")?;
     let selected = stage(
         given(field("stage"))
@@ -241,8 +242,4 @@ pub fn step(
         continuation,
         acceptance,
     })
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    value.is_some_and(super::truthy)
 }

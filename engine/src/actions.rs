@@ -1,8 +1,8 @@
 //! Recommended actions for the bound task (review, compact, delegate): eligibility from the
 //! current source, policy, status and caller-declared host facts; recorded offers, explicit
 //! decisions and readiness checks. Nothing here dispatches, approves or grants permission.
-use crate::contracts::safe_integer;
-use crate::session::{self, BLOCKERS, text, unresolved};
+use crate::session::{self, BLOCKERS, unresolved};
+use crate::values::{lower_hex, safe_integer, sha256, text, truthy};
 use crate::{digest, models, timestamp, workers};
 use serde_json::{Map, Value, json};
 
@@ -25,15 +25,6 @@ fn fields<'a>(value: &'a Value, allowed: &[&str], label: &str) -> Result<&'a Map
         .as_object()
         .filter(|m| m.keys().all(|k| allowed.contains(&k.as_str())))
         .ok_or_else(|| format!("invalid {label}"))
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null | Value::Bool(false)) => false,
-        Some(Value::String(s)) => !s.is_empty(),
-        Some(Value::Number(n)) => n.as_f64().is_some_and(|f| f != 0.0),
-        Some(_) => true,
-    }
 }
 
 /// Validated caller-declared host facts; absent means none.
@@ -202,7 +193,7 @@ fn eligibility(action: &str, input: &Value, state: &Value, context: &Context) ->
         .get("profile")
         .filter(|p| !p.is_null())
         .or_else(|| role.and_then(|r| settings["execution"]["roles"][r].get("profile")))
-        .filter(|p| truthy(Some(p)));
+        .filter(|p| truthy(*p));
     let Some(profile) = profile else {
         return Ok(with_budget(
             fail("A configured logical worker profile is required."),
@@ -366,14 +357,9 @@ fn offer<'a>(
 ) -> Result<&'a Value> {
     let known = id
         .as_str()
-        .filter(|id| {
-            id.len() == 64
-                && id
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        })
+        .filter(|id| lower_hex(id, 64))
         .and_then(|id| state["recommendations"].get(id))
-        .filter(|offer| truthy(Some(offer)));
+        .filter(|offer| truthy(*offer));
     let offer = known.ok_or("unknown action proposal")?;
     if offer.get("source") != Some(&session::source(repository))
         || offer.get("policy") != Some(&json!(digest(settings)))
@@ -496,13 +482,7 @@ pub fn claim(
     if checked["ready"] != true {
         return Err(checked["reason"].as_str().unwrap_or_default().into());
     }
-    if offer["action"] == "compact"
-        && !checkpoint.as_str().is_some_and(|s| {
-            s.len() == 64
-                && s.bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        })
-    {
+    if offer["action"] == "compact" && !sha256(checkpoint) {
         return Err("compaction requires a bound checkpoint identity".into());
     }
     let id = input["id"].as_str().expect("checked offer");

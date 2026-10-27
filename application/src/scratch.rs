@@ -227,7 +227,7 @@ fn operate(
     let mut owned = Vec::new();
     for entry in &entries {
         let folder = sessions.join(entry);
-        let checked = if scratch::is_digest(entry) {
+        let checked = if craft_engine::values::lower_hex(entry, 64) {
             files::directory(&folder, false)
                 .map_err(io)
                 .and_then(|_| read_manifest(&folder.join("owner.json"), &project, entry))

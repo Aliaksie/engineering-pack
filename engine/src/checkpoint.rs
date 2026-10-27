@@ -1,9 +1,8 @@
 //! Local checkpoints: bounded handoff metadata bound to a repository snapshot.
 use crate::{
-    canonical,
-    contracts::{js_blank, js_length},
-    repository,
-    session::sha256_hex,
+    canonical, repository,
+    values::sha256,
+    values::{js_blank, js_length},
 };
 use serde_json::{Map, Value, json};
 
@@ -49,7 +48,7 @@ pub fn validate_metadata(metadata: &Map<String, Value>) -> Result {
     }
     if metadata
         .get("taskContract")
-        .is_some_and(|v| !v.is_null() && !sha256_hex(Some(v)))
+        .is_some_and(|v| !v.is_null() && !sha256(v))
     {
         return Err("invalid checkpoint task contract".into());
     }

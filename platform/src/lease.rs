@@ -2,7 +2,8 @@
 //! unknown/live pid, malformed record or legacy ownerless lock always remains busy.
 use crate::Error;
 use crate::{scratch::Processes, state};
-use craft_engine::{contracts::safe_integer, scratch::Liveness};
+use craft_engine::values::sha256;
+use craft_engine::{scratch::Liveness, values::safe_integer};
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -28,9 +29,7 @@ fn recognized(value: &Value) -> bool {
     value["owner"] == OWNER
         && value["formatVersion"] == 1
         && safe_integer(&value["pid"]).is_some_and(|pid| pid > 0 && pid <= u32::MAX.into())
-        && value["lease"]
-            .as_str()
-            .is_some_and(|s| s.len() == 64 && s.bytes().all(|b| b.is_ascii_hexdigit()))
+        && sha256(&value["lease"])
         && value.as_object().is_some_and(|v| v.len() == 4)
 }
 /// Called by ordinary state writers as well, so task-start recovers dead host fences.
@@ -92,4 +91,18 @@ pub fn release(file: &Path, ticket: &Value) -> Result<(), Error> {
     with(file, ticket, || {
         fs::remove_file(lock_path(file)).map_err(Error::from)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_written_lease_shapes_are_recognized() {
+        let lease = |token: String| json!({"owner":OWNER,"formatVersion":1,"pid":1,"lease":token});
+        let token = craft_engine::hash(b"lease");
+        assert!(recognized(&lease(token.clone())));
+        assert!(!recognized(&lease(token.to_uppercase())));
+        assert!(!recognized(&lease(token[1..].into())));
+    }
 }

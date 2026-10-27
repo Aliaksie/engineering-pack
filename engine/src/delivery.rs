@@ -1,8 +1,8 @@
 //! Context delivery at host lifecycle boundaries: the work a lifecycle fact asks for, the
 //! context a hook delivers and when an identical routing hint stays quiet. Lifecycle facts
 //! come from the application; host event names and wire formats never enter this policy.
-use crate::contracts::js_space;
 use crate::routing::catalog::SOURCE;
+use crate::values::{js_space, lower_hex};
 use serde_json::{Value, json};
 
 /// Host-neutral facts about one hook event.
@@ -121,9 +121,7 @@ pub fn validate_hint(state: &Value) -> Result<(), String> {
     }
     let key = match state.get("key") {
         Some(Value::Null) => true,
-        Some(Value::String(key)) => {
-            key.len() == 64 && key.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
-        }
+        Some(Value::String(key)) => lower_hex(key, 64),
         _ => false,
     };
     if state["formatVersion"] != 1 || !key || !state["emittedAt"].is_number() {

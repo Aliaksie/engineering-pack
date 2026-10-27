@@ -1,6 +1,6 @@
 //! Replays `tests/fixtures/runtime/services-contracts.json`, captured from the JS use cases.
 use super::*;
-use crate::contracts::{effective_settings, normalize_numbers};
+use crate::{contracts::effective_settings, values::normalize_numbers};
 
 const CORPUS: &str = include_str!("../../../tests/fixtures/runtime/services-contracts.json");
 

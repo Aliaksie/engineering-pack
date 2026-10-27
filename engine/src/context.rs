@@ -1,6 +1,6 @@
 //! Guidance accounting for a route: which package resources it selects, and what reading them
 //! would cost. Sizes are measured by the caller; live session usage stays unknown here.
-use crate::contracts::safe_integer;
+use crate::values::safe_integer;
 use serde_json::{Value, json};
 
 type Result<T> = std::result::Result<T, String>;

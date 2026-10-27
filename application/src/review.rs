@@ -9,10 +9,10 @@ use crate::project::absolute;
 use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::{
-    contracts::{js_blank, normalize_numbers},
     review::artifact::{self, PROVIDERS, Target, VERIFICATION},
     review::followup::{self, Facts},
     timestamp,
+    values::{js_blank, normalize_numbers},
 };
 use craft_platform::{
     files::{ReadError, read_bounded},

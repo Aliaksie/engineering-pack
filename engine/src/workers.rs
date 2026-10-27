@@ -1,6 +1,6 @@
 //! Worker capacity: a fresh host observation, independent of preferences and approval.
-use crate::contracts::{js_length, safe_integer};
 use crate::timestamp;
+use crate::values::{js_length, safe_integer};
 use serde_json::{Value, json};
 
 const FACTS: &[&str] = &[

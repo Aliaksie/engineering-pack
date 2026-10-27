@@ -2,7 +2,7 @@
 //! local batches under the shared store lock. A finished remote export is returned to
 //! the caller, which posts it once the command's output is written.
 use crate::failure::Failure;
-use craft_engine::{contracts::js_length, telemetry, timestamp};
+use craft_engine::{telemetry, timestamp, values::js_length};
 use craft_platform::telemetry as store;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};

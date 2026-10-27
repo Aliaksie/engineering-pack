@@ -251,7 +251,7 @@ fn discover(
             let _ticket = state::lock(&file)?.ok_or("session state writer is busy")?;
             let mut current = state::read(&file, 131072)?
                 .unwrap_or(json!({"formatVersion":1,"activity":{},"lookups":{},"attempts":[]}));
-            craft_engine::contracts::normalize_numbers(&mut current);
+            craft_engine::values::normalize_numbers(&mut current);
             // Only the exact observation validated by the current session owner is writable.
             // A concurrent receipt must be preserved; the next request can validate it again.
             if current != state {

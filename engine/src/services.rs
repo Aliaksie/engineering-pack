@@ -1,7 +1,10 @@
 //! External service operations: invocation plans and session-level availability metadata
 //! over validated effective settings. Plans describe what a host may run; nothing here
 //! executes, discovers tools or grants authorization.
-use crate::contracts::{READ_OPERATIONS, WRITE_OPERATIONS, safe_integer};
+use crate::{
+    contracts::{READ_OPERATIONS, WRITE_OPERATIONS},
+    values::safe_integer,
+};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 

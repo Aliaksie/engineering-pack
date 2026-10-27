@@ -2,7 +2,7 @@
 //! current-context observation and recorded activity. Nothing here compacts, resets,
 //! switches models, writes state or reads a transcript.
 use super::{attempt_status, contract, text};
-use crate::contracts::safe_integer;
+use crate::values::{safe_integer, truthy};
 use crate::{digest, models, routing, timestamp};
 use serde_json::{Map, Value, json};
 
@@ -122,10 +122,6 @@ fn count(value: &Value) -> bool {
 
 fn number(value: &Value) -> Option<f64> {
     value.as_f64().filter(|n| n.is_finite())
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    value.is_some_and(super::truthy)
 }
 
 /// A ratio as `JSON.stringify` writes it: integral values without a fraction.
@@ -671,11 +667,11 @@ pub fn needs(input: &Value, settings: &Value, state: Option<&Value>, saved: &Val
         None => operation.filter(|_| role(operation_text).is_some()),
     };
     let role = role(operation_text).or_else(|| role(stage.and_then(Value::as_str)));
-    let id = task.get("id").filter(|id| super::truthy(id));
+    let id = task.get("id").filter(|id| truthy(*id));
     let same_task = id.is_some_and(|id| {
         saved.get("taskId") == Some(id) && saved["continuationSource"].get("taskId") == Some(id)
     });
-    let plan = stage.filter(|s| super::truthy(s)).map(|stage| {
+    let plan = stage.filter(|s| truthy(*s)).map(|stage| {
         let files = match task.get("files").filter(|f| !f.is_null()) {
             None => &[][..],
             Some(files) => files
@@ -799,11 +795,11 @@ pub fn status(request: Request) -> Result<Value> {
         .or_else(|| declared_session.cloned());
     let task_id = task.map(|t| json!(t)).or_else(|| declared_task.cloned());
     let mut normalized = input.as_object().cloned().unwrap_or_default();
-    if let Some(id) = session_id.as_ref().filter(|s| super::truthy(s)) {
+    if let Some(id) = session_id.as_ref().filter(|s| truthy(*s)) {
         normalized.insert("sessionId".into(), id.clone());
     }
     let mut declared = spread(&input["task"]);
-    if let Some(id) = task_id.as_ref().filter(|t| super::truthy(t)) {
+    if let Some(id) = task_id.as_ref().filter(|t| truthy(*t)) {
         declared.insert("id".into(), id.clone());
     }
     let mut diagnostics: Vec<String> = Vec::new();
@@ -833,7 +829,7 @@ pub fn status(request: Request) -> Result<Value> {
                 .flatten()
                 .find(|v| !v.is_null())
                 .cloned();
-                if let Some(operation) = operation.as_ref().filter(|o| super::truthy(o)) {
+                if let Some(operation) = operation.as_ref().filter(|o| truthy(*o)) {
                     declared.insert("operation".into(), operation.clone());
                 }
                 let operation_text = operation.as_ref().and_then(Value::as_str);
@@ -884,7 +880,7 @@ pub fn status(request: Request) -> Result<Value> {
             diagnostics.push(format!("Checkpoint unavailable: {error}"));
         } else {
             let saved = &observations.saved;
-            let continuation = saved.get("continuation").filter(|c| super::truthy(c));
+            let continuation = saved.get("continuation").filter(|c| truthy(*c));
             let binding = &saved["continuationSource"];
             let same_task = truthy(task_id.as_ref())
                 && saved.get("taskId") == task_id.as_ref()
@@ -899,7 +895,7 @@ pub fn status(request: Request) -> Result<Value> {
             let print = |name: &str| current.and_then(|c| c["fingerprints"].get(name));
             let record = state
                 .and_then(|s| s.get("taskRecord"))
-                .filter(|r| super::truthy(r));
+                .filter(|r| truthy(*r));
             let unchanged = binding["complete"] == true
                 && match record {
                     None => true,
@@ -1023,7 +1019,7 @@ pub fn status(request: Request) -> Result<Value> {
             &Value::Null,
             |name| &settings["execution"]["hosts"][name]["models"],
         );
-    let current_profile = match host.get("model").filter(|m| super::truthy(m)) {
+    let current_profile = match host.get("model").filter(|m| truthy(*m)) {
         Some(model) => {
             let matching: Vec<&String> = models
                 .as_object()
@@ -1103,7 +1099,7 @@ pub fn status(request: Request) -> Result<Value> {
     let last_profile = records
         .last()
         .and_then(|r| r.get("profile"))
-        .filter(|p| super::truthy(p));
+        .filter(|p| truthy(*p));
     let reasons = || {
         model["reasons"]
             .as_array()

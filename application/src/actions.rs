@@ -6,6 +6,7 @@ use crate::session::{active_task, binding_file, read_state, update_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::actions::{self, Context};
 use craft_engine::session;
+use craft_engine::values::lower_hex;
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Value, json};
 use std::path::Path;
@@ -126,11 +127,7 @@ fn execution_phase(
     let find = |state: &Value| -> Result<Value, Failure> {
         let id = id
             .as_str()
-            .filter(|s| {
-                s.len() == 64
-                    && s.bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-            })
+            .filter(|s| lower_hex(s, 64))
             .ok_or("invalid action proposal id")?;
         state["recommendations"]
             .get(id)

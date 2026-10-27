@@ -1,7 +1,7 @@
 //! Replay of the frozen corpus (`tests/fixtures/runtime/task-contracts.json`) captured
 //! from the JS engine `task-start` decision. Results compare as serialized JSON, so key order
 //! is part of the contract; error messages reach stderr and compare exactly.
-use craft_engine::{contracts, session};
+use craft_engine::{session, values};
 use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID: JS printed a
@@ -18,7 +18,7 @@ fn serialized(value: &Value) -> String {
 
 fn start(request: &Value) -> Result<Value, String> {
     let mut state = request["state"].clone();
-    contracts::normalize_numbers(&mut state);
+    values::normalize_numbers(&mut state);
     let repository = &request["repository"];
     let intent = session::start(&mut state, &request["input"], repository)?;
     let context = session::context(&state, repository)?;

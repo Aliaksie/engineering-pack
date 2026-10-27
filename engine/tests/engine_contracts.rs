@@ -5,7 +5,8 @@ mod support;
 
 use craft_engine::session::status::{self, Observations};
 use craft_engine::{
-    context, contracts, digest, models, routing, routing::catalog, services, session, workers,
+    context, contracts, digest, models, routing, routing::catalog, services, session, values,
+    workers,
 };
 use serde_json::{Value, json};
 
@@ -283,7 +284,7 @@ fn frozen_engine_contracts() {
             continue;
         }
         let mut input = case["request"]["input"].clone();
-        contracts::normalize_numbers(&mut input);
+        values::normalize_numbers(&mut input);
         let actual = run(operation, &input);
         let expected = &case["response"];
         let matches = match &actual {

@@ -7,6 +7,7 @@ use crate::scratch::{self, Action};
 use crate::session::{active_task, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms, pack_version};
 use craft_engine::session::status::{self, Observations};
+use craft_engine::values::truthy;
 use craft_engine::{checkpoint, routing, session};
 use craft_platform::repository::snapshot;
 use serde_json::{Map, Value, json};
@@ -36,15 +37,6 @@ pub struct Request<'a> {
     pub task: Option<&'a str>,
     /// Verified installed package roots for guidance accounting.
     pub bundles: &'a [String],
-}
-
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null | Value::Bool(false)) => false,
-        Some(Value::String(s)) => !s.is_empty(),
-        Some(Value::Number(n)) => n.as_f64().is_some_and(|f| f != 0.0),
-        Some(_) => true,
-    }
 }
 
 /// The session status, observed under `session.observed`.
@@ -132,14 +124,14 @@ fn observe(
         }
     }
     let mut input = input.as_object().cloned().unwrap_or_default();
-    if let Some(id) = session_id.as_ref().filter(|s| truthy(Some(s))) {
+    if let Some(id) = session_id.as_ref().filter(|s| truthy(*s)) {
         input.insert("sessionId".into(), id.clone());
     }
     let mut declared = match input.get("task") {
         Some(Value::Object(task)) => task.clone(),
         _ => Map::new(),
     };
-    if let Some(id) = task_id.as_ref().filter(|t| truthy(Some(t))) {
+    if let Some(id) = task_id.as_ref().filter(|t| truthy(*t)) {
         declared.insert("id".into(), id.clone());
     }
     let bound = truthy(session_id.as_ref()) && truthy(task_id.as_ref());
@@ -367,7 +359,7 @@ fn observe(
         }
     }
     result["workspace"] = workspace;
-    if let Some(repositories) = repositories.filter(|r| truthy(Some(r))) {
+    if let Some(repositories) = repositories.filter(|r| truthy(r)) {
         result["repositories"] = repositories;
     }
     if let Some(error) = binding_error {

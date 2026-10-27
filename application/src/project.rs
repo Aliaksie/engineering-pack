@@ -2,7 +2,7 @@
 //! state placement and the current worker budget.
 use crate::failure::Failure;
 use crate::telemetry::{Operation, Recorder, now_ms, observe};
-use craft_engine::{contracts, workers};
+use craft_engine::{contracts, values, workers};
 use craft_platform::{documents, state};
 use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
@@ -17,7 +17,7 @@ pub fn preference_file() -> PathBuf {
 
 fn document(read: Result<Value, documents::DocumentError>) -> Result<Value, Failure> {
     let mut value = read?;
-    contracts::normalize_numbers(&mut value);
+    values::normalize_numbers(&mut value);
     Ok(value)
 }
 

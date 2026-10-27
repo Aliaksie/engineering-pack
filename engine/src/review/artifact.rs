@@ -1,7 +1,7 @@
 //! Revision-bound review artifacts: the diff snapshot a reviewer receives, the result it
 //! returns and the comment-only plan an authorized publisher may act on. Checks are
 //! structural; they never judge findings, prove line applicability or contact a code host.
-use crate::contracts::{js_blank, safe_integer};
+use crate::values::{js_blank, lower_hex, safe_integer};
 use serde_json::{Map, Value, json};
 
 pub const PROVIDERS: [&str; 3] = ["local", "github", "gitlab"];
@@ -12,7 +12,7 @@ const LIMITATION: &str = "Structural validation only. Remote head, line applicab
 
 /// A full SHA-1 or SHA-256 object ID in lowercase hex.
 pub fn object_id(text: &str) -> bool {
-    matches!(text.len(), 40 | 64) && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+    matches!(text.len(), 40 | 64) && lower_hex(text, text.len())
 }
 
 /// A positive decimal change number: a digit string or a safe positive integer.

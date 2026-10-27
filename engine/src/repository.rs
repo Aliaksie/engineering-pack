@@ -1,5 +1,6 @@
 //! Selected repository scopes and the workspace identity of their combined Git snapshots.
-use crate::{contracts::js_length, digest, discovery::scope, routing::private_path};
+use crate::values::line_text;
+use crate::{digest, discovery::scope, routing::private_path};
 use serde_json::{Value, json};
 
 pub fn scopes(value: &Value) -> Result<Vec<String>, String> {
@@ -11,7 +12,7 @@ pub fn scopes(value: &Value) -> Result<Vec<String>, String> {
     for value in roots {
         let text = value
             .as_str()
-            .filter(|s| js_length(s) <= 1024 && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}'))
+            .filter(|s| line_text(s, 1024))
             .ok_or("repositories require 1..8 workspace-relative directories")?;
         let scope = scope(&json!(text))?;
         if private_path(&scope) {

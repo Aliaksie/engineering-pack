@@ -20,6 +20,7 @@ pub mod services;
 pub mod session;
 pub mod telemetry;
 pub mod timestamp;
+pub mod values;
 pub mod workers;
 
 pub const SCHEMA_VERSION: u32 = 1;
@@ -96,8 +97,7 @@ impl Extraction {
         if !valid_path(&self.path)
             || self.provider.is_empty()
             || self.provider.len() > 256
-            || self.hash.len() != 64
-            || !self.hash.bytes().all(|b| b.is_ascii_hexdigit())
+            || !values::lower_hex(&self.hash, 64)
             || self.evidence.len() > 20_000
         {
             return Err("invalid extraction binding".into());
@@ -111,9 +111,10 @@ impl Extraction {
                 || item.kind.is_empty()
                 || item.kind.len() > 128
                 || item.target.as_ref().is_some_and(|s| s.len() > 4096)
-                || item.container.as_ref().is_some_and(|s| {
-                    s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()) || s == &item.id
-                })
+                || item
+                    .container
+                    .as_ref()
+                    .is_some_and(|s| !values::lower_hex(s, 64) || s == &item.id)
                 || item.id
                     != identity(&[
                         &self.path,
@@ -154,5 +155,36 @@ mod tests {
             assert!(!valid_path(path));
         }
         assert!(valid_path("src/hello world.mjs"));
+    }
+
+    #[test]
+    fn extraction_hashes_are_lowercase_as_stored() {
+        let id = identity(&["a.js", "p", "function", "f", "0"]);
+        let evidence = |container: Option<String>| Evidence {
+            id: id.clone(),
+            kind: "function".into(),
+            name: "f".into(),
+            line: 1,
+            column: 1,
+            start_byte: 0,
+            end_byte: 1,
+            target: None,
+            container,
+        };
+        let extraction = |hash: String, container| Extraction {
+            path: "a.js".into(),
+            hash,
+            provider: "p".into(),
+            evidence: vec![evidence(container)],
+        };
+        let digest = hash(b"a");
+        assert!(extraction(digest.clone(), None).validate().is_ok());
+        // Reuse compares the stored hash byte for byte, so an uppercase binding never matches.
+        assert!(extraction(digest.to_uppercase(), None).validate().is_err());
+        assert!(
+            extraction(digest.clone(), Some(digest.to_uppercase()))
+                .validate()
+                .is_err()
+        );
     }
 }

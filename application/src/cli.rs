@@ -7,9 +7,9 @@ use crate::review::Command as Review;
 use crate::scratch::Action;
 use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
-use craft_engine::contracts::normalize_numbers;
 use craft_engine::session::views::{self, Reader};
-use craft_engine::{context, contracts, models, routing, services};
+use craft_engine::values::{normalize_numbers, truthy};
+use craft_engine::{context, models, routing, services, values};
 use craft_platform::guidance;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -337,7 +337,7 @@ fn plan_operation(
         }
         None => json!({}),
     };
-    contracts::normalize_numbers(&mut params);
+    values::normalize_numbers(&mut params);
     let name = options.get("operation");
     let summary = Map::from_iter(name.map(|name| ("operation".to_string(), json!(name))));
     observe(
@@ -1661,7 +1661,7 @@ fn action_receipt(action: &str, result: &Value) -> String {
     {
         lines.push(format!("Workspace retained: {reason}"));
     }
-    if truthy_value(&status["taskEvidenceStale"]) {
+    if truthy(&status["taskEvidenceStale"]) {
         lines.push("Warning: task evidence is stale.".into());
     }
     let mut warnings: Vec<&Value> = vec![
@@ -1671,20 +1671,11 @@ fn action_receipt(action: &str, result: &Value) -> String {
         &status["noticeDiagnostic"],
     ];
     warnings.extend(status["diagnostics"].as_array().into_iter().flatten());
-    for warning in warnings.into_iter().filter(|w| truthy_value(w)) {
+    for warning in warnings.into_iter().filter(|w| truthy(*w)) {
         lines.push(format!("Warning: {}", shown(warning)));
     }
     lines.retain(|line| !line.is_empty());
     format!("{}\n", lines.join("\n"))
-}
-
-fn truthy_value(value: &Value) -> bool {
-    match value {
-        Value::Null | Value::Bool(false) => false,
-        Value::String(s) => !s.is_empty(),
-        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
-        _ => true,
-    }
 }
 
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.

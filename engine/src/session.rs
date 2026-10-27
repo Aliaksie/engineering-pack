@@ -1,9 +1,11 @@
 //! Task-scoped session records: identities, validation, attempts and the bound task context.
+use crate::values::{lower_hex, sha256, text, truthy};
 use crate::{
-    contracts::{js_length, relative_file, safe_integer},
+    contracts::relative_file,
     digest, repository,
     routing::{member, private_path},
     timestamp,
+    values::{js_length, safe_integer},
 };
 use serde_json::{Map, Value, json};
 
@@ -74,21 +76,6 @@ pub const STAGES: &[(&str, &str)] = &[
     ("architecture", "investigate"),
     ("story", "story"),
 ];
-
-/// A bounded single-line identifier: 1..512 UTF-16 units without control characters.
-pub fn text(value: &Value) -> bool {
-    value.as_str().is_some_and(|s| {
-        !s.is_empty() && js_length(s) <= 512 && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}')
-    })
-}
-
-pub(crate) fn sha256_hex(value: Option<&Value>) -> bool {
-    value.and_then(Value::as_str).is_some_and(|s| {
-        s.len() == 64
-            && s.bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-    })
-}
 
 pub fn identity(session: &Value, task: &Value) -> Result {
     if text(session) && text(task) {
@@ -268,7 +255,8 @@ pub fn validate_features(records: Option<&Value>) -> Result {
                 .any(|p| record["provenance"] == *p)
             && text(&record["at"])
             && timestamp::parse(record["at"].as_str().unwrap_or_default()).is_some()
-            && (record.get("source") == Some(&Value::Null) || sha256_hex(record.get("source")));
+            && (record.get("source") == Some(&Value::Null)
+                || record.get("source").is_some_and(sha256));
         if !valid {
             return Err("invalid feature outcome record".into());
         }
@@ -404,13 +392,13 @@ pub fn attempt_status(records: &[Value], operation: &str) -> Value {
     let targeted: Vec<&Value> = current.iter().filter(aimed).collect();
     let series: Vec<&Value> = open.iter().copied().filter(aimed).collect();
     let last = series.last().or(targeted.last());
-    let profile = last.and_then(|l| l.get("profile")).filter(|p| truthy(p));
+    let profile = last.and_then(|l| l.get("profile")).filter(|p| truthy(*p));
     let failures: Vec<&Value> = series
         .iter()
         .copied()
         .filter(|r| profile.is_none() || r.get("profile") == profile)
         .collect();
-    let equivalent = match last.map(|l| &l["signature"]).filter(|s| truthy(s)) {
+    let equivalent = match last.map(|l| &l["signature"]).filter(|s| truthy(*s)) {
         Some(signature) => failures
             .iter()
             .filter(|r| &r["signature"] == signature)
@@ -444,10 +432,10 @@ fn recommendations(value: &Value) -> Result {
         .filter(|o| o.len() <= 16)
         .ok_or("invalid recommendation state")?;
     for (id, offer) in offers {
-        if !sha256_hex(Some(&json!(id))) || offer["id"] != id.as_str() {
+        if !lower_hex(id, 64) || offer["id"] != id.as_str() {
             return Err("invalid recommendation identity".into());
         }
-        if offer.get("taskContract").is_some() && !sha256_hex(offer.get("taskContract")) {
+        if offer.get("taskContract").is_some() && !offer.get("taskContract").is_some_and(sha256) {
             return Err("invalid recommendation task contract".into());
         }
         let Some(receipt) = offer.get("executionReceipt") else {
@@ -483,7 +471,7 @@ fn recommendations(value: &Value) -> Result {
             .iter()
             .any(|s| receipt["state"] == *s)
             && (receipt.get("checkpoint") == Some(&Value::Null)
-                || sha256_hex(receipt.get("checkpoint")))
+                || receipt.get("checkpoint").is_some_and(sha256))
             && safe_integer(&receipt["generation"]).is_some_and(|g| g >= 0)
             && nullable("evidence")
             && nullable("acceptanceEvidence");
@@ -522,7 +510,7 @@ pub fn validate(state: &Value) -> Result {
     }
     let object = |name: &str| state.get(name).and_then(Value::as_object);
     let discovery = state.get("lastDiscovery").is_none_or(|d| {
-        sha256_hex(d.get("key")) && safe_integer(&d["repetitions"]).is_some_and(|n| n >= 0)
+        d.get("key").is_some_and(sha256) && safe_integer(&d["repetitions"]).is_some_and(|n| n >= 0)
     });
     let valid = matches!(version, Some(1 | 2))
         && object("activity")
@@ -593,7 +581,7 @@ fn same(a: Option<&Value>, b: Option<&Value>) -> bool {
 
 fn optional_digest(contract: Option<&Value>) -> Result<Option<String>> {
     contract
-        .filter(|c| truthy(c))
+        .filter(|c| truthy(*c))
         .map(acceptance::contract_digest)
         .transpose()
 }
@@ -611,7 +599,7 @@ pub fn start(state: &mut Value, input: &Value, repository: &Value) -> Result<&'s
     if !text(field("goal").unwrap_or(&Value::Null)) {
         return Err("task goal must be 1..512 characters without control characters".into());
     }
-    let previous = state.get("taskRecord").filter(|r| truthy(r));
+    let previous = state.get("taskRecord").filter(|r| truthy(*r));
     if previous.is_some_and(|r| r.get("id") != field("id") || r.get("goal") != field("goal")) {
         return Err("task identity already has a different goal; use a new task id".into());
     }
@@ -645,7 +633,7 @@ pub fn start(state: &mut Value, input: &Value, repository: &Value) -> Result<&'s
         None => previous.and_then(|r| r.get("repositories")).cloned(),
         Some(value) => Some(json!(repository::scopes(value)?)),
     };
-    if let Some(scopes) = repositories.as_ref().filter(|r| truthy(r)) {
+    if let Some(scopes) = repositories.as_ref().filter(|r| truthy(*r)) {
         let scopes: Vec<&str> = scopes
             .as_array()
             .into_iter()
@@ -724,7 +712,7 @@ pub fn start(state: &mut Value, input: &Value, repository: &Value) -> Result<&'s
     if let Some(repositories) = repositories {
         record.insert("repositories".into(), repositories);
     }
-    if let Some(contract) = contract.filter(truthy) {
+    if let Some(contract) = contract.filter(|c| truthy(c)) {
         record.insert("engineeringContract".into(), contract);
         if given(record.get("acceptanceEvidence")).is_none() {
             record.insert(
@@ -758,23 +746,13 @@ pub fn contract(record: Option<&Value>) -> Result<Value> {
         or("risks", json!([])),
         or("checkout", Value::Null),
     ];
-    if let Some(repositories) = record.get("repositories").filter(|r| truthy(r)) {
+    if let Some(repositories) = record.get("repositories").filter(|r| truthy(*r)) {
         parts.push(repositories.clone());
     }
-    if let Some(contract) = record.get("engineeringContract").filter(|c| truthy(c)) {
+    if let Some(contract) = record.get("engineeringContract").filter(|c| truthy(*c)) {
         parts.push(json!(acceptance::contract_digest(contract)?));
     }
     Ok(json!(digest(&Value::Array(parts))))
-}
-
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
-        Value::String(s) => !s.is_empty(),
-        _ => true,
-    }
 }
 
 /// The comparable source identity of a complete repository snapshot.

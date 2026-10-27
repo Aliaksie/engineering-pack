@@ -1,7 +1,10 @@
 //! Model-profile advice over validated effective settings: which configured logical profile
 //! suits a role, given declared capabilities and cited current-target attempts. Nothing
 //! here calls or switches a model, dispatches a worker or grants permission.
-use crate::contracts::{ROLES, js_blank, js_length, kebab, safe_integer};
+use crate::{
+    contracts::{ROLES, kebab},
+    values::{js_blank, js_length, safe_integer},
+};
 use serde_json::{Map, Value, json};
 
 type Result<T> = std::result::Result<T, String>;

@@ -119,9 +119,9 @@ fn names_are_single_safe_segments() {
         assert!(!is_name(&json!(name)), "{name}");
     }
     assert!(!is_name(&json!(5)));
-    assert!(is_digest(KEY));
-    assert!(!is_digest(&KEY.to_uppercase()));
-    assert!(!is_digest(&KEY[1..]));
+    assert!(lower_hex(KEY, 64));
+    assert!(!lower_hex(&KEY.to_uppercase(), 64));
+    assert!(!lower_hex(&KEY[1..], 64));
 }
 
 #[test]

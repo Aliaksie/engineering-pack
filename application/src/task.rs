@@ -6,6 +6,7 @@ use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
 use crate::telemetry::{Operation, Recorder};
+use craft_engine::values::truthy;
 use craft_engine::{actions, models, repository, routing, session};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
@@ -29,12 +30,6 @@ pub struct Start<'a> {
     pub input: Map<String, Value>,
     pub host: Option<&'a str>,
     pub settings: &'a Value,
-}
-
-fn truthy(value: &Value) -> bool {
-    !matches!(value, Value::Null | Value::Bool(false))
-        && value.as_str() != Some("")
-        && value.as_f64() != Some(0.0)
 }
 
 /// Bind and route the task under the active binding lock.
@@ -103,7 +98,7 @@ pub fn start(
     if let Some(checkout) = repository.get("checkout") {
         binding["checkout"] = checkout.clone();
     }
-    if let Some(repositories) = repositories.as_ref().filter(|r| truthy(r)) {
+    if let Some(repositories) = repositories.as_ref().filter(|r| truthy(*r)) {
         binding["repositories"] = repositories.clone();
     }
     state::write(&file, &binding, BINDING_BYTES, false)?;
@@ -125,7 +120,7 @@ pub fn start(
     let checkpoint = if truthy(&settings["checkpoint"]["enabled"]) {
         (|| -> Result<Value, Failure> {
             let state = records::read_state(root, name, task, recorder, parent)?;
-            let record = Some(&state["taskRecord"]).filter(|r| truthy(r));
+            let record = Some(&state["taskRecord"]).filter(|r| truthy(*r));
             let metadata = json!({"taskId": task, "taskContract": session::contract(record)?});
             crate::checkpoint::save(root, name, &metadata, None, recorder, parent)
         })()
@@ -134,7 +129,7 @@ pub fn start(
         json!({"status": "disabled"})
     };
     let mut result = json!({"session": name, "task": task});
-    if let Some(repositories) = repositories.filter(truthy) {
+    if let Some(repositories) = repositories.filter(|r| truthy(r)) {
         result["repositories"] = repositories;
     }
     for (key, value) in [
@@ -223,7 +218,7 @@ pub fn step(
     let checkpoint = if truthy(&settings["checkpoint"]["enabled"]) {
         (|| -> Result<Value, Failure> {
             let state = records::read_state(root, name, task, recorder, parent)?;
-            let record = Some(&state["taskRecord"]).filter(|r| truthy(r));
+            let record = Some(&state["taskRecord"]).filter(|r| truthy(*r));
             let metadata = json!({"taskId": task, "taskContract": session::contract(record)?, "continuation": recorded.continuation});
             crate::checkpoint::save(root, name, &metadata, Some(&recorded.receipt["source"]), recorder, parent)
         })()
@@ -256,7 +251,7 @@ pub fn step(
             });
             if let Some(prior) = state["taskRecord"]
                 .get("reviewAuthorization")
-                .filter(|p| truthy(p))
+                .filter(|p| truthy(*p))
             {
                 proposal["priorAuthorization"] = prior.clone();
             }

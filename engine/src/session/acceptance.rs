@@ -1,12 +1,7 @@
 //! Engineering contracts, attributed acceptance evidence and their pure coverage.
 //! Payload versions are independent of the package and session formats.
-use super::sha256_hex;
-use crate::{
-    canonical,
-    contracts::{js_blank, js_length},
-    digest,
-    discovery::scope,
-};
+use crate::values::{line_text, sha256, truthy};
+use crate::{canonical, digest, discovery::scope, values::js_blank};
 use serde_json::{Value, json};
 
 type Result<T = ()> = std::result::Result<T, String>;
@@ -24,13 +19,7 @@ fn object(value: &Value, fields: &[&str]) -> Result {
 
 fn text(value: &Value, max: usize) -> Result {
     match value.as_str() {
-        Some(s)
-            if !js_blank(s)
-                && js_length(s) <= max
-                && !s.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}') =>
-        {
-            Ok(())
-        }
+        Some(s) if !js_blank(s) && line_text(s, max) => Ok(()),
         _ => fail("invalid-text"),
     }
 }
@@ -108,7 +97,7 @@ fn timestamp(value: &Value) -> Result {
 }
 
 fn hash(value: &Value) -> Result {
-    if sha256_hex(Some(value)) {
+    if sha256(value) {
         Ok(())
     } else {
         fail("invalid-digest")
@@ -402,7 +391,7 @@ pub fn coverage(
     current: &Value,
     blockers: bool,
 ) -> Result<Value> {
-    let Some(contract) = contract.filter(|c| super::truthy(c)) else {
+    let Some(contract) = contract.filter(|c| truthy(*c)) else {
         return Ok(
             json!({"assurance": "declared", "coverage": "unknown", "complete": false, "criteria": []}),
         );

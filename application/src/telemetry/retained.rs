@@ -1,9 +1,9 @@
 //! Reports over retained telemetry and explicit, bounded captures that keep one session's
 //! report after the rolling log rotates. Captures are never evicted automatically.
 use crate::failure::Failure;
-use craft_engine::contracts::normalize_numbers;
 use craft_engine::telemetry::report::{self, CAPTURE_MAX_BYTES, CAPTURE_MAX_ENTRIES, Scope};
 use craft_engine::timestamp;
+use craft_engine::values::normalize_numbers;
 use craft_platform::{state, telemetry as store};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

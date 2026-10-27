@@ -8,7 +8,7 @@ use crate::failure::Failure;
 use crate::project::absolute;
 use crate::project::read_input;
 use crate::telemetry::{Operation, Recorder, now_ms};
-use craft_engine::contracts::js_length;
+use craft_engine::values::js_length;
 use serde_json::{Map, Value, json};
 use std::io::{IsTerminal, Read, Write};
 
