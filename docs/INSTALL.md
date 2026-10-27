@@ -98,8 +98,8 @@ Each package's `SETUP.md` and `SETUP.json` drive one short notice on first skill
 host supports, what remains unverified and what to do next.
 
 An enabled plugin or trusted project does not prove hooks run. Do some ordinary work and look
-for fresh `host.hook` events in `telemetry.jsonl` (`craft settings --root <project>` shows its
-directory); missing events alone do not tell discovery, trust, disabled telemetry and storage
+for fresh `host.hook` events in `telemetry/events.jsonl` (`craft settings --root <project>`
+shows the shared directory); missing events alone do not tell discovery, trust, disabled telemetry and storage
 failures apart.
 
 Where shell execution is available, a status read works without hooks:

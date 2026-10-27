@@ -33,12 +33,15 @@ Builds reject symlinked or escaping package paths, stage output, replace only ma
 directories, and never touch host configuration or contact services. MCP declarations reference
 credentials through host environment variables; no package ships a live server.
 
-Runtime state lives in `.craft/state/<worktree-id>/<session-id>/`, with `shared/` for
-project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
-reject symlinks and use bounded, locked, atomic writes. Checkpoints hold explicit task data
+Runtime state lives in `.craft/state/<worktree-id>/sessions/<session-id>/`, with `shared/`
+for project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
+reject symlinks and use bounded, locked, atomic writes. On POSIX, state directories are
+created owner-only (0700) and files, including the evidence database, its lock and backup,
+owner-readable only (0600). Checkpoints hold explicit task data
 and Git state, not transcripts or tool output, and are evidence, never authorization.
 
-State left by earlier plugin versions is copied once and never written; the copy refuses
+State left by earlier plugin versions is copied once and never written; only an explicit
+`state-clean --apply` removes copied sources of the previous layout. The copy refuses
 symlinks, special files, oversized data and a store with a live writer. Windows checks are
 weaker because stable Rust exposes no link count, file ID or change time there: hard-linked
 legacy files are accepted, and a file replaced during a read is detected by size and
