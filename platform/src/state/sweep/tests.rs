@@ -18,7 +18,7 @@ impl Fixture {
     }
     fn worktree(&self) -> PathBuf {
         let id = &hash(self.0.to_str().unwrap().as_bytes())[..24];
-        self.0.join(".craft/state").join(id)
+        self.0.join(".craft").join("state").join(id)
     }
     /// A current-layout session holding a checkpoint.
     fn session(&self, session: &str) -> Directory {
