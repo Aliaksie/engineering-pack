@@ -169,6 +169,19 @@ fresh. Stop older installed plugins before upgrading: they do not honor the curr
 and a checkpoint, binding or activity record they change after the copy is refused until
 the stores are reconciled. Telemetry events and routing hints they keep writing are ignored.
 
+```sh
+craft state-clean --root <project>            # preview
+craft state-clean --root <project> --apply    # remove what the preview lists
+```
+
+Session directories are kept until cleaned explicitly. `state-clean` lists each one of either
+layout with its size and idle days, and removes it with `--apply` only when no record in it
+changed for 14 days, it holds only records Craft writes, no lock or lease is held and no open
+workspace may belong to it; its checkpoint goes with it. Anything else is kept with a reason.
+A directory is set aside, listed again and removed only if unchanged; an interrupted cleanup
+finishes on the next run. Shared records, including those the previous layout left in
+`shared/`, are only reported.
+
 ## Lookup reuse
 
 `locate` scans all fresh literal terms in one bounded pass. With a session and task it also

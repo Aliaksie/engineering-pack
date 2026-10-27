@@ -767,5 +767,7 @@ fn migrate_legacy(
     Ok(())
 }
 
+pub mod sweep;
+
 #[cfg(test)]
 mod tests;

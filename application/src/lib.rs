@@ -17,6 +17,7 @@ pub mod host;
 mod integration;
 mod project;
 mod render;
+mod retention;
 mod review;
 mod scratch;
 mod session;
