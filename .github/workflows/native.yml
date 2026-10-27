@@ -24,6 +24,21 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
+  minimum-rust:
+    name: Minimum Rust (1.90)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: '1.90.0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install minimum Rust
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+      - name: Check workspace
+        run: cargo check --workspace --all-targets --locked
+
   platform:
     name: Native (${{ matrix.label }})
     runs-on: ${{ matrix.runner }}
