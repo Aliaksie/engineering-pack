@@ -6,6 +6,7 @@ use crate::project::absolute;
 use crate::telemetry::Recorder;
 use crate::{delivery, project};
 use craft_engine::review;
+use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
@@ -113,6 +114,8 @@ pub fn run(input: &Value) -> Result<Value, String> {
     let facts = facts(input)?;
     let cwd = absolute(facts.cwd);
     let root = project_root(&cwd);
+    // A session directory this hook creates names its host.
+    let _describing = state::describing(facts.host);
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));
     recorder.package(facts.package);
     let hook = recorder.start("host.hook", None);

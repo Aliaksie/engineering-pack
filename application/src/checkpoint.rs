@@ -3,7 +3,7 @@ use crate::failure::Failure;
 use crate::session::{active_task, read_record, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::values::truthy;
-use craft_engine::{checkpoint, hash, session, timestamp};
+use craft_engine::{checkpoint, session, timestamp};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -11,8 +11,7 @@ use std::path::{Path, PathBuf};
 const CHECKPOINT_BYTES: usize = 65536;
 
 fn file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {
-    let name = format!("{}.json", &hash(session.as_bytes())[..24]);
-    Ok(state::file(root, &name, create, Some(session))?)
+    Ok(state::file(root, "checkpoint.json", create, Some(session))?)
 }
 
 /// The saved checkpoint, or `Null`.

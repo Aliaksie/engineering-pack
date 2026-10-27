@@ -33,8 +33,8 @@ Builds reject symlinked or escaping package paths, stage output, replace only ma
 directories, and never touch host configuration or contact services. MCP declarations reference
 credentials through host environment variables; no package ships a live server.
 
-Runtime state lives in `.craft/state/<worktree-id>/<session-id>/`, with `shared/` for
-project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
+Runtime state lives in `.craft/state/<worktree-id>/sessions/<session-id>/`, with `shared/`
+for project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
 reject symlinks and use bounded, locked, atomic writes. Checkpoints hold explicit task data
 and Git state, not transcripts or tool output, and are evidence, never authorization.
 

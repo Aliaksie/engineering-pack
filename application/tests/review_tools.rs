@@ -382,10 +382,7 @@ fn commands_record_a_review_trace() {
             let path = entry.path();
             if path.is_dir() {
                 pending.push(path);
-            } else if path
-                .file_name()
-                .is_some_and(|name| name == "telemetry.jsonl")
-            {
+            } else if path.file_name().is_some_and(|name| name == "events.jsonl") {
                 let text = fs::read_to_string(path).unwrap();
                 events.extend(
                     text.lines()

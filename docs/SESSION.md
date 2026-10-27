@@ -143,8 +143,17 @@ continuation at milestones rather than relying on a final callback.
   telemetry.json
   state/
     <worktree-id>/
-      <session-id>/   # bindings, checkpoints, activity, workers, journals
-      shared/         # telemetry, captures, workspaces
+      sessions/<session-id>/
+        manifest.json         # created, workspace identity, host when a hook created it
+        checkpoint.json
+        task.json             # active task binding
+        activity-<id>.json    # per-task activity, lookups and attempts
+        workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
+      shared/
+        telemetry/            # events.jsonl(.1), key.json, captures.json
+        evidence/             # project.sqlite
+        workspaces/           # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
+        migrations/           # receipts for records copied from earlier layouts
 ```
 
 IDs are hashes of the canonical root and session; raw names never become paths. Git and
@@ -152,9 +161,13 @@ non-Git roots use the same layout; linked worktrees get their own ID. Add `.craf
 to `.gitignore`; Craft never edits ignore rules or Git metadata. Lookup, snapshots, review
 and exports exclude state regardless of ignores. `craft settings` shows the directory.
 
-State from earlier layouts (`.git/craft-state/`, flat `.craft/state/`, `.capabilities/state/`)
-is copied on first access and the sources are left untouched. Stop older installed plugins
-before upgrading: they do not honor the current locks.
+State from earlier layouts (`.craft/state/<worktree-id>/<session-id>/` and
+`shared/` files, `.git/craft-state/`, flat `.craft/state/`, `.capabilities/state/`) is copied
+on first access under its current name, and the sources are left untouched. The newest
+layout holding a record is its only source. Workspaces and the evidence database start
+fresh. Stop older installed plugins before upgrading: they do not honor the current locks,
+and a checkpoint, binding or activity record they change after the copy is refused until
+the stores are reconciled. Telemetry events and routing hints they keep writing are ignored.
 
 ## Lookup reuse
 

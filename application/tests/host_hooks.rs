@@ -44,7 +44,7 @@ fn events(root: &Path) -> Vec<Value> {
             let path = entry.path();
             if path.is_dir() {
                 walk(&path, found);
-            } else if path.ends_with("telemetry.jsonl") {
+            } else if path.ends_with("events.jsonl") {
                 found.push(path);
             }
         }

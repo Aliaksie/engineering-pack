@@ -128,7 +128,7 @@ function input(root, value) {
 test('workspace is lazy, isolated by session/task/operation, promotes selective evidence and cleans on completion', t => {
   const { root, command, start, accept } = fixture(t);
   start();
-  assert.equal(fs.existsSync(stateFile(root, 'sessions')), false);
+  assert.equal(fs.existsSync(stateFile(root, 'workspaces')), false);
   assert.equal(command('session').workspace.status, 'absent');
   const first = command('workspace-write', '--data', input(root, { name: 'result.json', content: '{"verified":true}' }));
   const other = command('workspace-open', '--operation', 'worker-1');
@@ -223,7 +223,7 @@ test('workspace operations retain open operations, recover only dead owned locks
   start(['kit'], 'another');
   assert.deepEqual(command('workspace-open').cleaned.filter(item => item.removed), [{ entry: path.basename(opened.directory), removed: true }], 'capacity evicts the open workspace of another task');
   start();
-  const lock = `${stateFile(root, 'workspace-guard.json')}.lock`;
+  const lock = `${stateFile(root, 'workspaces/guard.json')}.lock`;
   fs.writeFileSync(lock, ''); // Another writer has created but not yet published its lock.
   assert.equal(workspaceOperation(root, 'status').status, 'retained');
   assert.equal(command('workspace-open').status, 'retained');
@@ -321,9 +321,10 @@ test('an abandoned open workspace is reclaimed once stale', t => {
 
 test('workspace creation refuses an unowned file where its directory belongs', t => {
   const { root, command, start } = fixture(t); start();
-  fs.mkdirSync(path.dirname(stateFile(root, 'sessions')), { recursive: true });
-  fs.writeFileSync(stateFile(root, 'sessions'), 'unowned');
-  assert.throws(() => command('workspace-open'), /workspace directory must not be a symlink/);
+  fs.mkdirSync(path.dirname(stateFile(root, 'workspaces')), { recursive: true });
+  fs.writeFileSync(stateFile(root, 'workspaces'), 'unowned');
+  // The state guard refuses it before the workspace family is opened.
+  assert.throws(() => command('workspace-open'), /state path must be a directory without symlinks/);
 });
 
 // Lock-reclaim races are verified in platform/src/scratch/tests.rs.

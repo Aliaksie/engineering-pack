@@ -33,10 +33,7 @@ impl Lane {
         self.call("open", json!({"pid":pid}))
     }
     fn journal(&self, tree: &Value) -> PathBuf {
-        let name = format!(
-            "native-control-{}.json",
-            &digest(&json!(["claude", tree]))[..24]
-        );
+        let name = format!("control-{}.json", &digest(&json!(["claude", tree]))[..24]);
         craft_platform::state::file(&self.repo.root, &name, true, Some(SESSION)).unwrap()
     }
     fn start(&self, task: &str, goal: &str) -> Result<Value, String> {

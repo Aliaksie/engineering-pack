@@ -210,8 +210,8 @@ fn operate(
     source: Value,
     now: i64,
 ) -> Result<Value, Failure> {
-    let anchor = state::file(root, "workspace-guard.json", action.creates(), None)?;
-    let sessions = anchor.with_file_name("sessions");
+    let anchor = state::file(root, "workspaces/guard.json", action.creates(), None)?;
+    let sessions = anchor.parent().expect("workspace family").to_path_buf();
     if !files::directory(&sessions, action.creates()).map_err(io)? {
         return Ok(
             json!({"status": "absent", "scratch": "absent", "evidence": {"artifacts": 0, "bytes": 0}}),
@@ -221,7 +221,9 @@ fn operate(
         return Ok(json!({"status": "retained", "reason": "workspace is in use"}));
     };
     let project = craft_engine::hash(state::canonical_root(root)?.to_string_lossy().as_bytes());
-    let mut entries = files::names(&sessions, SESSION_ENTRIES).map_err(io)?;
+    // The guard and its lock share the family directory with the workspaces.
+    let mut entries = files::names(&sessions, SESSION_ENTRIES + 2).map_err(io)?;
+    entries.retain(|entry| !matches!(entry.as_str(), "guard.json" | "guard.json.lock"));
     entries.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
     let (mut cleaned, mut retained) = (Vec::new(), Vec::new());
     let mut owned = Vec::new();

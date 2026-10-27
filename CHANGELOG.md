@@ -20,6 +20,11 @@ Native runtime (published to `distribution-next`):
 - Package manifests name the native hook handler directly (`"handler": "observe"`,
   `"deliver"` or `"review-read-only"`); the one-line `hooks/*.mjs` handler files are gone
   and no longer ship in exports. A handler file path now fails validation.
+- Private state layout 3: per-session records move to `sessions/<session-id>/` with fixed
+  names (`checkpoint.json`, `task.json`, `activity-*`, `control-*`) and a `manifest.json`;
+  shared records are grouped into `telemetry/`, `evidence/`, `workspaces/` and
+  `migrations/`. Earlier records are copied on first access; workspaces and the evidence
+  database start fresh. `craft settings` reports state `formatVersion` 3.
 
 ## 0.0.2
 

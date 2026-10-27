@@ -85,10 +85,7 @@ pub fn run(input: &Value) -> Result<Value, Failure> {
         .ok_or("native coordinator required")?;
     let tree = digest(&json!([root.to_string_lossy(), name, task]));
     let context = json!({"root":root.to_string_lossy(),"session":name,"task":task,"tree":tree});
-    let filename = format!(
-        "native-control-{}.json",
-        &digest(&json!([host, tree]))[..24]
-    );
+    let filename = format!("control-{}.json", &digest(&json!([host, tree]))[..24]);
     let file = state::file(&root, &filename, true, Some(name))?;
     let validate = |journal: &Value| {
         control::validate(journal, &json!(tree), &json!(host), &json!(coordinator))

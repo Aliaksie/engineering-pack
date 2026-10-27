@@ -31,7 +31,7 @@ fn lines(value: &Value) -> Vec<u8> {
 fn seed(root: &Path, case: &Value) {
     fs::create_dir_all(root.join(".craft")).unwrap();
     fs::write(root.join(".craft/telemetry.json"), "{\"local\":false}\n").unwrap();
-    let key = |create| state::file(root, "telemetry-key.json", create, None).unwrap();
+    let key = |create| state::file(root, "telemetry/key.json", create, None).unwrap();
     match &case["key"] {
         Value::String(text) if text.len() == 64 => {
             fs::write(key(true), format!("{}\n", json!({ "key": text }))).unwrap()
@@ -39,7 +39,7 @@ fn seed(root: &Path, case: &Value) {
         Value::String(raw) => fs::write(key(true), raw).unwrap(),
         _ => {}
     }
-    let log = state::file(root, "telemetry.jsonl", true, None).unwrap();
+    let log = state::file(root, "telemetry/events.jsonl", true, None).unwrap();
     if case.get("log").is_some() {
         let mut bytes = lines(&case["log"]);
         for byte in case["trailingBytes"].as_array().into_iter().flatten() {

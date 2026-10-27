@@ -27,6 +27,24 @@ impl Drop for Fixture {
     }
 }
 
+fn migrations(root: &Path) -> PathBuf {
+    let worktree = &hash(root.to_str().unwrap().as_bytes())[..24];
+    root.join(".craft/state")
+        .join(worktree)
+        .join("shared/migrations")
+}
+
+/// A session directory of the previous layout: `<worktree>/<session>/`.
+fn previous_session(root: &Path, session: &str) -> PathBuf {
+    let worktree = &hash(root.to_str().unwrap().as_bytes())[..24];
+    let folder = root
+        .join(".craft/state")
+        .join(worktree)
+        .join(&hash(session.as_bytes())[..24]);
+    fs::create_dir_all(&folder).unwrap();
+    folder
+}
+
 fn listing(directory: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(directory)
         .unwrap()
@@ -76,7 +94,7 @@ fn missing_malformed_and_oversized_records_preserve_existing_bytes() {
         fs::write(&record, &text).unwrap();
         assert!(write(&record, &json!({"replacement": true}), 64, false).is_err());
         assert_eq!(fs::read_to_string(&record).unwrap(), text);
-        assert_eq!(listing(record.parent().unwrap()), ["record.json"]);
+        assert_eq!(listing(record.parent().unwrap()), [MANIFEST, "record.json"]);
     }
 }
 
@@ -154,13 +172,13 @@ fn failed_atomic_publication_preserves_old_bytes_and_removes_temporary_files() {
         "injected publication failure"
     );
     assert_eq!(fs::read_to_string(&record).unwrap(), "{\"old\":true}\n");
-    assert_eq!(listing(record.parent().unwrap()), ["record.json"]);
+    assert_eq!(listing(record.parent().unwrap()), [MANIFEST, "record.json"]);
     write(&record, &json!({"next": true}), 64, false).unwrap();
     assert_eq!(read(&record, 64).unwrap(), Some(json!({"next": true})));
 }
 
 #[test]
-fn routing_generation_migrates_with_its_record_and_remains_source_bound() {
+fn routing_generation_migrates_with_its_record_and_the_copy_stays_authoritative() {
     let fixture = Fixture::new();
     let legacy = fixture.0.join(".capabilities").join("state");
     fs::create_dir_all(&legacy).unwrap();
@@ -170,23 +188,27 @@ fn routing_generation_migrates_with_its_record_and_remains_source_bound() {
     assert_eq!(fs::read_to_string(&record).unwrap(), "{\"generation\":2}\n");
     let generation = record.with_file_name("routing-demo.json.generation");
     assert_eq!(fs::read_to_string(&generation).unwrap(), "2\n");
-    let receipts: Vec<String> = listing(record.parent().unwrap())
-        .into_iter()
-        .filter(|name| name.starts_with("migration-"))
-        .collect();
+    assert_eq!(
+        listing(record.parent().unwrap()),
+        [
+            MANIFEST,
+            "routing-demo.json",
+            "routing-demo.json.generation"
+        ]
+    );
+    let receipts = listing(&migrations(&fixture.0));
     assert_eq!(receipts.len(), 1);
-    let receipt = read(&record.with_file_name(&receipts[0]), 4096)
+    let receipt = read(&migrations(&fixture.0).join(&receipts[0]), 4096)
         .unwrap()
         .unwrap();
     assert_eq!(receipt["formatVersion"], 1);
     let source = receipt["source"].as_str().unwrap();
     assert!(source.len() == 24 && source.bytes().all(|b| b.is_ascii_hexdigit()));
+    // A cache: an older writer's later change is ignored rather than refused.
     fs::write(legacy.join("routing-demo.json.generation"), "3\n").unwrap();
-    assert!(
-        file(&fixture.0, "routing-demo.json", false, SESSION)
-            .unwrap_err()
-            .to_string()
-            .contains("changed after migration")
+    assert_eq!(
+        file(&fixture.0, "routing-demo.json", false, SESSION).unwrap(),
+        record
     );
     assert_eq!(fs::read_to_string(&generation).unwrap(), "2\n");
 }
@@ -203,6 +225,7 @@ fn placement_hashes_the_physical_root_and_session() {
         place.directory.ends_with(
             Path::new(".craft/state")
                 .join(&place.worktree_id)
+                .join("sessions")
                 .join(&place.session_id)
         )
     );
@@ -216,12 +239,42 @@ fn placement_hashes_the_physical_root_and_session() {
             "invalid state session"
         );
     }
-    for name in ["", ".", "..", "a/b", "a\\b", "λ.json"] {
+    for name in [
+        "",
+        ".",
+        "..",
+        "a/b",
+        "a\\b",
+        "λ.json",
+        "record.json",
+        "telemetry/",
+        "telemetry/a/b",
+        "sessions/x.json",
+    ] {
         assert_eq!(
             file(&fixture.0, name, false, None).unwrap_err().to_string(),
             "invalid state filename"
         );
     }
+    for name in ["telemetry/key.json", "a/b", "..", "λ.json"] {
+        assert_eq!(
+            file(&fixture.0, name, false, SESSION)
+                .unwrap_err()
+                .to_string(),
+            "invalid state filename"
+        );
+    }
+    assert!(
+        file(&fixture.0, "telemetry/key.json", false, None)
+            .unwrap()
+            .ends_with(Path::new("shared/telemetry/key.json"))
+    );
+    assert_eq!(
+        shared(&fixture.0, "sessions", false)
+            .unwrap_err()
+            .to_string(),
+        "invalid state family"
+    );
     assert!(
         !fixture.0.join(".craft").exists(),
         "lookups never create state"
@@ -236,7 +289,7 @@ fn symlinked_state_directories_are_refused() {
     fs::create_dir(fixture.0.join(".craft")).unwrap();
     std::os::unix::fs::symlink(&elsewhere.0, fixture.0.join(".craft").join("state")).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, None)
+        file(&fixture.0, "telemetry/key.json", true, None)
             .unwrap_err()
             .to_string(),
         "state path must be a directory without symlinks"
@@ -251,17 +304,21 @@ fn legacy_hard_links_and_locks_block_migration() {
     let legacy = fixture.0.join(".capabilities").join("state");
     fs::create_dir_all(&legacy).unwrap();
     fs::write(fixture.0.join("outside.json"), "{}").unwrap();
-    fs::hard_link(fixture.0.join("outside.json"), legacy.join("record.json")).unwrap();
+    fs::hard_link(
+        fixture.0.join("outside.json"),
+        legacy.join("telemetry-key.json"),
+    )
+    .unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, None)
+        file(&fixture.0, "telemetry/key.json", true, None)
             .unwrap_err()
             .to_string(),
         "unsafe or oversized legacy state"
     );
-    fs::remove_file(legacy.join("record.json")).unwrap();
-    fs::write(legacy.join("record.json"), "{}").unwrap();
+    fs::remove_file(legacy.join("telemetry-key.json")).unwrap();
+    fs::write(legacy.join("telemetry-key.json"), "{}").unwrap();
     fs::write(legacy.join("other.json.lock"), "").unwrap();
-    let busy = file(&fixture.0, "record.json", true, None).unwrap_err();
+    let busy = file(&fixture.0, "telemetry/key.json", true, None).unwrap_err();
     assert!(busy.to_string().contains("writer is busy"));
     assert_eq!(busy.kind(), Some(ErrorKind::ResourceBusy));
 }
@@ -313,7 +370,7 @@ fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
             _ => root.join(".capabilities/state"),
         };
         fs::create_dir_all(old.join("sessions/owned/evidence")).unwrap();
-        fs::write(old.join("record.json"), "{\"history\":[1,2]}\n").unwrap();
+        fs::write(old.join("session-demo.json"), "{\"history\":[1,2]}\n").unwrap();
         fs::write(old.join("telemetry.jsonl"), "{\"schemaVersion\":1}\n").unwrap();
         fs::write(
             old.join("telemetry.jsonl.1"),
@@ -327,32 +384,34 @@ fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
         .unwrap();
         let before = metadata(&git);
         let session = Some("existing-session");
-        let record = file(root, "record.json", false, session).unwrap();
+        let record = file(root, "activity-demo.json", false, session).unwrap();
         assert_eq!(
             read(&record, 1024).unwrap(),
             Some(json!({"history": [1, 2]})),
             "{namespace}"
         );
         write(&record, &json!({"history": [1, 2, 3]}), 1024, false).unwrap();
-        assert_eq!(file(root, "record.json", false, session).unwrap(), record);
-        let log = file(root, "telemetry.jsonl", false, None).unwrap();
+        assert_eq!(
+            file(root, "activity-demo.json", false, session).unwrap(),
+            record
+        );
+        let log = file(root, "telemetry/events.jsonl", false, None).unwrap();
         assert_eq!(
             fs::read_to_string(format!("{}.1", log.display())).unwrap(),
             "{\"schemaVersion\":1,\"older\":true}\n"
         );
-        let guard = file(root, "workspace-guard.json", false, None).unwrap();
-        assert_eq!(
-            fs::read_to_string(guard.with_file_name("sessions/owned/evidence/artifact.txt"))
-                .unwrap(),
-            "retained evidence"
-        );
+        // Workspaces start fresh: their scratch is disposable and their evidence stays
+        // readable where it was.
+        let guard = file(root, "workspaces/guard.json", false, None).unwrap();
+        assert!(!guard.with_file_name("owned").exists());
+        assert!(old.join("sessions/owned/evidence/artifact.txt").exists());
         assert_eq!(
             metadata(&git),
             before,
             "{namespace}: Git metadata unchanged"
         );
         assert_eq!(
-            fs::read_to_string(old.join("record.json")).unwrap(),
+            fs::read_to_string(old.join("session-demo.json")).unwrap(),
             "{\"history\":[1,2]}\n"
         );
         assert_eq!(
@@ -364,9 +423,9 @@ fn legacy_records_migrate_without_git_metadata_or_configuration_writes() {
             r#"{"local":false}"#
         );
         // An older writer resuming on the legacy store cannot silently fork history.
-        fs::write(old.join("record.json"), r#"{"history":[4]}"#).unwrap();
+        fs::write(old.join("session-demo.json"), r#"{"history":[4]}"#).unwrap();
         assert!(
-            file(root, "record.json", false, session)
+            file(root, "activity-demo.json", false, session)
                 .unwrap_err()
                 .to_string()
                 .contains("changed after migration")
@@ -384,23 +443,23 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     let fixture = Fixture::new();
     let legacy = fixture.0.join(".craft/state");
     fs::create_dir_all(&legacy).unwrap();
-    let old = legacy.join("record.json");
-    let target = fixture.record("record.json");
+    let old = legacy.join("session-demo.json");
+    let target = fixture.record("activity-demo.json");
     fs::write(&old, r#"{"value":1}"#).unwrap();
-    fs::write(legacy.join("record.json.lock"), "").unwrap();
+    fs::write(legacy.join("session-demo.json.lock"), "").unwrap();
     assert!(
-        file(&fixture.0, "record.json", true, SESSION)
+        file(&fixture.0, "activity-demo.json", true, SESSION)
             .unwrap_err()
             .to_string()
             .contains("legacy state writer is busy")
     );
-    fs::remove_file(legacy.join("record.json.lock")).unwrap();
+    fs::remove_file(legacy.join("session-demo.json.lock")).unwrap();
     fs::write(&old, "broken").unwrap();
-    assert!(file(&fixture.0, "record.json", true, SESSION).is_err());
+    assert!(file(&fixture.0, "activity-demo.json", true, SESSION).is_err());
     fs::remove_file(&old).unwrap();
     std::os::unix::fs::symlink(&target, &old).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION)
+        file(&fixture.0, "activity-demo.json", true, SESSION)
             .unwrap_err()
             .to_string(),
         "unsafe or oversized legacy state"
@@ -409,7 +468,7 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     fs::write(&old, r#"{"value":1}"#).unwrap();
     fs::write(&target, r#"{"value":2}"#).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION)
+        file(&fixture.0, "activity-demo.json", true, SESSION)
             .unwrap_err()
             .to_string(),
         "legacy state destination conflict"
@@ -418,7 +477,7 @@ fn migration_refuses_old_locks_malformed_records_symlinks_and_destination_confli
     // A matching file without a published receipt is an interrupted copy.
     fs::write(&target, r#"{"value":1}"#).unwrap();
     assert_eq!(
-        file(&fixture.0, "record.json", true, SESSION).unwrap(),
+        file(&fixture.0, "activity-demo.json", true, SESSION).unwrap(),
         target
     );
     assert_eq!(read(&target, 1024).unwrap(), Some(json!({"value": 1})));
@@ -431,27 +490,30 @@ fn an_overlapping_migration_writer_is_refused_without_partial_copies() {
     // Windows `join(".craft/state")` keeps the forward slash.
     let legacy = fixture.0.join(".craft").join("state");
     fs::create_dir_all(&legacy).unwrap();
-    fs::write(legacy.join("record.json"), r#"{"history":[1]}"#).unwrap();
-    let target = location(&fixture.0, SESSION).unwrap().directory;
-    fs::create_dir_all(&target).unwrap();
-    let old = legacy.join("record.json");
-    let receipt = target.join(format!(
+    fs::write(legacy.join("session-demo.json"), r#"{"history":[1]}"#).unwrap();
+    let receipts = migrations(&fixture.0);
+    fs::create_dir_all(&receipts).unwrap();
+    let old = legacy.join("session-demo.json");
+    let receipt = receipts.join(format!(
         "migration-{}.json",
         short(old.to_str().unwrap().as_bytes())
     ));
     fs::write(format!("{}.lock", receipt.display()), "").unwrap();
-    let busy = file(&fixture.0, "record.json", true, SESSION).unwrap_err();
+    let busy = file(&fixture.0, "activity-demo.json", true, SESSION).unwrap_err();
     assert_eq!(busy.to_string(), "state migration is busy");
     assert_eq!(busy.kind(), Some(ErrorKind::ResourceBusy));
-    assert!(!target.join("record.json").exists());
+    let target = location(&fixture.0, SESSION).unwrap().directory;
+    assert!(!target.join("activity-demo.json").exists());
     fs::remove_file(format!("{}.lock", receipt.display())).unwrap();
-    let record = file(&fixture.0, "record.json", true, SESSION).unwrap();
+    let record = file(&fixture.0, "activity-demo.json", true, SESSION).unwrap();
     assert_eq!(read(&record, 1024).unwrap(), Some(json!({"history": [1]})));
-    assert!(
-        listing(&target)
-            .iter()
-            .all(|name| !name.ends_with(".tmp") && !name.ends_with(".lock"))
-    );
+    for folder in [&target, &receipts] {
+        assert!(
+            listing(folder)
+                .iter()
+                .all(|name| !name.ends_with(".tmp") && !name.ends_with(".lock"))
+        );
+    }
 }
 
 #[test]
@@ -486,15 +548,15 @@ fn linked_worktree_migration_reads_its_own_legacy_git_directory() {
         .join("craft-state")
         .join(&hash(linked.to_str().unwrap().as_bytes())[..24]);
     fs::create_dir_all(&legacy).unwrap();
-    fs::write(legacy.join("record.json"), r#"{"worktree":"linked"}"#).unwrap();
+    fs::write(legacy.join("session-demo.json"), r#"{"worktree":"linked"}"#).unwrap();
     let before = metadata(&main);
     let session = Some("linked-session");
-    let record = file(&linked, "record.json", false, session).unwrap();
+    let record = file(&linked, "activity-demo.json", false, session).unwrap();
     assert_eq!(
         read(&record, 1024).unwrap(),
         Some(json!({"worktree": "linked"}))
     );
-    let main_record = file(&fixture.0, "record.json", false, session).unwrap();
+    let main_record = file(&fixture.0, "activity-demo.json", false, session).unwrap();
     assert_eq!(read(&main_record, 1024).unwrap(), None);
     assert_eq!(metadata(&main), before);
 }
@@ -534,7 +596,169 @@ fn concurrent_writers_serialize_on_one_lock() {
     );
     assert_eq!(
         listing(record.parent().unwrap()),
-        ["counter.json"],
+        ["counter.json", MANIFEST],
         "no lock or temporary file remains"
+    );
+}
+
+#[test]
+fn a_new_session_directory_is_described_once_without_raw_identities() {
+    let fixture = Fixture::new();
+    let described = |session: &str, host: Option<&str>| {
+        let _describing = host.map(describing);
+        let record = file(&fixture.0, "record.json", true, Some(session)).unwrap();
+        read(&record.with_file_name(MANIFEST), MANIFEST_BYTES)
+            .unwrap()
+            .unwrap()
+    };
+    let manifest = described("session λ", Some("claude"));
+    assert_eq!(manifest["formatVersion"], 1);
+    assert_eq!(manifest["host"], "claude");
+    assert_eq!(
+        manifest["workspace"],
+        craft_engine::digest(&json!("session λ"))
+    );
+    assert!(manifest["created"].as_u64().unwrap() > 0);
+    let directory = location(&fixture.0, Some("session λ")).unwrap().directory;
+    let text = fs::read_to_string(directory.join(MANIFEST)).unwrap();
+    assert!(!text.contains("session λ") && !text.contains(fixture.0.to_str().unwrap()));
+    // Later writers, with or without a host, keep the first description.
+    assert_eq!(described("session λ", Some("codex")), manifest);
+    // Outside a hook, and for odd host names, the host is omitted; the scope ends with its guard.
+    assert!(described("other", None).get("host").is_none());
+    assert!(described("odd", Some("Host/1")).get("host").is_none());
+    {
+        let _outer = describing("claude");
+        drop(describing("codex"));
+        assert_eq!(described("nested", None)["host"], "claude");
+    }
+    assert!(described("after", None).get("host").is_none());
+    // Lookups never create or describe a session.
+    assert!(
+        !location(&fixture.0, Some("absent"))
+            .unwrap()
+            .directory
+            .exists()
+    );
+}
+
+#[test]
+fn previous_layout_records_are_copied_under_their_new_names() {
+    let fixture = Fixture::new();
+    let session = "session λ";
+    let old = previous_session(&fixture.0, session);
+    let binding = format!(
+        "active-{}.json",
+        &craft_engine::digest(&json!(session))[..24]
+    );
+    let checkpoint = format!("{}.json", &hash(session.as_bytes())[..24]);
+    for (name, text) in [
+        (checkpoint.as_str(), "{\"checkpoint\":1}\n"),
+        (binding.as_str(), "{\"task\":\"t\"}\n"),
+        ("session-abc.json", "{\"activity\":{}}\n"),
+        ("native-control-abc.json", "{\"journal\":1}\n"),
+        ("workers-abc.json", "{\"workers\":1}\n"),
+        ("routing-abc.json", "{\"hint\":1}\n"),
+        ("routing-abc.json.generation", "{\"key\":1}\n"),
+    ] {
+        fs::write(old.join(name), text).unwrap();
+    }
+    // Another record's live lock in the old directory does not block this one.
+    fs::write(old.join("workers-abc.json.lock"), "").unwrap();
+    // An older flat store with different content loses to the newer layout.
+    let flat = fixture.0.join(".craft/state");
+    fs::write(flat.join("session-abc.json"), "{\"activity\":\"flat\"}\n").unwrap();
+    for (new, expected) in [
+        ("checkpoint.json", json!({"checkpoint": 1})),
+        ("task.json", json!({"task": "t"})),
+        ("activity-abc.json", json!({"activity": {}})),
+        ("control-abc.json", json!({"journal": 1})),
+        ("routing-abc.json", json!({"hint": 1})),
+    ] {
+        let record = file(&fixture.0, new, false, Some(session)).unwrap();
+        assert_eq!(read(&record, 1024).unwrap(), Some(expected), "{new}");
+    }
+    let routing = file(&fixture.0, "routing-abc.json", false, Some(session)).unwrap();
+    assert_eq!(
+        read(&routing.with_file_name("routing-abc.json.generation"), 1024).unwrap(),
+        Some(json!({"key": 1}))
+    );
+    // This record's own lock still means an unfinished old writer.
+    assert_eq!(
+        file(&fixture.0, "workers-abc.json", false, Some(session))
+            .unwrap_err()
+            .kind(),
+        Some(ErrorKind::ResourceBusy)
+    );
+    // The old layout is left as it was.
+    assert_eq!(
+        fs::read_to_string(old.join("session-abc.json")).unwrap(),
+        "{\"activity\":{}}\n"
+    );
+    let shared = previous_session(&fixture.0, "unused").with_file_name("shared");
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(shared.join("telemetry-key.json"), "{\"key\":\"k\"}\n").unwrap();
+    fs::write(shared.join("telemetry.jsonl"), "{\"schemaVersion\":1}\n").unwrap();
+    fs::write(shared.join("project-evidence.sqlite.lock"), "").unwrap();
+    let key = file(&fixture.0, "telemetry/key.json", false, None).unwrap();
+    assert!(key.ends_with("shared/telemetry/key.json"));
+    assert_eq!(read(&key, 256).unwrap(), Some(json!({"key": "k"})));
+    let log = file(&fixture.0, "telemetry/events.jsonl", false, None).unwrap();
+    assert_eq!(fs::read_to_string(&log).unwrap(), "{\"schemaVersion\":1}\n");
+    // An older plugin still appending to the previous log does not block the copied one.
+    fs::write(
+        shared.join("telemetry.jsonl"),
+        "{\"schemaVersion\":1}\n{\"old\":1}\n",
+    )
+    .unwrap();
+    fs::write(shared.join("telemetry.jsonl.1"), "{\"rotated\":1}\n").unwrap();
+    assert_eq!(
+        file(&fixture.0, "telemetry/events.jsonl", false, None).unwrap(),
+        log
+    );
+    assert_eq!(fs::read_to_string(&log).unwrap(), "{\"schemaVersion\":1}\n");
+    // A user record changed by an older writer still is a fork.
+    fs::write(shared.join("telemetry-key.json"), "{\"key\":\"other\"}\n").unwrap();
+    assert!(
+        file(&fixture.0, "telemetry/key.json", false, None)
+            .unwrap_err()
+            .to_string()
+            .contains("changed after migration")
+    );
+}
+
+#[test]
+fn an_unchanged_source_is_recognized_by_its_stamp_and_a_changed_one_is_refused() {
+    let fixture = Fixture::new();
+    let old = previous_session(&fixture.0, "s");
+    fs::write(old.join("session-abc.json"), "{\"n\":1}\n").unwrap();
+    let record = file(&fixture.0, "activity-abc.json", true, Some("s")).unwrap();
+    write(&record, &json!({"n": 2}), 64, false).unwrap();
+    let receipts = migrations(&fixture.0);
+    let name = listing(&receipts).pop().unwrap();
+    let first = read(&receipts.join(&name), 4096).unwrap().unwrap();
+    assert!(first["stamp"].is_string());
+    file(&fixture.0, "activity-abc.json", true, Some("s")).unwrap();
+    assert_eq!(read(&receipts.join(&name), 4096).unwrap().unwrap(), first);
+    // Same bytes, new modification time: verified once, then remembered.
+    let source = File::options()
+        .write(true)
+        .open(old.join("session-abc.json"))
+        .unwrap();
+    source
+        .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5))
+        .unwrap();
+    drop(source);
+    file(&fixture.0, "activity-abc.json", true, Some("s")).unwrap();
+    let second = read(&receipts.join(&name), 4096).unwrap().unwrap();
+    assert_eq!(second["source"], first["source"]);
+    assert_ne!(second["stamp"], first["stamp"]);
+    assert_eq!(read(&record, 64).unwrap(), Some(json!({"n": 2})));
+    fs::write(old.join("session-abc.json"), "{\"n\":9}\n").unwrap();
+    assert!(
+        file(&fixture.0, "activity-abc.json", true, Some("s"))
+            .unwrap_err()
+            .to_string()
+            .contains("changed after migration")
     );
 }
