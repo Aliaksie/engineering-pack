@@ -74,7 +74,14 @@ pub fn start(
     if let Some(planned) = &planned {
         // Refuse an invalid start before the plan records this session as the task's holder.
         session::start(&mut previous.clone(), &input, &repository)?;
-        let from = crate::plan::claim(root, planned.id, task, name, planned.take_over)?;
+        let from = crate::plan::claim(
+            root,
+            planned.id,
+            task,
+            name,
+            planned.take_over,
+            repositories.as_ref(),
+        )?;
         claimed = json!({"id": planned.id, "task": task});
         if let Some(from) = from {
             claimed["takenOver"] =
@@ -161,6 +168,13 @@ pub fn start(
         result["repositories"] = repositories;
     }
     if !claimed.is_null() {
+        if let Some(planned) = &planned {
+            // The task's context in the plan; a plan too large to summarize never blocks work.
+            claimed["envelope"] = crate::plan::envelope(root, planned.id, task, false)
+                .unwrap_or_else(
+                    |failure| json!({"status": "unavailable", "reason": failure.message}),
+                );
+        }
         result["plan"] = claimed;
     }
     for (key, value) in [
@@ -234,7 +248,16 @@ pub fn step(
     }
     let settings = &load(recorder, parent)?;
     let saved = records::read_state(root, name, task, recorder, parent)?;
-    let repository = snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)?;
+    let repositories = saved["taskRecord"].get("repositories");
+    // A plan task completes only after its children and within the paths it owns;
+    // refused before the step is recorded.
+    let scope = match &planned {
+        Some(plan) if input.get("complete") == Some(&json!(true)) => {
+            crate::plan::completable(root, plan, task, repositories)?
+        }
+        _ => Value::Null,
+    };
+    let repository = snapshot::workspace(root, repositories, false)?;
     let profile = input.get("profile").and_then(Value::as_str);
     let limit = profile
         .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
@@ -363,7 +386,10 @@ pub fn step(
         "session": name, "task": task, "recorded": recorded.receipt, "result": result, "complete": complete,
         "acceptance": acceptance, "workspace": workspace, "checkpoint": checkpoint,
     });
-    if let Some(planned) = planned {
+    if let Some(mut planned) = planned {
+        if !scope.is_null() {
+            planned["scope"] = scope;
+        }
         response["plan"] = planned;
     }
     if let Some(offer) = &offer {

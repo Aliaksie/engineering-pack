@@ -30,7 +30,9 @@ paths. When that context offers an earlier unfinished task that the request cont
 with `task-adopt --from <from>` instead of starting it again. When it lists an open plan the
 request continues, start its ready task with `task-start --plan <plan> --task <task>`; take
 over a task held elsewhere only for that continuation. For work that is multi-step, likely to
-span sessions or delegated, create a plan with `plan-create` and say so. Honor effective
+span sessions or delegated, create a plan with `plan-create` and say so. Give a delegated or
+separable task a `parent`, the paths it owns and its acceptance; hand a worker the task's
+`plan-envelope --brief`, not the conversation. Honor effective
 disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
 Explicitly requested receipt commands remain available. Normal
 `route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.

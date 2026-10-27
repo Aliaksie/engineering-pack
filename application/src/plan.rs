@@ -4,8 +4,9 @@
 use crate::failure::Failure;
 use crate::session::read_record;
 use crate::telemetry::now_ms;
-use craft_engine::plan::{self, Claim, Progress};
+use craft_engine::plan::{self, Claim, Observed, Progress};
 use craft_engine::values::safe_integer;
+use craft_platform::repository::snapshot;
 use craft_platform::state::{self, Lock, sweep};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -217,7 +218,34 @@ pub fn task(root: &Path, id: &str, task: &str) -> Result<Value, Failure> {
         .ok_or_else(|| format!("plan {id} has no task {task}").into())
 }
 
-/// Claim `task` of plan `id` for `session`. Returns the session directory that held it
+/// The task's source as the scope check reads it, compared with `base` when given.
+fn observed(
+    root: &Path,
+    repositories: Option<&Value>,
+    base: Option<&Value>,
+) -> Result<Vec<Observed>, Failure> {
+    let head = |path: &str| {
+        base?["repositories"]
+            .as_array()?
+            .iter()
+            .find(|r| r["path"] == path)?["head"]
+            .as_str()
+            .map(str::to_string)
+    };
+    Ok(snapshot::task_changes(root, repositories, &head)?
+        .into_iter()
+        .map(|(path, changes)| Observed {
+            path,
+            head: changes.head,
+            committed: changes.committed,
+            uncommitted: changes.uncommitted,
+            complete: changes.complete,
+        })
+        .collect())
+}
+
+/// Claim `task` of plan `id` for `session`; `repositories` is the task's source, which a
+/// task owning paths records as it starts. Returns the session directory that held it
 /// before when it was taken over.
 pub fn claim(
     root: &Path,
@@ -225,11 +253,27 @@ pub fn claim(
     task: &str,
     session: &str,
     take_over: bool,
+    repositories: Option<&Value>,
 ) -> Result<Option<String>, Failure> {
     let owner = owner(root, session)?;
+    // Read the source before the lock; only a task that starts here records it.
+    let scoped = read(root, id)?
+        .and_then(|p| {
+            p["tasks"]
+                .as_array()?
+                .iter()
+                .find(|t| t["id"] == task)
+                .cloned()
+        })
+        .is_some_and(|t| t.get("scope").is_some() && t["owner"].is_null());
+    let base = if scoped {
+        Some(plan::baseline(&observed(root, repositories, None)?))
+    } else {
+        None
+    };
     let writer = writer(root)?;
     let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
-    let claimed = plan::claim(&mut saved, task, &owner, take_over, now_ms())?;
+    let claimed = plan::claim(&mut saved, task, &owner, take_over, base, now_ms())?;
     if claimed != Claim::Held {
         writer.save(root, &saved)?;
     }
@@ -243,6 +287,71 @@ pub fn claim(
 pub fn held(root: &Path, id: &str, task: &str, session: &str) -> Result<(), Failure> {
     let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
     Ok(plan::owned(&saved, task, &owner(root, session)?)?)
+}
+
+/// Refuse completing `task` before its children or with files changed outside the paths
+/// it owns; returns the scope report.
+pub fn completable(
+    root: &Path,
+    id: &str,
+    task: &str,
+    repositories: Option<&Value>,
+) -> Result<Value, Failure> {
+    let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let found = saved["tasks"]
+        .as_array()
+        .and_then(|tasks| tasks.iter().find(|t| t["id"] == task))
+        .ok_or_else(|| format!("plan {id} has no task {task}"))?;
+    let changed = match found.get("scopeBase") {
+        Some(base) if found["scope"]["paths"].is_array() => {
+            plan::changed(base, &observed(root, repositories, Some(base))?)
+        }
+        _ => None,
+    };
+    Ok(plan::completion(&saved, task, changed.as_deref())?)
+}
+
+/// What the parent's holder last checkpointed for it: a reference, never its content.
+fn parent_checkpoint(root: &Path, parent: &Value) -> Value {
+    let Some(holder) = parent["owner"]["session"].as_str() else {
+        return Value::Null;
+    };
+    let saved = sweep::session(root, holder)
+        .ok()
+        .flatten()
+        .and_then(|d| {
+            read_record(
+                &d.path.join("checkpoint.json"),
+                crate::checkpoint::CHECKPOINT_BYTES,
+            )
+            .ok()
+        })
+        .filter(|c| craft_engine::checkpoint::validate(c).is_ok() && c["taskId"] == parent["id"]);
+    match saved {
+        Some(saved) => json!({
+            "session": holder, "head": saved["head"], "updated": saved["updated"],
+            "nextStep": saved["nextStep"],
+        }),
+        None => json!({"session": holder}),
+    }
+}
+
+/// `plan-envelope`: the small context for one task, or with `brief` the worker brief.
+pub fn envelope(root: &Path, id: &str, task: &str, brief: bool) -> Result<Value, Failure> {
+    let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let parent = saved["tasks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|t| t["id"] == task)
+        .and_then(|t| t.get("parent"))
+        .and_then(|p| saved["tasks"].as_array()?.iter().find(|t| t["id"] == *p));
+    let checkpoint = parent.map_or(Value::Null, |p| parent_checkpoint(root, p));
+    let shown = plan::envelope(&saved, task, checkpoint)?;
+    if brief {
+        return Ok(plan::brief(&shown)?);
+    }
+    Ok(shown)
 }
 
 /// Mirror one recorded step onto the plan task; returns its new state.

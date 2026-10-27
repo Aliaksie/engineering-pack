@@ -102,6 +102,7 @@ const COMMANDS: &[Command] = &[
     Command::run("plan", plan_show).receipt(|_, value| plan_receipt(value)),
     Command::run("plan-create", plan_create).receipt(|_, value| plan_receipt(value)),
     Command::run("plan-update", plan_update).receipt(|_, value| plan_receipt(value)),
+    Command::run("plan-envelope", plan_envelope),
     Command::run("settings", settings),
     Command::run("route", route),
     Command::run("context-report", context_report).bundled(),
@@ -202,6 +203,7 @@ const OPTIONS: &[&str] = &[
     "reference",
     "expected-revision",
     "take-over",
+    "brief",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -211,6 +213,7 @@ const FLAGS: &[&str] = &[
     "complete",
     "blockers",
     "take-over",
+    "brief",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -297,6 +300,9 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("take-over") && !["task-start", "plan-update"].contains(&action) {
         return Err("--take-over is supported by task-start and plan-update".into());
+    }
+    if present("brief") && action != "plan-envelope" {
+        return Err("--brief is supported by plan-envelope".into());
     }
     if present("repository") && !["task-start", "checkpoint-save"].contains(&action) {
         return Err("--repository is supported by task-start and checkpoint-save; other commands reuse the saved scope".into());
@@ -728,10 +734,15 @@ fn task_start(
             start.insert("repositories".into(), repositories.clone());
         }
     }
-    if let Some(file) = given("contract") {
+    // An explicit --contract replaces the contract file the plan task names.
+    let planned_contract = planned
+        .as_ref()
+        .and_then(|p| p["contract"].as_str())
+        .map(|file| root(options).join(file).to_string_lossy().into_owned());
+    if let Some(file) = given("contract").map(str::to_string).or(planned_contract) {
         start.insert(
             "engineeringContract".into(),
-            read_input(recorder, parent, file)?,
+            read_input(recorder, parent, &file)?,
         );
     }
     if let Some(repositories) = options.values.get("repository") {
@@ -813,6 +824,23 @@ fn plan_create(
         return Err("plan-create requires --plan and --goal".into());
     }
     crate::plan::create(&root(options), &input)
+}
+
+/// The small context of one plan task, or with `--brief` the worker brief.
+fn plan_envelope(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task)) = (options.get("plan"), options.get("task")) else {
+        return Err("plan-envelope requires --plan and --task".into());
+    };
+    crate::plan::envelope(
+        &root(options),
+        plan,
+        task,
+        options.values.contains_key("brief"),
+    )
 }
 
 /// Apply `--data` changes to a plan still at `--expected-revision`.
@@ -1271,7 +1299,7 @@ fn help(action: &str) -> Value {
         }),
         "plan-create" => json!({
             "usage": "plan-create --plan id --goal \"outcome\" [--reference tracker:PROJ-123 ...] [--data plan.json] [--root project]",
-            "data": {"tasks": [{"id": "a", "goal": "First step", "dependsOn": [], "files": [], "acceptance": []}], "decisions": [{"id": "d1", "text": "Decision"}]},
+            "data": {"tasks": [{"id": "a", "goal": "First step", "dependsOn": [], "files": [], "acceptance": []}, {"id": "a1", "goal": "Part of the first step", "parent": "a", "scope": {"paths": ["src/part/**"]}, "contract": "contracts/part.json", "returns": "What changed"}], "decisions": [{"id": "d1", "text": "Decision"}]},
             "mode": "create a local work plan; references are opaque and nothing is read from a tracker",
         }),
         "plan-update" => json!({
@@ -1279,6 +1307,10 @@ fn help(action: &str) -> Value {
             "changes": ["goal", "status", "references", "decisions", "tasks"],
             "taskStates": ["pending", "failed", "abandoned"],
             "mode": "revision-fenced change; a task another session holds changes only with --take-over",
+        }),
+        "plan-envelope" => json!({
+            "usage": "plan-envelope --plan id --task task-id [--brief] [--root project]",
+            "mode": "read-only: the task's goal, acceptance, owned scope, dependency results, parent checkpoint reference and latest decisions; --brief emits the worker brief",
         }),
         "task-adopt" => json!({
             "usage": "task-adopt --session id --from earlier-session [--root project]",
@@ -1784,6 +1816,7 @@ fn task_receipt(result: &Value) -> String {
             lines.push(format!("{label}: {items}"));
         }
     }
+    lines.extend(envelope_lines(&result["plan"]["envelope"]));
     lines.push(checkpoint_line(&result["checkpoint"]));
     let model = &result["modelAdvice"];
     if model.is_object() {
@@ -1806,6 +1839,33 @@ fn task_receipt(result: &Value) -> String {
     }
     lines.retain(|line| !line.is_empty());
     format!("{}\n", lines.join("\n"))
+}
+
+/// What a plan task's envelope adds to the receipt; `plan-envelope` shows all of it.
+fn envelope_lines(envelope: &Value) -> Vec<String> {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let mut lines = Vec::new();
+    let task = &envelope["task"];
+    if let Some(paths) = joined(&task["scope"]["paths"]) {
+        lines.push(format!("Owns: {paths}"));
+    }
+    if let Some(returns) = nonempty(&task["returns"]) {
+        lines.push(format!("Returns: {returns}"));
+    }
+    if let Some(parent) = nonempty(&envelope["parent"]["id"]) {
+        let next = nonempty(&envelope["parent"]["nextStep"])
+            .map_or(String::new(), |n| format!(" — next: {n}"));
+        lines.push(format!("Part of: {parent}{next}"));
+    }
+    for dependency in envelope["dependencies"].as_array().into_iter().flatten() {
+        let result = nonempty(&dependency["result"]).map_or(String::new(), |r| format!(": {r}"));
+        lines.push(format!(
+            "After {} ({}){result}",
+            text(&dependency["id"]),
+            text(&dependency["state"])
+        ));
+    }
+    lines
 }
 
 /// The compact checkpoint receipt; `--json` or `--verbose` returns the full result.

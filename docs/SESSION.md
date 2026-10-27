@@ -96,10 +96,49 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
   [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
   plans that link it.
 
+#### Child tasks
+
+A plan task may name a `parent` (one level deep), the paths it owns, an engineering contract
+and the shape of the result it returns:
+
+```json
+{"id": "api", "goal": "Add the API", "parent": "split", "dependsOn": ["model"],
+ "acceptance": ["API exported"], "scope": {"paths": ["src/api/**"], "worktree": "wt/api"},
+ "contract": "contracts/api.json", "returns": "The exported API"}
+```
+
+- A parent completes only after every child is completed or abandoned; a child cannot wait
+  for its own parent. The session holding the parent can start a child and return to the
+  parent with `task-start --plan P --task <id>`; the parent stays `running` meanwhile.
+- `scope.paths` are project-relative patterns: `*` within a name, `**` across folders, and a
+  pattern naming a folder covers everything below it. When the task starts, its claim
+  records the source revision and the files already changed. `task-step --complete` is then
+  refused with `scope exceeded` when a file committed or changed since the claim lies
+  outside the task's paths (a parent also accepts its children's); widen them with
+  `plan-update`. When the changed files cannot be told completely (no Git, more than 64
+  files already changed at the claim), the step reports `scope: {checked: false, reason}`.
+- `contract` is loaded as the engineering contract of `task-start --plan` unless
+  `--contract` is given; [acceptance contracts](ACCEPTANCE.md) then gate completion.
+- `returns` describes the expected result; the result given at completion is what dependent
+  tasks see.
+- `scope.worktree` is declared for the task and shown to it; it is not created or enforced.
+- `plan` and `plan.md` list unfinished tasks that may work at the same time on intersecting
+  paths under `overlaps`; this is reported, not refused.
+
+`task-start --plan` returns the task's envelope, also shown by `craft plan-envelope --plan P
+--task T`: the task, its dependencies with their results and latest evidence, its parent
+with a reference to the holder's last checkpoint (session, revision, time, next step), its
+children, the latest eight decisions and the plan's references, at most 16 KiB. It carries
+no conversation, other tasks' work or secrets. `--brief` emits it as a worker `brief`
+([host control](HOST-CONTROL.md)): sources are the references and dependency results,
+restrictions the owned paths.
+
 Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
 it is regenerated after every change for people to read and is never read back.
 `plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
-`craft` versions refuse it, so stop them before upgrading, as for other state changes.
+`craft` versions refuse it, so stop them before upgrading, as for other state changes. A
+plan whose tasks use `parent`, `scope`, `contract` or `returns` is written at plan version
+2, which older versions refuse; other plans stay at version 1.
 
 Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
 [acceptance contracts](ACCEPTANCE.md).

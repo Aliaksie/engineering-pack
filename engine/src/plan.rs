@@ -8,7 +8,9 @@ use serde_json::{Map, Value, json};
 
 type Result<T = ()> = std::result::Result<T, String>;
 
-pub const FORMAT_VERSION: i64 = 1;
+/// The plan format; version 1 is written while no task uses a field added at version 2.
+pub const FORMAT_VERSION: i64 = 2;
+const FIRST_VERSION: i64 = 1;
 pub const RECORD_BYTES: usize = 131_072;
 pub const TASKS: usize = 64;
 const DEPENDENCIES: usize = 16;
@@ -16,6 +18,12 @@ const DECISIONS: usize = 32;
 const REFERENCES: usize = 16;
 const ITEMS: usize = 16;
 const FILES: usize = 32;
+const SCOPE_PATHS: usize = 32;
+/// Uncommitted files a claim records as already changed; more leave the scope unchecked.
+const BASE_FILES: usize = 64;
+const ENVELOPE_BYTES: usize = 16_384;
+const ENVELOPE_DECISIONS: usize = 8;
+const ENVELOPE_EVIDENCE: usize = 3;
 /// Open plans listed when a session starts, newest first.
 pub const LISTED: usize = 3;
 const LISTED_TASKS: usize = 8;
@@ -60,7 +68,14 @@ const TASK_FIELDS: &[&str] = &[
     "nextStep",
     "evidence",
     "updated",
+    "parent",
+    "scope",
+    "contract",
+    "returns",
+    "scopeBase",
 ];
+/// Task fields added at version 2.
+const LATER_FIELDS: &[&str] = &["parent", "scope", "contract", "returns", "scopeBase"];
 /// Task fields a plan author sets; the rest follow from task work.
 const AUTHORED: &[&str] = &[
     "id",
@@ -71,6 +86,10 @@ const AUTHORED: &[&str] = &[
     "repositories",
     "acceptance",
     "nextStep",
+    "parent",
+    "scope",
+    "contract",
+    "returns",
 ];
 const CHANGE_FIELDS: &[&str] = &["goal", "status", "references", "decisions", "tasks"];
 const BLOCKERS: &[&str] = &["permission-denied", "tool-unavailable", "blocked"];
@@ -193,6 +212,93 @@ fn files(value: Option<&Value>) -> Result<Value> {
     ))
 }
 
+/// A project-relative path pattern: segments, `*` within a segment, `**` across them.
+fn pattern(value: &Value) -> Result<String> {
+    let text = relative_file(value)?;
+    let canonical = value.as_str() == Some(text.as_str())
+        && text
+            .split('/')
+            .all(|part| part == "**" || !part.contains("**"));
+    if !canonical {
+        return Err(format!("scope path must be written canonically: {value}"));
+    }
+    Ok(text)
+}
+
+/// The paths a task owns and the worktree it works in.
+fn scope(value: &Value, id: &str) -> Result<Value> {
+    let map = value
+        .as_object()
+        .filter(|m| {
+            m.keys()
+                .all(|k| ["paths", "worktree"].contains(&k.as_str()))
+        })
+        .ok_or_else(|| format!("task {id} scope is {{paths, worktree?}}"))?;
+    let paths = match map.get("paths") {
+        Some(Value::Array(items)) if (1..=SCOPE_PATHS).contains(&items.len()) => {
+            items.iter().map(pattern).collect::<Result<Vec<_>>>()?
+        }
+        _ => {
+            return Err(format!(
+                "task {id} scope paths must be 1..{SCOPE_PATHS} project-relative patterns"
+            ));
+        }
+    };
+    let mut scope = json!({"paths": paths});
+    if let Some(worktree) = map.get("worktree").filter(|w| !w.is_null()) {
+        scope["worktree"] = json!(relative_file(worktree)?);
+    }
+    Ok(scope)
+}
+
+/// One recorded uncommitted file: `<path digest>:<content digest>`, 16 hex each.
+fn base_entry(value: &Value) -> bool {
+    value.as_str().is_some_and(|s| {
+        s.split_once(':').is_some_and(|(path, content)| {
+            crate::values::lower_hex(path, 16)
+                && (content == "missing" || crate::values::lower_hex(content, 16))
+        })
+    })
+}
+
+/// The source a claim saw: each repository's revision and its already changed files.
+fn scope_base(value: &Value, id: &str) -> Result<Value> {
+    let invalid = || format!("task {id} scope base is invalid");
+    let map = value
+        .as_object()
+        .filter(|m| m.len() == 2 && m.get("complete").is_some_and(Value::is_boolean))
+        .ok_or_else(invalid)?;
+    let repositories = map
+        .get("repositories")
+        .and_then(Value::as_array)
+        .filter(|r| (1..=8).contains(&r.len()))
+        .ok_or_else(invalid)?;
+    let mut files = 0;
+    for entry in repositories {
+        let valid = entry.as_object().is_some_and(|e| {
+            e.len() == 3
+                && e.get("path").is_some_and(Value::is_string)
+                && e.get("head").is_some_and(|h| {
+                    h.is_null()
+                        || h.as_str().is_some_and(|h| {
+                            crate::values::lower_hex(h, h.len()) && matches!(h.len(), 40 | 64)
+                        })
+                })
+                && e.get("files")
+                    .and_then(Value::as_array)
+                    .is_some_and(|f| f.iter().all(base_entry))
+        });
+        if !valid {
+            return Err(invalid());
+        }
+        files += entry["files"].as_array().map_or(0, Vec::len);
+    }
+    if files > BASE_FILES {
+        return Err(invalid());
+    }
+    Ok(value.clone())
+}
+
 /// One task as authored: defaults filled, work fields validated where present.
 fn task(value: &Value, now: &str) -> Result<Value> {
     let map = value
@@ -251,6 +357,27 @@ fn task(value: &Value, now: &str) -> Result<Value> {
     if let Some(repositories) = map.get("repositories").filter(|r| !r.is_null()) {
         task["repositories"] = json!(repository::scopes(repositories)?);
     }
+    let id = task["id"].as_str().unwrap_or_default().to_string();
+    let given = |key: &str| map.get(key).filter(|v| !v.is_null());
+    if let Some(parent) = given("parent") {
+        let parent = identity(Some(parent), "parent task")?;
+        if parent == id {
+            return Err(format!("task {id} cannot be its own parent"));
+        }
+        task["parent"] = json!(parent);
+    }
+    if let Some(owned) = given("scope") {
+        task["scope"] = scope(owned, &id)?;
+    }
+    if let Some(contract) = given("contract") {
+        task["contract"] = json!(relative_file(contract)?);
+    }
+    if let Some(returns) = given("returns") {
+        task["returns"] = line(Some(returns), "task result shape")?;
+    }
+    if let Some(base) = given("scopeBase") {
+        task["scopeBase"] = scope_base(base, &id)?;
+    }
     instant(&task["updated"]).ok_or("invalid task time")?;
     Ok(task)
 }
@@ -270,7 +397,22 @@ fn find_mut<'a>(plan: &'a mut Value, id: &str) -> Option<&'a mut Value> {
         .find(|t| t["id"] == id)
 }
 
-/// Every dependency names a task of the plan, and none depends on itself through others.
+/// The tasks `task` waits for: its dependencies and, since a parent completes only after
+/// them, its children.
+fn waits_for<'a>(tasks: &'a [Value], task: &'a Value) -> impl Iterator<Item = &'a Value> {
+    let children = tasks
+        .iter()
+        .filter(move |t| t.get("parent") == Some(&task["id"]))
+        .map(|t| &t["id"]);
+    task["dependsOn"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .chain(children)
+}
+
+/// Every dependency and parent names a task of the plan, parents are not children
+/// themselves, and no task waits for itself through others.
 fn dependencies(plan: &Value) -> Result {
     let tasks = tasks(plan);
     let index = |id: &Value| tasks.iter().position(|t| t["id"] == *id);
@@ -279,6 +421,17 @@ fn dependencies(plan: &Value) -> Result {
             if index(dependency).is_none() {
                 return Err(format!(
                     "task {} depends on unknown task {dependency}",
+                    task["id"]
+                ));
+            }
+        }
+        if let Some(parent) = task.get("parent") {
+            let found = index(parent)
+                .map(|at| &tasks[at])
+                .ok_or_else(|| format!("task {} has unknown parent task {parent}", task["id"]))?;
+            if found.get("parent").is_some() {
+                return Err(format!(
+                    "task {} is a child of {parent}, which is a child itself; plans nest one level",
                     task["id"]
                 ));
             }
@@ -292,7 +445,7 @@ fn dependencies(plan: &Value) -> Result {
             _ => {}
         }
         marks[at] = 1;
-        for dependency in tasks[at]["dependsOn"].as_array().into_iter().flatten() {
+        for dependency in waits_for(tasks, &tasks[at]) {
             let next = tasks
                 .iter()
                 .position(|t| t["id"] == *dependency)
@@ -312,8 +465,12 @@ pub fn validate(plan: &Value) -> Result {
         .as_object()
         .filter(|m| m.keys().all(|k| PLAN_FIELDS.contains(&k.as_str())))
         .ok_or("invalid plan")?;
-    if map.get("formatVersion").and_then(safe_integer) != Some(FORMAT_VERSION) {
+    let version = map.get("formatVersion").and_then(safe_integer);
+    if !version.is_some_and(|v| (FIRST_VERSION..=FORMAT_VERSION).contains(&v)) {
         return Err("unsupported plan version; stop older writers".into());
+    }
+    if version != Some(format_version(plan)) {
+        return Err("plan version does not match the fields it uses".into());
     }
     identity(map.get("id"), "plan")?;
     line(map.get("goal"), "plan goal")?;
@@ -361,6 +518,12 @@ pub fn validate(plan: &Value) -> Result {
                 item["id"]
             ));
         }
+        if item.get("scopeBase").is_some() && item["owner"].is_null() {
+            return Err(format!(
+                "task {} records a scope base but no owner",
+                item["id"]
+            ));
+        }
         if ids.contains(&&item["id"]) {
             return Err(format!("duplicate task id {}", item["id"]));
         }
@@ -391,7 +554,7 @@ pub fn create(input: &Value, now: i64) -> Result<Value> {
         .ok_or("a new plan is {id, goal, references?, decisions?, tasks?}")?;
     let at = timestamp::format(now);
     let mut plan = json!({
-        "formatVersion": FORMAT_VERSION,
+        "formatVersion": FIRST_VERSION,
         "id": identity(map.get("id"), "plan")?,
         "goal": line(map.get("goal"), "plan goal")?,
         "status": "open",
@@ -425,10 +588,28 @@ pub fn completable(plan: &Value) -> bool {
         .all(|t| t["state"] == "completed" || t["state"] == "abandoned")
 }
 
+/// The version a plan is written at: the first one while no task uses a later field, so
+/// older readers keep reading plans that do not need the newer format.
+fn format_version(plan: &Value) -> i64 {
+    let later = tasks(plan)
+        .iter()
+        .any(|t| LATER_FIELDS.iter().any(|f| t.get(*f).is_some()));
+    if later { FORMAT_VERSION } else { FIRST_VERSION }
+}
+
 fn touch(plan: &mut Value, now: i64) {
     let revision = plan["revision"].as_i64().unwrap_or(0);
     plan["revision"] = json!(revision + 1);
     plan["updated"] = json!(timestamp::format(now));
+    plan["formatVersion"] = json!(format_version(plan));
+}
+
+/// A task no longer held keeps no record of what its claim saw.
+fn release(task: &mut Value) {
+    task["owner"] = Value::Null;
+    if let Some(task) = task.as_object_mut() {
+        task.remove("scopeBase");
+    }
 }
 
 fn owned_elsewhere(task: &Value, caller: Option<&str>) -> bool {
@@ -483,7 +664,7 @@ pub fn apply(
         let fields = item
             .as_object()
             .filter(|m| m.keys().all(|k| AUTHORED.contains(&k.as_str())))
-            .ok_or("an authored task is {id, goal, state?, dependsOn?, files?, repositories?, acceptance?, nextStep?}")?;
+            .ok_or("an authored task is {id, goal, state?, dependsOn?, files?, repositories?, acceptance?, nextStep?, parent?, scope?, contract?, returns?}")?;
         let id = identity(fields.get("id"), "task")?;
         if let Some(state) = fields.get("state")
             && !state.as_str().is_some_and(|s| EDITABLE_STATES.contains(&s))
@@ -518,7 +699,7 @@ pub fn apply(
                     merged[key] = value.clone();
                 }
                 if fields.contains_key("state") {
-                    merged["owner"] = Value::Null;
+                    release(&mut merged);
                 }
                 merged
             }
@@ -560,12 +741,15 @@ pub enum Claim {
 }
 
 /// Claim `task` for the session directory `owner`: a ready task starts running; one this
-/// session holds is kept; one another session holds moves only with `take_over`.
+/// session holds is kept; one another session holds moves only with `take_over`. A task
+/// that owns paths records `base`, the source its claim saw (see [`baseline`]), when it
+/// starts; a take-over keeps the base of the first claim.
 pub fn claim(
     plan: &mut Value,
     task: &str,
     owner: &str,
     take_over: bool,
+    base: Option<Value>,
     now: i64,
 ) -> Result<Claim> {
     if plan["status"] != "open" {
@@ -612,6 +796,9 @@ pub fn claim(
     let entry = find_mut(plan, task).expect("found");
     if claimed == Claim::Started {
         entry["state"] = json!("running");
+        if let Some(base) = base.filter(|_| entry.get("scope").is_some()) {
+            entry["scopeBase"] = base;
+        }
     }
     entry["owner"] = json!({"session": owner, "since": at});
     entry["updated"] = json!(at);
@@ -663,7 +850,7 @@ pub fn progress(plan: &mut Value, task: &str, owner: &str, step: &Progress, now:
     let entry = find_mut(plan, task).expect("owned");
     entry["state"] = json!(state);
     if !OWNED.contains(&state) {
-        entry["owner"] = Value::Null;
+        release(entry);
     }
     for (key, value) in [("result", step.result), ("nextStep", step.next_step)] {
         if let Some(value) = value {
@@ -683,6 +870,400 @@ pub fn progress(plan: &mut Value, task: &str, owner: &str, step: &Progress, now:
     validate(plan)
 }
 
+/// What one repository of a task's source shows: its revision, the files committed since
+/// a base revision (`None` when that cannot be told) and the uncommitted files with their
+/// content digest. `path` is the repository scope, empty for the worktree itself.
+pub struct Observed {
+    pub path: String,
+    pub head: Value,
+    pub committed: Option<Vec<String>>,
+    pub uncommitted: Vec<(String, String)>,
+    pub complete: bool,
+}
+
+fn base_file(path: &str, digest: &str) -> String {
+    let content = if digest == "missing" {
+        digest
+    } else {
+        &digest[..16.min(digest.len())]
+    };
+    format!("{}:{content}", &crate::hash(path.as_bytes())[..16])
+}
+
+/// The scope base a claim records: each repository's revision and its already changed
+/// files, so completion counts only what changed afterwards. Incomplete when the source
+/// could not be fully read or too many files were already changed.
+pub fn baseline(observed: &[Observed]) -> Value {
+    let total: usize = observed.iter().map(|o| o.uncommitted.len()).sum();
+    let complete = observed.iter().all(|o| o.complete) && total <= BASE_FILES;
+    let repositories: Vec<Value> = observed
+        .iter()
+        .map(|o| {
+            let files: Vec<String> = if complete {
+                o.uncommitted.iter().map(|(p, d)| base_file(p, d)).collect()
+            } else {
+                vec![]
+            };
+            json!({"path": o.path, "head": o.head, "files": files})
+        })
+        .collect();
+    json!({"repositories": repositories, "complete": complete})
+}
+
+/// Files changed since `base`, as project-relative paths; `None` when that cannot be told.
+pub fn changed(base: &Value, observed: &[Observed]) -> Option<Vec<String>> {
+    if base["complete"] != true {
+        return None;
+    }
+    let mut changed = Vec::new();
+    for current in observed {
+        let saved = base["repositories"]
+            .as_array()?
+            .iter()
+            .find(|r| r["path"] == current.path.as_str())?;
+        let before: Vec<&str> = saved["files"]
+            .as_array()?
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        if !current.complete {
+            return None;
+        }
+        let committed = current.committed.as_ref()?;
+        let uncommitted = current
+            .uncommitted
+            .iter()
+            .filter(|(p, d)| !before.contains(&base_file(p, d).as_str()))
+            .map(|(p, _)| p);
+        for file in committed.iter().chain(uncommitted) {
+            changed.push(if current.path.is_empty() {
+                file.clone()
+            } else {
+                format!("{}/{file}", current.path)
+            });
+        }
+    }
+    changed.sort();
+    changed.dedup();
+    Some(changed)
+}
+
+fn segment(pattern: &[u8], name: &[u8]) -> bool {
+    match pattern.split_first() {
+        None => name.is_empty(),
+        Some((b'*', rest)) => (0..=name.len()).any(|at| segment(rest, &name[at..])),
+        Some((byte, rest)) => name.first() == Some(byte) && segment(rest, &name[1..]),
+    }
+}
+
+fn walk(pattern: &[&str], path: &[&str]) -> bool {
+    match pattern.split_first() {
+        // A pattern that ends early names a directory: everything below it is covered.
+        None => true,
+        Some((&"**", rest)) => (0..=path.len()).any(|at| walk(rest, &path[at..])),
+        Some((part, rest)) => path.split_first().is_some_and(|(name, below)| {
+            segment(part.as_bytes(), name.as_bytes()) && walk(rest, below)
+        }),
+    }
+}
+
+/// Whether the scope pattern covers the project-relative `path`: the file itself or, for a
+/// pattern naming a directory, anything below it.
+pub fn covers(pattern: &str, path: &str) -> bool {
+    let pattern: Vec<&str> = pattern.split('/').collect();
+    let path: Vec<&str> = path.split('/').collect();
+    walk(&pattern, &path)
+}
+
+fn ids(items: &[&Value]) -> String {
+    items
+        .iter()
+        .filter_map(|t| t["id"].as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// What completing `task` needs beyond its acceptance: its children done and no file
+/// changed since its claim outside the paths it or its children own. `changed` is `None`
+/// when the changed files cannot be told; the scope is then reported unchecked. Returns
+/// the scope report.
+pub fn completion(plan: &Value, task: &str, changed: Option<&[String]>) -> Result<Value> {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    let open: Vec<&Value> = tasks(plan)
+        .iter()
+        .filter(|t| t.get("parent") == Some(&found["id"]))
+        .filter(|t| t["state"] != "completed" && t["state"] != "abandoned")
+        .collect();
+    if !open.is_empty() {
+        return Err(format!(
+            "task {task} has child tasks that are not completed or abandoned: {}",
+            ids(&open)
+        ));
+    }
+    if !found["scope"]["paths"].is_array() {
+        return Ok(Value::Null);
+    }
+    // A parent's work includes what its children change within their own paths.
+    let paths: Vec<&str> = tasks(plan)
+        .iter()
+        .filter(|t| t["id"] == found["id"] || t.get("parent") == Some(&found["id"]))
+        .flat_map(|t| t["scope"]["paths"].as_array().into_iter().flatten())
+        .filter_map(Value::as_str)
+        .collect();
+    let Some(changed) = changed else {
+        let reason = if found.get("scopeBase").is_none() {
+            "the claim recorded no source to compare with"
+        } else {
+            "the changed files cannot be told completely"
+        };
+        return Ok(json!({"checked": false, "reason": reason}));
+    };
+    let outside: Vec<&String> = changed
+        .iter()
+        .filter(|file| !paths.iter().any(|p| covers(p, file)))
+        .collect();
+    if !outside.is_empty() {
+        let shown: Vec<&str> = outside.iter().take(16).map(|f| f.as_str()).collect();
+        return Err(format!(
+            "scope exceeded: task {task} changed files outside its paths: {}{}; widen its scope with plan-update or undo those changes",
+            shown.join(", "),
+            if outside.len() > shown.len() {
+                ", …"
+            } else {
+                ""
+            }
+        ));
+    }
+    Ok(json!({"checked": true, "changed": changed.len()}))
+}
+
+/// The literal leading segments of a pattern, before any wildcard.
+fn prefix(pattern: &str) -> Vec<&str> {
+    pattern
+        .split('/')
+        .take_while(|p| !p.contains('*'))
+        .collect()
+}
+
+fn reaches(plan: &Value, from: &Value, to: &Value, seen: &mut Vec<Value>) -> bool {
+    waits_for(tasks(plan), from).any(|next| {
+        if *next == to["id"] {
+            return true;
+        }
+        if seen.contains(next) {
+            return false;
+        }
+        seen.push(next.clone());
+        find(plan, next.as_str().unwrap_or_default()).is_some_and(|t| reaches(plan, t, to, seen))
+    })
+}
+
+/// Pairs of unfinished tasks that may work at the same time (neither waits for the other
+/// and neither is the other's parent) with owned paths that may intersect. Patterns are
+/// compared by their literal leading segments, so an overlap may be reported where the
+/// wildcards would keep them apart.
+pub fn overlaps(plan: &Value) -> Vec<Value> {
+    let open: Vec<&Value> = tasks(plan)
+        .iter()
+        .filter(|t| t["state"] != "completed" && t["state"] != "abandoned")
+        .filter(|t| t["scope"]["paths"].is_array())
+        .collect();
+    let mut found = Vec::new();
+    for (at, a) in open.iter().enumerate() {
+        for b in &open[at + 1..] {
+            let related = a.get("parent") == Some(&b["id"])
+                || b.get("parent") == Some(&a["id"])
+                || reaches(plan, a, b, &mut vec![])
+                || reaches(plan, b, a, &mut vec![]);
+            if related {
+                continue;
+            }
+            let paths = |t: &Value| -> Vec<String> {
+                t["scope"]["paths"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect()
+            };
+            let shared: Vec<String> = paths(a)
+                .iter()
+                .flat_map(|p| paths(b).into_iter().map(move |q| (p.clone(), q)))
+                .filter(|(p, q)| {
+                    let (p, q) = (prefix(p), prefix(q));
+                    let n = p.len().min(q.len());
+                    p[..n] == q[..n]
+                })
+                .map(|(p, q)| if p == q { p } else { format!("{p} ~ {q}") })
+                .collect();
+            if !shared.is_empty() {
+                found.push(json!({"tasks": [a["id"], b["id"]], "paths": shared}));
+            }
+        }
+    }
+    found
+}
+
+/// `text` cut to at most 512 UTF-16 units.
+fn clip(text: &str) -> String {
+    let mut out = String::new();
+    for c in text.chars() {
+        if crate::values::js_length(&out) + c.len_utf16() > 512 {
+            break;
+        }
+        out.push(c);
+    }
+    out
+}
+
+fn summary_of(task: &Value, keys: &[&str]) -> Value {
+    let mut out = Map::new();
+    for key in keys {
+        if let Some(value) = task.get(*key).filter(|v| !v.is_null()) {
+            out.insert(key.to_string(), value.clone());
+        }
+    }
+    Value::Object(out)
+}
+
+/// The small context a session or worker needs for one task: the task, what its
+/// dependencies returned, its parent with the parent's last checkpoint (`checkpoint`, a
+/// reference without content, or null), its children, the latest decisions and the plan's
+/// references. Never conversation, other tasks' work or secrets. Bounded; the oldest
+/// decisions and dependency evidence go first when it would not fit.
+pub fn envelope(plan: &Value, task: &str, checkpoint: Value) -> Result<Value> {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    let mut own = summary_of(
+        found,
+        &[
+            "id",
+            "goal",
+            "state",
+            "acceptance",
+            "files",
+            "repositories",
+            "scope",
+            "contract",
+            "returns",
+            "nextStep",
+        ],
+    );
+    own["ready"] = json!(ready(plan, found));
+    let dependencies: Vec<Value> = found["dependsOn"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|d| find(plan, d.as_str()?))
+        .map(|d| {
+            let mut entry = summary_of(d, &["id", "goal", "state", "result"]);
+            let evidence = d["evidence"].as_array().map_or(&[][..], Vec::as_slice);
+            entry["evidence"] = json!(evidence[evidence.len().saturating_sub(ENVELOPE_EVIDENCE)..]);
+            entry
+        })
+        .collect();
+    let parent = match found.get("parent").and_then(|p| find(plan, p.as_str()?)) {
+        Some(parent) => {
+            let mut entry = summary_of(parent, &["id", "goal", "state", "nextStep"]);
+            entry["checkpoint"] = checkpoint;
+            entry
+        }
+        None => Value::Null,
+    };
+    let children: Vec<Value> = tasks(plan)
+        .iter()
+        .filter(|t| t.get("parent") == Some(&found["id"]))
+        .map(|t| summary_of(t, &["id", "goal", "state", "result"]))
+        .collect();
+    let decisions = plan["decisions"].as_array().map_or(&[][..], Vec::as_slice);
+    let mut shown = json!({
+        "formatVersion": 1,
+        "plan": {"id": plan["id"], "goal": plan["goal"], "revision": plan["revision"]},
+        "task": own,
+        "dependencies": dependencies,
+        "parent": parent,
+        "children": children,
+        "decisions": decisions[decisions.len().saturating_sub(ENVELOPE_DECISIONS)..],
+        "references": plan["references"],
+    });
+    let size = |v: &Value| v.to_string().len();
+    while size(&shown) > ENVELOPE_BYTES
+        && shown["decisions"].as_array().is_some_and(|d| !d.is_empty())
+    {
+        shown["decisions"].as_array_mut().expect("list").remove(0);
+    }
+    if size(&shown) > ENVELOPE_BYTES {
+        for entry in shown["dependencies"].as_array_mut().into_iter().flatten() {
+            entry["evidence"] = json!([]);
+        }
+    }
+    if size(&shown) > ENVELOPE_BYTES {
+        return Err(format!(
+            "the envelope of task {task} exceeds {ENVELOPE_BYTES} bytes"
+        ));
+    }
+    Ok(shown)
+}
+
+fn plain(value: &Value) -> &str {
+    value.as_str().unwrap_or_default()
+}
+
+/// An envelope as the worker `brief`: sources are the plan references and what the
+/// dependencies returned, restrictions the owned paths and worktree.
+pub fn brief(envelope: &Value) -> Result<Value> {
+    let task = &envelope["task"];
+    let acceptance = task["acceptance"].as_array().cloned().unwrap_or_default();
+    if acceptance.is_empty() {
+        return Err(format!(
+            "task {} has no acceptance criteria; a worker brief needs them",
+            task["id"]
+        ));
+    }
+    let mut sources: Vec<Value> = envelope["references"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|r| json!(clip(&format!("{}:{}", plain(&r["kind"]), plain(&r["id"])))))
+        .collect();
+    for dependency in envelope["dependencies"].as_array().into_iter().flatten() {
+        if let Some(result) = dependency["result"].as_str() {
+            sources.push(json!(clip(&format!(
+                "{} returned: {result}",
+                plain(&dependency["id"])
+            ))));
+        }
+    }
+    let mut restrictions: Vec<Value> = task["scope"]["paths"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(|p| json!(clip(&format!("Change only files matching {p}"))))
+        .collect();
+    if let Some(worktree) = task["scope"]["worktree"].as_str() {
+        restrictions.push(json!(clip(&format!("Work in the worktree {worktree}"))));
+    }
+    if sources.len() > ITEMS || restrictions.len() > ITEMS {
+        return Err(format!(
+            "task {} has more than {ITEMS} sources or owned paths for a worker brief",
+            task["id"]
+        ));
+    }
+    let returns = task["returns"]
+        .as_str()
+        .unwrap_or("What changed and how it was verified");
+    Ok(json!({
+        "goal": task["goal"],
+        "sources": sources,
+        "acceptance": acceptance,
+        "restrictions": restrictions,
+        "returnShape": returns,
+    }))
+}
+
 /// The plan as shown: each task with its derived readiness, and task counts by state.
 pub fn view(plan: &Value) -> Value {
     let mut shown = plan.clone();
@@ -691,7 +1272,25 @@ pub fn view(plan: &Value) -> Value {
     }
     shown["counts"] = counts(plan);
     shown["completable"] = json!(completable(plan));
+    let overlaps = overlaps(plan);
+    if !overlaps.is_empty() {
+        shown["overlaps"] = json!(overlaps);
+    }
     shown
+}
+
+/// Tasks in reading order: each parent followed by its children.
+fn ordered(plan: &Value) -> Vec<&Value> {
+    let mut out = Vec::new();
+    for item in tasks(plan).iter().filter(|t| t.get("parent").is_none()) {
+        out.push(item);
+        out.extend(
+            tasks(plan)
+                .iter()
+                .filter(|t| t.get("parent") == Some(&item["id"])),
+        );
+    }
+    out
 }
 
 fn counts(plan: &Value) -> Value {
@@ -785,7 +1384,7 @@ pub fn markdown(plan: &Value) -> String {
     out.extend(["".into(), "## Tasks".into(), String::new()]);
     out.push("| Task | State | Depends on | Owner | Next |".into());
     out.push("|---|---|---|---|---|".into());
-    for item in tasks(plan) {
+    for item in ordered(plan) {
         let state = if ready(plan, item) {
             "ready".to_string()
         } else {
@@ -794,20 +1393,38 @@ pub fn markdown(plan: &Value) -> String {
         let owner = item["owner"]["session"]
             .as_str()
             .map_or("—".into(), |s| s[..8].to_string());
+        let indent = if item.get("parent").is_some() {
+            "↳ "
+        } else {
+            ""
+        };
         out.push(format!(
-            "| {} | {state} | {} | {owner} | {} |",
+            "| {indent}{} | {state} | {} | {owner} | {} |",
             cell(&item["id"]),
             joined(&item["dependsOn"]),
             cell(&item["nextStep"])
         ));
     }
-    for item in tasks(plan) {
+    for item in ordered(plan) {
         out.extend([
             String::new(),
             format!("### {} — {}", cell(&item["id"]), cell(&item["goal"])),
         ]);
-        if item["result"].is_string() {
-            out.push(format!("Result: {}", cell(&item["result"])));
+        for (label, key) in [
+            ("Part of", "parent"),
+            ("Returns", "returns"),
+            ("Result", "result"),
+            ("Contract", "contract"),
+        ] {
+            if item[key].is_string() {
+                out.push(format!("{label}: {}", cell(&item[key])));
+            }
+        }
+        if item["scope"]["paths"].is_array() {
+            out.push(format!("Owns: {}", joined(&item["scope"]["paths"])));
+        }
+        if item["scope"]["worktree"].is_string() {
+            out.push(format!("Worktree: {}", cell(&item["scope"]["worktree"])));
         }
         for (label, key) in [
             ("Files", "files"),
@@ -821,6 +1438,17 @@ pub fn markdown(plan: &Value) -> String {
         if let Some(criteria) = item["acceptance"].as_array().filter(|a| !a.is_empty()) {
             out.push("Acceptance:".into());
             out.extend(criteria.iter().map(|c| format!("- {}", cell(c))));
+        }
+    }
+    let overlaps = overlaps(plan);
+    if !overlaps.is_empty() {
+        out.extend(["".into(), "## Overlapping scopes".into(), String::new()]);
+        for item in &overlaps {
+            out.push(format!(
+                "- {} may work at the same time on {}",
+                joined(&item["tasks"]).replace(", ", " and "),
+                joined(&item["paths"])
+            ));
         }
     }
     if let Some(decisions) = plan["decisions"].as_array().filter(|d| !d.is_empty()) {
@@ -915,28 +1543,31 @@ mod tests {
     fn claims_start_ready_tasks_and_refuse_others() {
         let mut plan = sample();
         assert!(
-            claim(&mut plan, "b", ONE, false, NOW)
+            claim(&mut plan, "b", ONE, false, None, NOW)
                 .unwrap_err()
                 .contains("waits for a")
         );
         assert_eq!(
-            claim(&mut plan, "a", ONE, false, NOW).unwrap(),
+            claim(&mut plan, "a", ONE, false, None, NOW).unwrap(),
             Claim::Started
         );
         assert_eq!(plan["revision"], 2);
-        assert_eq!(claim(&mut plan, "a", ONE, false, NOW).unwrap(), Claim::Held);
+        assert_eq!(
+            claim(&mut plan, "a", ONE, false, None, NOW).unwrap(),
+            Claim::Held
+        );
         assert_eq!(plan["revision"], 2);
         assert!(
-            claim(&mut plan, "a", TWO, false, NOW)
+            claim(&mut plan, "a", TWO, false, None, NOW)
                 .unwrap_err()
                 .contains("--take-over")
         );
         assert_eq!(
-            claim(&mut plan, "a", TWO, true, NOW).unwrap(),
+            claim(&mut plan, "a", TWO, true, None, NOW).unwrap(),
             Claim::TakenOver(ONE.into())
         );
         assert_eq!(plan["tasks"][0]["owner"]["session"], TWO);
-        assert!(claim(&mut plan, "z", ONE, false, NOW).is_err());
+        assert!(claim(&mut plan, "z", ONE, false, None, NOW).is_err());
         validate(&plan).unwrap();
     }
 
@@ -963,7 +1594,7 @@ mod tests {
     #[test]
     fn completing_a_task_readies_its_dependents_without_a_write_to_them() {
         let mut plan = sample();
-        claim(&mut plan, "a", ONE, false, NOW).unwrap();
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
         assert!(progress(&mut plan, "a", TWO, &step("verify", "passed", true), NOW).is_err());
         progress(&mut plan, "a", ONE, &step("verify", "passed", false), NOW).unwrap();
         assert_eq!(plan["tasks"][0]["state"], "verifying");
@@ -987,7 +1618,7 @@ mod tests {
     #[test]
     fn authored_changes_are_bounded_by_ownership_and_completion() {
         let mut plan = sample();
-        claim(&mut plan, "a", ONE, false, NOW).unwrap();
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
         let abandon = json!({"tasks": [{"id": "a", "state": "abandoned"}]});
         assert!(
             apply(&mut plan, &abandon, Some(TWO), false, NOW)
@@ -1011,7 +1642,7 @@ mod tests {
         apply(&mut plan, &json!({"status": "completed"}), None, false, NOW).unwrap();
         assert_eq!(plan["status"], "completed");
         assert_eq!(plan["decisions"][0]["at"], timestamp::format(NOW));
-        assert!(claim(&mut plan, "a", ONE, false, NOW).is_err());
+        assert!(claim(&mut plan, "a", ONE, false, None, NOW).is_err());
         let cycle = json!({"tasks": [{"id": "a", "dependsOn": ["c"]}]});
         assert!(
             apply(&mut sample(), &cycle, None, false, NOW)
@@ -1023,7 +1654,7 @@ mod tests {
     #[test]
     fn a_listing_shows_open_plans_newest_first() {
         let mut first = sample();
-        claim(&mut first, "a", ONE, false, NOW - 120_000).unwrap();
+        claim(&mut first, "a", ONE, false, None, NOW - 120_000).unwrap();
         let mut second = create(
             &json!({"id": "x", "goal": "Other", "tasks": [{"id": "t", "goal": "T"}]}),
             NOW,
@@ -1075,6 +1706,247 @@ mod tests {
         ] {
             assert!(binding(&invalid, None).is_err(), "{invalid}");
         }
+    }
+
+    fn nested() -> Value {
+        create(
+            &json!({"id": "s5", "goal": "Child contracts", "tasks": [
+                {"id": "p", "goal": "Parent", "scope": {"paths": ["src"]}},
+                {"id": "c1", "goal": "First child", "parent": "p", "acceptance": ["Works"],
+                    "scope": {"paths": ["src/a/**"]}, "returns": "The new API"},
+                {"id": "c2", "goal": "Second child", "parent": "p", "dependsOn": ["c1"],
+                    "acceptance": ["Uses the API"], "scope": {"paths": ["src/b/*.rs"], "worktree": "wt/c2"},
+                    "contract": "contracts/c2.json"},
+                {"id": "other", "goal": "Unrelated", "scope": {"paths": ["src/a/x.rs"]}},
+            ], "decisions": [{"id": "d1", "text": "Keep it small"}]}),
+            NOW,
+        )
+        .unwrap()
+    }
+
+    fn observed(head: &str, committed: &[&str], uncommitted: &[(&str, &str)]) -> Observed {
+        Observed {
+            path: String::new(),
+            head: json!(head),
+            committed: Some(committed.iter().map(|c| c.to_string()).collect()),
+            uncommitted: uncommitted
+                .iter()
+                .map(|(p, d)| (p.to_string(), d.to_string()))
+                .collect(),
+            complete: true,
+        }
+    }
+
+    #[test]
+    fn later_fields_write_the_second_version_and_first_version_plans_stay_readable() {
+        let plain = sample();
+        assert_eq!(plain["formatVersion"], 1);
+        let mut later = sample();
+        apply(
+            &mut later,
+            &json!({"tasks": [{"id": "a", "returns": "A result"}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        assert_eq!(later["formatVersion"], 2);
+        let mut downgraded = later.clone();
+        downgraded["formatVersion"] = json!(1);
+        assert!(validate(&downgraded).unwrap_err().contains("version"));
+        let mut future = plain.clone();
+        future["formatVersion"] = json!(3);
+        assert!(validate(&future).unwrap_err().contains("older writers"));
+        validate(&nested()).unwrap();
+        assert_eq!(nested()["formatVersion"], 2);
+    }
+
+    #[test]
+    fn parents_nest_one_level_and_wait_for_their_children() {
+        let mut plan = nested();
+        let deep = json!({"tasks": [{"id": "g", "goal": "Grandchild", "parent": "c1"}]});
+        assert!(
+            apply(&mut plan.clone(), &deep, None, false, NOW)
+                .unwrap_err()
+                .contains("one level")
+        );
+        let unknown = json!({"tasks": [{"id": "g", "goal": "G", "parent": "z"}]});
+        assert!(
+            apply(&mut plan.clone(), &unknown, None, false, NOW)
+                .unwrap_err()
+                .contains("unknown parent")
+        );
+        let own = json!({"tasks": [{"id": "g", "goal": "G", "parent": "g"}]});
+        assert!(
+            apply(&mut plan.clone(), &own, None, false, NOW)
+                .unwrap_err()
+                .contains("own parent")
+        );
+        // A child waiting for its parent could never start.
+        let waits = json!({"tasks": [{"id": "c1", "dependsOn": ["p"]}]});
+        assert!(
+            apply(&mut plan.clone(), &waits, None, false, NOW)
+                .unwrap_err()
+                .contains("cycle")
+        );
+        claim(&mut plan, "p", ONE, false, None, NOW).unwrap();
+        assert_eq!(
+            claim(&mut plan, "c1", ONE, false, None, NOW).unwrap(),
+            Claim::Started
+        );
+        assert!(
+            completion(&plan, "p", Some(&[]))
+                .unwrap_err()
+                .contains("c1, c2")
+        );
+        completion(&plan, "c1", Some(&["src/a/lib.rs".into()])).unwrap();
+        let text = markdown(&plan);
+        assert!(text.contains("| ↳ c1 | running |"));
+        assert!(text.contains("Part of: p"));
+        assert!(text.contains("Owns: src/b/*.rs"));
+    }
+
+    #[test]
+    fn scope_patterns_cover_files_and_directories() {
+        for (pattern, path, covered) in [
+            ("src", "src/a/b.rs", true),
+            ("src/a.rs", "src/a.rs", true),
+            ("src/a.rs", "src/a.rs.bak", false),
+            ("src/*.rs", "src/a.rs", true),
+            ("src/*.rs", "src/a/b.rs", false),
+            ("src/*", "src/a/b.rs", true),
+            ("src/*.rs", "src/a.txt", false),
+            ("**/*.md", "docs/x/y.md", true),
+            ("**/*.md", "y.md", true),
+            ("docs/**/z.md", "docs/z.md", true),
+            ("docs/**/z.md", "src/z.md", false),
+            ("src", "srcs/a", false),
+        ] {
+            assert_eq!(covers(pattern, path), covered, "{pattern} {path}");
+        }
+        for invalid in ["/abs", "../up", "a//b", "a/**b", "./a"] {
+            let plan = json!({"id": "p", "goal": "G", "tasks": [{"id": "a", "goal": "A", "scope": {"paths": [invalid]}}]});
+            assert!(create(&plan, NOW).is_err(), "{invalid}");
+        }
+        let empty = json!({"id": "p", "goal": "G", "tasks": [{"id": "a", "goal": "A", "scope": {"paths": []}}]});
+        assert!(create(&empty, NOW).is_err());
+    }
+
+    #[test]
+    fn completion_counts_only_changes_after_the_claim_outside_owned_paths() {
+        let head = "a".repeat(40);
+        let before = [observed(
+            &head,
+            &[],
+            &[
+                ("README.md", "1111111111111111aaaa"),
+                ("gone.txt", "missing"),
+            ],
+        )];
+        let base = baseline(&before);
+        assert_eq!(base["complete"], true);
+        let mut plan = nested();
+        claim(&mut plan, "other", ONE, false, Some(base.clone()), NOW).unwrap();
+        assert_eq!(find(&plan, "other").unwrap()["scopeBase"], base);
+        // Already changed and untouched since: not counted. Edited again: counted.
+        let same = [observed(
+            &head,
+            &["src/a/x.rs"],
+            &[("README.md", "1111111111111111aaaa")],
+        )];
+        assert_eq!(changed(&base, &same), Some(vec!["src/a/x.rs".to_string()]));
+        completion(&plan, "other", changed(&base, &same).as_deref()).unwrap();
+        let edited = [observed(&head, &[], &[("README.md", "2222222222222222")])];
+        let refused = completion(&plan, "other", changed(&base, &edited).as_deref()).unwrap_err();
+        assert!(
+            refused.starts_with("scope exceeded") && refused.contains("README.md"),
+            "{refused}"
+        );
+        // Unknown baselines are reported, not guessed.
+        let mut unknown = observed(&head, &[], &[]);
+        unknown.committed = None;
+        assert_eq!(changed(&base, &[unknown]), None);
+        let report = completion(&plan, "other", None).unwrap();
+        assert_eq!(report["checked"], false);
+        let crowded: Vec<(String, String)> = (0..=BASE_FILES)
+            .map(|i| (format!("f{i}"), "0".repeat(64)))
+            .collect();
+        let full = Observed {
+            uncommitted: crowded,
+            ..observed(&head, &[], &[])
+        };
+        assert_eq!(baseline(&[full])["complete"], false);
+        // Completion releases the task and drops what its claim saw.
+        progress(
+            &mut plan,
+            "other",
+            ONE,
+            &step("verify", "passed", true),
+            NOW,
+        )
+        .unwrap();
+        assert!(find(&plan, "other").unwrap().get("scopeBase").is_none());
+        // A task without owned paths is not checked.
+        assert_eq!(
+            completion(&sample(), "a", Some(&["any".into()])).unwrap(),
+            Value::Null
+        );
+    }
+
+    #[test]
+    fn overlaps_list_tasks_that_may_work_at_once_on_shared_paths() {
+        let plan = nested();
+        // c1 and other share src/a; p is the parent of both children; c2 waits for c1.
+        assert_eq!(
+            json!(overlaps(&plan)),
+            json!([{"tasks": ["p", "other"], "paths": ["src ~ src/a/x.rs"]},
+                   {"tasks": ["c1", "other"], "paths": ["src/a/** ~ src/a/x.rs"]}])
+        );
+        assert!(view(&plan)["overlaps"].is_array());
+        assert!(view(&sample()).get("overlaps").is_none());
+        assert!(markdown(&plan).contains("## Overlapping scopes"));
+    }
+
+    #[test]
+    fn an_envelope_carries_the_task_context_and_converts_to_a_worker_brief() {
+        let mut plan = nested();
+        claim(&mut plan, "p", ONE, false, None, NOW).unwrap();
+        claim(&mut plan, "c1", ONE, false, None, NOW).unwrap();
+        let mut done = step("verify", "passed", true);
+        done.result = Some("Added a::api");
+        progress(&mut plan, "c1", ONE, &done, NOW).unwrap();
+        let checkpoint = json!({"session": ONE, "head": "h", "updated": "t", "nextStep": "n"});
+        let shown = envelope(&plan, "c2", checkpoint.clone()).unwrap();
+        assert_eq!(shown["task"]["id"], "c2");
+        assert_eq!(shown["task"]["ready"], true);
+        assert_eq!(shown["task"]["contract"], "contracts/c2.json");
+        assert_eq!(shown["dependencies"][0]["result"], "Added a::api");
+        assert_eq!(shown["dependencies"][0]["evidence"], json!(["check.log"]));
+        assert_eq!(shown["parent"]["id"], "p");
+        assert_eq!(shown["parent"]["checkpoint"], checkpoint);
+        assert_eq!(shown["decisions"][0]["text"], "Keep it small");
+        assert!(shown.get("tasks").is_none() && shown.to_string().len() <= ENVELOPE_BYTES);
+        let parent = envelope(&plan, "p", Value::Null).unwrap();
+        assert_eq!(parent["children"].as_array().unwrap().len(), 2);
+        let brief = brief(&shown).unwrap();
+        crate::workers::lifecycle::input(&json!({
+            "id": "w1", "offer": "0".repeat(64), "scope": "task", "brief": brief,
+        }))
+        .unwrap();
+        assert_eq!(brief["sources"], json!(["c1 returned: Added a::api"]));
+        assert_eq!(
+            brief["restrictions"],
+            json!([
+                "Change only files matching src/b/*.rs",
+                "Work in the worktree wt/c2"
+            ])
+        );
+        assert!(
+            self::brief(&envelope(&plan, "p", Value::Null).unwrap())
+                .unwrap_err()
+                .contains("acceptance")
+        );
+        assert!(envelope(&plan, "zz", Value::Null).is_err());
     }
 
     #[test]

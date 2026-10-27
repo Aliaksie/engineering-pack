@@ -72,7 +72,7 @@ test('a plan is worked on across sessions: claim, progress, readiness and take-o
   // Session 1: B waits for A; A is claimed and worked to completion.
   assert.match(refused(['task-start', '--root', root, '--session', 'first', '--plan', 'b2', '--task', 'b']), /not ready: it waits for a/);
   const bound = run(['task-start', '--root', root, '--session', 'first', '--plan', 'b2', '--task', 'a']);
-  assert.deepEqual(bound.plan, { id: 'b2', task: 'a' });
+  assert.deepEqual([bound.plan.id, bound.plan.task, bound.plan.envelope.task.goal], ['b2', 'a', 'Correct the value']);
   const first = stateLocation(root, 'first').sessionId;
   assert.deepEqual(task(run(['plan', '--root', root, '--plan', 'b2']), 'a').owner.session, first);
   assert.equal(step(root, 'first', 'verify', 'Complete it').plan.state, 'verifying');

@@ -32,6 +32,7 @@ compacts a host session or posts to a code host.
 | `task-adopt` | Continue an earlier session's unfinished task in this session | Copies its task state and checkpoint; the earlier session is unchanged |
 | `task-step` | Record a milestone, evidence and continuation | Writes task state; advances the held plan task |
 | `plan`, `plan-create`, `plan-update` | Show, create or change a work plan whose tasks sessions claim with `task-start --plan` | Writes the local plan record and its Markdown view; never reads a tracker |
+| `plan-envelope` | One plan task's small context: goal, acceptance, owned scope, dependency results, parent checkpoint reference; `--brief` as a worker brief | Reads the plan and the parent holder's checkpoint metadata |
 | `session`, `session-advice` | Status and next-action advice from task state and host observations | Reads state; recommendation only |
 | `session-attempt` | Record one bounded attempt and its outcome | Writes a receipt; executes no retry |
 | `task-offer`, `task-decision`, `task-action-check` | Recommend, record a user decision on, and revalidate a review, delegation or compaction | Writes receipts; dispatches nothing |
