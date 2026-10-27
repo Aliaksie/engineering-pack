@@ -25,7 +25,18 @@ dependencies, tests, CI and outputs before adding infrastructure. Resolve missin
 through `craft-delivery:inspect-architecture`; reassess when later evidence changes scope.
 
 For multi-step work with the bundled local runtime, bind the task once with `task-start`
-using the verified host session id, a stable task id, goal and relevant paths. Honor effective
+using the host session id from the session-start context, a stable task id, goal and relevant
+paths. When that context offers an earlier unfinished task that the request continues, adopt it
+with `task-adopt --from <from>` instead of starting it again. When it lists an open plan the
+request continues, start its next ready task with `task-start --plan <plan> --ready` (or
+`--task <task>`; `plan-next` shows the queue); take over a task held elsewhere, even a stale
+one, only for that continuation, and `plan-release` a task this session stops working on. For work that is multi-step, likely to
+span sessions or delegated, create a plan with `plan-create` and say so. Give a delegated or
+separable task a `parent`, the paths it owns and its acceptance; hand a worker the task's
+`plan-envelope --brief`, not the conversation. To run such tasks in parallel, `plan-assign`
+each to a worker (isolated worktree, announced in the reply), have the worker start it with
+the returned command, and `plan-integrate` it once completed; resolve reported conflicts in
+the worktree, and escalate to the user what cannot be resolved. Honor effective
 disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
 Explicitly requested receipt commands remain available. Normal
 `route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.

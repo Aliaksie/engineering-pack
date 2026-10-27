@@ -30,8 +30,8 @@ still usage data.
 
 ## Local storage
 
-Events go to `events.jsonl` under `.craft/state/<worktree-id>/shared/telemetry/` (`craft
-settings` shows the shared directory). The file rotates at 1 MiB with one backup. The
+Events go to `events.jsonl` under `.craft/state/telemetry/` (`craft settings` shows the
+state directory). The file rotates at 1 MiB with one backup. The
 correlation key is `key.json` beside it: delete the key to reset correlation, and the log
 files to remove events.
 
