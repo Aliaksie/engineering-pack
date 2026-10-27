@@ -4,7 +4,7 @@ This repository authors portable AI Capability Packages. Canonical content lives
 `packages/`; the runtime is the Rust `craft` executable (`engine`, `platform`, `application`);
 host tables live in `hosts/` and export construction in `tooling/export/`. Tooling and tests
 are Node ESM with no npm dependencies: Node 22+ minimum, Node 24 for development and primary
-CI, Node 26 for forward checks. Rust 1.89+ builds the runtime.
+CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 
 ## Commands
 

@@ -7,12 +7,26 @@ concurrency:
   group: engineering-pack-distribution-next
   cancel-in-progress: false
 jobs:
+  fast:
+    name: Fast gate
+    uses: ./.github/workflows/fast.yml
   native:
     name: Native
+    needs: fast
     uses: ./.github/workflows/native.yml
+  security:
+    name: Security
+    needs: fast
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    uses: ./.github/workflows/security.yml
+    with:
+      skip-dependencies: true
   release:
     name: Release
-    needs: native
+    needs: [fast, native, security]
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -21,6 +35,8 @@ jobs:
     permissions:
       contents: write
       actions: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,6 +83,10 @@ jobs:
           cat .eval-results/release/PROVENANCE.txt >> .eval-results/release-notes.md
           cd .eval-results/release
           sha256sum ./*.tar.gz native-release.json PROVENANCE.txt > SHA256SUMS
+      - name: Attest release artifacts
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: .eval-results/release/*
       - name: Publish tag
         run: node tooling/release.mjs publish
         env:

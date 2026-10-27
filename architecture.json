@@ -83,7 +83,7 @@
     ".github": {
       "kind": "ci-config",
       "responsibility": "CI workflows and benchmark harnesses.",
-      "allow": ["workflows/*.yml", "benchmarks/*.mjs"],
+      "allow": ["workflows/*.yml", "benchmarks/*.mjs", "dependabot.yml", "deny.toml"],
       "dependsOn": "*",
       "shipped": false
     }

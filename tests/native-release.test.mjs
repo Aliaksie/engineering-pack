@@ -33,8 +33,29 @@ test('release collects checked targets with checksummed archives and binary prov
     assert.equal(asset.binarySha256, digest('binary'));
     const relocated = path.join(options.output, asset.target);
     fs.mkdirSync(relocated);
-    execFileSync('tar', ['-xzf', archive, '-C', relocated]);
+    const descriptor = fs.openSync(archive, 'r');
+    try {
+      execFileSync('tar', ['-xzf', '-'], { cwd: relocated, stdio: [descriptor, 'pipe', 'pipe'] });
+    } finally {
+      fs.closeSync(descriptor);
+    }
     assert.equal(JSON.parse(fs.readFileSync(path.join(relocated, 'native-bundle.json'))).target, asset.target);
+    const executable = `native-bin/craft${asset.target.includes('windows') ? '.exe' : ''}`;
+    assert.equal(digest(fs.readFileSync(path.join(relocated, executable))), asset.binarySha256);
+  }
+});
+test('release resolves relative bundle and output directories from the caller', t => {
+  const options = fixture(t);
+  const module = new URL('../tooling/native-release.mjs', import.meta.url).href;
+  const relative = { ...options, input: 'input', output: 'output with spaces' };
+  execFileSync(process.execPath, ['--input-type=module', '--eval',
+    `import { assembleNativeRelease } from ${JSON.stringify(module)}; assembleNativeRelease(${JSON.stringify(relative)});`],
+  { cwd: path.dirname(options.input) });
+  const output = path.join(path.dirname(options.input), relative.output);
+  const index = JSON.parse(fs.readFileSync(path.join(output, 'native-release.json')));
+  assert.deepEqual(index.assets.map(asset => asset.target), releaseTargets);
+  for (const asset of index.assets) {
+    assert.equal(digest(fs.readFileSync(path.join(output, asset.archive))), asset.sha256);
   }
 });
 for (const defect of ['version', 'revision', 'dirty', 'lock', 'target', 'checksum', 'extra', 'missing', 'primary', 'traversal', 'duplicate', 'symlink']) {

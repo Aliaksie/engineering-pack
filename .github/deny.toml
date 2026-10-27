@@ -1,0 +1,31 @@
+# Audit the dependencies shipped for each supported native platform.
+[graph]
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+]
+all-features = true
+
+[advisories]
+unmaintained = "all"
+
+[licenses]
+allow = [
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+
+[bans]
+# Multiple versions are legitimate in the current transitive dependency graph.
+multiple-versions = "warn"
+# Workspace crates use versionless path dependencies; external versions are locked.
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
