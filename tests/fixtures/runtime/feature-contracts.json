@@ -8876,20 +8876,6 @@
    }
   },
   {
-   "id": "feature-report:empty",
-   "request": {
-    "engine": "feature-report"
-   },
-   "response": {
-    "formatVersion": 1,
-    "ok": false,
-    "error": {
-     "code": "INVALID_INPUT",
-     "message": "Cannot read properties of undefined (reading 'featureOutcomes')"
-    }
-   }
-  },
-  {
    "id": "feature:declared-unsupported",
    "request": {
     "engine": "feature-record",

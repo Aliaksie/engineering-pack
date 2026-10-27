@@ -17,8 +17,6 @@ const CORRECTIONS: &[(&str, &str)] = &[
         "task feature outcomes require task-start",
     ),
 ];
-/// JS crashed on a missing state; every Rust caller reports over a validated state record.
-const UNREACHABLE: &[&str] = &["feature-report:empty"];
 
 fn serialized(value: &Value) -> String {
     serde_json::to_string(value).unwrap()
@@ -65,9 +63,6 @@ fn frozen_feature_contracts() {
     let mut corrected = 0;
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        if UNREACHABLE.contains(&id) {
-            continue;
-        }
         let expected = &case["response"];
         let actual = replay(&case["request"]);
         let matches = match (CORRECTIONS.iter().find(|(case, _)| *case == id), &actual) {

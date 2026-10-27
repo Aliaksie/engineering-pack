@@ -12,17 +12,18 @@ fixture explicitly and explain the correction; frozen output does not justify a 
 `cargo test -p craft-engine --test engine_contracts` replays the corpus through the Rust
 engine. Error codes, JSON results (including key order) are compared; diagnostic messages
 are not. Validators compare their outcome only, because the JavaScript validators echoed
-their input. Every case is replayed there, replayed by another corpus (the acceptance views
-by `view-contracts.json`, feature outcomes by `feature-contracts.json`), or listed as retired
-with its reason: the JavaScript dispatcher envelope and the hash of an `undefined` value,
-arguments that dispatcher left `undefined`, the routing catalog as a request input (the
-catalog is embedded now; the route and session corpora replay those decisions), and the
-services decision before built-in mappings (replayed with them by `services-contracts.json`).
+their input. Every case is replayed. Cases without a Rust counterpart were removed: the
+JavaScript dispatcher envelope and the hash of an `undefined` value, arguments that
+dispatcher left `undefined`, the routing catalog as a request input (the catalog is embedded
+now; the route and session corpora replay those decisions) and the services decision before
+built-in mappings (`services-contracts.json` replays it with them). The acceptance-view and
+feature-outcome cases were removed as copies of `view-contracts.json` and
+`feature-contracts.json`.
 
-The corpus holds an empty-input request per operation, envelope failures, UTF-8 hashes,
-digest ordering, routing, continuation, blocked attempts, checkpoint binding, context
-selection and budgets, repository scopes and snapshots, settings, model advice and service
-plans over explicit observations and a fixed clock. Empty-input rejection is not successful
+The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,
+continuation, blocked attempts, checkpoint binding, context selection and budgets,
+repository scopes and snapshots, settings, model advice and service plans over explicit
+observations and a fixed clock. Empty-input rejection is not successful
 operation coverage; each use case still needs its own success, state and installed checks.
 
 `cli-contracts.json` freezes 25 executable cases after verifying CLI, application,
@@ -207,4 +208,4 @@ the representative engine cases. Inputs are the operation input objects; `craft
 acceptance-view` reads the same documents from files. The Rust replay (`cargo test -p
 craft-engine --test view_contracts`) compares results as serialized JSON and reasons exactly.
 Three cases are corrections: a QA view without a contract reports `qa:missing-contract`
-instead of `qa:invalid-probes`. It covers the six projection cases of `engine-contracts.json`.
+instead of `qa:invalid-probes`. It includes the six projection cases from `engine-contracts.json`.
