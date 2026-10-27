@@ -2202,7 +2202,7 @@ mod tests {
 
     fn sample() -> Value {
         create(
-            &json!({"id": "b2", "goal": "Managed sessions", "references": [{"kind": "tracker", "id": "PROJ-1"}],
+            &json!({"id": "work", "goal": "Managed sessions", "references": [{"kind": "tracker", "id": "PROJ-1"}],
                 "tasks": [
                     {"id": "a", "goal": "First"},
                     {"id": "b", "goal": "Second", "dependsOn": ["a"]},
@@ -2412,7 +2412,7 @@ mod tests {
         )
         .unwrap();
         let text = markdown(&plan);
-        assert!(text.starts_with("# b2: Managed sessions"));
+        assert!(text.starts_with("# work: Managed sessions"));
         assert!(text.contains("| a | ready | — | — | — |"));
         assert!(text.contains("| b | pending | a |"));
         assert!(text.contains("Use \\| pipes"));
@@ -2424,12 +2424,12 @@ mod tests {
         use crate::session::binding;
         let plain = json!({"formatVersion": 1, "task": "a"});
         assert!(binding(&plain, None).unwrap().is_some());
-        let planned = json!({"formatVersion": 2, "task": "a", "plan": "b2"});
+        let planned = json!({"formatVersion": 2, "task": "a", "plan": "work"});
         assert!(binding(&planned, None).unwrap().is_some());
         for invalid in [
-            json!({"formatVersion": 1, "task": "a", "plan": "b2"}),
+            json!({"formatVersion": 1, "task": "a", "plan": "work"}),
             json!({"formatVersion": 2, "task": "a"}),
-            json!({"formatVersion": 2, "task": "a", "plan": "B2"}),
+            json!({"formatVersion": 2, "task": "a", "plan": "WORK"}),
         ] {
             assert!(binding(&invalid, None).is_err(), "{invalid}");
         }
@@ -2437,7 +2437,7 @@ mod tests {
 
     fn nested() -> Value {
         create(
-            &json!({"id": "s5", "goal": "Child contracts", "tasks": [
+            &json!({"id": "children", "goal": "Child contracts", "tasks": [
                 {"id": "p", "goal": "Parent", "scope": {"paths": ["src"]}},
                 {"id": "c1", "goal": "First child", "parent": "p", "acceptance": ["Works"],
                     "scope": {"paths": ["src/a/**"]}, "returns": "The new API"},
@@ -2921,7 +2921,7 @@ mod tests {
 
     fn parallel() -> Value {
         create(
-            &json!({"id": "s7", "goal": "Parallel", "tasks": [
+            &json!({"id": "parallel", "goal": "Parallel", "tasks": [
                 {"id": "a", "goal": "A", "acceptance": ["A works"], "scope": {"paths": ["src/a/**"]}},
                 {"id": "b", "goal": "B", "scope": {"paths": ["src/b/**"]}},
                 {"id": "c", "goal": "C", "dependsOn": ["a"], "scope": {"paths": ["src/c/**"]}},
@@ -2934,8 +2934,8 @@ mod tests {
     }
 
     fn worktrees(task: &str) -> Value {
-        json!({"owner": ONE, "repositories": [{"path": "", "worktree": format!(".craft/worktrees/s7/{task}"),
-            "branch": format!("craft/s7/{task}"), "base": BASE}]})
+        json!({"owner": ONE, "repositories": [{"path": "", "worktree": format!(".craft/worktrees/parallel/{task}"),
+            "branch": format!("craft/parallel/{task}"), "base": BASE}]})
     }
 
     fn assigned<'a>(worker: &'a str, limit: i64, work: Option<Value>) -> Assignment<'a> {
@@ -3100,7 +3100,7 @@ mod tests {
                 .contains("no worktrees")
         );
         let work = discard(&mut plan, "a", ONE, NOW).unwrap();
-        assert_eq!(work["repositories"][0]["branch"], "craft/s7/a");
+        assert_eq!(work["repositories"][0]["branch"], "craft/parallel/a");
         let a = find(&plan, "a").unwrap();
         assert!(
             a["state"] == "pending" && a.get("work").is_none() && a.get("integration").is_none()
@@ -3111,7 +3111,7 @@ mod tests {
     #[test]
     fn an_integrator_escalates_by_hand_and_parents_wait_for_integration() {
         let mut plan = create(
-            &json!({"id": "s7", "goal": "Parallel", "tasks": [
+            &json!({"id": "parallel", "goal": "Parallel", "tasks": [
                 {"id": "p", "goal": "Parent", "scope": {"paths": ["src"]}},
                 {"id": "k", "goal": "Child", "parent": "p", "scope": {"paths": ["src/k/**"]}},
             ]}),

@@ -42,19 +42,19 @@ test('a parent works its children in turn within owned paths and their returned 
   const { root, git } = fixture(t);
   // An uncommitted change that predates the claims is not attributed to any task.
   edit(root, 'README.md');
-  run(['plan-create', '--root', root, '--plan', 's5', '--goal', 'Split the value', '--reference', 'tracker:PROJ-5',
+  run(['plan-create', '--root', root, '--plan', 'children', '--goal', 'Split the value', '--reference', 'tracker:PROJ-5',
     '--data', write(root, 'plan.json', { tasks: [
       { id: 'p', goal: 'Split the value module', scope: { paths: ['src'] } },
       { id: 'c1', goal: 'Add the API', parent: 'p', acceptance: ['API exported'], scope: { paths: ['src/a/**'] }, returns: 'The exported API' },
       { id: 'c2', goal: 'Use the API', parent: 'p', dependsOn: ['c1'], acceptance: ['Uses the API'], scope: { paths: ['src/b/*.mjs'] } },
     ], decisions: [{ id: 'd1', text: 'One module per directory' }] })]);
-  const folder = path.join(stateLocation(root).directory, 'plans', 's5');
+  const folder = path.join(stateLocation(root).directory, 'plans', 'children');
   assert.equal(readJson(path.join(folder, 'plan.json')).formatVersion, 2);
 
   const step = (stage, extra = []) => run(['task-step', '--root', root, '--session', 'one', '--stage', stage,
     '--target', 'acceptance:split', '--approach', 'bounded-fix', '--evidence', `checks/${stage}`, '--outcome', 'passed',
     '--next', 'Continue', ...(extra.includes('--result') ? [] : ['--result', `${stage} done`]), ...extra]);
-  const start = id => run(['task-start', '--root', root, '--session', 'one', '--plan', 's5', '--task', id]);
+  const start = id => run(['task-start', '--root', root, '--session', 'one', '--plan', 'children', '--task', id]);
 
   // One session holds the parent while it works the children in turn.
   const parent = start('p');
@@ -73,11 +73,11 @@ test('a parent works its children in turn within owned paths and their returned 
   const second = start('c2');
   assert.deepEqual(second.plan.envelope.dependencies.map(d => [d.id, d.state, d.result]), [['c1', 'completed', 'export function api()']]);
   assert.deepEqual(second.plan.envelope.decisions.map(d => d.id), ['d1']);
-  const receipt = nativeCommand(['task-start', '--root', root, '--session', 'one', '--plan', 's5', '--task', 'c2']);
+  const receipt = nativeCommand(['task-start', '--root', root, '--session', 'one', '--plan', 'children', '--task', 'c2']);
   assert.match(receipt.stdout, /^Owns: src\/b\/\*\.mjs$/m);
   assert.match(receipt.stdout, /^Part of: p$/m);
   assert.match(receipt.stdout, /^After c1 \(completed\): export function api\(\)$/m);
-  const brief = run(['plan-envelope', '--root', root, '--plan', 's5', '--task', 'c2', '--brief']);
+  const brief = run(['plan-envelope', '--root', root, '--plan', 'children', '--task', 'c2', '--brief']);
   assert.deepEqual(brief, { goal: 'Use the API', sources: ['tracker:PROJ-5', 'c1 returned: export function api()'],
     acceptance: ['Uses the API'], restrictions: ['Change only files matching src/b/*.mjs'], returnShape: 'What changed and how it was verified' });
 
@@ -87,9 +87,9 @@ test('a parent works its children in turn within owned paths and their returned 
   const complete = ['task-step', '--root', root, '--session', 'one', '--stage', 'verify', '--target', 'acceptance:split',
     '--approach', 'bounded-fix', '--evidence', 'checks/verify', '--outcome', 'passed', '--result', 'r', '--next', 'Continue', '--complete'];
   assert.match(refused(complete), /scope exceeded: task c2 changed files outside its paths: value\.mjs;/);
-  const plan = run(['plan', '--root', root, '--plan', 's5']);
+  const plan = run(['plan', '--root', root, '--plan', 'children']);
   assert.equal(plan.tasks.find(item => item.id === 'c2').state, 'running');
-  run(['plan-update', '--root', root, '--plan', 's5', '--expected-revision', String(plan.revision), '--session', 'one',
+  run(['plan-update', '--root', root, '--plan', 'children', '--expected-revision', String(plan.revision), '--session', 'one',
     '--data', write(root, 'widen.json', { tasks: [{ id: 'c2', scope: { paths: ['src/b/*.mjs', 'value.mjs'] } }] })]);
   assert.equal(step('verify', ['--complete']).plan.state, 'completed');
 

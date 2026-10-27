@@ -136,8 +136,7 @@ mod tests {
 
     #[test]
     fn a_plan_task_is_continued_through_its_plan() {
-        let planned =
-            json!({"formatVersion": 2, "task": "t1", "plan": "b2", "checkout": "refs/heads/main"});
+        let planned = json!({"formatVersion": 2, "task": "t1", "plan": "work", "checkout": "refs/heads/main"});
         assert!(found(&planned, &[(state("t1", false), NOW)]).is_none());
     }
 

@@ -62,37 +62,37 @@ test('a plan is worked on across sessions: claim, progress, readiness and take-o
     { id: 'b', goal: 'Document the value', dependsOn: ['a'] },
     { id: 'c', goal: 'Release the value', dependsOn: ['a', 'b'] },
   ] });
-  const created = run(['plan-create', '--root', root, '--plan', 'b2', '--goal', 'Ship the value', '--reference', 'tracker:PROJ-1', '--data', tasks]);
+  const created = run(['plan-create', '--root', root, '--plan', 'work', '--goal', 'Ship the value', '--reference', 'tracker:PROJ-1', '--data', tasks]);
   assert.equal(created.revision, 1);
   assert.deepEqual(created.tasks.map(item => [item.id, item.state, item.ready]), [['a', 'pending', true], ['b', 'pending', false], ['c', 'pending', false]]);
-  const folder = path.join(stateLocation(root).directory, 'plans', 'b2');
+  const folder = path.join(stateLocation(root).directory, 'plans', 'work');
   assert.deepEqual(fs.readdirSync(folder).sort(), ['plan.json', 'plan.md']);
-  assert.match(refused(['plan-create', '--root', root, '--plan', 'b2', '--goal', 'Again']), /already exists/);
+  assert.match(refused(['plan-create', '--root', root, '--plan', 'work', '--goal', 'Again']), /already exists/);
 
   // Session 1: B waits for A; A is claimed and worked to completion.
-  assert.match(refused(['task-start', '--root', root, '--session', 'first', '--plan', 'b2', '--task', 'b']), /not ready: it waits for a/);
-  const bound = run(['task-start', '--root', root, '--session', 'first', '--plan', 'b2', '--task', 'a']);
-  assert.deepEqual([bound.plan.id, bound.plan.task, bound.plan.envelope.task.goal], ['b2', 'a', 'Correct the value']);
+  assert.match(refused(['task-start', '--root', root, '--session', 'first', '--plan', 'work', '--task', 'b']), /not ready: it waits for a/);
+  const bound = run(['task-start', '--root', root, '--session', 'first', '--plan', 'work', '--task', 'a']);
+  assert.deepEqual([bound.plan.id, bound.plan.task, bound.plan.envelope.task.goal], ['work', 'a', 'Correct the value']);
   const first = stateLocation(root, 'first').sessionId;
-  assert.deepEqual(task(run(['plan', '--root', root, '--plan', 'b2']), 'a').owner.session, first);
+  assert.deepEqual(task(run(['plan', '--root', root, '--plan', 'work']), 'a').owner.session, first);
   assert.equal(step(root, 'first', 'verify', 'Complete it').plan.state, 'verifying');
   assert.equal(step(root, 'first', 'verify', 'Nothing left', ['--complete']).plan.state, 'completed');
-  const afterA = run(['plan', '--root', root, '--plan', 'b2']);
+  const afterA = run(['plan', '--root', root, '--plan', 'work']);
   assert.deepEqual(afterA.tasks.map(item => [item.id, item.state, item.ready]), [['a', 'completed', false], ['b', 'pending', true], ['c', 'pending', false]]);
   assert.deepEqual(task(afterA, 'a').evidence, ['checks/verify']);
 
   // Session 2 sees the plan at its start (not a handoff) and starts B.
   const second = started(root, 'second');
   assert.deepEqual(handoffs(second), []);
-  assert.deepEqual(plans(second), [{ plan: 'b2', goal: 'Ship the value', ready: ['b'], held: [] }]);
-  run(['task-start', '--root', root, '--session', 'second', '--plan', 'b2', '--task', 'b']);
+  assert.deepEqual(plans(second), [{ plan: 'work', goal: 'Ship the value', ready: ['b'], held: [] }]);
+  run(['task-start', '--root', root, '--session', 'second', '--plan', 'work', '--task', 'b']);
   step(root, 'second', 'implement', 'Write the release note');
 
   // Session 3: B is held elsewhere; taking it over carries that session's record and checkpoint.
   const [shown] = plans(started(root, 'third'));
   assert.deepEqual(shown.held.map(item => [item.task, item.state, item.here]), [['b', 'running', false]]);
-  assert.match(refused(['task-start', '--root', root, '--session', 'third', '--plan', 'b2', '--task', 'b']), /pass --take-over/);
-  const taken = run(['task-start', '--root', root, '--session', 'third', '--plan', 'b2', '--task', 'b', '--take-over']);
+  assert.match(refused(['task-start', '--root', root, '--session', 'third', '--plan', 'work', '--task', 'b']), /pass --take-over/);
+  const taken = run(['task-start', '--root', root, '--session', 'third', '--plan', 'work', '--task', 'b', '--take-over']);
   assert.equal(taken.plan.takenOver.from, stateLocation(root, 'second').sessionId);
   assert.equal(taken.plan.takenOver.checkpoint.saved.continuation.nextStep, 'Write the release note');
   const session = run(['session', '--root', root, '--session', 'third']);
@@ -102,15 +102,15 @@ test('a plan is worked on across sessions: claim, progress, readiness and take-o
   step(root, 'third', 'implement', 'Publish the note');
 
   // People read the generated view; lookups by reference find the plan.
-  const view = nativeCommand(['plan', '--root', root, '--plan', 'b2']);
+  const view = nativeCommand(['plan', '--root', root, '--plan', 'work']);
   assert.equal(view.exitCode, 0, view.stderr);
-  assert.match(view.stdout, /^# b2: Ship the value/);
+  assert.match(view.stdout, /^# work: Ship the value/);
   assert.match(view.stdout, /\| b \| running \| a \| [0-9a-f]{8} \| Publish the note \|/);
   const generated = fs.readFileSync(path.join(folder, 'plan.md'), 'utf8');
   assert.equal(view.stdout, `${generated}\nView: ${path.join(folder, 'plan.md')}\n`);
-  assert.deepEqual(run(['plan', '--root', root, '--reference', 'tracker:PROJ-1']).plans.map(item => item.id), ['b2']);
+  assert.deepEqual(run(['plan', '--root', root, '--reference', 'tracker:PROJ-1']).plans.map(item => item.id), ['work']);
   assert.deepEqual(run(['plan', '--root', root, '--reference', 'tracker:PROJ-2']).plans, []);
-  assert.deepEqual(readJson(path.join(stateLocation(root).directory, 'plans', 'index.json')).plans.map(item => item.id), ['b2']);
+  assert.deepEqual(readJson(path.join(stateLocation(root).directory, 'plans', 'index.json')).plans.map(item => item.id), ['work']);
 });
 
 test('plan changes are revision-fenced, acyclic and bounded by who holds a task', t => {
