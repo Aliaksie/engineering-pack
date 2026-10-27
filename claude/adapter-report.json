@@ -38,7 +38,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "prompt-routing",
@@ -48,7 +48,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "restore",
@@ -59,7 +59,7 @@
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "checkpoint",
@@ -69,7 +69,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "milestone",
@@ -79,7 +79,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "turn-checkpoint",
@@ -89,7 +89,7 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "compact-restore",
@@ -100,7 +100,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         }
       ],
       "runtime": "bin/craft",
@@ -284,7 +284,7 @@
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -294,7 +294,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -304,7 +304,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -314,7 +314,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -324,7 +324,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -335,7 +335,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -345,7 +345,7 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
       "runtime": "bin/craft",
@@ -514,7 +514,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "shell",
-          "handler": "hooks/read-only.mjs"
+          "handler": "review-read-only"
         },
         {
           "id": "observe-session-start",
@@ -525,7 +525,7 @@
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -535,7 +535,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -545,7 +545,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -555,7 +555,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -565,7 +565,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -576,7 +576,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -586,7 +586,7 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
       "runtime": "bin/craft",
@@ -758,7 +758,7 @@
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -768,7 +768,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -778,7 +778,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -788,7 +788,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -798,7 +798,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -809,7 +809,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -819,7 +819,7 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
       "runtime": "bin/craft",

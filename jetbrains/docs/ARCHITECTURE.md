@@ -29,8 +29,8 @@ flowchart TD
 | `schemas/` | Published authoring schemas for capability manifests, the catalog and project configuration |
 
 `engine/` decides, `platform/` observes and persists, `application/` orchestrates and owns
-the executable. `architecture.json` declares the module map, dependency directions and the
-remaining JavaScript budgets; `npm run architecture` enforces them
+the executable. `architecture.json` declares the module map, dependency directions and where
+JavaScript may live; `npm run architecture` enforces them
 ([ADR 0002](adr/0002-module-map-and-boundaries.md)). The runtime is Rust
 ([ADR 0001](adr/0001-rust-core-runtime.md)); no runtime JavaScript ships.
 

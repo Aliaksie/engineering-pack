@@ -16,7 +16,7 @@ disagree or when the tree breaks a rule.
 
 The runtime is three Rust crates (`engine` ← `platform` ← `application`, with `application`
 also using `engine`). No runtime JavaScript ships: `hosts/` holds the host tables that the build
-reads and `craft` embeds, and package hook files only name a native handler. Build tooling,
+reads and `craft` embeds, and package hook declarations name a native handler in the manifest. Build tooling,
 content, schemas, docs, tests and examples sit around the crates.
 
 ## Module map
@@ -47,13 +47,13 @@ content, schemas, docs, tests and examples sit around the crates.
 | A4 | Cargo workspace members are exactly the `rust-crate` modules; path dependencies follow `dependsOn`; external crates are declared; workspace lints and `unsafe_code = "forbid"` apply |
 | A5 | `craft-engine` production code uses no filesystem, process, network, environment or ambient clock |
 | A6 | Cross-module JavaScript imports follow `dependsOn` and target declared entry points; unused entry points are removed |
-| A7 | Runtime JavaScript is reachable from a declared runtime root or a build-time consumer; unreachable code is deleted |
-| A8 | JavaScript per module never exceeds its line budget, and budgets are lowered as code is removed; host adapters import no other module |
+| A7 | Runtime JavaScript is reachable from a build-time consumer; unreachable code is deleted |
+| A8 | JavaScript outside build-time modules exists only in host adapters, and host adapters import no other module |
 | A9 | Rust modules are named for their domain: no `utils`, `common`, `helpers`, `misc`, `shared`, `core`; no empty modules |
 | A10 | Each host adapter file stays within the module's line limit |
 | A11 | Exports contain no module declared as not shipped |
 
-A budget never rises to move behavior into JavaScript; new runtime behavior belongs in `craft`.
+No module gains JavaScript to move behavior out of Rust; new runtime behavior belongs in `craft`.
 
 How the runtime crates and host entry points interact is described in
 [the architecture](../ARCHITECTURE.md#interaction).
@@ -80,6 +80,7 @@ the same change in reverse.
 
 ## Consequences
 
-Structure changes become explicit, reviewed edits to two files instead of side effects. The JavaScript
-budgets keep tooling-adjacent files in shipped modules from growing into runtime logic. A new runtime entry point or shipped file type needs
-a manifest update, which is intended friction.
+Structure changes become explicit, reviewed edits to two files instead of side effects. Shipped
+modules carry no JavaScript, and host adapters stay within a per-file line limit, so build-time
+tables cannot grow into runtime logic. A new shipped file type needs a manifest update, which is
+intended friction.
