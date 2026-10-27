@@ -256,6 +256,8 @@ fn phase(
                 Ok(workers::transition(s, &input["id"], &input["result"])?["request"].take())
             })?;
             if input["result"]["kind"] == "observed" {
+                // The recorded result stands; a failed offer update is recorded by its own
+                // `state.updated` operation.
                 let _ = session::update_state(root, name, task, recorder, parent, |state| {
                     let id = request["offer"].as_str().unwrap_or_default();
                     if let Some(offer) = state["recommendations"].get_mut(id) {

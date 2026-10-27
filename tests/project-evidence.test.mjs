@@ -7,6 +7,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { nativeRequest } from './craft.mjs';
+import { readTelemetry } from './state.mjs';
 
 // Operations through the executable's request protocol; the CLI cases use `project-evidence`.
 const binary = process.env.CRAFT_PROJECT_EVIDENCE_BINARY;
@@ -339,6 +340,8 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   const cli = JSON.parse(execFileSync(binary, ['project-evidence', 'query', '--enable',
     '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
   assert.equal(cli.results.length, 4);
+  const commands = readTelemetry(root).filter(event => event.name === 'cli.command');
+  assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success']]);
 });
 
 test('native refresh records FIFO sources as unavailable without waiting for a writer', { skip: !binary || process.platform === 'win32', timeout: 15000 }, t => {

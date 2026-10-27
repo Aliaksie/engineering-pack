@@ -70,8 +70,8 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     const recorded = events(root);
     assert.equal(recorded.filter(event => event.name === 'host.hook').length,
       definitions.filter(definition => HOSTS[host].events[definition.event]).length);
-    assert.ok(recorded.some(event => event.name === 'host.observed'));
-    assert.ok(recorded.every(event => ['host.hook', 'host.observed'].includes(event.name)));
+    assert.ok(recorded.every(event => event.name === 'host.hook'));
+    assert.ok(recorded.some(event => typeof event.attributes.contextSupported === 'boolean'));
     assert.ok(!JSON.stringify(recorded).includes('PRIVATE_'));
     assert.ok(!JSON.stringify(recorded).includes('INVALID_PROJECT_MARKER'));
     assert.deepEqual(fs.readdirSync(path.dirname(stateFile(root, 'probe.json'))).sort(),

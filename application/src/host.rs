@@ -158,12 +158,8 @@ pub fn run(input: &Value) -> Result<Value, String> {
     }
     let mut decision = json!({"decision": "allow"});
     let mut failed = false;
-    if facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell") {
-        let observed = attributes(&[
-            ("lifecycle", lifecycle.clone()),
-            ("contextSupported", json!(facts.context_supported)),
-        ]);
-        recorder.observe("host.observed", observed, &hook, &[]);
+    let applies = facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell");
+    if applies {
         let evaluated = match facts.handler {
             Handler::Observe => Ok(decision.clone()),
             Handler::ReviewReadOnly => observe(
@@ -202,11 +198,15 @@ pub fn run(input: &Value) -> Result<Value, String> {
             }
         }
     }
-    let summary = attributes(&[
+    let mut summary = attributes(&[
         ("lifecycle", lifecycle),
         ("inputStatus", status),
         ("decision", decision["decision"].clone()),
     ]);
+    // Whether the host can take context is known only for a hook that applied.
+    if applies {
+        summary.insert("contextSupported".into(), json!(facts.context_supported));
+    }
     recorder.complete(hook, summary, failed.then_some("HOOK_FAILED"));
     decision["failed"] = json!(failed);
     decision["export"] = json!(recorder.finish());

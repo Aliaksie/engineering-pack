@@ -37,17 +37,26 @@ pub fn serve(request: Value, write: impl FnOnce(&Value)) {
     telemetry::Recorder::deliver(export);
 }
 
+fn version() -> Value {
+    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE})
+}
+
+/// One Project Intelligence operation over a single repository or explicit members.
+fn project_evidence(operation: &str, input: &Value) -> Result<Value, Failure> {
+    match operation {
+        "version" => Ok(version()),
+        _ if input.get("members").is_some() => workspace::run(operation, input),
+        _ => evidence::run(operation, input),
+    }
+}
+
 pub fn evaluate(request: Value) -> Value {
     if request.get("formatVersion").and_then(Value::as_u64) != Some(PROTOCOL_VERSION.into()) {
         return json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"UNSUPPORTED_VERSION","message":"expected formatVersion 1"}});
     }
     let result = match request.get("operation").and_then(Value::as_str) {
         Some(operation @ ("refresh" | "status" | "query" | "backup" | "rebuild")) => {
-            if request["input"].get("members").is_some() {
-                workspace::run(operation, &request["input"])
-            } else {
-                evidence::run(operation, &request["input"])
-            }
+            project_evidence(operation, &request["input"])
         }
         Some("workers") => workers::run(&request["input"]),
         Some("actions") => actions::execute(&request["input"]),
@@ -74,9 +83,7 @@ pub fn evaluate(request: Value) -> Value {
                 }
             };
         }
-        Some("version") => Ok(
-            json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":craft_platform::providers::ACTIVE}),
-        ),
+        Some("version") => Ok(version()),
         Some("extract") => {
             let input = &request["input"];
             match (input["path"].as_str(), input["source"].as_str()) {

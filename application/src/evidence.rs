@@ -1,4 +1,5 @@
 use crate::failure::Failure;
+use crate::telemetry::Recorder;
 use craft_engine::hash;
 use craft_platform::{
     providers::{ACTIVE, extract, for_path},
@@ -153,44 +154,51 @@ const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuil
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
 pub fn main(args: &[String]) -> i32 {
-    let (code, stdout, stderr) = command(args);
+    let (code, stdout, stderr, export) = command(args);
     print!("{stdout}");
     eprint!("{stderr}");
+    Recorder::deliver(export);
     code
 }
 
-fn command(args: &[String]) -> (i32, String, String) {
+fn command(args: &[String]) -> (i32, String, String, Option<Value>) {
     if args.is_empty() || args.iter().any(|arg| arg == "--help") {
-        return (0, format!("{USAGE}\n"), String::new());
+        return (0, format!("{USAGE}\n"), String::new(), None);
     }
+    let mut export = None;
     let (json, result) = match request(args) {
         Ok((json, None)) => (
             json,
             Ok(json!({"enabled": false, "reason": "Project evidence is disabled"})),
         ),
         Ok((json, Some((operation, input)))) => {
-            let response = crate::evaluate(
-                json!({"formatVersion": craft_engine::PROTOCOL_VERSION, "operation": operation, "input": input}),
-            );
-            let result = if response["ok"] == true {
-                Ok(response["result"].clone())
-            } else {
-                let error = &response["error"];
-                Err(format!(
-                    "{}: {}",
-                    error["code"].as_str().unwrap_or("NATIVE_FAILED"),
-                    error["message"]
-                        .as_str()
-                        .unwrap_or("Native evidence failed")
-                ))
-            };
-            (json, result)
+            let root = input["root"].as_str().unwrap_or(".");
+            let mut recorder = Recorder::open(Path::new(root), None, None);
+            let command = recorder.start("cli.command", None);
+            let result = crate::project_evidence(&operation, &input);
+            match &result {
+                Ok(_) => recorder.complete(
+                    command,
+                    serde_json::Map::from_iter([("command".into(), json!("project-evidence"))]),
+                    None,
+                ),
+                Err(failure) => recorder.complete(
+                    command,
+                    serde_json::Map::new(),
+                    Some(failure.code("INVALID_INPUT")),
+                ),
+            }
+            export = recorder.finish();
+            (
+                json,
+                result.map_err(|failure| format!("INVALID_INPUT: {}", failure.message)),
+            )
         }
         Err(message) => (false, Err(format!("PROJECT_EVIDENCE_ERROR: {message}"))),
     };
     match result {
-        Ok(result) => (0, render(&result, json), String::new()),
-        Err(message) => (1, String::new(), format!("{message}\n")),
+        Ok(result) => (0, render(&result, json), String::new(), export),
+        Err(message) => (1, String::new(), format!("{message}\n"), export),
     }
 }
 
@@ -368,7 +376,7 @@ mod command_tests {
             request(&args(&["bogus", "--enable"])).unwrap_err().message,
             "unknown project evidence operation"
         );
-        let (code, stdout, stderr) = command(&args(&["status"]));
+        let (code, stdout, stderr, _) = command(&args(&["status"]));
         assert_eq!((code, stderr.as_str()), (0, ""));
         assert_eq!(
             serde_json::from_str::<Value>(&stdout).unwrap()["enabled"],
@@ -396,7 +404,7 @@ mod command_tests {
                 "member must be id=absolute-root",
             ),
         ] {
-            let (code, stdout, stderr) = command(&args(list));
+            let (code, stdout, stderr, _) = command(&args(list));
             assert_eq!((code, stdout.as_str()), (1, ""));
             assert_eq!(stderr, format!("PROJECT_EVIDENCE_ERROR: {message}\n"));
         }
