@@ -401,13 +401,13 @@
     },
     {
       "name": "rustls",
-      "version": "0.23.45",
+      "version": "0.23.46",
       "license": "Apache-2.0 OR ISC OR MIT",
       "repository": "https://github.com/rustls/rustls",
       "notices": [
-        "notices/rustls-0.23.45/LICENSE-APACHE",
-        "notices/rustls-0.23.45/LICENSE-ISC",
-        "notices/rustls-0.23.45/LICENSE-MIT"
+        "notices/rustls-0.23.46/LICENSE-APACHE",
+        "notices/rustls-0.23.46/LICENSE-ISC",
+        "notices/rustls-0.23.46/LICENSE-MIT"
       ]
     },
     {

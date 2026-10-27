@@ -37,13 +37,24 @@ claude plugin validate ./dist/distribution --strict
 1. In a PR, run `npm run version:sync -- <bump>` and add the matching `CHANGELOG.md` section.
 2. After merging, run **Release → Run workflow** on `main`.
 
-The workflow validates the version, changelog and tag absence, runs `npm run check`, and
-builds and tests release `craft` on Linux x86-64, macOS Apple Silicon and Windows x86-64. It
+The workflow validates the version, changelog and tag absence, runs workflow linting, dependency
+security checks, CodeQL and `npm run check`. It builds and tests release `craft` on Linux
+x86-64, macOS Apple Silicon and Windows x86-64. It
 then archives the eight adapter bundles, the distribution and the three native bundles with
-`native-release.json`, provenance and `SHA256SUMS`. It pushes only the `vX.Y.Z` tag, refreshes
+`native-release.json`, provenance and `SHA256SUMS`. Before publication it creates GitHub
+artifact attestations for all fifteen assets. It pushes only the `vX.Y.Z` tag, refreshes
 `distribution-next` at that revision and publishes the GitHub Release once all fifteen assets
 are uploaded. It never bumps versions, commits to `main` or forces a ref. The repository must
 allow the workflow token to write tags, releases and the installation branch.
+
+Consumers can verify a downloaded asset against this repository's build identity:
+
+```sh
+gh attestation verify <downloaded-asset> --repo Aliaksie/engineering-pack
+```
+
+The workflow uses GitHub OIDC and artifact attestations for this public repository; it needs
+no signing secret or paid service.
 
 ### Recovery
 

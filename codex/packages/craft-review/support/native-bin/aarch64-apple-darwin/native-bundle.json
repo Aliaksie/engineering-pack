@@ -12,14 +12,14 @@
     "java-tree-sitter-0.23.5/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "952c93bf9ddc9729315fea730034395ff1039a96",
+  "sourceRevision": "aa5b5008d6cd4780ac95bfe6614bce334fce47f0",
   "sourceDirty": false,
-  "cargoLockSha256": "f00a34a121c94e23ab7dc4f5cb16cf89daa663e0a57a1b1aa8ab04c91f4914b9",
+  "cargoLockSha256": "c51fab3456151eb86cf1bbe9292c5e3e26113d2207ff5366c89d1cfa5626b9e8",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 18557,
-      "sha256": "f5dac1b807a47b3673470fdeb7cb56b17fed446e19ca7f351a97899f46899acb"
+      "sha256": "c06d22dadbdbd1fc35f05de287fa7b3c6cf2d1c664a3248785d0691b6398f58d"
     },
     {
       "path": "LICENSE",
@@ -28,13 +28,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 8116864,
-      "sha256": "e30effe2a9cfc40e39a940bd7a9a8a452d776d0d8eff80557242b7464e8abe3f"
+      "bytes": 8099776,
+      "sha256": "0f1eba0ea9ee0ad86f011aa90354601ae306a990eee15d9ffb871ebd93cfbd7c"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "1aab61d4a3a7d114e183da94cde77f3925c980178bb4c064db21243250fb3aa6"
+      "sha256": "bae42be1b0045ba4d360865548eb79e2607f4f5a56be22b8d62005430ac27f12"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -402,17 +402,17 @@
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-APACHE",
+      "path": "notices/rustls-0.23.46/LICENSE-APACHE",
       "bytes": 10847,
       "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-ISC",
+      "path": "notices/rustls-0.23.46/LICENSE-ISC",
       "bytes": 775,
       "sha256": "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-MIT",
+      "path": "notices/rustls-0.23.46/LICENSE-MIT",
       "bytes": 1082,
       "sha256": "709e3175b4212f7b13aa93971c9f62ff8c69ec45ad8c6532a7e0c41d7a7d6f8c"
     },

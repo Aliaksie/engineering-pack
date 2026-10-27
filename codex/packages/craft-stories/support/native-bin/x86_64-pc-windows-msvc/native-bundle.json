@@ -12,14 +12,14 @@
     "java-tree-sitter-0.23.5/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "952c93bf9ddc9729315fea730034395ff1039a96",
+  "sourceRevision": "aa5b5008d6cd4780ac95bfe6614bce334fce47f0",
   "sourceDirty": false,
-  "cargoLockSha256": "f00a34a121c94e23ab7dc4f5cb16cf89daa663e0a57a1b1aa8ab04c91f4914b9",
+  "cargoLockSha256": "c51fab3456151eb86cf1bbe9292c5e3e26113d2207ff5366c89d1cfa5626b9e8",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 16901,
-      "sha256": "bf5cd04591b5a35802b0272f0a43cb6f8f006816e4afdf4408a901e2ed39c939"
+      "sha256": "d1bc6c2aed4899f2b28c06fe805b9c8d1b19df767e3d4b4cdd008db47276a792"
     },
     {
       "path": "LICENSE",
@@ -28,13 +28,13 @@
     },
     {
       "path": "native-bin/craft.exe",
-      "bytes": 8677376,
-      "sha256": "240800dcc6acbdb205b69fda86b7575a056c12c6090cca182c0075f32e059b3e"
+      "bytes": 8673280,
+      "sha256": "bed40682aad8eed54b9ed0724a9c21b56fbf343c3f65ec59ef8004442bcb877c"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "c4291b55b4db21f2219712715d003427d33325f7f4c6d21a266d2436aecb75ec"
+      "sha256": "6e94790be4268a4e902532696babeb1f5ca39554835118b00df4f46e14bbad42"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -347,17 +347,17 @@
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-APACHE",
+      "path": "notices/rustls-0.23.46/LICENSE-APACHE",
       "bytes": 10847,
       "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-ISC",
+      "path": "notices/rustls-0.23.46/LICENSE-ISC",
       "bytes": 775,
       "sha256": "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4"
     },
     {
-      "path": "notices/rustls-0.23.45/LICENSE-MIT",
+      "path": "notices/rustls-0.23.46/LICENSE-MIT",
       "bytes": 1082,
       "sha256": "709e3175b4212f7b13aa93971c9f62ff8c69ec45ad8c6532a7e0c41d7a7d6f8c"
     },
