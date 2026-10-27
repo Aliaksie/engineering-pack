@@ -3,7 +3,10 @@
 //! Only Claude's status-line payload has a verified contract here; it supplies the session,
 //! model and current context usage. Other hosts use declared data and never scrape private
 //! transcripts for a token count.
-use crate::cli::{Failure, Outcome, input, resolve, session_status_for};
+use crate::cli::{Outcome, session_status_for};
+use crate::failure::Failure;
+use crate::project::absolute;
+use crate::project::read_input;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::contracts::js_length;
 use serde_json::{Map, Value, json};
@@ -155,7 +158,7 @@ fn declared(
         return Err("native usage input is unsupported by this adapter".into());
     }
     let mut data = match &request.data {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     let Some(fields) = data.as_object_mut() else {
@@ -255,7 +258,7 @@ fn status(
     let data = declared(request, stdin, interactive, recorder, parent)?;
     let bundles = bundle(request)?;
     let mut status =
-        session_status_for(&resolve(&request.root), &data, &bundles, recorder, parent)?;
+        session_status_for(&absolute(&request.root), &data, &bundles, recorder, parent)?;
     let capabilities = capabilities(&request.host).expect("parsed host");
     if !request.json {
         return Ok(format!("{}\n", render(&status, &capabilities["commands"])));
@@ -293,7 +296,7 @@ pub fn run(args: &[String], stdin: &mut dyn Read, interactive: bool) -> Outcome 
         .first()
         .map(String::as_str)
         .filter(|host| capabilities(host).is_some());
-    let mut recorder = Recorder::open(&resolve(hint("--root").unwrap_or(".")), None, host);
+    let mut recorder = Recorder::open(&absolute(hint("--root").unwrap_or(".")), None, host);
     recorder.package(hint("--package"));
     let operation = recorder.start("host.session", None);
     let result = parse(args)

@@ -1,6 +1,6 @@
 //! Private task scratch and retained evidence (`workspace-*`): the verified task binding,
 //! the hashed workspace identity and each action under the shared workspace lock.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::scratch::{self, Identity, MANIFEST_BYTES, MANIFEST_ENTRIES, Policy};

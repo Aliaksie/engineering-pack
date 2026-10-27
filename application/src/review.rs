@@ -3,7 +3,10 @@
 //! `review-publication` plans a comment for an authorized publisher. `review-followup` reads
 //! a fetched pull request observation and says what its reviewer should do next. None of
 //! them posts or contacts a code host.
-use crate::cli::{Failure, Outcome, observe, resolve};
+use crate::cli::Outcome;
+use crate::failure::Failure;
+use crate::project::absolute;
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::{
     contracts::{js_blank, normalize_numbers},
@@ -149,7 +152,7 @@ fn described(error: io::Error, action: &str) -> Failure {
 
 /// A JSON artifact, decoded as text first so invalid UTF-8 is replaced rather than refused.
 fn artifact(file: &str, max_bytes: usize, label: &str) -> Result<Value, Failure> {
-    let bytes = read_bounded(&resolve(file), max_bytes).map_err(|error| match error {
+    let bytes = read_bounded(&absolute(file), max_bytes).map_err(|error| match error {
         ReadError::Io(error) => described(error, &format!("cannot read {label} {file}")),
         _ => format!(
             "{label} exceeds {} MiB or is not a regular file",
@@ -180,7 +183,7 @@ fn snapshot(options: &Options) -> Result<Value, Failure> {
     let [Some(base), Some(head)] = refs.map(|r| r.filter(|r| !r.starts_with('-'))) else {
         return Err("explicit base and head references required".into());
     };
-    let root = resolve(options.get("root").unwrap_or("."));
+    let root = absolute(options.get("root").unwrap_or("."));
     let compared = comparison::compare(&root, base, head)?;
     let snapshot = json!({
         "formatVersion": 1,
@@ -226,7 +229,7 @@ fn prepare(
         summary,
         |_, _| snapshot(options),
     )?;
-    let file = resolve(output);
+    let file = absolute(output);
     let text = format!(
         "{}\n",
         serde_json::to_string_pretty(&snapshot).expect("JSON values serialize")
@@ -362,7 +365,7 @@ pub fn run(command: Command, args: &[String], context: &Value) -> Outcome {
         .and_then(|index| args.get(index + 1))
         .filter(|value| !value.starts_with("--"))
         .map_or(".", String::as_str);
-    let mut recorder = Recorder::open(&resolve(root), None, None);
+    let mut recorder = Recorder::open(&absolute(root), None, None);
     recorder.package(context["package"].as_str());
     let operation = recorder.start("review.command", None);
     let result = parse(command, args)

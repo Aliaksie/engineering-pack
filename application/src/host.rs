@@ -1,8 +1,10 @@
 //! Host lifecycle hooks: one native invocation per hook event. Host adapters send
 //! host-neutral facts and serialize the decision for their wire format; observation
 //! hooks never supply a permission decision or context.
-use crate::cli::{Failure, observe, resolve};
+use crate::failure::Failure;
+use crate::project::absolute;
 use crate::telemetry::Recorder;
+use crate::telemetry::observe;
 use crate::{delivery, project};
 use craft_engine::review;
 use serde_json::{Map, Value, json};
@@ -110,7 +112,7 @@ fn attributes(pairs: &[(&str, Value)]) -> Map<String, Value> {
 /// One hook event: `{decision, reason?, failed, export}`.
 pub fn run(input: &Value) -> Result<Value, String> {
     let facts = facts(input)?;
-    let cwd = resolve(facts.cwd);
+    let cwd = absolute(facts.cwd);
     let root = project_root(&cwd);
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));
     recorder.package(facts.package);

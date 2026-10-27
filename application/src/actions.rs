@@ -1,7 +1,7 @@
 //! `task-offer`, `task-decision` and `task-action-check` for the bound task, under the active
 //! binding lock: offers and decisions are recorded in task state; a check only reads it.
 //! Nothing is dispatched, approved or granted.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session::{active_task, binding_file, read_state, update_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::actions::{self, Context};
@@ -158,7 +158,7 @@ fn execution_phase(
             if active_task(root, Some(name))?.as_deref() != Some(task) {
                 return Err("action execution requires the active coordinator task".into());
             }
-            let settings = crate::cli::observe(
+            let settings = crate::telemetry::observe(
                 recorder,
                 "project.loaded",
                 parent,

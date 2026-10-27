@@ -1,8 +1,9 @@
 //! Native phases around asynchronous host callbacks. Durable state is updated only here;
 //! admission shares the active binding lock with task-start, never a host callback.
 use crate::{
-    cli::{Failure, observe},
+    failure::Failure,
     project, session,
+    telemetry::observe,
     telemetry::{Operation, Recorder, now_ms},
 };
 use craft_engine::{

@@ -1,7 +1,8 @@
 //! `task-start`: bind one task to the session for the current checkout, route its stage,
 //! files and risks, and snapshot its selected source. Nothing is accepted, delegated or
 //! switched; model advice is a recommendation.
-use crate::cli::{Failure, routed};
+use crate::cli::routed;
+use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
 use crate::telemetry::{Operation, Recorder};

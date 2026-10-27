@@ -8,6 +8,7 @@ mod control;
 mod delivery;
 mod discovery;
 mod evidence;
+mod failure;
 mod grounding;
 pub mod hook;
 mod host;

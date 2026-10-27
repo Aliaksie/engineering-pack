@@ -281,7 +281,7 @@ fn request(args: &[String]) -> Result<Request, String> {
     let root = options.get("root").and_then(Value::as_str).unwrap_or(".");
     input.insert(
         "root".into(),
-        json!(crate::cli::resolve(root).to_string_lossy()),
+        json!(crate::project::absolute(root).to_string_lossy()),
     );
     Ok((json, Some((operation, Value::Object(input)))))
 }

@@ -1,6 +1,7 @@
 //! Session records shared with the remaining JS callers: the active task
 //! binding, task state reads and locked task state updates.
-use crate::cli::{Failure, observe};
+use crate::failure::Failure;
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::{contracts, digest, session};
 use craft_platform::{repository::snapshot, state};

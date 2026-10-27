@@ -1,10 +1,12 @@
 //! Context delivery hooks: lifecycle facts → routing hints, checkpoints, service metadata and
 //! workspace housekeeping, with identical routing hints suppressed under one locked step.
 use crate::checkpoint;
-use crate::cli::{Failure, observe, prepared_services, routed};
+use crate::cli::{prepared_services, routed};
+use crate::failure::Failure;
 use crate::project;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::{delivery, hash, identity, routing};
 use craft_platform::{state, telemetry::uuid};

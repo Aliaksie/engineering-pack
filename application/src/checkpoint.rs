@@ -1,5 +1,5 @@
 //! Explicit local checkpoints and read-only recovery comparison.
-use crate::cli::Failure;
+use crate::failure::Failure;
 use crate::session::{active_task, read_record, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::{checkpoint, hash, session, timestamp};

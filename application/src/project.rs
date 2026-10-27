@@ -1,11 +1,11 @@
 //! Project configuration use cases: effective settings with value origins, private
 //! state placement and the current worker budget.
-use crate::cli::Failure;
-use crate::telemetry::now_ms;
+use crate::failure::Failure;
+use crate::telemetry::{Operation, Recorder, now_ms, observe};
 use craft_engine::{contracts, workers};
 use craft_platform::{documents, state};
-use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
+use serde_json::{Map, Value, json};
+use std::path::{Component, Path, PathBuf};
 
 pub fn preference_file() -> PathBuf {
     std::env::home_dir()
@@ -23,6 +23,38 @@ fn document(read: Result<Value, documents::DocumentError>) -> Result<Value, Fail
 
 pub fn input(file: &Path) -> Result<Value, Failure> {
     document(documents::input(file))
+}
+
+/// `input` recorded as an `input.loaded` child operation of `parent`.
+pub(crate) fn read_input(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    file: &str,
+) -> Result<Value, Failure> {
+    observe(
+        recorder,
+        "input.loaded",
+        parent,
+        "INVALID_INPUT",
+        Map::new(),
+        |_, _| input(Path::new(file)),
+    )
+}
+
+/// `path.resolve`: absolute against the working directory, with `.` and `..` removed lexically.
+pub(crate) fn absolute(path: &str) -> PathBuf {
+    let joined = std::env::current_dir().unwrap_or_default().join(path);
+    let mut resolved = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            Component::ParentDir => {
+                resolved.pop();
+            }
+            Component::CurDir => {}
+            other => resolved.push(other),
+        }
+    }
+    resolved
 }
 
 /// Paths in the form `stateLocation` reports them; failures are reported, not raised.

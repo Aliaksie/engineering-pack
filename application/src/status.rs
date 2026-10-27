@@ -1,7 +1,8 @@
 //! `session`/`session-advice`: one bounded observation of the bound task (its record, source,
 //! checkpoint, routed guidance and workspace) and the engine's advice over it. Read-only:
 //! nothing is compacted, reset, switched, written or executed.
-use crate::cli::{Failure, guidance_report};
+use crate::cli::guidance_report;
+use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_state};
 use crate::telemetry::{Operation, Recorder, now_ms, pack_version};

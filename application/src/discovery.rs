@@ -1,6 +1,6 @@
 //! One discovery invocation over the task's saved scope, with conditional reuse receipts.
 use crate::{
-    cli::Failure,
+    failure::Failure,
     project,
     telemetry::{Operation, Recorder},
 };

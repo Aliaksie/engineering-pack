@@ -1,15 +1,15 @@
 //! `craft <command> [options]`: argument rules, rendering and exit codes of every command an
 //! installed package runs through its `bin/craft` launcher.
-use crate::project::{self, Settings};
+use crate::failure::Failure;
+use crate::project::{self, Settings, absolute, read_input};
+use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::contracts::normalize_numbers;
 use craft_engine::session::views::{self, Reader};
 use craft_engine::{context, contracts, models, routing, services};
-use craft_platform::documents::DocumentError;
 use craft_platform::guidance;
 use serde_json::{Map, Value, json};
-use std::io::ErrorKind;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub const COMMANDS: &[&str] = &[
     "grounded-context",
@@ -172,76 +172,6 @@ const REPEATED: &[&str] = &[
     "bundle",
 ];
 
-#[derive(Debug)]
-pub struct Failure {
-    pub message: String,
-    io: Option<ErrorKind>,
-}
-
-impl Failure {
-    pub(crate) fn from_io(error: std::io::Error) -> Self {
-        Self {
-            message: error.to_string(),
-            io: Some(error.kind()),
-        }
-    }
-    pub(crate) fn from_error_code(code: &str) -> Self {
-        let io = match code {
-            "ENOENT" => Some(ErrorKind::NotFound),
-            "EACCES" => Some(ErrorKind::PermissionDenied),
-            "ENOTDIR" => Some(ErrorKind::NotADirectory),
-            _ => None,
-        };
-        Self {
-            message: code.into(),
-            io,
-        }
-    }
-    /// The Node-style code of an I/O failure, for a caller-owned telemetry envelope.
-    pub(crate) fn node_code(&self) -> Option<&'static str> {
-        match self.io {
-            Some(ErrorKind::PermissionDenied) => Some("EACCES"),
-            Some(ErrorKind::StorageFull) => Some("ENOSPC"),
-            Some(ErrorKind::NotFound) => Some("ENOENT"),
-            Some(ErrorKind::NotADirectory) => Some("ENOTDIR"),
-            Some(ErrorKind::ResourceBusy) => Some("EBUSY"),
-            Some(ErrorKind::AlreadyExists) => Some("EEXIST"),
-            _ => None,
-        }
-    }
-    /// The stable reason code `observe` records for this failure.
-    pub fn code(&self, fallback: &'static str) -> &'static str {
-        match self.io {
-            Some(ErrorKind::PermissionDenied) => "ACCESS_DENIED",
-            Some(ErrorKind::StorageFull) => "STORAGE_FULL",
-            Some(ErrorKind::NotFound) => "NOT_FOUND",
-            Some(ErrorKind::ResourceBusy | ErrorKind::AlreadyExists) => "STATE_BUSY",
-            _ => fallback,
-        }
-    }
-}
-
-impl From<String> for Failure {
-    fn from(message: String) -> Self {
-        Self { message, io: None }
-    }
-}
-
-impl From<&str> for Failure {
-    fn from(message: &str) -> Self {
-        message.to_string().into()
-    }
-}
-
-impl From<DocumentError> for Failure {
-    fn from(error: DocumentError) -> Self {
-        Self {
-            io: error.io_kind(),
-            message: error.to_string(),
-        }
-    }
-}
-
 pub struct Outcome {
     /// A portable Node-style I/O code for a caller-owned command telemetry envelope.
     pub error_code: Option<&'static str>,
@@ -261,22 +191,6 @@ impl Options {
     fn get(&self, name: &str) -> Option<&str> {
         self.values.get(name).and_then(Value::as_str)
     }
-}
-
-/// `path.resolve`: absolute against the working directory, with `.` and `..` removed lexically.
-pub(crate) fn resolve(path: &str) -> PathBuf {
-    let joined = std::env::current_dir().unwrap_or_default().join(path);
-    let mut resolved = PathBuf::new();
-    for component in joined.components() {
-        match component {
-            Component::ParentDir => {
-                resolved.pop();
-            }
-            Component::CurDir => {}
-            other => resolved.push(other),
-        }
-    }
-    resolved
 }
 
 fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
@@ -345,43 +259,8 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     Ok(options)
 }
 
-/// One child operation of `parent`: success records `summary`, failure the code of its
-/// I/O error or `fallback`.
-pub(crate) fn observe<T>(
-    recorder: &mut Recorder,
-    name: &'static str,
-    parent: &Operation,
-    fallback: &'static str,
-    summary: Map<String, Value>,
-    work: impl FnOnce(&mut Recorder, &Operation) -> Result<T, Failure>,
-) -> Result<T, Failure> {
-    let operation = recorder.start(name, Some(parent));
-    let result = work(recorder, &operation);
-    let (attributes, failure) = match &result {
-        Ok(_) => (summary, None),
-        Err(error) => (Map::new(), Some(error.code(fallback))),
-    };
-    recorder.complete(operation, attributes, failure);
-    result
-}
-
-pub(crate) fn input(
-    recorder: &mut Recorder,
-    parent: &Operation,
-    file: &str,
-) -> Result<Value, Failure> {
-    observe(
-        recorder,
-        "input.loaded",
-        parent,
-        "INVALID_INPUT",
-        Map::new(),
-        |_, _| project::input(Path::new(file)),
-    )
-}
-
 fn root(options: &Options) -> PathBuf {
-    resolve(options.get("root").unwrap_or("."))
+    absolute(options.get("root").unwrap_or("."))
 }
 
 fn grounded_context(
@@ -392,7 +271,7 @@ fn grounded_context(
 ) -> Result<Value, Failure> {
     let data = match (forwarded, options.get("data")) {
         (Some(data), _) => data.clone(),
-        (None, Some(file)) => input(recorder, parent, file)?,
+        (None, Some(file)) => read_input(recorder, parent, file)?,
         _ => return Err("grounded-context requires --data input.json".into()),
     };
     crate::grounding::run(
@@ -505,7 +384,7 @@ fn model_advice(
     let file = options
         .get("data")
         .ok_or("model-advice requires --data <request.json>")?;
-    let request = input(recorder, parent, file)?;
+    let request = read_input(recorder, parent, file)?;
     let settings = loaded(options, recorder, parent)?;
     let operation = recorder.start("model.advice", Some(parent));
     let result = models::advise(&settings, &request);
@@ -759,7 +638,7 @@ fn locate(
     let observed =
         crate::discovery::observation(&root(options), session, task.as_deref(), recorder, parent);
     let request = match options.get("data") {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => {
             let mut request =
                 json!({"terms":strings(options,"term"),"paths":strings(options,"path")});
@@ -798,7 +677,7 @@ fn checkpoint_save(
 ) -> Result<Value, Failure> {
     let root = root(options);
     let mut metadata = match options.get("data") {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     let session = options.get("session").filter(|s| !s.is_empty());
@@ -854,7 +733,7 @@ fn session_attempt(
     else {
         return Err("session-attempt requires --session, --task and --data".into());
     };
-    let attempt = input(recorder, parent, file)?;
+    let attempt = read_input(recorder, parent, file)?;
     let operation = recorder.start("attempt.recorded", Some(parent));
     let result = loaded(options, recorder, &operation).and_then(|settings| {
         crate::session::record_attempt(
@@ -896,7 +775,10 @@ fn task_start(
     };
     let mut start = Map::from_iter([("goal".to_string(), json!(goal))]);
     if let Some(file) = given("contract") {
-        start.insert("engineeringContract".into(), input(recorder, parent, file)?);
+        start.insert(
+            "engineeringContract".into(),
+            read_input(recorder, parent, file)?,
+        );
     }
     if let Some(repositories) = options.values.get("repository") {
         start.insert("repositories".into(), repositories.clone());
@@ -970,7 +852,7 @@ fn task_step(
     if let Some(file) = options.get("acceptance-evidence").filter(|f| !f.is_empty()) {
         input.insert(
             "acceptanceEvidence".into(),
-            crate::cli::input(recorder, parent, file)?,
+            read_input(recorder, parent, file)?,
         );
         for (name, flag) in [
             ("expectedTaskContract", "expected-task-contract"),
@@ -1016,7 +898,7 @@ fn acceptance_view(
         options
             .get(name)
             .map(|file| {
-                let mut value = input(recorder, parent, file)?;
+                let mut value = read_input(recorder, parent, file)?;
                 normalize_numbers(&mut value);
                 Ok(value)
             })
@@ -1096,7 +978,7 @@ fn task_action(
         input.insert("priorAuthorization".into(), json!(prior));
     }
     let facts = match options.get("data").filter(|d| !d.is_empty()) {
-        Some(file) => crate::cli::input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     let bundles = if kind == Kind::Decision {
@@ -1204,7 +1086,7 @@ fn session_status_input(
     let data = match (forwarded, options.get("data")) {
         (Some(_), Some(_)) => return Err("choose forwarded session input or --data".into()),
         (Some(data), None) => data.clone(),
-        (None, Some(file)) => input(recorder, parent, file)?,
+        (None, Some(file)) => read_input(recorder, parent, file)?,
         (None, None) => json!({}),
     };
     if !data.is_object() {
@@ -1263,7 +1145,7 @@ fn workspace(
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let mut data = match options.get("data").filter(|d| !d.is_empty()) {
-        Some(file) => input(recorder, parent, file)?,
+        Some(file) => read_input(recorder, parent, file)?,
         None => json!({}),
     };
     if !data.is_object() {
@@ -1319,11 +1201,14 @@ fn settings(
     operation: &Operation,
 ) -> Result<Value, Failure> {
     let overrides = match options.get("data") {
-        Some(file) => input(recorder, operation, file)?,
+        Some(file) => read_input(recorder, operation, file)?,
         None => json!({}),
     };
     let workers = match options.get("facts") {
-        Some(file) => Some((input(recorder, operation, file)?, options.get("session"))),
+        Some(file) => Some((
+            read_input(recorder, operation, file)?,
+            options.get("session"),
+        )),
         None => None,
     };
     let preferences = options.get("preferences").map(PathBuf::from);
@@ -1931,7 +1816,7 @@ pub fn run_in_context(argv: &[String], context: &Value) -> Outcome {
             .map(String::as_str)
     };
     let mut recorder = Recorder::open(
-        &resolve(hint("--root").unwrap_or(".")),
+        &absolute(hint("--root").unwrap_or(".")),
         hint("--session"),
         hint("--host"),
     );
