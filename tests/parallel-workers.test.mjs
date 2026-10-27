@@ -76,6 +76,7 @@ test('workers work in isolated worktrees and clean integrations merge without a 
     { id: 'b', goal: 'Change B', scope: { paths: ['src/b/**'] } },
     { id: 'c', goal: 'Build on A', dependsOn: ['a'], scope: { paths: ['src/c/**'] } },
     { id: 'd', goal: 'Touch A too', scope: { paths: ['src/a/inner.mjs'] } },
+    { id: 'near', goal: 'Touch B too', scope: { paths: ['src/b/z.mjs'] } },
     { id: 'free', goal: 'Owns nothing' },
   ]);
   const head = git(root, 'rev-parse', 'HEAD');
@@ -84,30 +85,40 @@ test('workers work in isolated worktrees and clean integrations merge without a 
   const assigned = assign('a');
   assert.equal(assigned.worker.session, 'lead/s7/a');
   assert.equal(assigned.isolated, true);
-  assert.deepEqual(assigned.work.repositories, [{ path: '', worktree: '.craft/worktrees/s7/a', branch: 'craft/s7/a', base: head }]);
+  assert.deepEqual(assigned.work.repositories, [{ path: '', worktree: '.craft/worktrees/s7/a-1', branch: 'craft/s7/a-1', base: head }]);
   assert.deepEqual(assigned.brief.restrictions, ['Change only files matching src/a/**',
-    'Work only in the worktree .craft/worktrees/s7/a (branch craft/s7/a); leave other checkouts unchanged']);
+    'Work only in the worktree .craft/worktrees/s7/a-1 (branch craft/s7/a-1); leave other checkouts unchanged']);
   assert.equal(readJson(record).formatVersion, 4);
-  const worktree = path.join(root, '.craft/worktrees/s7/a');
-  assert.equal(git(worktree, 'branch', '--show-current'), 'craft/s7/a');
+  const worktree = path.join(root, '.craft/worktrees/s7/a-1');
+  assert.equal(git(worktree, 'branch', '--show-current'), 'craft/s7/a-1');
   const receipt = nativeCommand(['plan-assign', '--root', root, '--plan', 's7', '--task', 'b', '--session', 'lead', '--shared']);
   assert.equal(receipt.exitCode, 0, receipt.stderr);
   assert.match(receipt.stdout, /^Assigned: b of plan s7 to worker session lead\/s7\/b/m);
   assert.match(receipt.stdout, /^Shared checkout: /m);
   assert.match(refused(['plan-assign', '--root', root, '--plan', 's7', '--task', 'd', '--session', 'lead']), /running tasks also own: a \(src\/a\/inner\.mjs ~ src\/a\/\*\*\)/);
+  // An ordinary claim respects the paths a shared worker owns, and the queue does not offer it.
+  assert.match(refused(['task-start', '--root', root, '--session', 'other', '--plan', 's7', '--task', 'near']), /running tasks also own: b \(src\/b\/z\.mjs ~ src\/b\/\*\*\)/);
+  assert.equal(task('near').state, 'pending');
+  assert.ok(!next().ready.includes('near'));
+  assert.deepEqual(next().waiting.find(item => item.task === 'near').on, [{ id: 'b', state: 'running', paths: ['src/b/z.mjs ~ src/b/**'] }]);
   // The coordinator checkout does not see the ignored worktrees.
   assert.equal(git(root, 'status', '--porcelain'), '');
 
   // The worker binds its worktree and completes there, within its paths.
   const started = start('lead/s7/a', 'a');
-  assert.deepEqual(started.repositories, ['.craft/worktrees/s7/a']);
+  assert.deepEqual(started.repositories, ['.craft/worktrees/s7/a-1']);
   put(worktree, 'src/a/x.mjs', 'export const x = 2;\n');
+  // A refused completion leaves the worktree as it was.
+  const failed = completion('lead/s7/a').map(arg => arg === 'passed' ? 'quality-failure' : arg);
+  assert.match(refused(failed), /requires a passed acceptance receipt/);
+  assert.equal(git(worktree, 'rev-parse', 'HEAD'), head);
+  assert.equal(git(worktree, 'status', '--porcelain'), 'M src/a/x.mjs');
   put(worktree, 'outside.mjs', 'export const o = 1;\n');
   assert.match(refused(completion('lead/s7/a')), /scope exceeded: task a changed files outside its paths: outside\.mjs/);
   fs.rmSync(path.join(worktree, 'outside.mjs'));
   const done = complete('lead/s7/a');
   assert.equal(done.plan.state, 'completed');
-  const branchHead = git(root, 'rev-parse', 'craft/s7/a');
+  const branchHead = git(root, 'rev-parse', 'craft/s7/a-1');
   assert.notEqual(branchHead, head);
   assert.equal(git(worktree, 'status', '--porcelain'), '');
   assert.equal(task('a').work.repositories[0].head, branchHead);
@@ -128,26 +139,28 @@ test('workers work in isolated worktrees and clean integrations merge without a 
   assert.equal(git(root, 'rev-parse', 'HEAD^2'), branchHead);
   assert.equal(merged.merges[0].commit, git(root, 'rev-parse', 'HEAD'));
   assert.equal(fs.existsSync(path.join(root, '.craft/worktrees')), false);
-  assert.equal(spawnSync('git', ['-C', root, 'rev-parse', '--verify', '-q', 'craft/s7/a']).status, 1);
+  assert.equal(spawnSync('git', ['-C', root, 'rev-parse', '--verify', '-q', 'craft/s7/a-1']).status, 1);
   assert.equal(task('a').integration.state, 'integrated');
   assert.ok(next().ready.includes('c'));
 
   // The assigning session takes its shared worker's task back.
   const released = run(['plan-release', '--root', root, '--plan', 's7', '--task', 'b', '--session', 'lead']);
   assert.equal(released.state, 'pending');
+  start('other', 'near');
+  assert.equal(task('near').state, 'running');
 });
 
 test('conflicts return to the integrator, escalate when the budget is spent and can be discarded', t => {
   const root = folder(t);
   repo(root, { '.gitignore': ignore, 'shared.mjs': 'export const s = 1;\n', 'other.mjs': 'export const o = 1;\n' });
-  const { task, assign, integrate, start, complete, next } = planned(t, root, [
+  const { record, task, assign, integrate, start, complete, next } = planned(t, root, [
     { id: 'e', goal: 'Change shared', scope: { paths: ['shared.mjs'] } },
     { id: 'f', goal: 'Change other', maxAttempts: 1, scope: { paths: ['other.mjs'] } },
   ]);
   assign('e');
   assign('f');
-  const e = path.join(root, '.craft/worktrees/s7/e');
-  const f = path.join(root, '.craft/worktrees/s7/f');
+  const e = path.join(root, '.craft/worktrees/s7/e-1');
+  const f = path.join(root, '.craft/worktrees/s7/f-1');
   start('lead/s7/e', 'e');
   put(e, 'shared.mjs', 'export const s = 2;\n');
   complete('lead/s7/e');
@@ -172,7 +185,7 @@ test('conflicts return to the integrator, escalate when the budget is spent and 
   assert.deepEqual(next().needsUser.map(item => item.task), ['f']);
 
   // The integrator resolves in the worktree, completes again and integrates.
-  assert.deepEqual(start('lead', 'e').repositories, ['.craft/worktrees/s7/e']);
+  assert.deepEqual(start('lead', 'e').repositories, ['.craft/worktrees/s7/e-1']);
   assert.equal(spawnSync('git', ['-C', e, 'merge', '-q', coordinator]).status, 1);
   put(e, 'shared.mjs', 'export const s = 4;\n');
   git(e, 'add', 'shared.mjs'); git(e, 'commit', '-qm', 'resolve');
@@ -188,8 +201,18 @@ test('conflicts return to the integrator, escalate when the budget is spent and 
   const discarded = integrate('f', ['--discard']);
   assert.equal(discarded.state, 'pending');
   assert.equal(fs.existsSync(f), false);
-  assert.match(discarded.worktrees.kept[0], /branch craft\/s7\/f kept/);
+  assert.match(discarded.worktrees.kept[0], /branch craft\/s7\/f-1 kept/);
   assert.equal(task('f').work, undefined);
+
+  // A new attempt works on its own branch; the discarded one stays.
+  const data = path.join(root, '..', `${path.basename(root)}-change.json`);
+  fs.writeFileSync(data, JSON.stringify({ tasks: [{ id: 'f', maxAttempts: 3 }] }));
+  t.after(() => fs.rmSync(data, { force: true }));
+  run(['plan-update', '--root', root, '--plan', 's7', '--expected-revision', String(readJson(record).revision), '--data', data]);
+  const attempt = task('f').attempts + 1;
+  const retried = assign('f');
+  assert.deepEqual(retried.work.repositories.map(r => [r.worktree, r.branch]), [[`.craft/worktrees/s7/f-${attempt}`, `craft/s7/f-${attempt}`]]);
+  assert.equal(spawnSync('git', ['-C', root, 'rev-parse', '--verify', '-q', 'craft/s7/f-1']).status, 0);
 });
 
 test('a folder of repositories gets one worktree per repository and a plain folder shares', t => {
@@ -202,10 +225,10 @@ test('a folder of repositories gets one worktree per repository and a plain fold
   ]);
   const assigned = assign('both');
   assert.deepEqual(assigned.work.repositories.map(r => [r.path, r.worktree]),
-    [['api', '.craft/worktrees/s7/both/api'], ['web', '.craft/worktrees/s7/both/web']]);
+    [['api', '.craft/worktrees/s7/both-1/api'], ['web', '.craft/worktrees/s7/both-1/web']]);
   start('lead/s7/both', 'both');
-  put(path.join(root, '.craft/worktrees/s7/both/api'), 'a.mjs', 'export const a = 2;\n');
-  put(path.join(root, '.craft/worktrees/s7/both/web'), 'w.mjs', 'export const w = 2;\n');
+  put(path.join(root, '.craft/worktrees/s7/both-1/api'), 'a.mjs', 'export const a = 2;\n');
+  put(path.join(root, '.craft/worktrees/s7/both-1/web'), 'w.mjs', 'export const w = 2;\n');
   complete('lead/s7/both');
   const merged = integrate('both');
   assert.deepEqual(merged.merges.map(m => m.path), ['api', 'web']);

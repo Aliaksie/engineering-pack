@@ -1479,7 +1479,7 @@ fn help(action: &str) -> Value {
         }),
         "plan-assign" => json!({
             "usage": "plan-assign --plan id --task task-id --session id [--shared] [--root project]",
-            "mode": "claim a ready task that owns paths for a worker session of this session, in isolated worktrees below .craft/worktrees/<plan>/<task>/ on branch craft/<plan>/<task> unless --shared; refused at efficiency.delegation.maxWorkers or when a running task owns intersecting paths; no worker is started",
+            "mode": "claim a ready task that owns paths for a worker session of this session, in isolated worktrees below .craft/worktrees/<plan>/<task>-<attempt>/ on branch craft/<plan>/<task>-<attempt> unless --shared; refused at efficiency.delegation.maxWorkers or when a running task owns intersecting paths; no worker is started",
         }),
         "plan-integrate" => json!({
             "usage": "plan-integrate --plan id --task task-id --session id [--escalate --reason text | --discard] [--root project]",

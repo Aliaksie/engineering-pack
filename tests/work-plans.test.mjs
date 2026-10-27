@@ -126,12 +126,23 @@ test('plan changes are revision-fenced, acyclic and bounded by who holds a task'
   assert.match(refused(update(1, { goal: 'Stale' })), /changed \(revision 2 now, 1 expected\)/);
   assert.match(refused(update(2, { tasks: [{ id: 'a', state: 'running' }] })), /other states follow from task work/);
 
+  // A save interrupted after its record leaves no index entry older than the record.
+  const view = path.join(stateLocation(root).directory, 'plans', 'p', 'plan.md');
+  fs.rmSync(view);
+  fs.mkdirSync(path.join(view, 'blocked'), { recursive: true });
+  refused(update(2, { goal: 'Interrupted' }));
+  fs.rmSync(view, { recursive: true });
+  const summary = run(['plan', '--root', root]).plans.find(item => item.id === 'p');
+  assert.deepEqual([summary.revision, summary.goal], [3, 'Interrupted']);
+  assert.equal(run(update(3, { goal: 'Outcome' })).revision, 4);
+  assert.equal(readJson(path.join(stateLocation(root).directory, 'plans', 'index.json')).plans[0].revision, 4);
+
   run(['task-start', '--root', root, '--session', 'one', '--plan', 'p', '--task', 'a']);
-  assert.match(refused(update(3, { tasks: [{ id: 'a', state: 'abandoned' }] }, ['--session', 'two'])), /owned by another session/);
-  assert.match(refused(update(3, { status: 'completed' })), /every task is completed or abandoned/);
-  const abandoned = run(update(3, { tasks: ['a', 'b', 'c'].map(id => ({ id, state: 'abandoned' })) }, ['--session', 'two', '--take-over']));
+  assert.match(refused(update(5, { tasks: [{ id: 'a', state: 'abandoned' }] }, ['--session', 'two'])), /owned by another session/);
+  assert.match(refused(update(5, { status: 'completed' })), /every task is completed or abandoned/);
+  const abandoned = run(update(5, { tasks: ['a', 'b', 'c'].map(id => ({ id, state: 'abandoned' })) }, ['--session', 'two', '--take-over']));
   assert.ok(abandoned.tasks.every(item => item.state === 'abandoned' && item.owner === null));
-  assert.equal(run(update(4, { status: 'completed' })).status, 'completed');
+  assert.equal(run(update(6, { status: 'completed' })).status, 'completed');
   assert.match(refused(['task-start', '--root', root, '--session', 'one', '--plan', 'p', '--task', 'a']), /plan "p" is "completed"/);
 
   // Cleanup reports plans and keeps them within the retention period.

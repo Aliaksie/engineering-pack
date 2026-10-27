@@ -968,6 +968,9 @@ pub fn claim(
     if claimed == Claim::Held {
         return Ok(claimed);
     }
+    if claimed == Claim::Started {
+        unowned(plan, found)?;
+    }
     let at = timestamp::format(now);
     let entry = find_mut(plan, task).expect("found");
     if claimed == Claim::Started {
@@ -1066,6 +1069,37 @@ fn shared(a: &Value, b: &Value) -> Vec<String> {
         .collect()
 }
 
+/// Refuse starting `task` while a running task that may work at the same time owns
+/// intersecting paths, in this checkout or another worktree.
+fn unowned(plan: &Value, task: &Value) -> Result {
+    let clashes: Vec<String> = clashing(plan, task)
+        .into_iter()
+        .map(|(t, paths)| format!("{} ({})", plain(&t["id"]), paths.join(", ")))
+        .collect();
+    if clashes.is_empty() {
+        return Ok(());
+    }
+    Err(format!(
+        "task {} owns paths that running tasks also own: {}; wait for them or narrow the scopes with plan-update",
+        plain(&task["id"]),
+        clashes.join("; ")
+    ))
+}
+
+/// The running tasks unrelated to `task` that own paths intersecting its own, with those paths.
+fn clashing<'a>(plan: &'a Value, task: &Value) -> Vec<(&'a Value, Vec<String>)> {
+    tasks(plan)
+        .iter()
+        .filter(|t| t["id"] != task["id"])
+        .filter(|t| OWNED.contains(&t["state"].as_str().unwrap_or_default()))
+        .filter(|t| !related(plan, task, t))
+        .filter_map(|t| {
+            let paths = shared(task, t);
+            (!paths.is_empty()).then_some((t, paths))
+        })
+        .collect()
+}
+
 /// Tasks held for workers that `parent` assigned and that still run.
 fn workers_of<'a>(plan: &'a Value, parent: &str) -> Vec<&'a Value> {
     tasks(plan)
@@ -1123,22 +1157,7 @@ pub fn assign(plan: &mut Value, task: &str, assignment: Assignment, now: i64) ->
             "{running} of {limit} workers already run for this session; integrate or release one first"
         ));
     }
-    let clashes: Vec<String> = tasks(plan)
-        .iter()
-        .filter(|t| OWNED.contains(&t["state"].as_str().unwrap_or_default()))
-        .filter(|t| !related(plan, found, t))
-        .filter_map(|t| {
-            let paths = shared(found, t);
-            (!paths.is_empty()).then(|| format!("{} ({})", plain(&t["id"]), paths.join(", ")))
-        })
-        .collect();
-    if !clashes.is_empty() {
-        return Err(format!(
-            "task {task} owns paths that running tasks also own: {}; wait for them or narrow the scopes with plan-update",
-            clashes.join("; ")
-        ));
-    }
-    // The ordinary claim decides readiness and attempts.
+    // The ordinary claim decides readiness, attempts and path ownership.
     let claimed = claim(plan, task, worker, false, base, now)?;
     debug_assert_eq!(claimed, Claim::Started);
     let entry = find_mut(plan, task).expect("claimed");
@@ -1917,7 +1936,7 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
     let mut ready: Vec<&Value> = order
         .iter()
         .copied()
-        .filter(|t| self::ready(plan, t))
+        .filter(|t| self::ready(plan, t) && clashing(plan, t).is_empty())
         .collect();
     // Stable: the children of a parent held here keep their order ahead of the rest.
     ready.sort_by_key(|t| {
@@ -1995,6 +2014,18 @@ pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
                     &mut out,
                     "waiting",
                     json!({"task": id, "on": on, "stuck": stuck}),
+                );
+            }
+            // Ready, but a running task owns some of its paths.
+            "pending" if !clashing(plan, task).is_empty() => {
+                let on: Vec<Value> = clashing(plan, task)
+                    .into_iter()
+                    .map(|(t, paths)| json!({"id": t["id"], "state": t["state"], "paths": paths}))
+                    .collect();
+                push(
+                    &mut out,
+                    "waiting",
+                    json!({"task": id, "on": on, "stuck": false}),
                 );
             }
             _ => {}

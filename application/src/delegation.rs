@@ -1,7 +1,7 @@
 //! Plan tasks delegated to workers: assigned to a worker session, optionally in isolated
-//! Git worktrees below `.craft/worktrees/<plan>/<task>/`, and integrated back into the
-//! coordinator checkout. A clean merge is made here without a model; conflicts go back to
-//! the integrating session and, when they cannot be resolved, to the user.
+//! Git worktrees below `.craft/worktrees/<plan>/<task>-<attempt>/`, and integrated back into
+//! the coordinator checkout. A clean merge is made here without a model; conflicts go back
+//! to the integrating session and, when they cannot be resolved, to the user.
 use crate::failure::Failure;
 use crate::plan::{owner, read, writer};
 use crate::telemetry::now_ms;
@@ -22,14 +22,16 @@ pub fn worker_session(session: &str, id: &str, task: &str) -> String {
     format!("{session}/{id}/{task}")
 }
 
-/// The branch a worker's worktree is on.
-fn branch(id: &str, task: &str) -> String {
-    format!("craft/{id}/{task}")
+/// The branch a worker's worktree is on for the task's `attempt`; a discarded attempt keeps
+/// its branch, so the next one needs its own.
+fn branch(id: &str, task: &str, attempt: i64) -> String {
+    format!("craft/{id}/{task}-{attempt}")
 }
 
-/// The worktree folder for repository `path` (empty for the root's own), relative to the root.
-fn folder(id: &str, task: &str, path: &str) -> String {
-    let base = format!("{WORKTREES}/{id}/{task}");
+/// The worktree folder for repository `path` (empty for the root's own) in the task's
+/// `attempt`, relative to the root.
+fn folder(id: &str, task: &str, attempt: i64, path: &str) -> String {
+    let base = format!("{WORKTREES}/{id}/{task}-{attempt}");
     if path.is_empty() {
         base
     } else {
@@ -150,9 +152,11 @@ fn isolated(root: &Path, task: &Value) -> Result<Option<Vec<String>>, Failure> {
     Ok(Some(vec![String::new()]))
 }
 
-/// Create the worktrees of `task`, removing those created when one fails.
+/// Create the worktrees of `task` for the attempt its assignment starts, removing those
+/// created when one fails.
 fn create(root: &Path, id: &str, task: &Value, paths: &[String]) -> Result<Value, Failure> {
     let task_id = text(&task["id"]);
+    let attempt = safe_integer(&task["attempts"]).unwrap_or(0) + 1;
     let owned: Vec<&str> = task["scope"]["paths"]
         .as_array()
         .into_iter()
@@ -184,10 +188,10 @@ fn create(root: &Path, id: &str, task: &Value, paths: &[String]) -> Result<Value
         )
         .into());
     }
-    let name = branch(id, task_id);
+    let name = branch(id, task_id, attempt);
     let mut made: Vec<Value> = Vec::new();
     for path in paths {
-        let place = folder(id, task_id, path);
+        let place = folder(id, task_id, attempt, path);
         let created = worktree::add(&root.join(path), &root.join(&place), &name);
         match created {
             Ok(base) => {

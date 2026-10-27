@@ -82,8 +82,8 @@ fn valid_index(index: &Value) -> bool {
 pub fn summaries(root: &Path) -> Result<Vec<Value>, Failure> {
     let folder = state::plans(root, None, false)?;
     let index = read_record(&folder.join(INDEX), INDEX_BYTES).unwrap_or(Value::Null);
-    // Trusted only while it names exactly the plan folders present: a writer interrupted
-    // between a record and the index leaves it behind.
+    // A save removes it before changing a record; trusted only while it names exactly the
+    // plan folders present, which cleanup interrupted after removing a folder leaves behind.
     let (mut names, _) = sweep::plans(root, SCANNED)?;
     let mut indexed: Vec<&str> = index["plans"]
         .as_array()
@@ -104,14 +104,19 @@ impl Writer {
         load(&record(&self.folder, id))
     }
 
-    /// Write the record, its Markdown view and its index entry.
+    /// Write the record, its Markdown view and its index entry. The index is removed first,
+    /// so a save interrupted before its entry is written leaves the records to be read.
     pub(crate) fn save(&self, root: &Path, saved: &Value) -> Result<(), Failure> {
         let id = saved["id"].as_str().expect("validated plan id");
         let folder = state::plans(root, Some(id), true)?;
-        state::write(&folder.join(RECORD), saved, plan::RECORD_BYTES, true)?;
-        state::write_view(&folder.join(VIEW), &plan::markdown(saved), VIEW_BYTES)?;
         let file = self.folder.join(INDEX);
         let index = read_record(&file, INDEX_BYTES).unwrap_or(Value::Null);
+        match std::fs::remove_file(&file) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.to_string().into()),
+            _ => {}
+        }
+        state::write(&folder.join(RECORD), saved, plan::RECORD_BYTES, true)?;
+        state::write_view(&folder.join(VIEW), &plan::markdown(saved), VIEW_BYTES)?;
         let mut entries: Vec<Value> = if valid_index(&index) {
             index["plans"].as_array().cloned().unwrap_or_default()
         } else {

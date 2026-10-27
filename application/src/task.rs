@@ -262,12 +262,30 @@ pub fn step(
         }
         _ => Value::Null,
     };
+    // The source the agent verified; a worktree completion is recorded against it, before
+    // craft commits it.
+    let repository = snapshot::workspace(root, repositories, false)?;
+    let profile = input.get("profile").and_then(Value::as_str);
+    let limit = profile
+        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
+        .filter(|limit| !limit.is_null())
+        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let mut bounded = Map::from_iter([("maxAttempts".to_string(), limit)]);
+    bounded.append(&mut input);
+    let input = Value::Object(bounded);
+    let result = input["result"].clone();
+    let id = craft_platform::telemetry::uuid()?;
+    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
     // A task in worktrees completes as commits on its branches, which integration merges.
+    // The step is checked first, so a refused completion leaves the worktrees untouched.
     let heads = match &planned {
         Some(plan) if input.get("complete") == Some(&json!(true)) => {
             let found = crate::plan::task(root, plan, task)?;
             match found.get("work") {
                 Some(work) => {
+                    session::step::step(&mut saved.clone(), &input, &repository, &id, &at)?;
                     let goal: String = found["goal"]
                         .as_str()
                         .unwrap_or_default()
@@ -285,20 +303,6 @@ pub fn step(
         }
         _ => Vec::new(),
     };
-    let repository = snapshot::workspace(root, repositories, false)?;
-    let profile = input.get("profile").and_then(Value::as_str);
-    let limit = profile
-        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
-        .filter(|limit| !limit.is_null())
-        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"))
-        .cloned()
-        .unwrap_or(Value::Null);
-    let mut bounded = Map::from_iter([("maxAttempts".to_string(), limit)]);
-    bounded.append(&mut input);
-    let input = Value::Object(bounded);
-    let result = input["result"].clone();
-    let id = craft_platform::telemetry::uuid()?;
-    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
     let mut recorded = None;
     let updated = records::update_state(root, name, task, recorder, parent, |state| {
         recorded = Some(session::step::step(state, &input, &repository, &id, &at)?);
@@ -372,8 +376,11 @@ pub fn step(
         }
     }
     let record = &updated["taskRecord"];
+    // Committed worktree changes move the observed source past the one the step verified.
     let complete = record["goalComplete"] == true
-        && (!truthy(&record["engineeringContract"]) || status["task"]["goalComplete"] == true);
+        && (!truthy(&record["engineeringContract"])
+            || !heads.is_empty()
+            || status["task"]["goalComplete"] == true);
     let boundary = scratch::Request {
         root,
         session: Some(name),
