@@ -95,6 +95,7 @@ const COMMANDS: &[Command] = &[
     .bundled()
     .receipt(action_receipt),
     Command::run("task-start", task_start).receipt(|_, value| task_receipt(value)),
+    Command::run("task-adopt", task_adopt).receipt(|_, value| adopt_receipt(value)),
     Command::run("task-step", task_step)
         .bundled()
         .receipt(action_receipt),
@@ -193,6 +194,7 @@ const OPTIONS: &[&str] = &[
     "verbose",
     "max-output-bytes",
     "apply",
+    "from",
 ];
 const FLAGS: &[&str] = &[
     "apply", "delegate", "json", "verbose", "complete", "blockers",
@@ -718,6 +720,19 @@ fn task_start(
     crate::task::start(request, recorder, parent)
 }
 
+/// Copy an earlier session's unfinished task into this session and bind it.
+fn task_adopt(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let given = |name: &str| options.get(name).filter(|value| !value.is_empty());
+    let (Some(session), Some(from)) = (given("session"), given("from")) else {
+        return Err("task-adopt requires --session and --from".into());
+    };
+    crate::handoff::adopt(&root(options), session, from, recorder, parent)
+}
+
 /// The explicit `--task`, else the session's bound task; binding failures are errors.
 fn bound_task(options: &Options) -> Result<Option<String>, Failure> {
     if let Some(task) = options.get("task") {
@@ -1131,6 +1146,10 @@ fn help(action: &str) -> Value {
             "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
             "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees",
         }),
+        "task-adopt" => json!({
+            "usage": "task-adopt --session id --from earlier-session [--root project]",
+            "mode": "copy an earlier session's unfinished task and checkpoint into this session and bind it; the earlier session is unchanged and no authorization is renewed",
+        }),
         "session-attempt" => json!({
             "usage": "session-attempt --root project --session id --task task-id --data attempt.json",
             "example": {"operation": "implement", "target": "acceptance:regression", "approach": "bounded-fix", "evidence": "artifacts/check.json", "outcome": "passed"},
@@ -1517,6 +1536,52 @@ fn action_receipt(action: &str, result: &Value) -> String {
 }
 
 /// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
+fn adopt_receipt(result: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    let context = &result["context"];
+    let mut lines = vec![
+        format!(
+            "Task {}: {} (from {})",
+            if result["adopted"] == true {
+                "adopted"
+            } else {
+                "already bound"
+            },
+            text(&result["task"]),
+            text(&result["from"])
+        ),
+        format!(
+            "Stage: {} / {}{}",
+            text(&context["task"]["stage"]),
+            text(&context["task"]["status"]),
+            if context["stale"] == true {
+                " (stale: source changed)"
+            } else {
+                ""
+            }
+        ),
+    ];
+    if let Some(next) = nonempty(&context["nextStep"]) {
+        lines.push(format!("Next: {next}"));
+    }
+    match &result["checkpoint"]["changed"] {
+        Value::Null if result["checkpoint"].is_null() => {
+            lines.push("Checkpoint: none carried".into())
+        }
+        Value::Bool(false) => lines.push("Checkpoint: carried; tree unchanged since".into()),
+        Value::Bool(true) => {
+            lines.push("Checkpoint: carried; tree changed since, recheck evidence".into())
+        }
+        _ => lines.push("Checkpoint: carried; change unknown".into()),
+    }
+    if let Some(families) = joined(&result["notCarried"]) {
+        lines.push(format!(
+            "Not carried (stay with the earlier session): {families}"
+        ));
+    }
+    lines.join("\n")
+}
+
 fn task_receipt(result: &Value) -> String {
     let routing = &result["routing"];
     let text = |value: &Value| value.as_str().unwrap_or_default().to_string();

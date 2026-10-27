@@ -9,7 +9,7 @@ use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
 pub(crate) const BINDING_BYTES: usize = 16384;
-const STATE_BYTES: usize = 131_072;
+pub(crate) const STATE_BYTES: usize = 131_072;
 
 fn short(value: &Value) -> String {
     digest(value)[..24].to_string()

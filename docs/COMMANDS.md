@@ -29,6 +29,7 @@ compacts a host session or posts to a code host.
 | Command | Purpose | Effects |
 |---|---|---|
 | `task-start` | Bind a task to the session, optionally with repositories and an acceptance contract | Writes task state; snapshots selected Git worktrees |
+| `task-adopt` | Continue an earlier session's unfinished task in this session | Copies its task state and checkpoint; the earlier session is unchanged |
 | `task-step` | Record a milestone, evidence and continuation | Writes task state |
 | `session`, `session-advice` | Status and next-action advice from task state and host observations | Reads state; recommendation only |
 | `session-attempt` | Record one bounded attempt and its outcome | Writes a receipt; executes no retry |

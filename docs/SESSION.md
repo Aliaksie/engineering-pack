@@ -32,6 +32,31 @@ craft session    --root <project> --session <host-id>
 - After really fixing a permission or tool problem, record `prerequisite-resolved` for the
   same target. It reopens work; it does not pass acceptance.
 
+### Session identity and handoff
+
+When a session starts or its context is restored, hooks that can add context begin with the
+session line: `{"id": <host session id>, "task": <bound task or null>}`. Use that id as
+`--session`; without it, work without a task rather than inventing one.
+
+All task records belong to one session. A new session (a new conversation, `/clear`, or after
+"checkpoint, then new session") starts without a task. If it starts without one and
+checkpoints are enabled, the session line also lists up to three unfinished tasks of earlier
+sessions in the same worktree and checkout, newest first: those changed within 14 days and
+not completed. Only the most recent record of a task counts, so a task completed in a later
+session is not offered again. Adopt one only when the user's request continues it:
+
+```sh
+craft task-adopt --root <project> --session <new-id> --from <from>
+```
+
+Adoption copies the task record and its checkpoint into the new session and binds the task
+there; the earlier session's records are not changed. The result shows the task as current
+source sees it and compares the checkpoint with the current tree: evidence for changed
+source must be rechecked. Worker and host-control records stay with the earlier session and
+the native work they describe (`notCarried`). Adoption never renews authorization and never
+replaces another task bound to the session or its checkpoint. Repeating it is harmless.
+Directories of earlier layouts are not offered.
+
 Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
 [acceptance contracts](ACCEPTANCE.md).
 
@@ -121,8 +146,9 @@ craft checkpoint-save --root <project> --session <id> --task <task-id> --data ha
 craft checkpoint-read --root <project> --session <id>
 ```
 
-A new session reads the checkpoint, the current diff and routed guidance; it does not replay
-the conversation and never renews authorization.
+A new session adopts the task ([handoff](#session-identity-and-handoff)), then reads the
+checkpoint, the current diff and routed guidance; it does not replay the conversation and never
+renews authorization.
 
 ## Checkpoint and recovery
 

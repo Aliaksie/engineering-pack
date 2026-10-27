@@ -138,14 +138,45 @@ pub fn inspect(path: &Path, id: &str, layout: Layout, staged: bool) -> Result<Di
     })
 }
 
-/// Session directories of both layouts under the worktree's state, its workspaces and the
-/// previous layout's shared leftovers. Nothing is created.
-pub fn inventory(root: &Path) -> Result<Inventory, Error> {
+fn worktree(root: &Path) -> Result<(PathBuf, PathBuf), Error> {
     let shared = location(root, None)?.directory;
     let worktree = shared
         .parent()
         .ok_or("state worktree required")?
         .to_path_buf();
+    Ok((worktree, shared))
+}
+
+/// Up to `limit` current-layout session directories of the worktree, unstaged; one that
+/// cannot be inspected is skipped. Nothing is created.
+pub fn sessions(root: &Path, limit: usize) -> Result<Vec<Directory>, Error> {
+    let folder = worktree(root)?.0.join("sessions");
+    let (names, _) = listing(&folder, limit)?;
+    Ok(names
+        .iter()
+        .filter_map(|name| match session_id(name) {
+            Some((id, false)) => inspect(&folder.join(name), id, Layout::Current, false).ok(),
+            _ => None,
+        })
+        .collect())
+}
+
+/// The current-layout session directory `id` of the worktree, if it exists.
+pub fn session(root: &Path, id: &str) -> Result<Option<Directory>, Error> {
+    if !craft_engine::values::lower_hex(id, 24) {
+        return Err("invalid session directory id".into());
+    }
+    let path = worktree(root)?.0.join("sessions").join(id);
+    match fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        _ => inspect(&path, id, Layout::Current, false).map(Some),
+    }
+}
+
+/// Session directories of both layouts under the worktree's state, its workspaces and the
+/// previous layout's shared leftovers. Nothing is created.
+pub fn inventory(root: &Path) -> Result<Inventory, Error> {
+    let (worktree, shared) = worktree(root)?;
     let mut inventory = Inventory {
         complete: true,
         workspaces_complete: true,

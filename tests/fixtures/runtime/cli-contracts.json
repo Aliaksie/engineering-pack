@@ -28,6 +28,7 @@
           "task-decision",
           "task-action-check",
           "task-start",
+          "task-adopt",
           "task-step",
           "settings",
           "route",

@@ -151,6 +151,18 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
+    // The session identity a started or restored session needs for task commands.
+    if let (true, Some(session)) = (facts.started || facts.context_restored, session) {
+        let mut identity = json!({"id": session, "task": task});
+        if plan.offer_handoff && task.is_none() {
+            match crate::handoff::offer(root, session) {
+                Ok(offered) if !offered.is_empty() => identity["handoff"] = json!(offered),
+                Ok(_) => {}
+                Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+            }
+        }
+        decision["session"] = identity;
+    }
     let eligible = routing.is_some()
         && settings["routing"]["dedupeHints"] == true
         && event.context_supported

@@ -26,6 +26,8 @@ pub struct Plan {
     pub save_checkpoint: bool,
     pub recover_checkpoint: bool,
     pub read_checkpoint: bool,
+    /// Offer unfinished tasks of earlier sessions to a session without one.
+    pub offer_handoff: bool,
 }
 
 const PROMPT_INTENTS: [(&[&str], &str); 4] = [
@@ -75,6 +77,7 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
         save_checkpoint: checkpoint && (facts.turn_finished || facts.context_changing),
         recover_checkpoint: checkpoint && (facts.started || facts.context_restored),
         read_checkpoint: checkpoint && facts.context_changing,
+        offer_handoff: checkpoint && facts.started,
     }
 }
 

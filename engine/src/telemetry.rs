@@ -104,6 +104,7 @@ const ENUMS: &[(&str, &[&str])] = &[
             "task-action-check",
             "settings",
             "task-start",
+            "task-adopt",
             "task-step",
             "route",
             "context-report",

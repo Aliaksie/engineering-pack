@@ -12,6 +12,7 @@ mod evidence;
 mod failure;
 mod grounding;
 mod guidance;
+mod handoff;
 pub mod hook;
 pub mod host;
 mod integration;

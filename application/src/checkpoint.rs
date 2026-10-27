@@ -8,7 +8,7 @@ use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const CHECKPOINT_BYTES: usize = 65536;
+pub(crate) const CHECKPOINT_BYTES: usize = 65536;
 
 fn file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {
     Ok(state::file(root, "checkpoint.json", create, Some(session))?)
@@ -130,6 +130,23 @@ fn save_locked(
     }
     state::write(&target, &next, CHECKPOINT_BYTES, true)?;
     Ok(json!({"file": target, "state": next, "unchanged": false}))
+}
+
+/// Save an earlier session's checkpoint of `task` for `session` as it was, so recovery
+/// compares it with the current tree; a checkpoint of another task is not replaced.
+pub fn adopt(root: &Path, session: &str, saved: &Value, task: &str) -> Result<(), Failure> {
+    let target = file(root, session, true)?;
+    let Some(_lock) = state::lock(&target)? else {
+        return Err("checkpoint writer is busy".into());
+    };
+    let previous = read_record(&target, CHECKPOINT_BYTES)?;
+    if previous
+        .get("taskId")
+        .is_some_and(|id| !id.is_null() && *id != json!(task))
+    {
+        return Err("this session's checkpoint belongs to another task".into());
+    }
+    Ok(state::write(&target, saved, CHECKPOINT_BYTES, true)?)
 }
 
 /// Saved checkpoint against current source, with the task state as current source sees it.
