@@ -103,6 +103,8 @@ const COMMANDS: &[Command] = &[
     Command::run("plan-create", plan_create).receipt(|_, value| plan_receipt(value)),
     Command::run("plan-update", plan_update).receipt(|_, value| plan_receipt(value)),
     Command::run("plan-envelope", plan_envelope),
+    Command::run("plan-next", plan_next).receipt(|_, value| queue_receipt(value)),
+    Command::run("plan-release", plan_release).receipt(|_, value| release_receipt(value)),
     Command::run("settings", settings),
     Command::run("route", route),
     Command::run("context-report", context_report).bundled(),
@@ -204,6 +206,7 @@ const OPTIONS: &[&str] = &[
     "expected-revision",
     "take-over",
     "brief",
+    "ready",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -214,6 +217,7 @@ const FLAGS: &[&str] = &[
     "blockers",
     "take-over",
     "brief",
+    "ready",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -298,8 +302,11 @@ fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     if let Some(name) = view_option.filter(|_| action != "acceptance-view") {
         return Err(format!("--{name} is supported by acceptance-view").into());
     }
-    if present("take-over") && !["task-start", "plan-update"].contains(&action) {
-        return Err("--take-over is supported by task-start and plan-update".into());
+    if present("take-over") && !["task-start", "plan-update", "plan-release"].contains(&action) {
+        return Err("--take-over is supported by task-start, plan-update and plan-release".into());
+    }
+    if present("ready") && action != "task-start" {
+        return Err("--ready is supported by task-start".into());
     }
     if present("brief") && action != "plan-envelope" {
         return Err("--brief is supported by plan-envelope".into());
@@ -704,6 +711,9 @@ fn task_start(
     parent: &Operation,
 ) -> Result<Value, Failure> {
     let given = |name: &str| options.get(name).filter(|value| !value.is_empty());
+    if options.values.contains_key("ready") {
+        return ready_start(options, recorder, parent);
+    }
     let (Some(session), Some(task)) = (given("session"), given("task")) else {
         return Err("task-start requires --session, --task and --goal (or --plan)".into());
     };
@@ -775,6 +785,89 @@ fn task_start(
         }),
     };
     crate::task::start(request, recorder, parent)
+}
+
+/// Times `--ready` picks again when another session claimed the picked task first.
+const READY_PICKS: usize = 3;
+
+/// `task-start --plan P --ready`: start the first ready task of the plan. The pick reads
+/// the plan; the claim under the plans lock decides, so a pick another session won first
+/// is followed by the next ready task.
+fn ready_start(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(session)) = (options.get("plan"), options.get("session")) else {
+        return Err("task-start --ready requires --plan and --session".into());
+    };
+    if ["task", "goal", "take-over"]
+        .iter()
+        .any(|name| options.values.contains_key(*name))
+    {
+        return Err(
+            "task-start --ready picks the task; omit --task, --goal and --take-over".into(),
+        );
+    }
+    let root = root(options);
+    let own = crate::plan::owner(&root, session)?;
+    let mut tried = Vec::new();
+    loop {
+        let task = crate::plan::next(&root, plan, session)?;
+        if tried.contains(&task) {
+            return Err(format!(
+                "task {task} of plan {plan} could not be claimed; see plan-next --plan {plan}"
+            )
+            .into());
+        }
+        let mut picked = Options {
+            values: options.values.clone(),
+        };
+        picked.values.shift_remove("ready");
+        picked.values.insert("task".into(), json!(task));
+        let outcome = task_start(&picked, recorder, parent);
+        let holder = crate::plan::task(&root, plan, &task)?["owner"]["session"].clone();
+        let lost = holder.is_string() && holder != own.as_str();
+        if outcome.is_ok() || !lost || tried.len() + 1 == READY_PICKS {
+            return outcome;
+        }
+        tried.push(task);
+    }
+}
+
+/// The coordinator's view of one plan for `--session`.
+fn plan_next(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let Some(plan) = options.get("plan") else {
+        return Err("plan-next requires --plan".into());
+    };
+    crate::plan::queue(&root(options), plan, options.get("session"))
+}
+
+/// Return a held plan task to pending.
+fn plan_release(
+    options: &Options,
+    _recorder: &mut Recorder,
+    _parent: &Operation,
+) -> Result<Value, Failure> {
+    let (Some(plan), Some(task), Some(session)) = (
+        options.get("plan"),
+        options.get("task"),
+        options.get("session"),
+    ) else {
+        return Err("plan-release requires --plan, --task and --session".into());
+    };
+    crate::plan::release(
+        &root(options),
+        plan,
+        task,
+        session,
+        options.values.contains_key("take-over"),
+        options.get("reason"),
+    )
 }
 
 /// One plan as its Markdown view or JSON, the plans linking `--reference`, or all plans.
@@ -1789,6 +1882,105 @@ fn plan_receipt(result: &Value) -> String {
         })
         .collect();
     format!("{}\n", lines.join("\n"))
+}
+
+/// The queue as short lines: what to start next, then each non-empty group.
+fn queue_receipt(result: &Value) -> String {
+    let plan = result["plan"].as_str().unwrap_or_default();
+    let ids = |group: &str| -> Vec<String> {
+        result[group]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|item| {
+                let id = item
+                    .as_str()
+                    .or_else(|| item["task"].as_str())
+                    .unwrap_or_default();
+                match group {
+                    "elsewhere" => {
+                        let mut text = format!(
+                            "{id} ({}, idle {} min",
+                            item["state"].as_str().unwrap_or_default(),
+                            item["idleMinutes"]
+                        );
+                        if item["orphaned"] == true {
+                            text.push_str(", orphaned");
+                        } else if item["stale"] == true {
+                            text.push_str(", stale");
+                        }
+                        text + ")"
+                    }
+                    "waiting" => {
+                        let on: Vec<String> = item["on"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .map(|d| {
+                                format!(
+                                    "{} {}",
+                                    d["id"].as_str().unwrap_or_default(),
+                                    d["state"].as_str().unwrap_or_default()
+                                )
+                            })
+                            .collect();
+                        format!(
+                            "{id} (on {}{})",
+                            on.join(", "),
+                            if item["stuck"] == true { ", stuck" } else { "" }
+                        )
+                    }
+                    "retry" | "exhausted" => {
+                        format!("{id} ({} of {})", item["attempts"], item["maxAttempts"])
+                    }
+                    _ => id.to_string(),
+                }
+            })
+            .collect()
+    };
+    let mut lines = vec![match result["next"].as_str() {
+        Some(task) => {
+            format!("Next: {task} — craft task-start --plan {plan} --task {task} (or --ready)")
+        }
+        None => format!("Next: none ready in plan {plan}"),
+    }];
+    for (group, label) in [
+        ("ready", "Ready"),
+        ("held", "Held here"),
+        ("elsewhere", "Held elsewhere"),
+        ("waiting", "Waiting"),
+        ("retry", "Failed, may retry"),
+        ("exhausted", "Out of attempts"),
+        ("parents", "Children done, complete the parent"),
+    ] {
+        let listed = ids(group);
+        if !listed.is_empty() {
+            lines.push(format!("{label}: {}", listed.join("; ")));
+        }
+    }
+    let stale = result["elsewhere"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|i| i["stale"] == true || i["orphaned"] == true);
+    if stale {
+        lines.push(format!("Stale or orphaned claims continue only with: craft task-start --plan {plan} --task <task> --take-over"));
+    }
+    format!("{}\n", lines.join("\n"))
+}
+
+fn release_receipt(result: &Value) -> String {
+    format!(
+        "Released: {} of plan {} is pending (revision {}){}\n",
+        result["task"].as_str().unwrap_or_default(),
+        result["plan"].as_str().unwrap_or_default(),
+        result["revision"],
+        if result["unbound"] == true {
+            "; this session's binding removed"
+        } else {
+            ""
+        }
+    )
 }
 
 fn task_receipt(result: &Value) -> String {

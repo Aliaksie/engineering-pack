@@ -132,7 +132,7 @@ test('a plan task names the engineering contract its session completes against',
     '--approach', 'x', '--evidence', 'y', '--outcome', 'passed', '--result', 'r', '--next', 'n', '--complete']), /every required criterion/);
 });
 
-test('plans without the newer fields stay at the first format version', t => {
+test('plans without the newer fields stay at the first format version until work starts', t => {
   const { root } = fixture(t);
   const created = run(['plan-create', '--root', root, '--plan', 'old', '--goal', 'Plain',
     '--data', write(root, 'plan.json', { tasks: [{ id: 'a', goal: 'A' }] })]);
@@ -141,5 +141,6 @@ test('plans without the newer fields stay at the first format version', t => {
   assert.equal(started.plan.envelope.task.id, 'a');
   assert.equal(run(['task-step', '--root', root, '--session', 'one', '--stage', 'verify', '--target', 'acceptance:a',
     '--approach', 'x', '--evidence', 'y', '--outcome', 'passed', '--result', 'r', '--next', 'n', '--complete']).plan.scope, undefined);
-  assert.equal(readJson(path.join(stateLocation(root).directory, 'plans', 'old', 'plan.json')).formatVersion, 1);
+  // A claim counts an attempt, which the third version records.
+  assert.equal(readJson(path.join(stateLocation(root).directory, 'plans', 'old', 'plan.json')).formatVersion, 3);
 });

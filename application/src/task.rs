@@ -5,7 +5,7 @@ use crate::failure::Failure;
 use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
 use crate::telemetry::{Operation, Recorder};
-use craft_engine::values::truthy;
+use craft_engine::values::{safe_integer, truthy};
 use craft_engine::{actions, models, repository, routing, session};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
@@ -84,8 +84,13 @@ pub fn start(
         )?;
         claimed = json!({"id": planned.id, "task": task});
         if let Some(from) = from {
-            claimed["takenOver"] =
-                crate::handoff::carry(root, name, &from, task, recorder, parent)?;
+            let carried = crate::handoff::carry(root, name, &from, task, recorder, parent)?;
+            // An orphaned claim's session is gone; the task continues from the plan alone.
+            claimed["takenOver"] = if carried.is_null() {
+                json!({"from": from, "carried": false, "reason": "the holding session left no record of this task"})
+            } else {
+                carried
+            };
             previous = records::read_state(root, name, task, recorder, parent)?;
             (repositories, repository) = scope(&previous)?;
         }
@@ -365,10 +370,29 @@ pub fn step(
     status["workspace"] = workspace.clone();
     let planned = planned.map(|plan| {
         let text = |name: &str| input.get(name).and_then(Value::as_str);
+        let activity = &status["activity"];
+        let exhausted = matches!(
+            (safe_integer(&activity["attempts"]), safe_integer(&activity["maxAttempts"])),
+            (Some(made), Some(most)) if made >= most
+        );
+        // The source and engineering contract a completion was verified against.
+        let verified = complete.then(|| {
+            let contract = Some(&record["engineeringContract"])
+                .filter(|c| truthy(*c))
+                .and_then(|c| craft_engine::session::acceptance::contract_digest(c).ok());
+            let revision = [&record["verificationRevision"], &record["revision"]]
+                .into_iter()
+                .find(|r| r.is_string())
+                .cloned()
+                .unwrap_or(Value::Null);
+            json!({"revision": revision, "contract": contract, "at": at})
+        });
         let progress = craft_engine::plan::Progress {
             stage: record["stage"].as_str().unwrap_or_default(),
             outcome: text("outcome"),
             complete,
+            exhausted,
+            verified,
             result: text("result"),
             next_step: text("nextStep"),
             evidence: text("evidence"),

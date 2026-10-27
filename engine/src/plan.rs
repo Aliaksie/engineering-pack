@@ -2,15 +2,16 @@
 //! tasks with fixed states and dependencies, worked on across sessions. `ready` is derived
 //! from dependencies and never stored, so completing a task propagates without a write.
 use crate::contracts::relative_file;
-use crate::values::{safe_integer, text};
+use crate::values::{safe_integer, sha256, text};
 use crate::{repository, timestamp};
 use serde_json::{Map, Value, json};
 
 type Result<T = ()> = std::result::Result<T, String>;
 
-/// The plan format; version 1 is written while no task uses a field added at version 2.
-pub const FORMAT_VERSION: i64 = 2;
+/// The plan format; each plan is written at the first version holding the fields it uses.
+pub const FORMAT_VERSION: i64 = 3;
 const FIRST_VERSION: i64 = 1;
+const SCOPED_VERSION: i64 = 2;
 pub const RECORD_BYTES: usize = 131_072;
 pub const TASKS: usize = 64;
 const DEPENDENCIES: usize = 16;
@@ -27,6 +28,11 @@ const ENVELOPE_EVIDENCE: usize = 3;
 /// Open plans listed when a session starts, newest first.
 pub const LISTED: usize = 3;
 const LISTED_TASKS: usize = 8;
+/// Claims a task allows unless its author sets `maxAttempts`, and the most it may set.
+const ATTEMPTS: i64 = 3;
+const MAX_ATTEMPTS: i64 = 10;
+/// Minutes without a plan step after which a claim is shown stale; never released by age.
+pub const STALE_MINUTES: i64 = 120;
 
 pub const STATES: &[&str] = &[
     "pending",
@@ -73,9 +79,13 @@ const TASK_FIELDS: &[&str] = &[
     "contract",
     "returns",
     "scopeBase",
+    "attempts",
+    "maxAttempts",
+    "verified",
 ];
-/// Task fields added at version 2.
-const LATER_FIELDS: &[&str] = &["parent", "scope", "contract", "returns", "scopeBase"];
+/// Task fields added at version 2 and at version 3.
+const SCOPED_FIELDS: &[&str] = &["parent", "scope", "contract", "returns", "scopeBase"];
+const COORDINATED_FIELDS: &[&str] = &["attempts", "maxAttempts", "verified"];
 /// Task fields a plan author sets; the rest follow from task work.
 const AUTHORED: &[&str] = &[
     "id",
@@ -90,6 +100,7 @@ const AUTHORED: &[&str] = &[
     "scope",
     "contract",
     "returns",
+    "maxAttempts",
 ];
 const CHANGE_FIELDS: &[&str] = &["goal", "status", "references", "decisions", "tasks"];
 const BLOCKERS: &[&str] = &["permission-denied", "tool-unavailable", "blocked"];
@@ -378,8 +389,36 @@ fn task(value: &Value, now: &str) -> Result<Value> {
     if let Some(base) = given("scopeBase") {
         task["scopeBase"] = scope_base(base, &id)?;
     }
+    for (key, most) in [
+        ("attempts", TASKS as i64 * MAX_ATTEMPTS),
+        ("maxAttempts", MAX_ATTEMPTS),
+    ] {
+        if let Some(count) = given(key) {
+            if !safe_integer(count).is_some_and(|c| (1..=most).contains(&c)) {
+                return Err(format!("task {id} {key} must be 1..{most}"));
+            }
+            task[key] = count.clone();
+        }
+    }
+    if let Some(verified) = given("verified") {
+        task["verified"] = self::verified(verified, &id)?;
+    }
     instant(&task["updated"]).ok_or("invalid task time")?;
     Ok(task)
+}
+
+/// What verified a completion: the source revision, the engineering contract digest and when.
+fn verified(value: &Value, id: &str) -> Result<Value> {
+    let valid = value.as_object().is_some_and(|v| {
+        v.len() == 3
+            && v.get("revision").is_some_and(|r| r.is_null() || text(r))
+            && v.get("contract").is_some_and(|c| c.is_null() || sha256(c))
+            && v.get("at").and_then(instant).is_some()
+    });
+    if !valid {
+        return Err(format!("task {id} verification record is invalid"));
+    }
+    Ok(value.clone())
 }
 
 fn tasks(plan: &Value) -> &[Value] {
@@ -573,9 +612,11 @@ pub fn create(input: &Value, now: i64) -> Result<Value> {
     Ok(plan)
 }
 
-/// Whether a task waits for nothing: pending, with every dependency completed.
+/// Whether a task waits for nothing: pending, with attempts left and every dependency
+/// completed.
 pub fn ready(plan: &Value, task: &Value) -> bool {
     task["state"] == "pending"
+        && attempts_left(task)
         && task["dependsOn"].as_array().into_iter().flatten().all(|d| {
             find(plan, d.as_str().unwrap_or_default()).is_some_and(|t| t["state"] == "completed")
         })
@@ -588,13 +629,33 @@ pub fn completable(plan: &Value) -> bool {
         .all(|t| t["state"] == "completed" || t["state"] == "abandoned")
 }
 
-/// The version a plan is written at: the first one while no task uses a later field, so
-/// older readers keep reading plans that do not need the newer format.
+/// The version a plan is written at: the first one holding every field its tasks use, so
+/// older readers keep reading plans that do not need a newer format.
 fn format_version(plan: &Value) -> i64 {
-    let later = tasks(plan)
-        .iter()
-        .any(|t| LATER_FIELDS.iter().any(|f| t.get(*f).is_some()));
-    if later { FORMAT_VERSION } else { FIRST_VERSION }
+    let uses = |fields: &[&str]| {
+        tasks(plan)
+            .iter()
+            .any(|t| fields.iter().any(|f| t.get(*f).is_some()))
+    };
+    if uses(COORDINATED_FIELDS) {
+        FORMAT_VERSION
+    } else if uses(SCOPED_FIELDS) {
+        SCOPED_VERSION
+    } else {
+        FIRST_VERSION
+    }
+}
+
+/// Claims `task` has started and the most it allows.
+fn attempts(task: &Value) -> (i64, i64) {
+    let count = |key: &str, default: i64| safe_integer(&task[key]).unwrap_or(default);
+    (count("attempts", 0), count("maxAttempts", ATTEMPTS))
+}
+
+/// Whether `task` may start once more.
+fn attempts_left(task: &Value) -> bool {
+    let (made, most) = attempts(task);
+    made < most
 }
 
 fn touch(plan: &mut Value, now: i64) {
@@ -770,6 +831,12 @@ pub fn claim(
             ));
         }
         None if ready(plan, found) => Claim::Started,
+        None if state == "pending" && !attempts_left(found) => {
+            let (made, most) = attempts(found);
+            return Err(format!(
+                "task {task} attempt budget exhausted ({made} of {most}); raise maxAttempts with plan-update or abandon it"
+            ));
+        }
         None if state == "pending" => {
             let waiting: Vec<&str> = found["dependsOn"]
                 .as_array()
@@ -796,6 +863,7 @@ pub fn claim(
     let entry = find_mut(plan, task).expect("found");
     if claimed == Claim::Started {
         entry["state"] = json!("running");
+        entry["attempts"] = json!(attempts(entry).0 + 1);
         if let Some(base) = base.filter(|_| entry.get("scope").is_some()) {
             entry["scopeBase"] = base;
         }
@@ -804,6 +872,53 @@ pub fn claim(
     entry["updated"] = json!(at);
     touch(plan, now);
     Ok(claimed)
+}
+
+/// Return `task` to `pending` for any session to claim. Only its owner `caller` releases
+/// it, or another session with `take_over`; a parent keeps its claim while a child is held.
+/// Returns the session directory that held it.
+pub fn release_task(
+    plan: &mut Value,
+    task: &str,
+    caller: &str,
+    take_over: bool,
+    note: Option<&str>,
+    now: i64,
+) -> Result<String> {
+    let found =
+        find(plan, task).ok_or_else(|| format!("plan {} has no task {task}", plan["id"]))?;
+    let Some(holder) = found["owner"]["session"].as_str().map(str::to_string) else {
+        return Err(format!(
+            "task {task} is {}; only a held task is released",
+            found["state"].as_str().unwrap_or_default()
+        ));
+    };
+    if holder != caller && !take_over {
+        return Err(format!(
+            "task {task} is held by another session; pass --take-over to release it (that session may still be working)"
+        ));
+    }
+    let held: Vec<&Value> = tasks(plan)
+        .iter()
+        .filter(|t| t.get("parent") == Some(&found["id"]) && !t["owner"].is_null())
+        .collect();
+    if !held.is_empty() {
+        return Err(format!(
+            "task {task} has held child tasks: {}; release them first",
+            ids(&held)
+        ));
+    }
+    let at = timestamp::format(now);
+    let entry = find_mut(plan, task).expect("found");
+    entry["state"] = json!("pending");
+    release(entry);
+    if let Some(note) = note {
+        entry["nextStep"] = line(Some(&json!(note)), "release reason")?;
+    }
+    entry["updated"] = json!(at);
+    touch(plan, now);
+    validate(plan)?;
+    Ok(holder)
 }
 
 /// Refuse task work from a session that does not own `task`.
@@ -825,17 +940,23 @@ pub struct Progress<'a> {
     pub stage: &'a str,
     pub outcome: Option<&'a str>,
     pub complete: bool,
+    /// The session's attempt budget is spent, so a failed check fails the task.
+    pub exhausted: bool,
+    /// What verified a completion: `{revision, contract, at}`.
+    pub verified: Option<Value>,
     pub result: Option<&'a str>,
     pub next_step: Option<&'a str>,
     pub evidence: Option<&'a str>,
 }
 
 /// The task state a recorded step leaves: completion, then blockers and resolutions, then
-/// the verify stage. A failed check keeps the task running under its attempt budget.
+/// the verify stage. A failed check keeps the task running under its attempt budget and
+/// fails it once that budget is spent.
 pub fn state_after(progress: &Progress) -> &'static str {
     match progress.outcome {
         _ if progress.complete => "completed",
         Some(outcome) if BLOCKERS.contains(&outcome) => "blocked",
+        Some("quality-failure") if progress.exhausted => "failed",
         Some("quality-failure" | "prerequisite-resolved") => "running",
         _ if progress.stage == "verify" => "verifying",
         _ => "running",
@@ -856,6 +977,9 @@ pub fn progress(plan: &mut Value, task: &str, owner: &str, step: &Progress, now:
         if let Some(value) = value {
             entry[key] = json!(value);
         }
+    }
+    if let Some(verified) = step.verified.as_ref().filter(|_| state == "completed") {
+        entry["verified"] = verified.clone();
     }
     if let Some(evidence) = step.evidence {
         let items = entry["evidence"].as_array_mut().expect("validated");
@@ -1333,13 +1457,108 @@ pub fn listing(mut plans: Vec<Value>, own: &str, now: i64) -> Vec<Value> {
                 .filter(|t| !t["owner"].is_null())
                 .take(LISTED_TASKS)
                 .map(|t| {
-                    let idle = instant(&t["updated"]).map_or(0, |u| (now - u).max(0) / 60_000);
-                    json!({"task": t["id"], "state": t["state"], "here": t["owner"]["session"] == own, "idleMinutes": idle})
+                    let idle = idle_minutes(t, now);
+                    json!({"task": t["id"], "state": t["state"], "here": t["owner"]["session"] == own, "idleMinutes": idle, "stale": idle >= STALE_MINUTES})
                 })
                 .collect();
             json!({"plan": plan["id"], "goal": plan["goal"], "ready": ready, "held": held})
         })
         .collect()
+}
+
+/// Minutes since the claim of a held task or its last step, whichever is later.
+fn idle_minutes(task: &Value, now: i64) -> i64 {
+    let last = [&task["owner"]["since"], &task["updated"]]
+        .into_iter()
+        .filter_map(instant)
+        .max()
+        .unwrap_or(now);
+    (now - last).max(0) / 60_000
+}
+
+/// The coordinator's view of a plan for the session directory `own`, each group in reading
+/// order: ready tasks (children of a parent `own` holds first), tasks held here, tasks held
+/// elsewhere (`stale` after [`STALE_MINUTES`] without a step, `orphaned` when `missing`
+/// names their holder's directory as gone), tasks waiting with what they wait on (`stuck`
+/// behind a failed or abandoned one), failed tasks with attempts left, tasks out of
+/// attempts, and parents whose children are all done. Nothing is claimed or released.
+pub fn queue(plan: &Value, own: &str, missing: &[&str], now: i64) -> Value {
+    let order = ordered(plan);
+    let here = |t: &Value| t["owner"]["session"] == own;
+    let mut ready: Vec<&Value> = order
+        .iter()
+        .copied()
+        .filter(|t| self::ready(plan, t))
+        .collect();
+    // Stable: the children of a parent held here keep their order ahead of the rest.
+    ready.sort_by_key(|t| {
+        !t.get("parent")
+            .and_then(|p| find(plan, p.as_str()?))
+            .is_some_and(here)
+    });
+    let mut out = json!({
+        "plan": plan["id"], "revision": plan["revision"], "status": plan["status"],
+        "next": ready.first().map_or(Value::Null, |t| t["id"].clone()),
+        "ready": ready.iter().map(|t| &t["id"]).collect::<Vec<_>>(),
+        "held": [], "elsewhere": [], "waiting": [], "retry": [], "exhausted": [], "parents": [],
+    });
+    let push = |out: &mut Value, group: &str, item: Value| {
+        out[group].as_array_mut().expect("group").push(item);
+    };
+    for task in &order {
+        let id = &task["id"];
+        let state = task["state"].as_str().unwrap_or_default();
+        let (made, most) = attempts(task);
+        let done = |t: &Value| t["state"] == "completed" || t["state"] == "abandoned";
+        let children: Vec<&Value> = tasks(plan)
+            .iter()
+            .filter(|t| t.get("parent") == Some(id))
+            .collect();
+        if !children.is_empty() && children.iter().all(|c| done(c)) && !done(task) {
+            push(&mut out, "parents", json!({"task": id, "state": state}));
+        }
+        if let Some(holder) = task["owner"]["session"].as_str() {
+            if holder == own {
+                push(&mut out, "held", json!({"task": id, "state": state}));
+            } else {
+                let idle = idle_minutes(task, now);
+                push(
+                    &mut out,
+                    "elsewhere",
+                    json!({
+                        "task": id, "state": state, "owner": holder, "idleMinutes": idle,
+                        "stale": idle >= STALE_MINUTES, "orphaned": missing.contains(&holder),
+                    }),
+                );
+            }
+            continue;
+        }
+        let counted = json!({"task": id, "state": state, "attempts": made, "maxAttempts": most});
+        match state {
+            "pending" | "failed" if made >= most => push(&mut out, "exhausted", counted),
+            "failed" => push(&mut out, "retry", counted),
+            "pending" if !self::ready(plan, task) => {
+                let on: Vec<Value> = task["dependsOn"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|d| find(plan, d.as_str()?))
+                    .filter(|d| d["state"] != "completed")
+                    .map(|d| json!({"id": d["id"], "state": d["state"]}))
+                    .collect();
+                let stuck = on
+                    .iter()
+                    .any(|d| d["state"] == "failed" || d["state"] == "abandoned");
+                push(
+                    &mut out,
+                    "waiting",
+                    json!({"task": id, "on": on, "stuck": stuck}),
+                );
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 fn cell(value: &Value) -> String {
@@ -1420,6 +1639,17 @@ pub fn markdown(plan: &Value) -> String {
                 out.push(format!("{label}: {}", cell(&item[key])));
             }
         }
+        if item.get("attempts").is_some() {
+            let (made, most) = attempts(item);
+            out.push(format!("Attempts: {made} of {most}"));
+        }
+        if let Some(verified) = item.get("verified") {
+            out.push(format!(
+                "Verified: {} at {}",
+                cell(&verified["revision"]),
+                cell(&verified["at"])
+            ));
+        }
         if item["scope"]["paths"].is_array() {
             out.push(format!("Owns: {}", joined(&item["scope"]["paths"])));
         }
@@ -1494,6 +1724,8 @@ mod tests {
             stage,
             outcome: Some(outcome),
             complete,
+            exhausted: false,
+            verified: None,
             result: Some("done"),
             next_step: Some("next"),
             evidence: Some("check.log"),
@@ -1668,7 +1900,7 @@ mod tests {
         assert_eq!(listed[0]["plan"], "x");
         assert_eq!(
             listed[1]["held"],
-            json!([{"task": "a", "state": "running", "here": true, "idleMinutes": 2}])
+            json!([{"task": "a", "state": "running", "here": true, "idleMinutes": 2, "stale": false}])
         );
         assert_eq!(listed[1]["ready"], json!([]));
     }
@@ -1737,6 +1969,235 @@ mod tests {
         }
     }
 
+    const MINUTE: i64 = 60_000;
+
+    fn complete(plan: &mut Value, task: &str, owner: &str) {
+        claim(plan, task, owner, false, None, NOW).unwrap();
+        progress(plan, task, owner, &step("verify", "passed", true), NOW).unwrap();
+    }
+
+    #[test]
+    fn the_queue_groups_tasks_in_order_and_names_the_next_one() {
+        let mut plan = create(
+            &json!({"id": "q", "goal": "Queue", "tasks": [
+                {"id": "a", "goal": "A"},
+                {"id": "b", "goal": "B"},
+                {"id": "c", "goal": "C", "dependsOn": ["a"]},
+                {"id": "p", "goal": "Parent"},
+                {"id": "k", "goal": "Child", "parent": "p"},
+            ]}),
+            NOW,
+        )
+        .unwrap();
+        let shown = queue(&plan, ONE, &[], NOW);
+        assert_eq!(shown["ready"], json!(["a", "b", "p", "k"]));
+        assert_eq!(shown["next"], "a");
+        assert_eq!(
+            shown["waiting"],
+            json!([{"task": "c", "on": [{"id": "a", "state": "pending"}], "stuck": false}])
+        );
+        // Children of a parent held here come first.
+        claim(&mut plan, "p", ONE, false, None, NOW).unwrap();
+        let shown = queue(&plan, ONE, &[], NOW);
+        assert_eq!(shown["ready"], json!(["k", "a", "b"]));
+        assert_eq!(shown["held"], json!([{"task": "p", "state": "running"}]));
+        // Elsewhere for another session: stale after the threshold, orphaned when gone.
+        let later = NOW + STALE_MINUTES * MINUTE;
+        let other = queue(&plan, TWO, &[ONE], later);
+        assert_eq!(
+            other["elsewhere"],
+            json!([{"task": "p", "state": "running", "owner": ONE,
+            "idleMinutes": STALE_MINUTES, "stale": true, "orphaned": true}])
+        );
+        assert_eq!(
+            queue(&plan, TWO, &[], NOW + MINUTE)["elsewhere"][0]["stale"],
+            false
+        );
+        complete(&mut plan, "k", ONE);
+        assert_eq!(
+            queue(&plan, ONE, &[], NOW)["parents"],
+            json!([{"task": "p", "state": "running"}])
+        );
+        // A dependency that failed or was abandoned leaves its dependents stuck.
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "state": "abandoned"}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        let shown = queue(&plan, ONE, &[], NOW);
+        assert_eq!(
+            shown["waiting"][0],
+            json!({"task": "c", "on": [{"id": "a", "state": "abandoned"}], "stuck": true})
+        );
+        assert_eq!(shown["next"], "b");
+    }
+
+    #[test]
+    fn starts_count_attempts_until_the_budget_is_spent() {
+        let mut plan = sample();
+        let fail = |plan: &mut Value| {
+            claim(plan, "a", ONE, false, None, NOW).unwrap();
+            apply(
+                plan,
+                &json!({"tasks": [{"id": "a", "state": "failed"}]}),
+                Some(ONE),
+                false,
+                NOW,
+            )
+            .unwrap();
+            apply(
+                plan,
+                &json!({"tasks": [{"id": "a", "state": "pending"}]}),
+                Some(ONE),
+                false,
+                NOW,
+            )
+            .unwrap();
+        };
+        assert_eq!(plan["formatVersion"], 1);
+        fail(&mut plan);
+        assert_eq!(plan["formatVersion"], 3);
+        // A take-over continues the same attempt.
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
+        claim(&mut plan, "a", TWO, true, None, NOW).unwrap();
+        assert_eq!(plan["tasks"][0]["attempts"], 2);
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "state": "failed"}]}),
+            Some(TWO),
+            false,
+            NOW,
+        )
+        .unwrap();
+        assert_eq!(
+            queue(&plan, ONE, &[], NOW)["retry"],
+            json!([{"task": "a", "state": "failed", "attempts": 2, "maxAttempts": 3}])
+        );
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "state": "pending"}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        fail(&mut plan);
+        assert!(!ready(&plan, &plan["tasks"][0]));
+        assert_eq!(queue(&plan, ONE, &[], NOW)["exhausted"][0]["attempts"], 3);
+        let refused = claim(&mut plan, "a", ONE, false, None, NOW).unwrap_err();
+        assert!(
+            refused.contains("attempt budget exhausted (3 of 3)"),
+            "{refused}"
+        );
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "maxAttempts": 4}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        assert_eq!(
+            claim(&mut plan, "a", ONE, false, None, NOW).unwrap(),
+            Claim::Started
+        );
+        for bad in [json!(0), json!(11), json!("3")] {
+            assert!(
+                apply(
+                    &mut plan.clone(),
+                    &json!({"tasks": [{"id": "b", "maxAttempts": bad}]}),
+                    None,
+                    false,
+                    NOW
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn a_spent_session_budget_fails_the_task_and_completion_records_its_verification() {
+        let mut spent = step("verify", "quality-failure", false);
+        spent.exhausted = true;
+        assert_eq!(state_after(&spent), "failed");
+        let mut plan = sample();
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
+        progress(&mut plan, "a", ONE, &spent, NOW).unwrap();
+        assert_eq!(plan["tasks"][0]["state"], "failed");
+        assert!(plan["tasks"][0]["owner"].is_null());
+        apply(
+            &mut plan,
+            &json!({"tasks": [{"id": "a", "state": "pending"}]}),
+            None,
+            false,
+            NOW,
+        )
+        .unwrap();
+        claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
+        let verified =
+            json!({"revision": "abc123", "contract": "0".repeat(64), "at": timestamp::format(NOW)});
+        let mut passed = step("verify", "passed", false);
+        passed.verified = Some(verified.clone());
+        progress(&mut plan, "a", ONE, &passed, NOW).unwrap();
+        assert!(
+            plan["tasks"][0].get("verified").is_none(),
+            "only a completion records it"
+        );
+        passed.complete = true;
+        progress(&mut plan, "a", ONE, &passed, NOW).unwrap();
+        assert_eq!(plan["tasks"][0]["verified"], verified);
+        assert!(markdown(&plan).contains("Verified: abc123"));
+        let mut broken = plan.clone();
+        broken["tasks"][0]["verified"]["contract"] = json!("short");
+        assert!(validate(&broken).is_err());
+    }
+
+    #[test]
+    fn a_release_returns_a_held_task_to_pending() {
+        let mut plan = create(
+            &json!({"id": "r", "goal": "Release", "tasks": [
+                {"id": "p", "goal": "Parent"}, {"id": "k", "goal": "Child", "parent": "p"}]}),
+            NOW,
+        )
+        .unwrap();
+        assert!(
+            release_task(&mut plan, "p", ONE, false, None, NOW)
+                .unwrap_err()
+                .contains("only a held task")
+        );
+        claim(&mut plan, "p", ONE, false, None, NOW).unwrap();
+        claim(&mut plan, "k", ONE, false, None, NOW).unwrap();
+        assert!(
+            release_task(&mut plan, "p", ONE, false, None, NOW)
+                .unwrap_err()
+                .contains("held child tasks: k")
+        );
+        assert!(
+            release_task(&mut plan, "k", TWO, false, None, NOW)
+                .unwrap_err()
+                .contains("--take-over")
+        );
+        assert_eq!(
+            release_task(&mut plan, "k", ONE, false, Some("Needs input"), NOW).unwrap(),
+            ONE
+        );
+        assert_eq!(
+            release_task(&mut plan, "p", TWO, true, None, NOW).unwrap(),
+            ONE
+        );
+        let parent = &plan["tasks"][0];
+        assert_eq!(
+            (parent["state"].as_str(), parent["attempts"].as_i64()),
+            (Some("pending"), Some(1))
+        );
+        assert_eq!(plan["tasks"][1]["nextStep"], "Needs input");
+        assert_eq!(queue(&plan, ONE, &[], NOW)["ready"], json!(["p", "k"]));
+        validate(&plan).unwrap();
+    }
+
     #[test]
     fn later_fields_write_the_second_version_and_first_version_plans_stay_readable() {
         let plain = sample();
@@ -1755,7 +2216,7 @@ mod tests {
         downgraded["formatVersion"] = json!(1);
         assert!(validate(&downgraded).unwrap_err().contains("version"));
         let mut future = plain.clone();
-        future["formatVersion"] = json!(3);
+        future["formatVersion"] = json!(4);
         assert!(validate(&future).unwrap_err().contains("older writers"));
         validate(&nested()).unwrap();
         assert_eq!(nested()["formatVersion"], 2);

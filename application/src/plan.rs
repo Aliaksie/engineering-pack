@@ -283,6 +283,79 @@ pub fn claim(
     })
 }
 
+/// Holders of `saved`'s tasks whose session directory no longer exists.
+fn missing_holders(root: &Path, saved: &Value) -> Vec<String> {
+    saved["tasks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|t| t["owner"]["session"].as_str())
+        .filter(|holder| matches!(sweep::session(root, holder), Ok(None)))
+        .map(str::to_string)
+        .collect()
+}
+
+/// `plan-next`: the coordinator's view of plan `id` for `session`; reads only.
+pub fn queue(root: &Path, id: &str, session: Option<&str>) -> Result<Value, Failure> {
+    let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let own = session
+        .map(|s| owner(root, s))
+        .transpose()?
+        .unwrap_or_default();
+    let missing = missing_holders(root, &saved);
+    let missing: Vec<&str> = missing.iter().map(String::as_str).collect();
+    Ok(plan::queue(&saved, &own, &missing, now_ms()))
+}
+
+/// The task `task-start --next` claims for `session`: the first ready one in queue order.
+pub fn next(root: &Path, id: &str, session: &str) -> Result<String, Failure> {
+    let shown = queue(root, id, Some(session))?;
+    if let Some(task) = shown["next"].as_str() {
+        return Ok(task.to_string());
+    }
+    let count = |group: &str| shown[group].as_array().map_or(0, Vec::len);
+    Err(format!(
+        "plan {id} has no ready task ({} held here, {} elsewhere, {} waiting, {} to retry, {} out of attempts); see plan-next --plan {id}",
+        count("held"),
+        count("elsewhere"),
+        count("waiting"),
+        count("retry"),
+        count("exhausted")
+    )
+    .into())
+}
+
+/// `plan-release`: return `task` to pending and unbind `session` from it. Another
+/// session's task is released only with `take_over`.
+pub fn release(
+    root: &Path,
+    id: &str,
+    task: &str,
+    session: &str,
+    take_over: bool,
+    reason: Option<&str>,
+) -> Result<Value, Failure> {
+    let caller = owner(root, session)?;
+    // The binding lock first, as task-start takes it before the plans lock.
+    let file = crate::session::binding_file(root, session, true)?;
+    let Some(_binding) = state::lock(&file)? else {
+        return Err("active task writer is busy".into());
+    };
+    let writer = writer(root)?;
+    let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let holder = plan::release_task(&mut saved, task, &caller, take_over, reason, now_ms())?;
+    writer.save(root, &saved)?;
+    let bound = crate::session::active_binding(root, session)?
+        .is_some_and(|b| b["task"] == task && b["plan"] == id);
+    if bound {
+        std::fs::remove_file(&file)?;
+    }
+    Ok(json!({
+        "plan": id, "task": task, "state": "pending", "releasedFrom": holder,
+        "unbound": bound, "revision": saved["revision"],
+    }))
+}
+
 /// Refuse a step for a plan task this session does not hold.
 pub fn held(root: &Path, id: &str, task: &str, session: &str) -> Result<(), Failure> {
     let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;

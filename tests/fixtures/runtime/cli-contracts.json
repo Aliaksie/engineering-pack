@@ -34,6 +34,8 @@
           "plan-create",
           "plan-update",
           "plan-envelope",
+          "plan-next",
+          "plan-release",
           "settings",
           "route",
           "context-report",
@@ -55,7 +57,7 @@
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence and plan-envelope commands it runs"
+      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs"
     },
     {
       "id": "help-before-validation",

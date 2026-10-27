@@ -28,8 +28,9 @@ For multi-step work with the bundled local runtime, bind the task once with `tas
 using the host session id from the session-start context, a stable task id, goal and relevant
 paths. When that context offers an earlier unfinished task that the request continues, adopt it
 with `task-adopt --from <from>` instead of starting it again. When it lists an open plan the
-request continues, start its ready task with `task-start --plan <plan> --task <task>`; take
-over a task held elsewhere only for that continuation. For work that is multi-step, likely to
+request continues, start its next ready task with `task-start --plan <plan> --ready` (or
+`--task <task>`; `plan-next` shows the queue); take over a task held elsewhere, even a stale
+one, only for that continuation, and `plan-release` a task this session stops working on. For work that is multi-step, likely to
 span sessions or delegated, create a plan with `plan-create` and say so. Give a delegated or
 separable task a `parent`, the paths it owns and its acceptance; hand a worker the task's
 `plan-envelope --brief`, not the conversation. Honor effective

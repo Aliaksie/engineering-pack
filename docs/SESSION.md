@@ -79,8 +79,11 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
   that another session holds, is refused.
 - `task-step` advances the plan task held by its session: the `verify` stage makes it
   `verifying`, a blocker `blocked`, `--complete` `completed`; a failed check or a resolved
-  prerequisite keeps it `running`. Result, next step and evidence reference are copied.
-  A session whose task was taken over can no longer step it.
+  prerequisite keeps it `running` until the session's attempt budget is spent, which makes
+  it `failed` and releases it. Result, next step and evidence reference are copied; a
+  completion also records `verified: {revision, contract, at}`, the source revision and
+  engineering contract digest it was accepted against. Only such a completion readies
+  dependent tasks. A session whose task was taken over can no longer step it.
 - `failed`, `abandoned` and a return to `pending` are set explicitly with `plan-update`,
   which also adds tasks, dependencies and decisions. It is refused when the plan changed
   since `--expected-revision`, when dependencies are unknown or cyclic, and for a task held
@@ -95,6 +98,32 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
 - References are opaque labels; reading a tracker issue is a separate, authorized
   [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
   plans that link it.
+
+#### Coordination
+
+```bash
+craft plan-next    --root <project> --plan checkout-retry --session <host-id>
+craft task-start   --root <project> --session <host-id> --plan checkout-retry --ready
+craft plan-release --root <project> --plan checkout-retry --task b --session <host-id> --reason "Needs a decision"
+```
+
+- `plan-next` only reads. It names the `next` task and groups the rest in plan order:
+  `ready` (children of a parent this session holds first), `held` here, held `elsewhere`
+  (with `idleMinutes`, `stale` after 120 minutes without a step, `orphaned` when the holding
+  session's folder is gone), `waiting` with the unfinished tasks they wait on (`stuck` behind
+  a failed or abandoned one, which only `plan-update` resolves), `retry` (failed with
+  attempts left), `exhausted` and `parents` whose children are all done.
+- `task-start --plan P --ready` claims that next task. The claim under the plans lock
+  decides, so two sessions asking at once get different tasks. It never takes over a task
+  held elsewhere, stale or not; nothing is released by age.
+- Every start of a task counts an attempt; continuing it with `--take-over` does not. A task
+  allows three starts unless it sets `maxAttempts` (1..10); then the claim is refused until
+  `plan-update` raises `maxAttempts` or abandons the task.
+- `plan-release` returns a held task to `pending` for any session to claim and removes this
+  session's binding to it; `--reason` becomes its next step. Another session's task needs
+  `--take-over`; a parent is released after its held children.
+- A take-over of an orphaned task carries nothing (`carried: false`); the task continues
+  from the plan.
 
 #### Child tasks
 
@@ -137,8 +166,10 @@ Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.
 it is regenerated after every change for people to read and is never read back.
 `plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
 `craft` versions refuse it, so stop them before upgrading, as for other state changes. A
-plan whose tasks use `parent`, `scope`, `contract` or `returns` is written at plan version
-2, which older versions refuse; other plans stay at version 1.
+plan is written at the first version holding the fields its tasks use: version 3 once a
+task records `attempts` (its first claim), `maxAttempts` or `verified`; version 2 when tasks
+use `parent`, `scope`, `contract` or `returns`; otherwise version 1. Older versions refuse
+newer plans.
 
 Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
 [acceptance contracts](ACCEPTANCE.md).

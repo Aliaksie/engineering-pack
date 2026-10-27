@@ -28,10 +28,12 @@ compacts a host session or posts to a code host.
 
 | Command | Purpose | Effects |
 |---|---|---|
-| `task-start` | Bind a task to the session, optionally with repositories and an acceptance contract | Writes task state; snapshots selected Git worktrees |
+| `task-start` | Bind a task to the session, optionally with repositories and an acceptance contract; `--plan P --ready` claims the plan's next ready task | Writes task state; snapshots selected Git worktrees |
 | `task-adopt` | Continue an earlier session's unfinished task in this session | Copies its task state and checkpoint; the earlier session is unchanged |
 | `task-step` | Record a milestone, evidence and continuation | Writes task state; advances the held plan task |
 | `plan`, `plan-create`, `plan-update` | Show, create or change a work plan whose tasks sessions claim with `task-start --plan` | Writes the local plan record and its Markdown view; never reads a tracker |
+| `plan-next` | A plan's next ready task and its held, stale, orphaned, waiting, retryable and exhausted tasks | Reads the plan; claims nothing |
+| `plan-release` | Return a held plan task to pending | Writes the plan record; removes this session's binding to the task |
 | `plan-envelope` | One plan task's small context: goal, acceptance, owned scope, dependency results, parent checkpoint reference; `--brief` as a worker brief | Reads the plan and the parent holder's checkpoint metadata |
 | `session`, `session-advice` | Status and next-action advice from task state and host observations | Reads state; recommendation only |
 | `session-attempt` | Record one bounded attempt and its outcome | Writes a receipt; executes no retry |
