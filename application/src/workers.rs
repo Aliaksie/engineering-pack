@@ -284,7 +284,7 @@ fn phase(
         _ => Err("unknown worker phase".into()),
     }
 }
-pub fn run(input: &Value) -> Result<Value, String> {
+pub fn run(input: &Value) -> Result<Value, Failure> {
     let root = input["root"]
         .as_str()
         .ok_or("worker operation requires root")?;

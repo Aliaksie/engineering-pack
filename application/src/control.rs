@@ -1,12 +1,12 @@
 //! Native ownership phases for a host's asynchronous transport lane. A host pid owns
 //! each retained fence; short native calls validate the opaque ticket before I/O.
-use crate::session;
+use crate::{failure::Failure, session};
 use craft_engine::{contracts::safe_integer, control, digest, session as decisions};
 use craft_platform::{lease, repository::snapshot, state};
 use serde_json::{Value, json};
 use std::path::Path;
 const BYTES: usize = 262144;
-fn admission(root: &Path, name: &str, task: &str, source: Option<&Value>) -> Result<(), String> {
+fn admission(root: &Path, name: &str, task: &str, source: Option<&Value>) -> Result<(), Failure> {
     if session::active_task(root, Some(name))
         .map_err(|e| e.message)?
         .as_deref()
@@ -15,13 +15,8 @@ fn admission(root: &Path, name: &str, task: &str, source: Option<&Value>) -> Res
         return Err("native effect requires the active task binding".into());
     }
     if let Some(source) = source {
-        let saved = session::read_record(
-            &session::state_file(root, name, task, false).map_err(|e| e.message)?,
-            131072,
-        )
-        .map_err(|e| e.message)?;
-        let repository = snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)
-            .map_err(|e| e.to_string())?;
+        let saved = session::read_record(&session::state_file(root, name, task, false)?, 131072)?;
+        let repository = snapshot::workspace(root, saved["taskRecord"].get("repositories"), false)?;
         if !source.as_str().is_some_and(|s| s.len() == 64)
             || decisions::source(&repository) != *source
         {
@@ -30,12 +25,14 @@ fn admission(root: &Path, name: &str, task: &str, source: Option<&Value>) -> Res
     }
     Ok(())
 }
-pub fn run(input: &Value) -> Result<Value, String> {
+pub fn run(input: &Value) -> Result<Value, Failure> {
     let phase = input["phase"]
         .as_str()
         .ok_or("native control phase required")?;
     if phase == "support" {
-        return control::support(input["host"].as_str().ok_or("unknown host adapter")?);
+        return Ok(control::support(
+            input["host"].as_str().ok_or("unknown host adapter")?,
+        )?);
     }
     let root = state::canonical_root(Path::new(
         input["root"]
@@ -96,7 +93,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
     let validate = |journal: &Value| {
         control::validate(journal, &json!(tree), &json!(host), &json!(coordinator))
     };
-    let read = || -> Result<Value, String> {
+    let read = || -> Result<Value, Failure> {
         let saved = session::read_record(&file, BYTES).map_err(|error| error.message)?;
         let journal = if saved.is_null() {
             control::empty(&tree, host, coordinator)

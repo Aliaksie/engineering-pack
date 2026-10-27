@@ -179,7 +179,7 @@ pub fn run(
 }
 
 fn io(error: io::Error) -> Failure {
-    Failure::from_io(error)
+    Failure::from(error)
 }
 
 fn read_manifest(file: &Path, project: &str, entry: &str) -> Result<Value, Failure> {

@@ -1,3 +1,4 @@
+use crate::failure::Failure;
 use craft_engine::hash;
 use craft_platform::{
     providers::{ACTIVE, extract, for_path},
@@ -8,7 +9,7 @@ use craft_platform::{
 use serde_json::{Value, json};
 use std::{path::Path, time::Instant};
 
-pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
+pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     let mut budget = if operation == "refresh" {
         Some(super::budget::Budget::from_input(input)?)
     } else {
@@ -28,7 +29,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
     let _guard = database_guard(database)?;
     let mut store = Store::open(database)?;
     match operation {
-        "status" => store.status(),
+        "status" => Ok(store.status()?),
         "backup" => {
             let backup = database.with_extension("sqlite.backup");
             let _backup_guard = database_guard(&backup)?;
@@ -91,7 +92,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                     continue;
                 }
                 // Git's tracked inventory includes deleted files; completion retires them.
-                if !root.join(&path).try_exists().map_err(|e| e.to_string())? {
+                if !root.join(&path).try_exists()? {
                     continue;
                 }
                 let provider = for_path(&path).ok_or("eligible source has no provider")?;
@@ -100,7 +101,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                 let content = match read_source(&root, &path) {
                     Ok(content) => content,
                     Err(error) => {
-                        store.fail(&path, provider, "", &error, &observed_at, epoch)?;
+                        store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
                         failed += 1;
                         continue;
                     }
@@ -196,7 +197,7 @@ fn command(args: &[String]) -> (i32, String, String) {
 /// Whether `--json` was given, and the native operation with its input when enabled.
 type Request = (bool, Option<(String, Value)>);
 
-fn request(args: &[String]) -> Result<Request, String> {
+fn request(args: &[String]) -> Result<Request, Failure> {
     let (operation, mut rest) = (args[0].clone(), args[1..].iter());
     let (mut options, mut members, mut flags) = (serde_json::Map::new(), Vec::new(), Vec::new());
     const VALUES: &[&str] = &[
@@ -227,7 +228,7 @@ fn request(args: &[String]) -> Result<Request, String> {
         {
             options.insert(key[2..].to_string(), json!(value));
         } else {
-            return Err(format!("unknown or incomplete option: {key}"));
+            return Err(format!("unknown or incomplete option: {key}").into());
         }
     }
     let number = |name: &str| {
@@ -344,7 +345,7 @@ mod command_tests {
         assert_eq!(input("1e2").unwrap()["limit"], 100);
         for invalid in ["", "0", "201", "2.5", "abc", "Infinity"] {
             assert_eq!(
-                input(invalid).unwrap_err(),
+                input(invalid).unwrap_err().message,
                 "limit must be between 1 and 200"
             );
         }
@@ -354,7 +355,7 @@ mod command_tests {
             9_007_199_254_740_991u64
         );
         assert_eq!(
-            budget("9007199254740992").unwrap_err(),
+            budget("9007199254740992").unwrap_err().message,
             "max-files must be a positive safe integer"
         );
     }
@@ -364,7 +365,7 @@ mod command_tests {
         let (json, enabled) = request(&args(&["bogus", "--root", "/missing", "--json"])).unwrap();
         assert!(json && enabled.is_none());
         assert_eq!(
-            request(&args(&["bogus", "--enable"])).unwrap_err(),
+            request(&args(&["bogus", "--enable"])).unwrap_err().message,
             "unknown project evidence operation"
         );
         let (code, stdout, stderr) = command(&args(&["status"]));

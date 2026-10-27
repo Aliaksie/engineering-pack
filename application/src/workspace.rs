@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use std::{collections::HashSet, path::PathBuf};
 
 /// Explicit members share a response, never a database or an atomic snapshot.
-pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
+pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Failure> {
     if operation == "refresh" {
         super::budget::Budget::from_input(input)?;
     }
@@ -115,7 +115,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, String> {
                 reports.push(json!({"member":id,"state":"available","result":result}));
             }
             Err(error) => {
-                reports.push(json!({"member":id,"state":"unavailable","diagnostic":error}))
+                reports.push(json!({"member":id,"state":"unavailable","diagnostic":error.message}))
             }
         }
     }

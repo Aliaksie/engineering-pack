@@ -262,7 +262,7 @@ fn execution_phase(
 }
 
 /// Native durable phases around trusted asynchronous action callbacks.
-pub fn execute(input: &Value) -> Result<Value, String> {
+pub fn execute(input: &Value) -> Result<Value, Failure> {
     let root = Path::new(
         input["root"]
             .as_str()

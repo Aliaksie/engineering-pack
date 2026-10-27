@@ -70,7 +70,7 @@ fn state_location(root: &Path) -> Value {
             "sessionId": location.session_id,
             "legacyDirectory": canonical.join(".craft").join("state").to_string_lossy(),
         }),
-        Err(reason) => json!({ "status": "unavailable", "reason": reason }),
+        Err(reason) => json!({ "status": "unavailable", "reason": reason.to_string() }),
     }
 }
 

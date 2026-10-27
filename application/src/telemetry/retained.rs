@@ -1,5 +1,6 @@
 //! Reports over retained telemetry and explicit, bounded captures that keep one session's
 //! report after the rolling log rotates. Captures are never evicted automatically.
+use crate::failure::Failure;
 use craft_engine::contracts::normalize_numbers;
 use craft_engine::telemetry::report::{self, CAPTURE_MAX_BYTES, CAPTURE_MAX_ENTRIES, Scope};
 use craft_engine::timestamp;
@@ -10,7 +11,7 @@ use std::path::{Path, PathBuf};
 const CAPTURES: &str = "telemetry-captures.json";
 
 /// The retained report for the project, or for one session's attributed events.
-pub fn report(root: &Path, session: Option<&str>) -> Result<Value, String> {
+pub fn report(root: &Path, session: Option<&str>) -> Result<Value, Failure> {
     if session.is_some_and(|session| !super::valid_session(session)) {
         return Err("invalid telemetry session".into());
     }
@@ -27,7 +28,7 @@ pub fn report(root: &Path, session: Option<&str>) -> Result<Value, String> {
     Ok(report::summarize(&records, &storage, scope))
 }
 
-fn captures(file: &Path) -> Result<Value, String> {
+fn captures(file: &Path) -> Result<Value, Failure> {
     let mut state = match state::read(file, CAPTURE_MAX_BYTES)? {
         None | Some(Value::Null) => json!({ "formatVersion": 1, "captures": [] }),
         Some(state) => state,
@@ -49,7 +50,7 @@ fn display(file: &Path) -> String {
 }
 
 /// Retain the current report of `session`; the same report is retained once.
-pub fn capture(root: &Path, session: Option<&str>) -> Result<Value, String> {
+pub fn capture(root: &Path, session: Option<&str>) -> Result<Value, Failure> {
     let session = session
         .filter(|session| super::valid_session(session))
         .ok_or("telemetry capture requires a bounded --session identity")?;
@@ -86,15 +87,15 @@ pub fn capture(root: &Path, session: Option<&str>) -> Result<Value, String> {
     Ok(receipt(&captured_at, false))
 }
 
-fn capture_file(root: &Path, id: &str) -> Result<PathBuf, String> {
+fn capture_file(root: &Path, id: &str) -> Result<PathBuf, Failure> {
     if !report::valid_capture_id(id) {
         return Err("invalid telemetry capture id".into());
     }
-    state::file(root, CAPTURES, false, None)
+    Ok(state::file(root, CAPTURES, false, None)?)
 }
 
 /// One retained report with the current interpretation limits.
-pub fn read(root: &Path, id: &str) -> Result<Value, String> {
+pub fn read(root: &Path, id: &str) -> Result<Value, Failure> {
     let state = captures(&capture_file(root, id)?)?;
     let entry = find(&state, id).ok_or("telemetry capture not found")?;
     let mut retained = entry["report"].clone();
@@ -106,7 +107,7 @@ pub fn read(root: &Path, id: &str) -> Result<Value, String> {
 }
 
 /// Explicitly remove one retained report.
-pub fn forget(root: &Path, id: &str) -> Result<Value, String> {
+pub fn forget(root: &Path, id: &str) -> Result<Value, Failure> {
     let file = capture_file(root, id)?;
     find(&captures(&file)?, id).ok_or("telemetry capture not found")?;
     let _ticket = state::lock(&file)?.ok_or("telemetry capture writer is busy")?;

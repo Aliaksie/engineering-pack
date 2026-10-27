@@ -3,7 +3,7 @@ use crate::{search, state};
 use craft_engine::{contracts, hash, routing};
 use serde_json::{Value, json};
 use std::{io::Read, path::Path};
-pub fn observe(root: &Path, files: &[Value]) -> Result<Value, String> {
+pub fn observe(root: &Path, files: &[Value]) -> Result<Value, crate::Error> {
     let root = state::canonical_root(root)?;
     let mut result = Vec::new();
     for reference in files {

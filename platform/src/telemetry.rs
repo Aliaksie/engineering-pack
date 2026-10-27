@@ -1,6 +1,7 @@
 //! Local telemetry store: the optional `.craft/telemetry.json` configuration, a private
 //! per-worktree key and a bounded JSONL log with one backup, written under the state
 //! `.lock` protocol.
+use crate::Error;
 use crate::state;
 use craft_engine::telemetry::report::Storage;
 use serde_json::{Value, json};
@@ -23,7 +24,7 @@ pub fn root(root: &Path) -> PathBuf {
 }
 
 /// Raw configuration, `{}` when absent. Validation belongs to the caller.
-pub fn configuration(root: &Path) -> Result<Value, String> {
+pub fn configuration(root: &Path) -> Result<Value, Error> {
     let folder = root.join(".craft");
     if fs::symlink_metadata(&folder).is_ok_and(|meta| meta.file_type().is_symlink()) {
         return Err("invalid telemetry directory".into());
@@ -31,9 +32,9 @@ pub fn configuration(root: &Path) -> Result<Value, String> {
     Ok(state::read(&folder.join("telemetry.json"), 4096)?.unwrap_or_else(|| json!({})))
 }
 
-pub fn random_bytes<const N: usize>() -> Result<[u8; N], String> {
+pub fn random_bytes<const N: usize>() -> Result<[u8; N], Error> {
     let mut bytes = [0; N];
-    getrandom::fill(&mut bytes).map_err(|e| e.to_string())?;
+    getrandom::fill(&mut bytes).map_err(|e| Error::from(e.to_string()))?;
     Ok(bytes)
 }
 
@@ -42,7 +43,7 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// A random RFC 4122 version 4 UUID, as `crypto.randomUUID` formats it.
-pub fn uuid() -> Result<String, String> {
+pub fn uuid() -> Result<String, Error> {
     let mut bytes = random_bytes::<16>()?;
     bytes[6] = bytes[6] & 0x0f | 0x40;
     bytes[8] = bytes[8] & 0x3f | 0x80;
@@ -58,7 +59,7 @@ pub fn uuid() -> Result<String, String> {
 }
 
 /// The worktree's pseudonym for `session`, creating the private key on first use.
-pub fn identity(root: &Path, session: &str) -> Result<String, String> {
+pub fn identity(root: &Path, session: &str) -> Result<String, Error> {
     let file = state::file(root, "telemetry-key.json", true, None)?;
     let mut data = state::read(&file, 256)?;
     if data.is_none() {
@@ -76,7 +77,7 @@ pub fn identity(root: &Path, session: &str) -> Result<String, String> {
         {
             Ok(()) => {}
             Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(error.into()),
         }
         data = state::read(&file, 256)?;
     }
@@ -84,7 +85,7 @@ pub fn identity(root: &Path, session: &str) -> Result<String, String> {
 }
 
 /// The pseudonym for `session` when the worktree key exists; never creates the key.
-pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, String> {
+pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, Error> {
     let file = state::file(root, "telemetry-key.json", false, None)?;
     match state::read(&file, 256)? {
         None | Some(Value::Null) => Ok(None),
@@ -92,7 +93,7 @@ pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, S
     }
 }
 
-fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, String> {
+fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, Error> {
     let key = data
         .and_then(|data| data["key"].as_str())
         .unwrap_or_default();
@@ -102,18 +103,18 @@ fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, String> {
     Ok(craft_engine::telemetry::session_identity(key, session))
 }
 
-fn regular(file: &Path) -> Result<u64, String> {
+fn regular(file: &Path) -> Result<u64, Error> {
     match fs::symlink_metadata(file) {
         Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => Ok(meta.len()),
         Ok(_) => Err("invalid telemetry file".into()),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(0),
-        Err(error) => Err(error.to_string()),
+        Err(error) => Err(error.into()),
     }
 }
 
 /// Retained records of the log and its backup, oldest file first, with storage facts.
 /// Reads take no lock, so a concurrent writer may be partly visible.
-pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), String> {
+pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), Error> {
     let file = state::file(root, "telemetry.jsonl", false, None)?;
     let mut backup = file.as_os_str().to_owned();
     backup.push(".1");
@@ -127,9 +128,9 @@ pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), String> {
             Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => {}
             Ok(_) => return Err("invalid telemetry file".into()),
             Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(error.into()),
         }
-        let content = fs::read(&path).map_err(|e| e.to_string())?;
+        let content = fs::read(&path)?;
         storage.files += 1;
         storage.bytes += content.len() as u64;
         storage.backup_present |= is_backup;
@@ -158,7 +159,7 @@ pub fn append(root: &Path, events: &[Value]) -> bool {
     write_batch(root, events).unwrap_or(false)
 }
 
-fn write_batch(root: &Path, events: &[Value]) -> Result<bool, String> {
+fn write_batch(root: &Path, events: &[Value]) -> Result<bool, Error> {
     if events.is_empty() || events.len() > BATCH_EVENTS {
         return Ok(false);
     }
@@ -193,9 +194,9 @@ fn write_batch(root: &Path, events: &[Value]) -> Result<bool, String> {
         match fs::remove_file(&backup) {
             Ok(()) => {}
             Err(error) if error.kind() == ErrorKind::NotFound => {}
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(error.into()),
         }
-        fs::rename(&file, &backup).map_err(|e| e.to_string())?;
+        fs::rename(&file, &backup)?;
     }
     let mut options = OpenOptions::new();
     options.append(true).create(true);
@@ -208,8 +209,7 @@ fn write_batch(root: &Path, events: &[Value]) -> Result<bool, String> {
     }
     options
         .open(&file)
-        .and_then(|mut handle| handle.write_all(text.as_bytes()))
-        .map_err(|e| e.to_string())?;
+        .and_then(|mut handle| handle.write_all(text.as_bytes()))?;
     Ok(true)
 }
 
@@ -386,7 +386,10 @@ mod tests {
         {
             fs::remove_file(&log).unwrap();
             std::os::unix::fs::symlink(fixture.0.join("target"), &log).unwrap();
-            assert_eq!(snapshot(&fixture.0).unwrap_err(), "invalid telemetry file");
+            assert_eq!(
+                snapshot(&fixture.0).unwrap_err().to_string(),
+                "invalid telemetry file"
+            );
         }
     }
 

@@ -126,7 +126,7 @@ fn payload(stdin: &mut dyn Read, required: bool) -> Result<Option<Value>, Failur
     stdin
         .take(MAX_PAYLOAD as u64 + 1)
         .read_to_end(&mut bytes)
-        .map_err(Failure::from_io)?;
+        .map_err(Failure::from)?;
     if bytes.len() > MAX_PAYLOAD {
         return Err("statusline payload exceeds size limit".into());
     }

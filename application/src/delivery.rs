@@ -179,9 +179,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     Ok(decision)
 }
 
-fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, String> {
+fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, Failure> {
     let name = format!("routing-{}.json", &identity(&[host, session])[..24]);
-    state::file(root, &name, true, Some(session))
+    Ok(state::file(root, &name, true, Some(session))?)
 }
 
 fn generation_file(file: &Path) -> PathBuf {
@@ -190,7 +190,7 @@ fn generation_file(file: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
-fn read_hint(file: &Path) -> Result<Value, String> {
+fn read_hint(file: &Path) -> Result<Value, Failure> {
     let hint = read_record(file, HINT_BYTES).map_err(|f| f.message)?;
     delivery::validate_hint(&hint)?;
     Ok(hint)
@@ -206,12 +206,12 @@ fn invalidate_hint(
     hook: &Operation,
 ) {
     let operation = recorder.start("cache.invalidated", Some(hook));
-    let result = (|| -> Result<(), String> {
+    let result = (|| -> Result<(), Failure> {
         let file = generation_file(&hint_file(root, session, host)?);
         read_hint(&file)?;
         let key = hash(uuid()?.as_bytes());
         let generation = json!({"formatVersion": 1, "key": key, "emittedAt": now_ms()});
-        state::write(&file, &generation, HINT_BYTES, false)
+        Ok(state::write(&file, &generation, HINT_BYTES, false)?)
     })();
     recorder.complete(
         operation,
@@ -233,7 +233,7 @@ fn reuse_hint(
     decision: &mut Value,
     recorder: &mut Recorder,
     hook: &Operation,
-) -> Result<(), String> {
+) -> Result<(), Failure> {
     let file = hint_file(root, session, host)?;
     let Some(_lock) = state::lock(&file)? else {
         recorder.report("cache", "STATE_BUSY", Map::new(), hook);
@@ -260,7 +260,7 @@ fn reuse_hint(
     }
     // Eligible hints are delivered: the host supports context and the decision carries it.
     let hint = json!({"formatVersion": 1, "key": key, "emittedAt": now});
-    state::write(&file, &hint, HINT_BYTES, false)
+    Ok(state::write(&file, &hint, HINT_BYTES, false)?)
 }
 
 #[cfg(test)]
@@ -326,7 +326,8 @@ mod tests {
                 &mut decision,
                 &mut self.recorder,
                 &self.hook,
-            )?;
+            )
+            .map_err(|failure| failure.message)?;
             Ok(decision.get("context").is_some())
         }
     }

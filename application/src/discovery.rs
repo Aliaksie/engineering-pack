@@ -12,7 +12,7 @@ use std::path::Path;
 impl From<search::SearchError> for Failure {
     fn from(error: search::SearchError) -> Self {
         match error {
-            search::SearchError::Io(error) => Self::from_io(error),
+            search::SearchError::Io(error) => error.into(),
             search::SearchError::Invalid(message) => message.into(),
         }
     }
@@ -148,7 +148,7 @@ fn discover(
     if request["terms"].as_array().unwrap().is_empty() {
         return Ok(planning::deferred(&request)?);
     }
-    let root = std::fs::canonicalize(root).map_err(Failure::from_io)?;
+    let root = std::fs::canonicalize(root).map_err(Failure::from)?;
     let settings = loaded_settings(&root, preferences, recorder, parent)?;
     let policy = planning::digest(&settings);
     let enabled = session.is_some()
@@ -205,7 +205,7 @@ fn discover(
         options["terms"] = reuse["fresh"].clone();
         let search = discovery::request(&options)?;
         let operation = recorder.start("search.completed", Some(parent));
-        let result = search::scan(&root, &search, repositories.as_deref());
+        let result = search::scan(&root, &search, repositories.as_deref()).map_err(Failure::from);
         let (attributes, failure) = match &result {
             Ok(result) => {
                 if result["truncated"] == true
@@ -226,10 +226,7 @@ fn discover(
                     None,
                 )
             }
-            Err(error) => (
-                Map::new(),
-                Some(Failure::from_error_code(error.code()).code("SEARCH_FAILED")),
-            ),
+            Err(error) => (Map::new(), Some(error.code("SEARCH_FAILED"))),
         };
         recorder.complete(operation, attributes, failure);
         result?
@@ -243,7 +240,7 @@ fn discover(
     let mut facts = json!({"request":request,"scanned":scanned,"state":state,"identity":identity,"reused":reuse["reused"],"fresh":reuse["fresh"],"stable":stable,"enabled":enabled,"diagnostic":diagnostic});
     if enabled && !state.is_null() {
         let operation = recorder.start("state.updated", Some(parent));
-        let updated = (|| -> Result<(), String> {
+        let updated = (|| -> Result<(), Failure> {
             let session = session.unwrap();
             let task = task.unwrap();
             let name = format!(
@@ -261,11 +258,11 @@ fn discover(
                 return Err("session state changed during discovery; receipt preserved".into());
             }
             let updated = planning::update(current, &facts)?;
-            state::write(&file, &updated, 131072, false)
+            Ok(state::write(&file, &updated, 131072, false)?)
         })();
         if let Err(error) = &updated {
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), &operation);
-            facts["diagnostic"] = json!(error);
+            facts["diagnostic"] = json!(error.message);
         }
         recorder.complete(
             operation,

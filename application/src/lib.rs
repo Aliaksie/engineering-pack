@@ -1,4 +1,5 @@
 use craft_engine::PROTOCOL_VERSION;
+use failure::Failure;
 use serde_json::{Value, json};
 mod actions;
 mod budget;
@@ -81,7 +82,8 @@ pub fn evaluate(request: Value) -> Value {
             match (input["path"].as_str(), input["source"].as_str()) {
                 (Some(path), Some(source)) => {
                     craft_platform::providers::extract(path, source.as_bytes())
-                        .and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string()))
+                        .map_err(Failure::from)
+                        .and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string().into()))
                 }
                 _ => Err("extract requires path and source strings".into()),
             }
@@ -92,8 +94,8 @@ pub fn evaluate(request: Value) -> Value {
     };
     match result {
         Ok(result) => json!({"formatVersion":PROTOCOL_VERSION,"ok":true,"result":result}),
-        Err(message) => {
-            json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"INVALID_INPUT","message":message}})
+        Err(failure) => {
+            json!({"formatVersion":PROTOCOL_VERSION,"ok":false,"error":{"code":"INVALID_INPUT","message":failure.message}})
         }
     }
 }

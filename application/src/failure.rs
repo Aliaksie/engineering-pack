@@ -1,36 +1,18 @@
-//! The failure every use case returns: a message and, for I/O, the kind its reason code
-//! and Node-style telemetry code derive from.
+//! The failure every use case returns: a message and, for platform effects, the kind its
+//! reason code derives from. `code` is the one place a failure becomes a reason code.
 use craft_platform::documents::DocumentError;
 use std::io::ErrorKind;
 
 #[derive(Debug)]
 pub struct Failure {
     pub message: String,
-    io: Option<ErrorKind>,
+    kind: Option<ErrorKind>,
 }
 
 impl Failure {
-    pub(crate) fn from_io(error: std::io::Error) -> Self {
-        Self {
-            message: error.to_string(),
-            io: Some(error.kind()),
-        }
-    }
-    pub(crate) fn from_error_code(code: &str) -> Self {
-        let io = match code {
-            "ENOENT" => Some(ErrorKind::NotFound),
-            "EACCES" => Some(ErrorKind::PermissionDenied),
-            "ENOTDIR" => Some(ErrorKind::NotADirectory),
-            _ => None,
-        };
-        Self {
-            message: code.into(),
-            io,
-        }
-    }
     /// The stable reason code `observe` records for this failure.
     pub fn code(&self, fallback: &'static str) -> &'static str {
-        match self.io {
+        match self.kind {
             Some(ErrorKind::PermissionDenied) => "ACCESS_DENIED",
             Some(ErrorKind::StorageFull) => "STORAGE_FULL",
             Some(ErrorKind::NotFound) => "NOT_FOUND",
@@ -40,9 +22,33 @@ impl Failure {
     }
 }
 
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl From<craft_platform::Error> for Failure {
+    fn from(error: craft_platform::Error) -> Self {
+        Self {
+            kind: error.kind(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for Failure {
+    fn from(error: std::io::Error) -> Self {
+        craft_platform::Error::from(error).into()
+    }
+}
+
 impl From<String> for Failure {
     fn from(message: String) -> Self {
-        Self { message, io: None }
+        Self {
+            message,
+            kind: None,
+        }
     }
 }
 
@@ -55,7 +61,7 @@ impl From<&str> for Failure {
 impl From<DocumentError> for Failure {
     fn from(error: DocumentError) -> Self {
         Self {
-            io: error.io_kind(),
+            kind: error.io_kind(),
             message: error.to_string(),
         }
     }
@@ -66,19 +72,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn io_failures_record_stable_reason_codes() {
-        let code = |kind| Failure::from_io(std::io::Error::from(kind)).code("FALLBACK");
+    fn platform_failures_record_stable_reason_codes() {
+        let code = |kind| Failure::from(std::io::Error::from(kind)).code("FALLBACK");
         assert_eq!(code(ErrorKind::NotFound), "NOT_FOUND");
         assert_eq!(code(ErrorKind::PermissionDenied), "ACCESS_DENIED");
         assert_eq!(code(ErrorKind::AlreadyExists), "STATE_BUSY");
         assert_eq!(code(ErrorKind::InvalidData), "FALLBACK");
         assert_eq!(
-            Failure::from_error_code("ENOTDIR").code("FALLBACK"),
-            "FALLBACK"
-        );
-        assert_eq!(
-            Failure::from_error_code("EACCES").code("FALLBACK"),
-            "ACCESS_DENIED"
+            Failure::from(craft_platform::Error::busy("busy")).code("FALLBACK"),
+            "STATE_BUSY"
         );
         assert_eq!(Failure::from("message").code("FALLBACK"), "FALLBACK");
     }

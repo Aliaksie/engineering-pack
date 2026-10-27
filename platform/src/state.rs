@@ -1,6 +1,7 @@
 //! Workspace-local state records. Placement, bytes, the `.lock` protocol and legacy
 //! migration receipts are a persisted contract that existing stores rely on; see
 //! `tests/fixtures/runtime/state-contracts.json`.
+use crate::Error;
 use crate::files::{ReadError, read_bounded};
 use craft_engine::hash;
 use serde_json::{Value, json};
@@ -27,7 +28,7 @@ fn short(bytes: &[u8]) -> String {
     hash(bytes)[..24].to_string()
 }
 
-fn text(path: &Path) -> Result<&str, String> {
+fn text(path: &Path) -> Result<&str, Error> {
     path.to_str()
         .ok_or_else(|| "non-UTF-8 state path unsupported".into())
 }
@@ -49,14 +50,14 @@ pub fn physical(path: &Path) -> std::io::Result<PathBuf> {
 }
 
 /// The physical worktree path, so both runtimes hash the same identity.
-pub fn canonical_root(root: &Path) -> Result<PathBuf, String> {
-    let physical = physical(root).map_err(|e| e.to_string())?;
+pub fn canonical_root(root: &Path) -> Result<PathBuf, Error> {
+    let physical = physical(root)?;
     text(&physical)?;
     Ok(physical)
 }
 
 /// An existing component must be a real directory; a missing one is created only on request.
-fn directory(path: &Path, create: bool) -> Result<bool, String> {
+fn directory(path: &Path, create: bool) -> Result<bool, Error> {
     match fs::symlink_metadata(path) {
         Ok(meta) if meta.is_dir() && !meta.file_type().is_symlink() => Ok(true),
         Ok(_) => Err("state path must be a directory without symlinks".into()),
@@ -64,14 +65,14 @@ fn directory(path: &Path, create: bool) -> Result<bool, String> {
             if !create {
                 return Ok(false);
             }
-            crate::files::create_private_directory(path).map_err(|error| error.to_string())?;
+            crate::files::create_private_directory(path)?;
             directory(path, false)
         }
-        Err(error) => Err(error.to_string()),
+        Err(error) => Err(error.into()),
     }
 }
 
-fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, String> {
+fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, Error> {
     let mut folder = root.to_path_buf();
     for part in parts {
         folder.push(part);
@@ -80,12 +81,12 @@ fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, String>
     Ok(folder)
 }
 
-pub fn location(root: &Path, session: Option<&str>) -> Result<Location, String> {
+pub fn location(root: &Path, session: Option<&str>) -> Result<Location, Error> {
     let canonical = canonical_root(root)?;
     location_at(&canonical, session, false)
 }
 
-fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<Location, String> {
+fn location_at(canonical: &Path, session: Option<&str>, create: bool) -> Result<Location, Error> {
     // Node bounds the session in UTF-16 code units.
     if session.is_some_and(|s| s.is_empty() || s.encode_utf16().count() > 512) {
         return Err("invalid state session".into());
@@ -110,7 +111,7 @@ pub fn file(
     name: &str,
     create: bool,
     session: Option<&str>,
-) -> Result<PathBuf, String> {
+) -> Result<PathBuf, Error> {
     if name.is_empty()
         || name == "."
         || name == ".."
@@ -128,13 +129,13 @@ pub fn file(
     Ok(target)
 }
 
-pub fn read(file: &Path, max_bytes: usize) -> Result<Option<Value>, String> {
+pub fn read(file: &Path, max_bytes: usize) -> Result<Option<Value>, Error> {
     match read_bounded(file, max_bytes) {
         Ok(bytes) => serde_json::from_slice(&bytes)
             .map(Some)
-            .map_err(|e| e.to_string()),
+            .map_err(Error::from),
         Err(ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(ReadError::Io(error)) => Err(error.to_string()),
+        Err(ReadError::Io(error)) => Err(error.into()),
         Err(_) => Err("invalid bounded state file".into()),
     }
 }
@@ -166,7 +167,7 @@ fn temporary(file: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
-fn create_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
+fn create_private(path: &Path, bytes: &[u8]) -> Result<(), Error> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -177,7 +178,7 @@ fn create_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     options
         .open(path)
         .and_then(|mut file| file.write_all(bytes))
-        .map_err(|e| e.to_string())
+        .map_err(Error::from)
 }
 
 #[cfg(test)]
@@ -187,7 +188,7 @@ thread_local! {
 
 /// Atomically replace a record. The existing record must itself be a valid bounded
 /// record, so a corrupt or foreign file is never silently overwritten.
-pub fn write(file: &Path, value: &Value, max_bytes: usize, pretty: bool) -> Result<(), String> {
+pub fn write(file: &Path, value: &Value, max_bytes: usize, pretty: bool) -> Result<(), Error> {
     let bytes = serialize(value, pretty);
     if bytes.len() > max_bytes {
         return Err("state exceeds size limit".into());
@@ -199,7 +200,7 @@ pub fn write(file: &Path, value: &Value, max_bytes: usize, pretty: bool) -> Resu
         if FAIL_PUBLISH.with(|fail| fail.get()) {
             return Err("injected publication failure".into());
         }
-        fs::rename(&staged, file).map_err(|e| e.to_string())
+        fs::rename(&staged, file).map_err(Error::from)
     });
     let _ = fs::remove_file(&staged);
     result
@@ -235,7 +236,7 @@ impl Drop for Lock {
     }
 }
 
-pub fn lock(file: &Path) -> Result<Option<Lock>, String> {
+pub fn lock(file: &Path) -> Result<Option<Lock>, Error> {
     let mut name = file.as_os_str().to_owned();
     name.push(".lock");
     let path = PathBuf::from(name);
@@ -260,7 +261,7 @@ fn acquire(
     path: PathBuf,
     windows: bool,
     mut open: impl FnMut(&Path) -> std::io::Result<File>,
-) -> Result<Option<Lock>, String> {
+) -> Result<Option<Lock>, Error> {
     let mut attempt = 1;
     loop {
         match open(&path) {
@@ -278,18 +279,17 @@ fn acquire(
             Err(error) if windows && error.kind() == ErrorKind::PermissionDenied => {
                 let parent = path.parent().ok_or("state lock parent required")?;
                 let name = path.file_name().ok_or("state lock name required")?;
-                let listed = fs::read_dir(parent)
-                    .map_err(|e| e.to_string())?
+                let listed = fs::read_dir(parent)?
                     .any(|entry| entry.is_ok_and(|entry| entry.file_name() == name));
                 if listed {
                     return Ok(None);
                 }
                 if attempt == LOCK_ATTEMPTS {
-                    return Err(error.to_string());
+                    return Err(error.into());
                 }
                 attempt += 1;
             }
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(error.into()),
         }
     }
 }
@@ -309,7 +309,7 @@ fn lexical(base: &Path, target: &str) -> PathBuf {
     result
 }
 
-fn git_directory(root: &Path) -> Result<Option<PathBuf>, String> {
+fn git_directory(root: &Path) -> Result<Option<PathBuf>, Error> {
     let mut current = root;
     for _ in 0..64 {
         let marker = current.join(".git");
@@ -331,14 +331,14 @@ fn git_directory(root: &Path) -> Result<Option<PathBuf>, String> {
                     .filter(|t| !t.is_empty() && !t.contains(['\r', '\n']))
                     .ok_or("invalid Git directory marker")?;
                 let target = lexical(current, target);
-                let meta = fs::symlink_metadata(&target).map_err(|e| e.to_string())?;
+                let meta = fs::symlink_metadata(&target)?;
                 if !meta.is_dir() || meta.file_type().is_symlink() {
                     return Err("invalid Git directory".into());
                 }
                 return Ok(Some(target));
             }
             Err(error) if error.kind() == ErrorKind::NotFound => {}
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(error.into()),
         }
         match current.parent() {
             Some(parent) => current = parent,
@@ -359,17 +359,17 @@ struct Inspection {
     bytes: u64,
 }
 
-fn unsafe_legacy() -> String {
+fn unsafe_legacy() -> Error {
     "unsafe or oversized legacy state".into()
 }
 
-fn busy_legacy() -> String {
-    "legacy state writer is busy; stop older plugins before migration".into()
+fn busy_legacy() -> Error {
+    Error::busy("legacy state writer is busy; stop older plugins before migration")
 }
 
 impl Inspection {
-    fn visit(&mut self, file: &Path, relative: String, depth: usize) -> Result<(), String> {
-        let meta = fs::symlink_metadata(file).map_err(|e| e.to_string())?;
+    fn visit(&mut self, file: &Path, relative: String, depth: usize) -> Result<(), Error> {
+        let meta = fs::symlink_metadata(file)?;
         #[cfg(unix)]
         let linked = {
             use std::os::unix::fs::MetadataExt;
@@ -390,12 +390,11 @@ impl Inspection {
         }
         if meta.is_dir() {
             self.entries.push(Entry::Directory(relative.clone()));
-            let mut children = fs::read_dir(file)
-                .map_err(|e| e.to_string())?
+            let mut children = fs::read_dir(file)?
                 .map(|entry| {
-                    let name = entry.map_err(|e| e.to_string())?.file_name();
+                    let name = entry?.file_name();
                     name.into_string()
-                        .map_err(|_| "non-UTF-8 state path unsupported".to_string())
+                        .map_err(|_| Error::from("non-UTF-8 state path unsupported"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             // Array.prototype.sort order: UTF-16 code units.
@@ -414,7 +413,7 @@ impl Inspection {
             return Err(unsafe_legacy());
         }
         let data = read_bounded(file, LEGACY_FILE_BYTES as usize).map_err(|_| unsafe_legacy())?;
-        let after = fs::symlink_metadata(file).map_err(|e| e.to_string())?;
+        let after = fs::symlink_metadata(file)?;
         #[cfg(unix)]
         let same_file = {
             use std::os::unix::fs::MetadataExt;
@@ -430,7 +429,7 @@ impl Inspection {
             return Err("legacy state changed during migration".into());
         }
         if depth == 0 && relative.ends_with(".json") {
-            serde_json::from_slice::<Value>(&data).map_err(|e| e.to_string())?;
+            serde_json::from_slice::<Value>(&data)?;
         }
         let digest = short(&data);
         self.entries.push(Entry::File(relative, data, digest));
@@ -460,11 +459,11 @@ fn companions(name: &str) -> Vec<String> {
     }
 }
 
-fn exists(path: &Path) -> Result<bool, String> {
+fn exists(path: &Path) -> Result<bool, Error> {
     match fs::symlink_metadata(path) {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(error.to_string()),
+        Err(error) => Err(error.into()),
     }
 }
 
@@ -475,7 +474,7 @@ fn receipt_matches(receipt: &Value, fingerprint: &str) -> bool {
 // Legacy stores are read-only. Copy on first access and retain a source digest so an
 // older plugin resuming writes cannot silently fork history. Consumers must stop old
 // writers before upgrading; a legacy lock or changed source requires reconciliation.
-fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), String> {
+fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), Error> {
     let mut sources = Vec::new();
     if let Some(git) = git_directory(root)? {
         sources.push(git.join("craft-state").join(short(text(root)?.as_bytes())));
@@ -490,7 +489,7 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), String> 
                 Ok(meta) if !meta.is_dir() || meta.file_type().is_symlink() => {
                     return Err("legacy state path must be a directory without symlinks".into());
                 }
-                Err(error) if error.kind() != ErrorKind::NotFound => return Err(error.to_string()),
+                Err(error) if error.kind() != ErrorKind::NotFound => return Err(error.into()),
                 _ => {}
             }
             ancestor = parent;
@@ -507,13 +506,8 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), String> 
             continue;
         }
         // Flat legacy stores use per-record locks; any live/unresolved writer blocks migration.
-        for entry in fs::read_dir(&source).map_err(|e| e.to_string())? {
-            if entry
-                .map_err(|e| e.to_string())?
-                .file_name()
-                .to_string_lossy()
-                .ends_with(".lock")
-            {
+        for entry in fs::read_dir(&source)? {
+            if entry?.file_name().to_string_lossy().ends_with(".lock") {
                 return Err(busy_legacy());
             }
         }
@@ -546,7 +540,7 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), String> 
             .map(|part| part.to_str().ok_or("non-UTF-8 state path unsupported"))
             .collect::<Result<Vec<_>, _>>()?;
         descend(root, &parts, true)?;
-        let _ticket = lock(&receipt)?.ok_or("state migration is busy")?;
+        let _ticket = lock(&receipt)?.ok_or_else(|| Error::busy("state migration is busy"))?;
         if let Some(current) = read(&receipt, RECEIPT_BYTES)? {
             if current["source"] != fingerprint.as_str() {
                 return Err("legacy migration source conflict".into());
@@ -576,13 +570,12 @@ fn migrate_legacy(root: &Path, target: &Path, name: &str) -> Result<(), String> 
                         Err(error) if error.kind() == ErrorKind::NotFound => {
                             let staged = temporary(&file);
                             // Exclusive atomic publication: a crash cannot leave a partial destination.
-                            let result = create_private(&staged, data).and_then(|()| {
-                                fs::hard_link(&staged, &file).map_err(|e| e.to_string())
-                            });
+                            let result = create_private(&staged, data)
+                                .and_then(|()| fs::hard_link(&staged, &file).map_err(Error::from));
                             let _ = fs::remove_file(&staged);
                             result?;
                         }
-                        Err(error) => return Err(error.to_string()),
+                        Err(error) => return Err(error.into()),
                     }
                 }
             }

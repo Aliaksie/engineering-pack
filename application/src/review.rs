@@ -137,7 +137,7 @@ fn required<'a>(options: &'a Options, command: Command, name: &str) -> Result<&'
 
 /// An I/O failure that names what was attempted and keeps its kind for telemetry.
 fn described(error: io::Error, action: &str) -> Failure {
-    Failure::from_io(io::Error::new(error.kind(), format!("{action}: {error}")))
+    Failure::from(io::Error::new(error.kind(), format!("{action}: {error}")))
 }
 
 /// A JSON artifact, decoded as text first so invalid UTF-8 is replaced rather than refused.

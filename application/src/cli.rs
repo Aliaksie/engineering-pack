@@ -1186,20 +1186,17 @@ fn telemetry_report(options: &Options, _: &mut Recorder, _: &Operation) -> Resul
     let root = root(options);
     match (options.get("capture"), options.get("session")) {
         (Some(_), Some(_)) => Err("choose --capture or --session for telemetry-report".into()),
-        (Some(capture), None) => Ok(retained::read(&root, capture)?),
-        (None, session) => Ok(retained::report(&root, session)?),
+        (Some(capture), None) => retained::read(&root, capture),
+        (None, session) => retained::report(&root, session),
     }
 }
 
 fn telemetry_capture(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
-    Ok(retained::capture(&root(options), options.get("session"))?)
+    retained::capture(&root(options), options.get("session"))
 }
 
 fn telemetry_forget(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
-    Ok(retained::forget(
-        &root(options),
-        options.get("capture").unwrap_or_default(),
-    )?)
+    retained::forget(&root(options), options.get("capture").unwrap_or_default())
 }
 
 fn checkpoint_read(
