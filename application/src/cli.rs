@@ -1323,34 +1323,7 @@ fn session_view(status: &Value) -> String {
         ),
         format!("Reason: {reason}"),
     ];
-    let acceptance = &status["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                shown(&criterion["id"]),
-                shown(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&status["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&status["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if status["binding"].is_object() {
-        lines.push(format!(
-            "Source: {}",
-            nonempty(&status["binding"]["identity"]).unwrap_or("unknown")
-        ));
-    }
+    lines.extend(acceptance_lines(status, shown));
     if let Some(advice) = nonempty(&status["capability"]["recommendation"]) {
         lines.push(format!("Model advice: {advice}"));
     }
@@ -1379,6 +1352,41 @@ fn session_view(status: &Value) -> String {
         lines.push(format!("At boundary: {boundary}"));
     }
     format!("{}\n", lines.join("\n"))
+}
+
+/// Acceptance assurance and criteria, task contract, evidence digest and binding source;
+/// `field` renders an assurance, criterion ID or status.
+fn acceptance_lines(result: &Value, field: impl Fn(&Value) -> String) -> Vec<String> {
+    let mut lines = Vec::new();
+    let acceptance = &result["acceptance"];
+    if acceptance.is_object() {
+        lines.push(format!("Acceptance: {}", field(&acceptance["assurance"])));
+        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
+            let optional = if criterion["required"] == true {
+                ""
+            } else {
+                " (optional)"
+            };
+            lines.push(format!(
+                "Criterion: {} — {}{optional}",
+                field(&criterion["id"]),
+                field(&criterion["status"])
+            ));
+        }
+    }
+    if let Some(contract) = nonempty(&result["taskContract"]) {
+        lines.push(format!("Task contract: {contract}"));
+    }
+    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
+        lines.push(format!("Evidence digest: {digest}"));
+    }
+    if result["binding"].is_object() {
+        lines.push(format!(
+            "Source: {}",
+            nonempty(&result["binding"]["identity"]).unwrap_or("unknown")
+        ));
+    }
+    lines
 }
 
 fn offer_lines(result: &Value) -> Vec<String> {
@@ -1463,34 +1471,7 @@ fn action_receipt(action: &str, result: &Value) -> String {
             lines.push("No action dispatched.".into());
         }
     }
-    let acceptance = &result["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", shown(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                shown(&criterion["id"]),
-                shown(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&result["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if result["binding"].is_object() {
-        lines.push(format!(
-            "Source: {}",
-            nonempty(&result["binding"]["identity"]).unwrap_or("unknown")
-        ));
-    }
+    lines.extend(acceptance_lines(result, shown));
     let status = &result["status"];
     if result["workspace"]["status"] == "retained"
         && let Some(reason) = nonempty(&result["workspace"]["reason"])
@@ -1549,32 +1530,7 @@ fn task_receipt(result: &Value) -> String {
     for missing in routing["missing"].as_array().into_iter().flatten() {
         lines.push(format!("Missing: {}", text(missing)));
     }
-    let acceptance = &result["acceptance"];
-    if acceptance.is_object() {
-        lines.push(format!("Acceptance: {}", text(&acceptance["assurance"])));
-        for criterion in acceptance["criteria"].as_array().into_iter().flatten() {
-            let optional = if criterion["required"] == true {
-                ""
-            } else {
-                " (optional)"
-            };
-            lines.push(format!(
-                "Criterion: {} — {}{optional}",
-                text(&criterion["id"]),
-                text(&criterion["status"])
-            ));
-        }
-    }
-    if let Some(contract) = nonempty(&result["taskContract"]) {
-        lines.push(format!("Task contract: {contract}"));
-    }
-    if let Some(digest) = nonempty(&result["evidenceDigest"]) {
-        lines.push(format!("Evidence digest: {digest}"));
-    }
-    if result["binding"].is_object() {
-        let source = nonempty(&result["binding"]["identity"]).unwrap_or("unknown");
-        lines.push(format!("Source: {source}"));
-    }
+    lines.extend(acceptance_lines(result, text));
     if result["workspace"]["status"] == "retained"
         && let Some(reason) = nonempty(&result["workspace"]["reason"])
     {
@@ -1803,5 +1759,27 @@ mod tests {
         let view = session_view(&status);
         assert!(view.contains("Advice: compact"));
         assert!(view.contains("Criterion: value — verified"));
+    }
+
+    #[test]
+    fn acceptance_lines_render_missing_fields_by_view() {
+        let result = json!({
+            "acceptance": {"criteria": [{"id": "value", "status": null}]},
+            "taskContract": "contract", "evidenceDigest": "", "binding": {}
+        });
+        let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+        assert_eq!(
+            acceptance_lines(&result, shown),
+            [
+                "Acceptance: unknown",
+                "Criterion: value — unknown (optional)",
+                "Task contract: contract",
+                "Source: unknown"
+            ]
+        );
+        assert_eq!(
+            acceptance_lines(&result, text)[..2],
+            ["Acceptance: ", "Criterion: value —  (optional)"]
+        );
     }
 }

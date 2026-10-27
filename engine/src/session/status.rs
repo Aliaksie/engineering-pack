@@ -765,17 +765,13 @@ fn source(repository: Option<&Value>) -> Value {
     repository.map_or(Value::Null, super::source)
 }
 
-/// Unified status: advice over the declared task merged with recorded activity, checkpoint
-/// freshness, routed guidance, capability and model advice, blockers and recorded offers.
-pub fn status(request: Request) -> Result<Value> {
-    let Request {
-        input,
-        settings,
-        session,
-        task,
-        now,
-        observations,
-    } = request;
+/// The session and task identities: an explicit one wins and must agree with a truthy
+/// declared one in `input`; otherwise the declared one, if any.
+pub fn identities(
+    input: &Value,
+    session: Option<&str>,
+    task: Option<&str>,
+) -> Result<(Option<Value>, Option<Value>)> {
     let declared_session = input.get("sessionId");
     let declared_task = input["task"].get("id");
     if session.is_some_and(|s| !s.is_empty())
@@ -794,6 +790,21 @@ pub fn status(request: Request) -> Result<Value> {
         .map(|s| json!(s))
         .or_else(|| declared_session.cloned());
     let task_id = task.map(|t| json!(t)).or_else(|| declared_task.cloned());
+    Ok((session_id, task_id))
+}
+
+/// Unified status: advice over the declared task merged with recorded activity, checkpoint
+/// freshness, routed guidance, capability and model advice, blockers and recorded offers.
+pub fn status(request: Request) -> Result<Value> {
+    let Request {
+        input,
+        settings,
+        session,
+        task,
+        now,
+        observations,
+    } = request;
+    let (session_id, task_id) = identities(input, session, task)?;
     let mut normalized = input.as_object().cloned().unwrap_or_default();
     if let Some(id) = session_id.as_ref().filter(|s| truthy(*s)) {
         normalized.insert("sessionId".into(), id.clone());
@@ -1155,19 +1166,7 @@ pub fn status(request: Request) -> Result<Value> {
         repository_evidence = repository_evidence.or(observations.repository.as_ref());
         let current = source(repository_evidence);
         let policy = json!(digest(settings));
-        let mut risks: Vec<&Value> = Vec::new();
-        for risk in task["risks"].as_array().into_iter().flatten() {
-            if !risks.contains(&risk) {
-                risks.push(risk);
-            }
-        }
-        risks.sort_by(|a, b| {
-            a.as_str()
-                .unwrap_or_default()
-                .encode_utf16()
-                .cmp(b.as_str().unwrap_or_default().encode_utf16())
-        });
-        let risks = json!(risks);
+        let risks = json!(super::risks(&task["risks"]));
         let review = action == "review";
         let offer = offers.values().rev().find(|offer| {
             offer["action"] == action

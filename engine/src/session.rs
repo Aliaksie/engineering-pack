@@ -755,6 +755,23 @@ pub fn contract(record: Option<&Value>) -> Result<Value> {
     Ok(json!(digest(&Value::Array(parts))))
 }
 
+/// A task's risks as offers record and match them: unique, in UTF-16 code unit order.
+pub fn risks(value: &Value) -> Vec<&Value> {
+    let mut risks: Vec<&Value> = Vec::new();
+    for risk in value.as_array().into_iter().flatten() {
+        if !risks.contains(&risk) {
+            risks.push(risk);
+        }
+    }
+    risks.sort_by(|a, b| {
+        a.as_str()
+            .unwrap_or_default()
+            .encode_utf16()
+            .cmp(b.as_str().unwrap_or_default().encode_utf16())
+    });
+    risks
+}
+
 /// The comparable source identity of a complete repository snapshot.
 pub fn source(repository: &Value) -> Value {
     if repository["gitAvailable"] == true && repository["fingerprints"]["complete"] == true {

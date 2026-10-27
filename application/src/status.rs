@@ -94,24 +94,7 @@ fn observe(
         task,
         bundles,
     } = request;
-    let declared_session = input.get("sessionId");
-    let declared_task = input["task"].get("id");
-    if session.is_some_and(|s| !s.is_empty())
-        && truthy(declared_session)
-        && declared_session != Some(&json!(session))
-    {
-        return Err("session input identity mismatch".into());
-    }
-    if task.is_some_and(|t| !t.is_empty())
-        && truthy(declared_task)
-        && declared_task != Some(&json!(task))
-    {
-        return Err("task input identity mismatch".into());
-    }
-    let session_id = session
-        .map(|s| json!(s))
-        .or_else(|| declared_session.cloned());
-    let mut task_id = task.map(|t| json!(t)).or_else(|| declared_task.cloned());
+    let (session_id, mut task_id) = status::identities(input, session, task)?;
     let mut binding_error = None;
     if !truthy(task_id.as_ref()) && truthy(session_id.as_ref()) {
         match identity(session_id.as_ref()).and_then(|s| active_task(root, Some(s))) {

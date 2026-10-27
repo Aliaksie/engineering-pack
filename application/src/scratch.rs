@@ -359,19 +359,10 @@ fn operate(
             }));
     }
     let mut cleanup = "retained";
-    if action == Action::Release {
-        if current.is_some() {
-            value["operations"][&identity.operation]["closed"] = json!(true);
+    if matches!(action, Action::Release | Action::Complete) {
+        if action == Action::Complete {
+            value["closed"] = json!(true);
         }
-        if scratch::open_operations(&value).is_empty() {
-            match files::remove(&scratch_dir) {
-                Ok(()) => cleanup = "cleaned",
-                Err(error) => retained.push(json!({"entry": key, "reason": error.to_string()})),
-            }
-        }
-    }
-    if action == Action::Complete {
-        value["closed"] = json!(true);
         if current.is_some() {
             value["operations"][&identity.operation]["closed"] = json!(true);
         }

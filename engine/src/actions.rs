@@ -263,22 +263,7 @@ pub fn propose(state: &mut Value, input: &Value, context: &Context) -> Result<Va
     let source = session::source(context.repository);
     let policy = json!(digest(context.settings));
     let task_contract = session::contract(state.get("taskRecord"))?;
-    let mut risks: Vec<&Value> = Vec::new();
-    for risk in context.facts["observations"]["task"]["risks"]
-        .as_array()
-        .into_iter()
-        .flatten()
-    {
-        if !risks.contains(&risk) {
-            risks.push(risk);
-        }
-    }
-    risks.sort_by(|a, b| {
-        a.as_str()
-            .unwrap_or_default()
-            .encode_utf16()
-            .cmp(b.as_str().unwrap_or_default().encode_utf16())
-    });
+    let risks = session::risks(&context.facts["observations"]["task"]["risks"]);
     let host = context.facts["observations"]["host"]
         .get("name")
         .filter(|h| !h.is_null())
