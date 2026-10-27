@@ -16,6 +16,7 @@ mod handoff;
 pub mod hook;
 pub mod host;
 mod integration;
+mod plan;
 mod project;
 mod render;
 mod retention;

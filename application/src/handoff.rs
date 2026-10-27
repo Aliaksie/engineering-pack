@@ -171,3 +171,48 @@ pub fn adopt(
         "authorization": "Copied the earlier session's task record and checkpoint; the earlier session is unchanged and no authorization was renewed.",
     }))
 }
+
+/// Carry the task record and checkpoint of `task` from the session directory `from`, which
+/// held the plan task until this session took it over, replacing this session's copy. The
+/// caller holds this session's binding lock. Null when `from` keeps no record of the task.
+pub fn carry(
+    root: &std::path::Path,
+    session: &str,
+    from: &str,
+    task: &str,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let Some(directory) = sweep::session(root, from)?.filter(|d| d.complete) else {
+        return Ok(Value::Null);
+    };
+    let (_, states) = saved(&directory)?;
+    let mut records = states
+        .iter()
+        .filter(|(state, _)| state["taskRecord"]["id"] == task);
+    let (Some((source, _)), None) = (records.next(), records.next()) else {
+        return Ok(Value::Null);
+    };
+    session::validate(source)?;
+    records::update_state(root, session, task, recorder, parent, |state| {
+        *state = source.clone();
+        Ok(())
+    })?;
+    let checkpoint = read_record(
+        &directory.path.join("checkpoint.json"),
+        crate::checkpoint::CHECKPOINT_BYTES,
+    )?;
+    craft_engine::checkpoint::validate(&checkpoint)?;
+    let recovery = match Some(checkpoint).filter(|c| c.get("taskId") == Some(&json!(task))) {
+        // The task start that follows saves a fresh checkpoint when this one is refused.
+        Some(saved) => match crate::checkpoint::adopt(root, session, &saved, task) {
+            Ok(()) => {
+                let current = snapshot::workspace(root, saved.get("repositories"), false)?;
+                craft_engine::checkpoint::compare(&saved, &current)
+            }
+            Err(failure) => json!({"carried": false, "reason": failure.message}),
+        },
+        None => Value::Null,
+    };
+    Ok(json!({"from": from, "checkpoint": recovery}))
+}

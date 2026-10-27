@@ -248,6 +248,23 @@ pub fn shared(root: &Path, family: &str, create: bool) -> Result<PathBuf, Error>
     )
 }
 
+/// Work plans, one folder each beside `sessions/`.
+pub const PLANS: &str = "plans";
+
+/// The plans folder, or the folder of the plan named `plan`.
+pub fn plans(root: &Path, plan: Option<&str>, create: bool) -> Result<PathBuf, Error> {
+    if plan.is_some_and(|id| !craft_engine::plan::slug(id)) {
+        return Err("invalid plan id".into());
+    }
+    let canonical = canonical_root(root)?;
+    let base = location_at(&canonical, None, create)?.directory;
+    let folder = descend(&base, &[PLANS], create)?;
+    match plan {
+        Some(id) => descend(&folder, &[id], create),
+        None => Ok(folder),
+    }
+}
+
 fn segment(name: &str) -> bool {
     !(name.is_empty()
         || name == "."
@@ -354,6 +371,18 @@ pub fn write(file: &Path, value: &Value, max_bytes: usize, pretty: bool) -> Resu
         }
         fs::rename(&staged, file).map_err(Error::from)
     });
+    let _ = fs::remove_file(&staged);
+    result
+}
+
+/// Atomically replace a generated text view that nothing reads back.
+pub fn write_view(file: &Path, text: &str, max_bytes: usize) -> Result<(), Error> {
+    if text.len() > max_bytes {
+        return Err("view exceeds size limit".into());
+    }
+    let staged = temporary(file);
+    let result = create_private(&staged, text.as_bytes())
+        .and_then(|()| fs::rename(&staged, file).map_err(Error::from));
     let _ = fs::remove_file(&staged);
     result
 }

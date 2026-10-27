@@ -12,6 +12,7 @@ pub mod discovery;
 pub mod grounding;
 pub mod models;
 pub mod otlp;
+pub mod plan;
 pub mod repository;
 pub mod retention;
 pub mod review;

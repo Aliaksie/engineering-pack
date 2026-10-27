@@ -529,6 +529,7 @@ pub fn validate(state: &Value) -> Result {
 }
 
 /// The saved active-task binding, or `None` when absent or bound to another checkout.
+/// Version 2 names the work plan the task belongs to; a plan-less binding stays version 1.
 pub fn binding(value: &Value, checkout: Option<&Value>) -> Result<Option<Value>> {
     if value.is_null() {
         return Ok(None);
@@ -537,12 +538,15 @@ pub fn binding(value: &Value, checkout: Option<&Value>) -> Result<Option<Value>>
         .as_object()
         .filter(|m| {
             m.keys().all(|k| {
-                ["formatVersion", "task", "checkout", "repositories"].contains(&k.as_str())
+                ["formatVersion", "task", "checkout", "repositories", "plan"].contains(&k.as_str())
             })
         })
         .ok_or("invalid task binding")?;
-    if map.get("formatVersion").and_then(Value::as_f64) != Some(1.0) {
-        return Err("invalid task binding version".into());
+    let planned = map.get("plan").and_then(Value::as_str);
+    match map.get("formatVersion").and_then(Value::as_f64) {
+        Some(1.0) if !map.contains_key("plan") => {}
+        Some(2.0) if planned.is_some_and(crate::plan::slug) => {}
+        _ => return Err("invalid task binding version".into()),
     }
     identity(&json!("binding"), map.get("task").unwrap_or(&Value::Null))?;
     if let Some(repositories) = map.get("repositories") {

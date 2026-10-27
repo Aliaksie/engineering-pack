@@ -57,6 +57,50 @@ the native work they describe (`notCarried`). Adoption never renews authorizatio
 replaces another task bound to the session or its checkpoint. Repeating it is harmless.
 Directories of earlier layouts are not offered.
 
+### Work plans
+
+A plan belongs to a work item (a feature, a tracker issue, a backlog item), not to a
+session: one goal and up to 64 tasks with dependencies, worked on across sessions. Simple
+work needs none; create one when the work is multi-step, likely to span sessions, delegated,
+or the user asks for it.
+
+```sh
+craft plan-create --root <project> --plan checkout-retry --goal "Retry failed checkouts"   --reference tracker:PROJ-123 --data tasks.json      # {"tasks": [{"id": "a", "goal": "...", "dependsOn": []}]}
+craft task-start  --root <project> --session <host-id> --plan checkout-retry --task a
+craft plan        --root <project> --plan checkout-retry
+craft plan-update --root <project> --plan checkout-retry --expected-revision 3 --data changes.json
+```
+
+- Task states are fixed: `pending`, `running`, `verifying`, `completed`, `blocked`,
+  `failed`, `abandoned`. A pending task whose dependencies are all completed is shown as
+  `ready`; readiness is derived, never stored.
+- `task-start --plan P --task T` takes the goal, files and repositories from the plan task
+  and claims it: a ready task starts `running` in this session. A task that is not ready, or
+  that another session holds, is refused.
+- `task-step` advances the plan task held by its session: the `verify` stage makes it
+  `verifying`, a blocker `blocked`, `--complete` `completed`; a failed check or a resolved
+  prerequisite keeps it `running`. Result, next step and evidence reference are copied.
+  A session whose task was taken over can no longer step it.
+- `failed`, `abandoned` and a return to `pending` are set explicitly with `plan-update`,
+  which also adds tasks, dependencies and decisions. It is refused when the plan changed
+  since `--expected-revision`, when dependencies are unknown or cyclic, and for a task held
+  in another session unless `--take-over` is given. A plan is `completed` only when every
+  task is completed or abandoned.
+- When a session starts, the session line lists up to three open plans, newest first, with
+  ready tasks and held tasks (`here` when this session holds one, and minutes since its last
+  step). To continue a task held in another session, repeat `task-start` with `--take-over`:
+  that session may still be working, so take over only when the user's request continues
+  the work here. Its task record and checkpoint are copied into this session; the earlier
+  session's records are not changed and no authorization is renewed.
+- References are opaque labels; reading a tracker issue is a separate, authorized
+  [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
+  plans that link it.
+
+Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
+it is regenerated after every change for people to read and is never read back.
+`plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
+`craft` versions refuse it, so stop them before upgrading, as for other state changes.
+
 Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
 [acceptance contracts](ACCEPTANCE.md).
 

@@ -284,6 +284,9 @@ fn session_line(session: &Value) -> String {
     if let Some(handoff) = session.get("handoff") {
         line.push_str(&format!("\nUnfinished tasks of earlier sessions in this worktree. Only if the user's request continues one, adopt it with `craft task-adopt --session <id> --from <from>`; records are copied and authorization is not renewed: {handoff}"));
     }
+    if let Some(plans) = session.get("plans") {
+        line.push_str(&format!("\nOpen work plans in this worktree. Only if the user's request continues one, start a ready task with `craft task-start --session <id> --plan <plan> --task <task>`; a task held in another session (here: false) needs --take-over, as that session may still be working: {plans}"));
+    }
     line
 }
 

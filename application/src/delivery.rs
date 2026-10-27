@@ -161,6 +161,13 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
             }
         }
+        if plan.offer_handoff {
+            match crate::plan::listing(root, session) {
+                Ok(plans) if !plans.is_empty() => identity["plans"] = json!(plans),
+                Ok(_) => {}
+                Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+            }
+        }
         decision["session"] = identity;
     }
     let eligible = routing.is_some()

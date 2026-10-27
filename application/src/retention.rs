@@ -19,6 +19,7 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
     let inventory = sweep::inventory(root)?;
     let policy = Policy::from_settings(settings);
     let workspaces = open_workspaces(root, &inventory, &policy, now)?;
+    let plans = crate::plan::retained(root, apply)?;
     let (mut removable, mut bytes) = (0, 0);
     let mut sessions = Vec::new();
     for found in &inventory.sessions {
@@ -42,7 +43,12 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
         if found.staged {
             item["staged"] = json!(true);
         }
-        let kept = match retention::keep(&session, now, &workspaces) {
+        // A take-over copies the records of the session holding a plan task.
+        let holder = plans
+            .owners
+            .contains(&found.id)
+            .then_some("holds a task of an open plan");
+        let kept = match retention::keep(&session, now, &workspaces).or(holder) {
             // An interrupted cleanup set this directory aside; it no longer qualifies.
             Some(reason) if apply && found.staged => sweep::restore(found, &found.path)
                 .map_or_else(|e| Some(e.to_string()), |()| Some(reason.to_string())),
@@ -107,6 +113,7 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
             "bytes": bytes,
         },
         "sessions": sessions,
+        "plans": plans.plans,
         "shared": shared,
         "previousShared": previous,
     }))

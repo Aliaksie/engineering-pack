@@ -30,7 +30,8 @@ compacts a host session or posts to a code host.
 |---|---|---|
 | `task-start` | Bind a task to the session, optionally with repositories and an acceptance contract | Writes task state; snapshots selected Git worktrees |
 | `task-adopt` | Continue an earlier session's unfinished task in this session | Copies its task state and checkpoint; the earlier session is unchanged |
-| `task-step` | Record a milestone, evidence and continuation | Writes task state |
+| `task-step` | Record a milestone, evidence and continuation | Writes task state; advances the held plan task |
+| `plan`, `plan-create`, `plan-update` | Show, create or change a work plan whose tasks sessions claim with `task-start --plan` | Writes the local plan record and its Markdown view; never reads a tracker |
 | `session`, `session-advice` | Status and next-action advice from task state and host observations | Reads state; recommendation only |
 | `session-attempt` | Record one bounded attempt and its outcome | Writes a receipt; executes no retry |
 | `task-offer`, `task-decision`, `task-action-check` | Recommend, record a user decision on, and revalidate a review, delegation or compaction | Writes receipts; dispatches nothing |
@@ -38,7 +39,7 @@ compacts a host session or posts to a code host.
 | `worker-status` | Worker reservations and host observations for a task tree | Reads state |
 | `settings` | Effective settings, value origins and the private state directory | Reads configuration |
 | `workspace-open`, `-write`, `-promote`, `-release`, `-clean` | Bounded private scratch for the active task | Writes only under private state |
-| `state-clean` | Preview, or with `--apply` remove, session directories idle for 14 days and copied sources of the previous layout; report shared family sizes | Reads state; `--apply` removes only what the preview lists |
+| `state-clean` | Preview, or with `--apply` remove, session directories idle for 14 days, plans completed or abandoned 14 days ago and copied sources of the previous layout; report open plans and shared family sizes | Reads state; `--apply` removes only what the preview lists |
 
 See [session behavior](SESSION.md).
 

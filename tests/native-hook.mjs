@@ -13,7 +13,8 @@ export function deliverHook(cwd, lifecycle, { tool = 'other', file = null, sessi
   if (child.status !== 0) throw new Error(child.stderr);
   const received = child.stdout ? JSON.parse(child.stdout).hookSpecificOutput?.additionalContext : undefined;
   const lines = received ? received.split('\n') : [];
-  const isSession = line => line.startsWith('Craft session') || line.startsWith('Unfinished tasks of earlier sessions');
+  const isSession = line => line.startsWith('Craft session') || line.startsWith('Unfinished tasks of earlier sessions')
+    || line.startsWith('Open work plans');
   const identity = lines.filter(isSession);
   const text = lines.filter(line => !isSession(line)).join('\n');
   if (!text) return { session: identity, context: undefined };

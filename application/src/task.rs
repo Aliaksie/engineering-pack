@@ -29,6 +29,14 @@ pub struct Start<'a> {
     pub input: Map<String, Value>,
     pub host: Option<&'a str>,
     pub settings: &'a Value,
+    /// The work plan the task belongs to.
+    pub plan: Option<Planned<'a>>,
+}
+
+/// A plan task to claim: `take_over` moves it from the session that holds it.
+pub struct Planned<'a> {
+    pub id: &'a str,
+    pub take_over: bool,
 }
 
 /// Bind and route the task under the active binding lock.
@@ -44,6 +52,7 @@ pub fn start(
         mut input,
         host,
         settings,
+        plan: planned,
     } = request;
     input.insert("id".into(), json!(task));
     let input = Value::Object(input);
@@ -51,12 +60,29 @@ pub fn start(
     let Some(_lock) = state::lock(&file)? else {
         return Err("active task writer is busy".into());
     };
-    let previous = records::read_state(root, name, task, recorder, parent)?;
-    let repositories = match input.get("repositories") {
-        None => previous["taskRecord"].get("repositories").cloned(),
-        Some(value) => Some(json!(repository::scopes(value)?)),
+    let scope = |previous: &Value| -> Result<(Option<Value>, Value), Failure> {
+        let repositories = match input.get("repositories") {
+            None => previous["taskRecord"].get("repositories").cloned(),
+            Some(value) => Some(json!(repository::scopes(value)?)),
+        };
+        let repository = snapshot::workspace(root, repositories.as_ref(), false)?;
+        Ok((repositories, repository))
     };
-    let repository = snapshot::workspace(root, repositories.as_ref(), false)?;
+    let mut previous = records::read_state(root, name, task, recorder, parent)?;
+    let (mut repositories, mut repository) = scope(&previous)?;
+    let mut claimed = Value::Null;
+    if let Some(planned) = &planned {
+        // Refuse an invalid start before the plan records this session as the task's holder.
+        session::start(&mut previous.clone(), &input, &repository)?;
+        let from = crate::plan::claim(root, planned.id, task, name, planned.take_over)?;
+        claimed = json!({"id": planned.id, "task": task});
+        if let Some(from) = from {
+            claimed["takenOver"] =
+                crate::handoff::carry(root, name, &from, task, recorder, parent)?;
+            previous = records::read_state(root, name, task, recorder, parent)?;
+            (repositories, repository) = scope(&previous)?;
+        }
+    }
     let mut started = previous;
     let intent = session::start(&mut started, &input, &repository)?;
     let record = &started["taskRecord"];
@@ -93,7 +119,10 @@ pub fn start(
         let routed = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
         Ok(session::add_activity(state, &routed)?)
     })?;
-    let mut binding = json!({"formatVersion": 1, "task": task});
+    let mut binding = match &planned {
+        Some(planned) => json!({"formatVersion": 2, "task": task, "plan": planned.id}),
+        None => json!({"formatVersion": 1, "task": task}),
+    };
     if let Some(checkout) = repository.get("checkout") {
         binding["checkout"] = checkout.clone();
     }
@@ -130,6 +159,9 @@ pub fn start(
     let mut result = json!({"session": name, "task": task});
     if let Some(repositories) = repositories.filter(|r| truthy(r)) {
         result["repositories"] = repositories;
+    }
+    if !claimed.is_null() {
+        result["plan"] = claimed;
     }
     for (key, value) in [
         ("routing", plan),
@@ -189,8 +221,16 @@ pub fn step(
     let Some(_lock) = state::lock(&file)? else {
         return Err("active task writer is busy".into());
     };
-    if records::active_task(root, Some(name))?.as_deref() != Some(task) {
+    let binding = records::active_binding(root, name)?;
+    if binding.as_ref().and_then(|b| b["task"].as_str()) != Some(task) {
         return Err(BOUND.into());
+    }
+    let planned = binding
+        .as_ref()
+        .and_then(|b| b["plan"].as_str())
+        .map(str::to_string);
+    if let Some(plan) = &planned {
+        crate::plan::held(root, plan, task, name)?;
     }
     let settings = &load(recorder, parent)?;
     let saved = records::read_state(root, name, task, recorder, parent)?;
@@ -300,6 +340,20 @@ pub fn step(
         json!({"status": "retained", "reason": failure.message})
     });
     status["workspace"] = workspace.clone();
+    let planned = planned.map(|plan| {
+        let text = |name: &str| input.get(name).and_then(Value::as_str);
+        let progress = craft_engine::plan::Progress {
+            stage: record["stage"].as_str().unwrap_or_default(),
+            outcome: text("outcome"),
+            complete,
+            result: text("result"),
+            next_step: text("nextStep"),
+            evidence: text("evidence"),
+        };
+        crate::plan::advance(root, &plan, task, name, &progress).unwrap_or_else(
+            |failure| json!({"plan": plan, "status": "unavailable", "reason": failure.message}),
+        )
+    });
     let suppressed = offer.as_ref().is_some_and(|o| o["suppressed"] == true);
     let acceptance = match status.get("acceptance") {
         Some(acceptance) if !acceptance.is_null() => acceptance.clone(),
@@ -309,6 +363,9 @@ pub fn step(
         "session": name, "task": task, "recorded": recorded.receipt, "result": result, "complete": complete,
         "acceptance": acceptance, "workspace": workspace, "checkpoint": checkpoint,
     });
+    if let Some(planned) = planned {
+        response["plan"] = planned;
+    }
     if let Some(offer) = &offer {
         response["actionOffer"] = json!({"offer": offer["offer"], "suppressed": offer["suppressed"], "applicability": offer["applicability"], "executed": false});
     }

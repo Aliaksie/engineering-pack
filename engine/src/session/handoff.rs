@@ -28,6 +28,10 @@ pub fn candidate(saved: &Saved, checkout: &Value) -> Result<Option<Value>> {
     let Some(bound) = binding(saved.binding, Some(checkout))? else {
         return Ok(None);
     };
+    // A plan task is continued through its plan, which records who holds it.
+    if bound.get("plan").is_some() {
+        return Ok(None);
+    }
     let task = &bound["task"];
     let mut records = saved
         .states
@@ -128,6 +132,13 @@ mod tests {
         assert!(found(&bound("t2"), &[(state("t1", false), NOW)]).is_none());
         let other = json!({"formatVersion": 1, "task": "t1", "checkout": "refs/heads/other"});
         assert!(found(&other, &[(state("t1", false), NOW)]).is_none());
+    }
+
+    #[test]
+    fn a_plan_task_is_continued_through_its_plan() {
+        let planned =
+            json!({"formatVersion": 2, "task": "t1", "plan": "b2", "checkout": "refs/heads/main"});
+        assert!(found(&planned, &[(state("t1", false), NOW)]).is_none());
     }
 
     #[test]

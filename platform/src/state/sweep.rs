@@ -174,6 +174,27 @@ pub fn session(root: &Path, id: &str) -> Result<Option<Directory>, Error> {
     }
 }
 
+/// Up to `limit` plan folder names of the worktree, and whether that was all of them.
+pub fn plans(root: &Path, limit: usize) -> Result<(Vec<String>, bool), Error> {
+    let folder = folders(root)?.0.join(super::PLANS);
+    let (names, complete) = listing(&folder, limit)?;
+    let plans = names
+        .into_iter()
+        .filter(|name| {
+            craft_engine::plan::slug(name) && directory(&folder.join(name), false).unwrap_or(false)
+        })
+        .collect();
+    Ok((plans, complete))
+}
+
+/// Remove a plan folder holding only the named files; anything else keeps it.
+pub fn remove_plan(folder: &Path, names: &[&str]) -> Result<(), Error> {
+    for name in names {
+        remove_file(&folder.join(name))?;
+    }
+    fs::remove_dir(folder).map_err(Error::from)
+}
+
 /// Session directories of both layouts under the worktree's state, its workspaces and the
 /// previous layout's shared leftovers. Nothing is created.
 pub fn inventory(root: &Path) -> Result<Inventory, Error> {

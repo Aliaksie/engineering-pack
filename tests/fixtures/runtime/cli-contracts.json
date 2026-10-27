@@ -30,6 +30,9 @@
           "task-start",
           "task-adopt",
           "task-step",
+          "plan",
+          "plan-create",
+          "plan-update",
           "settings",
           "route",
           "context-report",
@@ -64,8 +67,9 @@
       "mode": "usage",
       "status": 0,
       "response": {
-        "usage": "task-start --session id --task stable-id --goal \"outcome\" [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
-      }
+        "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
+      },
+      "correction": "a plan task supplies its goal, so task-start takes --goal or --plan"
     },
     {
       "id": "unknown-command",

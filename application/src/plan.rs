@@ -1,0 +1,368 @@
+//! Work plans of the worktree under `.craft/state/plans/<id>/`: created, changed and shown on
+//! request, claimed by `task-start --plan` and advanced by `task-step`. One lock serializes
+//! every plan write and the rebuildable index; `plan.md` is regenerated beside each record.
+use crate::failure::Failure;
+use crate::session::read_record;
+use crate::telemetry::now_ms;
+use craft_engine::plan::{self, Claim, Progress};
+use craft_engine::values::safe_integer;
+use craft_platform::state::{self, Lock, sweep};
+use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
+
+const RECORD: &str = "plan.json";
+const VIEW: &str = "plan.md";
+const INDEX: &str = "index.json";
+const INDEX_BYTES: usize = 262_144;
+const VIEW_BYTES: usize = 262_144;
+/// Plan folders read when the index is rebuilt.
+pub const SCANNED: usize = 256;
+/// Attempts to take the plans lock, which writers hold for one read-modify-write.
+const LOCK_ATTEMPTS: u32 = 20;
+
+/// The plans lock, held for one change of one plan and the index.
+pub struct Writer {
+    folder: PathBuf,
+    _lock: Lock,
+}
+
+/// Take the plans lock; writers hold it briefly, so a busy lock is retried for a moment.
+pub fn writer(root: &Path) -> Result<Writer, Failure> {
+    let folder = state::plans(root, None, true)?;
+    for attempt in 1..=LOCK_ATTEMPTS {
+        if let Some(lock) = state::lock(&folder.join(INDEX))? {
+            return Ok(Writer {
+                folder,
+                _lock: lock,
+            });
+        }
+        if attempt < LOCK_ATTEMPTS {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+    Err("plan writer is busy".into())
+}
+
+fn record(folder: &Path, id: &str) -> PathBuf {
+    folder.join(id).join(RECORD)
+}
+
+fn load(file: &Path) -> Result<Option<Value>, Failure> {
+    let saved = read_record(file, plan::RECORD_BYTES)?;
+    if saved.is_null() {
+        return Ok(None);
+    }
+    plan::validate(&saved)?;
+    Ok(Some(saved))
+}
+
+/// The saved plan `id`, if there is one.
+pub fn read(root: &Path, id: &str) -> Result<Option<Value>, Failure> {
+    if !plan::slug(id) {
+        return Err("invalid plan id".into());
+    }
+    load(&record(&state::plans(root, None, false)?, id))
+}
+
+/// Every readable plan of the worktree, at most [`SCANNED`].
+fn scan(folder: &Path, root: &Path) -> Result<Vec<Value>, Failure> {
+    let (names, _) = sweep::plans(root, SCANNED)?;
+    Ok(names
+        .iter()
+        .filter_map(|name| load(&record(folder, name)).ok().flatten())
+        .collect())
+}
+
+fn valid_index(index: &Value) -> bool {
+    index["formatVersion"] == 1 && index["plans"].is_array()
+}
+
+/// Summaries of every plan: the index when valid, else rebuilt from the records.
+pub fn summaries(root: &Path) -> Result<Vec<Value>, Failure> {
+    let folder = state::plans(root, None, false)?;
+    let index = read_record(&folder.join(INDEX), INDEX_BYTES).unwrap_or(Value::Null);
+    // Trusted only while it names exactly the plan folders present: a writer interrupted
+    // between a record and the index leaves it behind.
+    let (mut names, _) = sweep::plans(root, SCANNED)?;
+    let mut indexed: Vec<&str> = index["plans"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| entry["id"].as_str())
+        .collect();
+    names.sort();
+    indexed.sort_unstable();
+    if valid_index(&index) && indexed == names {
+        return Ok(index["plans"].as_array().cloned().unwrap_or_default());
+    }
+    Ok(scan(&folder, root)?.iter().map(plan::summary).collect())
+}
+
+impl Writer {
+    fn read(&self, id: &str) -> Result<Option<Value>, Failure> {
+        load(&record(&self.folder, id))
+    }
+
+    /// Write the record, its Markdown view and its index entry.
+    fn save(&self, root: &Path, saved: &Value) -> Result<(), Failure> {
+        let id = saved["id"].as_str().expect("validated plan id");
+        let folder = state::plans(root, Some(id), true)?;
+        state::write(&folder.join(RECORD), saved, plan::RECORD_BYTES, true)?;
+        state::write_view(&folder.join(VIEW), &plan::markdown(saved), VIEW_BYTES)?;
+        let file = self.folder.join(INDEX);
+        let index = read_record(&file, INDEX_BYTES).unwrap_or(Value::Null);
+        let mut entries: Vec<Value> = if valid_index(&index) {
+            index["plans"].as_array().cloned().unwrap_or_default()
+        } else {
+            scan(&self.folder, root)?
+                .iter()
+                .map(plan::summary)
+                .collect()
+        };
+        entries.retain(|entry| entry["id"] != id);
+        entries.push(plan::summary(saved));
+        self.index(entries)
+    }
+
+    fn index(&self, mut entries: Vec<Value>) -> Result<(), Failure> {
+        entries.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+        let file = self.folder.join(INDEX);
+        // An unreadable index is rebuilt, never authority, so it may be replaced.
+        if read_record(&file, INDEX_BYTES).is_err() {
+            std::fs::remove_file(&file).map_err(|e| e.to_string())?;
+        }
+        let index = json!({"formatVersion": 1, "plans": entries});
+        Ok(state::write(&file, &index, INDEX_BYTES, false)?)
+    }
+}
+
+/// The directory id this worktree's state keeps `session` under.
+pub fn owner(root: &Path, session: &str) -> Result<String, Failure> {
+    Ok(state::location(root, Some(session))?.session_id)
+}
+
+fn shown(root: &Path, saved: &Value) -> Result<Value, Failure> {
+    let id = saved["id"].as_str().unwrap_or_default();
+    let mut view = plan::view(saved);
+    view["view"] = json!(state::plans(root, Some(id), false)?.join(VIEW));
+    Ok(view)
+}
+
+/// `plan-create`: a new plan; an existing id is refused.
+pub fn create(root: &Path, input: &Value) -> Result<Value, Failure> {
+    let created = plan::create(input, now_ms())?;
+    let id = created["id"].as_str().expect("validated plan id");
+    let writer = writer(root)?;
+    if writer.read(id)?.is_some() || state::plans(root, Some(id), false).is_ok_and(|f| f.exists()) {
+        return Err(format!("plan {id} already exists; change it with plan-update").into());
+    }
+    writer.save(root, &created)?;
+    shown(root, &created)
+}
+
+/// `plan-update`: apply authored changes when the plan is still at `expected` revision.
+pub fn update(
+    root: &Path,
+    id: &str,
+    expected: &str,
+    changes: &Value,
+    session: Option<&str>,
+    take_over: bool,
+) -> Result<Value, Failure> {
+    let expected = expected
+        .parse::<i64>()
+        .ok()
+        .filter(|r| *r >= 1)
+        .ok_or("--expected-revision must be the plan revision last read")?;
+    let caller = session.map(|s| owner(root, s)).transpose()?;
+    let writer = writer(root)?;
+    let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    if safe_integer(&saved["revision"]) != Some(expected) {
+        return Err(format!(
+            "plan {id} changed (revision {} now, {expected} expected); read it again before changing it",
+            saved["revision"]
+        )
+        .into());
+    }
+    plan::apply(&mut saved, changes, caller.as_deref(), take_over, now_ms())?;
+    writer.save(root, &saved)?;
+    shown(root, &saved)
+}
+
+/// `plan`: one plan, the plans linking a reference, or every plan's summary.
+pub fn show(root: &Path, id: Option<&str>, reference: Option<&str>) -> Result<Value, Failure> {
+    if let Some(id) = id {
+        let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+        return shown(root, &saved);
+    }
+    let mut summaries = summaries(root)?;
+    if let Some(reference) = reference {
+        let wanted = plan::reference(reference)?;
+        summaries.retain(|s| {
+            s["references"]
+                .as_array()
+                .is_some_and(|r| r.contains(&wanted))
+        });
+    }
+    Ok(json!({"plans": summaries}))
+}
+
+/// The task `task` of plan `id` as authored: what `task-start` takes from it.
+pub fn task(root: &Path, id: &str, task: &str) -> Result<Value, Failure> {
+    let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+    saved["tasks"]
+        .as_array()
+        .and_then(|tasks| tasks.iter().find(|t| t["id"] == task))
+        .cloned()
+        .ok_or_else(|| format!("plan {id} has no task {task}").into())
+}
+
+/// Claim `task` of plan `id` for `session`. Returns the session directory that held it
+/// before when it was taken over.
+pub fn claim(
+    root: &Path,
+    id: &str,
+    task: &str,
+    session: &str,
+    take_over: bool,
+) -> Result<Option<String>, Failure> {
+    let owner = owner(root, session)?;
+    let writer = writer(root)?;
+    let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let claimed = plan::claim(&mut saved, task, &owner, take_over, now_ms())?;
+    if claimed != Claim::Held {
+        writer.save(root, &saved)?;
+    }
+    Ok(match claimed {
+        Claim::TakenOver(previous) => Some(previous),
+        _ => None,
+    })
+}
+
+/// Refuse a step for a plan task this session does not hold.
+pub fn held(root: &Path, id: &str, task: &str, session: &str) -> Result<(), Failure> {
+    let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
+    Ok(plan::owned(&saved, task, &owner(root, session)?)?)
+}
+
+/// Mirror one recorded step onto the plan task; returns its new state.
+pub fn advance(
+    root: &Path,
+    id: &str,
+    task: &str,
+    session: &str,
+    step: &Progress,
+) -> Result<Value, Failure> {
+    let owner = owner(root, session)?;
+    let writer = writer(root)?;
+    let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    plan::progress(&mut saved, task, &owner, step, now_ms())?;
+    writer.save(root, &saved)?;
+    Ok(
+        json!({"plan": id, "task": task, "state": plan::state_after(step), "revision": saved["revision"]}),
+    )
+}
+
+/// Open plans a starting session is shown, newest first; reads at most [`plan::LISTED`]
+/// records beside the index.
+pub fn listing(root: &Path, session: &str) -> Result<Vec<Value>, Failure> {
+    let mut open: Vec<Value> = summaries(root)?
+        .into_iter()
+        .filter(|s| s["status"] == "open")
+        .collect();
+    if open.is_empty() {
+        return Ok(open);
+    }
+    let instant = |s: &Value| {
+        s["updated"]
+            .as_str()
+            .and_then(craft_engine::timestamp::parse)
+    };
+    open.sort_by_key(|s| std::cmp::Reverse(instant(s)));
+    let plans: Vec<Value> = open
+        .iter()
+        .take(plan::LISTED)
+        .filter_map(|s| read(root, s["id"].as_str()?).ok().flatten())
+        .collect();
+    Ok(plan::listing(plans, &owner(root, session)?, now_ms()))
+}
+
+/// Session directories that hold a task of an open plan, so cleanup keeps what a take-over
+/// copies; and every plan with whether `state-clean` may remove it.
+pub struct Retained {
+    pub owners: Vec<String>,
+    pub plans: Vec<Value>,
+}
+
+const PLAN_RETENTION_MS: i64 = craft_engine::retention::SESSION_RETENTION_DAYS * 86_400_000;
+
+/// Plans as `state-clean` sees them: completed or abandoned plans idle for the retention
+/// period are removable; open plans are only reported. With `apply`, removable ones go.
+pub fn retained(root: &Path, apply: bool) -> Result<Retained, Failure> {
+    let folder = state::plans(root, None, false)?;
+    let (names, _) = sweep::plans(root, SCANNED)?;
+    let mut retained = Retained {
+        owners: Vec::new(),
+        plans: Vec::new(),
+    };
+    if names.is_empty() {
+        return Ok(retained);
+    }
+    let now = now_ms();
+    let writer = if apply { Some(writer(root)?) } else { None };
+    let mut kept = Vec::new();
+    for name in &names {
+        let mut item = json!({"plan": name});
+        let saved = match load(&record(&folder, name)) {
+            Ok(Some(saved)) => saved,
+            Ok(None) => {
+                item["action"] = json!("keep");
+                item["reason"] = json!("holds no plan record");
+                retained.plans.push(item);
+                continue;
+            }
+            Err(failure) => {
+                item["action"] = json!("keep");
+                item["reason"] = json!(failure.message);
+                retained.plans.push(item);
+                continue;
+            }
+        };
+        let idle = saved["updated"]
+            .as_str()
+            .and_then(craft_engine::timestamp::parse)
+            .map_or(0, |u| (now - u).max(0));
+        item["status"] = saved["status"].clone();
+        item["idleDays"] = json!(idle / 86_400_000);
+        if saved["status"] == "open" {
+            for task in saved["tasks"].as_array().into_iter().flatten() {
+                if let Some(owner) = task["owner"]["session"].as_str() {
+                    retained.owners.push(owner.to_string());
+                }
+            }
+            item["action"] = json!("keep");
+            item["reason"] = json!("open");
+            kept.push(plan::summary(&saved));
+        } else if idle < PLAN_RETENTION_MS {
+            item["action"] = json!("keep");
+            item["reason"] = json!("changed within the retention period");
+            kept.push(plan::summary(&saved));
+        } else if writer.is_some() {
+            match sweep::remove_plan(&folder.join(name), &[RECORD, VIEW]) {
+                Ok(()) => item["action"] = json!("removed"),
+                Err(error) => {
+                    item["action"] = json!("keep");
+                    item["reason"] = json!(error.to_string());
+                    kept.push(plan::summary(&saved));
+                }
+            }
+        } else {
+            item["action"] = json!("remove");
+        }
+        retained.plans.push(item);
+    }
+    if let Some(writer) = &writer {
+        writer.index(kept)?;
+    }
+    Ok(retained)
+}
