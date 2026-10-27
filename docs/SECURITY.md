@@ -35,7 +35,9 @@ credentials through host environment variables; no package ships a live server.
 
 Runtime state lives in `.craft/state/<worktree-id>/sessions/<session-id>/`, with `shared/`
 for project-wide records; ignore `.craft/state/` in Git, which Craft never edits. State paths
-reject symlinks and use bounded, locked, atomic writes. Checkpoints hold explicit task data
+reject symlinks and use bounded, locked, atomic writes. On POSIX, state directories are
+created owner-only (0700) and files, including the evidence database, its lock and backup,
+owner-readable only (0600). Checkpoints hold explicit task data
 and Git state, not transcripts or tool output, and are evidence, never authorization.
 
 State left by earlier plugin versions is copied once and never written; only an explicit

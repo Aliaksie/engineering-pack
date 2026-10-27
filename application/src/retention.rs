@@ -1,10 +1,12 @@
 //! `state-clean`: preview, or with `apply` remove, idle session directories of the
 //! worktree's private state and what the previous layout left in `shared/` once nothing
-//! depends on it. Current shared records are never removed here.
+//! depends on it. Current shared families are only measured, never removed here.
 use crate::failure::Failure;
 use crate::session::read_record;
 use crate::telemetry::now_ms;
-use craft_engine::retention::{self, Leftover, SESSION_RETENTION_DAYS, Session, Workspaces};
+use craft_engine::retention::{
+    self, Leftover, SESSION_RETENTION_DAYS, SHARED_FAMILIES, Session, Workspaces,
+};
 use craft_engine::scratch::{self, MANIFEST_BYTES, Policy};
 use craft_platform::scratch as files;
 use craft_platform::state::{self, sweep};
@@ -78,6 +80,20 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
             item
         })
         .collect();
+    let shared: Vec<Value> = inventory
+        .families
+        .iter()
+        .zip(SHARED_FAMILIES)
+        .map(|(family, (_, bounded))| match &family.usage {
+            Ok(usage) => json!({
+                "family": family.name,
+                "bytes": usage.bytes,
+                "files": usage.files,
+                "bounded": bounded,
+            }),
+            Err(reason) => json!({"family": family.name, "bounded": bounded, "reason": reason}),
+        })
+        .collect();
     Ok(json!({
         "status": if apply { "applied" } else { "preview" },
         "retentionDays": SESSION_RETENTION_DAYS,
@@ -88,6 +104,7 @@ pub fn run(root: &Path, settings: &Value, apply: bool) -> Result<Value, Failure>
             "bytes": bytes,
         },
         "sessions": sessions,
+        "shared": shared,
         "previousShared": previous,
     }))
 }

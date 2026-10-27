@@ -72,6 +72,27 @@ test('state-clean previews, then removes only idle unheld session directories', 
   assert.equal(run(['state-clean', '--root', root, '--apply']).summary.removed, 0);
 });
 
+test('state-clean measures current shared families and never removes them', t => {
+  const root = fixture(t);
+  saveCheckpoint(root, 'measured', { nextStep: 'continue' });
+  const shared = path.join(path.dirname(path.dirname(stateLocation(root, 'measured').directory)), 'shared');
+  fs.mkdirSync(path.join(shared, 'evidence'), { recursive: true });
+  fs.writeFileSync(path.join(shared, 'evidence', 'project.sqlite'), 'x'.repeat(10));
+  fs.mkdirSync(path.join(shared, 'workspaces'), { recursive: true });
+  fs.symlinkSync(os.tmpdir(), path.join(shared, 'workspaces', 'linked'));
+  const families = result => Object.fromEntries(result.shared.map(item => [item.family, item]));
+
+  const reported = families(run(['state-clean', '--root', root, '--apply']));
+  assert.deepEqual(Object.keys(reported), ['telemetry', 'evidence', 'workspaces', 'migrations']);
+  assert.deepEqual([reported.evidence.bytes, reported.evidence.files], [10, 1]);
+  assert.match(reported.evidence.bounded, /rebuild/);
+  assert.ok(reported.telemetry.bytes > 0, 'the command itself records telemetry');
+  assert.equal(reported.workspaces.bytes, undefined);
+  assert.match(reported.workspaces.reason, /symlink/);
+  assert.equal(fs.readFileSync(path.join(shared, 'evidence', 'project.sqlite'), 'utf8'), 'x'.repeat(10));
+  assert.ok(fs.lstatSync(path.join(shared, 'workspaces', 'linked')).isSymbolicLink());
+});
+
 test('an open workspace keeps its idle session, and an interrupted cleanup is finished', t => {
   const root = fixture(t);
   const begin = session => {

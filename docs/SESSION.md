@@ -151,7 +151,7 @@ continuation at milestones rather than relying on a final callback.
         workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
       shared/
         telemetry/            # events.jsonl(.1), key.json, captures.json
-        evidence/             # project.sqlite
+        evidence/             # project.sqlite(.lock), project.sqlite.backup
         workspaces/           # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
         migrations/           # receipts for records copied from earlier layouts
 ```
@@ -187,8 +187,10 @@ unchanged since, that layout's copy receipts, its evidence database while no pro
 it (`refresh` rebuilds the current one), and its workspaces when inactive and past evidence
 retention, then their guard. A record never copied, a locked one or an unrecognized file is
 kept with a reason. Removing a copied source never lets an older store become the record's
-source again. Current shared records are not removed here: telemetry rotates, captures and
-workspaces follow their own retention, and the evidence database is rebuilt on request.
+source again. Current shared families are only measured: `shared` lists each one's bytes
+and files, or why it could not be measured, and what keeps it bounded. Telemetry rotates,
+workspaces follow `workspace-clean`, the evidence database is rebuilt on request
+(`project-evidence rebuild`, then `refresh`) and copy receipts are kept.
 
 ## Lookup reuse
 

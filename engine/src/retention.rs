@@ -10,6 +10,15 @@ const DAY_MS: i64 = 86_400_000;
 /// Entries one session directory may hold; a fuller one is not inspected further.
 pub const SESSION_ENTRIES: usize = 64;
 
+/// Current families under `shared/` and what keeps each bounded. `state-clean` reports
+/// their size and never removes them.
+pub const SHARED_FAMILIES: &[(&str, &str)] = &[
+    ("telemetry", "rotation: one bounded log and one backup"),
+    ("evidence", "rebuildable: project-evidence rebuild"),
+    ("workspaces", "workspace-clean"),
+    ("migrations", "kept: receipts stop copies from older stores"),
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Layout {
     /// `sessions/<id>/` with a manifest and fixed record names.

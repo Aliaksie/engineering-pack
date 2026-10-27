@@ -2,7 +2,9 @@
 //! renamed aside, listed again and removed only when nothing in it changed since inventory.
 use super::{MANIFEST, MANIFEST_BYTES, directory, location, read};
 use crate::Error;
-use craft_engine::retention::{DATABASE, Described, Entry, Layout, SESSION_ENTRIES, described};
+use craft_engine::retention::{
+    DATABASE, Described, Entry, Layout, SESSION_ENTRIES, SHARED_FAMILIES, described,
+};
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -43,12 +45,20 @@ pub struct Leftover {
     pub bytes: Option<u64>,
 }
 
+/// Size of one current shared family, or why it could not be measured.
+#[derive(Debug)]
+pub struct Family {
+    pub name: &'static str,
+    pub usage: Result<crate::scratch::Usage, String>,
+}
+
 #[derive(Debug, Default)]
 pub struct Inventory {
     pub sessions: Vec<Directory>,
     /// Workspace directories of both layouts, for the caller to verify ownership.
     pub workspaces: Vec<(String, PathBuf)>,
     pub leftovers: Vec<Leftover>,
+    pub families: Vec<Family>,
     /// Whether every session directory was listed within its bound.
     pub complete: bool,
     /// Whether every workspace directory was listed within its bound.
@@ -173,12 +183,15 @@ pub fn inventory(root: &Path) -> Result<Inventory, Error> {
                 .map(|name| (name.clone(), folder.join(name))),
         );
     }
+    for (name, _) in SHARED_FAMILIES {
+        inventory.families.push(Family {
+            name,
+            usage: crate::scratch::usage(&shared.join(name)).map_err(|e| e.to_string()),
+        });
+    }
     let (names, _) = listing(&shared, SHARED_ENTRIES)?;
     for name in names {
-        if matches!(
-            name.as_str(),
-            "telemetry" | "evidence" | "workspaces" | "migrations"
-        ) {
+        if SHARED_FAMILIES.iter().any(|(family, _)| *family == name) {
             continue;
         }
         let path = shared.join(&name);

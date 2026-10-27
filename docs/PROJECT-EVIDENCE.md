@@ -37,7 +37,8 @@ container; that does not mean they run when the outer method does.
 ## Storage and limits
 
 The database is `.craft/state/<worktree-id>/shared/evidence/project.sqlite`, guarded by an
-OS lock. A database of an earlier state layout is not copied; `refresh` rebuilds it. Unknown schema versions and corrupt stores refuse writes; preserve them for
+OS lock; `backup` writes `project.sqlite.backup` beside it. On POSIX all three are created
+owner-readable only. A database of an earlier state layout is not copied; `refresh` rebuilds it. Unknown schema versions and corrupt stores refuse writes; preserve them for
 diagnosis rather than rebuilding blindly. Per source: 2 MiB, 20,000 records and a two-second
 extraction deadline. Generated state, build output and dependency directories are excluded.
 Occurrence IDs are stable across relocation and repeated extraction.
