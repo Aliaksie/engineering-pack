@@ -34,7 +34,7 @@ directories, and never touch host configuration or contact services. MCP declara
 credentials through host environment variables; no package ships a live server.
 
 Runtime state lives in `.craft/state/sessions/<session-id>/`, with project-wide records in
-sibling folders (`telemetry/`, `intelligence/`, `workspaces/`, `migrations/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
+sibling folders (`telemetry/`, `intelligence/`, `workspaces/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
 `.craft/worktrees/` (ignore it too); `plan-integrate` makes local merge commits and never
 pushes. State paths
 reject symlinks and use bounded, locked, atomic writes. On POSIX, state directories are
@@ -42,12 +42,7 @@ created owner-only (0700) and files, including the evidence database, its lock a
 owner-readable only (0600). Checkpoints hold explicit task data
 and Git state, not transcripts or tool output, and are evidence, never authorization.
 
-State left by earlier plugin versions is copied once and never written; only an explicit
-`state-clean --apply` removes copied sources of the previous layout. The copy refuses
-symlinks, special files, oversized data and a store with a live writer. Windows checks are
-weaker because stable Rust exposes no link count, file ID or change time there: hard-linked
-legacy files are accepted, and a file replaced during a read is detected by size and
-modification time only.
+State left by earlier plugin versions is never read, written or removed.
 
 Personal preferences reject symlinks, non-files and oversized data. On POSIX the current user
 must also own the file and its parent, with no group/other write bits, and a file replaced

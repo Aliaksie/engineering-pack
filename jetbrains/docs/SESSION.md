@@ -55,7 +55,6 @@ source sees it and compares the checkpoint with the current tree: evidence for c
 source must be rechecked. Worker and host-control records stay with the earlier session and
 the native work they describe (`notCarried`). Adoption never renews authorization and never
 replaces another task bound to the session or its checkpoint. Repeating it is harmless.
-Directories of earlier layouts are not offered.
 
 ### Work plans
 
@@ -364,7 +363,6 @@ continuation at milestones rather than relying on a final callback.
     telemetry/              # events.jsonl(.1), key.json, captures.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
-    migrations/             # receipts for records copied from earlier layouts
 ```
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether
@@ -375,43 +373,25 @@ through `plan-assign` and `plan-integrate` (worker worktrees, their branches and
 commits). Lookup, snapshots, review and exports exclude state regardless
 of ignores. `craft settings` shows the directory.
 
-The previous layout kept the same folders under `.craft/state/<worktree-id>/` (with
-`shared/` around the families). Its entries move into place one at a time on the next
-access; one held by a writer, or whose place is already taken, waits for a later access and
-`state-clean` reports it. Its evidence database is not moved: `refresh` builds the current
-one and `state-clean` removes the old one.
-
-State from earlier layouts (`.craft/state/<worktree-id>/<session-id>/` and
-`shared/` files, `.git/craft-state/`, flat `.craft/state/` files, `.capabilities/state/`) is
-copied on first access under its current name; only `state-clean` removes sources it copied.
-The newest layout holding a record is its only source. Workspaces and the evidence database
-start fresh. Stop older installed plugins before upgrading: they do not honor the current
-locks, and a checkpoint, binding or activity record they change after the copy is refused
-until the stores are reconciled. Telemetry events and routing hints they keep writing are
-ignored.
+State of earlier plugin versions is neither read nor cleaned: `.craft/state/<worktree-id>/`,
+files directly in `.craft/state/`, `.git/craft-state/` and `.capabilities/state/`. Stop older
+installed plugins and delete those folders by hand; their sessions start fresh.
 
 ```sh
 craft state-clean --root <project>            # preview
 craft state-clean --root <project> --apply    # remove what the preview lists
 ```
 
-Session directories are kept until cleaned explicitly. `state-clean` lists each one of either
-layout with its size and idle days, and removes it with `--apply` only when no record in it
+Session directories are kept until cleaned explicitly. `state-clean` lists each one with its size and idle days, and removes it with `--apply` only when no record in it
 changed for 14 days, it holds only records Craft writes, no lock or lease is held and no open
 workspace may belong to it; its checkpoint goes with it. Anything else is kept with a reason.
 A directory is set aside, listed again and removed only if unchanged; an interrupted cleanup
 finishes on the next run.
 
-Files earlier layouts left in `.craft/state/<worktree-id>/shared/` are removed with
-`--apply` once nothing depends on them: the evidence folder while no process holds it, a telemetry log once copied, the telemetry key and captures once copied and
-unchanged since, that layout's copy receipts, its evidence database while no process holds
-it (`refresh` rebuilds the current one), and its workspaces when inactive and past evidence
-retention, then their guard. A record never copied, a locked one or an unrecognized file is
-kept with a reason. Removing a copied source never lets an older store become the record's
-source again. Current families are only measured: `shared` lists each one's bytes
-and files, or why it could not be measured, and what keeps it bounded. Telemetry rotates,
-workspaces follow `workspace-clean`, the evidence database is rebuilt on request
-(`project-evidence rebuild`, then `refresh`) and copy receipts are kept.
+Shared families are only measured: `shared` lists each one's bytes and files, or why it
+could not be measured, and what keeps it bounded. Telemetry rotates, workspaces follow
+`workspace-clean` and the evidence database is rebuilt on request (`project-evidence
+rebuild`, then `refresh`).
 
 ## Lookup reuse
 

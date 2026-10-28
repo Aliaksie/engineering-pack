@@ -44,7 +44,7 @@ compacts a host session or posts to a code host.
 | `worker-status` | Worker reservations and host observations for a task tree | Reads state |
 | `settings` | Effective settings, value origins and the private state directory | Reads configuration |
 | `workspace-open`, `-write`, `-promote`, `-release`, `-clean` | Bounded private scratch for the active task | Writes only under private state |
-| `state-clean` | Preview, or with `--apply` remove, session directories idle for 14 days, plans completed or abandoned 14 days ago and copied sources of the previous layout; report open plans and shared family sizes | Reads state; `--apply` removes only what the preview lists |
+| `state-clean` | Preview, or with `--apply` remove, session directories idle for 14 days, plans completed or abandoned 14 days ago; report open plans and shared family sizes | Reads state; `--apply` removes only what the preview lists |
 
 See [session behavior](SESSION.md).
 
