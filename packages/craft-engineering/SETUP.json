@@ -19,6 +19,18 @@
     "commands": {
       "compact": "/compress"
     },
+    "setup": {
+      "entry": "bin/craft",
+      "args": [
+        "host-setup",
+        "--host",
+        "gemini-extension",
+        "--package",
+        "craft-engineering"
+      ],
+      "apply": "manual-native-controls",
+      "permissionSuggestions": "explicit-only; never applied"
+    },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },
   "controls": {

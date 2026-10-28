@@ -203,6 +203,18 @@
         "commands": {
           "compact": "/compress"
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-delivery"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -414,6 +426,18 @@
         "commands": {
           "compact": "/compress"
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-engineering"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -616,6 +640,18 @@
         "commands": {
           "compact": "/compress"
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-review"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -814,6 +850,18 @@
         "completion": "none",
         "commands": {
           "compact": "/compress"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-stories"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },

@@ -13,13 +13,25 @@
     "observation": "native-ui-only; no stable usage field in mapped hooks",
     "display": "native /statusline; explicit CLI advice fallback",
     "usage": "native-ui",
-    "nativeAutoCompact": "unknown",
+    "nativeAutoCompact": "documented",
     "control": "none",
     "completion": "none",
     "commands": {
       "inspectUsage": "/statusline",
       "compact": "/compact",
       "start-new-session": "/new"
+    },
+    "setup": {
+      "entry": "bin/craft",
+      "args": [
+        "host-setup",
+        "--host",
+        "codex",
+        "--package",
+        "craft-review"
+      ],
+      "apply": "manual-native-controls",
+      "permissionSuggestions": "explicit-only; never applied"
     },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },

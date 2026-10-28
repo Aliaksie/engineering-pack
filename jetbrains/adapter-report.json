@@ -201,6 +201,18 @@
         "control": "none",
         "completion": "none",
         "commands": {},
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "jetbrains",
+            "--package",
+            "craft-delivery"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -410,6 +422,18 @@
         "control": "none",
         "completion": "none",
         "commands": {},
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "jetbrains",
+            "--package",
+            "craft-engineering"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -610,6 +634,18 @@
         "control": "none",
         "completion": "none",
         "commands": {},
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "jetbrains",
+            "--package",
+            "craft-review"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -807,6 +843,18 @@
         "control": "none",
         "completion": "none",
         "commands": {},
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "jetbrains",
+            "--package",
+            "craft-stories"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [

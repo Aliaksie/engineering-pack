@@ -31,6 +31,18 @@
         "windowTokens": 1000000
       }
     },
+    "setup": {
+      "entry": "bin/craft",
+      "args": [
+        "host-setup",
+        "--host",
+        "claude",
+        "--package",
+        "craft-delivery"
+      ],
+      "apply": "explicit-display-only",
+      "permissionSuggestions": "explicit-only; never applied"
+    },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },
   "controls": {

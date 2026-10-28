@@ -109,7 +109,44 @@ Where shell execution is available, a status read works without hooks:
 ```
 
 Use `bin\craft.cmd` on Windows (`SETUP.json` names it as `sessionAdvice.entry`). Without
-`--json` it serves as the Claude Code status line. It changes no host settings.
+`--json` it serves as the Claude Code status line. The status read changes no host settings.
+
+To connect the display and inspect configuration choices, run the installed launcher:
+
+```sh
+"<package-root>/bin/craft" host-setup --host claude --package craft-engineering --root "<project-root>"
+```
+
+The preview includes exact Claude display settings, supported controls, Craft context
+thresholds/budgets, and optional permission suggestions. On macOS/Linux, repeat with `--apply`
+to add the display to `.claude/settings.local.json`. Existing fields and custom status lines
+are preserved. Setup checks project local, shared project and user settings (including
+`CLAUDE_CONFIG_DIR`) in precedence order; a conflicting effective status line requires manual
+integration. Session flags and managed host policy still need verification in Claude. Run an
+ordinary Claude turn to verify `Context N/M tokens (P%)` appears. The live payload selects its own worktree;
+setup does not pin later sessions to the checkout where settings were created.
+
+For another host, change `--host` to its adapter name. Codex terminal CLI uses `/status` and
+`/statusline`; its preview also explains `tui.status_line` and
+`model_auto_compact_token_limit`. These controls are not assumed to exist in desktop/IDE
+surfaces. Other adapters explain their supported controls and remaining gaps. No setup
+command changes native auto-compaction or triggers it.
+
+For B11's opt-in command rules, run:
+
+```sh
+"<package-root>/bin/craft" permissions --host codex
+```
+
+Claude and Codex get suggestions scoped to that installed launcher's inspection subcommands.
+Review and merge only the rules you want into your own host configuration. They are never
+applied by Craft, including with `host-setup --apply`; no consumer build/test or mutating
+Craft commands are included. Codex `allow` rules can run matching commands outside the
+sandbox without prompting, and arguments remain unrestricted. Preserve existing managed,
+ask and deny policies. Unsupported hosts receive a manual fallback, not invented rules.
+
+See [session observations](SESSION.md#host-observations) for native event forwarding,
+separate token measurements and compaction verification.
 
 ## Updates
 

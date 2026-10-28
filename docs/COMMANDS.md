@@ -108,6 +108,9 @@ These are called by hosts and integrations, not typed by users:
 | Entry | Caller |
 |---|---|
 | `craft hook <host> <lifecycle>` | Generated hook configuration; reads the host payload and writes its wire output ([adapters](ADAPTERS.md)) |
+| `craft host-setup --host <host> --package <name>` | Preview native display/configuration choices; `--apply` connects the Claude display on macOS/Linux, preserving existing custom displays |
+| `craft permissions --host <host>` | Print optional installation-specific permission rules; never writes host permissions |
+| `craft host-observe --host <host> --session <id> --data <event.json> --observed-at <time>` | Record one native usage/compaction event supplied by a connected integration |
 | `craft statusline <host> --package <name>` | Host status line or an explicit status read ([installation](INSTALL.md#first-use)) |
 | JSON request on standard input (`workers`, `actions`, `control`) | An integration that drives worker, review and compaction phases ([host controls](HOST-CONTROL.md)) |
 

@@ -69,3 +69,38 @@ occupancy and selected-guidance estimates. Keep unavailable counts unknown; a
 working hook does not establish token visibility. Never invent counts or promise
 a persistent display where the host exposes none. Report the actual capability
 gap and manual next step without claiming automatic setup succeeded.
+
+## Connect context reporting
+
+For setup, run `sessionAdvice.setup.entry` with its `args` from the export facts and
+`--root <project-root>`. It previews the display configuration, supported native controls,
+configuration keys the user can change, and optional command-scoped permission suggestions.
+Use the installed package launcher (or one verified `--bundle`); paths are resolved for that
+installation. No host settings change during preview.
+
+For Claude Code on macOS/Linux, `host-setup ... --apply` connects the Craft status line in
+that project's `.claude/settings.local.json`. Apply it only under authorization to configure
+that display. An existing custom status line is preserved; show the merge for manual
+integration. Leave other settings intact. Verify an ordinary turn shows context tokens;
+`configured-unverified` is not a successful native dispatch. The native working directory
+selects the current worktree, including when local settings are inherited from another one.
+
+For Codex terminal CLI, the preview names `/status`, `/statusline` and native compaction
+configuration. Desktop/IDE controls require their own surface check. Plugin hooks do not
+receive token counts. An integration owning an app-server connection can forward its usage
+and compaction events through `host-observe`; installation alone does not connect it.
+Other hosts get supported native commands and an explicit observation gap.
+
+`permissions --host <host>` prints optional host rules for inspection commands from this
+installed launcher. It never applies them, and `host-setup --apply` never grants permissions.
+Show the exact proposal, scope and host effect before the user changes permission settings;
+Codex allow rules can permit matching commands outside its sandbox. Preserve existing allow,
+ask, deny and managed policies. Rules do not include consumer build/test, mutating Craft
+commands or compaction controls. Recheck suggestions when the installed path changes.
+
+After native observations arrive, `session --session <actual-id>` reuses their timestamped
+snapshot. Context occupancy, cumulative consumption (when supplied) and compaction lifecycle
+remain separate. Stale or unavailable counts stay unknown. A native completion/resume event
+does not establish task continuity: inspect the saved checkpoint and actual source before
+resuming work. Missing transport, permission or completion evidence is a capability gap,
+not authorization to scrape private logs or fabricate a successful context cycle.

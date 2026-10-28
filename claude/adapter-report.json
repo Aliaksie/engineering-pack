@@ -253,6 +253,18 @@
             "windowTokens": 1000000
           }
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "claude",
+            "--package",
+            "craft-delivery"
+          ],
+          "apply": "explicit-display-only",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -513,6 +525,18 @@
             "windowTokens": 1000000
           }
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "claude",
+            "--package",
+            "craft-engineering"
+          ],
+          "apply": "explicit-display-only",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -769,6 +793,18 @@
             "windowTokens": 1000000
           }
         },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "claude",
+            "--package",
+            "craft-review"
+          ],
+          "apply": "explicit-display-only",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -1016,6 +1052,18 @@
           "claude-haiku-5-5": {
             "windowTokens": 1000000
           }
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "claude",
+            "--package",
+            "craft-stories"
+          ],
+          "apply": "explicit-display-only",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },

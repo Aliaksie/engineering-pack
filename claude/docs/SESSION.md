@@ -443,6 +443,56 @@ what the host itself offers, separately from what Craft reads:
 
 A manual compact command is `commands.compact`; it is what "reliable compaction" requires.
 
+## Host observations
+
+`host-setup --host <host> --package <package>` previews display configuration, compaction
+controls, editable configuration keys and opt-in permission suggestions for the installed
+launcher. `--apply` configures only the Claude Code display on macOS/Linux, preserving
+other settings and refusing to replace an existing custom display. Setup never grants
+permissions or changes native auto-compaction. Exported `sessionAdvice.setup` names this
+entry point. See [installation](INSTALL.md#first-use).
+
+A Claude status-line callback now retains its latest valid observation in the native
+payload's worktree. A later `session --session <actual-id>` reuses that snapshot; use the
+same project root and session identity. Explicit usage declarations take precedence.
+Missing, stale, invalid and cross-session usage remains unknown.
+
+A connected integration can also forward a bounded native event:
+
+```sh
+"<package-root>/bin/craft" host-observe --host codex --session <thread-id> \
+  --root <project-root> --data native-event.json --observed-at <receive-time>
+```
+
+The owning transport supplies an ISO receive timestamp, not a new timestamp invented when
+replaying a saved file. Intake rejects events more than two minutes old, future timestamps,
+wrong session identities and updates older than the retained snapshot. `session` applies its
+ordinary configurable observation freshness window as well. No private host transcript is
+read. This command is an integration boundary, not an app-server connection or authentication
+of caller-supplied data.
+
+The Codex adapter accepts `thread/tokenUsage/updated` and the `item/started` / `item/completed`
+notifications for a `contextCompaction` item. Latest request `last.inputTokens` supplies
+input occupancy, including cached input once; `total` supplies cumulative session
+consumption separately under `hostContext.consumption`. Latest-request input does not count
+messages/tools appended afterward or the output reservation. Missing model capacity leaves
+pressure unknown. A plugin alone cannot subscribe to its host's app-server connection.
+
+Mapped before/after-compaction hooks retain lifecycle observations on their own. Starting
+or resuming compaction invalidates the saved occupancy; a fresh usage event is needed to
+restore it. Codex completion requires matching item and turn identities to the start;
+unpaired completion stays `completion-observed`. An after-compaction hook stays
+`resume-observed`; `hookCompaction` preserves that phase separately when a more precise
+native item is already known. Hook phases never replace a native item identity. Neither status establishes that task continuation was verified: compare
+the checkpoint and current source independently. `hostContext` is the latest timestamped
+snapshot, not an event history, a compaction request transport or billing evidence. It is
+bounded to one 16 KiB record per session and participates in normal `state-clean` retention.
+
+Native protocol sources: [Claude status-line payload](https://code.claude.com/docs/en/statusline)
+and [Codex app-server events](https://learn.chatgpt.com/docs/app-server). Native automatic
+compaction belongs to the host; `nativeAutoCompact` declares documentation support rather
+than the setting or runtime state of a particular session.
+
 ## Settings
 
 `craft settings --root <project>` shows the effective policy, where each value came from
