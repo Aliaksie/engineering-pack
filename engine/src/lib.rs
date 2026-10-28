@@ -29,7 +29,16 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const PROTOCOL_VERSION: u32 = 1;
 
 pub fn hash(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hex_bytes(&Sha256::digest(bytes))
+}
+
+pub fn hex_bytes(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut text = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(text, "{byte:02x}").expect("writing to a String succeeds");
+    }
+    text
 }
 
 /// SHA-256 of the JSON text, as `JSON.stringify` writes it for normalized values.
@@ -145,6 +154,12 @@ impl Extraction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hex_encoding_preserves_leading_zeros_and_lowercase() {
+        assert_eq!(hex_bytes(&[]), "");
+        assert_eq!(hex_bytes(&[0, 1, 15, 16, 128, 255]), "00010f1080ff");
+    }
+
     #[test]
     fn identities_are_framed_and_replayable() {
         assert_eq!(

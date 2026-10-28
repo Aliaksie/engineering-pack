@@ -256,7 +256,7 @@ pub fn state(root: &Path) -> Value {
                     ))
             })
             .collect();
-        json!(format!("{:x}", Sha256::digest(kept.join("\0").as_bytes())))
+        json!(craft_engine::hash(kept.join("\0").as_bytes()))
     });
     json!({
         "checkout": checkout,
@@ -265,7 +265,7 @@ pub fn state(root: &Path) -> Value {
         "gitAvailable": status.is_some() && index.is_some(),
         "fingerprints": {
             "index": index_digest,
-            "workingTree": if inventory.is_some() { json!(format!("{:x}", content.digest.finalize())) } else { Value::Null },
+            "workingTree": if inventory.is_some() { json!(craft_engine::hex_bytes(&content.digest.finalize())) } else { Value::Null },
             "complete": issues.is_empty(),
             "issues": issues,
             "files": content.files,
@@ -299,15 +299,12 @@ fn content_digest(root: &Path, relative: &str) -> String {
         bytes: 0,
     };
     match content.inspect(relative) {
-        Entry::Hashed => format!("{:x}", content.digest.finalize()),
+        Entry::Hashed => craft_engine::hex_bytes(&content.digest.finalize()),
         Entry::Missing => "missing".into(),
         Entry::Limit | Entry::Failed => {
             let meta = fs::symlink_metadata(root.join(relative)).ok();
             let identity = meta.map(|m| format!("{}:{:?}", m.len(), m.modified().ok()));
-            format!(
-                "{:x}",
-                Sha256::digest(identity.unwrap_or_default().as_bytes())
-            )
+            craft_engine::hash(identity.unwrap_or_default().as_bytes())
         }
     }
 }
