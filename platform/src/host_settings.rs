@@ -36,10 +36,43 @@ fn read(file: &Path) -> Result<Value, Error> {
     Ok(value)
 }
 
+// Highest-precedence persistent consumer settings first. Session flags and managed
+// host policy cannot be inferred by this standalone setup command.
+fn snapshot(file: &Path) -> Result<Vec<(PathBuf, Value)>, Error> {
+    let directory = file.parent().expect("settings directory");
+    let mut paths = vec![file.to_path_buf(), directory.join("settings.json")];
+    let user_directory = std::env::var_os("CLAUDE_CONFIG_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::home_dir().map(|home| home.join(".claude")));
+    if let Some(user_directory) = user_directory {
+        paths.push(user_directory.join("settings.json"));
+    }
+    paths
+        .into_iter()
+        .map(|path| {
+            let settings = read(&path)?;
+            Ok((path, settings))
+        })
+        .collect()
+}
+
+fn effective_display(settings: &[(PathBuf, Value)]) -> Option<(&Path, &Value)> {
+    settings.iter().find_map(|(path, value)| {
+        value
+            .get("statusLine")
+            .map(|display| (path.as_path(), display))
+    })
+}
+
 pub fn inspect(root: &Path) -> Result<Value, Error> {
     let file = target(root, false)?;
-    let settings = read(&file)?;
-    Ok(json!({"file":file,"statusLine":settings.get("statusLine")}))
+    let settings = snapshot(&file)?;
+    let current = effective_display(&settings);
+    Ok(
+        json!({"file":file,"statusLine":current.map(|(_, value)| value),
+        "source":current.map(|(path, _)| path)}),
+    )
 }
 
 /// Explicit application of the display field only. Refuse replacement of a custom display.
@@ -49,8 +82,8 @@ pub fn apply(root: &Path, display: &Value) -> Result<Value, Error> {
     let Some(_lock) = state::lock(&file)? else {
         return Err(Error::busy("Claude settings writer is busy"));
     };
-    let before = read(&file)?;
-    if let Some(existing) = before.get("statusLine") {
+    let before = snapshot(&file)?;
+    if let Some((_, existing)) = effective_display(&before) {
         if existing == display {
             return Ok(json!({"status":"already-configured","file":file}));
         }
@@ -59,9 +92,9 @@ pub fn apply(root: &Path, display: &Value) -> Result<Value, Error> {
                 .into(),
         );
     }
-    let mut after = before.clone();
+    let mut after = before[0].1.clone();
     after["statusLine"] = display.clone();
-    if read(&file)? != before {
+    if snapshot(&file)? != before {
         return Err("Claude settings changed during setup; preview again".into());
     }
     state::write(&file, &after, BYTES, true)?;

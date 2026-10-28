@@ -110,24 +110,27 @@ fn observe(
         input.insert("sessionId".into(), id.clone());
     }
     let mut host_context_error = None;
-    let host_context = session.and_then(|session| match crate::host_context::read(root, session) {
-        Ok(saved) if !saved.is_null() => {
-            if input
-                .get("host")
-                .and_then(|h| h.get("name"))
-                .is_some_and(|h| *h != saved["host"])
-            {
-                return None;
+    let host_context = session_id
+        .as_ref()
+        .and_then(Value::as_str)
+        .and_then(|session| match crate::host_context::read(root, session) {
+            Ok(saved) if !saved.is_null() => {
+                if input
+                    .get("host")
+                    .and_then(|h| h.get("name"))
+                    .is_some_and(|h| *h != saved["host"])
+                {
+                    return None;
+                }
+                crate::host_context::supplement(&mut input, &saved);
+                Some(saved)
             }
-            crate::host_context::supplement(&mut input, &saved);
-            Some(saved)
-        }
-        Ok(_) => None,
-        Err(error) => {
-            host_context_error = Some(error.message);
-            None
-        }
-    });
+            Ok(_) => None,
+            Err(error) => {
+                host_context_error = Some(error.message);
+                None
+            }
+        });
     let mut declared = match input.get("task") {
         Some(Value::Object(task)) => task.clone(),
         _ => Map::new(),

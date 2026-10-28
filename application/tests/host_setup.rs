@@ -32,7 +32,26 @@ impl Fixture {
             "--bundle".into(),
             self.0.join("bundle").to_str().unwrap().into(),
         ];
+        if command == "statusline" {
+            // This entry point takes the host before its options.
+            argv[0] = args[0].into();
+            argv.extend(args[1..].iter().map(|s| s.to_string()));
+            return statusline::run(&argv, &mut std::io::empty(), false);
+        }
         argv.extend(args.iter().map(|s| s.to_string()));
+        if command == "host-setup" {
+            let output = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
+                .args(&argv)
+                .env("CLAUDE_CONFIG_DIR", self.0.join("user-settings"))
+                .output()
+                .unwrap();
+            return craft_application::Outcome {
+                exit_code: output.status.code().unwrap_or(1),
+                stdout: String::from_utf8(output.stdout).unwrap(),
+                stderr: String::from_utf8(output.stderr).unwrap(),
+                export: None,
+            };
+        }
         cli::run(&argv)
     }
     fn json(&self, command: &str, args: &[&str]) -> Value {
@@ -139,6 +158,59 @@ fn preview_apply_and_conflicts_preserve_consumer_configuration() {
     assert_eq!(fs::read(&settings).unwrap(), before);
 }
 #[test]
+#[cfg(not(windows))]
+fn inherited_displays_are_reported_and_preserved_with_native_precedence() {
+    let f = Fixture::new();
+    let user = f.0.join("user-settings/settings.json");
+    let shared = f.root().join(".claude/settings.json");
+    let local = f.root().join(".claude/settings.local.json");
+    fs::create_dir_all(user.parent().unwrap()).unwrap();
+    fs::create_dir_all(shared.parent().unwrap()).unwrap();
+    let args = ["--host", "claude", "--package", "craft-engineering"];
+    let apply = [
+        "--host",
+        "claude",
+        "--package",
+        "craft-engineering",
+        "--apply",
+    ];
+    for (path, command) in [(&user, "user-display"), (&shared, "shared-display")] {
+        let contents =
+            json!({"statusLine":{"type":"command","command":command},"keep":true}).to_string();
+        fs::write(path, &contents).unwrap();
+        let preview = f.json("host-setup", &args);
+        assert_eq!(
+            preview["display"]["current"]["statusLine"]["command"],
+            command
+        );
+        assert_eq!(
+            fs::canonicalize(preview["display"]["current"]["source"].as_str().unwrap()).unwrap(),
+            fs::canonicalize(path).unwrap()
+        );
+        assert_ne!(f.run("host-setup", &apply).exit_code, 0);
+        assert!(!local.exists());
+        assert_eq!(fs::read_to_string(path).unwrap(), contents);
+    }
+    // An effective Craft display is idempotent even with custom inherited values.
+    let preview = f.json("host-setup", &args);
+    fs::write(&local, preview["display"]["merge"].to_string()).unwrap();
+    let before = fs::read(&local).unwrap();
+    assert_eq!(
+        f.json("host-setup", &apply)["display"]["application"]["status"],
+        "already-configured"
+    );
+    assert_eq!(fs::read(&local).unwrap(), before);
+    // An inherited Craft display needs no higher-precedence local override either.
+    fs::remove_file(&local).unwrap();
+    fs::write(&shared, preview["display"]["merge"].to_string()).unwrap();
+    assert_eq!(
+        f.json("host-setup", &apply)["display"]["application"]["status"],
+        "already-configured"
+    );
+    assert!(!local.exists());
+}
+
+#[test]
 fn permission_suggestions_are_scoped_and_never_applied() {
     let f = Fixture::new();
     for host in [
@@ -210,6 +282,37 @@ fn forwarded_native_events_feed_session_and_compaction_invalidates_usage() {
     );
     let status = f.json("session", &["--session", "s1", "--json"]);
     assert_eq!(status["usage"]["currentTokens"], 100);
+    let declared = f.data("session.json", &json!({"sessionId":"s1"}));
+    let from_json = f.json("session", &["--data", declared.to_str().unwrap(), "--json"]);
+    assert_eq!(from_json["usage"], status["usage"]);
+    assert_eq!(from_json["hostContext"], status["hostContext"]);
+    let display = f.json(
+        "statusline",
+        &[
+            "codex",
+            "--package",
+            "craft-engineering",
+            "--data",
+            declared.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(display["usage"], status["usage"]);
+    assert_eq!(display["hostContext"], status["hostContext"]);
+    assert_ne!(
+        f.run(
+            "session",
+            &[
+                "--session",
+                "different",
+                "--data",
+                declared.to_str().unwrap(),
+                "--json"
+            ]
+        )
+        .exit_code,
+        0
+    );
     assert_eq!(status["usage"]["usedRatio"], 0.1);
     assert_eq!(status["host"]["reliableCompaction"], true);
     let text = f.run("session", &["--session", "s1"]);

@@ -120,8 +120,10 @@ To connect the display and inspect configuration choices, run the installed laun
 The preview includes exact Claude display settings, supported controls, Craft context
 thresholds/budgets, and optional permission suggestions. On macOS/Linux, repeat with `--apply`
 to add the display to `.claude/settings.local.json`. Existing fields and custom status lines
-are preserved; a conflicting status line requires manual integration. Run an ordinary Claude
-turn to verify `Context N/M tokens (P%)` appears. The live payload selects its own worktree;
+are preserved. Setup checks project local, shared project and user settings (including
+`CLAUDE_CONFIG_DIR`) in precedence order; a conflicting effective status line requires manual
+integration. Session flags and managed host policy still need verification in Claude. Run an
+ordinary Claude turn to verify `Context N/M tokens (P%)` appears. The live payload selects its own worktree;
 setup does not pin later sessions to the checkout where settings were created.
 
 For another host, change `--host` to its adapter name. Codex terminal CLI uses `/status` and
