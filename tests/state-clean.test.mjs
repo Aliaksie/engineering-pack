@@ -34,6 +34,8 @@ test('state-clean previews, then removes only idle unheld session directories', 
   const root = fixture(t);
   for (const session of ['idle', 'recent', 'held']) saveCheckpoint(root, session, { nextStep: 'continue' });
   const idle = stateLocation(root, 'idle'), recent = stateLocation(root, 'recent'), held = stateLocation(root, 'held');
+  // Native context snapshots belong to the same bounded session lifecycle.
+  fs.writeFileSync(path.join(idle.directory, 'host-context.json'), JSON.stringify({ formatVersion: 1, sessionId: 'idle' }));
   fs.writeFileSync(path.join(held.directory, 'checkpoint.json.lock'), '');
   age(idle.directory, 15); age(held.directory, 15); age(recent.directory, 13);
   // A session directory of an earlier layout and a shared file it left behind are ignored.

@@ -11,6 +11,9 @@
       "status": 0,
       "response": {
         "commands": [
+          "host-setup",
+          "permissions",
+          "host-observe",
           "workspace-open",
           "workspace-write",
           "workspace-promote",
@@ -59,7 +62,7 @@
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs"
+      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs; host-setup, permissions and host-observe expose explicit setup and native context intake"
     },
     {
       "id": "help-before-validation",

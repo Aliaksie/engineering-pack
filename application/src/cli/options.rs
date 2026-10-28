@@ -44,6 +44,8 @@ const OPTIONS: &[&str] = &[
     "intent",
     "file",
     "host",
+    "package",
+    "observed-at",
     "delegate",
     "task",
     "risk",

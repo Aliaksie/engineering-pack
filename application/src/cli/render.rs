@@ -123,6 +123,29 @@ pub(super) fn session_view(status: &Value) -> String {
         ),
         format!("Reason: {reason}"),
     ];
+    let consumed = &status["hostContext"]["consumption"];
+    if consumed["kind"] == "cumulative-session" {
+        lines.insert(
+            4,
+            format!(
+                "Consumed: {} input + {} output = {} tokens (host session cumulative; observed {})",
+                shown(&consumed["inputTokens"]),
+                shown(&consumed["outputTokens"]),
+                shown(&consumed["totalTokens"]),
+                shown(&consumed["observedAt"])
+            ),
+        );
+    }
+    let compaction = &status["hostContext"]["compaction"];
+    if let Some(phase) = compaction["status"].as_str() {
+        lines.insert(
+            4,
+            format!(
+                "Compaction: {phase} (observed {}; verify task continuation separately)",
+                shown(&compaction["observedAt"])
+            ),
+        );
+    }
     lines.extend(acceptance_lines(status, shown));
     if let Some(advice) = nonempty(&status["capability"]["recommendation"]) {
         lines.push(format!("Model advice: {advice}"));

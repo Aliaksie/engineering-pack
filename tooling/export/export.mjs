@@ -137,6 +137,8 @@ export function mcpServers(manifest, platform) {
 
 // The explicit status read an installed package offers on this host.
 export const sessionAdvice = (host, name) => ({ entry: 'bin/craft', args: ['statusline', host, '--package', name], ...SESSION[host],
+  setup: { entry: 'bin/craft', args: ['host-setup', '--host', host, '--package', name],
+    apply: host === 'claude' ? 'explicit-display-only' : 'manual-native-controls', permissionSuggestions: 'explicit-only; never applied' },
   activation: 'explicit-only; no statusline settings or hooks changed' });
 
 export function report(manifest, platform, skills, hookStatus, mcpStatus) {

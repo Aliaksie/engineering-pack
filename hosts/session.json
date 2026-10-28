@@ -26,7 +26,7 @@
     "observation": "native-ui-only; no stable usage field in mapped hooks",
     "display": "native /statusline; explicit CLI advice fallback",
     "usage": "native-ui",
-    "nativeAutoCompact": "unknown",
+    "nativeAutoCompact": "documented",
     "control": "none",
     "completion": "none",
     "commands": {
