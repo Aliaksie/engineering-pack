@@ -447,6 +447,8 @@ Classes are recommendations, not price rankings. Exact model names live in the c
 |---|---|---|
 | Claude Code | Status-line payload (current input and cache counts) | `/compact`, `/clear` |
 | Codex | None mapped | `/statusline`, `/compact`, `/new` |
+| Copilot | None mapped | `/context`, `/compact` |
+| Gemini CLI and extension | None | `/compress` |
 | Others | None | None mapped |
 
 Each host entry in `hosts/session.json` (and each export's `sessionAdvice`) also declares

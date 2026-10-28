@@ -51,7 +51,10 @@
     "nativeAutoCompact": "documented",
     "control": "none",
     "completion": "none",
-    "commands": {}
+    "commands": {
+      "inspectUsage": "/context",
+      "compact": "/compact"
+    }
   },
   "gemini": {
     "observation": "unavailable-in-current-adapter",
@@ -60,7 +63,9 @@
     "nativeAutoCompact": "unknown",
     "control": "none",
     "completion": "none",
-    "commands": {}
+    "commands": {
+      "compact": "/compress"
+    }
   },
   "gemini-extension": {
     "observation": "unavailable-in-current-adapter",
@@ -69,7 +74,9 @@
     "nativeAutoCompact": "unknown",
     "control": "none",
     "completion": "none",
-    "commands": {}
+    "commands": {
+      "compact": "/compress"
+    }
   },
   "jetbrains": {
     "observation": "unavailable-in-current-adapter",

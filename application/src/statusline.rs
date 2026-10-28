@@ -361,6 +361,11 @@ mod tests {
             render(&status, agents),
             "Context 85/100 tokens (85%) | Next: compact"
         );
+        let gemini = &capabilities("gemini").unwrap()["commands"];
+        assert_eq!(
+            render(&status, gemini),
+            "Context 85/100 tokens (85%) | Next: /compress"
+        );
         // `Math.round` rounds halves up.
         let half = json!({"usage": {"status": "observed", "currentTokens": 1, "capacityTokens": 200, "usedRatio": 0.005}});
         assert_eq!(render(&half, codex), "Context 1/200 tokens (1%)");
@@ -396,6 +401,18 @@ mod tests {
         }
         // Only the status-line payload is ingested; other sources stay declared, not read.
         assert_eq!(capabilities("claude").unwrap()["usage"], "statusline");
+        // A documented manual command is what makes compaction advice reliable.
+        let manual: Vec<&str> = table
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter(|(_, entry)| entry["commands"].get("compact").is_some())
+            .map(|(host, _)| host.as_str())
+            .collect();
+        assert_eq!(
+            manual,
+            ["claude", "codex", "copilot", "gemini", "gemini-extension"]
+        );
     }
 
     #[test]
