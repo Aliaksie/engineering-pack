@@ -16,7 +16,7 @@ test('native bundle works after relocation with checked notices and no Node runt
   const manifest = JSON.parse(fs.readFileSync(path.join(bundle, 'native-bundle.json'), 'utf8'));
   assert.equal(manifest.formatVersion, 1);
   assert.equal(manifest.protocolVersion, 1);
-  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.schemaVersion, 2);
   assert.equal(manifest.profile, 'release');
   assert.equal(manifest.providers.length, 2);
   assert.ok(manifest.files.length > 4);

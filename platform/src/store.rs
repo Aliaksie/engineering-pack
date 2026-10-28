@@ -1,6 +1,6 @@
 //! SQLite owns atomic source/provider replacement; failed observations hide old facts.
 use crate::Error;
-use craft_engine::{Extraction, SCHEMA_VERSION, valid_path};
+use craft_engine::{Evidence, Extraction, SCHEMA_VERSION, valid_path, values::lower_hex};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 use std::{
@@ -26,16 +26,34 @@ struct Batch {
 
 impl Store {
     /// Open or create the store; a new file is private, and SQLite gives its journal the
-    /// same mode.
+    /// same mode. Evidence is derived, so a store from another schema version is discarded
+    /// and the next refresh rebuilds it; an unreadable file still fails.
     pub fn open(path: &Path) -> Result<Self, Error> {
+        let mut connection = Self::connect(path)?;
+        let version: u32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        if version != 0 && version != SCHEMA_VERSION {
+            drop(connection);
+            for file in [path.to_path_buf(), path.with_extension("sqlite-journal")] {
+                match std::fs::remove_file(&file) {
+                    Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                        return Err(error.into());
+                    }
+                    _ => {}
+                }
+            }
+            connection = Self::connect(path)?;
+        }
+        Self::initialize(connection)
+    }
+
+    fn connect(path: &Path) -> Result<Connection, Error> {
         match crate::files::create_private_file(path) {
             Err(error) if error.kind() != std::io::ErrorKind::AlreadyExists => {
                 return Err(error.into());
             }
             _ => {}
         }
-        let connection = Connection::open(path)?;
-        Self::initialize(connection)
+        Ok(Connection::open(path)?)
     }
 
     fn initialize(connection: Connection) -> Result<Self, Error> {
@@ -57,16 +75,19 @@ impl Store {
             connection.execute_batch("BEGIN IMMEDIATE;
                 CREATE TABLE metadata (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
                 INSERT INTO metadata VALUES ('generation',0),('inventory_complete',0),('inventory_epoch',0);
-                CREATE TABLE sources (path TEXT NOT NULL, provider TEXT NOT NULL, hash TEXT NOT NULL,
-                    outcome TEXT NOT NULL, diagnostic TEXT, observed_at TEXT NOT NULL, epoch INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY(path,provider));
-                CREATE TABLE evidence (id TEXT PRIMARY KEY, path TEXT NOT NULL, provider TEXT NOT NULL,
-                    kind TEXT NOT NULL, name TEXT NOT NULL, target TEXT, record TEXT NOT NULL,
-                    FOREIGN KEY(path,provider) REFERENCES sources(path,provider) ON DELETE CASCADE);
-                CREATE INDEX evidence_name ON evidence(name,id);
-                CREATE INDEX evidence_source ON evidence(path,provider,id);
-                CREATE INDEX evidence_target ON evidence(target,id);
-                PRAGMA user_version=1;
+                CREATE TABLE sources (sid INTEGER PRIMARY KEY, path TEXT NOT NULL, provider TEXT NOT NULL,
+                    hash TEXT NOT NULL, outcome TEXT NOT NULL, diagnostic TEXT, observed_at TEXT NOT NULL,
+                    epoch INTEGER NOT NULL DEFAULT 0, records INTEGER NOT NULL DEFAULT 0, UNIQUE(path,provider));
+                -- IDs are SHA-256 digests stored as 32-byte blobs; byte order equals hex order.
+                CREATE TABLE evidence (id BLOB PRIMARY KEY,
+                    sid INTEGER NOT NULL REFERENCES sources(sid) ON DELETE CASCADE,
+                    kind TEXT NOT NULL, name TEXT NOT NULL, target TEXT, line INTEGER NOT NULL,
+                    col INTEGER NOT NULL, start_byte INTEGER NOT NULL, end_byte INTEGER NOT NULL,
+                    container BLOB) WITHOUT ROWID;
+                CREATE INDEX evidence_name ON evidence(name);
+                CREATE INDEX evidence_source ON evidence(sid);
+                CREATE INDEX evidence_target ON evidence(target);
+                PRAGMA user_version=2;
                 COMMIT;")?;
         }
         Ok(Self {
@@ -83,23 +104,26 @@ impl Store {
     ) -> Result<(), Error> {
         extraction.validate()?;
         let tx = self.connection.savepoint()?;
-        tx.execute("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,?3,'ok',?4,?5)
-            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='ok',diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch",
-            params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch])?;
-        tx.execute(
-            "DELETE FROM evidence WHERE path=?1 AND provider=?2",
-            params![extraction.path, extraction.provider],
+        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records) VALUES (?1,?2,?3,'ok',?4,?5,?6)
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='ok',diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records
+            RETURNING sid",
+            params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch, extraction.evidence.len() as i64], |r| r.get(0))?;
+        tx.execute("DELETE FROM evidence WHERE sid=?1", [sid])?;
+        let mut insert = tx.prepare_cached(
+            "INSERT INTO evidence VALUES (unhex(?1),?2,?3,?4,?5,?6,?7,?8,?9,unhex(?10))",
         )?;
-        let mut insert = tx.prepare_cached("INSERT INTO evidence VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
         for item in &extraction.evidence {
             insert.execute(params![
                 item.id,
-                extraction.path,
-                extraction.provider,
+                sid,
                 item.kind,
                 item.name,
                 item.target,
-                serde_json::to_string(item)?
+                item.line as i64,
+                item.column as i64,
+                item.start_byte as i64,
+                item.end_byte as i64,
+                item.container
             ])?;
         }
         drop(insert);
@@ -126,13 +150,11 @@ impl Store {
         let tx = self.connection.savepoint()?;
         // Failed content is cached so repeated bounded refreshes can advance.
         // Retire old facts rather than bind them to the failed content hash.
-        tx.execute("INSERT INTO sources VALUES (?1,?2,?3,'failed',?4,?5,?6)
-            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch",
-            params![path,provider,hash,diagnostic,observed_at,epoch])?;
-        tx.execute(
-            "DELETE FROM evidence WHERE path=?1 AND provider=?2",
-            params![path, provider],
-        )?;
+        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,diagnostic,observed_at,epoch) VALUES (?1,?2,?3,'failed',?4,?5,?6)
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch,records=0
+            RETURNING sid",
+            params![path,provider,hash,diagnostic,observed_at,epoch], |r| r.get(0))?;
+        tx.execute("DELETE FROM evidence WHERE sid=?1", [sid])?;
         tx.execute(
             "UPDATE metadata SET value=value+1 WHERE key='generation'",
             [],
@@ -289,19 +311,23 @@ impl Store {
         tx.commit().map_err(Error::from)
     }
 
+    /// Counts come from the sources table; `records` is written with each source's evidence.
     pub fn status(&self) -> Result<Value, Error> {
         let scalar = |sql| {
             self.connection
                 .query_row(sql, [], |r| r.get::<_, i64>(0))
                 .map_err(Error::from)
         };
+        let (sources, failed, pending, evidence) = self.connection.query_row(
+            "SELECT count(*), count(*) FILTER (WHERE outcome='failed'), count(*) FILTER (WHERE outcome='pending'),
+                coalesce(sum(records) FILTER (WHERE outcome='ok'),0) FROM sources",
+            [],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, i64>(3)?)),
+        )?;
         Ok(json!({"schemaVersion":SCHEMA_VERSION,
             "generation":scalar("SELECT value FROM metadata WHERE key='generation'")?,
             "inventoryComplete":scalar("SELECT value FROM metadata WHERE key='inventory_complete'")? == 1,
-            "sources":scalar("SELECT count(*) FROM sources")?,
-            "failedSources":scalar("SELECT count(*) FROM sources WHERE outcome='failed'")?,
-            "pendingSources":scalar("SELECT count(*) FROM sources WHERE outcome='pending'")?,
-            "evidence":scalar("SELECT count(*) FROM evidence e JOIN sources s USING(path,provider) WHERE s.outcome='ok'")?,
+            "sources":sources, "failedSources":failed, "pendingSources":pending, "evidence":evidence,
             "freshness":"stored-snapshot", "completeness":"unknown outside declared provider coverage"}))
     }
 
@@ -314,44 +340,50 @@ impl Store {
         source_path: Option<&str>,
     ) -> Result<Value, Error> {
         let column = match field {
-            "id" => "e.id",
-            "name" => "e.name",
-            "path" => "e.path",
-            "target" => "e.target",
+            "id" => "e.id=unhex(?1)",
+            "name" => "e.name=?1",
+            "path" => "s.path=?1",
+            "target" => "e.target=?1",
             _ => return Err("query field must be id, name, path or target".into()),
         };
-        if !(1..=200).contains(&limit) || value.len() > 4096 || after.len() > 64 {
+        if !(1..=200).contains(&limit) || value.len() > 4096 {
             return Err("query exceeds bounds".into());
+        }
+        if !after.is_empty() && !lower_hex(after, 64) {
+            return Err("continuation must be an evidence id".into());
         }
         if source_path.is_some_and(|path| !valid_path(path)) {
             return Err("sourcePath must be a relative source path".into());
         }
         let source_filter = if source_path.is_some() {
-            "AND e.path=?4"
+            "AND s.path=?4"
         } else {
             "AND ?4 IS NULL"
         };
-        let sql = format!("SELECT e.id,e.record,s.hash,s.observed_at,e.path,e.provider FROM evidence e JOIN sources s USING(path,provider)
-            WHERE {column}=?1 AND e.id>?2 AND s.outcome='ok' {source_filter} ORDER BY e.id LIMIT ?3");
+        let sql = format!("SELECT lower(hex(e.id)),e.kind,e.name,e.line,e.col,e.start_byte,e.end_byte,e.target,
+                CASE WHEN e.container IS NULL THEN NULL ELSE lower(hex(e.container)) END,
+                s.hash,s.observed_at,s.path,s.provider FROM evidence e JOIN sources s USING(sid)
+            WHERE {column} AND e.id>unhex(?2) AND s.outcome='ok' {source_filter} ORDER BY e.id LIMIT ?3");
         let mut statement = self.connection.prepare(&sql)?;
         let rows = statement.query_map(
             params![value, after, (limit + 1) as i64, source_path],
             |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, String>(5)?,
-                ))
+                let evidence = Evidence {
+                    id: r.get(0)?,
+                    kind: r.get(1)?,
+                    name: r.get(2)?,
+                    line: r.get::<_, i64>(3)? as usize,
+                    column: r.get::<_, i64>(4)? as usize,
+                    start_byte: r.get::<_, i64>(5)? as usize,
+                    end_byte: r.get::<_, i64>(6)? as usize,
+                    target: r.get(7)?,
+                    container: r.get(8)?,
+                };
+                Ok(json!({"id":evidence.id,"evidence":evidence,"path":r.get::<_, String>(11)?,
+                    "hash":r.get::<_, String>(9)?,"provider":r.get::<_, String>(12)?,"observedAt":r.get::<_, String>(10)?}))
             },
         )?;
-        let mut results = Vec::new();
-        for row in rows {
-            let (id, record, hash, observed_at, path, provider) = row?;
-            results.push(json!({"id":id,"evidence":serde_json::from_str::<Value>(&record).map_err(|e|e.to_string())?,"path":path,"hash":hash,"provider":provider,"observedAt":observed_at}));
-        }
+        let mut results = rows.collect::<Result<Vec<_>, _>>()?;
         let more = results.len() > limit;
         results.truncate(limit);
         let next = if more {
@@ -508,6 +540,46 @@ mod tests {
             committed > 0 && committed <= BATCH_SOURCES,
             "only full batches survive: {committed}"
         );
+    }
+
+    #[test]
+    fn other_schema_store_is_discarded_and_counts_follow_outcomes() {
+        let database =
+            std::env::temp_dir().join(format!("craft-store-schema-{}.sqlite", std::process::id()));
+        let _ = std::fs::remove_file(&database);
+        let earlier = Connection::open(&database).unwrap();
+        earlier
+            .execute_batch("CREATE TABLE evidence (id TEXT); PRAGMA user_version=1;")
+            .unwrap();
+        drop(earlier);
+        let mut store = Store::open(&database).unwrap();
+        assert_eq!(store.status().unwrap()["sources"], 0);
+        let epoch = store.begin_inventory().unwrap();
+        store
+            .replace(
+                &extract("a.js", b"const a = 1, b = 2;").unwrap(),
+                "1",
+                epoch,
+            )
+            .unwrap();
+        store
+            .replace(&extract("c.js", b"const c = 1;").unwrap(), "1", epoch)
+            .unwrap();
+        store.defer("c.js", PROVIDER, epoch).unwrap();
+        let status = store.status().unwrap();
+        assert_eq!(
+            (
+                &status["sources"],
+                &status["pendingSources"],
+                &status["evidence"]
+            ),
+            (&json!(2), &json!(1), &json!(2))
+        );
+        let page = store.query("name", "a", "", 1, None).unwrap();
+        assert_eq!(page["results"][0]["evidence"]["name"], "a");
+        assert!(store.query("name", "a", "not-an-id", 1, None).is_err());
+        drop(store);
+        std::fs::remove_file(&database).unwrap();
     }
 
     #[test]

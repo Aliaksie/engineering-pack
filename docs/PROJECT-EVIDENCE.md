@@ -40,7 +40,8 @@ container; that does not mean they run when the outer method does.
 
 The database is `.craft/state/intelligence/project.sqlite`, guarded by an
 OS lock; `backup` writes `project.sqlite.backup` beside it. On POSIX all three are created
-owner-readable only. Unknown schema versions and corrupt stores refuse writes; preserve them for
+owner-readable only. Evidence is derived, so a store written by another schema version is
+discarded and the next `refresh` rebuilds it. Corrupt stores refuse writes; preserve them for
 diagnosis rather than rebuilding blindly. Per source: 2 MiB, 20,000 records and a two-second
 extraction deadline. Generated state, build output and dependency directories are excluded.
 Occurrence IDs are stable across relocation and repeated extraction.
