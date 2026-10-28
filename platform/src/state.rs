@@ -387,8 +387,7 @@ pub fn write_view(file: &Path, text: &str, max_bytes: usize) -> Result<(), Error
     result
 }
 
-/// Exclusive writer ticket: an existing `<record>.lock`, live or abandoned, refuses the
-/// lock. A killed writer therefore blocks until its lock is resolved, never silently.
+/// Exclusive writer ticket on `<record>.lock`, removed on drop unless retained.
 #[derive(Debug)]
 pub struct Lock {
     path: PathBuf,
@@ -417,10 +416,20 @@ impl Drop for Lock {
     }
 }
 
+/// The record's writer lock. An existing `<record>.lock` refuses it unless it is a native
+/// lease whose host died; any other holder, live or abandoned, blocks until resolved.
 pub fn lock(file: &Path) -> Result<Option<Lock>, Error> {
+    match ticket(file)? {
+        None if crate::lease::reclaim(file)? => ticket(file),
+        ticket => Ok(ticket),
+    }
+}
+
+/// The lock primitive: create `<record>.lock` exclusively, never recovering an existing
+/// one. Recovery protocols (leases, workspace locks) build on it, not on `lock`.
+pub(crate) fn ticket(file: &Path) -> Result<Option<Lock>, Error> {
     let mut name = file.as_os_str().to_owned();
     name.push(".lock");
-    let path = PathBuf::from(name);
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -428,12 +437,9 @@ pub fn lock(file: &Path) -> Result<Option<Lock>, Error> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    let ticket = acquire(path.clone(), cfg!(windows), |path| options.open(path))?;
-    if ticket.is_none() && crate::lease::reclaim(file)? {
-        acquire(path, cfg!(windows), |path| options.open(path))
-    } else {
-        Ok(ticket)
-    }
+    acquire(PathBuf::from(name), cfg!(windows), |path| {
+        options.open(path)
+    })
 }
 
 const LOCK_ATTEMPTS: usize = 3;

@@ -1,6 +1,7 @@
 //! Filesystem side of private task workspaces: bounded inspection, verified removal,
-//! exclusive writes, owner liveness and the recoverable workspace lock.
+//! exclusive writes and the recoverable workspace lock.
 use crate::files::{ReadError, read_bounded};
+use crate::process::Processes;
 use crate::state::{self, Lock};
 use craft_engine::scratch::Liveness;
 use serde_json::Value;
@@ -159,83 +160,10 @@ pub fn copy(
     Ok(metadata.len())
 }
 
-/// Observes whether recorded owner processes run. Unix asks the kernel per pid; a process
-/// that exists but belongs to another user counts as live. Stable Rust cannot ask Windows
-/// without `unsafe`, so the first question takes one bounded `tasklist` snapshot that later
-/// questions reuse; create the observer only once no new owner can be recorded (under the
-/// workspace lock). A missing or unreadable snapshot reports `Unknown`.
-#[derive(Default)]
-pub struct Processes {
-    #[cfg(windows)]
-    listed: std::cell::OnceCell<Option<std::collections::HashSet<u32>>>,
-}
-
-impl Processes {
-    pub fn liveness(&self, pid: i64) -> Liveness {
-        if pid == i64::from(std::process::id()) {
-            return Liveness::Live;
-        }
-        #[cfg(unix)]
-        {
-            let Some(pid) = i32::try_from(pid)
-                .ok()
-                .and_then(rustix::process::Pid::from_raw)
-            else {
-                return Liveness::Live;
-            };
-            match rustix::process::test_kill_process(pid) {
-                Err(rustix::io::Errno::SRCH) => Liveness::Dead,
-                _ => Liveness::Live,
-            }
-        }
-        #[cfg(windows)]
-        {
-            let Ok(pid) = u32::try_from(pid) else {
-                return Liveness::Live;
-            };
-            let listed = self
-                .listed
-                .get_or_init(|| crate::process::tasks(TASKS_BYTES).and_then(|csv| listed(&csv)));
-            match listed {
-                Some(pids) if pids.contains(&pid) => Liveness::Live,
-                Some(_) => Liveness::Dead,
-                None => Liveness::Unknown,
-            }
-        }
-        #[cfg(not(any(unix, windows)))]
-        Liveness::Unknown
-    }
-}
-
-#[cfg(windows)]
-const TASKS_BYTES: usize = 4 << 20;
-
-/// Process ids from `tasklist /NH /FO CSV` rows (`"image","pid",…`). Image names cannot
-/// contain quotes. Empty output or any malformed row is not a snapshot.
-#[cfg(any(windows, test))]
-fn listed(csv: &[u8]) -> Option<std::collections::HashSet<u32>> {
-    let mut pids = std::collections::HashSet::new();
-    for line in csv.split(|byte| *byte == b'\n') {
-        let line = line.strip_suffix(b"\r").unwrap_or(line);
-        if line.is_empty() {
-            continue;
-        }
-        let fields: Vec<&[u8]> = line.split(|byte| *byte == b'"').collect();
-        // `"a","b",…` splits into "", a, ",", b, …
-        let pid = (line.starts_with(b"\"") && fields.len() > 4 && fields[2] == b",")
-            .then(|| std::str::from_utf8(fields[3]).ok())
-            .flatten()
-            .filter(|digits| digits.bytes().all(|b| b.is_ascii_digit()))
-            .and_then(|digits| digits.parse().ok())?;
-        pids.insert(pid);
-    }
-    (!pids.is_empty()).then_some(pids)
-}
-
-/// The workspace lock: the shared `.lock` protocol plus the holder's pid, so a lock left
+/// The workspace lock: the `.lock` primitive plus the holder's pid, so a lock left
 /// by a dead holder can be reclaimed. Busy, publishing or unknown locks defer (`None`).
 pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
-    let mut ticket = state::lock(anchor).map_err(io::Error::other)?;
+    let mut ticket = state::ticket(anchor).map_err(io::Error::other)?;
     if ticket.is_none() {
         let mut name = anchor.as_os_str().to_owned();
         name.push(".lock");
@@ -273,7 +201,7 @@ pub fn lock(anchor: &Path) -> io::Result<Option<Lock>> {
         if !reclaimed(removed, cfg!(windows))? {
             return Ok(None);
         }
-        ticket = state::lock(anchor).map_err(io::Error::other)?;
+        ticket = state::ticket(anchor).map_err(io::Error::other)?;
     }
     if let Some(held) = ticket.as_mut() {
         let owner =
