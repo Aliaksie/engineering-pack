@@ -459,7 +459,7 @@ pub fn session_identity(key: &str, session: &str) -> String {
         .chain_update(pad(0x5c))
         .chain_update(inner)
         .finalize();
-    format!("{outer:x}")[..32].to_string()
+    crate::hex_bytes(&outer[..16])
 }
 
 #[cfg(test)]
