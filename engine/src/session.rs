@@ -11,6 +11,7 @@ use serde_json::{Map, Value, json};
 
 pub mod acceptance;
 pub mod handoff;
+pub mod host_context;
 pub mod status;
 pub mod step;
 pub mod views;

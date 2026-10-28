@@ -109,6 +109,28 @@ fn observe(
     if let Some(id) = session_id.as_ref().filter(|s| truthy(*s)) {
         input.insert("sessionId".into(), id.clone());
     }
+    let mut host_context_error = None;
+    let host_context = session_id
+        .as_ref()
+        .and_then(Value::as_str)
+        .and_then(|session| match crate::host_context::read(root, session) {
+            Ok(saved) if !saved.is_null() => {
+                if input
+                    .get("host")
+                    .and_then(|h| h.get("name"))
+                    .is_some_and(|h| *h != saved["host"])
+                {
+                    return None;
+                }
+                crate::host_context::supplement(&mut input, &saved);
+                Some(saved)
+            }
+            Ok(_) => None,
+            Err(error) => {
+                host_context_error = Some(error.message);
+                None
+            }
+        });
     let mut declared = match input.get("task") {
         Some(Value::Object(task)) => task.clone(),
         _ => Map::new(),
@@ -360,6 +382,15 @@ fn observe(
         result["taskEvidenceStale"] = json!(true);
     }
     result["packVersion"] = pack_version().map_or(Value::Null, Value::String);
+    if let Some(mut saved) = host_context {
+        saved.as_object_mut().unwrap().remove("lastEvent");
+        result["hostContext"] = saved;
+    }
+    if let Some(error) = host_context_error {
+        diagnostics(&mut result).push(json!(format!(
+            "Host context observation unavailable: {error}"
+        )));
+    }
     Ok(result)
 }
 

@@ -92,8 +92,10 @@ fn hex_record(name: &str, prefix: &str, suffix: &str) -> bool {
 
 /// Records the runtime writes into a session directory.
 fn recognized(name: &str) -> bool {
-    matches!(name, "manifest.json" | "checkpoint.json" | "task.json")
-        || hex_record(name, "routing-", ".json")
+    matches!(
+        name,
+        "manifest.json" | "checkpoint.json" | "task.json" | "host-context.json"
+    ) || hex_record(name, "routing-", ".json")
         || hex_record(name, "routing-", ".json.generation")
         || ["activity-", "workers-", "control-"]
             .iter()

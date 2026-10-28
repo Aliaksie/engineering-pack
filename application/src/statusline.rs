@@ -1,8 +1,8 @@
 //! `craft statusline <host> --package <name> [--root project] [--data task.json] [--json]
-//! [--native-stdin] [--bundle root]`: one read-only session status for a host status line.
+//! [--native-stdin] [--bundle root]`: one session status for a host status line.
 //! Only Claude's status-line payload has a verified contract here; it supplies the session,
 //! model and current context usage. Other hosts use declared data and never scrape private
-//! transcripts for a token count.
+//! transcripts for a token count. Valid native callbacks retain a timestamped snapshot.
 use crate::Outcome;
 use crate::failure::Failure;
 use crate::project::absolute;
@@ -32,6 +32,7 @@ struct Request {
     bundle: Option<String>,
     json: bool,
     native_stdin: bool,
+    root_explicit: bool,
 }
 
 fn parse(args: &[String]) -> Result<Request, Failure> {
@@ -47,6 +48,7 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
         bundle: None,
         json: false,
         native_stdin: false,
+        root_explicit: false,
     };
     let mut seen = Vec::new();
     let mut rest = rest.iter();
@@ -65,7 +67,10 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
                 continue;
             }
             "--package" => &mut request.package,
-            "--root" => &mut request.root,
+            "--root" => {
+                request.root_explicit = true;
+                &mut request.root
+            }
             "--data" => request.data.insert(String::new()),
             "--bundle" => request.bundle.insert(String::new()),
             _ => return Err(USAGE.into()),
@@ -86,31 +91,10 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
 
 /// Claude's current context occupancy: input and cache tokens, excluding output.
 fn observation(payload: &Value) -> Option<Value> {
-    let window = &payload["context_window"];
-    let current = window.get("current_usage").filter(|c| c.is_object())?;
-    let mut total = 0u64;
-    for field in [
-        "input_tokens",
-        "cache_creation_input_tokens",
-        "cache_read_input_tokens",
-    ] {
-        // `Number.isSafeInteger` accepts integral floats such as `10.0`.
-        let count = current[field]
-            .as_f64()
-            .filter(|n| *n >= 0.0 && n.fract() == 0.0 && *n <= 9_007_199_254_740_991.0)?;
-        total += count as u64;
-    }
-    let mut usage = json!({"kind": "current-context", "currentTokens": total});
-    if let Some(capacity) = window.get("context_window_size") {
-        usage["capacityTokens"] = capacity.clone();
-    }
-    if let Some(session) = payload.get("session_id") {
-        usage["sessionId"] = session.clone();
-    }
-    usage["source"] =
-        json!("claude-statusline.current_usage (input and cache tokens; excludes output)");
-    usage["observedAt"] = json!(craft_engine::timestamp::format(now_ms()));
-    Some(usage)
+    craft_engine::session::host_context::claude_usage(
+        payload,
+        &craft_engine::timestamp::format(now_ms()),
+    )
 }
 
 /// The payload model id when it is a bounded single-line string.
@@ -146,7 +130,7 @@ fn payload(stdin: &mut dyn Read, required: bool) -> Result<Option<Value>, Failur
 
 /// The declared data with the host's own observations applied over it.
 fn declared(
-    request: &Request,
+    request: &mut Request,
     stdin: &mut dyn Read,
     interactive: bool,
     recorder: &mut Recorder,
@@ -180,6 +164,38 @@ fn declared(
     {
         if request.data.is_some() && data.get("sessionId") != payload.get("session_id") {
             return Err("task record does not identify this native session".into());
+        }
+        if !request.root_explicit
+            && let Some(root) = payload["cwd"]
+                .as_str()
+                .or_else(|| payload["workspace"]["current_dir"].as_str())
+        {
+            if !std::path::Path::new(root).is_absolute() {
+                return Err("native project root must be absolute".into());
+            }
+            request.root = crate::host::project_root(std::path::Path::new(root))
+                .to_string_lossy()
+                .into_owned();
+        }
+        // Persist live observations, invalidating old occupancy when counts are unavailable. This
+        // lets a subsequent `session --session` use the same facts as the native display.
+        if let Some(session) = payload["session_id"].as_str() {
+            let at = craft_engine::timestamp::format(now_ms());
+            let event =
+                craft_engine::session::host_context::decode(&request.host, &payload, session, &at)
+                    .or_else(|_| {
+                        craft_engine::session::host_context::unavailable(
+                            &request.host,
+                            session,
+                            &at,
+                        )
+                    });
+            if let Ok(event) = event
+                && crate::host_context::record_event(&absolute(&request.root), session, &event)
+                    .is_err()
+            {
+                recorder.report("host", "HOST_OBSERVATION_UNAVAILABLE", Map::new(), parent);
+            }
         }
         // The host is authoritative for the session, model and usage it reports.
         let fields = data.as_object_mut().expect("checked object");
@@ -256,7 +272,7 @@ fn render(status: &Value, commands: &Value) -> String {
 }
 
 fn status(
-    request: &Request,
+    request: &mut Request,
     stdin: &mut dyn Read,
     interactive: bool,
     recorder: &mut Recorder,
@@ -312,8 +328,9 @@ pub fn run(args: &[String], stdin: &mut dyn Read, interactive: bool) -> Outcome 
     let mut recorder = Recorder::open(&absolute(hint("--root").unwrap_or(".")), None, host);
     recorder.package(hint("--package"));
     let operation = recorder.start("host.session", None);
-    let result = parse(args)
-        .and_then(|request| status(&request, stdin, interactive, &mut recorder, &operation));
+    let result = parse(args).and_then(|mut request| {
+        status(&mut request, stdin, interactive, &mut recorder, &operation)
+    });
     match result {
         Ok(text) => {
             recorder.complete(operation, Map::new(), None);

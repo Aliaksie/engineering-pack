@@ -76,6 +76,9 @@ impl Command {
 
 /// Every `craft <command>`, in the order the general help lists them.
 const COMMANDS: &[Command] = &[
+    Command::run("host-setup", host_setup),
+    Command::run("permissions", permission_suggestions),
+    Command::run("host-observe", host_observe),
     Command::new("workspace-open", Handler::Workspace(Action::Open)),
     Command::new("workspace-write", Handler::Workspace(Action::Write)),
     Command::new("workspace-promote", Handler::Workspace(Action::Promote)),
@@ -148,6 +151,91 @@ fn command(name: &str) -> Option<&'static Command> {
 
 fn root(options: &Options) -> PathBuf {
     absolute(options.get("root").unwrap_or("."))
+}
+
+fn setup_bundle(options: &Options) -> Result<PathBuf, Failure> {
+    let bundles = strings(options, "bundle");
+    match bundles.as_slice() {
+        [bundle] => Ok(absolute(bundle)),
+        [] => std::env::var(crate::statusline::PACKAGE_ROOT)
+            .ok()
+            .filter(|s| !s.is_empty())
+            .map(|s| absolute(&s))
+            .ok_or_else(|| {
+                "setup requires the installed launcher or one --bundle package-root".into()
+            }),
+        _ => Err("setup requires exactly one installed package root".into()),
+    }
+}
+
+fn host_setup(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let mut report = crate::setup::run(
+        &root(options),
+        options.get("host").ok_or("host-setup requires --host")?,
+        options
+            .get("package")
+            .ok_or("host-setup requires --package")?,
+        &setup_bundle(options)?,
+        options.values.contains_key("apply"),
+    )?;
+    report["configuration"][0]["effective"] = settings["efficiency"]["context"].clone();
+    if let Some(session) = options.get("session") {
+        match crate::host_context::read(&root(options), session) {
+            Ok(mut saved) if saved["host"] == report["host"] => {
+                saved.as_object_mut().unwrap().remove("lastEvent");
+                report["observation"] = saved;
+            }
+            Ok(_) => {}
+            Err(error) => report["observationDiagnostic"] = json!(error.message),
+        }
+    }
+    Ok(report)
+}
+
+fn permission_suggestions(
+    options: &Options,
+    _: &mut Recorder,
+    _: &Operation,
+) -> Result<Value, Failure> {
+    if options.values.contains_key("apply") {
+        return Err(
+            "permissions prints suggestions only; review and apply host rules yourself".into(),
+        );
+    }
+    crate::setup::permissions(
+        options.get("host").ok_or("permissions requires --host")?,
+        &setup_bundle(options)?,
+    )
+}
+
+fn host_observe(
+    options: &Options,
+    recorder: &mut Recorder,
+    operation: &Operation,
+) -> Result<Value, Failure> {
+    let payload = read_input(
+        recorder,
+        operation,
+        options
+            .get("data")
+            .ok_or("host-observe requires --data native-event.json")?,
+    )?;
+    crate::host_context::record(
+        &root(options),
+        options.get("host").ok_or("host-observe requires --host")?,
+        options
+            .get("session")
+            .ok_or("host-observe requires --session")?,
+        &payload,
+        options
+            .get("observed-at")
+            .ok_or("host-observe requires --observed-at transport-receive-time")?,
+    )
 }
 
 fn grounded_context(
@@ -1248,6 +1336,15 @@ const ACCEPTANCE_VIEW_USAGE: &str = "acceptance-view --view qa|product|architect
 
 fn help(action: &str) -> Value {
     let mut help = match action {
+        "host-setup" => {
+            json!({"usage":"host-setup --host name --package name [--bundle installed-package-root] [--root project] [--apply]", "mode":"Preview display, compaction and configuration guidance; --apply connects only the Claude display. Permissions are suggestions only."})
+        }
+        "permissions" => {
+            json!({"usage":"permissions --host name [--bundle installed-package-root] [--root project]", "mode":"Print optional, command-scoped host permission suggestions. Writes no permission settings."})
+        }
+        "host-observe" => {
+            json!({"usage":"host-observe --host claude|codex --session id --data native-event.json --observed-at receive-time [--root project]", "mode":"Record one fresh native context or compaction event forwarded by a connected host integration."})
+        }
         "locate" => json!({
             "usage":"locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]",
             "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",

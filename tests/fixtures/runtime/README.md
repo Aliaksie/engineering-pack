@@ -177,7 +177,11 @@ parser prose are classes. Corrections: a Claude read with an empty payload repor
 empty declaration reports (JavaScript failed to parse it, and waited on a terminal); a
 non-object payload, declaration or declared host is refused (JavaScript accepted arrays
 and scalars, spread a string host into indexed fields and threw a `TypeError` on a `null`
-payload); a `null` declared host counts as absent, as before.
+payload); a `null` declared host counts as absent, as before. The native replay excludes
+additive host capability fields and `hostContext` from this historical stdout comparison.
+Saved host observations now resolve JSON session identities, including live status-line
+payloads; `application/tests/host_setup.rs` checks that CLI, JSON and status-line reads
+report the same saved usage and host context.
 
 `review-contracts.json` freezes the JavaScript read-only review guard at `0ecc73d`: 439 shell
 command lines with whether they publish (direct commands, quoting, separators, Git global

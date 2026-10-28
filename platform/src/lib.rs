@@ -4,6 +4,7 @@ pub use error::Error;
 pub mod files;
 pub mod grounding;
 pub mod guidance;
+pub mod host_settings;
 pub mod http;
 pub mod java;
 pub mod javascript;

@@ -60,11 +60,14 @@ fn correction(id: &str) -> Option<Correction> {
 }
 
 /// The declared context surfaces were added to each host entry after the corpus was captured;
-/// `every_host_reports_its_session_capabilities` pins them against the table.
-fn without_declared_surfaces(stdout: &str) -> String {
+/// `every_host_reports_its_session_capabilities` pins them against the table. Saved
+/// hostContext is also additive to the legacy corpus; host_setup acceptance tests
+/// check it for both CLI and JSON session identities.
+fn without_native_additions(stdout: &str) -> String {
     let Ok(mut output) = serde_json::from_str::<Value>(stdout) else {
         return stdout.to_string();
     };
+    output.as_object_mut().unwrap().shift_remove("hostContext");
     let Some(host) = output.get_mut("host").and_then(Value::as_object_mut) else {
         return stdout.to_string();
     };
@@ -244,7 +247,7 @@ fn statusline_matches_the_frozen_corpus() {
                 let reference = find(reference);
                 assert_eq!(run.exit_code, 0, "{id}: {}", run.stderr);
                 assert_eq!(
-                    without_declared_surfaces(&run.stdout),
+                    without_native_additions(&run.stdout),
                     reference["stdout"].as_str().unwrap(),
                     "{id}"
                 );
@@ -284,7 +287,7 @@ fn statusline_matches_the_frozen_corpus() {
                     continue;
                 }
                 assert_eq!(
-                    without_declared_surfaces(&run.stdout),
+                    without_native_additions(&run.stdout),
                     case["stdout"].as_str().unwrap(),
                     "{id}"
                 );

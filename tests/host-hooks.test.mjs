@@ -167,7 +167,8 @@ test('checkpoint state can be explicitly disabled', (t) => {
     assert.equal(result.status, 0, result.stderr);
   }
   assert.equal(readCheckpoint(dir, 'fixture-session'), null);
-  assert.ok(only(stateNames(dir), /^(?:manifest\.json|routing-)/));
+  // Context lifecycle observations remain independent of checkpoint writes.
+  assert.ok(only(stateNames(dir), /^(?:manifest\.json|routing-|host-context\.json)/));
 });
 
 test('unsupported lifecycle mappings are reported and no fake wrapper is installed', () => {

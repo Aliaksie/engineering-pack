@@ -88,7 +88,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
 
 /// The nearest ancestor (at most 30 levels) with project configuration or a Git entry,
 /// else the directory itself.
-fn project_root(cwd: &Path) -> PathBuf {
+pub(crate) fn project_root(cwd: &Path) -> PathBuf {
     let mut directory = cwd;
     for _ in 0..30 {
         if directory.join(".craft/project.json").exists() || directory.join(".git").exists() {
@@ -119,6 +119,24 @@ pub fn run(input: &Value) -> Result<Value, String> {
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));
     recorder.package(facts.package);
     let hook = recorder.start("host.hook", None);
+    if facts.input_status == "complete"
+        && matches!(facts.lifecycle, "before-compact" | "after-compact")
+        && let Some(session) = facts.session
+    {
+        let event = craft_engine::session::host_context::lifecycle(
+            facts.host,
+            session,
+            facts.lifecycle,
+            &craft_engine::timestamp::format(crate::telemetry::now_ms()),
+        );
+        if event
+            .map_err(Failure::from)
+            .and_then(|event| crate::host_context::record_event(&root, session, &event))
+            .is_err()
+        {
+            recorder.report("host", "HOST_OBSERVATION_UNAVAILABLE", Map::new(), &hook);
+        }
+    }
     let observational = facts.handler == Handler::Observe;
     let status = json!(facts.input_status);
     let lifecycle = json!(facts.lifecycle);

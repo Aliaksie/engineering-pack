@@ -72,3 +72,39 @@ test('unified CLI display preserves unknown host, model and attempt fields', (t)
   assert.match(result.stdout, /Model: unknown/);
   assert.match(result.stdout, /Attempts: unknown\/unknown/);
 });
+
+test('Claude setup connects the relocated launcher and follows the native worktree', { skip: process.platform === 'win32' }, t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "craft setup ' $ "));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const destination = path.join(root, 'installed package');
+  fs.cpSync(path.resolve('dist/claude/plugins/craft-engineering'), destination, { recursive: true });
+  const setup = JSON.parse(fs.readFileSync(path.join(destination, 'SETUP.json'), 'utf8'));
+  const first = path.join(root, 'first worktree');
+  const second = path.join(root, 'second worktree');
+  for (const project of [first, second]) {
+    fs.mkdirSync(path.join(project, '.craft'), { recursive: true });
+    fs.writeFileSync(path.join(project, '.craft/project.json'), JSON.stringify({ formatVersion: 1 }));
+  }
+  fs.mkdirSync(path.join(second, 'nested'));
+  const preview = statusline(destination, setup.sessionAdvice.setup, ['--root', first]);
+  assert.equal(preview.status, 0, preview.stderr);
+  assert.equal(fs.existsSync(path.join(first, '.claude')), false);
+  const applied = statusline(destination, setup.sessionAdvice.setup, ['--root', first, '--apply']);
+  assert.equal(applied.status, 0, applied.stderr);
+  const settings = JSON.parse(fs.readFileSync(path.join(first, '.claude/settings.local.json'), 'utf8'));
+  assert.equal(settings.permissions, undefined);
+  const input = JSON.stringify({ session_id: 'native-callback', cwd: path.join(second, 'nested'),
+    context_window: { context_window_size: 1000, current_usage: { input_tokens: 10, cache_creation_input_tokens: 20, cache_read_input_tokens: 70 } } });
+  // Exercise the exact configured shell command, including quote/$ characters in the
+  // relocated installation. This simulates a host callback, not an actual model session.
+  const callback = spawnSync('sh', ['-c', settings.statusLine.command], { cwd: first, input, encoding: 'utf8' });
+  assert.equal(callback.status, 0, callback.stderr);
+  assert.match(callback.stdout, /Context 100\/1000 tokens \(10%\)/);
+  const inspect = project => statusline(destination, { entry: 'bin/craft', args: ['session'] }, ['--root', project, '--session', 'native-callback', '--json']);
+  const observed = inspect(second);
+  assert.equal(observed.status, 0, observed.stderr);
+  assert.equal(JSON.parse(observed.stdout).usage.currentTokens, 100);
+  const other = inspect(first);
+  assert.equal(other.status, 0, other.stderr);
+  assert.equal(JSON.parse(other.stdout).usage.status, 'unknown');
+});
