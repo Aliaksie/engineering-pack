@@ -23,8 +23,10 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   one file. `--verify` rehashes the selected sources and marks each row verified or stale.
 - **Refresh** reuses unchanged extractions and retires deleted sources. Optional
   `--max-files`, `--max-bytes`, `--max-output-bytes` and `--max-duration-ms` limit one run;
-  deferred sources stay pending (and hidden) until a later refresh. Check `pendingSources`
-  and `failedSources`: `inventoryComplete` describes discovery only.
+  deferred sources stay pending (and hidden) until a later refresh. Writes commit in batches,
+  so an interrupted refresh keeps every committed batch and the next refresh continues from
+  there. Check `pendingSources` and `failedSources`: `inventoryComplete` describes discovery
+  only.
 - **Workspaces**: repeat `--member id=/absolute/root` to index several repositories. Each
   keeps its own database and generation. Literal relative imports between selected members
   get a resolution record with the target's current hash; that is a declared path, not a

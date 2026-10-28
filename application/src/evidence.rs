@@ -84,6 +84,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             let retired = store.retain_providers(ACTIVE)?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
+            store.begin_batch()?;
             let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
                 (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
             while let Some(path) = inventory.next_path()? {
@@ -134,6 +135,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
                     }
                 }
             }
+            store.commit_batch()?;
             let removed = store.finish_inventory(epoch)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,

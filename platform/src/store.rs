@@ -3,10 +3,25 @@ use crate::Error;
 use craft_engine::{Extraction, SCHEMA_VERSION, valid_path};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
-use std::{path::Path, time::Duration};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
+
+/// Refresh writes share one transaction per batch so a large refresh syncs per batch, not
+/// per source, and a 64 MiB page cache keeps random-ID index inserts from rereading pages.
+/// Closing the store with a batch open rolls back only that batch.
+const BATCH_SOURCES: usize = 512;
+const BATCH_TIME: Duration = Duration::from_secs(1);
 
 pub struct Store {
     connection: Connection,
+    batch: Option<Batch>,
+}
+
+struct Batch {
+    started: Instant,
+    sources: usize,
 }
 
 impl Store {
@@ -54,7 +69,10 @@ impl Store {
                 PRAGMA user_version=1;
                 COMMIT;")?;
         }
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            batch: None,
+        })
     }
 
     pub fn replace(
@@ -64,7 +82,7 @@ impl Store {
         epoch: i64,
     ) -> Result<(), Error> {
         extraction.validate()?;
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         tx.execute("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,?3,'ok',?4,?5)
             ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='ok',diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch",
             params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch])?;
@@ -72,25 +90,25 @@ impl Store {
             "DELETE FROM evidence WHERE path=?1 AND provider=?2",
             params![extraction.path, extraction.provider],
         )?;
+        let mut insert = tx.prepare_cached("INSERT INTO evidence VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
         for item in &extraction.evidence {
-            tx.execute(
-                "INSERT INTO evidence VALUES (?1,?2,?3,?4,?5,?6,?7)",
-                params![
-                    item.id,
-                    extraction.path,
-                    extraction.provider,
-                    item.kind,
-                    item.name,
-                    item.target,
-                    serde_json::to_string(item)?
-                ],
-            )?;
+            insert.execute(params![
+                item.id,
+                extraction.path,
+                extraction.provider,
+                item.kind,
+                item.name,
+                item.target,
+                serde_json::to_string(item)?
+            ])?;
         }
+        drop(insert);
         tx.execute(
             "UPDATE metadata SET value=value+1 WHERE key='generation'",
             [],
         )?;
-        tx.commit().map_err(Error::from)
+        tx.commit()?;
+        self.written()
     }
 
     pub fn fail(
@@ -105,7 +123,7 @@ impl Store {
         if !valid_path(path) {
             return Err("invalid source path".into());
         }
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         // Failed content is cached so repeated bounded refreshes can advance.
         // Retire old facts rather than bind them to the failed content hash.
         tx.execute("INSERT INTO sources VALUES (?1,?2,?3,'failed',?4,?5,?6)
@@ -119,7 +137,8 @@ impl Store {
             "UPDATE metadata SET value=value+1 WHERE key='generation'",
             [],
         )?;
-        tx.commit().map_err(Error::from)
+        tx.commit()?;
+        self.written()
     }
 
     pub fn defer(&mut self, path: &str, provider: &str, epoch: i64) -> Result<(), Error> {
@@ -129,7 +148,7 @@ impl Store {
         self.connection.execute("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,'','pending','',?3)
             ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch",
             params![path,provider,epoch])?;
-        Ok(())
+        self.written()
     }
 
     /// Retire contributions before acquisition, including after provider upgrades.
@@ -180,10 +199,46 @@ impl Store {
         Ok(epoch)
     }
 
-    pub fn reuse(&self, path: &str, provider: &str, hash: &str, epoch: i64) -> Result<bool, Error> {
-        let count = self.connection.execute("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed')",
-            params![path,provider,hash,epoch])?;
+    pub fn reuse(
+        &mut self,
+        path: &str,
+        provider: &str,
+        hash: &str,
+        epoch: i64,
+    ) -> Result<bool, Error> {
+        let count = self.connection.prepare_cached("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed')")?
+            .execute(params![path,provider,hash,epoch])?;
+        self.written()?;
         Ok(count != 0)
+    }
+
+    pub fn begin_batch(&mut self) -> Result<(), Error> {
+        self.connection
+            .execute_batch("PRAGMA cache_size=-65536; BEGIN IMMEDIATE")?;
+        self.batch = Some(Batch {
+            started: Instant::now(),
+            sources: 0,
+        });
+        Ok(())
+    }
+
+    pub fn commit_batch(&mut self) -> Result<(), Error> {
+        if self.batch.take().is_some() {
+            self.connection.execute_batch("COMMIT")?;
+        }
+        Ok(())
+    }
+
+    fn written(&mut self) -> Result<(), Error> {
+        let Some(batch) = &mut self.batch else {
+            return Ok(());
+        };
+        batch.sources += 1;
+        if batch.sources >= BATCH_SOURCES || batch.started.elapsed() >= BATCH_TIME {
+            self.commit_batch()?;
+            self.begin_batch()?;
+        }
+        Ok(())
     }
 
     pub fn finish_inventory(&mut self, epoch: i64) -> Result<usize, Error> {
@@ -426,6 +481,35 @@ mod tests {
         assert_eq!(store.finish_inventory(next).unwrap(), 1);
         assert_eq!(store.status().unwrap()["sources"], 0);
     }
+    #[test]
+    fn interrupted_batch_keeps_committed_batches_only() {
+        let database =
+            std::env::temp_dir().join(format!("craft-store-batch-{}.sqlite", std::process::id()));
+        let _ = std::fs::remove_file(&database);
+        let mut store = Store::open(&database).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        store.begin_batch().unwrap();
+        for index in 0..=BATCH_SOURCES {
+            let source = format!("const v{index} = 1;");
+            store
+                .replace(
+                    &extract(&format!("s{index}.js"), source.as_bytes()).unwrap(),
+                    "1",
+                    epoch,
+                )
+                .unwrap();
+        }
+        drop(store);
+        let store = Store::open(&database).unwrap();
+        let committed = store.status().unwrap()["sources"].as_u64().unwrap() as usize;
+        drop(store);
+        std::fs::remove_file(&database).unwrap();
+        assert!(
+            committed > 0 && committed <= BATCH_SOURCES,
+            "only full batches survive: {committed}"
+        );
+    }
+
     #[test]
     fn unknown_schema_refuses_writes() {
         let connection = Connection::open_in_memory().unwrap();
