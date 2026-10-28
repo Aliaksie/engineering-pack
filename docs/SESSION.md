@@ -305,6 +305,24 @@ safe boundary a stable task with reliable compaction gets "checkpoint, then comp
 saturated session with stale assumptions gets "checkpoint, then new session". Unknown
 occupancy produces no pressure advice. Session age alone never triggers a reset.
 
+"Reliable compaction" means the host has a manual compact command and the continuation is
+checkpointed; it is not a control Craft can trigger.
+
+Context limits are listed per exact host model name: the bundled host table, overridden
+field by field by `execution.hosts.<host>.contextLimits` in the project. A listed
+`windowTokens` is used only when the host reports no window; the usage then says
+`capacitySource: "model-context-limit"`. At high pressure, listed models with a larger
+window appear as `largerWindowModels`. No working budget is assumed. A project that sets
+`budgetTokens` for a model gets a separate cost reminder: past the budget, every turn
+resends the whole context, so at a safe boundary the advice is to resume from the fresh
+checkpoint in a new session (or save one first). Window pressure keeps its own advice.
+
+```json
+{ "execution": { "hosts": { "claude": { "contextLimits": {
+  "claude-opus-5-5": { "budgetTokens": 200000 }
+} } } } }
+```
+
 Before any context recommendation, the saved continuation must match the task and the current
 repository fingerprints. A continuation has ten required fields (`goal`, `currentState`,
 `completed`, `approach`, `evidence`, `filesChanged`, `validation`, `remainingWork`,

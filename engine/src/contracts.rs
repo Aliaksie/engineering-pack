@@ -432,9 +432,12 @@ fn validate_execution(execution: &Map<String, Value>) -> Result {
             for host in hosts.values() {
                 let host = object(
                     host,
-                    &["delegation", "models", "mainModelSwitch"],
+                    &["delegation", "models", "mainModelSwitch", "contextLimits"],
                     "execution host",
                 )?;
+                if let Some(limits) = host.get("contextLimits") {
+                    validate_context_limits(limits)?;
+                }
                 boolean(host.get("delegation"), "delegation must be boolean")?;
                 boolean(
                     host.get("mainModelSwitch"),
@@ -560,6 +563,23 @@ fn default_execution() -> Value {
         },
         "roles": roles
     } })
+}
+
+/// Context limits by exact host model name: a window and an optional working budget, both
+/// positive token counts. Used for project declarations and the bundled host table.
+pub fn validate_context_limits(limits: &Value) -> Result {
+    let limits = limits
+        .as_object()
+        .filter(|limits| limits.len() <= 16)
+        .ok_or("context limits must map at most 16 host model names")?;
+    for (model, limit) in limits {
+        let limit = object(limit, &["windowTokens", "budgetTokens"], "context limit")?;
+        let positive = |v: &Value| safe_integer(v).is_some_and(|n| n > 0);
+        if model.is_empty() || limit.is_empty() || !limit.values().all(positive) {
+            return Err(format!("invalid context limit for model {model:?}"));
+        }
+    }
+    Ok(())
 }
 
 fn validate_settings(value: &Value, template: &Value, label: &str) -> Result {

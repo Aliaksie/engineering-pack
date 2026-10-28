@@ -288,3 +288,172 @@ fn healthy_reuse_alone_does_not_imply_post_compaction_degradation() {
     );
     assert_eq!(advice(input)["recommendation"]["action"], "compact");
 }
+
+fn budgeted(current: i64, task: Value) -> Value {
+    let mut input = observed(json!(current));
+    input["usage"]["capacityTokens"] = json!(1000);
+    input["host"]["budgetTokens"] = json!(200);
+    input["task"] = task;
+    input
+}
+
+#[test]
+fn a_declared_budget_advises_resuming_from_the_checkpoint() {
+    let ready = json!({"safeBoundary": true, "handoffSaved": true, "checkpointFresh": true});
+    let result = advice(budgeted(250, ready.clone()));
+    assert_eq!(result["pressure"], "healthy");
+    assert_eq!(action(&result), "start-new-session");
+    assert!(
+        result["suggestion"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("working budget")
+    );
+    assert_eq!(
+        result["budget"],
+        json!({"budgetTokens": 200, "exceeded": true})
+    );
+    assert_eq!(result["host"]["budgetTokens"], 200);
+
+    let unsaved = advice(budgeted(250, json!({"safeBoundary": true})));
+    assert_eq!(action(&unsaved), "save-handoff");
+    assert_eq!(
+        unsaved["suggestion"]["afterCheckpoint"],
+        "start-new-session"
+    );
+    let busy = advice(budgeted(250, json!({"safeBoundary": false})));
+    assert_eq!(action(&busy), "continue-bounded-step");
+    assert_eq!(busy["suggestion"]["atBoundary"], "resume-from-checkpoint");
+
+    let under = advice(budgeted(150, ready.clone()));
+    assert_eq!(under["suggestion"], Value::Null);
+    assert_eq!(under["budget"]["exceeded"], false);
+    // Window pressure keeps its own advice; the budget never hides it.
+    assert_eq!(action(&advice(budgeted(800, ready))), "compact");
+}
+
+#[test]
+fn no_budget_is_assumed_and_unknown_usage_cannot_pass_one() {
+    let result = advice(observed(json!(50)));
+    assert_eq!(result.get("budget"), None);
+    let mut stale = budgeted(250, json!({"safeBoundary": true}));
+    stale["usage"]["observedAt"] = json!("2026-10-17T12:00:00Z");
+    let result = advice(stale);
+    assert_eq!(result["budget"]["exceeded"], Value::Null);
+    assert_eq!(result["suggestion"], Value::Null);
+}
+
+#[test]
+fn a_model_window_fills_in_only_when_the_host_reports_none() {
+    let mut input = observed(json!(400));
+    input["usage"]
+        .as_object_mut()
+        .unwrap()
+        .remove("capacityTokens");
+    assert_eq!(advice(input.clone())["usage"]["status"], "unknown");
+    input["host"]["windowTokens"] = json!(1000);
+    let result = advice(input.clone());
+    assert_eq!(result["usage"]["capacityTokens"], 1000);
+    assert_eq!(result["usage"]["capacitySource"], "model-context-limit");
+    // A host-reported window wins over the declared one.
+    input["usage"]["capacityTokens"] = json!(500);
+    let result = advice(input);
+    assert_eq!(result["usage"]["capacityTokens"], 500);
+    assert_eq!(result["usage"].get("capacitySource"), None);
+}
+
+#[test]
+fn high_pressure_names_listed_models_with_a_larger_window() {
+    let mut input = observed(json!(85));
+    input["host"]["otherModels"] = json!([
+        {"model": "small", "windowTokens": 50},
+        {"model": "large", "windowTokens": 1000}
+    ]);
+    let result = advice(input.clone());
+    assert_eq!(action(&result), "compact");
+    assert_eq!(
+        result["suggestion"]["largerWindowModels"],
+        json!([{"model": "large", "windowTokens": 1000}])
+    );
+    input["usage"]["currentTokens"] = json!(20);
+    assert_eq!(advice(input)["suggestion"], Value::Null);
+}
+
+#[test]
+fn invalid_context_limit_facts_are_refused() {
+    for host in [
+        json!({"budgetTokens": 0}),
+        json!({"windowTokens": -5}),
+        json!({"windowTokens": "1m"}),
+        json!({"otherModels": [{"model": "", "windowTokens": 10}]}),
+        json!({"otherModels": [{"model": "m", "windowTokens": 10, "extra": 1}]}),
+        json!({"otherModels": {}}),
+    ] {
+        let mut input = observed(json!(10));
+        input["host"] = host.clone();
+        assert!(!refused(input).is_empty(), "{host}");
+    }
+}
+
+#[test]
+fn project_limits_override_the_bundled_table_and_declared_facts_win() {
+    use craft_engine::session::status::{Observations, Request, status};
+    let project = json!({"formatVersion": 1, "execution": {"hosts": {"claude": {"contextLimits": {
+        "m1": {"budgetTokens": 200}, "m3": {"windowTokens": 4000}}}}}});
+    let observations = Observations {
+        host_limits: Some(json!({"m1": {"windowTokens": 1000}, "m2": {"windowTokens": 2000}})),
+        ..Observations::default()
+    };
+    let run = |host: Value| {
+        let mut input = observed(json!(300));
+        input["usage"]
+            .as_object_mut()
+            .unwrap()
+            .remove("capacityTokens");
+        input["host"] = host;
+        status(Request {
+            input: &input,
+            settings: &settings(&project),
+            session: None,
+            task: None,
+            now: NOW,
+            observations: &observations,
+        })
+        .unwrap()
+    };
+    let result = run(json!({"name": "claude", "model": "m1"}));
+    assert_eq!(result["usage"]["capacityTokens"], 1000);
+    assert_eq!(result["budget"]["budgetTokens"], 200);
+    assert_eq!(result["budget"]["exceeded"], true);
+    let declared = run(json!({"name": "claude", "model": "m1", "budgetTokens": 500}));
+    assert_eq!(declared["budget"]["exceeded"], false);
+    let unlisted = run(json!({"name": "claude", "model": "other"}));
+    assert_eq!(unlisted["usage"]["status"], "unknown");
+    assert_eq!(unlisted.get("budget"), None);
+    // High pressure on a listed model names the larger listed windows; an unlisted one, none.
+    let high = |model: &str| {
+        let mut input = observed(json!(900));
+        // The listed model takes its window from the table; the unlisted one reports its own.
+        input["usage"]["capacityTokens"] = if model == "m1" {
+            Value::Null
+        } else {
+            json!(1000)
+        };
+        input["host"] = json!({"name": "claude", "model": model});
+        status(Request {
+            input: &input,
+            settings: &settings(&project),
+            session: None,
+            task: None,
+            now: NOW,
+            observations: &observations,
+        })
+        .unwrap()["suggestion"]["largerWindowModels"]
+            .clone()
+    };
+    assert_eq!(
+        high("m1"),
+        json!([{"model": "m2", "windowTokens": 2000}, {"model": "m3", "windowTokens": 4000}])
+    );
+    assert_eq!(high("other"), Value::Null);
+}

@@ -115,3 +115,23 @@ fn contract_corrections_over_the_frozen_javascript() {
         "invalid binding repository"
     );
 }
+
+#[test]
+fn project_context_limits_map_model_names_to_positive_token_counts() {
+    let project = |limits: Value| json!({"formatVersion": 1, "execution": {"hosts": {"claude": {"contextLimits": limits}}}});
+    let accepted = project(json!({"m": {"windowTokens": 1_000_000, "budgetTokens": 200_000}}));
+    assert!(validate_project(&accepted).is_ok());
+    for limits in [
+        json!({"m": {}}),
+        json!({"m": {"budgetTokens": 0}}),
+        json!({"m": {"windowTokens": 1.5}}),
+        json!({"m": {"maxTokens": 10}}),
+        json!({"": {"windowTokens": 10}}),
+        json!([]),
+    ] {
+        assert!(
+            validate_project(&project(limits.clone())).is_err(),
+            "{limits}"
+        );
+    }
+}

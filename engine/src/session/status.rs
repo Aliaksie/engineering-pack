@@ -159,11 +159,13 @@ fn notice_key(session: Option<&Value>, task: &Value, suggestion: &Value) -> Stri
     digest(&Value::Object(keyed))
 }
 
+/// `window` is the observed model's declared window, used only when the host reports none.
 fn usage(
     observed: Option<&Value>,
     session: Option<&Value>,
     now: i64,
     max_age: i64,
+    window: Option<i64>,
 ) -> Result<Value> {
     let unknown = |reason: &str| json!({"status": "unknown", "confidence": "unknown", "reason": reason, "currentTokens": null, "capacityTokens": null, "usedRatio": null});
     let Some(observed) = observed else {
@@ -183,16 +185,17 @@ fn usage(
     )?;
     let field = |name: &str| fields.get(name).unwrap_or(&Value::Null);
     let at = field("observedAt").as_str().and_then(timestamp::parse);
-    let (current, capacity) = (
-        safe_integer(field("currentTokens")),
-        safe_integer(field("capacityTokens")),
-    );
+    let declared = window
+        .filter(|_| field("capacityTokens").is_null())
+        .map(|w| json!(w));
+    let reported = declared.as_ref().unwrap_or(field("capacityTokens"));
+    let (current, capacity) = (safe_integer(field("currentTokens")), safe_integer(reported));
     Ok(if field("kind") != "current-context" {
         unknown(
             "Cumulative or unspecified token counts do not establish current context occupancy.",
         )
     } else if !count(field("currentTokens"))
-        || !count(field("capacityTokens"))
+        || !count(reported)
         || capacity == Some(0)
         || current > capacity
     {
@@ -203,10 +206,14 @@ fn usage(
         unknown("Observation does not identify this session.")
     } else {
         let (current, capacity) = (current.unwrap(), capacity.unwrap());
-        json!({
+        let mut usage = json!({
             "status": "observed", "confidence": "observed", "source": field("source"), "observedAt": field("observedAt"),
             "currentTokens": current, "capacityTokens": capacity, "usedRatio": ratio(current as f64 / capacity as f64),
-        })
+        });
+        if declared.is_some() {
+            usage["capacitySource"] = json!("model-context-limit");
+        }
+        usage
     })
 }
 
@@ -325,10 +332,16 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
         },
     )?["checks"]
         .clone();
-    let usage = usage(field("usage"), session, now, max_age)?;
     let host = fields(
         or(field("host"), &empty),
-        &["name", "model", "reliableCompaction"],
+        &[
+            "name",
+            "model",
+            "reliableCompaction",
+            "windowTokens",
+            "budgetTokens",
+            "otherModels",
+        ],
         "host",
     )?;
     for name in ["name", "model"] {
@@ -336,6 +349,33 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             return Err(format!("invalid host {name}"));
         }
     }
+    let tokens = |value: &Value| safe_integer(value).filter(|n| *n > 0);
+    for name in ["windowTokens", "budgetTokens"] {
+        if host.get(name).is_some_and(|v| tokens(v).is_none()) {
+            return Err(format!("invalid host {name}"));
+        }
+    }
+    let others = match host.get("otherModels") {
+        None => &[][..],
+        Some(others) => others
+            .as_array()
+            .filter(|others| {
+                others.len() <= 16
+                    && others.iter().all(|other| {
+                        fields(other, &["model", "windowTokens"], "other model").is_ok()
+                            && text(&other["model"])
+                            && tokens(&other["windowTokens"]).is_some()
+                    })
+            })
+            .ok_or("invalid host otherModels")?
+            .as_slice(),
+    };
+    let window = host.get("windowTokens").and_then(tokens);
+    let usage = usage(field("usage"), session, now, max_age, window)?;
+    // A working budget is the consumer's own cost line, below the window; none is assumed.
+    let budget = host.get("budgetTokens").and_then(tokens);
+    let over_budget = usage["status"] == "observed"
+        && budget.is_some_and(|b| usage["currentTokens"].as_i64().is_some_and(|c| c >= b));
     if host
         .get("reliableCompaction")
         .is_some_and(|v| !v.is_boolean())
@@ -437,7 +477,13 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             json!({}),
         ))
     } else if ["high", "saturated"].contains(&pressure) {
-        Some(if !boundary || flag("almostComplete") {
+        // Listed models whose window holds more than the current one.
+        let capacity = usage["capacityTokens"].as_i64().unwrap_or(i64::MAX);
+        let larger: Vec<&Value> = others
+            .iter()
+            .filter(|other| other["windowTokens"].as_i64().is_some_and(|w| w > capacity))
+            .collect();
+        let mut suggestion = if !boundary || flag("almostComplete") {
             let at_boundary = if pressure == "saturated" {
                 "checkpoint-then-reconsider-context"
             } else {
@@ -476,6 +522,28 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             }
         } else {
             reset()
+        };
+        if !larger.is_empty() {
+            suggestion["largerWindowModels"] = json!(larger);
+        }
+        Some(suggestion)
+    } else if over_budget {
+        Some(if !boundary || flag("almostComplete") {
+            suggest(
+                "continue-bounded-step",
+                "Finish the useful bounded step; context is past the working budget.",
+                "read",
+                &[],
+                json!({"atBoundary": "resume-from-checkpoint"}),
+            )
+        } else {
+            let mut restart = reset();
+            restart["reason"] = json!(if checkpoint_ready {
+                "Context is past the working budget and every turn resends it; resume from the fresh checkpoint in a new session."
+            } else {
+                "Context is past the working budget and every turn resends it; save a continuation checkpoint, then resume in a new session."
+            });
+            restart
         })
     } else if tally("noProgressAttempts") > 0 {
         Some(suggest(
@@ -618,7 +686,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
     )
     .clone();
     let suggestion = suggestion.unwrap_or(Value::Null);
-    Ok(json!({
+    let mut status = json!({
         "formatVersion": 1, "mode": "recommend", "usage": usage, "pressure": pressure, "operation": operation,
         "host": {
             "name": or(host.get("name"), &json!("unknown")), "model": or(host.get("model"), &json!("unknown")),
@@ -628,7 +696,17 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
         "suggestion": if suppressed { Value::Null } else { suggestion.clone() }, "suppressed": suppressed, "notice": notice,
         "authorization": "advice-only; no command, compaction, reset or checkpoint write was executed",
         "evidence": "Task completion and verification are caller declarations, not inferred or independently certified.",
-    }))
+    });
+    for name in ["windowTokens", "budgetTokens"] {
+        if let Some(value) = host.get(name) {
+            status["host"][name] = value.clone();
+        }
+    }
+    if let Some(budget) = budget {
+        let known = usage["status"] == "observed";
+        status["budget"] = json!({"budgetTokens": budget, "exceeded": if known { json!(over_budget) } else { Value::Null }});
+    }
+    Ok(status)
 }
 
 /// The observations a status request needs: a routed guidance plan for its stage, whether the
@@ -734,6 +812,45 @@ pub struct Observations {
     pub pack: Option<Value>,
     pub plan: Option<Value>,
     pub pack_error: Option<String>,
+    /// The bundled context limits of the observed host, by exact model name.
+    pub host_limits: Option<Value>,
+}
+
+/// The observed model's window and budget, the project's declaration over the bundled table
+/// field by field, and, for a listed model, the other listed models' windows. Declared host
+/// facts take precedence.
+fn context_limits(host: &mut Map<String, Value>, settings: &Value, bundled: Option<&Value>) {
+    let (Some(name), Some(model)) = (
+        host.get("name").and_then(Value::as_str),
+        host.get("model").and_then(Value::as_str),
+    ) else {
+        return;
+    };
+    let project = &settings["execution"]["hosts"][name]["contextLimits"];
+    let tables = [project, bundled.unwrap_or(&Value::Null)];
+    let limit = |id: &str, field: &str| tables.iter().find_map(|t| t[id].get(field).cloned());
+    let mut facts = Map::new();
+    for field in ["windowTokens", "budgetTokens"] {
+        if let Some(value) = limit(model, field) {
+            facts.insert(field.into(), value);
+        }
+    }
+    let ids: std::collections::BTreeSet<&String> = tables
+        .iter()
+        .flat_map(|t| t.as_object().into_iter().flatten().map(|(id, _)| id))
+        .filter(|id| *id != model)
+        .collect();
+    let others: Vec<Value> = ids
+        .into_iter()
+        .filter_map(|id| limit(id, "windowTokens").map(|w| json!({"model": id, "windowTokens": w})))
+        .collect();
+    // An unlisted model has no declared place among the others; nothing is compared.
+    if !facts.is_empty() && !others.is_empty() {
+        facts.insert("otherModels".into(), json!(others));
+    }
+    for (field, value) in facts {
+        host.entry(field).or_insert(value);
+    }
 }
 
 pub struct Request<'a> {
@@ -998,6 +1115,9 @@ pub fn status(request: Request) -> Result<Value> {
         normalized.insert("activity".into(), Value::Object(activity));
     }
     normalized.insert("task".into(), Value::Object(declared.clone()));
+    if let Some(Value::Object(host)) = normalized.get_mut("host") {
+        context_limits(host, settings, observations.host_limits.as_ref());
+    }
     let mut status = advice(&Value::Object(normalized.clone()), settings, now)?;
     if let Some(observed) = pack {
         status["packContext"]["scope"] = json!("routed selected files; not observed host loads");
