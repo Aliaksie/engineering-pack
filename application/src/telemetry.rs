@@ -35,41 +35,6 @@ pub fn valid_session(value: &str) -> bool {
     (1..=512).contains(&js_length(value))
 }
 
-/// Accepted remote endpoints: HTTPS, or HTTP to a loopback name, without credentials,
-/// query or fragment. Stricter than WHATWG parsing; the forwarder normalizes the URL.
-fn endpoint(text: &str) -> Option<String> {
-    let (scheme, rest) = text.split_once("://")?;
-    let scheme = scheme.to_ascii_lowercase();
-    let (authority, path) = rest.find('/').map_or((rest, ""), |at| rest.split_at(at));
-    let (host, port) = match authority.strip_prefix('[') {
-        Some(inner) => {
-            let (host, after) = inner.split_once(']')?;
-            (format!("[{host}]"), after.strip_prefix(':'))
-        }
-        None => match authority.rsplit_once(':') {
-            Some((host, port)) => (host.to_string(), Some(port)),
-            None => (authority.to_string(), None),
-        },
-    };
-    let host = host.to_ascii_lowercase();
-    let host_ok = host == "[::1]"
-        || (!host.is_empty()
-            && host
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-'));
-    let port_ok = port.is_none_or(|p| p.is_empty() || p.parse::<u16>().is_ok());
-    let path_ok = path
-        .bytes()
-        .all(|b| b.is_ascii_graphic() && !b"\\?#".contains(&b));
-    let local = ["localhost", "127.0.0.1", "[::1]"].contains(&host.as_str());
-    (host_ok
-        && port_ok
-        && path_ok
-        && !authority.contains('@')
-        && (scheme == "https" || scheme == "http" && local))
-        .then(|| text.to_string())
-}
-
 /// `telemetryOptions`: `{local, remote}` where remote is the accepted endpoint, if enabled.
 fn options(config: &Value) -> Result<(bool, Option<String>), ()> {
     let map = config.as_object().ok_or(())?;
@@ -87,7 +52,10 @@ fn options(config: &Value) -> Result<(bool, Option<String>), ()> {
             }
             match remote.get("enabled") {
                 Some(Value::Bool(true)) => Some(
-                    endpoint(remote.get("endpoint").and_then(Value::as_str).ok_or(())?).ok_or(())?,
+                    craft_platform::http::endpoint(
+                        remote.get("endpoint").and_then(Value::as_str).ok_or(())?,
+                    )
+                    .ok_or(())?,
                 ),
                 Some(Value::Bool(false)) => None,
                 _ => return Err(()),
@@ -566,29 +534,7 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn remote_endpoints_are_https_or_loopback_http_without_credentials() {
-        for text in [
-            "https://collector.example/v1/traces",
-            "HTTPS://Collector.Example:4318",
-            "http://localhost:4318/v1/traces",
-            "http://127.0.0.1",
-            "http://[::1]:4318/",
-        ] {
-            assert_eq!(endpoint(text).as_deref(), Some(text), "{text}");
-        }
-        for text in [
-            "http://collector.example",
-            "https://user@collector.example",
-            "https://collector.example/?a",
-            "https://collector.example/#x",
-            "ftp://collector.example",
-            "https://",
-            "https://collector.example:99999",
-            "https://exa mple",
-            "collector.example",
-        ] {
-            assert_eq!(endpoint(text), None, "{text}");
-        }
+    fn options_keep_the_endpoint_transport_will_post_to() {
         assert_eq!(options(&json!({})), Ok((true, None)));
         assert_eq!(
             options(&json!({"local": false, "remote": {"enabled": false}})),
@@ -596,7 +542,11 @@ mod tests {
         );
         assert_eq!(
             options(&json!({"remote": {"enabled": true, "endpoint": "https://c.example"}})),
-            Ok((true, Some("https://c.example".into())))
+            Ok((true, Some("https://c.example/".into())))
+        );
+        assert_eq!(
+            options(&json!({"remote": {"enabled": true, "endpoint": "HTTPS://C.Example:/x"}})),
+            Ok((true, Some("https://c.example/x".into())))
         );
         for config in [
             json!([]),
