@@ -12,14 +12,14 @@
     "java-tree-sitter-0.23.5/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "b410f019c983563d2fb3851f7403cffd277d9b71",
+  "sourceRevision": "a7924f6e20ce01f51d9e3b8cc4b0e33c9074927e",
   "sourceDirty": false,
-  "cargoLockSha256": "c51fab3456151eb86cf1bbe9292c5e3e26113d2207ff5366c89d1cfa5626b9e8",
+  "cargoLockSha256": "49b079a80b4917b722dddbf598e3f6ec39323d4349b9db501df702b1322bc25a",
   "files": [
     {
       "path": "dependencies.json",
-      "bytes": 18411,
-      "sha256": "607feb845c6484510e87f8fbf4b688ce821c38aac63050f8efced0dda04c695f"
+      "bytes": 18461,
+      "sha256": "a61e9c866e16bc5b7b68349e06cd8d9f8575587d372b74ea00c64e82de6092eb"
     },
     {
       "path": "LICENSE",
@@ -28,13 +28,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 10679368,
-      "sha256": "b88d6ded772e8f271281f47957078a6b61cd23637c1f16b58f5e1ee6f1ecd816"
+      "bytes": 10733928,
+      "sha256": "3bc8eba8b1855a79a7c8daac3f4a83b793189bd064ec6ff7daee0fe0015600ce"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 263,
-      "sha256": "5321bde16d29397d642f639ddb0593051f69914c41ecbab4f7dce8be2d38e401"
+      "sha256": "b4c11e35df4859dfff6da448b62c2137e02291891586c05915d5680829a2d4a2"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -57,14 +57,14 @@
       "sha256": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb"
     },
     {
-      "path": "notices/block-buffer-0.10.4/LICENSE-APACHE",
+      "path": "notices/block-buffer-0.12.1/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
     },
     {
-      "path": "notices/block-buffer-0.10.4/LICENSE-MIT",
+      "path": "notices/block-buffer-0.12.1/LICENSE-MIT",
       "bytes": 1082,
-      "sha256": "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef"
+      "sha256": "98181e7249d0c01737645ec982499ce99a0f07eb8f7d625b8840d799d10dbc01"
     },
     {
       "path": "notices/cc-1.9.0/LICENSE-APACHE",
@@ -87,34 +87,44 @@
       "sha256": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
     },
     {
-      "path": "notices/cpufeatures-0.2.17/LICENSE-APACHE",
+      "path": "notices/const-oid-0.10.2/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
     },
     {
-      "path": "notices/cpufeatures-0.2.17/LICENSE-MIT",
+      "path": "notices/const-oid-0.10.2/LICENSE-MIT",
       "bytes": 1082,
-      "sha256": "ae9baa7beea910273c2f384c2a6b721fb7bd02bda3436074a1072e4ee689f985"
+      "sha256": "73b9dc2e79c7308998dd30296e073aefaefb944a68fb89aa412c23c0edcabcaa"
     },
     {
-      "path": "notices/crypto-common-0.1.7/LICENSE-APACHE",
+      "path": "notices/cpufeatures-0.3.1/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
     },
     {
-      "path": "notices/crypto-common-0.1.7/LICENSE-MIT",
-      "bytes": 1065,
-      "sha256": "3521672491a3479422d5fe1aca6645dd2984090f85da6e5205abfb18fb7a6897"
+      "path": "notices/cpufeatures-0.3.1/LICENSE-MIT",
+      "bytes": 1082,
+      "sha256": "73b9dc2e79c7308998dd30296e073aefaefb944a68fb89aa412c23c0edcabcaa"
     },
     {
-      "path": "notices/digest-0.10.7/LICENSE-APACHE",
+      "path": "notices/crypto-common-0.2.2/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
     },
     {
-      "path": "notices/digest-0.10.7/LICENSE-MIT",
-      "bytes": 1057,
-      "sha256": "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba"
+      "path": "notices/crypto-common-0.2.2/LICENSE-MIT",
+      "bytes": 1070,
+      "sha256": "d2e7ec5355c96eeade56b09187ceb48a6a30299da3ce7531a66d3d11405ab963"
+    },
+    {
+      "path": "notices/digest-0.11.3/LICENSE-APACHE",
+      "bytes": 10849,
+      "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+    },
+    {
+      "path": "notices/digest-0.11.3/LICENSE-MIT",
+      "bytes": 1103,
+      "sha256": "af59cea35d7f5e2777a713b8d155d65efa2c339eb43f3c14e868c6ac8506edad"
     },
     {
       "path": "notices/equivalent-1.0.3/LICENSE-APACHE",
@@ -172,11 +182,6 @@
       "sha256": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744"
     },
     {
-      "path": "notices/generic-array-0.14.7/LICENSE",
-      "bytes": 1107,
-      "sha256": "c09aae9d3c77b531f56351a9947bc7446511d6b025b3255312d3e3442a9a7583"
-    },
-    {
       "path": "notices/getrandom-0.2.17/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf"
@@ -187,14 +192,14 @@
       "sha256": "42fa16951ce7f24b5a467a40e5b449a1d41e662f97ca779864f053f39e097737"
     },
     {
-      "path": "notices/getrandom-0.3.4/LICENSE-APACHE",
+      "path": "notices/getrandom-0.4.3/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf"
     },
     {
-      "path": "notices/getrandom-0.3.4/LICENSE-MIT",
+      "path": "notices/getrandom-0.4.3/LICENSE-MIT",
       "bytes": 1130,
-      "sha256": "29e9fe5074bd27e0e5d5d110394fbbcd841baee2651a3c4b4560a632702cede4"
+      "sha256": "523a42c25d245dde9c015f882cec7f4555aad883382a6cf19b4b7d9b2cd5419b"
     },
     {
       "path": "notices/hashbrown-0.17.1/LICENSE-APACHE",
@@ -215,6 +220,16 @@
       "path": "notices/hashlink-0.12.2/LICENSE-MIT",
       "bytes": 1133,
       "sha256": "e915669a595b11a200873df8286561881b0e04932f6412a585db6297ba0bc97c"
+    },
+    {
+      "path": "notices/hybrid-array-0.4.15/LICENSE-APACHE",
+      "bytes": 10849,
+      "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
+    },
+    {
+      "path": "notices/hybrid-array-0.4.15/LICENSE-MIT",
+      "bytes": 1082,
+      "sha256": "70c9d40f1f9545c3f133b8a67206e89da850f6468eed072281bb3701514114a9"
     },
     {
       "path": "notices/indexmap-2.14.2/LICENSE-APACHE",
@@ -247,14 +262,14 @@
       "sha256": "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e"
     },
     {
-      "path": "notices/libsqlite3-sys-0.38.2/LICENSE",
+      "path": "notices/libsqlite3-sys-0.39.1/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/libsqlite3-sys-0.38.2/SQLite-NOTICE",
+      "path": "notices/libsqlite3-sys-0.39.1/SQLite-NOTICE",
       "bytes": 1807,
-      "sha256": "c1705102b0531caa8c324482c50a9b98602cdb78d9c252c99d698218ce784781"
+      "sha256": "da28f825239a49750ea24eb6e28095a2e3e6426740d214e0c9e6067fd28882d5"
     },
     {
       "path": "notices/linux-raw-sys-0.12.1/LICENSE-APACHE",
@@ -387,7 +402,7 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.40.2/LICENSE",
+      "path": "notices/rusqlite-0.41.0/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
@@ -507,14 +522,14 @@
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     },
     {
-      "path": "notices/sha2-0.10.9/LICENSE-APACHE",
+      "path": "notices/sha2-0.11.1/LICENSE-APACHE",
       "bytes": 10849,
       "sha256": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5"
     },
     {
-      "path": "notices/sha2-0.10.9/LICENSE-MIT",
-      "bytes": 1138,
-      "sha256": "b4eb00df6e2a4d22518fcaa6a2b4646f249b3a3c9814509b22bd2091f1392ff1"
+      "path": "notices/sha2-0.11.1/LICENSE-MIT",
+      "bytes": 1196,
+      "sha256": "831e0f43ad0bf014c1c4fec5767aae470434c1d66d6e671be2d823e729063e25"
     },
     {
       "path": "notices/shlex-2.0.1/LICENSE-APACHE",
@@ -625,16 +640,6 @@
       "path": "notices/vcpkg-0.2.15/LICENSE-MIT",
       "bytes": 1082,
       "sha256": "016d20f335060a70e79d9fcf8dfaa6201114d65d592211f4bdfb8ae9ca2bc1dc"
-    },
-    {
-      "path": "notices/version_check-0.9.5/LICENSE-APACHE",
-      "bytes": 10847,
-      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-    },
-    {
-      "path": "notices/version_check-0.9.5/LICENSE-MIT",
-      "bytes": 1085,
-      "sha256": "b7e650f3fce5c53249d1cdc608b54df156a97edd636cf9d23498d0cfe7aec63e"
     },
     {
       "path": "notices/zeroize-1.9.1/LICENSE-APACHE",

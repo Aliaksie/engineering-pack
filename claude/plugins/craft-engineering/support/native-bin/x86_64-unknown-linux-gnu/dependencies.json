@@ -23,12 +23,12 @@
     },
     {
       "name": "block-buffer",
-      "version": "0.10.4",
+      "version": "0.12.1",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/RustCrypto/utils",
       "notices": [
-        "notices/block-buffer-0.10.4/LICENSE-APACHE",
-        "notices/block-buffer-0.10.4/LICENSE-MIT"
+        "notices/block-buffer-0.12.1/LICENSE-APACHE",
+        "notices/block-buffer-0.12.1/LICENSE-MIT"
       ]
     },
     {
@@ -52,33 +52,43 @@
       ]
     },
     {
+      "name": "const-oid",
+      "version": "0.10.2",
+      "license": "Apache-2.0 OR MIT",
+      "repository": "https://github.com/RustCrypto/formats",
+      "notices": [
+        "notices/const-oid-0.10.2/LICENSE-APACHE",
+        "notices/const-oid-0.10.2/LICENSE-MIT"
+      ]
+    },
+    {
       "name": "cpufeatures",
-      "version": "0.2.17",
+      "version": "0.3.1",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/RustCrypto/utils",
       "notices": [
-        "notices/cpufeatures-0.2.17/LICENSE-APACHE",
-        "notices/cpufeatures-0.2.17/LICENSE-MIT"
+        "notices/cpufeatures-0.3.1/LICENSE-APACHE",
+        "notices/cpufeatures-0.3.1/LICENSE-MIT"
       ]
     },
     {
       "name": "crypto-common",
-      "version": "0.1.7",
+      "version": "0.2.2",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/RustCrypto/traits",
       "notices": [
-        "notices/crypto-common-0.1.7/LICENSE-APACHE",
-        "notices/crypto-common-0.1.7/LICENSE-MIT"
+        "notices/crypto-common-0.2.2/LICENSE-APACHE",
+        "notices/crypto-common-0.2.2/LICENSE-MIT"
       ]
     },
     {
       "name": "digest",
-      "version": "0.10.7",
+      "version": "0.11.3",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/RustCrypto/traits",
       "notices": [
-        "notices/digest-0.10.7/LICENSE-APACHE",
-        "notices/digest-0.10.7/LICENSE-MIT"
+        "notices/digest-0.11.3/LICENSE-APACHE",
+        "notices/digest-0.11.3/LICENSE-MIT"
       ]
     },
     {
@@ -141,15 +151,6 @@
       ]
     },
     {
-      "name": "generic-array",
-      "version": "0.14.7",
-      "license": "MIT",
-      "repository": "https://github.com/fizyk20/generic-array.git",
-      "notices": [
-        "notices/generic-array-0.14.7/LICENSE"
-      ]
-    },
-    {
       "name": "getrandom",
       "version": "0.2.17",
       "license": "MIT OR Apache-2.0",
@@ -161,12 +162,12 @@
     },
     {
       "name": "getrandom",
-      "version": "0.3.4",
+      "version": "0.4.3",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/rust-random/getrandom",
       "notices": [
-        "notices/getrandom-0.3.4/LICENSE-APACHE",
-        "notices/getrandom-0.3.4/LICENSE-MIT"
+        "notices/getrandom-0.4.3/LICENSE-APACHE",
+        "notices/getrandom-0.4.3/LICENSE-MIT"
       ]
     },
     {
@@ -187,6 +188,16 @@
       "notices": [
         "notices/hashlink-0.12.2/LICENSE-APACHE",
         "notices/hashlink-0.12.2/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "hybrid-array",
+      "version": "0.4.15",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/RustCrypto/hybrid-array",
+      "notices": [
+        "notices/hybrid-array-0.4.15/LICENSE-APACHE",
+        "notices/hybrid-array-0.4.15/LICENSE-MIT"
       ]
     },
     {
@@ -221,12 +232,12 @@
     },
     {
       "name": "libsqlite3-sys",
-      "version": "0.38.2",
+      "version": "0.39.1",
       "license": "MIT",
       "repository": "https://github.com/rusqlite/rusqlite",
       "notices": [
-        "notices/libsqlite3-sys-0.38.2/LICENSE",
-        "notices/libsqlite3-sys-0.38.2/SQLite-NOTICE"
+        "notices/libsqlite3-sys-0.39.1/LICENSE",
+        "notices/libsqlite3-sys-0.39.1/SQLite-NOTICE"
       ]
     },
     {
@@ -353,11 +364,11 @@
     },
     {
       "name": "rusqlite",
-      "version": "0.40.2",
+      "version": "0.41.0",
       "license": "MIT",
       "repository": "https://github.com/rusqlite/rusqlite",
       "notices": [
-        "notices/rusqlite-0.40.2/LICENSE"
+        "notices/rusqlite-0.41.0/LICENSE"
       ]
     },
     {
@@ -465,12 +476,12 @@
     },
     {
       "name": "sha2",
-      "version": "0.10.9",
+      "version": "0.11.1",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/RustCrypto/hashes",
       "notices": [
-        "notices/sha2-0.10.9/LICENSE-APACHE",
-        "notices/sha2-0.10.9/LICENSE-MIT"
+        "notices/sha2-0.11.1/LICENSE-APACHE",
+        "notices/sha2-0.11.1/LICENSE-MIT"
       ]
     },
     {
@@ -597,16 +608,6 @@
       "notices": [
         "notices/vcpkg-0.2.15/LICENSE-APACHE",
         "notices/vcpkg-0.2.15/LICENSE-MIT"
-      ]
-    },
-    {
-      "name": "version_check",
-      "version": "0.9.5",
-      "license": "MIT/Apache-2.0",
-      "repository": "https://github.com/SergioBenitez/version_check",
-      "notices": [
-        "notices/version_check-0.9.5/LICENSE-APACHE",
-        "notices/version_check-0.9.5/LICENSE-MIT"
       ]
     },
     {
