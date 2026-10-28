@@ -1041,6 +1041,22 @@
           }
         }
       }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project Intelligence inventory scope.",
+      "properties": {
+        "exclude": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Project-relative path prefixes left out of the evidence inventory, such as generated samples or vendored bundles. Whole path components; a trailing / is accepted.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   },
   "additionalProperties": false,

@@ -316,6 +316,33 @@ test('mixed providers share extraction budgets and retire deleted sources togeth
   assert.equal(run('query', { value: 'two' }).results.length, 0);
 });
 
+test('consumer exclusions leave sources out, retire stored ones and report scope', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  const config = exclude => {
+    fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, evidence: { exclude } }));
+  };
+  fs.mkdirSync(path.join(root, 'samples/gen'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'samples/gen/a.js'), 'export const ping = 1;');
+  fs.writeFileSync(path.join(root, 'samplesKept.js'), 'export const ping = 2;');
+  fs.writeFileSync(path.join(root, 'main.js'), 'export const ping = 3;');
+  assert.deepEqual(run('refresh').coverage.exclusions, []);
+  assert.equal(run('query', { value: 'ping' }).results.length, 3);
+  config(['samples/']);
+  const scoped = run('refresh');
+  assert.equal(scoped.excluded, 1);
+  assert.equal(scoped.removed, 1);
+  assert.deepEqual([scoped.coverage.exclusions, scoped.coverage.excludedSources, scoped.coverage.sources], [['samples'], 1, 2]);
+  assert.deepEqual(run('query', { value: 'ping' }).results.map(row => row.path).sort(), ['main.js', 'samplesKept.js']);
+  assert.deepEqual(run('query', { value: 'ping' }).coverage.exclusions, ['samples']);
+  config([]);
+  assert.equal(run('refresh').changed, 1);
+  assert.equal(run('status').excludedSources, 0);
+  config(['../outside']);
+  assert.throws(() => run('refresh'), /project-relative path/);
+  assert.equal(run('status').sources, 3);
+});
+
 test('source-scoped queries filter before pagination and preserve exact member-relative paths', { skip: !binary }, t => {
   const { root, run } = fixture(t);
   fs.writeFileSync(path.join(root, 'noise.java'), `class Noise { void run() { ${'ping();'.repeat(210)} } void ping() {} }`);

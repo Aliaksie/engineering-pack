@@ -27,6 +27,11 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   so an interrupted refresh keeps every committed batch and the next refresh continues from
   there. Check `pendingSources` and `failedSources`: `inventoryComplete` describes discovery
   only.
+- **Scope**: list generated or vendored paths in `.craft/project.json` as
+  `"evidence": {"exclude": ["samples/", "vendor/bundles"]}` (project-relative prefixes,
+  matched by whole path components). Refresh skips them and retires facts already stored
+  under them; coverage reports the applied `exclusions` and `excludedSources`, so an empty
+  answer from an excluded path is not mistaken for absence.
 - **Workspaces**: repeat `--member id=/absolute/root` to index several repositories. Each
   keeps its own database and generation. Literal relative imports between selected members
   get a resolution record with the target's current hash; that is a declared path, not a
@@ -43,7 +48,7 @@ OS lock; `backup` writes `project.sqlite.backup` beside it. On POSIX all three a
 owner-readable only. Evidence is derived, so a store written by another schema version is
 discarded and the next `refresh` rebuilds it. Corrupt stores refuse writes; preserve them for
 diagnosis rather than rebuilding blindly. Per source: 2 MiB, 20,000 records and a two-second
-extraction deadline. Generated state, build output and dependency directories are excluded.
+extraction deadline. Generated state, build output and dependency directories are always excluded.
 Occurrence IDs are stable across relocation and repeated extraction.
 
 ## Building

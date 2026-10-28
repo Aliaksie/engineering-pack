@@ -160,6 +160,7 @@ pub fn validate_project(project: &Value) -> Result {
         "routing",
         "efficiency",
         "workspace",
+        "evidence",
     ];
     let map = object(project, &fields, "project")?;
     if let Some(workspace) = map.get("workspace") {
@@ -303,7 +304,42 @@ pub fn validate_project(project: &Value) -> Result {
     if let Some(efficiency) = map.get("efficiency") {
         validate_settings(efficiency, &default_settings()["efficiency"], "efficiency")?;
     }
+    evidence_exclusions(project)?;
     Ok(())
+}
+
+/// Project-relative path prefixes Project Intelligence leaves out of its inventory, such as
+/// generated samples or vendored bundles. A trailing `/` is accepted; at most 64, sorted.
+pub fn evidence_exclusions(project: &Value) -> Result<Vec<String>> {
+    let Some(evidence) = project.get("evidence") else {
+        return Ok(Vec::new());
+    };
+    let evidence = object(evidence, &["exclude"], "evidence")?;
+    let list = match evidence.get("exclude") {
+        None => return Ok(Vec::new()),
+        Some(Value::Array(list)) if list.len() <= 64 => list,
+        Some(_) => return Err("evidence.exclude must be an array of at most 64 paths".into()),
+    };
+    let mut prefixes = list
+        .iter()
+        .map(|item| {
+            let text = item
+                .as_str()
+                .ok_or("evidence.exclude entries must be text")?;
+            relative_file(&json!(text.strip_suffix('/').unwrap_or(text)))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    prefixes.sort();
+    prefixes.dedup();
+    Ok(prefixes)
+}
+
+/// Whether `path` is one of `prefixes` or lies beneath one, by whole path components.
+pub fn excluded(path: &str, prefixes: &[String]) -> bool {
+    prefixes.iter().any(|prefix| {
+        path.strip_prefix(prefix.as_str())
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+    })
 }
 
 fn validate_binding(service: &str, binding: &Value) -> Result {

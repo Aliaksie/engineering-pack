@@ -72,9 +72,11 @@ impl Store {
             if count != 0 {
                 return Err("unversioned nonempty evidence database".into());
             }
-            connection.execute_batch("BEGIN IMMEDIATE;
-                CREATE TABLE metadata (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
-                INSERT INTO metadata VALUES ('generation',0),('inventory_complete',0),('inventory_epoch',0);
+            connection.execute_batch(&format!("BEGIN IMMEDIATE;
+                -- `exclusions` is the JSON prefix list the last complete inventory applied.
+                CREATE TABLE metadata (key TEXT PRIMARY KEY, value NOT NULL);
+                INSERT INTO metadata VALUES ('generation',0),('inventory_complete',0),('inventory_epoch',0),
+                    ('exclusions','[]'),('excluded_sources',0);
                 CREATE TABLE sources (sid INTEGER PRIMARY KEY, path TEXT NOT NULL, provider TEXT NOT NULL,
                     hash TEXT NOT NULL, outcome TEXT NOT NULL, diagnostic TEXT, observed_at TEXT NOT NULL,
                     epoch INTEGER NOT NULL DEFAULT 0, records INTEGER NOT NULL DEFAULT 0, UNIQUE(path,provider));
@@ -87,8 +89,8 @@ impl Store {
                 CREATE INDEX evidence_name ON evidence(name);
                 CREATE INDEX evidence_source ON evidence(sid);
                 CREATE INDEX evidence_target ON evidence(target);
-                PRAGMA user_version=2;
-                COMMIT;")?;
+                PRAGMA user_version={SCHEMA_VERSION};
+                COMMIT;"))?;
         }
         Ok(Self {
             connection,
@@ -263,9 +265,24 @@ impl Store {
         Ok(())
     }
 
-    pub fn finish_inventory(&mut self, epoch: i64) -> Result<usize, Error> {
+    /// Retire sources this inventory did not see, including newly excluded ones, and record
+    /// the exclusions it applied with the number of eligible sources they left out.
+    pub fn finish_inventory(
+        &mut self,
+        epoch: i64,
+        exclusions: &[String],
+        excluded: u64,
+    ) -> Result<usize, Error> {
         let tx = self.connection.transaction()?;
         let removed = tx.execute("DELETE FROM sources WHERE epoch<>?1", params![epoch])?;
+        tx.execute(
+            "UPDATE metadata SET value=?1 WHERE key='exclusions'",
+            [serde_json::to_string(exclusions).expect("strings serialize")],
+        )?;
+        tx.execute(
+            "UPDATE metadata SET value=?1 WHERE key='excluded_sources'",
+            [excluded as i64],
+        )?;
         tx.execute(
             "UPDATE metadata SET value=1 WHERE key='inventory_complete'",
             [],
@@ -324,7 +341,16 @@ impl Store {
             [],
             |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, i64>(3)?)),
         )?;
+        let exclusions: String = self.connection.query_row(
+            "SELECT value FROM metadata WHERE key='exclusions'",
+            [],
+            |r| r.get(0),
+        )?;
+        let exclusions: Value = serde_json::from_str(&exclusions)
+            .map_err(|_| Error::from("invalid stored evidence exclusions"))?;
         Ok(json!({"schemaVersion":SCHEMA_VERSION,
+            "exclusions":exclusions,
+            "excludedSources":scalar("SELECT value FROM metadata WHERE key='excluded_sources'")?,
             "generation":scalar("SELECT value FROM metadata WHERE key='generation'")?,
             "inventoryComplete":scalar("SELECT value FROM metadata WHERE key='inventory_complete'")? == 1,
             "sources":sources, "failedSources":failed, "pendingSources":pending, "evidence":evidence,
@@ -443,7 +469,7 @@ mod tests {
                 epoch,
             )
             .unwrap();
-        store.finish_inventory(epoch).unwrap();
+        store.finish_inventory(epoch, &[], 0).unwrap();
         assert_eq!(store.retain_providers(&[PROVIDER]).unwrap(), 0);
         assert_eq!(
             store.retain_providers(&["replacement-provider"]).unwrap(),
@@ -471,7 +497,7 @@ mod tests {
                 .reuse("a.js", PROVIDER, &extraction.hash, restarted)
                 .unwrap()
         );
-        assert_eq!(store.finish_inventory(restarted).unwrap(), 0);
+        assert_eq!(store.finish_inventory(restarted, &[], 0).unwrap(), 0);
         assert_eq!(store.status().unwrap()["evidence"], 1);
     }
 
@@ -503,14 +529,14 @@ mod tests {
             .replace(&extract("a.js", b"// empty").unwrap(), "3", epoch)
             .unwrap();
         assert_eq!(store.status().unwrap()["evidence"], 0);
-        store.finish_inventory(epoch).unwrap();
+        store.finish_inventory(epoch, &[], 0).unwrap();
         let next = store.begin_inventory().unwrap();
         assert_eq!(
             store.status().unwrap()["sources"],
             1,
             "partial inventory cannot retire unseen sources"
         );
-        assert_eq!(store.finish_inventory(next).unwrap(), 1);
+        assert_eq!(store.finish_inventory(next, &[], 0).unwrap(), 1);
         assert_eq!(store.status().unwrap()["sources"], 0);
     }
     #[test]

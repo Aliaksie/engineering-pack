@@ -135,3 +135,33 @@ fn project_context_limits_map_model_names_to_positive_token_counts() {
         );
     }
 }
+
+#[test]
+fn evidence_exclusions_are_normalized_component_prefixes() {
+    let project = |exclude: Value| json!({"formatVersion": 1, "evidence": {"exclude": exclude}});
+    let prefixes = evidence_exclusions(&project(json!(["samples/", "a/b", "samples"]))).unwrap();
+    assert_eq!(prefixes, ["a/b", "samples"]);
+    assert!(excluded("samples", &prefixes));
+    assert!(excluded("samples/x/Y.java", &prefixes));
+    assert!(!excluded("samples2/Y.java", &prefixes));
+    assert!(!excluded("a/bc.js", &prefixes));
+    assert!(
+        evidence_exclusions(&json!({"formatVersion": 1}))
+            .unwrap()
+            .is_empty()
+    );
+    for exclude in [
+        json!("samples"),
+        json!(["/abs"]),
+        json!(["../up"]),
+        json!([""]),
+        json!([1]),
+        json!(vec!["x"; 65]),
+    ] {
+        assert!(
+            validate_project(&project(exclude.clone())).is_err(),
+            "{exclude}"
+        );
+    }
+    assert!(validate_project(&json!({"formatVersion": 1, "evidence": {"include": []}})).is_err());
+}

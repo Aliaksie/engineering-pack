@@ -81,14 +81,22 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             let budget = budget.as_mut().unwrap();
             let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
             let started = Instant::now();
+            let exclusions = craft_engine::contracts::evidence_exclusions(
+                &craft_platform::documents::project(&root)?,
+            )?;
             let retired = store.retain_providers(ACTIVE)?;
             let epoch = store.begin_inventory()?;
             let mut inventory = Inventory::start(&root)?;
             store.begin_batch()?;
             let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
                 (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+            let mut excluded = 0u64;
             while let Some(path) = inventory.next_path()? {
                 if !eligible(&path) {
+                    continue;
+                }
+                if craft_engine::contracts::excluded(&path, &exclusions) {
+                    excluded += 1;
                     continue;
                 }
                 // Git's tracked inventory includes deleted files; completion retires them.
@@ -136,9 +144,9 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
                 }
             }
             store.commit_batch()?;
-            let removed = store.finish_inventory(epoch)?;
+            let removed = store.finish_inventory(epoch, &exclusions, excluded)?;
             Ok(
-                json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,
+                json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
                 "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
                 "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
                 "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
