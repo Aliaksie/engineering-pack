@@ -59,6 +59,21 @@ fn correction(id: &str) -> Option<Correction> {
     }
 }
 
+/// The declared context surfaces were added to each host entry after the corpus was captured;
+/// `every_host_reports_its_session_capabilities` pins them against the table.
+fn without_declared_surfaces(stdout: &str) -> String {
+    let Ok(mut output) = serde_json::from_str::<Value>(stdout) else {
+        return stdout.to_string();
+    };
+    let Some(host) = output.get_mut("host").and_then(Value::as_object_mut) else {
+        return stdout.to_string();
+    };
+    for field in ["usage", "nativeAutoCompact", "control", "completion"] {
+        host.shift_remove(field);
+    }
+    format!("{}\n", serde_json::to_string_pretty(&output).unwrap())
+}
+
 fn write_project(root: &Path, files: &Value) {
     fs::create_dir_all(root).unwrap();
     for (file, text) in files.as_object().unwrap() {
@@ -228,7 +243,11 @@ fn statusline_matches_the_frozen_corpus() {
             Some(Correction::SameAs(reference)) => {
                 let reference = find(reference);
                 assert_eq!(run.exit_code, 0, "{id}: {}", run.stderr);
-                assert_eq!(run.stdout, reference["stdout"].as_str().unwrap(), "{id}");
+                assert_eq!(
+                    without_declared_surfaces(&run.stdout),
+                    reference["stdout"].as_str().unwrap(),
+                    "{id}"
+                );
                 let declared: Vec<Value> = expected_events(reference)
                     .into_iter()
                     .filter(|event| event["name"] != "input.loaded")
@@ -264,7 +283,11 @@ fn statusline_matches_the_frozen_corpus() {
                     );
                     continue;
                 }
-                assert_eq!(run.stdout, case["stdout"].as_str().unwrap(), "{id}");
+                assert_eq!(
+                    without_declared_surfaces(&run.stdout),
+                    case["stdout"].as_str().unwrap(),
+                    "{id}"
+                );
                 assert_stderr(id, &run.stderr, case["stderr"].as_str().unwrap());
                 assert_eq!(run.events, expected_events(case), "{id}");
             }

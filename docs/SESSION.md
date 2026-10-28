@@ -449,6 +449,18 @@ Classes are recommendations, not price rankings. Exact model names live in the c
 | Codex | None mapped | `/statusline`, `/compact`, `/new` |
 | Others | None | None mapped |
 
+Each host entry in `hosts/session.json` (and each export's `sessionAdvice`) also declares
+what the host itself offers, separately from what Craft reads:
+
+| Field | Values | Meaning |
+|---|---|---|
+| `usage` | `statusline`, `transition-snapshot`, `native-ui`, `none` | Where the host exposes occupancy. Only `statusline` (Claude) is ingested; a `transition-snapshot` arrives when compaction already started |
+| `nativeAutoCompact` | `documented`, `unknown` | Whether the host documents its own automatic compaction. Craft never configures it |
+| `control` | `none` | A connected transport Craft could use to request compaction. No export ships one |
+| `completion` | `none` | A durable receipt that a compaction finished. Without it there is no verified context cycle |
+
+A manual compact command is `commands.compact`; it is what "reliable compaction" requires.
+
 ## Settings
 
 `craft settings --root <project>` shows the effective policy, where each value came from

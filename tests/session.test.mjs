@@ -37,7 +37,7 @@ test('each export runs its reported status entry after relocation, with honest a
     const { contextLimits, ...reported } = sessionHosts[host];
     assert.deepEqual(output.host, reported);
     assert.deepEqual(report.sessionAdvice.contextLimits, contextLimits);
-    assert.equal(report.sessionAdvice.observation, output.host.observation);
+    for (const [field, value] of Object.entries(reported)) assert.deepEqual(report.sessionAdvice[field], value, `${host}.${field}`);
     // An explicit read without a host payload reports unknown usage on every host.
     const explicit = run(['--root', root]);
     assert.equal(explicit.status, 0, explicit.stderr);

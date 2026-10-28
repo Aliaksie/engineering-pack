@@ -378,6 +378,27 @@ mod tests {
     }
 
     #[test]
+    fn every_host_declares_its_context_surfaces() {
+        let table: Value = serde_json::from_str(HOSTS).unwrap();
+        for (host, entry) in table.as_object().unwrap() {
+            let declared = |field: &str, allowed: &[&str]| {
+                let value = entry[field].as_str().unwrap_or_default();
+                assert!(allowed.contains(&value), "{host}.{field}: {value:?}");
+            };
+            declared(
+                "usage",
+                &["statusline", "transition-snapshot", "native-ui", "none"],
+            );
+            declared("nativeAutoCompact", &["documented", "unknown"]);
+            // No export ships a compaction transport or a completion receipt.
+            declared("control", &["none"]);
+            declared("completion", &["none"]);
+        }
+        // Only the status-line payload is ingested; other sources stay declared, not read.
+        assert_eq!(capabilities("claude").unwrap()["usage"], "statusline");
+    }
+
+    #[test]
     fn bundled_context_limits_are_valid() {
         let table: Value = serde_json::from_str(HOSTS).unwrap();
         for (host, entry) in table.as_object().unwrap() {

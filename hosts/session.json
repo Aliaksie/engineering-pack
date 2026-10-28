@@ -2,6 +2,10 @@
   "claude": {
     "observation": "statusline-current-usage",
     "display": "optional-native-statusline",
+    "usage": "statusline",
+    "nativeAutoCompact": "documented",
+    "control": "none",
+    "completion": "none",
     "commands": {
       "compact": "/compact",
       "start-new-session": "/clear"
@@ -21,6 +25,10 @@
   "codex": {
     "observation": "native-ui-only; no stable usage field in mapped hooks",
     "display": "native /statusline; explicit CLI advice fallback",
+    "usage": "native-ui",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {
       "inspectUsage": "/statusline",
       "compact": "/compact",
@@ -30,31 +38,55 @@
   "cursor": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "transition-snapshot",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   },
   "copilot": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "native-ui",
+    "nativeAutoCompact": "documented",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   },
   "gemini": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   },
   "gemini-extension": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   },
   "jetbrains": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   },
   "agents": {
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {}
   }
 }
