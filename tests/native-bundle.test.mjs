@@ -32,7 +32,10 @@ test('native bundle works after relocation with checked notices and no Node runt
     assert.ok(dependency?.notices.length);
     for (const notice of dependency.notices) assert.ok(fs.readFileSync(path.join(bundle, notice), 'utf8').length > 100);
   }
-  assert.match(fs.readFileSync(path.join(bundle, 'notices/libsqlite3-sys-0.38.2/SQLite-NOTICE'), 'utf8'), /disclaims copyright/);
+  const sqlite = dependencies.packages.find(pkg => pkg.name === 'libsqlite3-sys');
+  const sqliteNotice = sqlite.notices.find(notice => path.posix.basename(notice) === 'SQLite-NOTICE');
+  assert.ok(sqliteNotice, 'bundled SQLite source notice is declared');
+  assert.match(fs.readFileSync(path.join(bundle, sqliteNotice), 'utf8'), /disclaims copyright/);
   assert.deepEqual(fs.readdirSync(bundle).sort(), ['LICENSE', 'README.md', 'dependencies.json', 'native-bin', 'native-bundle.json', 'notices']);
   const root = path.join(temporary, 'selected');
   fs.mkdirSync(root);
