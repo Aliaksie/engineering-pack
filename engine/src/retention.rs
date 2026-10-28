@@ -16,25 +16,7 @@ pub const SHARED_FAMILIES: &[(&str, &str)] = &[
     ("telemetry", "rotation: one bounded log and one backup"),
     ("intelligence", "rebuildable: project-evidence rebuild"),
     ("workspaces", "workspace-clean"),
-    ("migrations", "kept: receipts stop copies from older stores"),
 ];
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Layout {
-    /// `sessions/<id>/` with a manifest and fixed record names.
-    Current,
-    /// `<id>/` beside `shared/`, as written by earlier versions.
-    Previous,
-}
-
-impl Layout {
-    pub fn name(self) -> &'static str {
-        match self {
-            Layout::Current => "current",
-            Layout::Previous => "previous",
-        }
-    }
-}
 
 /// One directory entry as observed without following links.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,7 +58,6 @@ pub struct Workspaces {
 
 pub struct Session<'a> {
     pub id: &'a str,
-    pub layout: Layout,
     pub entries: &'a [Entry],
     /// Whether every entry was listed within [`SESSION_ENTRIES`].
     pub complete: bool,
@@ -109,32 +90,14 @@ fn hex_record(name: &str, prefix: &str, suffix: &str) -> bool {
         .is_some_and(|id| lower_hex(id, 24))
 }
 
-/// Records the runtime writes into a session directory of `layout`.
-fn recognized(name: &str, id: &str, layout: Layout) -> bool {
-    let routing =
-        hex_record(name, "routing-", ".json") || hex_record(name, "routing-", ".json.generation");
-    match layout {
-        Layout::Current => {
-            matches!(name, "manifest.json" | "checkpoint.json" | "task.json")
-                || routing
-                || ["activity-", "workers-", "control-"]
-                    .iter()
-                    .any(|prefix| hex_record(name, prefix, ".json"))
-        }
-        Layout::Previous => {
-            name.strip_suffix(".json") == Some(id)
-                || routing
-                || [
-                    "active-",
-                    "session-",
-                    "workers-",
-                    "native-control-",
-                    "migration-",
-                ]
-                .iter()
-                .any(|prefix| hex_record(name, prefix, ".json"))
-        }
-    }
+/// Records the runtime writes into a session directory.
+fn recognized(name: &str) -> bool {
+    matches!(name, "manifest.json" | "checkpoint.json" | "task.json")
+        || hex_record(name, "routing-", ".json")
+        || hex_record(name, "routing-", ".json.generation")
+        || ["activity-", "workers-", "control-"]
+            .iter()
+            .any(|prefix| hex_record(name, prefix, ".json"))
 }
 
 /// `None` when the directory may be removed, otherwise why it is kept.
@@ -149,7 +112,7 @@ pub fn keep(session: &Session, now: i64, workspaces: &Workspaces) -> Option<&'st
     if session.entries.iter().any(|entry| !entry.file) {
         return Some("holds an entry that is not a regular file");
     }
-    if !names().all(|name| recognized(name, session.id, session.layout)) {
+    if !names().all(recognized) {
         return Some("holds an unrecognized file");
     }
     if now - session.newest() < SESSION_RETENTION_DAYS * DAY_MS {
@@ -166,66 +129,6 @@ pub fn keep(session: &Session, now: i64, workspaces: &Workspaces) -> Option<&'st
     }
     None
 }
-
-/// What an entry the previous layout left directly in `shared/` holds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Leftover {
-    /// A copied record or one of its companions; the platform verifies the copy.
-    Record,
-    /// A copy receipt of that layout; the current layout keeps its own.
-    Receipt,
-    /// The evidence database or a companion; never copied, rebuilt on refresh.
-    Database,
-    /// The evidence folder of the layout before the current one; not moved, rebuilt on refresh.
-    Evidence,
-    /// A folder of that layout still waiting to move: a writer held an entry of it.
-    Unmoved,
-    /// Workspace directories, removed under workspace retention.
-    Workspaces,
-    /// The workspace guard, needed only while a workspace of that layout remains.
-    Guard,
-    /// A writer's lock on one of these records.
-    Lock,
-    Unknown,
-}
-
-pub fn leftover(name: &str) -> Leftover {
-    match name {
-        "telemetry.jsonl"
-        | "telemetry.jsonl.1"
-        | "telemetry-key.json"
-        | "telemetry-captures.json" => Leftover::Record,
-        "sessions" => Leftover::Workspaces,
-        "evidence" => Leftover::Evidence,
-        "telemetry" | "workspaces" | "migrations" => Leftover::Unmoved,
-        "workspace-guard.json" => Leftover::Guard,
-        _ if DATABASE.contains(&name) => Leftover::Database,
-        _ if name.ends_with(".lock") => Leftover::Lock,
-        _ if hex_record(name, "migration-", ".json") => Leftover::Receipt,
-        _ => Leftover::Unknown,
-    }
-}
-
-/// The previous evidence database and its companions; its `.lock` is an OS lock whose
-/// file stays behind, not a sign of a writer.
-pub const DATABASE: &[&str] = &[
-    "project-evidence.sqlite",
-    "project-evidence.sqlite-journal",
-    "project-evidence.sqlite-wal",
-    "project-evidence.sqlite-shm",
-    "project-evidence.sqlite.backup",
-    "project-evidence.sqlite.lock",
-];
-
-/// The evidence folder's database and its companions, as `DATABASE` for its own folder.
-pub const EVIDENCE: &[&str] = &[
-    "project.sqlite",
-    "project.sqlite-journal",
-    "project.sqlite-wal",
-    "project.sqlite-shm",
-    "project.sqlite.backup",
-    "project.sqlite.lock",
-];
 
 /// Whole days since the last write, for reports.
 pub fn idle_days(session: &Session, now: i64) -> i64 {

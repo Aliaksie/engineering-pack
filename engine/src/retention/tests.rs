@@ -16,10 +16,9 @@ fn entry(name: &str, modified: i64) -> Entry {
     }
 }
 
-fn session<'a>(layout: Layout, entries: &'a [Entry], described: Described) -> Session<'a> {
+fn session<'a>(entries: &'a [Entry], described: Described) -> Session<'a> {
     Session {
         id: ID,
-        layout,
         entries,
         complete: true,
         modified: OLD,
@@ -29,11 +28,7 @@ fn session<'a>(layout: Layout, entries: &'a [Entry], described: Described) -> Se
 }
 
 fn current(entries: &[Entry]) -> Session<'_> {
-    session(
-        Layout::Current,
-        entries,
-        Described::Workspace(WORKSPACE.into()),
-    )
+    session(entries, Described::Workspace(WORKSPACE.into()))
 }
 
 #[test]
@@ -55,22 +50,21 @@ fn idle_recognized_session_is_removable() {
 }
 
 #[test]
-fn previous_layout_names_are_recognized_only_there() {
-    let entries = [
-        entry(&format!("{ID}.json"), OLD),
-        entry(&format!("active-{HEX}.json"), OLD),
-        entry(&format!("session-{HEX}.json"), OLD),
-        entry(&format!("native-control-{HEX}.json"), OLD),
-        entry(&format!("migration-{HEX}.json"), OLD),
-        entry(&format!("routing-{HEX}.json.generation"), OLD),
-    ];
-    let previous = session(Layout::Previous, &entries, Described::Absent);
-    assert_eq!(keep(&previous, NOW, &Workspaces::default()), None);
-    let mismatched = current(&entries);
-    assert_eq!(
-        keep(&mismatched, NOW, &Workspaces::default()),
-        Some("holds an unrecognized file")
-    );
+fn names_of_earlier_layouts_are_unrecognized() {
+    for name in [
+        format!("{ID}.json"),
+        format!("active-{HEX}.json"),
+        format!("session-{HEX}.json"),
+        format!("native-control-{HEX}.json"),
+        format!("migration-{HEX}.json"),
+    ] {
+        let entries = [entry("manifest.json", OLD), entry(&name, OLD)];
+        assert_eq!(
+            keep(&current(&entries), NOW, &Workspaces::default()),
+            Some("holds an unrecognized file"),
+            "{name}"
+        );
+    }
 }
 
 #[test]
@@ -160,10 +154,10 @@ fn open_or_unverified_workspaces_keep_the_session() {
     assert_eq!(keep(&current(&entries), NOW, &own), open);
     assert_eq!(keep(&current(&entries), NOW, &unverified), open);
     // Without a manifest the session cannot be told apart from any open workspace's.
-    let undescribed = session(Layout::Current, &entries, Described::Absent);
+    let undescribed = session(&entries, Described::Absent);
     assert_eq!(keep(&undescribed, NOW, &other), open);
     assert_eq!(keep(&undescribed, NOW, &Workspaces::default()), None);
-    let invalid = session(Layout::Current, &entries, Described::Invalid);
+    let invalid = session(&entries, Described::Invalid);
     assert_eq!(
         keep(&invalid, NOW, &Workspaces::default()),
         Some("manifest is invalid")
@@ -185,29 +179,5 @@ fn manifest_description_requires_its_format() {
         json!([]),
     ] {
         assert_eq!(described(Some(&invalid)), Described::Invalid);
-    }
-}
-
-#[test]
-fn previous_shared_entries_are_classified_by_name() {
-    for (name, expected) in [
-        ("telemetry.jsonl", Leftover::Record),
-        ("telemetry.jsonl.1", Leftover::Record),
-        ("telemetry-key.json", Leftover::Record),
-        ("telemetry-captures.json", Leftover::Record),
-        ("migration-0123456789abcdef01234567.json", Leftover::Receipt),
-        ("migration-short.json", Leftover::Unknown),
-        ("project-evidence.sqlite", Leftover::Database),
-        ("project-evidence.sqlite-wal", Leftover::Database),
-        ("project-evidence.sqlite.backup", Leftover::Database),
-        // The database lock is an OS lock whose file outlives its holder.
-        ("project-evidence.sqlite.lock", Leftover::Database),
-        ("telemetry-key.json.lock", Leftover::Lock),
-        ("workspace-guard.json.lock", Leftover::Lock),
-        ("sessions", Leftover::Workspaces),
-        ("workspace-guard.json", Leftover::Guard),
-        ("notes.txt", Leftover::Unknown),
-    ] {
-        assert_eq!(leftover(name), expected, "{name}");
     }
 }

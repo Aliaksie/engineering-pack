@@ -1,8 +1,8 @@
 // The persisted state layout `craft` writes, as a test oracle: never a runtime reader.
 // `<physical root>/.craft/state/{sessions/<session>/<name>|<family>/<name>}`, where a session
 // identity is the first 24 hex digits of SHA-256 over the session ID. `previousDirectory` is
-// where the layout before it kept records: `<state>/<worktree>/` with the same digest of the
-// physical root path.
+// where an earlier layout kept records, `<state>/<worktree>/` with the same digest of the
+// physical root path; `craft` ignores it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';

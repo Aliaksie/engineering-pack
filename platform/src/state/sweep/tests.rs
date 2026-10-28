@@ -16,27 +16,27 @@ impl Fixture {
         fs::create_dir(&path).unwrap();
         Self(canonical_root(&path).unwrap())
     }
-    /// The state folder holding current-layout sessions.
+    /// The state folder.
     fn base(&self) -> PathBuf {
         self.0.join(".craft").join("state")
     }
-    /// Where the layout before the current one kept its records.
+    /// Where an earlier layout kept its records.
     fn worktree(&self) -> PathBuf {
         let id = &hash(self.0.to_str().unwrap().as_bytes())[..24];
-        self.0.join(".craft").join("state").join(id)
+        self.base().join(id)
     }
-    /// A current-layout session holding a checkpoint.
+    /// A session holding a checkpoint.
     fn session(&self, session: &str) -> Directory {
         let record = file(&self.0, "checkpoint.json", true, Some(session)).unwrap();
         fs::write(&record, "{}\n").unwrap();
-        self.find(&hash(session.as_bytes())[..24], Layout::Current)
+        self.find(&hash(session.as_bytes())[..24])
     }
-    fn find(&self, id: &str, layout: Layout) -> Directory {
+    fn find(&self, id: &str) -> Directory {
         inventory(&self.0)
             .unwrap()
             .sessions
             .into_iter()
-            .find(|found| found.id == id && found.layout == layout)
+            .find(|found| found.id == id)
             .unwrap()
     }
 }
@@ -47,7 +47,7 @@ impl Drop for Fixture {
 }
 
 #[test]
-fn inventory_lists_both_layouts_workspaces_and_shared_leftovers_without_creating_state() {
+fn inventory_lists_sessions_and_workspaces_but_not_earlier_layouts_without_creating_state() {
     let fixture = Fixture::new();
     let empty = inventory(&fixture.0).unwrap();
     assert!(empty.sessions.is_empty() && empty.complete && empty.workspaces_complete);
@@ -63,56 +63,37 @@ fn inventory_lists_both_layouts_workspaces_and_shared_leftovers_without_creating
         ["checkpoint.json", "manifest.json"]
     );
     assert!(matches!(current.described, Described::Workspace(_)));
+    let sessions = fixture.base().join("sessions");
+    fs::create_dir(sessions.join(".sweep-89abcdef0123456789abcdef")).unwrap();
+    fs::create_dir(sessions.join("not-a-session")).unwrap();
+    fs::create_dir_all(fixture.base().join("workspaces").join("e".repeat(64))).unwrap();
+    fs::write(fixture.base().join("workspaces/guard.json"), "{}").unwrap();
     let worktree = fixture.worktree();
-    let previous = worktree.join("0123456789abcdef01234567");
-    fs::create_dir_all(&previous).unwrap();
-    fs::write(previous.join("0123456789abcdef01234567.json"), "{}").unwrap();
-    fs::create_dir(worktree.join(".sweep-89abcdef0123456789abcdef")).unwrap();
-    fs::create_dir(worktree.join("not-a-session")).unwrap();
-    fs::create_dir(worktree.join("shared")).unwrap();
-    fs::write(worktree.join("shared/telemetry.jsonl"), "12345").unwrap();
+    let earlier = worktree.join("0123456789abcdef01234567");
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("0123456789abcdef01234567.json"), "{}").unwrap();
     fs::create_dir_all(worktree.join("shared/sessions").join("f".repeat(64))).unwrap();
-    fs::create_dir_all(worktree.join("shared/workspaces").join("e".repeat(64))).unwrap();
-    fs::write(worktree.join("shared/workspaces/guard.json"), "{}").unwrap();
+    fs::create_dir_all(worktree.join("sessions").join("1".repeat(24))).unwrap();
 
     let found = inventory(&fixture.0).unwrap();
-    let mut sessions: Vec<_> = found
+    let mut listed: Vec<_> = found
         .sessions
         .iter()
-        .map(|s| (s.id.as_str(), s.layout.name(), s.staged))
+        .map(|s| (s.id.as_str(), s.staged))
         .collect();
-    sessions.sort();
+    listed.sort();
     assert_eq!(
-        sessions,
+        listed,
         [
-            ("0123456789abcdef01234567", "previous", false),
-            ("89abcdef0123456789abcdef", "previous", true),
-            (current.id.as_str(), "current", false),
+            ("89abcdef0123456789abcdef", true),
+            (current.id.as_str(), false),
         ]
     );
-    let previous = found
-        .sessions
-        .iter()
-        .find(|s| !s.staged && s.layout == Layout::Previous);
-    assert_eq!(previous.unwrap().described, Described::Absent);
-    let mut workspaces: Vec<_> = found
-        .workspaces
-        .iter()
-        .map(|(name, _)| name.clone())
-        .collect();
-    workspaces.sort();
-    assert_eq!(workspaces, ["e".repeat(64), "f".repeat(64)]);
-    let leftovers: Vec<_> = found
-        .leftovers
-        .iter()
-        .map(|l| (l.name.as_str(), l.directory, l.bytes))
-        .collect();
-    assert_eq!(
-        leftovers,
-        [
-            ("sessions", true, Some(0)),
-            ("telemetry.jsonl", false, Some(5))
-        ]
+    let workspaces: Vec<_> = found.workspaces.iter().map(|(name, _)| name).collect();
+    assert_eq!(workspaces, [&"e".repeat(64)]);
+    assert!(
+        worktree.join("sessions").join("1".repeat(24)).exists(),
+        "an earlier layout is not moved into place"
     );
 }
 
@@ -128,7 +109,7 @@ fn an_unchanged_staged_directory_is_removed() {
     // A staged directory is finished where it is.
     let again = fixture.session("b");
     let staged = stage(&again).unwrap();
-    let resumed = fixture.find(&again.id, Layout::Current);
+    let resumed = fixture.find(&again.id);
     assert!(resumed.staged);
     assert_eq!(stage(&resumed).unwrap(), staged);
 }
@@ -155,7 +136,7 @@ fn a_recreated_session_or_new_file_keeps_the_staged_directory() {
     fs::create_dir(&found.path).unwrap();
     assert!(restore(&found, &staged).is_err());
     assert!(staged.exists() && found.path.exists());
-    let recreated = inspect(&found.path, &found.id, Layout::Current, false).unwrap();
+    let recreated = inspect(&found.path, &found.id, false).unwrap();
     assert!(
         stage(&recreated).is_err(),
         "unfinished cleanup is not overwritten"
@@ -176,7 +157,7 @@ fn an_interrupted_removal_keeps_the_manifest() {
     let found = fixture.session("a");
     let task = file(&fixture.0, "task.json", true, Some("a")).unwrap();
     fs::write(&task, "{}\n").unwrap();
-    let found = fixture.find(&found.id, Layout::Current);
+    let found = fixture.find(&found.id);
     let staged = stage(&found).unwrap();
     // A record that can no longer be removed as a file stops the removal.
     fs::remove_file(staged.join("task.json")).unwrap();
@@ -202,7 +183,7 @@ fn symlinked_session_directories_are_refused() {
     fs::remove_file(&link).unwrap();
     let inner = found.path.join("routing-0123456789abcdef01234567.json");
     std::os::unix::fs::symlink(found.path.join("checkpoint.json"), &inner).unwrap();
-    let listed = fixture.find(&found.id, Layout::Current);
+    let listed = fixture.find(&found.id);
     let entry = listed
         .entries
         .iter()
