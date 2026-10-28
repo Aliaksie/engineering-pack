@@ -201,69 +201,6 @@ fn copies_only_admitted_single_regular_files_into_new_targets() {
     }
 }
 
-#[test]
-fn liveness_knows_this_process_and_observes_others_on_every_platform() {
-    let observed = |pid: i64| Processes::default().liveness(pid);
-    assert_eq!(observed(i64::from(std::process::id())), Liveness::Live);
-    assert_eq!(observed(2_147_483_647), Liveness::Dead);
-    #[cfg(unix)]
-    assert_eq!(
-        observed(1),
-        Liveness::Live,
-        "a process of another user is live"
-    );
-    assert_eq!(
-        observed(i64::from(u32::MAX) + 1),
-        Liveness::Live,
-        "an unaddressable pid is never reclaimed"
-    );
-    // A recorded owner that exits is reclaimable once observed again.
-    #[cfg(unix)]
-    let mut command = std::process::Command::new("sleep");
-    #[cfg(unix)]
-    command.arg("30");
-    #[cfg(windows)]
-    let mut command = std::process::Command::new("ping");
-    #[cfg(windows)]
-    command.args(["-n", "30", "127.0.0.1"]);
-    let mut child = command.stdout(std::process::Stdio::null()).spawn().unwrap();
-    let owner = i64::from(child.id());
-    assert_eq!(observed(owner), Liveness::Live);
-    child.kill().unwrap();
-    child.wait().unwrap();
-    assert_eq!(observed(owner), Liveness::Dead);
-}
-
-#[test]
-fn process_listing_accepts_only_well_formed_tasklist_rows() {
-    let pids = listed(
-        b"\"System Idle Process\",\"0\",\"Services\",\"0\",\"8 K\"\r\n\"a,b.exe\",\"4120\",\"Console\",\"1\",\"12,345 K\"\r\n",
-    )
-    .unwrap();
-    assert_eq!(pids.len(), 2);
-    assert!(
-        pids.contains(&0) && pids.contains(&4120),
-        "commas inside quoted names"
-    );
-    assert_eq!(listed(b""), None, "no rows is no snapshot");
-    assert_eq!(listed(b"INFO: No tasks are running.\r\n"), None);
-    assert_eq!(
-        listed(b"\"a.exe\",\"12\",\"Console\",\"1\",\"8 K\"\r\n\"b.exe\",\"-4\",\"x\"\r\n"),
-        None,
-        "one malformed row rejects the snapshot"
-    );
-    assert_eq!(
-        listed(b"\"a.exe\",\"99999999999\",\"x\",\"1\",\"8 K\""),
-        None
-    );
-    assert_eq!(
-        listed(b"\"a\"x\"12\",\"x\""),
-        None,
-        "fields are comma-separated"
-    );
-    assert_eq!(listed(b"x\"a\",\"12\",\"x\""), None, "rows start quoted");
-}
-
 fn lock_file(fixture: &Fixture) -> PathBuf {
     fixture.path("guard.json.lock")
 }

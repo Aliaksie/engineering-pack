@@ -1,18 +1,16 @@
 //! Bounded inventory of session directories and their verified removal: a directory is
 //! renamed aside, listed again and removed only when nothing in it changed since inventory.
-use super::{MANIFEST, MANIFEST_BYTES, directory, location, previous_shared, read};
+use super::{MANIFEST, MANIFEST_BYTES, directory, location, read};
 use crate::Error;
-use craft_engine::retention::{
-    DATABASE, Described, EVIDENCE, Entry, Layout, SESSION_ENTRIES, SHARED_FAMILIES, described,
-};
+use craft_engine::retention::{Described, Entry, SESSION_ENTRIES, SHARED_FAMILIES, described};
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// Session directories inspected in one run, across both layouts.
+/// Session directories inspected in one run.
 pub const SESSION_DIRECTORIES: usize = 4096;
-/// Workspace directories and previous-layout shared entries inspected in one run.
+/// Workspace directories inspected in one run.
 const SHARED_ENTRIES: usize = 256;
 const STAGED: &str = ".sweep-";
 
@@ -20,7 +18,6 @@ const STAGED: &str = ".sweep-";
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub id: String,
-    pub layout: Layout,
     /// Where it was found; a staged directory was set aside by an interrupted cleanup.
     pub path: PathBuf,
     pub staged: bool,
@@ -37,14 +34,6 @@ impl Directory {
     }
 }
 
-/// A previous-layout entry left in `shared/` after its records were copied.
-#[derive(Clone, Debug)]
-pub struct Leftover {
-    pub name: String,
-    pub directory: bool,
-    pub bytes: Option<u64>,
-}
-
 /// Size of one current shared family, or why it could not be measured.
 #[derive(Debug)]
 pub struct Family {
@@ -55,9 +44,8 @@ pub struct Family {
 #[derive(Debug, Default)]
 pub struct Inventory {
     pub sessions: Vec<Directory>,
-    /// Workspace directories of both layouts, for the caller to verify ownership.
+    /// Workspace directories, for the caller to verify ownership.
     pub workspaces: Vec<(String, PathBuf)>,
-    pub leftovers: Vec<Leftover>,
     pub families: Vec<Family>,
     /// Whether every session directory was listed within its bound.
     pub complete: bool,
@@ -100,7 +88,7 @@ fn session_id(name: &str) -> Option<(&str, bool)> {
 }
 
 /// List one session directory without following links.
-pub fn inspect(path: &Path, id: &str, layout: Layout, staged: bool) -> Result<Directory, Error> {
+pub fn inspect(path: &Path, id: &str, staged: bool) -> Result<Directory, Error> {
     let meta = fs::symlink_metadata(path)?;
     if !meta.is_dir() || meta.file_type().is_symlink() {
         return Err("state path must be a directory without symlinks".into());
@@ -119,16 +107,16 @@ pub fn inspect(path: &Path, id: &str, layout: Layout, staged: bool) -> Result<Di
     let manifest = entries
         .iter()
         .any(|entry| entry.file && entry.name == MANIFEST);
-    let described = match (layout, manifest) {
-        (Layout::Current, true) => match read(&path.join(MANIFEST), MANIFEST_BYTES) {
+    let described = if !manifest {
+        Described::Absent
+    } else {
+        match read(&path.join(MANIFEST), MANIFEST_BYTES) {
             Ok(value) => described(value.as_ref()),
             Err(_) => Described::Invalid,
-        },
-        _ => Described::Absent,
+        }
     };
     Ok(Directory {
         id: id.to_string(),
-        layout,
         path: path.to_path_buf(),
         staged,
         entries,
@@ -138,45 +126,40 @@ pub fn inspect(path: &Path, id: &str, layout: Layout, staged: bool) -> Result<Di
     })
 }
 
-/// The state folder, and the folder the layout before it kept under `<worktree-id>/`.
-fn folders(root: &Path) -> Result<(PathBuf, PathBuf), Error> {
-    let base = location(root, None)?.directory;
-    let previous = previous_shared(root)?
-        .parent()
-        .ok_or("state worktree required")?
-        .to_path_buf();
-    Ok((base, previous))
+/// The worktree's state folder.
+fn base(root: &Path) -> Result<PathBuf, Error> {
+    Ok(location(root, None)?.directory)
 }
 
-/// Up to `limit` current-layout session directories of the worktree, unstaged; one that
+/// Up to `limit` session directories of the worktree, unstaged; one that
 /// cannot be inspected is skipped. Nothing is created.
 pub fn sessions(root: &Path, limit: usize) -> Result<Vec<Directory>, Error> {
-    let folder = folders(root)?.0.join("sessions");
+    let folder = base(root)?.join("sessions");
     let (names, _) = listing(&folder, limit)?;
     Ok(names
         .iter()
         .filter_map(|name| match session_id(name) {
-            Some((id, false)) => inspect(&folder.join(name), id, Layout::Current, false).ok(),
+            Some((id, false)) => inspect(&folder.join(name), id, false).ok(),
             _ => None,
         })
         .collect())
 }
 
-/// The current-layout session directory `id` of the worktree, if it exists.
+/// The session directory `id` of the worktree, if it exists.
 pub fn session(root: &Path, id: &str) -> Result<Option<Directory>, Error> {
     if !craft_engine::values::lower_hex(id, 24) {
         return Err("invalid session directory id".into());
     }
-    let path = folders(root)?.0.join("sessions").join(id);
+    let path = base(root)?.join("sessions").join(id);
     match fs::symlink_metadata(&path) {
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        _ => inspect(&path, id, Layout::Current, false).map(Some),
+        _ => inspect(&path, id, false).map(Some),
     }
 }
 
 /// Up to `limit` plan folder names of the worktree, and whether that was all of them.
 pub fn plans(root: &Path, limit: usize) -> Result<(Vec<String>, bool), Error> {
-    let folder = folders(root)?.0.join(super::PLANS);
+    let folder = base(root)?.join(super::PLANS);
     let (names, complete) = listing(&folder, limit)?;
     let plans = names
         .into_iter()
@@ -195,67 +178,42 @@ pub fn remove_plan(folder: &Path, names: &[&str]) -> Result<(), Error> {
     fs::remove_dir(folder).map_err(Error::from)
 }
 
-/// Session directories of both layouts under the worktree's state, its workspaces and the
-/// previous layout's shared leftovers. Nothing is created.
+/// Session directories under the worktree's state and its workspaces. Nothing is created.
 pub fn inventory(root: &Path) -> Result<Inventory, Error> {
-    let (base, worktree) = folders(root)?;
-    let shared = worktree.join("shared");
+    let base = base(root)?;
     let mut inventory = Inventory {
         complete: true,
         workspaces_complete: true,
         ..Inventory::default()
     };
-    // Previous-layout session directories sit beside that layout's `shared/`.
-    let current = base.join("sessions");
-    for (folder, layout) in [(&current, Layout::Current), (&worktree, Layout::Previous)] {
-        let room = SESSION_DIRECTORIES - inventory.sessions.len();
-        let (names, complete) = listing(folder, room + 2)?;
-        let mut found = 0;
-        for name in names {
-            let Some((id, staged)) = session_id(&name) else {
-                continue;
-            };
-            if found == room {
-                inventory.complete = false;
-                break;
-            }
-            found += 1;
-            inventory
-                .sessions
-                .push(inspect(&folder.join(&name), id, layout, staged)?);
+    let folder = base.join("sessions");
+    let (names, complete) = listing(&folder, SESSION_DIRECTORIES + 2)?;
+    inventory.complete = complete;
+    for name in names {
+        let Some((id, staged)) = session_id(&name) else {
+            continue;
+        };
+        if inventory.sessions.len() == SESSION_DIRECTORIES {
+            inventory.complete = false;
+            break;
         }
-        inventory.complete &= complete;
+        inventory
+            .sessions
+            .push(inspect(&folder.join(&name), id, staged)?);
     }
-    for folder in [base.join("workspaces"), shared.join("sessions")] {
-        let (names, complete) = listing(&folder, SHARED_ENTRIES)?;
-        inventory.workspaces_complete &= complete;
-        inventory.workspaces.extend(
-            names
-                .into_iter()
-                .filter(|name| !name.starts_with("guard.json"))
-                .map(|name| (name.clone(), folder.join(name))),
-        );
-    }
+    let folder = base.join("workspaces");
+    let (names, complete) = listing(&folder, SHARED_ENTRIES)?;
+    inventory.workspaces_complete = complete;
+    inventory.workspaces.extend(
+        names
+            .into_iter()
+            .filter(|name| !name.starts_with("guard.json"))
+            .map(|name| (name.clone(), folder.join(name))),
+    );
     for (name, _) in SHARED_FAMILIES {
         inventory.families.push(Family {
             name,
             usage: crate::scratch::usage(&base.join(name)).map_err(|e| e.to_string()),
-        });
-    }
-    let (names, _) = listing(&shared, SHARED_ENTRIES)?;
-    for name in names {
-        let path = shared.join(&name);
-        let meta = fs::symlink_metadata(&path)?;
-        let folder = meta.is_dir() && !meta.file_type().is_symlink();
-        let bytes = if folder {
-            crate::scratch::usage(&path).ok().map(|usage| usage.bytes)
-        } else {
-            Some(meta.len())
-        };
-        inventory.leftovers.push(Leftover {
-            name,
-            directory: folder,
-            bytes,
         });
     }
     Ok(inventory)
@@ -266,54 +224,6 @@ fn remove_file(path: &Path) -> Result<(), Error> {
         Err(error) if error.kind() != ErrorKind::NotFound => Err(error.into()),
         _ => Ok(()),
     }
-}
-
-/// Remove files the previous layout left directly in `shared/`, by name.
-pub fn discard(root: &Path, names: &[String]) -> Result<(), Error> {
-    let shared = previous_shared(root)?;
-    for name in names {
-        let path = shared.join(name);
-        if fs::symlink_metadata(&path).is_ok_and(|meta| !meta.is_file()) {
-            return Err("previous shared entry is not a regular file".into());
-        }
-        remove_file(&path)?;
-    }
-    Ok(())
-}
-
-/// Remove the previous layout's evidence database and its companions under its lock, so
-/// no writer still has it open.
-pub fn discard_database(root: &Path) -> Result<(), Error> {
-    discard_store(&previous_shared(root)?, DATABASE)
-}
-
-/// Remove the evidence folder of the layout before this one under its lock; it is not
-/// moved (rebuildable, possibly held open), and `refresh` builds the current database.
-pub fn discard_evidence(root: &Path) -> Result<(), Error> {
-    let folder = previous_shared(root)?.join("evidence");
-    match fs::symlink_metadata(&folder) {
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
-        Ok(meta) if !meta.is_dir() || meta.file_type().is_symlink() => {
-            return Err("previous evidence entry is not a directory".into());
-        }
-        _ => {}
-    }
-    discard_store(&folder, EVIDENCE)?;
-    Ok(fs::remove_dir(&folder)?)
-}
-
-/// Remove a database and its companions under its lock, so no writer still has it open.
-fn discard_store(shared: &Path, names: &[&str]) -> Result<(), Error> {
-    let database = shared.join(names[0]);
-    let guard = crate::repository::database_guard(&database)?;
-    let lock = format!("{}.lock", names[0]);
-    // Companions first: a database left without them is still a valid one.
-    for name in names.iter().rev().filter(|name| **name != lock) {
-        remove_file(&shared.join(name))?;
-    }
-    // Windows cannot remove a file still open; the lock goes last, once released.
-    drop(guard);
-    remove_file(&shared.join(lock))
 }
 
 /// Set a directory aside under its staged name; a staged directory stays where it is.
@@ -342,7 +252,7 @@ pub fn restore(found: &Directory, staged: &Path) -> Result<(), Error> {
 
 /// Whether a staged directory still holds exactly the inspected entries.
 pub fn unchanged(found: &Directory, staged: &Path) -> Result<bool, Error> {
-    let again = inspect(staged, &found.id, found.layout, true)?;
+    let again = inspect(staged, &found.id, true)?;
     Ok(again.complete && again.entries == found.entries)
 }
 

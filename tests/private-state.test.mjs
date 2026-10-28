@@ -140,17 +140,14 @@ test('explicit root and session IDs give Git and non-Git roots the same storage 
   for (const file of files) git('check-ignore', '--quiet', path.relative(root, file));
 });
 
-// Legacy record migration, its refusals and Git metadata immutability:
-// `cargo test -p craft-platform state::`.
-test('a migrated checkpoint retains its session history and remains writable', t => {
+test('a checkpoint left in an earlier store is neither read nor changed', t => {
   const { root } = fixture(t);
-  const saved = saveCheckpoint(root, 'migrated-session', { taskId: 'task', continuation });
+  const saved = saveCheckpoint(root, 'earlier-session', { taskId: 'task', continuation });
   const old = path.join(root, '.git', 'craft-state', stateLocation(root).worktreeId); fs.mkdirSync(old, { recursive: true });
-  const legacyFile = path.join(old, `${stateLocation(root, 'migrated-session').sessionId}.json`);
+  const legacyFile = path.join(old, `${stateLocation(root, 'earlier-session').sessionId}.json`);
   fs.copyFileSync(saved.file, legacyFile); fs.unlinkSync(saved.file);
-  assert.deepEqual(readCheckpoint(root, 'migrated-session'), saved.state);
-  const updated = saveCheckpoint(root, 'migrated-session', { taskId: 'next-task' });
+  assert.equal(readCheckpoint(root, 'earlier-session'), null);
+  const updated = saveCheckpoint(root, 'earlier-session', { taskId: 'next-task' });
   assert.equal(updated.state.taskId, 'next-task');
   assert.equal(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).taskId, 'task');
-  assert.equal(readCheckpoint(root, 'other-session'), null);
 });
