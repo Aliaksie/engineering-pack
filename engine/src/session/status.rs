@@ -360,7 +360,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
         Some(others) => others
             .as_array()
             .filter(|others| {
-                others.len() <= 16
+                others.len() <= OTHER_MODELS
                     && others.iter().all(|other| {
                         fields(other, &["model", "windowTokens"], "other model").is_ok()
                             && text(&other["model"])
@@ -816,6 +816,9 @@ pub struct Observations {
     pub host_limits: Option<Value>,
 }
 
+/// At most this many other models' windows are compared.
+const OTHER_MODELS: usize = 16;
+
 /// The observed model's window and budget, the project's declaration over the bundled table
 /// field by field, and, for a listed model, the other listed models' windows. Declared host
 /// facts take precedence.
@@ -840,9 +843,17 @@ fn context_limits(host: &mut Map<String, Value>, settings: &Value, bundled: Opti
         .flat_map(|t| t.as_object().into_iter().flatten().map(|(id, _)| id))
         .filter(|id| *id != model)
         .collect();
-    let others: Vec<Value> = ids
+    let mut others: Vec<(&String, Value)> = ids
         .into_iter()
-        .filter_map(|id| limit(id, "windowTokens").map(|w| json!({"model": id, "windowTokens": w})))
+        .filter_map(|id| limit(id, "windowTokens").map(|w| (id, w)))
+        .collect();
+    // Only larger windows are ever named, so the largest are the ones worth keeping.
+    others.sort_by_key(|(id, w)| (std::cmp::Reverse(w.as_i64()), *id));
+    others.truncate(OTHER_MODELS);
+    others.sort_by_key(|(id, _)| *id);
+    let others: Vec<Value> = others
+        .into_iter()
+        .map(|(id, w)| json!({"model": id, "windowTokens": w}))
         .collect();
     // An unlisted model has no declared place among the others; nothing is compared.
     if !facts.is_empty() && !others.is_empty() {

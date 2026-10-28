@@ -457,3 +457,36 @@ fn project_limits_override_the_bundled_table_and_declared_facts_win() {
     );
     assert_eq!(high("other"), Value::Null);
 }
+
+#[test]
+fn merged_limits_keep_the_largest_other_windows_within_the_advice_bound() {
+    use craft_engine::session::status::{Observations, Request, status};
+    // Sixteen project models plus two bundled ones exceed the sixteen others advice accepts.
+    let limits: serde_json::Map<String, Value> = (1..=16)
+        .map(|i| (format!("custom-{i:02}"), json!({"windowTokens": 1000 + i})))
+        .collect();
+    let project =
+        json!({"formatVersion": 1, "execution": {"hosts": {"claude": {"contextLimits": limits}}}});
+    let observations = Observations {
+        host_limits: Some(json!({"m1": {"windowTokens": 1000}, "m2": {"windowTokens": 2000}})),
+        ..Observations::default()
+    };
+    let mut input = observed(json!(900));
+    input["usage"]["capacityTokens"] = Value::Null;
+    input["host"] = json!({"name": "claude", "model": "m1"});
+    let result = status(Request {
+        input: &input,
+        settings: &settings(&project),
+        session: None,
+        task: None,
+        now: NOW,
+        observations: &observations,
+    })
+    .unwrap();
+    let larger = result["suggestion"]["largerWindowModels"]
+        .as_array()
+        .unwrap();
+    assert_eq!(larger.len(), 16);
+    assert!(larger.contains(&json!({"model": "m2", "windowTokens": 2000})));
+    assert!(!larger.contains(&json!({"model": "custom-01", "windowTokens": 1001})));
+}
