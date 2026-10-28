@@ -18,6 +18,8 @@ function fixture(t) {
   const run = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary });
   return { root, run };
 }
+// Verification is recorded once per cited source.
+const verification = (result, row = result.results[0]) => result.sources[row.path].verification;
 
 test('native refresh, reuse, failure, deletion and selected-source verification', { skip: !binary }, t => {
   const { root, run } = fixture(t);
@@ -26,11 +28,11 @@ test('native refresh, reuse, failure, deletion and selected-source verification'
   assert.equal(run('refresh').changed, 2);
   const found = run('query', { field: 'name', value: 'before', verify: true });
   assert.equal(found.results.length, 1);
-  assert.equal(found.results[0].verification, 'verified-selected-source');
-  assert.equal(found.results[0].evidence.line, 2);
+  assert.equal(verification(found), 'verified-selected-source');
+  assert.equal(found.results[0].line, 2);
   assert.equal(run('refresh').reused, 2);
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const after = 1;');
-  assert.equal(run('query', { value: 'before', verify: true }).results[0].verification, 'stale-or-unavailable');
+  assert.equal(verification(run('query', { value: 'before', verify: true })), 'stale-or-unavailable');
   assert.equal(run('refresh').changed, 1);
   assert.equal(run('query', { value: 'before' }).results.length, 0);
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
@@ -270,21 +272,26 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   assert.equal(first.changed, 2);
   assert.equal(first.coverage.sources, 2);
   assert.equal(run('version').providers.length, 2);
-  const results = run('query', { value: 'schema', verify: true }).results;
-  const call = results.find(row => row.evidence.kind === 'java:invokes-syntax');
-  const declaration = results.find(row => row.evidence.kind === 'java:declares-method');
+  const schema = run('query', { value: 'schema', verify: true, excerpt: true });
+  const call = schema.results.find(row => row.kind === 'java:invokes-syntax');
+  const declaration = schema.results.find(row => row.kind === 'java:declares-method');
   assert.ok(call && declaration);
-  assert.equal(call.verification, 'verified-selected-source');
-  assert.equal(call.evidence.line, 3);
-  assert.equal(call.evidence.target, 'schema');
-  assert.notEqual(call.evidence.container, declaration.id);
-  const caller = run('query', { field: 'id', value: call.evidence.container, verify: true }).results[0];
-  assert.equal(caller.evidence.name, 'type');
-  assert.equal(caller.evidence.kind, 'java:declares-method');
+  assert.equal(verification(schema, call), 'verified-selected-source');
+  assert.equal(call.line, 3);
+  assert.equal(call.target, 'schema');
+  assert.equal(call.excerpt, 'String type(Schema s) { return schema(s); }');
+  // The enclosing declaration is named inline; its ID still resolves on its own.
+  assert.deepEqual([call.container.kind, call.container.name, call.container.line], ['java:declares-method', 'type', 3]);
+  assert.notEqual(call.container.id, declaration.id);
+  const caller = run('query', { field: 'id', value: call.container.id, verify: true }).results[0];
+  assert.equal(caller.name, 'type');
+  assert.equal(caller.kind, 'java:declares-method');
   assert.equal(caller.path, call.path);
   assert.equal(run('refresh').reused, 2);
   fs.writeFileSync(path.join(root, 'Generator.java'), source.replace('schema(s)', 'replacement(s)'));
-  assert.equal(run('query', { field: 'id', value: call.id, verify: true }).results[0].verification, 'stale-or-unavailable');
+  const stale = run('query', { field: 'id', value: call.id, verify: true, excerpt: true });
+  assert.equal(verification(stale), 'stale-or-unavailable');
+  assert.equal(stale.results[0].excerpt, undefined, 'a changed source gives no excerpt');
   const changed = run('refresh');
   assert.equal(changed.changed, 1);
   assert.equal(changed.reused, 1);
@@ -348,13 +355,20 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   fs.writeFileSync(path.join(root, 'noise.java'), `class Noise { void run() { ${'ping();'.repeat(210)} } void ping() {} }`);
   fs.writeFileSync(path.join(root, 'selected.java'), 'class Selected { void run() { ping(); ping(); ping(); } void ping() {} }');
   run('refresh');
-  assert.ok(run('query', { value: 'ping', limit: 200 }).continuation);
+  const truncated = run('query', { value: 'ping', limit: 200 });
+  assert.ok(truncated.continuation);
+  assert.deepEqual(truncated.matches.kinds, { 'java:invokes-syntax': 213, 'java:declares-method': 2 });
+  assert.deepEqual(truncated.matches.directories, { 'noise.java': 211, 'selected.java': 4 });
+  assert.deepEqual(Object.keys(truncated.sources), ['noise.java']);
+  const declared = run('query', { value: 'ping', kind: 'java:declares-method' });
+  assert.deepEqual(declared.results.map(row => row.path), ['noise.java', 'selected.java']);
+  assert.equal(declared.matches, undefined);
   const rows = [];
   let after = '';
   do {
     const result = run('query', { value: 'ping', sourcePath: 'selected.java', limit: 1, after, verify: true });
     assert.equal(result.sourcePath, 'selected.java');
-    rows.push(...result.results);
+    rows.push(...result.results.map(row => ({ ...row, verification: verification(result, row) })));
     after = result.continuation;
   } while (after);
   assert.equal(rows.length, 4);
@@ -367,8 +381,15 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   const cli = JSON.parse(execFileSync(binary, ['project-evidence', 'query', '--enable',
     '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
   assert.equal(cli.results.length, 4);
+  fs.mkdirSync(path.join(root, 'main'));
+  fs.writeFileSync(path.join(root, 'main', 'Caller.java'), 'class Caller {\n  void go() {\n    ping();\n  }\n}');
+  run('refresh');
+  const text = execFileSync(binary, ['project-evidence', 'query', '--enable', '--root', root, '--field', 'target',
+    '--value', 'ping', '--kind', 'java:invokes-syntax', '--under', 'main/', '--excerpt'], { encoding: 'utf8' });
+  assert.equal(text, '1 result(s) of kind java:invokes-syntax; stored-snapshot; inventory complete\nmain/Caller.java [verified-selected-source]\n'
+    + '  3:5 ping in java:declares-method go:2\n    | ping();\n');
   const commands = readTelemetry(root).filter(event => event.name === 'cli.command');
-  assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success']]);
+  assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success'], ['project-evidence', 'success']]);
 });
 
 test('native refresh records FIFO sources as unavailable without waiting for a writer', { skip: !binary || process.platform === 'win32', timeout: 15000 }, t => {
@@ -381,7 +402,7 @@ test('native refresh records FIFO sources as unavailable without waiting for a w
   execFileSync('mkfifo', [source]);
   // The child deadline keeps this regression bounded even with the old reader.
   const invoke = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary, timeoutMs: 3000 });
-  assert.equal(invoke('query', { value: 'replacedByPipe', verify: true }).results[0].verification, 'stale-or-unavailable');
+  assert.equal(verification(invoke('query', { value: 'replacedByPipe', verify: true })), 'stale-or-unavailable');
   assert.equal(invoke('refresh').failed, 1);
   assert.equal(invoke('query', { value: 'replacedByPipe' }).results.length, 0);
   assert.equal(invoke('status').sources, 1);

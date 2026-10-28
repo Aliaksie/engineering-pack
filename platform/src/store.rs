@@ -1,6 +1,6 @@
 //! SQLite owns atomic source/provider replacement; failed observations hide old facts.
 use crate::Error;
-use craft_engine::{Evidence, Extraction, SCHEMA_VERSION, valid_path, values::lower_hex};
+use craft_engine::{Extraction, SCHEMA_VERSION, valid_path, values::lower_hex};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 use std::{
@@ -357,69 +357,160 @@ impl Store {
             "freshness":"stored-snapshot", "completeness":"unknown outside declared provider coverage"}))
     }
 
-    pub fn query(
-        &self,
-        field: &str,
-        value: &str,
-        after: &str,
-        limit: usize,
-        source_path: Option<&str>,
-    ) -> Result<Value, Error> {
-        let column = match field {
+    /// Matches in path, line, column and ID order. The continuation is the last returned ID;
+    /// it resumes after that row's position, and refuses once the row is no longer stored.
+    /// Source provenance is listed once per path; a truncated page reports match counts.
+    pub fn query(&self, query: &Query) -> Result<Value, Error> {
+        let column = match query.field {
             "id" => "e.id=unhex(?1)",
             "name" => "e.name=?1",
             "path" => "s.path=?1",
             "target" => "e.target=?1",
             _ => return Err("query field must be id, name, path or target".into()),
         };
-        if !(1..=200).contains(&limit) || value.len() > 4096 {
+        if !(1..=200).contains(&query.limit)
+            || query.value.len() > 4096
+            || query
+                .kind
+                .is_some_and(|kind| kind.is_empty() || kind.len() > 128)
+        {
             return Err("query exceeds bounds".into());
         }
-        if !after.is_empty() && !lower_hex(after, 64) {
+        if !query.after.is_empty() && !lower_hex(query.after, 64) {
             return Err("continuation must be an evidence id".into());
         }
-        if source_path.is_some_and(|path| !valid_path(path)) {
+        if query.source.is_some_and(|path| !valid_path(path)) {
             return Err("sourcePath must be a relative source path".into());
         }
-        let source_filter = if source_path.is_some() {
-            "AND s.path=?4"
+        let under = query
+            .under
+            .map(|path| path.strip_suffix('/').unwrap_or(path));
+        if under.is_some_and(|path| !valid_path(path)) {
+            return Err("under must be a relative directory".into());
+        }
+        let filters = format!(
+            "{column} AND s.outcome='ok' AND (?2 IS NULL OR s.path=?2) AND (?3 IS NULL OR e.kind=?3)
+            AND (?4 IS NULL OR substr(s.path,1,length(?4)+1)=?4||'/')"
+        );
+        let filter = params![query.value, query.source, query.kind, under];
+        let position = if query.after.is_empty() {
+            "1"
         } else {
-            "AND ?4 IS NULL"
+            let stored: bool = self.connection.query_row(
+                "SELECT EXISTS (SELECT 1 FROM evidence WHERE id=unhex(?1))",
+                [query.after],
+                |r| r.get(0),
+            )?;
+            if !stored {
+                return Err("continuation is no longer stored; restart the query".into());
+            }
+            "(s.path,e.line,e.col,e.id)>(SELECT ps.path,p.line,p.col,p.id FROM evidence p
+                JOIN sources ps USING(sid) WHERE p.id=unhex(?5))"
         };
-        let sql = format!("SELECT lower(hex(e.id)),e.kind,e.name,e.line,e.col,e.start_byte,e.end_byte,e.target,
-                CASE WHEN e.container IS NULL THEN NULL ELSE lower(hex(e.container)) END,
-                s.hash,s.observed_at,s.path,s.provider FROM evidence e JOIN sources s USING(sid)
-            WHERE {column} AND e.id>unhex(?2) AND s.outcome='ok' {source_filter} ORDER BY e.id LIMIT ?3");
+        let sql = format!(
+            "SELECT lower(hex(e.id)),e.kind,e.name,e.line,e.col,e.start_byte,e.end_byte,e.target,
+                s.path,s.hash,s.provider,s.observed_at,CASE WHEN c.id IS NULL THEN NULL ELSE lower(hex(c.id)) END,c.kind,c.name,c.line
+            FROM evidence e JOIN sources s USING(sid) LEFT JOIN evidence c ON c.id=e.container
+            WHERE {filters} AND {position} ORDER BY s.path,e.line,e.col,e.id LIMIT ?6"
+        );
         let mut statement = self.connection.prepare(&sql)?;
-        let rows = statement.query_map(
-            params![value, after, (limit + 1) as i64, source_path],
-            |r| {
-                let evidence = Evidence {
-                    id: r.get(0)?,
-                    kind: r.get(1)?,
-                    name: r.get(2)?,
-                    line: r.get::<_, i64>(3)? as usize,
-                    column: r.get::<_, i64>(4)? as usize,
-                    start_byte: r.get::<_, i64>(5)? as usize,
-                    end_byte: r.get::<_, i64>(6)? as usize,
-                    target: r.get(7)?,
-                    container: r.get(8)?,
-                };
-                Ok(json!({"id":evidence.id,"evidence":evidence,"path":r.get::<_, String>(11)?,
-                    "hash":r.get::<_, String>(9)?,"provider":r.get::<_, String>(12)?,"observedAt":r.get::<_, String>(10)?}))
-            },
-        )?;
-        let mut results = rows.collect::<Result<Vec<_>, _>>()?;
-        let more = results.len() > limit;
-        results.truncate(limit);
-        let next = if more {
-            results.last().and_then(|v| v.get("id")).cloned()
-        } else {
-            None
-        };
+        let mut sources = serde_json::Map::new();
+        let mut results = Vec::new();
+        let mut rows = statement.query(params![
+            query.value,
+            query.source,
+            query.kind,
+            under,
+            query.after,
+            (query.limit + 1) as i64
+        ])?;
+        while let Some(r) = rows.next()? {
+            let path: String = r.get(8)?;
+            if !sources.contains_key(&path) {
+                sources.insert(
+                    path.clone(),
+                    json!({"hash":r.get::<_, String>(9)?,"provider":r.get::<_, String>(10)?,
+                        "observedAt":r.get::<_, String>(11)?}),
+                );
+            }
+            let mut row = json!({"id":r.get::<_, String>(0)?,"path":path,"kind":r.get::<_, String>(1)?,
+                "name":r.get::<_, String>(2)?,"line":r.get::<_, i64>(3)?,"column":r.get::<_, i64>(4)?,
+                "startByte":r.get::<_, i64>(5)?,"endByte":r.get::<_, i64>(6)?});
+            if let Some(target) = r.get::<_, Option<String>>(7)? {
+                row["target"] = json!(target);
+            }
+            if let Some(container) = r.get::<_, Option<String>>(12)? {
+                row["container"] = json!({"id":container,"kind":r.get::<_, String>(13)?,
+                    "name":r.get::<_, String>(14)?,"line":r.get::<_, i64>(15)?});
+            }
+            results.push(row);
+        }
+        drop(rows);
+        let more = results.len() > query.limit;
+        results.truncate(query.limit);
+        // The look-ahead row may have listed a source no returned row cites.
+        sources.retain(|path, _| results.iter().any(|row| row["path"] == *path));
+        let mut result = json!({"results":results,"sources":sources,
+            "continuation":if more { results.last().map(|row| row["id"].clone()) } else { None },
+            "sourcePath":query.source,"kind":query.kind,"under":under});
+        if more {
+            result["matches"] = self.matches(&filters, filter)?;
+        }
+        result["coverage"] = self.status()?;
+        Ok(result)
+    }
+
+    /// Total matches by kind and by directory, for narrowing a truncated query.
+    fn matches(&self, filters: &str, filter: impl rusqlite::Params) -> Result<Value, Error> {
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT s.path,e.kind,count(*) FROM evidence e JOIN sources s USING(sid)
+            WHERE {filters} GROUP BY s.path,e.kind ORDER BY s.path"
+        ))?;
+        let mut rows = statement.query(filter)?;
+        let (mut total, mut kinds, mut paths) = (0u64, serde_json::Map::new(), Vec::new());
+        while let Some(r) = rows.next()? {
+            let (path, kind, count): (String, String, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
+            let count = count as u64;
+            total += count;
+            let entry = kinds.entry(kind).or_insert(json!(0));
+            *entry = json!(entry.as_u64().unwrap_or(0) + count);
+            match paths.last_mut() {
+                Some((last, sum)) if *last == path => *sum += count,
+                _ => paths.push((path, count)),
+            }
+        }
+        let (under, directories) = craft_engine::directory_counts(&paths, 12);
         Ok(
-            json!({"results":results,"continuation":next,"sourcePath":source_path,"coverage":self.status()?}),
+            json!({"total":total,"kinds":kinds,"sources":paths.len(),"under":under,"directories":directories}),
         )
+    }
+}
+
+/// One evidence lookup: an exact field match, narrowed before pagination.
+pub struct Query<'a> {
+    pub field: &'a str,
+    pub value: &'a str,
+    pub after: &'a str,
+    pub limit: usize,
+    /// One exact source path.
+    pub source: Option<&'a str>,
+    /// One exact evidence kind.
+    pub kind: Option<&'a str>,
+    /// A directory, matched by whole path components.
+    pub under: Option<&'a str>,
+}
+
+impl<'a> Query<'a> {
+    pub fn new(field: &'a str, value: &'a str) -> Self {
+        Self {
+            field,
+            value,
+            after: "",
+            limit: 30,
+            source: None,
+            kind: None,
+            under: None,
+        }
     }
 }
 
@@ -446,14 +537,14 @@ mod tests {
         );
         assert_eq!(store.status().unwrap()["generation"], generation);
         assert_eq!(
-            store.query("name", "before", "", 10, None).unwrap()["results"]
+            store.query(&Query::new("name", "before")).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .len(),
             1
         );
         assert_eq!(
-            store.query("name", "after", "", 10, None).unwrap()["results"],
+            store.query(&Query::new("name", "after")).unwrap()["results"],
             json!([])
         );
     }
@@ -478,7 +569,7 @@ mod tests {
         assert_eq!(store.status().unwrap()["evidence"], 0);
         assert_eq!(store.status().unwrap()["inventoryComplete"], false);
         assert_eq!(
-            store.query("name", "previous", "", 10, None).unwrap()["results"],
+            store.query(&Query::new("name", "previous")).unwrap()["results"],
             json!([])
         );
         assert_eq!(store.retain_providers(&[]).unwrap(), 0);
@@ -509,7 +600,7 @@ mod tests {
             .replace(&extract("a.js", b"const before = 1;").unwrap(), "1", epoch)
             .unwrap();
         assert_eq!(
-            store.query("name", "before", "", 10, None).unwrap()["results"]
+            store.query(&Query::new("name", "before")).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .len(),
@@ -519,7 +610,7 @@ mod tests {
             .fail("a.js", PROVIDER, "", "syntax error", "2", epoch)
             .unwrap();
         assert!(
-            store.query("name", "before", "", 10, None).unwrap()["results"]
+            store.query(&Query::new("name", "before")).unwrap()["results"]
                 .as_array()
                 .unwrap()
                 .is_empty()
@@ -601,11 +692,129 @@ mod tests {
             ),
             (&json!(2), &json!(1), &json!(2))
         );
-        let page = store.query("name", "a", "", 1, None).unwrap();
-        assert_eq!(page["results"][0]["evidence"]["name"], "a");
-        assert!(store.query("name", "a", "not-an-id", 1, None).is_err());
+        let page = store
+            .query(&Query {
+                limit: 1,
+                ..Query::new("name", "a")
+            })
+            .unwrap();
+        assert_eq!(page["results"][0]["name"], "a");
+        assert!(
+            store
+                .query(&Query {
+                    after: "not-an-id",
+                    ..Query::new("name", "a")
+                })
+                .is_err()
+        );
         drop(store);
         std::fs::remove_file(&database).unwrap();
+    }
+
+    #[test]
+    fn queries_page_in_source_order_with_filters_containers_and_counts() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        for (path, source) in [
+            (
+                "b.java",
+                "class B { void run() { ping(); } void ping() {} }",
+            ),
+            (
+                "a/x.java",
+                "class X {\n void go() {\n  ping();\n  ping();\n }\n}",
+            ),
+            ("a/y/z.java", "class Z { void go() { ping(); } }"),
+            ("ab/w.java", "class W { void go() { ping(); } }"),
+        ] {
+            let extraction = crate::java::extract(path, source.as_bytes()).unwrap();
+            store.replace(&extraction, "1", epoch).unwrap();
+        }
+        let page = |query: Query| store.query(&query).unwrap();
+        let first = page(Query {
+            limit: 2,
+            ..Query::new("name", "ping")
+        });
+        let rows = first["results"].as_array().unwrap();
+        assert_eq!(
+            rows.iter()
+                .map(|row| (row["path"].as_str().unwrap(), row["line"].as_i64().unwrap()))
+                .collect::<Vec<_>>(),
+            [("a/x.java", 3), ("a/x.java", 4)]
+        );
+        assert_eq!(
+            rows[0]["container"]
+                .as_object()
+                .map(|c| (&c["kind"], &c["name"], &c["line"])),
+            Some((&json!("java:declares-method"), &json!("go"), &json!(2)))
+        );
+        assert_eq!(first["sources"].as_object().unwrap().len(), 1);
+        assert_eq!(
+            first["matches"],
+            json!({"total":6,"kinds":{"java:invokes-syntax":5,"java:declares-method":1},
+                "sources":4,"under":"","directories":{"a/":3,"b.java":2,"ab/":1}})
+        );
+        let mut all = Vec::new();
+        let mut after = String::new();
+        loop {
+            let next = page(Query {
+                limit: 2,
+                after: &after,
+                ..Query::new("name", "ping")
+            });
+            all.extend(next["results"].as_array().unwrap().clone());
+            match next["continuation"].as_str() {
+                Some(id) => after = id.to_string(),
+                None => break,
+            }
+        }
+        assert_eq!(
+            all,
+            page(Query::new("name", "ping"))["results"]
+                .as_array()
+                .unwrap()
+                .clone()
+        );
+        assert!(page(Query::new("name", "ping")).get("matches").is_none());
+        let kinds = page(Query {
+            kind: Some("java:declares-method"),
+            ..Query::new("name", "ping")
+        });
+        assert_eq!(kinds["results"][0]["path"], "b.java");
+        assert_eq!(kinds["results"].as_array().unwrap().len(), 1);
+        for under in ["a", "a/"] {
+            let scoped = page(Query {
+                under: Some(under),
+                ..Query::new("name", "ping")
+            });
+            assert_eq!(scoped["under"], "a");
+            assert!(
+                scoped["results"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|row| row["path"].as_str().unwrap().starts_with("a/"))
+            );
+            assert_eq!(scoped["results"].as_array().unwrap().len(), 3);
+        }
+        for under in ["../a", "/a", ""] {
+            assert!(
+                store
+                    .query(&Query {
+                        under: Some(under),
+                        ..Query::new("name", "ping")
+                    })
+                    .is_err()
+            );
+        }
+        let continuation = first["continuation"].as_str().unwrap().to_string();
+        let replaced = crate::java::extract("a/x.java", b"class X {}").unwrap();
+        store.replace(&replaced, "2", epoch).unwrap();
+        let stale = store.query(&Query {
+            after: &continuation,
+            ..Query::new("name", "ping")
+        });
+        assert!(stale.unwrap_err().to_string().contains("restart the query"));
     }
 
     #[test]

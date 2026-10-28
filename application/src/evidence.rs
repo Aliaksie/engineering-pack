@@ -5,7 +5,7 @@ use craft_platform::{
     providers::{ACTIVE, extract, for_path},
     repository::{Inventory, database_guard, eligible, now, read_source},
     state,
-    store::Store,
+    store::{Query, Store},
 };
 use serde_json::{Value, json};
 use std::{path::Path, time::Instant};
@@ -40,7 +40,13 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             Ok(json!({"cleared":true,"next":"refresh","coverage":store.status()?}))
         }
         "query" => {
-            let source_path = input
+            let text = |name: &str| {
+                input
+                    .get(name)
+                    .map(|value| value.as_str().ok_or(format!("{name} must be a string")))
+                    .transpose()
+            };
+            let source = input
                 .get("sourcePath")
                 .map(|value| {
                     value
@@ -48,31 +54,18 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
                         .ok_or("sourcePath must be a relative source path")
                 })
                 .transpose()?;
-            let mut result = store.query(
-                input["field"].as_str().unwrap_or("name"),
-                input["value"].as_str().ok_or("query value required")?,
-                input["after"].as_str().unwrap_or(""),
-                input["limit"].as_u64().unwrap_or(30) as usize,
-                source_path,
-            )?;
-            if input["verify"] == true {
-                let checked_at = now();
-                let mut checked = std::collections::HashMap::new();
-                for row in result["results"]
-                    .as_array_mut()
-                    .ok_or("invalid query results")?
-                {
-                    let path = row["path"].as_str().ok_or("invalid source path")?;
-                    let current = checked
-                        .entry(path.to_string())
-                        .or_insert_with(|| read_source(&root, path).ok().map(|b| hash(&b)));
-                    row["verification"] = json!(if current.as_deref() == row["hash"].as_str() {
-                        "verified-selected-source"
-                    } else {
-                        "stale-or-unavailable"
-                    });
-                    row["verifiedAt"] = json!(checked_at);
-                }
+            let mut result = store.query(&Query {
+                field: input["field"].as_str().unwrap_or("name"),
+                value: input["value"].as_str().ok_or("query value required")?,
+                after: input["after"].as_str().unwrap_or(""),
+                limit: input["limit"].as_u64().unwrap_or(30) as usize,
+                source,
+                kind: text("kind")?,
+                under: text("under")?,
+            })?;
+            let excerpt = input["excerpt"] == true;
+            if input["verify"] == true || excerpt {
+                verify(&root, &mut result, excerpt)?;
             }
             result["scope"] = json!(root);
             Ok(result)
@@ -156,8 +149,55 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     }
 }
 
+/// Rehash each cited source once and mark it verified or stale. With `excerpt`, a row from
+/// a verified source also carries its trimmed source line; stale sources give none.
+fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure> {
+    let checked_at = now();
+    let mut current = std::collections::HashMap::new();
+    let sources = result["sources"]
+        .as_object_mut()
+        .ok_or("invalid query sources")?;
+    for (path, source) in sources.iter_mut() {
+        let content = read_source(root, path)
+            .ok()
+            .filter(|bytes| source["hash"].as_str() == Some(hash(bytes).as_str()));
+        source["verification"] = json!(if content.is_some() {
+            "verified-selected-source"
+        } else {
+            "stale-or-unavailable"
+        });
+        source["verifiedAt"] = json!(checked_at);
+        if let Some(content) = content {
+            current.insert(path.clone(), content);
+        }
+    }
+    if !excerpt {
+        return Ok(());
+    }
+    for row in result["results"]
+        .as_array_mut()
+        .ok_or("invalid query results")?
+    {
+        let (Some(content), Some(start)) = (
+            row["path"].as_str().and_then(|path| current.get(path)),
+            row["startByte"].as_u64(),
+        ) else {
+            continue;
+        };
+        row["excerpt"] = json!(craft_engine::values::line_excerpt(
+            content,
+            start as usize,
+            EXCERPT_CHARS
+        ));
+    }
+    Ok(())
+}
+
+/// Longest excerpt, in characters; a longer line is cut and marked with `…`.
+const EXCERPT_CHARS: usize = 160;
+
 const OPERATIONS: &[&str] = &["version", "refresh", "status", "query", "backup", "rebuild"];
-const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <repository> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --limit 30 --after <id> --source <relative-path> --verify] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
+const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <repository> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
 
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
@@ -223,6 +263,8 @@ fn request(args: &[String]) -> Result<Request, Failure> {
         "--limit",
         "--after",
         "--source",
+        "--kind",
+        "--under",
         "--max-files",
         "--max-bytes",
         "--max-output-bytes",
@@ -230,7 +272,7 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     ];
     while let Some(key) = rest.next() {
         let key = key.as_str();
-        if matches!(key, "--enable" | "--verify" | "--json") {
+        if matches!(key, "--enable" | "--verify" | "--excerpt" | "--json") {
             flags.push(key);
         } else if key == "--member"
             && let Some(value) = rest.next()
@@ -281,6 +323,8 @@ fn request(args: &[String]) -> Result<Request, Failure> {
         ("field", "field"),
         ("value", "value"),
         ("after", "after"),
+        ("kind", "kind"),
+        ("under", "under"),
     ] {
         if let Some(value) = options.get(option) {
             input.insert(field.into(), value.clone());
@@ -288,6 +332,7 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     }
     input.insert("limit".into(), json!(limit as u64));
     input.insert("verify".into(), json!(flags.contains(&"--verify")));
+    input.insert("excerpt".into(), json!(flags.contains(&"--excerpt")));
     let json = flags.contains(&"--json");
     if !flags.contains(&"--enable") {
         return Ok((json, None));
@@ -303,6 +348,8 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     Ok((json, Some((operation, Value::Object(input)))))
 }
 
+/// Text view: one header per source, one line per row with its enclosing declaration, and
+/// match counts to narrow a truncated query.
 fn render(result: &Value, json: bool) -> String {
     let Some(rows) = result["results"].as_array().filter(|_| !json) else {
         return if json {
@@ -314,28 +361,89 @@ fn render(result: &Value, json: bool) -> String {
             )
         };
     };
+    let shown = crate::render::shown;
     let coverage = &result["coverage"];
+    let matches = &result["matches"];
     let mut text = format!(
-        "{} result(s); {}; inventory {}\n",
+        "{} result(s){}{}; {}; inventory {}\n",
         rows.len(),
-        crate::render::shown(&coverage["freshness"]),
+        matches["total"]
+            .as_u64()
+            .map(|total| format!(" of {total}"))
+            .unwrap_or_default(),
+        result["kind"]
+            .as_str()
+            .map(|kind| format!(" of kind {kind}"))
+            .unwrap_or_default(),
+        shown(&coverage["freshness"]),
         if coverage["inventoryComplete"] == true {
             "complete"
         } else {
             "partial"
         }
     );
-    for row in rows {
-        let evidence = &row["evidence"];
-        let verification = row["verification"].as_str().unwrap_or("stored-snapshot");
+    let counts = |value: &Value| {
+        value
+            .as_object()
+            .map(|counts| {
+                counts
+                    .iter()
+                    .map(|(key, count)| format!("{key} {}", shown(count)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_default()
+    };
+    if matches.is_object() {
         text.push_str(&format!(
-            "{}:{}:{} {} {} [{verification}]\n",
-            crate::render::shown(&row["path"]),
-            crate::render::shown(&evidence["line"]),
-            crate::render::shown(&evidence["column"]),
-            crate::render::shown(&evidence["kind"]),
-            crate::render::shown(&evidence["name"]),
+            "by kind: {}\nunder {}: {}\n",
+            counts(&matches["kinds"]),
+            match matches["under"].as_str() {
+                Some("") | None => ".",
+                Some(under) => under,
+            },
+            counts(&matches["directories"])
         ));
+    }
+    let mut current = None;
+    for row in rows {
+        let path = row["path"].as_str().unwrap_or_default();
+        if current != Some(path) {
+            current = Some(path);
+            let verification = result["sources"][path]["verification"]
+                .as_str()
+                .unwrap_or("stored-snapshot");
+            text.push_str(&format!("{path} [{verification}]\n"));
+        }
+        text.push_str(&format!(
+            "  {}:{} ",
+            shown(&row["line"]),
+            shown(&row["column"])
+        ));
+        // A kind filter is stated once in the header.
+        if result["kind"].is_null() {
+            text.push_str(&format!("{} ", shown(&row["kind"])));
+        }
+        text.push_str(&shown(&row["name"]));
+        if let Some(target) = row["target"]
+            .as_str()
+            .filter(|t| Some(*t) != row["name"].as_str())
+        {
+            text.push_str(&format!(" -> {target}"));
+        }
+        let container = &row["container"];
+        if container.is_object() {
+            text.push_str(&format!(
+                " in {} {}:{}",
+                shown(&container["kind"]),
+                shown(&container["name"]),
+                shown(&container["line"])
+            ));
+        }
+        text.push('\n');
+        if let Some(excerpt) = row["excerpt"].as_str() {
+            text.push_str(&format!("    | {excerpt}\n"));
+        }
     }
     if let Some(after) = result["continuation"].as_str() {
         text.push_str(&format!("Continue with --after {after}\n"));
@@ -427,12 +535,28 @@ mod command_tests {
     }
 
     #[test]
-    fn query_results_render_one_line_each() {
-        let result = json!({"results": [{"path": "a.js", "evidence": {"line": 2, "column": 8, "kind": "js:declares", "name": "A"}}],
+    fn query_results_render_grouped_by_source_with_containers() {
+        let result = json!({"results": [
+                {"path": "a.java", "line": 2, "column": 8, "kind": "java:declares-method", "name": "go"},
+                {"path": "a.java", "line": 3, "column": 5, "kind": "java:invokes-syntax", "name": "ping", "target": "ping",
+                    "container": {"kind": "java:declares-method", "name": "go", "line": 2}, "excerpt": "ping();"},
+                {"path": "b.js", "line": 1, "column": 1, "kind": "js:imports", "name": "x", "target": "./x.js"}],
+            "sources": {"a.java": {"verification": "verified-selected-source"}, "b.js": {}},
+            "matches": {"total": 9, "kinds": {"java:invokes-syntax": 8, "js:imports": 1}, "under": "", "directories": {"a.java": 8, "b.js": 1}},
             "coverage": {"freshness": "stored-snapshot", "inventoryComplete": false}, "continuation": "next"});
         assert_eq!(
             render(&result, false),
-            "1 result(s); stored-snapshot; inventory partial\na.js:2:8 js:declares A [stored-snapshot]\nContinue with --after next\n"
+            "3 result(s) of 9; stored-snapshot; inventory partial
+by kind: java:invokes-syntax 8, js:imports 1
+under .: a.java 8, b.js 1
+a.java [verified-selected-source]
+  2:8 java:declares-method go
+  3:5 java:invokes-syntax ping in java:declares-method go:2
+    | ping();
+b.js [stored-snapshot]
+  1:1 js:imports x -> ./x.js
+Continue with --after next
+"
         );
         assert_eq!(render(&result, true), format!("{result}\n"));
     }

@@ -19,8 +19,13 @@ operations are `version`, `backup` (a consistent snapshot beside the database; n
 overwrites an existing backup) and `rebuild` (clears derived evidence; run `refresh` next).
 
 - **Query** matches an exact `id`, `name`, `path` or syntax `target` (`--field`, `--value`),
-  30 rows per page (up to 200) with an `--after` continuation. `--source <path>` restricts to
-  one file. `--verify` rehashes the selected sources and marks each row verified or stale.
+  30 rows per page (up to 200) in path and line order, with an `--after` continuation that
+  is refused once its row is no longer stored. Narrow before paging with `--kind <kind>`,
+  `--under <directory>` (whole path components) or `--source <path>`. A truncated page
+  reports the total matches by kind and by directory. Each source's hash and provider are
+  listed once under `sources`. `--verify` rehashes the cited sources and marks each verified
+  or stale; `--excerpt` also verifies and adds the trimmed source line to rows from verified
+  sources.
 - **Refresh** reuses unchanged extractions and retires deleted sources. Optional
   `--max-files`, `--max-bytes`, `--max-output-bytes` and `--max-duration-ms` limit one run;
   deferred sources stay pending (and hidden) until a later refresh. Writes commit in batches,
@@ -38,8 +43,8 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   proven call.
 
 Java invocation rows carry the spelled method name and, when inside a method or constructor,
-its `container` ID. Query that ID to see the caller. Calls in lambdas keep their outer
-container; that does not mean they run when the outer method does.
+their `container`: the enclosing declaration's ID, kind, name and line. Calls in lambdas keep
+their outer container; that does not mean they run when the outer method does.
 
 ## Storage and limits
 

@@ -30,7 +30,7 @@ export function benchmarkNativeBundle(bundle) {
       for (let i = 0; i < 6; i++) {
         const sample = run(operation, args);
         if (operation === 'refresh' && sample.result.reused !== 25) throw new Error('benchmark reuse failed');
-        if (operation === 'query' && (sample.result.results.length !== 1 || sample.result.results[0].verification !== 'verified-selected-source')) throw new Error('benchmark query failed');
+        if (operation === 'query' && (sample.result.results.length !== 1 || sample.result.sources[sample.result.results[0].path].verification !== 'verified-selected-source')) throw new Error('benchmark query failed');
         samples.push(sample.ms);
       }
       const entry = operations.find(entry => entry.operation === operation);

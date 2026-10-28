@@ -77,6 +77,59 @@ pub fn valid_path(path: &str) -> bool {
             .all(|p| !p.is_empty() && p != "." && p != "..")
 }
 
+/// Match counts split one level below the deepest directory all `paths` share, largest
+/// first; beyond `limit` groups the rest are summed under `"(other)"`. A group is a
+/// directory (`name/`) or a file directly in the shared directory.
+pub fn directory_counts(
+    paths: &[(String, u64)],
+    limit: usize,
+) -> (String, serde_json::Map<String, serde_json::Value>) {
+    fn directories(path: &str) -> Vec<&str> {
+        let mut parts: Vec<&str> = path.split('/').collect();
+        parts.pop();
+        parts
+    }
+    let mut shared = paths
+        .first()
+        .map(|(p, _)| directories(p))
+        .unwrap_or_default();
+    for (path, _) in paths {
+        let parts = directories(path);
+        let common = shared
+            .iter()
+            .zip(&parts)
+            .take_while(|(a, b)| a == b)
+            .count();
+        shared.truncate(common);
+    }
+    let mut groups = std::collections::BTreeMap::<String, u64>::new();
+    for (path, count) in paths {
+        let rest: Vec<&str> = path.split('/').skip(shared.len()).collect();
+        let group = if rest.len() > 1 {
+            format!("{}/", rest[0])
+        } else {
+            rest[0].to_string()
+        };
+        *groups.entry(group).or_default() += count;
+    }
+    let mut ordered: Vec<_> = groups.into_iter().collect();
+    ordered.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    let mut counts = serde_json::Map::new();
+    let mut other = 0;
+    for (index, (group, count)) in ordered.into_iter().enumerate() {
+        if index < limit {
+            counts.insert(group, count.into());
+        } else {
+            other += count;
+        }
+    }
+    if other > 0 {
+        counts.insert("(other)".into(), other.into());
+    }
+    let prefix = shared.iter().map(|part| format!("{part}/")).collect();
+    (prefix, counts)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Evidence {
@@ -172,6 +225,37 @@ mod tests {
             assert!(!valid_path(path));
         }
         assert!(valid_path("src/hello world.mjs"));
+    }
+
+    #[test]
+    fn directory_counts_split_below_the_shared_directory() {
+        let paths = |list: &[(&str, u64)]| {
+            list.iter()
+                .map(|(p, n)| (p.to_string(), *n))
+                .collect::<Vec<_>>()
+        };
+        let (prefix, counts) = directory_counts(
+            &paths(&[
+                ("m/src/main/A.java", 2),
+                ("m/src/test/B.java", 5),
+                ("m/src/test/x/C.java", 1),
+                ("m/src/D.java", 2),
+            ]),
+            8,
+        );
+        assert_eq!(prefix, "m/src/");
+        assert_eq!(
+            serde_json::Value::Object(counts).to_string(),
+            r#"{"test/":6,"D.java":2,"main/":2}"#
+        );
+        let (prefix, counts) = directory_counts(&paths(&[("a.js", 1), ("b/c.js", 3)]), 1);
+        assert_eq!(prefix, "");
+        assert_eq!(
+            serde_json::Value::Object(counts).to_string(),
+            r#"{"b/":3,"(other)":1}"#
+        );
+        let (prefix, counts) = directory_counts(&paths(&[("a/b.js", 1)]), 8);
+        assert_eq!((prefix.as_str(), counts.len()), ("a/", 1));
     }
 
     #[test]
