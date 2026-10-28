@@ -228,7 +228,7 @@ pub fn step(
         root,
         session: name,
         task,
-        mut input,
+        input,
         host,
         bundles,
     } = request;
@@ -265,16 +265,7 @@ pub fn step(
     // The source the agent verified; a worktree completion is recorded against it, before
     // craft commits it.
     let repository = snapshot::workspace(root, repositories, false)?;
-    let profile = input.get("profile").and_then(Value::as_str);
-    let limit = profile
-        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
-        .filter(|limit| !limit.is_null())
-        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"))
-        .cloned()
-        .unwrap_or(Value::Null);
-    let mut bounded = Map::from_iter([("maxAttempts".to_string(), limit)]);
-    bounded.append(&mut input);
-    let input = Value::Object(bounded);
+    let input = Value::Object(crate::session::bounded(settings, input));
     let result = input["result"].clone();
     let id = craft_platform::telemetry::uuid()?;
     let at = craft_engine::timestamp::format(crate::telemetry::now_ms());

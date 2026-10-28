@@ -115,6 +115,24 @@ pub fn update_state(
     )
 }
 
+/// Attempt `fields` with the budget they are accounted against: the selected profile's
+/// `maxAttempts`, else the project default. Explicit fields win; with neither configured
+/// the budget stays absent, never null.
+pub fn bounded(settings: &Value, fields: Map<String, Value>) -> Map<String, Value> {
+    let profile = fields.get("profile").and_then(Value::as_str);
+    let limit = profile
+        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
+        .filter(|limit| !limit.is_null())
+        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"))
+        .filter(|limit| !limit.is_null());
+    let mut bounded = Map::new();
+    if let Some(limit) = limit {
+        bounded.insert("maxAttempts".into(), limit.clone());
+    }
+    bounded.extend(fields);
+    bounded
+}
+
 /// Append one attempt receipt bound to the task's current source; the attempt budget is
 /// the profile's, else the project default. Returns the updated state.
 pub fn record_attempt(
@@ -126,22 +144,9 @@ pub fn record_attempt(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    let profile = attempt.get("profile").and_then(Value::as_str);
-    let limit = profile
-        .and_then(|profile| settings["execution"]["profiles"][profile].get("maxAttempts"))
-        .filter(|limit| !limit.is_null())
-        .or_else(|| settings.pointer("/efficiency/attempts/maxAttempts"));
-    let mut bounded = Map::new();
-    if let Some(limit) = limit {
-        bounded.insert("maxAttempts".into(), limit.clone());
-    }
-    if let Some(fields) = attempt.as_object() {
-        bounded.extend(fields.clone());
-    }
-    let attempt = if attempt.is_object() {
-        Value::Object(bounded)
-    } else {
-        attempt.clone()
+    let attempt = match attempt.as_object() {
+        Some(fields) => Value::Object(bounded(settings, fields.clone())),
+        None => attempt.clone(),
     };
     let state = read_state(root, session, task, recorder, parent)?;
     let repository = snapshot::workspace(root, state["taskRecord"].get("repositories"), false)?;
@@ -212,4 +217,39 @@ pub fn features(
         result.extend(report);
     }
     Ok(Value::Object(result))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attempt_budget_is_profile_then_project_then_absent_and_explicit_wins() {
+        let settings = json!({
+            "execution": {"profiles": {"deep": {"maxAttempts": 5}, "plain": {}}},
+            "efficiency": {"attempts": {"maxAttempts": 2}}
+        });
+        let fields = |value: Value| value.as_object().unwrap().clone();
+        let budget = |settings: &Value, value: Value| {
+            bounded(settings, fields(value)).get("maxAttempts").cloned()
+        };
+        assert_eq!(
+            budget(&settings, json!({"profile": "deep"})),
+            Some(json!(5))
+        );
+        assert_eq!(
+            budget(&settings, json!({"profile": "plain"})),
+            Some(json!(2))
+        );
+        assert_eq!(
+            budget(&settings, json!({"profile": "missing"})),
+            Some(json!(2))
+        );
+        assert_eq!(budget(&settings, json!({})), Some(json!(2)));
+        assert_eq!(
+            budget(&settings, json!({"profile": "deep", "maxAttempts": 1})),
+            Some(json!(1))
+        );
+        assert_eq!(budget(&json!({}), json!({"profile": "deep"})), None);
+    }
 }

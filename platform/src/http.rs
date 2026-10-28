@@ -27,39 +27,68 @@ struct Target {
     path: String,
 }
 
-/// `https://host[:port]/path` or `http://…`; credentials, query and fragment are refused
-/// earlier by endpoint validation, so they are not parsed here.
+/// The one accepted telemetry endpoint form: HTTPS, or HTTP to a loopback name, with an
+/// optional port and path, and no credentials, query or fragment. Scheme and host are
+/// case-insensitive; an empty port means the scheme default.
 fn target(endpoint: &str) -> Option<Target> {
-    let (tls, rest) = if let Some(rest) = endpoint.strip_prefix("https://") {
-        (true, rest)
-    } else {
-        (false, endpoint.strip_prefix("http://")?)
+    let (scheme, rest) = endpoint.split_once("://")?;
+    let tls = match scheme.to_ascii_lowercase().as_str() {
+        "https" => true,
+        "http" => false,
+        _ => return None,
     };
-    let (authority, path) = match rest.find('/') {
-        Some(index) => (&rest[..index], &rest[index..]),
-        None => (rest, "/"),
-    };
-    let (host, port) = if let Some(bracketed) = authority.strip_prefix('[') {
-        let (host, tail) = bracketed.split_once(']')?;
-        (host, tail.strip_prefix(':'))
-    } else {
-        match authority.rsplit_once(':') {
-            Some((host, port)) => (host, Some(port)),
-            None => (authority, None),
+    let (authority, path) = rest.find('/').map_or((rest, ""), |at| rest.split_at(at));
+    let (host, port) = match authority.strip_prefix('[') {
+        Some(inner) => {
+            let (host, tail) = inner.split_once(']')?;
+            (format!("[{host}]"), tail.strip_prefix(':'))
         }
+        None => match authority.rsplit_once(':') {
+            Some((host, port)) => (host.to_string(), Some(port)),
+            None => (authority.to_string(), None),
+        },
     };
-    let port = match port {
-        Some(port) => port.parse().ok()?,
-        None if tls => 443,
-        None => 80,
+    let host = host.to_ascii_lowercase();
+    let host_ok = host == "[::1]"
+        || (!host.is_empty()
+            && host
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-'));
+    let port = match port.filter(|port| !port.is_empty()) {
+        Some(port) if port.bytes().all(|b| b.is_ascii_digit()) => Some(port.parse::<u16>().ok()?),
+        Some(_) => return None,
+        None => None,
     };
-    (!host.is_empty()).then(|| Target {
+    let path_ok = path
+        .bytes()
+        .all(|b| b.is_ascii_graphic() && !b"\\?#".contains(&b));
+    let loopback = ["localhost", "127.0.0.1", "[::1]"].contains(&host.as_str());
+    if !host_ok || !path_ok || authority.contains('@') || !(tls || loopback) {
+        return None;
+    }
+    let authority = match port {
+        Some(port) => format!("{host}:{port}"),
+        None => host.clone(),
+    };
+    Some(Target {
         tls,
-        host: host.to_string(),
-        port,
-        authority: authority.to_string(),
-        path: path.to_string(),
+        port: port.unwrap_or(if tls { 443 } else { 80 }),
+        host: host
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .to_string(),
+        authority,
+        path: if path.is_empty() { "/" } else { path }.to_string(),
     })
+}
+
+/// `text` normalized as transport posts to it (lower-case scheme and host, explicit port
+/// only when given, `/` for an empty path), or `None` when it is not an accepted endpoint.
+/// Configuration keeps this value, so every endpoint it accepts is one transport can use.
+pub fn endpoint(text: &str) -> Option<String> {
+    let target = target(text)?;
+    let scheme = if target.tls { "https" } else { "http" };
+    Some(format!("{scheme}://{}{}", target.authority, target.path))
 }
 
 fn connect(target: &Target, deadline: Instant) -> Result<TcpStream, Failure> {
@@ -422,5 +451,54 @@ mod tests {
         );
         assert!(target("ftp://x").is_none());
         assert!(target("http://:80/").is_none());
+    }
+
+    #[test]
+    fn every_accepted_endpoint_is_one_transport_can_post_to() {
+        for (text, normalized) in [
+            (
+                "https://collector.example/v1/traces",
+                "https://collector.example/v1/traces",
+            ),
+            (
+                "HTTPS://Collector.Example:4318",
+                "https://collector.example:4318/",
+            ),
+            ("https://collector.example:", "https://collector.example/"),
+            (
+                "https://collector.example:0443/v1",
+                "https://collector.example:443/v1",
+            ),
+            (
+                "http://localhost:4318/v1/traces",
+                "http://localhost:4318/v1/traces",
+            ),
+            ("HTTP://LocalHost", "http://localhost/"),
+            ("http://127.0.0.1", "http://127.0.0.1/"),
+            ("http://[::1]:4318/", "http://[::1]:4318/"),
+        ] {
+            assert_eq!(endpoint(text).as_deref(), Some(normalized), "{text}");
+            assert!(target(normalized).is_some(), "{normalized}");
+            assert_eq!(
+                endpoint(normalized).as_deref(),
+                Some(normalized),
+                "{normalized}"
+            );
+        }
+        for text in [
+            "http://collector.example",
+            "https://user@collector.example",
+            "https://collector.example/?a",
+            "https://collector.example/#x",
+            "ftp://collector.example",
+            "https://",
+            "https://collector.example:99999",
+            "https://collector.example:+443",
+            "https://exa mple",
+            "https://[2001:db8::1]/",
+            "collector.example",
+        ] {
+            assert_eq!(endpoint(text), None, "{text}");
+        }
     }
 }
