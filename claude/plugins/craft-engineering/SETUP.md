@@ -86,9 +86,24 @@ gap and manual next step without claiming automatic setup succeeded.
     ],
     "observation": "statusline-current-usage",
     "display": "optional-native-statusline",
+    "usage": "statusline",
+    "nativeAutoCompact": "documented",
+    "control": "none",
+    "completion": "none",
     "commands": {
       "compact": "/compact",
       "start-new-session": "/clear"
+    },
+    "contextLimits": {
+      "claude-opus-5-5": {
+        "windowTokens": 1000000
+      },
+      "claude-sonnet-5-5": {
+        "windowTokens": 1000000
+      },
+      "claude-haiku-5-5": {
+        "windowTokens": 1000000
+      }
     },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },

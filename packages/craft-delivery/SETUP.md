@@ -86,7 +86,13 @@ gap and manual next step without claiming automatic setup succeeded.
     ],
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
-    "commands": {},
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
+    "commands": {
+      "compact": "/compress"
+    },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },
   "controls": {

@@ -234,6 +234,10 @@
         ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
@@ -480,6 +484,10 @@
         ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
@@ -722,6 +730,10 @@
         ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
@@ -956,6 +968,10 @@
         ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
