@@ -95,6 +95,7 @@ fn replay(request: &Value, settings: &Value) -> Result<Value, String> {
                 pack: observed.get("pack").cloned(),
                 plan: observed.get("plan").cloned(),
                 pack_error: text(&observed["packError"]),
+                host_limits: observed.get("hostLimits").cloned(),
             };
             status::status(status::Request {
                 input: &input,

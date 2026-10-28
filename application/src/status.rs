@@ -120,7 +120,14 @@ fn observe(
     let names = || -> Result<(&str, &str), Failure> {
         Ok((identity(session_id.as_ref())?, identity(task_id.as_ref())?))
     };
-    let mut observations = Observations::default();
+    let mut observations = Observations {
+        host_limits: input
+            .get("host")
+            .and_then(|host| host["name"].as_str())
+            .and_then(crate::statusline::capabilities)
+            .and_then(|host| host.get("contextLimits").cloned()),
+        ..Observations::default()
+    };
     if bound {
         match names().and_then(|(s, t)| read_state(root, s, t, recorder, operation)) {
             Ok(state) => observations.state = Some(state),

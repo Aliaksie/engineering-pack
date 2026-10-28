@@ -59,6 +59,21 @@ fn correction(id: &str) -> Option<Correction> {
     }
 }
 
+/// The declared context surfaces were added to each host entry after the corpus was captured;
+/// `every_host_reports_its_session_capabilities` pins them against the table.
+fn without_declared_surfaces(stdout: &str) -> String {
+    let Ok(mut output) = serde_json::from_str::<Value>(stdout) else {
+        return stdout.to_string();
+    };
+    let Some(host) = output.get_mut("host").and_then(Value::as_object_mut) else {
+        return stdout.to_string();
+    };
+    for field in ["usage", "nativeAutoCompact", "control", "completion"] {
+        host.shift_remove(field);
+    }
+    format!("{}\n", serde_json::to_string_pretty(&output).unwrap())
+}
+
 fn write_project(root: &Path, files: &Value) {
     fs::create_dir_all(root).unwrap();
     for (file, text) in files.as_object().unwrap() {
@@ -228,7 +243,11 @@ fn statusline_matches_the_frozen_corpus() {
             Some(Correction::SameAs(reference)) => {
                 let reference = find(reference);
                 assert_eq!(run.exit_code, 0, "{id}: {}", run.stderr);
-                assert_eq!(run.stdout, reference["stdout"].as_str().unwrap(), "{id}");
+                assert_eq!(
+                    without_declared_surfaces(&run.stdout),
+                    reference["stdout"].as_str().unwrap(),
+                    "{id}"
+                );
                 let declared: Vec<Value> = expected_events(reference)
                     .into_iter()
                     .filter(|event| event["name"] != "input.loaded")
@@ -264,7 +283,11 @@ fn statusline_matches_the_frozen_corpus() {
                     );
                     continue;
                 }
-                assert_eq!(run.stdout, case["stdout"].as_str().unwrap(), "{id}");
+                assert_eq!(
+                    without_declared_surfaces(&run.stdout),
+                    case["stdout"].as_str().unwrap(),
+                    "{id}"
+                );
                 assert_stderr(id, &run.stderr, case["stderr"].as_str().unwrap());
                 assert_eq!(run.events, expected_events(case), "{id}");
             }
@@ -357,7 +380,12 @@ fn every_host_reports_its_session_capabilities() {
         );
         assert_eq!(outcome.exit_code, 0, "{host}: {}", outcome.stderr);
         let output: Value = serde_json::from_str(&outcome.stdout).unwrap();
-        assert_eq!(&output["host"], capabilities, "{host}");
+        let mut reported = capabilities.clone();
+        reported
+            .as_object_mut()
+            .unwrap()
+            .shift_remove("contextLimits");
+        assert_eq!(output["host"], reported, "{host}");
         assert_eq!(output["sessionHost"]["name"], json!(host));
         assert_eq!(
             output["sessionHost"]["reliableCompaction"],
@@ -431,4 +459,52 @@ fn a_declared_host_is_an_object_or_absent() {
             assert_eq!(output["sessionHost"]["model"], "m", "{host}");
         }
     }
+}
+
+#[test]
+fn a_project_budget_on_a_listed_claude_model_names_the_restart() {
+    let root = scratch().join("budget");
+    write_project(
+        &root,
+        &json!({".craft/project.json": json!({"formatVersion": 1, "execution": {"hosts": {"claude": {
+            "contextLimits": {"claude-opus-5-5": {"budgetTokens": 200_000}}}}}}).to_string()}),
+    );
+    let bundle = scratch().join("bundle");
+    // No window in the payload: the bundled table supplies the listed model's window.
+    let payload = json!({"session_id": "s1", "model": {"id": "claude-opus-5-5"},
+        "context_window": {"current_usage": {"input_tokens": 250_000, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}});
+    let run = |json: bool| {
+        let mut argv: Vec<String> = [
+            "claude",
+            "--package",
+            "p",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--root",
+            root.to_str().unwrap(),
+        ]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+        if json {
+            argv.push("--json".into());
+        }
+        statusline::run(&argv, &mut payload.to_string().as_bytes(), false)
+    };
+    let outcome = run(true);
+    assert_eq!(outcome.exit_code, 0, "{}", outcome.stderr);
+    let output: Value = serde_json::from_str(&outcome.stdout).unwrap();
+    assert_eq!(output["usage"]["capacityTokens"], 1_000_000);
+    assert_eq!(output["usage"]["capacitySource"], "model-context-limit");
+    assert_eq!(
+        output["budget"],
+        json!({"budgetTokens": 200_000, "exceeded": true})
+    );
+    let text = run(false);
+    assert!(
+        text.stdout
+            .starts_with("Context 250000/1000000 tokens (25%) | Past 200000-token budget"),
+        "{}",
+        text.stdout
+    );
 }

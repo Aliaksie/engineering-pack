@@ -223,7 +223,8 @@ fn bundle(request: &Request) -> Result<Vec<String>, Failure> {
         .ok_or_else(|| "statusline requires the installed package root: run it through the package's bin/craft or pass --bundle".into())
 }
 
-/// `Context 150015/200000 tokens (75%) | Next: /compact`, with the host's own command names.
+/// `Context 150015/200000 tokens (75%) | Next: /compact`, with the host's own command names;
+/// a declared working budget that the context passed is named before the next step.
 fn render(status: &Value, commands: &Value) -> String {
     let usage = &status["usage"];
     let mut line = if usage["status"] == "observed" {
@@ -235,6 +236,12 @@ fn render(status: &Value, commands: &Value) -> String {
     } else {
         "Context usage unknown".into()
     };
+    if status["budget"]["exceeded"] == true {
+        line.push_str(&format!(
+            " | Past {}-token budget",
+            status["budget"]["budgetTokens"]
+        ));
+    }
     if let Some(action) = status["suggestion"]["action"].as_str() {
         let command = commands[action].as_str().unwrap_or(action);
         line.push_str(&format!(" | Next: {command}"));
@@ -263,6 +270,13 @@ fn status(
     if !request.json {
         return Ok(format!("{}\n", render(&status, &capabilities["commands"])));
     }
+    let mut capabilities = capabilities;
+    // The model limits are the bundled input to advice; the resolved values are in `usage`,
+    // `budget` and `sessionHost`.
+    capabilities
+        .as_object_mut()
+        .expect("host entry")
+        .shift_remove("contextLimits");
     let fields = status.as_object_mut().expect("status object");
     if let Some(session_host) = fields.insert("host".into(), capabilities) {
         fields.insert("sessionHost".into(), session_host);
@@ -347,8 +361,68 @@ mod tests {
             render(&status, agents),
             "Context 85/100 tokens (85%) | Next: compact"
         );
+        let gemini = &capabilities("gemini").unwrap()["commands"];
+        assert_eq!(
+            render(&status, gemini),
+            "Context 85/100 tokens (85%) | Next: /compress"
+        );
         // `Math.round` rounds halves up.
         let half = json!({"usage": {"status": "observed", "currentTokens": 1, "capacityTokens": 200, "usedRatio": 0.005}});
         assert_eq!(render(&half, codex), "Context 1/200 tokens (1%)");
+    }
+
+    #[test]
+    fn a_passed_budget_is_named_before_the_next_step() {
+        let status = json!({"usage": {"status": "observed", "currentTokens": 250000, "capacityTokens": 1000000, "usedRatio": 0.25},
+            "budget": {"budgetTokens": 200000, "exceeded": true}, "suggestion": {"action": "start-new-session"}});
+        let claude = &capabilities("claude").unwrap()["commands"];
+        assert_eq!(
+            render(&status, claude),
+            "Context 250000/1000000 tokens (25%) | Past 200000-token budget | Next: /clear"
+        );
+    }
+
+    #[test]
+    fn every_host_declares_its_context_surfaces() {
+        let table: Value = serde_json::from_str(HOSTS).unwrap();
+        for (host, entry) in table.as_object().unwrap() {
+            let declared = |field: &str, allowed: &[&str]| {
+                let value = entry[field].as_str().unwrap_or_default();
+                assert!(allowed.contains(&value), "{host}.{field}: {value:?}");
+            };
+            declared(
+                "usage",
+                &["statusline", "transition-snapshot", "native-ui", "none"],
+            );
+            declared("nativeAutoCompact", &["documented", "unknown"]);
+            // No export ships a compaction transport or a completion receipt.
+            declared("control", &["none"]);
+            declared("completion", &["none"]);
+        }
+        // Only the status-line payload is ingested; other sources stay declared, not read.
+        assert_eq!(capabilities("claude").unwrap()["usage"], "statusline");
+        // A documented manual command is what makes compaction advice reliable.
+        let manual: Vec<&str> = table
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter(|(_, entry)| entry["commands"].get("compact").is_some())
+            .map(|(host, _)| host.as_str())
+            .collect();
+        assert_eq!(
+            manual,
+            ["claude", "codex", "copilot", "gemini", "gemini-extension"]
+        );
+    }
+
+    #[test]
+    fn bundled_context_limits_are_valid() {
+        let table: Value = serde_json::from_str(HOSTS).unwrap();
+        for (host, entry) in table.as_object().unwrap() {
+            if let Some(limits) = entry.get("contextLimits") {
+                craft_engine::contracts::validate_context_limits(limits)
+                    .unwrap_or_else(|error| panic!("{host}: {error}"));
+            }
+        }
     }
 }
