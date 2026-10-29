@@ -87,7 +87,7 @@ pub(crate) fn refresh(
     let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
     let started = Instant::now();
     let exclusions =
-        craft_engine::contracts::evidence_exclusions(&craft_platform::documents::project(root)?)?;
+        craft_engine::contracts::evidence_exclusions(&crate::project::configuration(root)?)?;
     let retired = store.retain_providers(ACTIVE)?;
     let epoch = store.begin_inventory()?;
     let mut inventory = Inventory::start(root, &exclusions)?;

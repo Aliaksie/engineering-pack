@@ -21,6 +21,13 @@ fn document(read: Result<Value, documents::DocumentError>) -> Result<Value, Fail
     Ok(value)
 }
 
+/// The validated project configuration, for commands that read it without settings.
+pub fn configuration(root: &Path) -> Result<Value, Failure> {
+    let project = document(documents::project(root))?;
+    contracts::validate_project(&project)?;
+    Ok(project)
+}
+
 pub fn input(file: &Path) -> Result<Value, Failure> {
     document(documents::input(file))
 }

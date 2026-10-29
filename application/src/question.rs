@@ -1,13 +1,12 @@
 //! A structural lookup: refresh Project Intelligence within a short budget, answer from verified
 //! evidence for the sources it covers and search the remaining in-scope sources literally, or
 //! the whole scope when the index cannot answer.
-use crate::{budget::Budget, failure::Failure};
+use crate::{budget::Budget, failure::Failure, project};
 use craft_engine::{
     contracts,
     discovery::question::{self, Coverage, Question},
 };
 use craft_platform::{
-    documents,
     providers::{ACTIVE, for_path, kinds},
     repository::database_guard,
     state,
@@ -30,7 +29,7 @@ pub fn answer(
     let question = question::question(input)?;
     let root = state::canonical_root(root)?;
     let mut coverage = Coverage {
-        enabled: contracts::evidence_enabled(&documents::project(&root)?)?,
+        enabled: contracts::evidence_enabled(&project::configuration(&root)?)?,
         ..Coverage::default()
     };
     let mut answer = None;

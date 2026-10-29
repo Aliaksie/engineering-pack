@@ -493,6 +493,10 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.rs', 'fn ping() {}']]);
   assert.equal(combined.route.complete, true);
   assert.match(locate(['--declaration', 'ping']), /; gaps: unindexed rs 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.rs:1: fn ping\(\) \{\}\n$/);
+  // An invalid project file is refused even when the index alone would answer.
+  write('.craft/project.json', JSON.stringify({ evidence: { enabled: true } }));
+  const invalid = nativeCommand(['locate', '--root', root, '--callers', 'ping', '--path', 'src'], { binary });
+  assert.deepEqual([invalid.exitCode, /formatVersion/.test(invalid.stderr)], [2, true]);
   config({ enabled: true, exclude: ['src'] });
   const excluded = ask('--callers', 'ping', '--path', 'src');
   assert.deepEqual([excluded.route.reason, excluded.route.detail], ['scope-excluded', ['src']]);
