@@ -271,7 +271,7 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   const first = run('refresh');
   assert.equal(first.changed, 2);
   assert.equal(first.coverage.sources, 2);
-  assert.equal(run('version').providers.length, 3);
+  assert.equal(run('version').providers.length, 4);
   const schema = run('query', { value: 'schema', verify: true, excerpt: true });
   const call = schema.results.find(row => row.kind === 'java:invokes-syntax');
   const declaration = schema.results.find(row => row.kind === 'java:declares-method');
@@ -468,7 +468,8 @@ test('locate routes structural questions to verified evidence only under full sc
   const ask = (...args) => JSON.parse(locate([...args, '--json']));
   write('src/A.java', 'class A {\n void go() {\n  ping();\n }\n void ping() {}\n}\n');
   write('docs/guide.md', '# Guide\n\n## Install\n\ntext\n');
-  write('native/lib.rs', 'fn ping() {}\n');
+  write('native/lib.go', 'func ping() {}\n');
+  write('crate/src/lib.rs', 'use crate::net::{self, ping as p};\nfn run() {\n    assert_eq!(net::ping(), ());\n}\n');
   // Off by default: literal search, nothing indexed.
   const disabled = ask('--callers', 'ping', '--path', 'src');
   assert.deepEqual([disabled.route.answeredBy, disabled.route.reason], ['locate', 'index-disabled']);
@@ -486,13 +487,18 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual([absent.results, absent.route.complete], [[], true]);
   assert.match(locate(['--callers', 'pong', '--path', 'src']), /^intelligence \(covered\): callers pong in src\n[^]*No match: absent within this coverage\.\n$/);
   assert.deepEqual(ask('--outline', 'docs/guide.md').results.map(row => [row.name, row.line, row.endLine]), [['Guide', 1, 5], ['Install', 3, 5]]);
-  // Rust source no provider reads is searched literally beside the index answer.
-  const combined = ask('--declaration', 'ping');
-  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { rs: 1 } }]);
+  // Rust calls inside macro arguments and wrapped use-tree leaves are cited structurally.
+  const rust = ask('--callers', 'ping', '--path', 'crate');
+  assert.deepEqual([rust.route.answeredBy, rust.results.map(row => [row.kind, row.line, row.container.name])],
+    ['intelligence', [['rust:invokes-syntax', 3, 'run']]]);
+  assert.deepEqual(ask('--imports', 'crate::net::ping', '--path', 'crate').results.map(row => [row.line, row.column]), [[1, 24]]);
+  // Go source no provider reads is searched literally beside the index answer.
+  const combined = ask('--declaration', 'ping', '--path', 'src', '--path', 'native');
+  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { go: 1 } }]);
   assert.deepEqual(combined.results.map(row => [row.path, row.kind]), [['src/A.java', 'java:declares-method']]);
-  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.rs', 'fn ping() {}']]);
+  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.go', 'func ping() {}']]);
   assert.equal(combined.route.complete, true);
-  assert.match(locate(['--declaration', 'ping']), /; gaps: unindexed rs 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.rs:1: fn ping\(\) \{\}\n$/);
+  assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed go 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.go:1: func ping\(\) \{\}\n$/);
   // An invalid project file is refused even when the index alone would answer.
   write('.craft/project.json', JSON.stringify({ evidence: { enabled: true } }));
   const invalid = nativeCommand(['locate', '--root', root, '--callers', 'ping', '--path', 'src'], { binary });

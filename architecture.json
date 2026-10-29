@@ -18,7 +18,7 @@
       "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
       "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
       "dependsOn": ["engine"],
-      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript"],
+      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript", "tree-sitter-rust"],
       "shipped": true
     },
     "application": {

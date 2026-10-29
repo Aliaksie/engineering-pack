@@ -5,6 +5,7 @@ pub const ACTIVE: &[&str] = &[
     crate::javascript::PROVIDER,
     crate::java::PROVIDER,
     crate::markdown::PROVIDER,
+    crate::rust::PROVIDER,
 ];
 
 pub fn for_path(path: &str) -> Option<&'static str> {
@@ -12,6 +13,7 @@ pub fn for_path(path: &str) -> Option<&'static str> {
         Some("js" | "mjs" | "jsx" | "cjs") => Some(crate::javascript::PROVIDER),
         Some("java") => Some(crate::java::PROVIDER),
         Some("md" | "markdown") => Some(crate::markdown::PROVIDER),
+        Some("rs") => Some(crate::rust::PROVIDER),
         _ => None,
     }
 }
@@ -29,6 +31,15 @@ pub fn kinds(provider: &str) -> &'static [&'static str] {
             "java:invokes-syntax",
         ],
         crate::markdown::PROVIDER => &["md:section"],
+        crate::rust::PROVIDER => &[
+            "rust:declares-const",
+            "rust:declares-fn",
+            "rust:declares-macro",
+            "rust:declares-module",
+            "rust:declares-type",
+            "rust:imports",
+            "rust:invokes-syntax",
+        ],
         _ => &[],
     }
 }
@@ -38,6 +49,7 @@ pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
         Some(crate::javascript::PROVIDER) => crate::javascript::extract(path, bytes),
         Some(crate::java::PROVIDER) => crate::java::extract(path, bytes),
         Some(crate::markdown::PROVIDER) => crate::markdown::extract(path, bytes),
+        Some(crate::rust::PROVIDER) => crate::rust::extract(path, bytes),
         _ => Err("unsupported source extension".into()),
     }
 }
@@ -59,6 +71,10 @@ mod tests {
                 "import a.B; import static a.C.d; class A { A() {} void f() { g(); } }",
             ),
             ("a.md", "# Title\n"),
+            (
+                "a.rs",
+                "use a::{b, c}; mod m; macro_rules! n { () => {} } const C: u8 = 1; struct S; fn f() { g(); n!(h()); }",
+            ),
         ] {
             let extraction = extract(path, source.as_bytes()).unwrap();
             let declared = kinds(for_path(path).unwrap());

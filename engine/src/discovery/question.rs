@@ -46,9 +46,14 @@ impl Ask {
                     "java:declares-method",
                     "java:declares-type",
                     "js:declares",
+                    "rust:declares-const",
+                    "rust:declares-fn",
+                    "rust:declares-macro",
+                    "rust:declares-module",
+                    "rust:declares-type",
                 ],
             ),
-            Ask::Callers => ("name", &["java:invokes-syntax"]),
+            Ask::Callers => ("name", &["java:invokes-syntax", "rust:invokes-syntax"]),
             Ask::Imports => (
                 "target",
                 &[
@@ -56,6 +61,7 @@ impl Ask {
                     "java:imports-static",
                     "js:dynamic-import",
                     "js:imports",
+                    "rust:imports",
                 ],
             ),
             Ask::Section => ("name", &["md:section"]),

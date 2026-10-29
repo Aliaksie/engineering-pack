@@ -13,6 +13,7 @@ pub mod markdown;
 pub mod process;
 pub mod providers;
 pub mod repository;
+pub mod rust;
 pub mod scratch;
 pub mod search;
 pub mod state;

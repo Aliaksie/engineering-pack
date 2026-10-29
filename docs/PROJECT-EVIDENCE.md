@@ -2,10 +2,11 @@
 
 An opt-in local index of syntax facts that agents can cite instead of searching again:
 JavaScript declarations and literal imports (`.js`, `.mjs`, `.jsx`, `.cjs`), Java
-declarations, imports and method-invocation syntax (`.java`), and Markdown sections
-(`.md`, `.markdown`). It records syntax, not
+declarations, imports and method-invocation syntax (`.java`), Rust items, `use` paths and
+call syntax (`.rs`), and Markdown sections (`.md`, `.markdown`). It records syntax, not
 resolved calls: runtime dispatch, package exports, overloads and receiver types are not
-resolved, and direct search remains useful.
+resolved, and direct search remains useful. Rust macro arguments are not parsed, so a call
+there is recorded from its `name(` spelling.
 
 ## Use
 
@@ -31,16 +32,16 @@ craft locate --root . --outline docs/guide.md
 
 | Question | Matches | Answered from |
 |---|---|---|
-| `--declaration <name>` | declared name | JavaScript, Java |
-| `--callers <name>` | invoked method name, with its enclosing declaration | Java |
-| `--imports <target>` | import target as spelled | JavaScript, Java |
+| `--declaration <name>` | declared name | JavaScript, Java, Rust |
+| `--callers <name>` | invoked method name, with its enclosing declaration | Java, Rust |
+| `--imports <target>` | import target as spelled; one full path per Rust `use` leaf | JavaScript, Java, Rust |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
 
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
 verified evidence. In-scope sources the index cannot answer for are its gaps: pending or failed
 extraction, a source changed since it was cited, or a candidate in a language the question's
-providers do not read (a `.rs` or `.ts` file for `--callers`, an `.rst` file for `--section`).
+providers do not read (a `.js` or `.ts` file for `--callers`, an `.rst` file for `--section`).
 Up to 200 gap files are searched literally for the spelled value beside the index rows
 (`route.answeredBy` `intelligence+locate`, `route.reason` `gaps-searched`, `route.detail`
 counting them). The whole scope is searched literally instead (`locate`) when the reason is
@@ -122,5 +123,6 @@ current platform under `dist/project-evidence/<target>/`, with dependency notice
 per-file checksums ([local builds](INSTALL.md#local-builds-and-project-overlays)).
 Dependencies are pinned in `Cargo.lock`: [rusqlite](https://docs.rs/crate/rusqlite/0.40.2),
 [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) with the
-[JavaScript](https://docs.rs/crate/tree-sitter-javascript/0.25.0) and
-[Java](https://docs.rs/crate/tree-sitter-java/0.23.5) grammars.
+[JavaScript](https://docs.rs/crate/tree-sitter-javascript/0.25.0),
+[Java](https://docs.rs/crate/tree-sitter-java/0.23.5) and
+[Rust](https://docs.rs/crate/tree-sitter-rust/0.24.2) grammars.
