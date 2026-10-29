@@ -74,7 +74,8 @@ test('cached plugin runs native refresh/query after relocation and bundle rollba
   const run = (root, operation, args = []) => craft(root, [operation, '--enable', '--root', consumer, '--json', ...args]);
   assert.equal(run(moved, 'version').binaryVersion, metadata.binaryVersion);
   assert.equal(run(moved, 'refresh').changed, 1);
-  assert.equal(run(moved, 'query', ['--value', 'retained', '--verify']).results[0].verification, 'verified-selected-source');
+  const retained = run(moved, 'query', ['--value', 'retained', '--verify']);
+  assert.equal(retained.sources[retained.results[0].path].verification, 'verified-selected-source');
   const replacement = path.join(path.dirname(moved), 'replacement plugin');
   fs.cpSync(moved, replacement, { recursive: true });
   assert.equal(run(replacement, 'refresh').reused, 1);

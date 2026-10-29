@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { nativeRequest } from './craft.mjs';
+import { nativeCommand, nativeRequest } from './craft.mjs';
 import { readTelemetry } from './state.mjs';
 
 // Operations through the executable's request protocol; the CLI cases use `project-evidence`.
@@ -18,6 +18,8 @@ function fixture(t) {
   const run = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary });
   return { root, run };
 }
+// Verification is recorded once per cited source.
+const verification = (result, row = result.results[0]) => result.sources[row.path].verification;
 
 test('native refresh, reuse, failure, deletion and selected-source verification', { skip: !binary }, t => {
   const { root, run } = fixture(t);
@@ -26,11 +28,11 @@ test('native refresh, reuse, failure, deletion and selected-source verification'
   assert.equal(run('refresh').changed, 2);
   const found = run('query', { field: 'name', value: 'before', verify: true });
   assert.equal(found.results.length, 1);
-  assert.equal(found.results[0].verification, 'verified-selected-source');
-  assert.equal(found.results[0].evidence.line, 2);
+  assert.equal(verification(found), 'verified-selected-source');
+  assert.equal(found.results[0].line, 2);
   assert.equal(run('refresh').reused, 2);
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const after = 1;');
-  assert.equal(run('query', { value: 'before', verify: true }).results[0].verification, 'stale-or-unavailable');
+  assert.equal(verification(run('query', { value: 'before', verify: true })), 'stale-or-unavailable');
   assert.equal(run('refresh').changed, 1);
   assert.equal(run('query', { value: 'before' }).results.length, 0);
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
@@ -269,22 +271,27 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   const first = run('refresh');
   assert.equal(first.changed, 2);
   assert.equal(first.coverage.sources, 2);
-  assert.equal(run('version').providers.length, 2);
-  const results = run('query', { value: 'schema', verify: true }).results;
-  const call = results.find(row => row.evidence.kind === 'java:invokes-syntax');
-  const declaration = results.find(row => row.evidence.kind === 'java:declares-method');
+  assert.equal(run('version').providers.length, 4);
+  const schema = run('query', { value: 'schema', verify: true, excerpt: true });
+  const call = schema.results.find(row => row.kind === 'java:invokes-syntax');
+  const declaration = schema.results.find(row => row.kind === 'java:declares-method');
   assert.ok(call && declaration);
-  assert.equal(call.verification, 'verified-selected-source');
-  assert.equal(call.evidence.line, 3);
-  assert.equal(call.evidence.target, 'schema');
-  assert.notEqual(call.evidence.container, declaration.id);
-  const caller = run('query', { field: 'id', value: call.evidence.container, verify: true }).results[0];
-  assert.equal(caller.evidence.name, 'type');
-  assert.equal(caller.evidence.kind, 'java:declares-method');
+  assert.equal(verification(schema, call), 'verified-selected-source');
+  assert.equal(call.line, 3);
+  assert.equal(call.target, 'schema');
+  assert.equal(call.excerpt, 'String type(Schema s) { return schema(s); }');
+  // The enclosing declaration is named inline; its ID still resolves on its own.
+  assert.deepEqual([call.container.kind, call.container.name, call.container.line], ['java:declares-method', 'type', 3]);
+  assert.notEqual(call.container.id, declaration.id);
+  const caller = run('query', { field: 'id', value: call.container.id, verify: true }).results[0];
+  assert.equal(caller.name, 'type');
+  assert.equal(caller.kind, 'java:declares-method');
   assert.equal(caller.path, call.path);
   assert.equal(run('refresh').reused, 2);
   fs.writeFileSync(path.join(root, 'Generator.java'), source.replace('schema(s)', 'replacement(s)'));
-  assert.equal(run('query', { field: 'id', value: call.id, verify: true }).results[0].verification, 'stale-or-unavailable');
+  const stale = run('query', { field: 'id', value: call.id, verify: true, excerpt: true });
+  assert.equal(verification(stale), 'stale-or-unavailable');
+  assert.equal(stale.results[0].excerpt, undefined, 'a changed source gives no excerpt');
   const changed = run('refresh');
   assert.equal(changed.changed, 1);
   assert.equal(changed.reused, 1);
@@ -297,6 +304,27 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   assert.equal(run('refresh').removed, 1);
   assert.equal(run('status').failedSources, 0);
   assert.equal(run('status').sources, 1);
+});
+
+test('Markdown sections are cited passages with their enclosing section and line span', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.mkdirSync(path.join(root, 'docs'));
+  const doc = '# Guide\n\n## Install\nsteps\n\n```sh\n# not a heading\n```\n\n## Use\nrun it\n';
+  fs.writeFileSync(path.join(root, 'docs', 'guide.md'), doc);
+  assert.equal(run('refresh').changed, 1);
+  const outline = run('query', { field: 'path', value: 'docs/guide.md', verify: true });
+  assert.deepEqual(outline.results.map(row => [row.name, row.line, row.endLine, row.container?.name]),
+    [['Guide', 1, 11, undefined], ['Install', 3, 8, 'Guide'], ['Use', 10, 11, 'Guide']]);
+  const install = outline.results[1];
+  assert.equal(doc.slice(install.startByte, install.endByte), '## Install\nsteps\n\n```sh\n# not a heading\n```');
+  const text = execFileSync(binary, ['project-evidence', 'query', '--enable', '--root', root, '--value', 'Use',
+    '--kind', 'md:section', '--excerpt'], { encoding: 'utf8' });
+  assert.equal(text, '1 result(s) of kind md:section; stored-snapshot; inventory complete\ndocs/guide.md [verified-selected-source]\n'
+    + '  10:1 Use (lines 10-11) in md:section Guide:1\n    | ## Use\n');
+  fs.writeFileSync(path.join(root, 'docs', 'guide.md'), doc.replace('## Use', '## Usage'));
+  assert.equal(run('query', { value: 'Use', verify: true }).results[0].endLine, undefined, 'a stale source gives no span');
+  assert.equal(run('refresh').changed, 1);
+  assert.equal(run('query', { value: 'Usage' }).results.length, 1);
 });
 
 test('mixed providers share extraction budgets and retire deleted sources together', { skip: !binary }, t => {
@@ -316,18 +344,86 @@ test('mixed providers share extraction budgets and retire deleted sources togeth
   assert.equal(run('query', { value: 'two' }).results.length, 0);
 });
 
+test('consumer exclusions leave sources out, retire stored ones and report scope', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  const config = exclude => {
+    fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, evidence: { exclude } }));
+  };
+  fs.mkdirSync(path.join(root, 'samples/gen'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'samples/gen/a.js'), 'export const ping = 1;');
+  fs.writeFileSync(path.join(root, 'samplesKept.js'), 'export const ping = 2;');
+  fs.writeFileSync(path.join(root, 'main.js'), 'export const ping = 3;');
+  assert.deepEqual(run('refresh').coverage.exclusions, []);
+  assert.equal(run('query', { value: 'ping' }).results.length, 3);
+  // Git lists tracked excluded sources; it does not walk excluded directories for untracked ones.
+  execFileSync('git', ['-C', root, 'add', 'samples/gen/a.js']);
+  fs.writeFileSync(path.join(root, 'samples/gen/untracked.js'), 'export const ping = 4;');
+  config(['samples/']);
+  const scoped = run('refresh');
+  assert.equal(scoped.excluded, 1);
+  assert.equal(scoped.removed, 1);
+  assert.deepEqual([scoped.coverage.exclusions, scoped.coverage.excludedSources, scoped.coverage.sources], [['samples'], 1, 2]);
+  assert.deepEqual(run('query', { value: 'ping' }).results.map(row => row.path).sort(), ['main.js', 'samplesKept.js']);
+  assert.deepEqual(run('query', { value: 'ping' }).coverage.exclusions, ['samples']);
+  config([]);
+  assert.equal(run('refresh').changed, 2);
+  assert.equal(run('status').excludedSources, 0);
+  config(['../outside']);
+  assert.throws(() => run('refresh'), /project-relative path/);
+  assert.equal(run('status').sources, 4);
+});
+
+test('a plain workspace folder is walked and its nested repositories listed by their own Git', { skip: !binary }, t => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-evidence-plain-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const run = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary });
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  write('notes/tool.js', 'export const ping = 1;');
+  write('api/src/Api.java', 'class Api { void ping() {} }');
+  write('api/build.js', 'export const ping = 2;');
+  write('api/.gitignore', 'build.js\n');
+  write('web/node_modules/dep.js', 'export const ping = 3;');
+  execFileSync('git', ['init', '--quiet', path.join(root, 'api')]);
+  const first = run('refresh');
+  assert.equal(first.changed, 2);
+  assert.deepEqual(first.coverage.inventory, { kind: 'filesystem', repositories: ['api'] });
+  const found = run('query', { value: 'ping', verify: true });
+  assert.deepEqual(found.results.map(row => row.path), ['api/src/Api.java', 'notes/tool.js']);
+  assert.deepEqual(Object.values(found.sources).map(source => source.verification), ['verified-selected-source', 'verified-selected-source']);
+  assert.deepEqual(found.coverage.inventory.repositories, ['api']);
+  assert.equal(run('query', { value: 'ping', under: 'api' }).results.length, 1);
+  assert.equal(run('query', { value: 'ping', under: 'notes/tool.js' }).results.length, 1);
+  // An excluded directory is not walked, nor a worktree inside it listed.
+  write('.craft/project.json', JSON.stringify({ formatVersion: 1, evidence: { exclude: ['api'] } }));
+  const pruned = run('refresh');
+  assert.deepEqual([pruned.removed, pruned.excluded, pruned.coverage.inventory.repositories], [1, 0, []]);
+  write('.craft/project.json', JSON.stringify({ formatVersion: 1 }));
+  assert.equal(run('refresh').changed, 1);
+  fs.rmSync(path.join(root, 'api'), { recursive: true });
+  const removed = run('refresh');
+  assert.deepEqual([removed.removed, removed.coverage.inventory.repositories], [1, []]);
+});
+
 test('source-scoped queries filter before pagination and preserve exact member-relative paths', { skip: !binary }, t => {
   const { root, run } = fixture(t);
   fs.writeFileSync(path.join(root, 'noise.java'), `class Noise { void run() { ${'ping();'.repeat(210)} } void ping() {} }`);
   fs.writeFileSync(path.join(root, 'selected.java'), 'class Selected { void run() { ping(); ping(); ping(); } void ping() {} }');
   run('refresh');
-  assert.ok(run('query', { value: 'ping', limit: 200 }).continuation);
+  const truncated = run('query', { value: 'ping', limit: 200 });
+  assert.ok(truncated.continuation);
+  assert.deepEqual(truncated.matches.kinds, { 'java:invokes-syntax': 213, 'java:declares-method': 2 });
+  assert.deepEqual(truncated.matches.directories, { 'noise.java': 211, 'selected.java': 4 });
+  assert.deepEqual(Object.keys(truncated.sources), ['noise.java']);
+  const declared = run('query', { value: 'ping', kind: 'java:declares-method' });
+  assert.deepEqual(declared.results.map(row => row.path), ['noise.java', 'selected.java']);
+  assert.equal(declared.matches, undefined);
   const rows = [];
   let after = '';
   do {
     const result = run('query', { value: 'ping', sourcePath: 'selected.java', limit: 1, after, verify: true });
     assert.equal(result.sourcePath, 'selected.java');
-    rows.push(...result.results);
+    rows.push(...result.results.map(row => ({ ...row, verification: verification(result, row) })));
     after = result.continuation;
   } while (after);
   assert.equal(rows.length, 4);
@@ -340,8 +436,15 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   const cli = JSON.parse(execFileSync(binary, ['project-evidence', 'query', '--enable',
     '--root', root, '--value', 'ping', '--source', 'selected.java', '--json'], {encoding: 'utf8'}));
   assert.equal(cli.results.length, 4);
+  fs.mkdirSync(path.join(root, 'main'));
+  fs.writeFileSync(path.join(root, 'main', 'Caller.java'), 'class Caller {\n  void go() {\n    ping();\n  }\n}');
+  run('refresh');
+  const text = execFileSync(binary, ['project-evidence', 'query', '--enable', '--root', root, '--field', 'target',
+    '--value', 'ping', '--kind', 'java:invokes-syntax', '--under', 'main/', '--excerpt'], { encoding: 'utf8' });
+  assert.equal(text, '1 result(s) of kind java:invokes-syntax; stored-snapshot; inventory complete\nmain/Caller.java [verified-selected-source]\n'
+    + '  3:5 ping in java:declares-method go:2\n    | ping();\n');
   const commands = readTelemetry(root).filter(event => event.name === 'cli.command');
-  assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success']]);
+  assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success'], ['project-evidence', 'success']]);
 });
 
 test('native refresh records FIFO sources as unavailable without waiting for a writer', { skip: !binary || process.platform === 'win32', timeout: 15000 }, t => {
@@ -354,8 +457,80 @@ test('native refresh records FIFO sources as unavailable without waiting for a w
   execFileSync('mkfifo', [source]);
   // The child deadline keeps this regression bounded even with the old reader.
   const invoke = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary, timeoutMs: 3000 });
-  assert.equal(invoke('query', { value: 'replacedByPipe', verify: true }).results[0].verification, 'stale-or-unavailable');
+  assert.equal(verification(invoke('query', { value: 'replacedByPipe', verify: true })), 'stale-or-unavailable');
   assert.equal(invoke('refresh').failed, 1);
   assert.equal(invoke('query', { value: 'replacedByPipe' }).results.length, 0);
   assert.equal(invoke('status').sources, 1);
+});
+
+test('locate routes structural questions to verified evidence only under full scope coverage', { skip: !binary }, t => {
+  const { root } = fixture(t);
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  const config = evidence => write('.craft/project.json', JSON.stringify({ formatVersion: 1, evidence }));
+  const locate = args => {
+    const outcome = nativeCommand(['locate', '--root', root, ...args], { binary });
+    assert.equal(outcome.exitCode, 0, outcome.stderr);
+    return outcome.stdout;
+  };
+  const ask = (...args) => JSON.parse(locate([...args, '--json']));
+  write('src/A.java', 'class A {\n void go() {\n  ping();\n }\n void ping() {}\n}\n');
+  write('docs/guide.md', '# Guide\n\n## Install\n\ntext\n');
+  write('native/lib.go', 'func ping() {}\n');
+  write('crate/src/lib.rs', 'use crate::net::{self, ping as p};\nfn run() {\n    assert_eq!(net::ping(), ());\n}\n');
+  // Off by default: literal search, nothing indexed.
+  const disabled = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([disabled.route.answeredBy, disabled.route.reason], ['locate', 'index-disabled']);
+  assert.ok(disabled.matches.length > 0);
+  assert.equal(fs.existsSync(path.join(root, '.craft/state/intelligence')), false);
+  config({ enabled: true });
+  const callers = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([callers.route.answeredBy, callers.route.reason], ['intelligence', 'covered']);
+  assert.deepEqual(callers.results.map(row => [row.path, row.line, row.container.name]), [['src/A.java', 3, 'go']]);
+  assert.equal(callers.sources['src/A.java'].verification, 'verified-selected-source');
+  assert.equal(callers.results[0].excerpt, 'ping();');
+  assert.equal(callers.route.complete, true);
+  // A covered empty answer is an absence within the stated coverage.
+  const absent = ask('--callers', 'pong', '--path', 'src');
+  assert.deepEqual([absent.results, absent.route.complete], [[], true]);
+  assert.match(locate(['--callers', 'pong', '--path', 'src']), /^intelligence \(covered\): callers pong in src\n[^]*No match: absent within this coverage\.\n$/);
+  // A source path is a scope of its own.
+  const file = ask('--declaration', 'ping', '--path', 'src/A.java');
+  assert.deepEqual([file.route.answeredBy, file.results.map(row => row.path), file.route.complete], ['intelligence', ['src/A.java'], true]);
+  assert.deepEqual(ask('--outline', 'docs/guide.md').results.map(row => [row.name, row.line, row.endLine]), [['Guide', 1, 5], ['Install', 3, 5]]);
+  // Rust calls inside macro arguments and wrapped use-tree leaves are cited structurally.
+  const rust = ask('--callers', 'ping', '--path', 'crate');
+  assert.deepEqual([rust.route.answeredBy, rust.results.map(row => [row.kind, row.line, row.container.name])],
+    ['intelligence', [['rust:invokes-syntax', 3, 'run']]]);
+  assert.deepEqual(ask('--imports', 'crate::net::ping', '--path', 'crate').results.map(row => [row.line, row.column]), [[1, 24]]);
+  // Go source no provider reads is searched literally beside the index answer.
+  const combined = ask('--declaration', 'ping', '--path', 'src', '--path', 'native');
+  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { go: 1 } }]);
+  assert.deepEqual(combined.results.map(row => [row.path, row.kind]), [['src/A.java', 'java:declares-method']]);
+  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.go', 'func ping() {}']]);
+  assert.equal(combined.route.complete, true);
+  assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed go 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.go:1: func ping\(\) \{\}\n$/);
+  // A gap file the literal search skips leaves an empty answer short of absence.
+  write('scripts/big.py', `# ${'x'.repeat(270 * 1024)}\n`);
+  const skipped = ask('--declaration', 'pong', '--path', 'scripts');
+  assert.deepEqual([skipped.route.answeredBy, skipped.gapSearch.skipped.oversized, skipped.route.complete], ['intelligence+locate', 1, false]);
+  assert.match(locate(['--declaration', 'pong', '--path', 'scripts']), /No match: not proof of absence\.\n$/);
+  // An invalid project file is refused even when the index alone would answer.
+  write('.craft/project.json', JSON.stringify({ evidence: { enabled: true } }));
+  const invalid = nativeCommand(['locate', '--root', root, '--callers', 'ping', '--path', 'src'], { binary });
+  assert.deepEqual([invalid.exitCode, /formatVersion/.test(invalid.stderr)], [2, true]);
+  // An exclusion inside the scope is named and leaves an empty answer short of absence.
+  write('src/vendor/V.java', 'class V { void pong() {} }');
+  config({ enabled: true, exclude: ['src/vendor'] });
+  const partly = ask('--declaration', 'pong', '--path', 'src');
+  assert.deepEqual([partly.route.answeredBy, partly.route.reason, partly.route.detail, partly.results, partly.route.complete],
+    ['intelligence', 'covered', { excluded: { count: 1, paths: ['src/vendor'] } }, [], false]);
+  assert.match(locate(['--declaration', 'pong', '--path', 'src']), /; gaps: excluded 1\n[^]*No match: not proof of absence\.\n$/);
+  assert.equal(ask('--declaration', 'pong', '--path', 'src/A.java').route.complete, true);
+  config({ enabled: true, exclude: ['src'] });
+  const excluded = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([excluded.route.reason, excluded.route.detail], ['scope-excluded', ['src']]);
+  for (const args of [['--callers', 'a', '--term', 'b'], ['--section', 'a', '--outline', 'b.md'], ['--callers', 'a', '--max-matches', '0']]) {
+    assert.equal(nativeCommand(['locate', '--root', root, ...args], { binary }).exitCode, 2);
+  }
+  assert.equal(nativeCommand(['route', '--callers', 'a'], { binary }).exitCode, 2);
 });

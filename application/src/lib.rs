@@ -20,6 +20,7 @@ mod host_context;
 mod integration;
 mod plan;
 mod project;
+mod question;
 mod render;
 mod retention;
 mod review;

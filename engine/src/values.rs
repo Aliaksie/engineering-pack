@@ -88,6 +88,28 @@ pub fn lower_hex(text: &str, length: usize) -> bool {
     text.len() == length && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+/// The trimmed source line holding byte `at`, at most `max` characters; a longer line is
+/// cut and ends with `…`. Invalid UTF-8 reads as replacement characters.
+pub fn line_excerpt(content: &[u8], at: usize, max: usize) -> String {
+    let at = at.min(content.len());
+    let start = content[..at]
+        .iter()
+        .rposition(|&b| b == b'\n')
+        .map_or(0, |i| i + 1);
+    let end = content[at..]
+        .iter()
+        .position(|&b| b == b'\n')
+        .map_or(content.len(), |i| at + i);
+    let line = String::from_utf8_lossy(&content[start..end]);
+    let line = line.trim();
+    if line.chars().count() <= max {
+        return line.to_string();
+    }
+    let mut cut: String = line.chars().take(max.saturating_sub(1)).collect();
+    cut.push('…');
+    cut
+}
+
 /// A SHA-256 digest in lowercase hex.
 pub fn sha256(value: &Value) -> bool {
     value.as_str().is_some_and(|s| lower_hex(s, 64))
@@ -115,6 +137,16 @@ pub fn number_text(number: &serde_json::Number) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn excerpts_are_the_trimmed_line_holding_the_byte() {
+        let source = b"first\n\t  call(x);\r\nlast";
+        assert_eq!(line_excerpt(source, 10, 80), "call(x);");
+        assert_eq!(line_excerpt(source, 0, 80), "first");
+        assert_eq!(line_excerpt(source, source.len(), 80), "last");
+        assert_eq!(line_excerpt(source, 10, 4), "cal…");
+        assert_eq!(line_excerpt(b"a\xffb", 0, 80), "a\u{fffd}b");
+    }
 
     #[test]
     fn truthiness_follows_javascript() {

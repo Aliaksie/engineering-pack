@@ -1041,6 +1041,26 @@
           }
         }
       }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project Intelligence enablement and inventory scope.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Route structural lookups (declarations, callers, imports, document sections) through Project Intelligence before literal search. Off by default."
+        },
+        "exclude": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Project-relative path prefixes left out of the evidence inventory, such as generated samples or vendored bundles. Whole path components; a trailing / is accepted.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   },
   "additionalProperties": false,

@@ -66,18 +66,22 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
         request.as_object_mut().unwrap().remove("database");
         match super::evidence::run(operation, &request) {
             Ok(mut result) => {
+                let sources = result["sources"].clone();
                 if let Some(rows) = result["results"].as_array_mut() {
                     for row in rows {
                         row["member"] = json!(id);
                         row["workspaceId"] =
                             json!(identity(&[id, row["id"].as_str().unwrap_or("")]));
-                        let specifier = row["evidence"]["target"].as_str().unwrap_or("");
-                        if row["evidence"]["kind"] != "js:imports" || !specifier.starts_with('.') {
+                        let specifier = row["target"].as_str().unwrap_or("");
+                        if row["kind"] != "js:imports" || !specifier.starts_with('.') {
                             continue;
                         }
-                        let source = row["path"].as_str().ok_or("missing source path")?;
+                        let source = row["path"]
+                            .as_str()
+                            .ok_or("missing source path")?
+                            .to_string();
                         let target = root
-                            .join(source)
+                            .join(&source)
                             .parent()
                             .ok_or("missing parent")?
                             .join(specifier);
@@ -108,7 +112,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
                             let Ok(bytes) = read_source(target_root, &relative) else {
                                 continue;
                             };
-                            row["resolution"] = json!({"state":"resolved","rule":"explicit-relative-file","derivation":"literal-import-path","member":target_id,"path":relative,"hash":hash(&bytes),"targetFreshness":"verified-selected-source","verifiedAt":now(),"sourceFreshness":row["verification"].as_str().unwrap_or("stored-snapshot"),"completeness":"unknown outside explicit relative files"});
+                            row["resolution"] = json!({"state":"resolved","rule":"explicit-relative-file","derivation":"literal-import-path","member":target_id,"path":relative,"hash":hash(&bytes),"targetFreshness":"verified-selected-source","verifiedAt":now(),"sourceFreshness":sources[&source]["verification"].as_str().unwrap_or("stored-snapshot"),"completeness":"unknown outside explicit relative files"});
                         }
                     }
                 }
