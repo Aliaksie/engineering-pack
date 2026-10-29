@@ -1,8 +1,9 @@
 # Project evidence (preview)
 
 An opt-in local index of syntax facts that agents can cite instead of searching again:
-JavaScript declarations and literal imports (`.js`, `.mjs`, `.jsx`, `.cjs`), and Java
-declarations, imports and method-invocation syntax (`.java`). It records syntax, not
+JavaScript declarations and literal imports (`.js`, `.mjs`, `.jsx`, `.cjs`), Java
+declarations, imports and method-invocation syntax (`.java`), and Markdown sections
+(`.md`, `.markdown`). It records syntax, not
 resolved calls: runtime dispatch, package exports, overloads and receiver types are not
 resolved, and direct search remains useful.
 
@@ -24,8 +25,8 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   `--under <directory>` (whole path components) or `--source <path>`. A truncated page
   reports the total matches by kind and by directory. Each source's hash and provider are
   listed once under `sources`. `--verify` rehashes the cited sources and marks each verified
-  or stale; `--excerpt` also verifies and adds the trimmed source line to rows from verified
-  sources.
+  or stale; a verified row that spans several lines (a declaration, a section) gains its
+  `endLine`. `--excerpt` also verifies and adds the row's trimmed first line.
 - **Refresh** reuses unchanged extractions and retires deleted sources. Optional
   `--max-files`, `--max-bytes`, `--max-output-bytes` and `--max-duration-ms` limit one run;
   deferred sources stay pending (and hidden) until a later refresh. Writes commit in batches,
@@ -51,6 +52,14 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
 Java invocation rows carry the spelled method name and, when inside a method or constructor,
 their `container`: the enclosing declaration's ID, kind, name and line. Calls in lambdas keep
 their outer container; that does not mean they run when the outer method does.
+
+Markdown `md:section` rows are named by their heading text as spelled (inline markup kept,
+closing `#`s removed). A section runs from its heading to the next heading of the same or a
+higher level, and its `container` is the enclosing section, so `--field path --value
+docs/guide.md --verify` lists a document's outline with line spans to read. Headings in
+fenced or indented code, HTML comments and front matter are not sections. Inside list items
+and block quotes only a `#` heading opening the line is recognized, and HTML blocks other than
+comments are not.
 
 ## Storage and limits
 

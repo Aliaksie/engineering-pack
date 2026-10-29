@@ -150,8 +150,9 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     }
 }
 
-/// Rehash each cited source once and mark it verified or stale. With `excerpt`, a row from
-/// a verified source also carries its trimmed source line; stale sources give none.
+/// Rehash each cited source once and mark it verified or stale. A row from a verified source
+/// spanning several lines gains its `endLine`; with `excerpt` it also carries its trimmed
+/// first line. Stale sources give neither.
 fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure> {
     let checked_at = now();
     let mut current = std::collections::HashMap::new();
@@ -172,24 +173,32 @@ fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure>
             current.insert(path.clone(), content);
         }
     }
-    if !excerpt {
-        return Ok(());
-    }
     for row in result["results"]
         .as_array_mut()
         .ok_or("invalid query results")?
     {
-        let (Some(content), Some(start)) = (
+        let (Some(content), Some(line), Some(start), Some(end)) = (
             row["path"].as_str().and_then(|path| current.get(path)),
+            row["line"].as_u64(),
             row["startByte"].as_u64(),
+            row["endByte"].as_u64(),
         ) else {
             continue;
         };
-        row["excerpt"] = json!(craft_engine::values::line_excerpt(
-            content,
-            start as usize,
-            EXCERPT_CHARS
-        ));
+        let (start, end) = (start as usize, end as usize);
+        if let Some(span) = content.get(start..end) {
+            let lines = span.iter().filter(|&&b| b == b'\n').count() as u64;
+            if lines > 0 {
+                row["endLine"] = json!(line + lines);
+            }
+        }
+        if excerpt {
+            row["excerpt"] = json!(craft_engine::values::line_excerpt(
+                content,
+                start,
+                EXCERPT_CHARS
+            ));
+        }
     }
     Ok(())
 }
@@ -426,6 +435,9 @@ fn render(result: &Value, json: bool) -> String {
             text.push_str(&format!("{} ", shown(&row["kind"])));
         }
         text.push_str(&shown(&row["name"]));
+        if let Some(end) = row["endLine"].as_u64() {
+            text.push_str(&format!(" (lines {}-{end})", shown(&row["line"])));
+        }
         if let Some(target) = row["target"]
             .as_str()
             .filter(|t| Some(*t) != row["name"].as_str())
@@ -538,7 +550,7 @@ mod command_tests {
     #[test]
     fn query_results_render_grouped_by_source_with_containers() {
         let result = json!({"results": [
-                {"path": "a.java", "line": 2, "column": 8, "kind": "java:declares-method", "name": "go"},
+                {"path": "a.java", "line": 2, "column": 8, "kind": "java:declares-method", "name": "go", "endLine": 4},
                 {"path": "a.java", "line": 3, "column": 5, "kind": "java:invokes-syntax", "name": "ping", "target": "ping",
                     "container": {"kind": "java:declares-method", "name": "go", "line": 2}, "excerpt": "ping();"},
                 {"path": "b.js", "line": 1, "column": 1, "kind": "js:imports", "name": "x", "target": "./x.js"}],
@@ -551,7 +563,7 @@ mod command_tests {
 by kind: java:invokes-syntax 8, js:imports 1
 under .: a.java 8, b.js 1
 a.java [verified-selected-source]
-  2:8 java:declares-method go
+  2:8 java:declares-method go (lines 2-4)
   3:5 java:invokes-syntax ping in java:declares-method go:2
     | ping();
 b.js [stored-snapshot]

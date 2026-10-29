@@ -9,6 +9,7 @@ pub mod http;
 pub mod java;
 pub mod javascript;
 pub mod lease;
+pub mod markdown;
 pub mod process;
 pub mod providers;
 pub mod repository;

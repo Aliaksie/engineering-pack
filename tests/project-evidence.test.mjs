@@ -271,7 +271,7 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   const first = run('refresh');
   assert.equal(first.changed, 2);
   assert.equal(first.coverage.sources, 2);
-  assert.equal(run('version').providers.length, 2);
+  assert.equal(run('version').providers.length, 3);
   const schema = run('query', { value: 'schema', verify: true, excerpt: true });
   const call = schema.results.find(row => row.kind === 'java:invokes-syntax');
   const declaration = schema.results.find(row => row.kind === 'java:declares-method');
@@ -304,6 +304,27 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   assert.equal(run('refresh').removed, 1);
   assert.equal(run('status').failedSources, 0);
   assert.equal(run('status').sources, 1);
+});
+
+test('Markdown sections are cited passages with their enclosing section and line span', { skip: !binary }, t => {
+  const { root, run } = fixture(t);
+  fs.mkdirSync(path.join(root, 'docs'));
+  const doc = '# Guide\n\n## Install\nsteps\n\n```sh\n# not a heading\n```\n\n## Use\nrun it\n';
+  fs.writeFileSync(path.join(root, 'docs', 'guide.md'), doc);
+  assert.equal(run('refresh').changed, 1);
+  const outline = run('query', { field: 'path', value: 'docs/guide.md', verify: true });
+  assert.deepEqual(outline.results.map(row => [row.name, row.line, row.endLine, row.container?.name]),
+    [['Guide', 1, 11, undefined], ['Install', 3, 8, 'Guide'], ['Use', 10, 11, 'Guide']]);
+  const install = outline.results[1];
+  assert.equal(doc.slice(install.startByte, install.endByte), '## Install\nsteps\n\n```sh\n# not a heading\n```');
+  const text = execFileSync(binary, ['project-evidence', 'query', '--enable', '--root', root, '--value', 'Use',
+    '--kind', 'md:section', '--excerpt'], { encoding: 'utf8' });
+  assert.equal(text, '1 result(s) of kind md:section; stored-snapshot; inventory complete\ndocs/guide.md [verified-selected-source]\n'
+    + '  10:1 Use (lines 10-11) in md:section Guide:1\n    | ## Use\n');
+  fs.writeFileSync(path.join(root, 'docs', 'guide.md'), doc.replace('## Use', '## Usage'));
+  assert.equal(run('query', { value: 'Use', verify: true }).results[0].endLine, undefined, 'a stale source gives no span');
+  assert.equal(run('refresh').changed, 1);
+  assert.equal(run('query', { value: 'Usage' }).results.length, 1);
 });
 
 test('mixed providers share extraction budgets and retire deleted sources together', { skip: !binary }, t => {
