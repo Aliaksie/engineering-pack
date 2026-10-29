@@ -350,6 +350,30 @@ test('consumer exclusions leave sources out, retire stored ones and report scope
   assert.equal(run('status').sources, 3);
 });
 
+test('a plain workspace folder is walked and its nested repositories listed by their own Git', { skip: !binary }, t => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-evidence-plain-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const run = (operation, input = {}) => nativeRequest(operation, { ...input, root }, { binary });
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  write('notes/tool.js', 'export const ping = 1;');
+  write('api/src/Api.java', 'class Api { void ping() {} }');
+  write('api/build.js', 'export const ping = 2;');
+  write('api/.gitignore', 'build.js\n');
+  write('web/node_modules/dep.js', 'export const ping = 3;');
+  execFileSync('git', ['init', '--quiet', path.join(root, 'api')]);
+  const first = run('refresh');
+  assert.equal(first.changed, 2);
+  assert.deepEqual(first.coverage.inventory, { kind: 'filesystem', repositories: ['api'] });
+  const found = run('query', { value: 'ping', verify: true });
+  assert.deepEqual(found.results.map(row => row.path), ['api/src/Api.java', 'notes/tool.js']);
+  assert.deepEqual(Object.values(found.sources).map(source => source.verification), ['verified-selected-source', 'verified-selected-source']);
+  assert.deepEqual(found.coverage.inventory.repositories, ['api']);
+  assert.equal(run('query', { value: 'ping', under: 'api' }).results.length, 1);
+  fs.rmSync(path.join(root, 'api'), { recursive: true });
+  const removed = run('refresh');
+  assert.deepEqual([removed.removed, removed.coverage.inventory.repositories], [1, []]);
+});
+
 test('source-scoped queries filter before pagination and preserve exact member-relative paths', { skip: !binary }, t => {
   const { root, run } = fixture(t);
   fs.writeFileSync(path.join(root, 'noise.java'), `class Noise { void run() { ${'ping();'.repeat(210)} } void ping() {} }`);

@@ -37,6 +37,12 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   matched by whole path components). Refresh skips them and retires facts already stored
   under them; coverage reports the applied `exclusions` and `excludedSources`, so an empty
   answer from an excluded path is not mistaken for absence.
+- **Roots**: inside a Git worktree, Git lists the sources (tracked and unignored). Any other
+  root, such as a folder of repositories or a plain folder, is walked without following
+  symlinks and reads no ignore files; each nested Git worktree found there is listed by its
+  own Git, so its ignore rules apply. Paths stay root-relative (`api/src/Api.java`), and
+  coverage reports `inventory` as `git` or `filesystem` with the nested `repositories`. A walk
+  stops after 1,000,000 directory entries and keeps earlier evidence; select a narrower root.
 - **Workspaces**: repeat `--member id=/absolute/root` to index several repositories. Each
   keeps its own database and generation. Literal relative imports between selected members
   get a resolution record with the target's current hash; that is a declared path, not a

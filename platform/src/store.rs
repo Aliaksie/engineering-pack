@@ -73,10 +73,11 @@ impl Store {
                 return Err("unversioned nonempty evidence database".into());
             }
             connection.execute_batch(&format!("BEGIN IMMEDIATE;
-                -- `exclusions` is the JSON prefix list the last complete inventory applied.
+                -- `exclusions` is the JSON prefix list the last complete inventory applied and
+                -- `inventory` the JSON description of how it found sources.
                 CREATE TABLE metadata (key TEXT PRIMARY KEY, value NOT NULL);
                 INSERT INTO metadata VALUES ('generation',0),('inventory_complete',0),('inventory_epoch',0),
-                    ('exclusions','[]'),('excluded_sources',0);
+                    ('exclusions','[]'),('excluded_sources',0),('inventory','null');
                 CREATE TABLE sources (sid INTEGER PRIMARY KEY, path TEXT NOT NULL, provider TEXT NOT NULL,
                     hash TEXT NOT NULL, outcome TEXT NOT NULL, diagnostic TEXT, observed_at TEXT NOT NULL,
                     epoch INTEGER NOT NULL DEFAULT 0, records INTEGER NOT NULL DEFAULT 0, UNIQUE(path,provider));
@@ -266,15 +267,21 @@ impl Store {
     }
 
     /// Retire sources this inventory did not see, including newly excluded ones, and record
-    /// the exclusions it applied with the number of eligible sources they left out.
+    /// how it found sources and the exclusions it applied with the number of eligible
+    /// sources they left out.
     pub fn finish_inventory(
         &mut self,
         epoch: i64,
+        inventory: &Value,
         exclusions: &[String],
         excluded: u64,
     ) -> Result<usize, Error> {
         let tx = self.connection.transaction()?;
         let removed = tx.execute("DELETE FROM sources WHERE epoch<>?1", params![epoch])?;
+        tx.execute(
+            "UPDATE metadata SET value=?1 WHERE key='inventory'",
+            [inventory.to_string()],
+        )?;
         tx.execute(
             "UPDATE metadata SET value=?1 WHERE key='exclusions'",
             [serde_json::to_string(exclusions).expect("strings serialize")],
@@ -348,7 +355,15 @@ impl Store {
         )?;
         let exclusions: Value = serde_json::from_str(&exclusions)
             .map_err(|_| Error::from("invalid stored evidence exclusions"))?;
+        let inventory: String = self.connection.query_row(
+            "SELECT value FROM metadata WHERE key='inventory'",
+            [],
+            |r| r.get(0),
+        )?;
+        let inventory: Value = serde_json::from_str(&inventory)
+            .map_err(|_| Error::from("invalid stored evidence inventory"))?;
         Ok(json!({"schemaVersion":SCHEMA_VERSION,
+            "inventory":inventory,
             "exclusions":exclusions,
             "excludedSources":scalar("SELECT value FROM metadata WHERE key='excluded_sources'")?,
             "generation":scalar("SELECT value FROM metadata WHERE key='generation'")?,
@@ -560,7 +575,7 @@ mod tests {
                 epoch,
             )
             .unwrap();
-        store.finish_inventory(epoch, &[], 0).unwrap();
+        store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
         assert_eq!(store.retain_providers(&[PROVIDER]).unwrap(), 0);
         assert_eq!(
             store.retain_providers(&["replacement-provider"]).unwrap(),
@@ -588,7 +603,12 @@ mod tests {
                 .reuse("a.js", PROVIDER, &extraction.hash, restarted)
                 .unwrap()
         );
-        assert_eq!(store.finish_inventory(restarted, &[], 0).unwrap(), 0);
+        assert_eq!(
+            store
+                .finish_inventory(restarted, &Value::Null, &[], 0)
+                .unwrap(),
+            0
+        );
         assert_eq!(store.status().unwrap()["evidence"], 1);
     }
 
@@ -620,14 +640,17 @@ mod tests {
             .replace(&extract("a.js", b"// empty").unwrap(), "3", epoch)
             .unwrap();
         assert_eq!(store.status().unwrap()["evidence"], 0);
-        store.finish_inventory(epoch, &[], 0).unwrap();
+        store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
         let next = store.begin_inventory().unwrap();
         assert_eq!(
             store.status().unwrap()["sources"],
             1,
             "partial inventory cannot retire unseen sources"
         );
-        assert_eq!(store.finish_inventory(next, &[], 0).unwrap(), 1);
+        assert_eq!(
+            store.finish_inventory(next, &Value::Null, &[], 0).unwrap(),
+            1
+        );
         assert_eq!(store.status().unwrap()["sources"], 0);
     }
     #[test]

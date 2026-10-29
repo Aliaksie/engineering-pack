@@ -7,7 +7,7 @@ use craft_engine::valid_path;
 use std::{
     fs::{self, File, OpenOptions},
     io::{BufRead, BufReader, Read},
-    path::Path,
+    path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -85,13 +85,139 @@ pub fn database_guard(path: &Path) -> Result<File, Error> {
     Ok(file)
 }
 
+/// Directories never inventoried: VCS metadata, Craft state, plans, dependencies and build output.
+const GENERATED: &[&str] = &[".git", ".craft", ".plan", "node_modules", "dist", "target"];
+
+/// Directory entries one filesystem inventory may visit before it stops as incomplete.
+const MAX_INVENTORY_ENTRIES: usize = 1_000_000;
+
+/// Paths under `root`, relative and `/`-separated. A Git worktree (or a directory inside one)
+/// is listed by Git, tracked and unignored. Any other directory is walked without following
+/// symlinks; each nested Git worktree found there is listed by its own Git, so its ignore
+/// rules apply, and its paths keep the directory as a prefix. A walk reads no ignore files.
 pub struct Inventory {
+    root: PathBuf,
+    listing: Option<Listing>,
+    directories: Vec<String>,
+    files: Vec<String>,
+    entries: usize,
+    repositories: Vec<String>,
+    walked: bool,
+}
+
+struct Listing {
     child: Child,
     reader: BufReader<std::process::ChildStdout>,
     finished: bool,
+    prefix: String,
 }
+
 impl Inventory {
     pub fn start(root: &Path) -> Result<Self, Error> {
+        let mut inventory = Self {
+            root: root.to_path_buf(),
+            listing: None,
+            directories: Vec::new(),
+            files: Vec::new(),
+            entries: 0,
+            repositories: Vec::new(),
+            walked: false,
+        };
+        if crate::process::git(root, &["rev-parse", "--show-toplevel"], 16384)?.is_some() {
+            inventory.listing = Some(Listing::start(root, String::new())?);
+        } else if root
+            .ancestors()
+            .any(|p| fs::symlink_metadata(p.join(".git")).is_ok())
+        {
+            return Err("Git is unavailable for a Git worktree; unseen sources retained".into());
+        } else {
+            inventory.walked = true;
+            inventory.directories.push(String::new());
+        }
+        Ok(inventory)
+    }
+
+    /// How sources were found: `git`, or `filesystem` with the nested worktrees listed by Git.
+    pub fn describe(&self) -> serde_json::Value {
+        if self.walked {
+            serde_json::json!({"kind": "filesystem", "repositories": self.repositories})
+        } else {
+            serde_json::json!({"kind": "git"})
+        }
+    }
+
+    pub fn next_path(&mut self) -> Result<Option<String>, Error> {
+        loop {
+            if let Some(listing) = &mut self.listing {
+                match listing.next_path()? {
+                    Some(path) => return Ok(Some(path)),
+                    None => self.listing = None,
+                }
+            }
+            if let Some(file) = self.files.pop() {
+                return Ok(Some(file));
+            }
+            let Some(directory) = self.directories.pop() else {
+                return Ok(None);
+            };
+            self.visit(directory)?;
+        }
+    }
+
+    /// Queue a directory's files and subdirectories in name order, or hand a nested
+    /// worktree to Git. Symlinks and special files are not sources.
+    fn visit(&mut self, directory: String) -> Result<(), Error> {
+        let absolute = if directory.is_empty() {
+            self.root.clone()
+        } else {
+            self.root.join(&directory)
+        };
+        if !directory.is_empty() && fs::symlink_metadata(absolute.join(".git")).is_ok() {
+            self.listing = Some(Listing::start(&absolute, format!("{directory}/"))?);
+            self.repositories.push(directory);
+            return Ok(());
+        }
+        let mut children = Vec::new();
+        for entry in fs::read_dir(&absolute)? {
+            let entry = entry?;
+            self.entries += 1;
+            if self.entries > MAX_INVENTORY_ENTRIES {
+                return Err(format!(
+                    "filesystem inventory exceeds {MAX_INVENTORY_ENTRIES} entries; unseen sources retained"
+                )
+                .into());
+            }
+            let name = entry
+                .file_name()
+                .into_string()
+                .map_err(|_| "non-UTF-8 inventory path unsupported")?;
+            let kind = entry.file_type()?;
+            if kind.is_dir() && GENERATED.contains(&name.as_str()) {
+                continue;
+            }
+            if kind.is_dir() || kind.is_file() {
+                children.push((name, kind.is_dir()));
+            }
+        }
+        children.sort();
+        for (name, is_directory) in children.into_iter().rev() {
+            let path = if directory.is_empty() {
+                name
+            } else {
+                format!("{directory}/{name}")
+            };
+            if is_directory {
+                self.directories.push(path);
+            } else {
+                self.files.push(path);
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Listing {
+    fn start(root: &Path, prefix: String) -> Result<Self, Error> {
         let mut child = Command::new("git")
             .args(["-C"])
             .arg(root)
@@ -111,9 +237,11 @@ impl Inventory {
             child,
             reader,
             finished: false,
+            prefix,
         })
     }
-    pub fn next_path(&mut self) -> Result<Option<String>, Error> {
+
+    fn next_path(&mut self) -> Result<Option<String>, Error> {
         let mut bytes = Vec::new();
         let count = self.reader.by_ref().take(4098).read_until(0, &mut bytes)?;
         if count == 0 {
@@ -129,11 +257,12 @@ impl Inventory {
             return Err("inventory path exceeds bound or is incomplete".into());
         }
         String::from_utf8(bytes)
-            .map(Some)
+            .map(|path| Some(format!("{}{path}", self.prefix)))
             .map_err(|_| "non-UTF-8 inventory path unsupported".into())
     }
 }
-impl Drop for Inventory {
+
+impl Drop for Listing {
     fn drop(&mut self) {
         if !self.finished {
             let _ = self.child.kill();
@@ -144,12 +273,7 @@ impl Drop for Inventory {
 
 pub fn eligible(path: &str) -> bool {
     valid_path(path)
-        && !path.split('/').any(|p| {
-            matches!(
-                p,
-                ".git" | ".craft" | ".plan" | "node_modules" | "dist" | "target"
-            )
-        })
+        && !path.split('/').any(|p| GENERATED.contains(&p))
         && crate::providers::for_path(path).is_some()
 }
 
@@ -185,6 +309,81 @@ mod tests {
             assert!(read_source(&fixture.0, path).is_err(), "{path}");
         }
         assert!(read_source(&fixture.0, "source.mjs").is_ok());
+    }
+
+    fn inventory(root: &Path) -> (Vec<String>, serde_json::Value) {
+        let mut inventory = Inventory::start(root).unwrap();
+        let mut paths = Vec::new();
+        while let Some(path) = inventory.next_path().unwrap() {
+            paths.push(path);
+        }
+        (paths, inventory.describe())
+    }
+
+    #[test]
+    fn plain_directories_are_walked_and_nested_worktrees_listed_by_git() {
+        let fixture = Fixture::new("walk");
+        let root = fixture.0.canonicalize().unwrap();
+        for file in [
+            "b.js",
+            "a/z.mjs",
+            "a/node_modules/dep.js",
+            "a/.craft/state.js",
+            "repo/kept.js",
+            "repo/ignored.js",
+            "repo/.gitignore",
+        ] {
+            let path = root.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(
+                &path,
+                if file.ends_with(".gitignore") {
+                    "ignored.js\n"
+                } else {
+                    ""
+                },
+            )
+            .unwrap();
+        }
+        let status = Command::new("git")
+            .args(["init", "--quiet"])
+            .arg(root.join("repo"))
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let (paths, described) = inventory(&root);
+        assert_eq!(
+            paths,
+            ["b.js", "a/z.mjs", "repo/.gitignore", "repo/kept.js"]
+        );
+        assert_eq!(
+            described,
+            serde_json::json!({"kind": "filesystem", "repositories": ["repo"]})
+        );
+        // Inside a worktree, Git lists it: tracked and unignored only, nested in no prefix.
+        let (paths, described) = inventory(&root.join("repo"));
+        assert_eq!(paths, [".gitignore", "kept.js"]);
+        assert_eq!(described, serde_json::json!({"kind": "git"}));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn filesystem_inventory_skips_symlinks_and_special_files() {
+        use std::os::unix::fs::symlink;
+        let fixture = Fixture::new("walk-links");
+        let root = fixture.0.canonicalize().unwrap();
+        fs::create_dir(root.join("real")).unwrap();
+        fs::write(root.join("real/source.js"), "").unwrap();
+        symlink(root.join("real"), root.join("alias")).unwrap();
+        symlink("real/source.js", root.join("link.js")).unwrap();
+        assert!(
+            Command::new("mkfifo")
+                .arg(root.join("pipe.js"))
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(inventory(&root).0, ["real/source.js"]);
     }
 
     #[cfg(unix)]

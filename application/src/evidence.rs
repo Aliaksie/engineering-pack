@@ -137,7 +137,8 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
                 }
             }
             store.commit_batch()?;
-            let removed = store.finish_inventory(epoch, &exclusions, excluded)?;
+            let removed =
+                store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)?;
             Ok(
                 json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
                 "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
@@ -197,7 +198,7 @@ fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure>
 const EXCERPT_CHARS: usize = 160;
 
 const OPERATIONS: &[&str] = &["version", "refresh", "status", "query", "backup", "rebuild"];
-const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <repository> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
+const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <directory> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
 
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
