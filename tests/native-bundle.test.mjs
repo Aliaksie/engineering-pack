@@ -16,9 +16,9 @@ test('native bundle works after relocation with checked notices and no Node runt
   const manifest = JSON.parse(fs.readFileSync(path.join(bundle, 'native-bundle.json'), 'utf8'));
   assert.equal(manifest.formatVersion, 1);
   assert.equal(manifest.protocolVersion, 1);
-  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.schemaVersion, 4);
   assert.equal(manifest.profile, 'release');
-  assert.equal(manifest.providers.length, 2);
+  assert.equal(manifest.providers.length, 3);
   assert.ok(manifest.files.length > 4);
   for (const entry of manifest.files) {
     assert.ok(!path.isAbsolute(entry.path) && !entry.path.split('/').includes('..'));
@@ -49,9 +49,9 @@ test('native bundle works after relocation with checked notices and no Node runt
   assert.equal(run('version').binaryVersion, manifest.binaryVersion);
   assert.equal(run('refresh').changed, 2);
   const result = run('query', ['--value', 'ping', '--verify']);
-  const call = result.results.find(row => row.evidence.kind === 'java:invokes-syntax');
-  assert.equal(call.verification, 'verified-selected-source');
-  assert.equal(run('query', ['--field', 'id', '--value', call.evidence.container]).results[0].evidence.name, 'caller');
+  const call = result.results.find(row => row.kind === 'java:invokes-syntax');
+  assert.equal(result.sources[call.path].verification, 'verified-selected-source');
+  assert.equal(run('query', ['--field', 'id', '--value', call.container.id]).results[0].name, 'caller');
   assert.equal(run('refresh').reused, 2);
   // Without --enable nothing in the repository or its private state is read or written.
   const sourceBefore = fs.readFileSync(path.join(root, 'source.js'), 'utf8');
