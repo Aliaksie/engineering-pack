@@ -416,7 +416,7 @@ impl Store {
             .map(|path| path.strip_suffix('/').unwrap_or(path))
             .collect();
         if under.iter().any(|path| !valid_path(path)) {
-            return Err("under must be a relative directory".into());
+            return Err("under must be a relative path".into());
         }
         // Kind and directory lists bind as JSON arrays; NULL leaves the filter out.
         let list = |items: &[&str]| (!items.is_empty()).then(|| json!(items).to_string());
@@ -425,7 +425,7 @@ impl Store {
             "{column} AND s.outcome='ok' AND (?2 IS NULL OR s.path=?2)
             AND (?3 IS NULL OR e.kind IN (SELECT value FROM json_each(?3)))
             AND (?4 IS NULL OR EXISTS (SELECT 1 FROM json_each(?4) u
-                WHERE substr(s.path,1,length(u.value)+1)=u.value||'/'))"
+                WHERE s.path=u.value OR substr(s.path,1,length(u.value)+1)=u.value||'/'))"
         );
         let filter = params![query.value, query.source, kinds, directories];
         let position = if query.after.is_empty() {
@@ -539,7 +539,8 @@ pub struct Query<'a> {
     pub source: Option<&'a str>,
     /// Exact evidence kinds; empty matches every kind.
     pub kinds: &'a [&'a str],
-    /// Directories, matched by whole path components; empty matches every path.
+    /// Scopes: a source path or a directory, matched by whole path components; empty matches
+    /// every path.
     pub under: &'a [&'a str],
 }
 

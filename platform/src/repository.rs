@@ -176,7 +176,7 @@ impl Inventory {
         }
     }
 
-    /// Queue a directory's files and subdirectories in name order, or hand a nested
+    /// Queue a directory's files and unexcluded subdirectories in name order, or hand a nested
     /// worktree to Git. Symlinks and special files are not sources.
     fn visit(&mut self, directory: String) -> Result<(), Error> {
         let absolute = if directory.is_empty() {
@@ -231,7 +231,10 @@ impl Inventory {
                 format!("{directory}/{name}")
             };
             if is_directory {
-                self.directories.push(path);
+                // An excluded directory is not walked, nor a worktree inside it listed.
+                if !craft_engine::contracts::excluded(&path, &self.exclusions) {
+                    self.directories.push(path);
+                }
             } else {
                 self.files.push(path);
             }
@@ -509,15 +512,21 @@ mod tests {
             ]
         );
         assert_eq!(list(&repo, &[]).len(), 7);
-        // A plain root maps its exclusions into each nested worktree; one covering the
-        // whole worktree leaves only its tracked paths.
+        // A plain root maps its exclusions into each nested worktree, and does not walk an
+        // excluded directory or list a worktree inside it.
         assert_eq!(
             list(&root, &["repo/samples", "repo/a"]),
             ["repo/kept.js", "repo/samples/tracked.js", "repo/new.js"]
         );
+        fs::create_dir_all(root.join("plain/gen")).unwrap();
+        fs::write(root.join("plain/gen/a.js"), "").unwrap();
+        fs::write(root.join("plain/b.js"), "").unwrap();
+        assert_eq!(list(&root, &["repo", "plain/gen"]), ["plain/b.js"]);
+        let mut inventory = Inventory::start(&root, &["repo".into()]).unwrap();
+        while inventory.next_path().unwrap().is_some() {}
         assert_eq!(
-            list(&root, &["repo"]),
-            ["repo/kept.js", "repo/samples/tracked.js"]
+            inventory.describe(),
+            serde_json::json!({"kind": "filesystem", "repositories": []})
         );
     }
 

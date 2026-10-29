@@ -40,7 +40,7 @@ pub fn answer(
         }
     }
     let mut route = question::route(&question, &coverage);
-    let (mut result, complete) = match (route["answeredBy"].as_str(), answer) {
+    let (mut result, searched) = match (route["answeredBy"].as_str(), answer) {
         (Some("intelligence"), Some(answer)) => (answer, true),
         // A continued page carries only further index rows; the first page searched the gaps.
         (Some("intelligence+locate"), Some(answer)) if !question.after.is_empty() => {
@@ -48,13 +48,17 @@ pub fn answer(
         }
         (Some("intelligence+locate"), Some(mut answer)) => {
             let gaps = locate(&question::literal(&question, Some(&coverage.gaps())))?;
-            let complete = gaps["truncated"] == false;
+            // A skipped gap file (oversized, binary, unreadable) was not searched.
+            let complete = gaps["truncated"] == false
+                && gaps["skipped"]
+                    .as_object()
+                    .is_some_and(|skipped| skipped.values().all(|count| count == 0));
             answer["gapSearch"] = gaps;
             (answer, complete)
         }
         _ => (locate(&question::literal(&question, None))?, false),
     };
-    route["complete"] = json!(complete);
+    route["complete"] = json!(searched && coverage.excluded_within.is_empty());
     result["route"] = route;
     Ok(result)
 }
@@ -93,6 +97,10 @@ fn observe(
         .iter()
         .filter(|scope| contracts::excluded(scope, &exclusions))
         .cloned()
+        .collect();
+    coverage.excluded_within = exclusions
+        .into_iter()
+        .filter(|exclusion| question::within(exclusion, &question.scopes))
         .collect();
     for (path, provider, outcome) in store.unextracted()? {
         if answering.contains(&provider.as_str()) && question::within(&path, &question.scopes) {

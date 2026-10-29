@@ -183,6 +183,9 @@ pub struct Coverage {
     pub inventory_complete: bool,
     /// Scopes lying entirely under a consumer exclusion.
     pub excluded: Vec<String>,
+    /// Consumer exclusions inside a scope; their sources are neither indexed nor searched, so
+    /// an empty answer there is no absence.
+    pub excluded_within: Vec<String>,
     /// In-scope sources whose provider answers the question but which are not extracted.
     pub pending: Vec<String>,
     pub failed: Vec<String>,
@@ -220,6 +223,7 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
         ("pending", &coverage.pending),
         ("failed", &coverage.failed),
         ("changed", &coverage.changed),
+        ("excluded", &coverage.excluded_within),
     ] {
         if !paths.is_empty() {
             detail.insert(name.into(), listed(paths));
@@ -245,8 +249,10 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
         ("locate", "inventory-incomplete", Value::Null)
     } else if gaps.len() > MAX_GAP_FILES {
         ("locate", "scope-gaps", Value::Object(detail))
-    } else if gaps.is_empty() {
+    } else if gaps.is_empty() && detail.is_empty() {
         ("intelligence", "covered", Value::Null)
+    } else if gaps.is_empty() {
+        ("intelligence", "covered", Value::Object(detail))
     } else {
         (
             "intelligence+locate",
@@ -350,6 +356,7 @@ mod tests {
             unavailable: Some("project evidence is busy".into()),
             inventory_complete: false,
             excluded: paths(&["src"]),
+            excluded_within: Vec::new(),
             pending: paths(&["src/B.java"]),
             failed: paths(&["src/A.java"]),
             unindexed: paths(&["src/lib.rs", "src/x.RS", "src/a.py"]),
@@ -407,6 +414,24 @@ mod tests {
             (&json!("locate"), &json!("scope-gaps"))
         );
         assert_eq!(too_many["detail"]["unindexed"]["rs"], MAX_GAP_FILES + 1);
+        // Exclusions inside the scope leave the index answering but are named beside it.
+        let partly = route(
+            &q,
+            &Coverage {
+                enabled: true,
+                inventory_complete: true,
+                excluded_within: paths(&["src/vendor"]),
+                ..Coverage::default()
+            },
+        );
+        assert_eq!(
+            (&partly["answeredBy"], &partly["reason"], &partly["detail"]),
+            (
+                &json!("intelligence"),
+                &json!("covered"),
+                &json!({"excluded": {"count": 1, "paths": ["src/vendor"]}})
+            )
+        );
     }
 
     #[test]

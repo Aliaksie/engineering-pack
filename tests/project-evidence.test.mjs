@@ -393,6 +393,13 @@ test('a plain workspace folder is walked and its nested repositories listed by t
   assert.deepEqual(Object.values(found.sources).map(source => source.verification), ['verified-selected-source', 'verified-selected-source']);
   assert.deepEqual(found.coverage.inventory.repositories, ['api']);
   assert.equal(run('query', { value: 'ping', under: 'api' }).results.length, 1);
+  assert.equal(run('query', { value: 'ping', under: 'notes/tool.js' }).results.length, 1);
+  // An excluded directory is not walked, nor a worktree inside it listed.
+  write('.craft/project.json', JSON.stringify({ formatVersion: 1, evidence: { exclude: ['api'] } }));
+  const pruned = run('refresh');
+  assert.deepEqual([pruned.removed, pruned.excluded, pruned.coverage.inventory.repositories], [1, 0, []]);
+  write('.craft/project.json', JSON.stringify({ formatVersion: 1 }));
+  assert.equal(run('refresh').changed, 1);
   fs.rmSync(path.join(root, 'api'), { recursive: true });
   const removed = run('refresh');
   assert.deepEqual([removed.removed, removed.coverage.inventory.repositories], [1, []]);
@@ -486,6 +493,9 @@ test('locate routes structural questions to verified evidence only under full sc
   const absent = ask('--callers', 'pong', '--path', 'src');
   assert.deepEqual([absent.results, absent.route.complete], [[], true]);
   assert.match(locate(['--callers', 'pong', '--path', 'src']), /^intelligence \(covered\): callers pong in src\n[^]*No match: absent within this coverage\.\n$/);
+  // A source path is a scope of its own.
+  const file = ask('--declaration', 'ping', '--path', 'src/A.java');
+  assert.deepEqual([file.route.answeredBy, file.results.map(row => row.path), file.route.complete], ['intelligence', ['src/A.java'], true]);
   assert.deepEqual(ask('--outline', 'docs/guide.md').results.map(row => [row.name, row.line, row.endLine]), [['Guide', 1, 5], ['Install', 3, 5]]);
   // Rust calls inside macro arguments and wrapped use-tree leaves are cited structurally.
   const rust = ask('--callers', 'ping', '--path', 'crate');
@@ -499,10 +509,23 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.go', 'func ping() {}']]);
   assert.equal(combined.route.complete, true);
   assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed go 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.go:1: func ping\(\) \{\}\n$/);
+  // A gap file the literal search skips leaves an empty answer short of absence.
+  write('scripts/big.py', `# ${'x'.repeat(270 * 1024)}\n`);
+  const skipped = ask('--declaration', 'pong', '--path', 'scripts');
+  assert.deepEqual([skipped.route.answeredBy, skipped.gapSearch.skipped.oversized, skipped.route.complete], ['intelligence+locate', 1, false]);
+  assert.match(locate(['--declaration', 'pong', '--path', 'scripts']), /No match: not proof of absence\.\n$/);
   // An invalid project file is refused even when the index alone would answer.
   write('.craft/project.json', JSON.stringify({ evidence: { enabled: true } }));
   const invalid = nativeCommand(['locate', '--root', root, '--callers', 'ping', '--path', 'src'], { binary });
   assert.deepEqual([invalid.exitCode, /formatVersion/.test(invalid.stderr)], [2, true]);
+  // An exclusion inside the scope is named and leaves an empty answer short of absence.
+  write('src/vendor/V.java', 'class V { void pong() {} }');
+  config({ enabled: true, exclude: ['src/vendor'] });
+  const partly = ask('--declaration', 'pong', '--path', 'src');
+  assert.deepEqual([partly.route.answeredBy, partly.route.reason, partly.route.detail, partly.results, partly.route.complete],
+    ['intelligence', 'covered', { excluded: { count: 1, paths: ['src/vendor'] } }, [], false]);
+  assert.match(locate(['--declaration', 'pong', '--path', 'src']), /; gaps: excluded 1\n[^]*No match: not proof of absence\.\n$/);
+  assert.equal(ask('--declaration', 'pong', '--path', 'src/A.java').route.complete, true);
   config({ enabled: true, exclude: ['src'] });
   const excluded = ask('--callers', 'ping', '--path', 'src');
   assert.deepEqual([excluded.route.reason, excluded.route.detail], ['scope-excluded', ['src']]);

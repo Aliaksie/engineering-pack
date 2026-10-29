@@ -47,8 +47,11 @@ Up to 200 gap files are searched literally for the spelled value beside the inde
 counting them). The whole scope is searched literally instead (`locate`) when the reason is
 `index-disabled`, `index-unavailable`, `scope-excluded`, `inventory-incomplete` or
 `scope-gaps` (more than 200 gap files); an outline then searches its document for `#`.
-`route.complete` is true when an empty answer is an absence within that coverage: no literal
-search, or a gap search that was not truncated. A whole-scope literal search never is.
+A `--path` scope is a directory or one source path. An exclusion inside the scope is named in
+`route.detail.excluded`; its sources are neither indexed nor searched. `route.complete` is true
+when an empty answer is an absence within that coverage: no exclusion inside the scope, and no
+literal search or a gap search that was neither truncated nor skipped a file. A whole-scope
+literal search never is.
 
 Output is text: the route line, rows grouped by source with their enclosing declaration,
 line span and first line, then literal matches. `--json` prints the structure. Pages hold
@@ -73,8 +76,9 @@ the gap search.
   `"evidence": {"exclude": ["samples/", "vendor/bundles"]}` (project-relative prefixes,
   matched by whole path components). Refresh skips them and retires facts already stored
   under them; coverage reports the applied `exclusions` and `excludedSources`, so an empty
-  answer from an excluded path is not mistaken for absence. Git does not walk excluded
-  directories for untracked files, so there `excludedSources` counts tracked sources only.
+  answer from an excluded path is not mistaken for absence. Excluded directories are not
+  walked for untracked files, nor nested worktrees inside them listed, so `excludedSources`
+  counts only sources Git tracks outside such worktrees.
 - **Roots**: inside a Git worktree, Git lists the sources (tracked and unignored). Any other
   root, such as a folder of repositories or a plain folder, is walked without following
   symlinks and reads no ignore files; each nested Git worktree found there is listed by its
