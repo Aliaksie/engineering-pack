@@ -37,7 +37,8 @@ overwrites an existing backup) and `rebuild` (clears derived evidence; run `refr
   `"evidence": {"exclude": ["samples/", "vendor/bundles"]}` (project-relative prefixes,
   matched by whole path components). Refresh skips them and retires facts already stored
   under them; coverage reports the applied `exclusions` and `excludedSources`, so an empty
-  answer from an excluded path is not mistaken for absence.
+  answer from an excluded path is not mistaken for absence. Git does not walk excluded
+  directories for untracked files, so there `excludedSources` counts tracked sources only.
 - **Roots**: inside a Git worktree, Git lists the sources (tracked and unignored). Any other
   root, such as a folder of repositories or a plain folder, is walked without following
   symlinks and reads no ignore files; each nested Git worktree found there is listed by its

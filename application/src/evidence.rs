@@ -79,7 +79,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             )?;
             let retired = store.retain_providers(ACTIVE)?;
             let epoch = store.begin_inventory()?;
-            let mut inventory = Inventory::start(&root)?;
+            let mut inventory = Inventory::start(&root, &exclusions)?;
             store.begin_batch()?;
             let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
                 (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);

@@ -91,12 +91,19 @@ const GENERATED: &[&str] = &[".git", ".craft", ".plan", "node_modules", "dist", 
 /// Directory entries one filesystem inventory may visit before it stops as incomplete.
 const MAX_INVENTORY_ENTRIES: usize = 1_000_000;
 
+/// Untracked-file pathspecs one Git listing may pass; more falls back to a full walk.
+const MAX_PATHSPECS: usize = 256;
+const MAX_PATHSPEC_BYTES: usize = 16_384;
+
 /// Paths under `root`, relative and `/`-separated. A Git worktree (or a directory inside one)
 /// is listed by Git, tracked and unignored. Any other directory is walked without following
 /// symlinks; each nested Git worktree found there is listed by its own Git, so its ignore
 /// rules apply, and its paths keep the directory as a prefix. A walk reads no ignore files.
+/// Git lists every tracked path but does not walk excluded directories for untracked files,
+/// so untracked files there are not listed.
 pub struct Inventory {
     root: PathBuf,
+    exclusions: Vec<String>,
     listing: Option<Listing>,
     directories: Vec<String>,
     files: Vec<String>,
@@ -105,17 +112,22 @@ pub struct Inventory {
     walked: bool,
 }
 
+/// Tracked paths, then untracked unignored ones within `untracked` pathspecs (`None`: all).
 struct Listing {
+    root: PathBuf,
     child: Child,
     reader: BufReader<std::process::ChildStdout>,
     finished: bool,
     prefix: String,
+    untracked: Option<Option<Vec<String>>>,
 }
 
 impl Inventory {
-    pub fn start(root: &Path) -> Result<Self, Error> {
+    /// `exclusions` are root-relative path prefixes, as `contracts::excluded` matches them.
+    pub fn start(root: &Path, exclusions: &[String]) -> Result<Self, Error> {
         let mut inventory = Self {
             root: root.to_path_buf(),
+            exclusions: exclusions.to_vec(),
             listing: None,
             directories: Vec::new(),
             files: Vec::new(),
@@ -124,7 +136,7 @@ impl Inventory {
             walked: false,
         };
         if crate::process::git(root, &["rev-parse", "--show-toplevel"], 16384)?.is_some() {
-            inventory.listing = Some(Listing::start(root, String::new())?);
+            inventory.listing = Some(Listing::start(root, String::new(), exclusions)?);
         } else if root
             .ancestors()
             .any(|p| fs::symlink_metadata(p.join(".git")).is_ok())
@@ -173,7 +185,19 @@ impl Inventory {
             self.root.join(&directory)
         };
         if !directory.is_empty() && fs::symlink_metadata(absolute.join(".git")).is_ok() {
-            self.listing = Some(Listing::start(&absolute, format!("{directory}/"))?);
+            let prefix = format!("{directory}/");
+            let exclusions = self
+                .exclusions
+                .iter()
+                .filter_map(|path| {
+                    if prefix.starts_with(&format!("{path}/")) {
+                        Some(String::new())
+                    } else {
+                        path.strip_prefix(&prefix).map(str::to_string)
+                    }
+                })
+                .collect::<Vec<_>>();
+            self.listing = Some(Listing::start(&absolute, prefix, &exclusions)?);
             self.repositories.push(directory);
             return Ok(());
         }
@@ -217,28 +241,42 @@ impl Inventory {
 }
 
 impl Listing {
-    fn start(root: &Path, prefix: String) -> Result<Self, Error> {
+    /// `exclusions` are relative to `root`; an empty one excludes the whole worktree.
+    fn start(root: &Path, prefix: String, exclusions: &[String]) -> Result<Self, Error> {
+        let untracked = if exclusions.iter().any(String::is_empty) {
+            None
+        } else {
+            Some(untracked_scope(root, exclusions)?)
+        };
+        let (child, reader) = Self::spawn(root, &["--cached"], &[])?;
+        Ok(Self {
+            root: root.to_path_buf(),
+            child,
+            reader,
+            finished: false,
+            prefix,
+            untracked,
+        })
+    }
+
+    fn spawn(
+        root: &Path,
+        mode: &[&str],
+        pathspecs: &[String],
+    ) -> Result<(Child, BufReader<std::process::ChildStdout>), Error> {
         let mut child = Command::new("git")
             .args(["-C"])
             .arg(root)
-            .args([
-                "ls-files",
-                "-z",
-                "--cached",
-                "--others",
-                "--exclude-standard",
-            ])
+            .args(["ls-files", "-z"])
+            .args(mode)
+            .arg("--")
+            .args(pathspecs)
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .stdin(Stdio::null())
             .spawn()?;
         let reader = BufReader::new(child.stdout.take().ok_or("missing Git output")?);
-        Ok(Self {
-            child,
-            reader,
-            finished: false,
-            prefix,
-        })
+        Ok((child, reader))
     }
 
     fn next_path(&mut self) -> Result<Option<String>, Error> {
@@ -247,11 +285,20 @@ impl Listing {
         if count == 0 {
             let status = self.child.wait()?;
             self.finished = true;
-            return if status.success() {
-                Ok(None)
-            } else {
-                Err("Git inventory failed; unseen sources retained".into())
+            if !status.success() {
+                return Err("Git inventory failed; unseen sources retained".into());
+            }
+            let pathspecs = match self.untracked.take() {
+                None => return Ok(None),
+                Some(None) => Vec::new(),
+                // Every entry is excluded: an empty pathspec list would mean everything.
+                Some(Some(pathspecs)) if pathspecs.is_empty() => return Ok(None),
+                Some(Some(pathspecs)) => pathspecs,
             };
+            (self.child, self.reader) =
+                Self::spawn(&self.root, &["--others", "--exclude-standard"], &pathspecs)?;
+            self.finished = false;
+            return self.next_path();
         }
         if bytes.pop() != Some(0) {
             return Err("inventory path exceeds bound or is incomplete".into());
@@ -260,6 +307,58 @@ impl Listing {
             .map(|path| Some(format!("{}{path}", self.prefix)))
             .map_err(|_| "non-UTF-8 inventory path unsupported".into())
     }
+}
+
+/// Literal pathspecs covering `root` except the excluded prefixes, so Git's untracked walk
+/// skips excluded directories: the entries of each directory that holds an exclusion, minus
+/// the excluded ones. `None` lists everything: no exclusion applies, or the expansion would
+/// exceed its bounds. An empty list means every entry is excluded.
+fn untracked_scope(root: &Path, exclusions: &[String]) -> Result<Option<Vec<String>>, Error> {
+    if exclusions.is_empty() {
+        return Ok(None);
+    }
+    let (mut pathspecs, mut bytes, mut directories) = (Vec::new(), 0, vec![String::new()]);
+    while let Some(directory) = directories.pop() {
+        let mut names = fs::read_dir(root.join(&directory))?
+            .map(|entry| {
+                let entry = entry?;
+                let name = entry.file_name().into_string().ok();
+                Ok((name, entry.file_type()?.is_dir()))
+            })
+            .collect::<Result<Vec<_>, std::io::Error>>()?;
+        names.sort();
+        for (name, is_directory) in names {
+            // Git cannot list a non-UTF-8 name as a source either; leave it to the full walk.
+            let Some(name) = name else {
+                return Ok(None);
+            };
+            if directory.is_empty() && name == ".git" {
+                continue;
+            }
+            let path = if directory.is_empty() {
+                name
+            } else {
+                format!("{directory}/{name}")
+            };
+            if exclusions.contains(&path) {
+                continue;
+            }
+            if is_directory
+                && exclusions
+                    .iter()
+                    .any(|e| e.starts_with(&format!("{path}/")))
+            {
+                directories.push(path);
+                continue;
+            }
+            bytes += path.len() + ":(literal)".len();
+            pathspecs.push(format!(":(literal){path}"));
+            if pathspecs.len() > MAX_PATHSPECS || bytes > MAX_PATHSPEC_BYTES {
+                return Ok(None);
+            }
+        }
+    }
+    Ok(Some(pathspecs))
 }
 
 impl Drop for Listing {
@@ -312,7 +411,7 @@ mod tests {
     }
 
     fn inventory(root: &Path) -> (Vec<String>, serde_json::Value) {
-        let mut inventory = Inventory::start(root).unwrap();
+        let mut inventory = Inventory::start(root, &[]).unwrap();
         let mut paths = Vec::new();
         while let Some(path) = inventory.next_path().unwrap() {
             paths.push(path);
@@ -364,6 +463,79 @@ mod tests {
         let (paths, described) = inventory(&root.join("repo"));
         assert_eq!(paths, [".gitignore", "kept.js"]);
         assert_eq!(described, serde_json::json!({"kind": "git"}));
+    }
+
+    #[test]
+    fn excluded_directories_list_tracked_but_not_untracked_paths() {
+        let fixture = Fixture::new("excluded");
+        let root = fixture.0.canonicalize().unwrap();
+        let repo = root.join("repo");
+        for file in [
+            "kept.js",
+            "new.js",
+            "samples/tracked.js",
+            "samples/new.js",
+            "a/b/gen/new.js",
+            "a/b/new.js",
+            "a/new.js",
+        ] {
+            let path = repo.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "").unwrap();
+        }
+        let git = |args: &[&str]| {
+            let status = Command::new("git").arg("-C").arg(&repo).args(args).status();
+            assert!(status.unwrap().success());
+        };
+        git(&["init", "--quiet"]);
+        git(&["add", "kept.js", "samples/tracked.js"]);
+        let list = |root: &Path, exclusions: &[&str]| {
+            let exclusions: Vec<_> = exclusions.iter().map(|e| e.to_string()).collect();
+            let mut inventory = Inventory::start(root, &exclusions).unwrap();
+            let mut paths = Vec::new();
+            while let Some(path) = inventory.next_path().unwrap() {
+                paths.push(path);
+            }
+            paths
+        };
+        assert_eq!(
+            list(&repo, &["samples", "a/b/gen"]),
+            [
+                "kept.js",
+                "samples/tracked.js",
+                "a/b/new.js",
+                "a/new.js",
+                "new.js"
+            ]
+        );
+        assert_eq!(list(&repo, &[]).len(), 7);
+        // A plain root maps its exclusions into each nested worktree; one covering the
+        // whole worktree leaves only its tracked paths.
+        assert_eq!(
+            list(&root, &["repo/samples", "repo/a"]),
+            ["repo/kept.js", "repo/samples/tracked.js", "repo/new.js"]
+        );
+        assert_eq!(
+            list(&root, &["repo"]),
+            ["repo/kept.js", "repo/samples/tracked.js"]
+        );
+    }
+
+    #[test]
+    fn untracked_scope_falls_back_to_a_full_walk_beyond_its_bounds() {
+        let fixture = Fixture::new("pathspecs");
+        for index in 0..=MAX_PATHSPECS {
+            fs::write(fixture.0.join(format!("f{index}.js")), "").unwrap();
+        }
+        fs::create_dir(fixture.0.join("gen")).unwrap();
+        assert_eq!(untracked_scope(&fixture.0, &[]).unwrap(), None);
+        assert_eq!(untracked_scope(&fixture.0, &["gen".into()]).unwrap(), None);
+        fs::remove_file(fixture.0.join("f0.js")).unwrap();
+        let scope = untracked_scope(&fixture.0, &["gen".into()])
+            .unwrap()
+            .unwrap();
+        assert_eq!(scope.len(), MAX_PATHSPECS);
+        assert!(!scope.iter().any(|spec| spec.ends_with("gen")));
     }
 
     #[cfg(unix)]

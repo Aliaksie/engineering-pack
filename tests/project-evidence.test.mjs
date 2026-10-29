@@ -356,6 +356,9 @@ test('consumer exclusions leave sources out, retire stored ones and report scope
   fs.writeFileSync(path.join(root, 'main.js'), 'export const ping = 3;');
   assert.deepEqual(run('refresh').coverage.exclusions, []);
   assert.equal(run('query', { value: 'ping' }).results.length, 3);
+  // Git lists tracked excluded sources; it does not walk excluded directories for untracked ones.
+  execFileSync('git', ['-C', root, 'add', 'samples/gen/a.js']);
+  fs.writeFileSync(path.join(root, 'samples/gen/untracked.js'), 'export const ping = 4;');
   config(['samples/']);
   const scoped = run('refresh');
   assert.equal(scoped.excluded, 1);
@@ -364,11 +367,11 @@ test('consumer exclusions leave sources out, retire stored ones and report scope
   assert.deepEqual(run('query', { value: 'ping' }).results.map(row => row.path).sort(), ['main.js', 'samplesKept.js']);
   assert.deepEqual(run('query', { value: 'ping' }).coverage.exclusions, ['samples']);
   config([]);
-  assert.equal(run('refresh').changed, 1);
+  assert.equal(run('refresh').changed, 2);
   assert.equal(run('status').excludedSources, 0);
   config(['../outside']);
   assert.throws(() => run('refresh'), /project-relative path/);
-  assert.equal(run('status').sources, 3);
+  assert.equal(run('status').sources, 4);
 });
 
 test('a plain workspace folder is walked and its nested repositories listed by their own Git', { skip: !binary }, t => {
