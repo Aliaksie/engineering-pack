@@ -5,21 +5,23 @@
   "profile": "release",
   "protocolVersion": 1,
   "binaryVersion": "0.0.1",
-  "schemaVersion": 1,
+  "schemaVersion": 4,
   "provider": "javascript-tree-sitter-0.25.0/v2",
   "providers": [
     "javascript-tree-sitter-0.25.0/v2",
-    "java-tree-sitter-0.23.5/v1"
+    "java-tree-sitter-0.23.5/v1",
+    "markdown-sections/v1",
+    "rust-tree-sitter-0.24.2/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "a7924f6e20ce01f51d9e3b8cc4b0e33c9074927e",
+  "sourceRevision": "45fbc085a45b068466c731d561c3d832c8f2239a",
   "sourceDirty": false,
-  "cargoLockSha256": "49b079a80b4917b722dddbf598e3f6ec39323d4349b9db501df702b1322bc25a",
+  "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "files": [
     {
       "path": "dependencies.json",
-      "bytes": 18607,
-      "sha256": "274cdac7112bd8dad35d2506a1ad0b50f4e45f1aa4fa4aee5094359a71f8f5ca"
+      "bytes": 18853,
+      "sha256": "ca0a27f3ac07ce2a224a373a6f4681205980d8fc194bb9ae6a4903229dd2f890"
     },
     {
       "path": "LICENSE",
@@ -28,13 +30,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 8869648,
-      "sha256": "17d34110f4f5310ac9b207e4ca607ec26ec05617442eb0db14cacf759065be59"
+      "bytes": 10201616,
+      "sha256": "21c581d25768b8576b5e3dfc1c54d8207225a3c39a4a623ed69d2017a0a4cc2f"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "62eab51141344de319810efd1bc2fe3860242e26dfceb71a5bda4439a1118a80"
+      "sha256": "25c823600be3e31c50d4d1090b0ec4af7b194e5bd11c1d48d16a141e792e4071"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -590,6 +592,11 @@
       "path": "notices/tree-sitter-language-0.1.9/LICENSE",
       "bytes": 1080,
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
+    },
+    {
+      "path": "notices/tree-sitter-rust-0.24.2/LICENSE",
+      "bytes": 1080,
+      "sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36"
     },
     {
       "path": "notices/typenum-1.20.1/LICENSE",
