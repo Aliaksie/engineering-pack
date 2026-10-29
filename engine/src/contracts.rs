@@ -305,7 +305,20 @@ pub fn validate_project(project: &Value) -> Result {
         validate_settings(efficiency, &default_settings()["efficiency"], "efficiency")?;
     }
     evidence_exclusions(project)?;
+    evidence_enabled(project)?;
     Ok(())
+}
+
+/// Whether the consumer turned Project Intelligence on for routed lookups.
+pub fn evidence_enabled(project: &Value) -> Result<bool> {
+    match project
+        .get("evidence")
+        .and_then(|evidence| evidence.get("enabled"))
+    {
+        None => Ok(false),
+        Some(Value::Bool(enabled)) => Ok(*enabled),
+        Some(_) => Err("evidence.enabled must be a boolean".into()),
+    }
 }
 
 /// Project-relative path prefixes Project Intelligence leaves out of its inventory, such as
@@ -314,7 +327,7 @@ pub fn evidence_exclusions(project: &Value) -> Result<Vec<String>> {
     let Some(evidence) = project.get("evidence") else {
         return Ok(Vec::new());
     };
-    let evidence = object(evidence, &["exclude"], "evidence")?;
+    let evidence = object(evidence, &["enabled", "exclude"], "evidence")?;
     let list = match evidence.get("exclude") {
         None => return Ok(Vec::new()),
         Some(Value::Array(list)) if list.len() <= 64 => list,

@@ -1045,8 +1045,12 @@
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Project Intelligence inventory scope.",
+      "description": "Project Intelligence enablement and inventory scope.",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Route structural lookups (declarations, callers, imports, document sections) through Project Intelligence before literal search. Off by default."
+        },
         "exclude": {
           "type": "array",
           "maxItems": 64,

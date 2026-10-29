@@ -54,14 +54,15 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
                         .ok_or("sourcePath must be a relative source path")
                 })
                 .transpose()?;
+            let (kind, under) = (text("kind")?, text("under")?);
             let mut result = store.query(&Query {
                 field: input["field"].as_str().unwrap_or("name"),
                 value: input["value"].as_str().ok_or("query value required")?,
                 after: input["after"].as_str().unwrap_or(""),
                 limit: input["limit"].as_u64().unwrap_or(30) as usize,
                 source,
-                kind: text("kind")?,
-                under: text("under")?,
+                kinds: kind.as_slice(),
+                under: under.as_slice(),
             })?;
             let excerpt = input["excerpt"] == true;
             if input["verify"] == true || excerpt {
@@ -70,90 +71,100 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             result["scope"] = json!(root);
             Ok(result)
         }
-        "refresh" => {
-            let budget = budget.as_mut().unwrap();
-            let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
-            let started = Instant::now();
-            let exclusions = craft_engine::contracts::evidence_exclusions(
-                &craft_platform::documents::project(&root)?,
-            )?;
-            let retired = store.retain_providers(ACTIVE)?;
-            let epoch = store.begin_inventory()?;
-            let mut inventory = Inventory::start(&root, &exclusions)?;
-            store.begin_batch()?;
-            let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
-                (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
-            let mut excluded = 0u64;
-            while let Some(path) = inventory.next_path()? {
-                if !eligible(&path) {
-                    continue;
-                }
-                if craft_engine::contracts::excluded(&path, &exclusions) {
-                    excluded += 1;
-                    continue;
-                }
-                // Git's tracked inventory includes deleted files; completion retires them.
-                if !root.join(&path).try_exists()? {
-                    continue;
-                }
-                let provider = for_path(&path).ok_or("eligible source has no provider")?;
-                files += 1;
-                let observed_at = now();
-                let content = match read_source(&root, &path) {
-                    Ok(content) => content,
-                    Err(error) => {
-                        store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
-                        failed += 1;
-                        continue;
-                    }
-                };
-                bytes += content.len() as u64;
-                let digest = hash(&content);
-                if store.reuse(&path, provider, &digest, epoch)? {
-                    reused += 1;
-                    continue;
-                }
-                if let Err(reason) = budget.start(content.len() as u64, started.elapsed()) {
+        "refresh" => refresh(&root, &mut store, budget.as_mut().unwrap(), &mut |_| {}),
+        _ => Err("unknown evidence operation".into()),
+    }
+}
+
+/// One bounded refresh of the store from the root's inventory. `observe` sees each inventoried
+/// path outside the consumer's exclusions, eligible or not, before it is read.
+pub(crate) fn refresh(
+    root: &Path,
+    store: &mut Store,
+    budget: &mut super::budget::Budget,
+    observe: &mut dyn FnMut(&str),
+) -> Result<Value, Failure> {
+    let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
+    let started = Instant::now();
+    let exclusions =
+        craft_engine::contracts::evidence_exclusions(&craft_platform::documents::project(root)?)?;
+    let retired = store.retain_providers(ACTIVE)?;
+    let epoch = store.begin_inventory()?;
+    let mut inventory = Inventory::start(root, &exclusions)?;
+    store.begin_batch()?;
+    let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
+        (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+    let mut excluded = 0u64;
+    while let Some(path) = inventory.next_path()? {
+        let skipped = craft_engine::contracts::excluded(&path, &exclusions);
+        if !skipped {
+            observe(&path);
+        }
+        if !eligible(&path) {
+            continue;
+        }
+        if skipped {
+            excluded += 1;
+            continue;
+        }
+        // Git's tracked inventory includes deleted files; completion retires them.
+        if !root.join(&path).try_exists()? {
+            continue;
+        }
+        let provider = for_path(&path).ok_or("eligible source has no provider")?;
+        files += 1;
+        let observed_at = now();
+        let content = match read_source(root, &path) {
+            Ok(content) => content,
+            Err(error) => {
+                store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
+                failed += 1;
+                continue;
+            }
+        };
+        bytes += content.len() as u64;
+        let digest = hash(&content);
+        if store.reuse(&path, provider, &digest, epoch)? {
+            reused += 1;
+            continue;
+        }
+        if let Err(reason) = budget.start(content.len() as u64, started.elapsed()) {
+            store.defer(&path, provider, epoch)?;
+            *reasons.entry(reason).or_default() += 1;
+            deferred += 1;
+            continue;
+        }
+        match extract(&path, &content) {
+            Ok(extraction) => {
+                if !budget.accept(&extraction)? {
                     store.defer(&path, provider, epoch)?;
-                    *reasons.entry(reason).or_default() += 1;
+                    *reasons.entry("maxOutputBytes").or_default() += 1;
                     deferred += 1;
                     continue;
                 }
-                match extract(&path, &content) {
-                    Ok(extraction) => {
-                        if !budget.accept(&extraction)? {
-                            store.defer(&path, provider, epoch)?;
-                            *reasons.entry("maxOutputBytes").or_default() += 1;
-                            deferred += 1;
-                            continue;
-                        }
-                        store.replace(&extraction, &observed_at, epoch)?;
-                        changed += 1;
-                    }
-                    Err(error) => {
-                        store.fail(&path, provider, &digest, &error, &observed_at, epoch)?;
-                        failed += 1;
-                    }
-                }
+                store.replace(&extraction, &observed_at, epoch)?;
+                changed += 1;
             }
-            store.commit_batch()?;
-            let removed =
-                store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)?;
-            Ok(
-                json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
-                "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
-                "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
-                "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
-            )
+            Err(error) => {
+                store.fail(&path, provider, &digest, &error, &observed_at, epoch)?;
+                failed += 1;
+            }
         }
-        _ => Err("unknown evidence operation".into()),
     }
+    store.commit_batch()?;
+    let removed = store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)?;
+    Ok(
+        json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
+            "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
+            "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
+            "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
+    )
 }
 
 /// Rehash each cited source once and mark it verified or stale. A row from a verified source
 /// spanning several lines gains its `endLine`; with `excerpt` it also carries its trimmed
 /// first line. Stale sources give neither.
-fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure> {
+pub(crate) fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(), Failure> {
     let checked_at = now();
     let mut current = std::collections::HashMap::new();
     let sources = result["sources"]
@@ -360,7 +371,7 @@ fn request(args: &[String]) -> Result<Request, Failure> {
 
 /// Text view: one header per source, one line per row with its enclosing declaration, and
 /// match counts to narrow a truncated query.
-fn render(result: &Value, json: bool) -> String {
+pub(crate) fn render(result: &Value, json: bool) -> String {
     let Some(rows) = result["results"].as_array().filter(|_| !json) else {
         return if json {
             format!("{result}\n")

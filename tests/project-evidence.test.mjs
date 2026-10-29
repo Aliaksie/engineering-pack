@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { nativeRequest } from './craft.mjs';
+import { nativeCommand, nativeRequest } from './craft.mjs';
 import { readTelemetry } from './state.mjs';
 
 // Operations through the executable's request protocol; the CLI cases use `project-evidence`.
@@ -454,4 +454,50 @@ test('native refresh records FIFO sources as unavailable without waiting for a w
   assert.equal(invoke('refresh').failed, 1);
   assert.equal(invoke('query', { value: 'replacedByPipe' }).results.length, 0);
   assert.equal(invoke('status').sources, 1);
+});
+
+test('locate routes structural questions to verified evidence only under full scope coverage', { skip: !binary }, t => {
+  const { root } = fixture(t);
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  const config = evidence => write('.craft/project.json', JSON.stringify({ formatVersion: 1, evidence }));
+  const locate = args => {
+    const outcome = nativeCommand(['locate', '--root', root, ...args], { binary });
+    assert.equal(outcome.exitCode, 0, outcome.stderr);
+    return outcome.stdout;
+  };
+  const ask = (...args) => JSON.parse(locate([...args, '--json']));
+  write('src/A.java', 'class A {\n void go() {\n  ping();\n }\n void ping() {}\n}\n');
+  write('docs/guide.md', '# Guide\n\n## Install\n\ntext\n');
+  write('native/lib.rs', 'fn ping() {}\n');
+  // Off by default: literal search, nothing indexed.
+  const disabled = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([disabled.route.answeredBy, disabled.route.reason], ['locate', 'index-disabled']);
+  assert.ok(disabled.matches.length > 0);
+  assert.equal(fs.existsSync(path.join(root, '.craft/state/intelligence')), false);
+  config({ enabled: true });
+  const callers = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([callers.route.answeredBy, callers.route.reason], ['intelligence', 'covered']);
+  assert.deepEqual(callers.results.map(row => [row.path, row.line, row.container.name]), [['src/A.java', 3, 'go']]);
+  assert.equal(callers.sources['src/A.java'].verification, 'verified-selected-source');
+  assert.equal(callers.results[0].excerpt, 'ping();');
+  assert.equal(callers.route.complete, true);
+  // A covered empty answer is an absence within the stated coverage.
+  const absent = ask('--callers', 'pong', '--path', 'src');
+  assert.deepEqual([absent.results, absent.route.complete], [[], true]);
+  assert.match(locate(['--callers', 'pong', '--path', 'src']), /^intelligence \(covered\): callers pong in src\n[^]*No match: absent within this coverage\.\n$/);
+  assert.deepEqual(ask('--outline', 'docs/guide.md').results.map(row => [row.name, row.line, row.endLine]), [['Guide', 1, 5], ['Install', 3, 5]]);
+  // Rust source no provider reads is searched literally beside the index answer.
+  const combined = ask('--declaration', 'ping');
+  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { rs: 1 } }]);
+  assert.deepEqual(combined.results.map(row => [row.path, row.kind]), [['src/A.java', 'java:declares-method']]);
+  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.rs', 'fn ping() {}']]);
+  assert.equal(combined.route.complete, true);
+  assert.match(locate(['--declaration', 'ping']), /; gaps: unindexed rs 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.rs:1: fn ping\(\) \{\}\n$/);
+  config({ enabled: true, exclude: ['src'] });
+  const excluded = ask('--callers', 'ping', '--path', 'src');
+  assert.deepEqual([excluded.route.reason, excluded.route.detail], ['scope-excluded', ['src']]);
+  for (const args of [['--callers', 'a', '--term', 'b'], ['--section', 'a', '--outline', 'b.md'], ['--callers', 'a', '--max-matches', '0']]) {
+    assert.equal(nativeCommand(['locate', '--root', root, ...args], { binary }).exitCode, 2);
+  }
+  assert.equal(nativeCommand(['route', '--callers', 'a'], { binary }).exitCode, 2);
 });

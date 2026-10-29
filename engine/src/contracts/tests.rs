@@ -165,3 +165,13 @@ fn evidence_exclusions_are_normalized_component_prefixes() {
     }
     assert!(validate_project(&json!({"formatVersion": 1, "evidence": {"include": []}})).is_err());
 }
+
+#[test]
+fn evidence_is_enabled_only_by_an_explicit_boolean() {
+    let project = |evidence: Value| json!({"formatVersion": 1, "evidence": evidence});
+    assert!(!evidence_enabled(&json!({"formatVersion": 1})).unwrap());
+    assert!(!evidence_enabled(&project(json!({"exclude": []}))).unwrap());
+    assert!(evidence_enabled(&project(json!({"enabled": true}))).unwrap());
+    assert!(validate_project(&project(json!({"enabled": true, "exclude": ["a"]}))).is_ok());
+    assert!(validate_project(&project(json!({"enabled": "yes"}))).is_err());
+}

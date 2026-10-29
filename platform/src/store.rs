@@ -372,6 +372,16 @@ impl Store {
             "freshness":"stored-snapshot", "completeness":"unknown outside declared provider coverage"}))
     }
 
+    /// Sources without current evidence, as `(path, provider, outcome)` in path order, where
+    /// the outcome is `pending` or `failed`.
+    pub fn unextracted(&self) -> Result<Vec<(String, String, String)>, Error> {
+        let mut statement = self.connection.prepare(
+            "SELECT path,provider,outcome FROM sources WHERE outcome<>'ok' ORDER BY path,provider",
+        )?;
+        let rows = statement.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
     /// Matches in path, line, column and ID order. The continuation is the last returned ID;
     /// it resumes after that row's position, and refuses once the row is no longer stored.
     /// Source provenance is listed once per path; a truncated page reports match counts.
@@ -385,9 +395,12 @@ impl Store {
         };
         if !(1..=200).contains(&query.limit)
             || query.value.len() > 4096
+            || query.kinds.len() > 16
+            || query.under.len() > 32
             || query
-                .kind
-                .is_some_and(|kind| kind.is_empty() || kind.len() > 128)
+                .kinds
+                .iter()
+                .any(|kind| kind.is_empty() || kind.len() > 128)
         {
             return Err("query exceeds bounds".into());
         }
@@ -397,17 +410,24 @@ impl Store {
         if query.source.is_some_and(|path| !valid_path(path)) {
             return Err("sourcePath must be a relative source path".into());
         }
-        let under = query
+        let under: Vec<_> = query
             .under
-            .map(|path| path.strip_suffix('/').unwrap_or(path));
-        if under.is_some_and(|path| !valid_path(path)) {
+            .iter()
+            .map(|path| path.strip_suffix('/').unwrap_or(path))
+            .collect();
+        if under.iter().any(|path| !valid_path(path)) {
             return Err("under must be a relative directory".into());
         }
+        // Kind and directory lists bind as JSON arrays; NULL leaves the filter out.
+        let list = |items: &[&str]| (!items.is_empty()).then(|| json!(items).to_string());
+        let (kinds, directories) = (list(query.kinds), list(&under));
         let filters = format!(
-            "{column} AND s.outcome='ok' AND (?2 IS NULL OR s.path=?2) AND (?3 IS NULL OR e.kind=?3)
-            AND (?4 IS NULL OR substr(s.path,1,length(?4)+1)=?4||'/')"
+            "{column} AND s.outcome='ok' AND (?2 IS NULL OR s.path=?2)
+            AND (?3 IS NULL OR e.kind IN (SELECT value FROM json_each(?3)))
+            AND (?4 IS NULL OR EXISTS (SELECT 1 FROM json_each(?4) u
+                WHERE substr(s.path,1,length(u.value)+1)=u.value||'/'))"
         );
-        let filter = params![query.value, query.source, query.kind, under];
+        let filter = params![query.value, query.source, kinds, directories];
         let position = if query.after.is_empty() {
             "1"
         } else {
@@ -434,8 +454,8 @@ impl Store {
         let mut rows = statement.query(params![
             query.value,
             query.source,
-            query.kind,
-            under,
+            kinds,
+            directories,
             query.after,
             (query.limit + 1) as i64
         ])?;
@@ -467,7 +487,7 @@ impl Store {
         sources.retain(|path, _| results.iter().any(|row| row["path"] == *path));
         let mut result = json!({"results":results,"sources":sources,
             "continuation":if more { results.last().map(|row| row["id"].clone()) } else { None },
-            "sourcePath":query.source,"kind":query.kind,"under":under});
+            "sourcePath":query.source,"kind":one(query.kinds),"under":one(&under)});
         if more {
             result["matches"] = self.matches(&filters, filter)?;
         }
@@ -501,6 +521,14 @@ impl Store {
     }
 }
 
+/// A single filter value as given, or null when it is absent or a list.
+fn one(items: &[&str]) -> Value {
+    match items {
+        [item] => json!(item),
+        _ => Value::Null,
+    }
+}
+
 /// One evidence lookup: an exact field match, narrowed before pagination.
 pub struct Query<'a> {
     pub field: &'a str,
@@ -509,10 +537,10 @@ pub struct Query<'a> {
     pub limit: usize,
     /// One exact source path.
     pub source: Option<&'a str>,
-    /// One exact evidence kind.
-    pub kind: Option<&'a str>,
-    /// A directory, matched by whole path components.
-    pub under: Option<&'a str>,
+    /// Exact evidence kinds; empty matches every kind.
+    pub kinds: &'a [&'a str],
+    /// Directories, matched by whole path components; empty matches every path.
+    pub under: &'a [&'a str],
 }
 
 impl<'a> Query<'a> {
@@ -523,8 +551,8 @@ impl<'a> Query<'a> {
             after: "",
             limit: 30,
             source: None,
-            kind: None,
-            under: None,
+            kinds: &[],
+            under: &[],
         }
     }
 }
@@ -800,14 +828,30 @@ mod tests {
         );
         assert!(page(Query::new("name", "ping")).get("matches").is_none());
         let kinds = page(Query {
-            kind: Some("java:declares-method"),
+            kinds: &["java:declares-method"],
             ..Query::new("name", "ping")
         });
         assert_eq!(kinds["results"][0]["path"], "b.java");
         assert_eq!(kinds["results"].as_array().unwrap().len(), 1);
+        let either = page(Query {
+            kinds: &["java:declares-method", "java:invokes-syntax"],
+            under: &["a/y", "ab"],
+            ..Query::new("name", "ping")
+        });
+        let paths: Vec<_> = either["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| row["path"].as_str().unwrap())
+            .collect();
+        assert_eq!(paths, ["a/y/z.java", "ab/w.java"]);
+        assert_eq!(
+            (&either["kind"], &either["under"]),
+            (&json!(null), &json!(null))
+        );
         for under in ["a", "a/"] {
             let scoped = page(Query {
-                under: Some(under),
+                under: &[under],
                 ..Query::new("name", "ping")
             });
             assert_eq!(scoped["under"], "a");
@@ -824,7 +868,7 @@ mod tests {
             assert!(
                 store
                     .query(&Query {
-                        under: Some(under),
+                        under: &[under],
                         ..Query::new("name", "ping")
                     })
                     .is_err()

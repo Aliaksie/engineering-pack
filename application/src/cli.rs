@@ -496,6 +496,32 @@ fn locate(
     let session = options.get("session").filter(|s| !s.is_empty());
     let observed =
         crate::discovery::observation(&root(options), session, task.as_deref(), recorder, parent);
+    if let Some((ask, value)) = craft_engine::discovery::question::ASKS
+        .iter()
+        .find_map(|(name, _)| options.get(name).map(|value| (*name, value)))
+    {
+        let mut input = json!({"ask": ask, "value": value, "paths": strings(options, "path")});
+        if let Some(limit) = options.get("max-matches") {
+            input["limit"] = crate::discovery::number(limit);
+        }
+        if let Some(after) = options.get("after") {
+            input["after"] = json!(after);
+        }
+        return crate::question::answer(&root(options), &input, |request| {
+            crate::discovery::run(
+                request,
+                crate::discovery::Context {
+                    root: &root(options),
+                    session,
+                    task: task.as_deref(),
+                    preferences: options.get("preferences").map(Path::new),
+                    observed: &observed,
+                },
+                recorder,
+                parent,
+            )
+        });
+    }
     let request = match options.get("data") {
         Some(file) => read_input(recorder, parent, file)?,
         None => {
@@ -1584,6 +1610,10 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
                 !structured && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
             let text = match command.render {
                 Render::Receipt(receipt) if compact => receipt(action, value),
+                // A structural lookup reads as text; literal locate output stays one JSON line.
+                Render::Line if compact && value.get("route").is_some() => {
+                    crate::question::text(value)
+                }
                 Render::Line => format!("{value}\n"),
                 _ => render(value),
             };

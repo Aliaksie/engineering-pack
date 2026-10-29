@@ -78,6 +78,12 @@ const OPTIONS: &[&str] = &[
     "shared",
     "escalate",
     "discard",
+    "declaration",
+    "callers",
+    "imports",
+    "section",
+    "outline",
+    "after",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -150,6 +156,16 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
         }
     }
     let present = |name: &str| options.values.contains_key(name);
+    let asked = craft_engine::discovery::question::ASKS
+        .iter()
+        .filter(|(name, _)| present(name))
+        .count();
+    if (asked > 0 || present("after")) && action != "locate" {
+        return Err("structural questions and --after are supported by locate".into());
+    }
+    if asked > 1 || asked == 1 && (present("term") || present("data")) {
+        return Err("locate takes one structural question or literal --term values".into());
+    }
     if present("contract") && !["task-start", "acceptance-view"].contains(&action) {
         return Err("--contract is supported by task-start and acceptance-view".into());
     }

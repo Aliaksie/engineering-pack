@@ -15,9 +15,44 @@ craft project-evidence query   --enable --root . --value stateFile --verify
 craft project-evidence status  --enable --root . --json
 ```
 
-Without `--enable`, nothing is read or written. No hook runs it automatically. Other
-operations are `version`, `backup` (a consistent snapshot beside the database; never
-overwrites an existing backup) and `rebuild` (clears derived evidence; run `refresh` next).
+Without `--enable`, nothing is read or written. Other operations are `version`, `backup` (a
+consistent snapshot beside the database; never overwrites an existing backup) and `rebuild`
+(clears derived evidence; run `refresh` next).
+
+## Routed lookups
+
+With `"evidence": {"enabled": true}` in `.craft/project.json`, `craft locate` answers
+structural questions from this index:
+
+```sh
+craft locate --root . --callers processOpts --path modules/core
+craft locate --root . --outline docs/guide.md
+```
+
+| Question | Matches | Answered from |
+|---|---|---|
+| `--declaration <name>` | declared name | JavaScript, Java |
+| `--callers <name>` | invoked method name, with its enclosing declaration | Java |
+| `--imports <target>` | import target as spelled | JavaScript, Java |
+| `--section <heading>` | heading text | Markdown |
+| `--outline <document>` | every section of one document | Markdown |
+
+Each lookup first refreshes the index for up to two seconds of extraction, then answers from
+verified evidence. In-scope sources the index cannot answer for are its gaps: pending or failed
+extraction, a source changed since it was cited, or a candidate in a language the question's
+providers do not read (a `.rs` or `.ts` file for `--callers`, an `.rst` file for `--section`).
+Up to 200 gap files are searched literally for the spelled value beside the index rows
+(`route.answeredBy` `intelligence+locate`, `route.reason` `gaps-searched`, `route.detail`
+counting them). The whole scope is searched literally instead (`locate`) when the reason is
+`index-disabled`, `index-unavailable`, `scope-excluded`, `inventory-incomplete` or
+`scope-gaps` (more than 200 gap files); an outline then searches its document for `#`.
+`route.complete` is true when an empty answer is an absence within that coverage: no literal
+search, or a gap search that was not truncated. A whole-scope literal search never is.
+
+Output is text: the route line, rows grouped by source with their enclosing declaration,
+line span and first line, then literal matches. `--json` prints the structure. Pages hold
+`--max-matches` rows (30, up to 200); `--after` continues the index rows, without repeating
+the gap search.
 
 - **Query** matches an exact `id`, `name`, `path` or syntax `target` (`--field`, `--value`),
   30 rows per page (up to 200) in path and line order, with an `--after` continuation that
