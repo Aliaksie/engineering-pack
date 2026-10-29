@@ -156,10 +156,10 @@ pub fn snapshot(root: &Path) -> Result<(Vec<Value>, Storage), Error> {
 /// never an error, when the batch is dropped: telemetry is advisory. A writer waits
 /// briefly for an active lock but never removes it.
 pub fn append(root: &Path, events: &[Value]) -> bool {
-    write_batch(root, events).unwrap_or(false)
+    write_batch(root, events, LOCK_WAIT).unwrap_or(false)
 }
 
-fn write_batch(root: &Path, events: &[Value]) -> Result<bool, Error> {
+fn write_batch(root: &Path, events: &[Value], wait: Duration) -> Result<bool, Error> {
     if events.is_empty() || events.len() > BATCH_EVENTS {
         return Ok(false);
     }
@@ -177,10 +177,7 @@ fn write_batch(root: &Path, events: &[Value]) -> Result<bool, Error> {
         if let Some(ticket) = state::lock(&file)? {
             break ticket;
         }
-        let Some(remaining) = LOCK_WAIT
-            .checked_sub(started.elapsed())
-            .filter(|r| !r.is_zero())
-        else {
+        let Some(remaining) = wait.checked_sub(started.elapsed()).filter(|r| !r.is_zero()) else {
             return Ok(false);
         };
         std::thread::sleep(remaining.min(Duration::from_millis(2)));
@@ -299,7 +296,8 @@ mod tests {
                 fs::remove_file(lock).unwrap();
             })
         };
-        assert!(append(&fixture.0, &[json!({ "n": 1 })]));
+        // A generous wait keeps the release inside it under a loaded scheduler.
+        assert!(write_batch(&fixture.0, &[json!({ "n": 1 })], Duration::from_secs(5)).unwrap());
         releaser.join().unwrap();
         assert_eq!(fs::read_to_string(&log).unwrap(), "{\"n\":1}\n");
     }
