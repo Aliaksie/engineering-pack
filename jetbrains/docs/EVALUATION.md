@@ -33,6 +33,30 @@ does not call a model or judge the judge. `adapter` names an export (`claude`, `
 `cursor`, `copilot`, `gemini`, `agents`, `gemini-extension`, `jetbrains`). Keep transcripts and
 credentials out of committed results.
 
+## Decision replay
+
+`tests/decision-replay.test.mjs` replays realistic prompts and session situations through the
+real routing hook, without a model. Each case in `tests/fixtures/decisions/` records the
+decision a user would expect and the decision Craft makes today. A changed decision fails
+until `current` is updated on purpose; the distance to `expected` is reported (in CI, on
+the job summary) but not enforced, so the fixtures double as a scorecard. Add a case when a
+real session shows a wrong or missing decision.
+
+## Session audit
+
+`npm run eval:audit -- <transcript.jsonl>` prints an engagement card for one real session. It
+joins the host's own transcript (a Claude Code session file or a Codex rollout) with the
+events Craft recorded for the same session in that project: tool calls, shell searches,
+rereads and tokens next to hooks and their latency, routing, selected guidance, lookups,
+checkpoints and failures. Signals such as `no-routing`, `search-without-lookup` or a failure
+repeated on every prompt point at sessions worth a closer look; they are not a grade.
+`--json` prints the same card as data and `--root` names the project when the transcript
+does not.
+
+Nothing leaves the machine. Transcript formats belong to each host, so values a transcript
+does not carry show as unknown. Craft's local log rotates, so audit a session soon after it
+ends, or retain its summary with `npm run telemetry:capture -- --session <id>`.
+
 ## Engineering eval
 
 The engineering eval (`evals/` in the source repository) runs a real coding agent in a container against
