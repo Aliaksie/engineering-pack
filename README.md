@@ -96,6 +96,14 @@ Install only what you need; packages work alone and use each other when present.
 The native executable is bundled for macOS on Apple Silicon, Linux x86-64 and Windows
 x86-64. See [adapters](docs/ADAPTERS.md) for what each host supports.
 
+## Performance
+
+Every push to `main` measures the installed release `craft` on Linux, macOS and Windows:
+startup, hooks and Project Intelligence refresh. Pull requests are compared with `main`.
+See [prompt hook latency, native versus the host shell](https://bencher.dev/perf/aliaksie-s-craft-capabilities?branches=01a18d44-a8bc-7236-9f6b-75f11682cb19&testbeds=01a18d3d-21b0-7783-b8b1-36a603df9579%2C01a18d3e-5760-7204-be77-f8cfab399e01%2C01a18d3f-e9ab-7284-9ce6-302b58db000f&benchmarks=01a18d3d-21b9-7713-85d8-18b9dae1ae8f%2C01a18d3d-21b4-74f4-8c7b-adb2d4adfc6c&measures=01a18d3d-21b3-7121-9d23-b24dec208773)
+or the [full dashboard](https://bencher.dev/perf/aliaksie-s-craft-capabilities), and
+[contributing](docs/CONTRIBUTING.md#performance) for what is measured.
+
 ## What it does not do
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
