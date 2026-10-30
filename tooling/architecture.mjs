@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // Deterministic module-map checks. Rules and their rationale: docs/adr/0002-module-map-and-boundaries.md.
-const KINDS = ['rust-crate', 'host-adapter', 'content', 'build-tooling', 'schema', 'docs', 'tests', 'examples', 'ci-config'];
+const KINDS = ['rust-crate', 'host-adapter', 'content', 'build-tooling', 'schema', 'docs', 'tests', 'examples', 'eval-suite', 'ci-config'];
 const BANNED_RUST_MODULES = ['utils', 'common', 'helpers', 'misc', 'shared', 'core'];
 const IMPURE_ENGINE = /\bstd::(?:fs|process|net|env)\b|\buse\s+std::\{[^}]*\b(?:fs|process|net|env)\b|\b(?:SystemTime|Instant)::now\b/;
 

@@ -1,0 +1,27 @@
+schema_version = "1.4"
+# The repository with Craft's state; the verifier gets it in a fresh sandbox.
+artifacts = ["/app"]
+
+[task]
+name = "craft/fix-discount-quantity"
+description = "Short localized bug: promo discounts ignore line quantity."
+keywords = ["developer", "s1-short-bug"]
+
+[metadata]
+actor = "developer"
+scenario = "S1 short localized bug"
+expected_mechanism = "Minimal intervention: routed to apply-change, no plan or delegation"
+
+[agent]
+timeout_sec = 900.0
+user = "node"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 120.0
+
+[environment]
+network_mode = "public"
+workdir = "/app"
+cpus = 2
+memory_mb = 4096

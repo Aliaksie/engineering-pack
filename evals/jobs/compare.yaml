@@ -1,0 +1,25 @@
+# Matched vanilla and Craft arms: same image, task, model, effort and limits.
+jobs_dir: .eval-results/harbor
+n_attempts: 1
+n_concurrent_trials: 1
+retry:
+  max_retries: 0
+environment:
+  type: docker
+# Every task directory under evals/tasks.
+datasets:
+  - path: evals/tasks
+agents:
+  - name: codex
+    model_name: openai/gpt-6-astra
+    kwargs:
+      reasoning_effort: medium
+      web_search: disabled
+      config: evals/codex/vanilla.toml
+  - name: codex
+    model_name: openai/gpt-6-astra
+    kwargs:
+      reasoning_effort: medium
+      web_search: disabled
+      dangerously_bypass_hook_trust: true
+      config: evals/codex/craft.toml

@@ -1,9 +1,12 @@
 name: CI
 
+# Eval tasks have their own workflow; changing only them needs nothing here.
 on:
   push:
     branches: [main]
+    paths-ignore: ['evals/**']
   pull_request:
+    paths-ignore: ['evals/**']
   workflow_dispatch:
 
 permissions:
@@ -14,18 +17,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      runtime: ${{ steps.files.outputs.runtime }}
+    steps:
+      - name: Classify changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+        # Pull requests that change only documentation, examples or eval tasks skip the native,
+        # security and packaging jobs; pushes to main and manual runs always run everything.
+        run: |
+          runtime=true
+          if [[ "$EVENT" == pull_request ]]; then
+            files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
+            if [[ -n "$files" ]] && ! grep -qvE '^(docs|examples|evals)/|^[^/]+\.md$' <<<"$files"; then runtime=false; fi
+          fi
+          echo "runtime=$runtime" >>"$GITHUB_OUTPUT"
+
   fast:
     name: Fast gate
     uses: ./.github/workflows/fast.yml
 
   native:
     name: Native
-    needs: fast
+    needs: [fast, changes]
+    if: needs.changes.outputs.runtime == 'true'
     uses: ./.github/workflows/native.yml
 
   security:
     name: Security
-    needs: fast
+    needs: [fast, changes]
+    if: needs.changes.outputs.runtime == 'true'
     permissions:
       contents: read
       actions: read

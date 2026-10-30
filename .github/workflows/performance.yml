@@ -1,9 +1,23 @@
 name: Performance
 
+# Only changes that can move the runtime, packaging or the benchmark itself are measured.
 on:
   push:
     branches: [main]
+    paths: &runtime
+      - engine/**
+      - platform/**
+      - application/**
+      - hosts/**
+      - packages/**
+      - tooling/**
+      - Cargo.toml
+      - Cargo.lock
+      - package.json
+      - .github/benchmarks/**
+      - .github/workflows/performance.yml
   pull_request:
+    paths: *runtime
   workflow_dispatch:
 
 permissions:

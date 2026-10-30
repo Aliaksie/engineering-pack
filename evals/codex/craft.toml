@@ -1,0 +1,16 @@
+# Codex configuration for the Craft arm: the installed packages, enabled as a user would.
+[marketplaces.engineering-pack]
+source_type = "local"
+source = "/opt/craft/codex"
+
+[plugins."craft-delivery@engineering-pack"]
+enabled = true
+
+[plugins."craft-engineering@engineering-pack"]
+enabled = true
+
+[plugins."craft-review@engineering-pack"]
+enabled = true
+
+[plugins."craft-stories@engineering-pack"]
+enabled = true
