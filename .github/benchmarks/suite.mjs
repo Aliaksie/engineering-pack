@@ -78,7 +78,8 @@ const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.
 const project = path.join(workspace, 'project'), archive = path.join(workspace, 'project.tar');
 git(options.fixture, 'archive', '--format=tar', '-o', archive, 'HEAD');
 fs.mkdirSync(project);
-run('tar', ['-xf', slash(archive), '-C', slash(project)]);
+// A relative archive path: Git Bash's GNU tar reads `C:` in an absolute path as a remote host.
+run('tar', ['-xf', path.relative(project, archive)], { cwd: project });
 git(project, 'init', '-q'); git(project, 'add', '.'); git(project, 'commit', '-qm', 'fixture');
 const firstRefresh = JSON.parse(run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(project), '--json'], { env }));
 
