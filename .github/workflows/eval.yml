@@ -20,7 +20,7 @@ on:
         type: number
         default: 1
       tasks:
-        description: Task names to run, as a glob (for example craft/pi-*)
+        description: Task directories under evals/tasks to run, as a glob (for example pi-*)
         type: string
         default: '*'
 
@@ -81,7 +81,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.job != 'qualify'
         env:
           OPENAI_API_KEY: ${{ secrets.CRAFT_CODEX_API_KEY }}
-        run: harbor run --config "evals/jobs/$JOB.yaml" --job-name "$JOB-$GITHUB_RUN_ID" --n-attempts "$ATTEMPTS" --include-task-name "$TASKS" --yes
+        run: harbor run --config "evals/jobs/$JOB.yaml" --job-name "$JOB-$GITHUB_RUN_ID" --n-attempts "$ATTEMPTS" --path evals/tasks --include-task-name "$TASKS" --yes
       - name: Check results for the key
         id: leak
         if: always()
@@ -95,6 +95,8 @@ jobs:
       - name: Summarize
         if: always() && steps.leak.outcome == 'success' && env.JOB != 'qualify'
         run: |
+          # A run that failed before any trial still gets a summary, not a second failure.
+          shopt -s nullglob
           {
             echo "### $JOB ($ATTEMPTS per task and arm, tasks $TASKS)"
             echo
