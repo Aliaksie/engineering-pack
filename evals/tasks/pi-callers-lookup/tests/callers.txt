@@ -1,0 +1,4 @@
+src/main/java/com/acme/billing/Checkout.java#finish
+src/main/java/com/acme/billing/Quote.java#preview
+src/main/java/com/acme/billing/Subscription.java#renew
+src/test/java/com/acme/billing/DiscountPolicyTest.java#appliesTenPercent

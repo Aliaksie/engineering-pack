@@ -20,6 +20,9 @@ RUN mkdir -p "$CODEX_HOME" \
  && rm "$CODEX_HOME/config.toml" \
  && test -x /opt/craft/codex/packages/craft-delivery/support/native-bin/x86_64-unknown-linux-gnu/native-bin/craft
 
+# Every task verifier grades Craft's engagement with the same script.
+COPY evals/image/craft-rewards.sh /opt/craft-eval/craft-rewards.sh
+
 RUN git config --system user.name "Eval Fixture" \
  && git config --system user.email "fixture@example.invalid" \
  && git config --system init.defaultBranch main

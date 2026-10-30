@@ -1,0 +1,27 @@
+schema_version = "1.4"
+# The repository with Craft's state; the verifier gets it in a fresh sandbox.
+artifacts = ["/app"]
+
+[task]
+name = "craft/literal-search-tool-choice"
+description = "Literal search: every mention of a deprecated setting across code, config, scripts and docs."
+keywords = ["developer", "probe-tool-choice"]
+
+[metadata]
+actor = "developer"
+scenario = "Tool choice: a literal search with Project Intelligence on"
+expected_mechanism = "A literal search; no structural lookup forced onto a text question"
+
+[agent]
+timeout_sec = 300.0
+user = "node"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 120.0
+
+[environment]
+network_mode = "public"
+workdir = "/app"
+cpus = 2
+memory_mb = 4096

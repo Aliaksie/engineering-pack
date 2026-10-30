@@ -1,0 +1,27 @@
+schema_version = "1.4"
+# The repository with Craft's state; the verifier gets it in a fresh sandbox.
+artifacts = ["/app"]
+
+[task]
+name = "craft/plan-discount-cap"
+description = "Plan a small feature without implementing it; the plan must be grounded in the code."
+keywords = ["developer", "probe-planning"]
+
+[metadata]
+actor = "developer"
+scenario = "Planning: plan a change, no code"
+expected_mechanism = "Routed to planning; a work plan recorded in Craft state that cites real files and functions"
+
+[agent]
+timeout_sec = 300.0
+user = "node"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 120.0
+
+[environment]
+network_mode = "public"
+workdir = "/app"
+cpus = 2
+memory_mb = 4096

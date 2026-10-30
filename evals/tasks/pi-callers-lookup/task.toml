@@ -1,0 +1,27 @@
+schema_version = "1.4"
+# The repository with Craft's state; the verifier gets it in a fresh sandbox.
+artifacts = ["/app"]
+
+[task]
+name = "craft/pi-callers-lookup"
+description = "Structural lookup: which methods call one Java method, with literal decoys."
+keywords = ["developer", "probe-pi-lookup"]
+
+[metadata]
+actor = "developer"
+scenario = "PI lookup: who calls a method"
+expected_mechanism = "Routed to a structural lookup answered by Project Intelligence; few shell searches"
+
+[agent]
+timeout_sec = 300.0
+user = "node"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 120.0
+
+[environment]
+network_mode = "public"
+workdir = "/app"
+cpus = 2
+memory_mb = 4096
