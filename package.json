@@ -26,6 +26,7 @@
     "architecture": "node tooling/architecture.mjs",
     "pretest": "npm run build && npm run build:distribution",
     "eval:report": "node tooling/eval-report.mjs",
+    "eval:audit": "node tooling/session-audit.mjs",
     "route": "node tooling/craft.mjs route",
     "operation": "node tooling/craft.mjs operation",
     "checkpoint:save": "node tooling/craft.mjs checkpoint-save",

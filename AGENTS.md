@@ -19,6 +19,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
+| `npm run eval:audit -- <transcript.jsonl>` | Engagement card for one real Claude Code or Codex session |
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run locate -- ...` | Batch bounded literal searches into compact source evidence |
