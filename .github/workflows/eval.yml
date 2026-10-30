@@ -15,6 +15,14 @@ on:
         type: choice
         default: diagnose
         options: [qualify, diagnose, compare]
+      attempts:
+        description: Trials per task and arm (repetitions)
+        type: number
+        default: 1
+      tasks:
+        description: Task names to run, as a glob (for example craft/pi-*)
+        type: string
+        default: '*'
 
 permissions:
   contents: read
@@ -33,6 +41,8 @@ jobs:
       HARBOR_VERSION: '0.25.0'
       HARBOR_TELEMETRY: 'off'
       JOB: ${{ inputs.job || 'qualify' }}
+      ATTEMPTS: ${{ inputs.attempts || 1 }}
+      TASKS: ${{ inputs.tasks || '*' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,7 +81,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.job != 'qualify'
         env:
           OPENAI_API_KEY: ${{ secrets.CRAFT_CODEX_API_KEY }}
-        run: harbor run --config "evals/jobs/$JOB.yaml" --job-name "$JOB-$GITHUB_RUN_ID" --yes
+        run: harbor run --config "evals/jobs/$JOB.yaml" --job-name "$JOB-$GITHUB_RUN_ID" --n-attempts "$ATTEMPTS" --include-task-name "$TASKS" --yes
       - name: Check results for the key
         id: leak
         if: always()
@@ -86,23 +96,33 @@ jobs:
         if: always() && steps.leak.outcome == 'success' && env.JOB != 'qualify'
         run: |
           {
-            echo "### $JOB"
+            echo "### $JOB ($ATTEMPTS per task and arm, tasks $TASKS)"
             echo
-            echo "| Task | Arm | Reward | Expected skill | Craft events | Tool calls | Input tokens | Cached | Output tokens | Agent seconds | Error |"
-            echo "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"
+            echo "| Task | Arm | Reward | Expected skill | Craft events | Lookups | Plan | Hook ms | Model steps | Tool calls | Shell searches | Input tokens | Cached | Output tokens | Cost USD | Agent seconds | Error |"
+            echo "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"
             for result in .eval-results/harbor/"$JOB-$GITHUB_RUN_ID"/*/result.json; do
               trajectory="$(dirname "$result")/agent/trajectory.json"
-              tools=$( [[ -f "$trajectory" ]] && jq '[.steps[]?.tool_calls[]?] | length' "$trajectory" || echo "—")
-              jq -r --arg tools "$tools" 'select(.trial_name) | [
+              # Model steps, tool calls and shell searches from the trajectory; unknown without one.
+              agent='{"steps":"—","tools":"—","searches":"—"}'
+              [[ -f "$trajectory" ]] && agent=$(jq -c '{
+                steps: (.final_metrics.total_steps // ([.steps[]? | select(.source == "agent")] | length)),
+                tools: ([.steps[]?.tool_calls[]?] | length),
+                searches: ([.steps[]?.tool_calls[]?.arguments | tostring
+                  | select(test("(^|[^A-Za-z_])(rg|grep|egrep|find|fd|ag) "))] | length)}' "$trajectory")
+              jq -r --argjson agent "$agent" 'select(.trial_name) | .verifier_result.rewards as $r | [
                 .task_name,
                 (.config.agent.kwargs.config // "—" | split("/") | last | rtrimstr(".toml")),
-                (.verifier_result.rewards.reward // "—"),
-                (.verifier_result.rewards.expected_skill_selected // "—"),
-                (.verifier_result.rewards.craft_events // "—"),
-                $tools,
+                ($r.reward // "—"),
+                ($r.expected_skill_selected // "—"),
+                ($r.craft_events // "—"),
+                ($r.craft_lookups // "—"),
+                ($r.craft_plan_created // "—"),
+                ($r.craft_hook_ms_total // "—"),
+                $agent.steps, $agent.tools, $agent.searches,
                 (.agent_result.n_input_tokens // "—"),
                 (.agent_result.n_cache_tokens // "—"),
                 (.agent_result.n_output_tokens // "—"),
+                (.agent_result.cost_usd // "—"),
                 (if .agent_execution.started_at and .agent_execution.finished_at
                   then ((.agent_execution.finished_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdate)
                       - (.agent_execution.started_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdate))
@@ -111,7 +131,7 @@ jobs:
               ] | map(tostring) | "| " + join(" | ") + " |"' "$result"
             done
             echo
-            echo "Unknown values show as —. Browse every trial with \`harbor view jobs\` after downloading the artifact."
+            echo "Unknown values show as —; a cost the host does not report stays unknown, never 0. Each trial's verifier/reward.json holds the task-specific values. Browse every trial with \`harbor view jobs\` after downloading the artifact."
           } >>"$GITHUB_STEP_SUMMARY"
       - name: Upload results
         if: always() && steps.leak.outcome == 'success'

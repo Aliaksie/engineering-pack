@@ -1,3 +1,4 @@
-# Build context for the trial image: only the Codex export.
+# Build context for the trial image: only the Codex export and the shared Craft grading.
 *
 !dist/codex
+!evals/image/craft-rewards.sh

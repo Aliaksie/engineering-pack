@@ -1,0 +1,2 @@
+# Local Craft state from running tools inside the fixture must never reach a trial.
+repo/.craft/state

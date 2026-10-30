@@ -1,0 +1,5 @@
+docs/pricing.md:8
+scripts/export-orders.sh:4
+src/main/java/com/acme/billing/DiscountPolicy.java:7
+src/main/java/com/acme/billing/legacy/OldCheckout.java:9
+src/main/resources/application.properties:3
