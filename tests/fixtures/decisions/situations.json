@@ -1,0 +1,11 @@
+{
+  "description": "Session situations replayed through hooks and the CLI. expected is the proposed decision; current is the recorded behavior. The test fails when current behavior changes and reports expected-versus-current gaps as findings.",
+  "cases": [
+    {"id":"edit-first","situation":"First edit of a Java source in a session","expected":{"intent":"implement"},"current":{"intent":"implement"}},
+    {"id":"edit-repeated","situation":"Second edit of the same file in the same session","expected":{"intent":null},"current":{"intent":null}},
+    {"id":"start-unfinished-task","situation":"A new session starts while an earlier session left a task unfinished","expected":{"offered":["fix-discount"]},"current":{"offered":["fix-discount"]}},
+    {"id":"lookup-default","situation":"Callers lookup in a Java repository with default project settings","expected":{"answeredBy":"intelligence","reason":"covered","complete":true},"current":{"answeredBy":"locate","reason":"index-disabled","complete":false}},
+    {"id":"lookup-enabled","situation":"Callers lookup in a Java repository with Project Intelligence enabled","expected":{"answeredBy":"intelligence","reason":"covered","complete":true},"current":{"answeredBy":"intelligence","reason":"covered","complete":true}},
+    {"id":"lookup-unindexed","situation":"Callers lookup reaching a JavaScript source the index does not read for callers","expected":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true},"current":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true}}
+  ]
+}

@@ -148,6 +148,8 @@ jobs:
       - name: Restore executable permission
         run: chmod +x "$CRAFT_NATIVE_BINARY"
       - name: Test
+        env:
+          CRAFT_DECISION_SUMMARY: ${{ matrix.node == '24' }}
         run: npm run test:unit
 
   package:
