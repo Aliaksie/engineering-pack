@@ -27,7 +27,6 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run session:attempt -- ...` | Record one bounded acceptance attempt without executing a retry |
 | `npm run session:advice -- ...` | Recommend a next action from explicit task state and fresh host observations |
 | `npm run acceptance:view -- ...` | Show the QA, product or architecture view of a contract and evidence ledger |
-| `npm run eval:pair -- ...` | Prepare or explicitly run one frozen baseline/candidate pair; does not judge quality |
 | `npm run services:prepare -- ...` | Prepare configured service/tool metadata without live discovery |
 | `npm run operation -- ...` | Resolve a service operation into a CLI/MCP invocation plan |
 | `npm run checkpoint:save -- ...` | Save explicit task metadata and Git state |
