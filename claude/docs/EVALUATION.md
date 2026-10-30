@@ -33,41 +33,18 @@ does not call a model or judge the judge. `adapter` names an export (`claude`, `
 `cursor`, `copilot`, `gemini`, `agents`, `gemini-extension`, `jetbrains`). Keep transcripts and
 credentials out of committed results.
 
-## Paired runs
+## Engineering eval
 
-Compare a baseline and a candidate with the same host, model, repository snapshot (including
-uncommitted sources), prompt, tools, authorization and acceptance criteria. The baseline gets
-the project's ordinary instructions; the candidate additionally gets only the selected
-guidance or bundle. Start each arm clean. For each arm retain the response and artifacts,
-correctness, critical defects, safety violations, rework, unrelated changes, tool and model
-calls, tokens or cost when available, wall time and retries.
+The engineering eval (`evals/` in the source repository) runs a real coding agent in a container against
+frozen tasks, then grades the result with hidden checks and with what Craft recorded. Its
+qualification job (no model) runs in CI when tasks change; model-backed jobs run only on
+manual dispatch. Runtime cost is measured separately by the performance workflow.
 
-Suggested cases cover investigation, implementation, review, story refinement, manual and
-automation QA and architecture, plus easy cases where extra context can hurt. Judge with the
-rubric and neutral arm labels, and rerun executable acceptance checks independently. A single
-pair is a pilot that can expose a failure, not evidence of general benefit. Alternate order
-and repeat before deciding to keep, merge or remove guidance.
-
-## Collecting a frozen pair
-
-```sh
-npm run eval:pair -- prepare <config.json> <new-output-directory>
-npm run eval:pair -- run <prepared-output-directory>
-```
-
-`prepare` freezes the fixture, prompt and guidance with hashes and makes no model calls.
-`run` executes the two runner calls, in `order` if given. The configuration names
-`fixture`, `prompt`, `guidance` and `runner: {command, args, identity, timeoutMs}`. The
-runner reads the prompt on stdin, answers on stdout and receives `{workspace}` (the isolated
-arm copy). Commands run without a shell and with a timeout of at most five minutes. The
-harness inherits your environment and is not a sandbox: choose a read-only runner and keep
-secrets out of the configuration. Changed inputs, a failed first run or a workspace changed
-by the previous arm stop collection; failures stay as artifacts.
-
-To compare two complete bundles, replace `guidance` with `bundles: {baseline, candidate}`.
-The runner must consume `{bundle}` and `{profile}` itself; `profileFiles` copies explicit
-settings into fresh profile directories. A copied bundle and a clean exit do not prove the
-plugin loaded. Retain native startup, model and worker evidence.
+When comparing a baseline with Craft, keep the host, model, repository snapshot, prompt,
+tools, authorization and acceptance checks the same, and start each arm clean. Retain every
+attempt, including failures and timeouts. A single pair can expose a failure; it is not
+evidence of general benefit. Alternate order and repeat before deciding to keep, change or
+remove guidance.
 
 ## Cost and context changes
 
