@@ -1,12 +1,13 @@
 name: CI
 
-# Eval tasks have their own workflow; changing only them needs nothing here.
+# Eval tasks have their own workflow and documentation is checked with the next code change;
+# changing only them needs nothing here. A manual run rebuilds published documentation.
 on:
   push:
     branches: [main]
-    paths-ignore: ['evals/**']
+    paths-ignore: &unchecked ['evals/**', 'docs/**', '*.md']
   pull_request:
-    paths-ignore: ['evals/**']
+    paths-ignore: *unchecked
   workflow_dispatch:
 
 permissions:
@@ -33,14 +34,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           PR: ${{ github.event.pull_request.number }}
-        # Pull requests that change only documentation, examples or eval tasks skip the native,
-        # security and packaging jobs; pushes to main and manual runs always run everything.
+          BEFORE: ${{ github.event.before }}
+        # Changes to only documentation, examples or eval tasks skip the native, security,
+        # packaging and publishing jobs. Manual runs, new branches and comparisons GitHub
+        # truncates at 300 files run everything.
         run: |
-          runtime=true
+          runtime=true files=
           if [[ "$EVENT" == pull_request ]]; then
             files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
-            if [[ -n "$files" ]] && ! grep -qvE '^(docs|examples|evals)/|^[^/]+\.md$' <<<"$files"; then runtime=false; fi
+          elif [[ "$EVENT" == push && ! "$BEFORE" =~ ^0+$ ]]; then
+            files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq 'if (.files | length) < 300 then .files[] | .filename, (.previous_filename // empty) else empty end') || files=
           fi
+          if [[ -n "$files" ]] && ! grep -qvE '^(docs|examples|evals)/|^[^/]+\.md$' <<<"$files"; then runtime=false; fi
           echo "runtime=$runtime" >>"$GITHUB_OUTPUT"
 
   fast:
@@ -143,6 +148,8 @@ jobs:
       - name: Restore executable permission
         run: chmod +x "$CRAFT_NATIVE_BINARY"
       - name: Test
+        env:
+          CRAFT_DECISION_SUMMARY: ${{ matrix.node == '24' }}
         run: npm run test:unit
 
   package:
