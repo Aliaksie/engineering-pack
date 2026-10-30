@@ -39,8 +39,8 @@ model. `task.toml` names the actor, scenario and the Craft mechanism it expects.
 In GitHub Actions, `Engineering eval` qualifies the tasks on every pull request that changes
 them. Model-backed jobs run only on manual dispatch (`diagnose` or `compare`) with the
 `CRAFT_CODEX_API_KEY` repository secret. `attempts` repeats every trial (3 before deciding
-to keep, fix or remove a mechanism) and `tasks` narrows the run to a glob such as
-`craft/pi-*`, for example a vanilla reference on only the probes that need one. Results are
+to keep, fix or remove a mechanism) and `tasks` narrows the run to task directories matching a
+glob such as `pi-*`, for example a vanilla reference on only the probes that need one. Results are
 kept as a workflow artifact for 90 days and summarized on the run page: reward, Craft
 engagement and overhead, model steps, tool calls, shell searches, tokens, cost and time.
 
