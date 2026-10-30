@@ -119,6 +119,14 @@ node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output <new
 on Windows, and its hardware counters cover only directly started processes, so counters are
 tracked for `native` rows only.
 
+### Engineering eval
+
+The **Engineering eval** workflow runs real Codex sessions against the tasks in `evals/` with
+[Harbor](https://docs.harborframework.com/) and grades them with hidden checks and Craft's own
+recorded state. Pull requests that change `evals/` only qualify the tasks without a model: the
+reference solution must pass and an idle agent must fail. Model-backed jobs run on manual
+dispatch. `evals/README.md` explains running, reading and adding tasks.
+
 ### Codex hook discovery
 
 ```sh

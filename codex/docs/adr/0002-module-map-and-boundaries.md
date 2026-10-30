@@ -33,9 +33,16 @@ content, schemas, docs, tests and examples sit around the crates.
 | `docs/` | docs | — | yes | Maintained documentation |
 | `tests/` | tests | * | no | Repository behavior, replay and architecture tests |
 | `examples/` | examples | * | no | Consumer skeletons and eval fixtures |
+| `evals/` | eval-suite | * | no | Model-backed engineering eval tasks, trial image and Harbor job configurations |
 | `.github/` | ci-config | * | no | CI workflows and benchmark harnesses |
 
 `*` means build-time code that may read anything; no shipped module may depend on it.
+
+`evals/` (added 2026-10-30) holds eval data rather than tooling: Harbor task directories, a trial
+image and job configurations. It is its own module because it differs from `examples/` in
+toolchain (Docker and Harbor, a pinned external Python tool that no other module uses) and
+because its jobs run live model sessions, which `examples/` excludes. It consumes the built
+exports, so the runtime never depends on it.
 
 ## Rules
 
