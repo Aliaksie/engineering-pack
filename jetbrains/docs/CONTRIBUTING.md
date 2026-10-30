@@ -96,18 +96,28 @@ uploads one report per OS. See the [guard limits](SECURITY.md#read-only-review-g
 
 ### Performance
 
-The **Performance** workflow runs on pushes to `main` and manual dispatch. It measures a
-release `craft` build on Linux, macOS and Windows, covering process and Git operations,
-filesystem workloads, synthetic hook turns and a grounded task lifecycle, and keeps raw
-results for 14 days. Timing is diagnostic, with no thresholds; only incorrect or incomplete
-measurements fail the job. Locally:
+The **Performance** workflow runs on pull requests, pushes to `main` and manual dispatch on
+Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
+installed release `craft`: startup, the prompt, tool and stop hooks, and warm and cold Project
+Intelligence refresh. Each hook runs in three layers: the native binary (`native`), the package
+launcher (`launcher`) and the launcher through the shell hosts use (`host`). Every run records
+wall time, user and system CPU, peak memory and, where the platform allows, instructions and
+cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
+timed runs, and only failed commands or checks fail the job.
+
+[Bencher](https://bencher.dev) keeps the history and compares a pull request with `main`,
+reporting through a check and a pull request comment; timings never fail the job. Raw Hyperfine
+JSON stays in the run artifacts for 90 days. Locally, with Hyperfine installed:
 
 ```sh
-cargo build --release --locked -p craft-application --bin craft
-CRAFT_NATIVE_BINARY=$PWD/target/release/craft node .github/benchmarks/run.mjs <clean-checkout> <new-results-directory>
+npm run build:claude && npm run build:native
+node tooling/native-install.mjs dist/project-evidence dist/claude --current-target
+node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output <new-results-directory>
 ```
 
-`PERFORMANCE_ROUNDS=1` gives a quick integration run instead of the default 30 rounds.
+`--runs 3 --cold-runs 2` gives a quick integration run. Stock Hyperfine reports no peak memory
+on Windows, and its hardware counters cover only directly started processes, so counters are
+tracked for `native` rows only.
 
 ### Codex hook discovery
 

@@ -66,10 +66,6 @@ the workflow refuses the existing tag.
 
 ## Benchmarking a native candidate
 
-```sh
-node tooling/native-benchmark.mjs <candidate-runtime-root> <baseline-runtime-root>
-```
-
-Each root is a native bundle directory (an installed plugin's `support/native-bin/<target>/`).
-It reports fresh-process latency for real Project Evidence operations, without asserting a
-speedup.
+The **Performance** workflow measures every pull request and `main` on all three platforms and
+tracks results in Bencher; see [CONTRIBUTING](CONTRIBUTING.md#performance). To measure a
+candidate export locally, run `.github/benchmarks/suite.mjs` against it.
