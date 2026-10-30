@@ -80,6 +80,13 @@
       "dependsOn": "*",
       "shipped": false
     },
+    "evals": {
+      "kind": "eval-suite",
+      "responsibility": "Model-backed engineering eval tasks, trial image and job configurations that Harbor runs against the exported packages.",
+      "allow": ["**"],
+      "dependsOn": "*",
+      "shipped": false
+    },
     ".github": {
       "kind": "ci-config",
       "responsibility": "CI workflows and benchmark harnesses.",

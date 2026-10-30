@@ -1,0 +1,3 @@
+# Build context for the trial image: only the Codex export.
+*
+!dist/codex

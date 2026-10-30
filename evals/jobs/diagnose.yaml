@@ -1,0 +1,20 @@
+# Craft only: did the agent select, read and apply the expected mechanism on each task?
+jobs_dir: .eval-results/harbor
+n_attempts: 1
+n_concurrent_trials: 1
+retry:
+  max_retries: 0
+environment:
+  type: docker
+# Every task directory under evals/tasks.
+datasets:
+  - path: evals/tasks
+agents:
+  - name: codex
+    model_name: openai/gpt-6-astra
+    kwargs:
+      reasoning_effort: medium
+      web_search: disabled
+      # The image installs Craft's own exported hooks; trust is otherwise an interactive step.
+      dangerously_bypass_hook_trust: true
+      config: evals/codex/craft.toml

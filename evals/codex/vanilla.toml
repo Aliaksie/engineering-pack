@@ -1,0 +1,3 @@
+# Codex configuration for the vanilla arm: no marketplace and no plugins enabled.
+[features]
+plugins = false

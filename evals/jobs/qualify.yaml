@@ -1,0 +1,14 @@
+# No model: the oracle applies each task's reference solution and must pass; nop changes
+# nothing and must fail. Proves every task, image and verifier before any paid run.
+jobs_dir: .eval-results/harbor
+n_attempts: 1
+n_concurrent_trials: 2
+retry:
+  max_retries: 0
+environment:
+  type: docker
+datasets:
+  - path: evals/tasks
+agents:
+  - name: oracle
+  - name: nop
