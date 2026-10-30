@@ -3,11 +3,8 @@ name: Performance
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
-    inputs:
-      baseline:
-        description: Distribution ref whose installed Claude export is the comparison baseline
-        default: distribution
 
 permissions:
   contents: read
@@ -20,67 +17,86 @@ jobs:
   measure:
     name: Performance (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     env:
       RUSTUP_TOOLCHAIN: '1.99.1'
+      HYPERFINE_VERSION: '2.0.0'
+      # Forks and repositories without the project key still measure; they only skip tracking.
+      TRACK: ${{ secrets.BENCHER_CRAFT_API_KEY != '' }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - name: Checkout harnesses
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          path: benchmark
-      - name: Checkout measured source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-          path: measured-source
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.21.0'
           package-manager-cache: false
-      - name: Build release runtime
-        # Measure the executable installed packages run, not a debug build.
+      - name: Set up Rust
         shell: bash
-        working-directory: measured-source
-        run: |
-          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
-          cargo build --release --locked -p craft-application --bin craft
-          suffix='' directory=$PWD
-          # Node spawns this path; on Windows bash's $PWD is an MSYS path Node cannot resolve.
-          if [[ "$RUNNER_OS" == 'Windows' ]]; then suffix='.exe' directory=$(cygpath -m "$PWD"); fi
-          echo "CRAFT_NATIVE_BINARY=$directory/target/release/craft$suffix" >> "$GITHUB_ENV"
-      - name: Measure
-        env:
-          PERFORMANCE_REVISION: ${{ github.sha }}
-        run: node benchmark/.github/benchmarks/run.mjs measured-source benchmark-results
-      - name: Checkout installed baseline
-        if: ${{ !cancelled() }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+      - name: Cache Hyperfine
+        id: hyperfine
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          persist-credentials: false
-          ref: ${{ inputs.baseline || 'distribution' }}
-          path: baseline
-      - name: Compare installed hooks and CLI with the baseline
-        if: ${{ !cancelled() }}
+          path: ${{ runner.temp }}/hyperfine
+          key: hyperfine-${{ runner.os }}-${{ env.HYPERFINE_VERSION }}-${{ env.RUSTUP_TOOLCHAIN }}
+      - name: Install Hyperfine
+        if: steps.hyperfine.outputs.cache-hit != 'true'
         shell: bash
-        working-directory: measured-source
+        run: cargo install hyperfine --version "$HYPERFINE_VERSION" --locked --root "$RUNNER_TEMP/hyperfine"
+      - name: Build installed Claude export
+        # Measure the release executable installed packages run, not a debug build.
+        shell: bash
         run: |
           cargo fetch --locked
           npm run build:claude
           npm run build:native
           node tooling/native-install.mjs dist/project-evidence dist/claude --current-target
-          node ../benchmark/.github/benchmarks/compare.mjs ../baseline/claude dist/claude ../benchmark-results/compare.json 20
+      - name: Measure
+        shell: bash
+        run: node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output performance-results --hyperfine "$RUNNER_TEMP/hyperfine/bin/hyperfine"
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: performance-${{ matrix.os }}-node-24.21.0-${{ github.sha }}
-          path: benchmark-results/
+          name: performance-${{ matrix.os }}-${{ github.sha }}
+          path: performance-results/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
+      - name: Install Bencher
+        if: env.TRACK == 'true'
+        uses: bencherdev/bencher@24c333d7030390d2f3e130569386f4f1f8577113 # v0.6.15
+      - name: Track with Bencher
+        # Report only: alerts appear in the check and pull request comment without failing the job.
+        if: env.TRACK == 'true'
+        shell: bash
+        env:
+          BENCHER_API_KEY: ${{ secrets.BENCHER_CRAFT_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TESTBED: ${{ matrix.os }}
+        run: |
+          if [[ "$EVENT" == pull_request ]]; then
+            branch=(--branch "$GITHUB_HEAD_REF" --start-point "$GITHUB_BASE_REF" --start-point-hash "$BASE_SHA"
+              --start-point-clone-thresholds --start-point-reset)
+          elif [[ "$GITHUB_REF_NAME" == main ]]; then
+            branch=(--branch main --threshold-measure latency --threshold-test t_test
+              --threshold-max-sample-size 64 --threshold-upper-boundary 0.99 --thresholds-reset)
+          else
+            branch=(--branch "$GITHUB_REF_NAME" --start-point main --start-point-clone-thresholds --start-point-reset)
+          fi
+          bencher run --project aliaksie-s-craft-capabilities --key "$BENCHER_API_KEY" --hash "$HEAD_SHA" \
+            "${branch[@]}" --testbed "$TESTBED" --adapter json --file performance-results/bencher.json \
+            --github-actions "$GITHUB_TOKEN"
