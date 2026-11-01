@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { nativeTargets } from '../tooling/native-release.mjs';
 import { hookPackage, runHook } from './hook-command.mjs';
 import { launch } from './craft.mjs';
+import { HOSTS } from '../hosts/registry.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const windows = process.platform === 'win32';
@@ -72,9 +73,22 @@ test('without a bundled runtime, launchers answer as a failed runtime would', t 
     }
     const observed = run('craft-engineering', 'observe-before-tool', publish(project));
     assert.deepEqual([observed.status, observed.stdout, observed.stderr], [0, '', '']);
-    const started = run('craft-delivery', 'restore', JSON.stringify({ session_id: 'S-1', cwd: project }));
-    assert.equal(started.status, 0, started.stderr);
-    assert.match(started.stdout, /Routing\/checkpoint unavailable: bundled native runtime unavailable/);
+    // Every package says once, when the session starts, that it is inactive; the person sees
+    // it where the host shows a session-start notice, otherwise the model is asked to say so.
+    const notice = HOSTS[host].events['session-start'].notice === true;
+    for (const [name, hook] of [['craft-delivery', 'restore'], ['craft-engineering', 'observe-session-start']]) {
+      const started = run(name, hook, JSON.stringify({ session_id: 'S-1', cwd: project }));
+      assert.equal(started.status, 0, started.stderr);
+      const output = JSON.parse(started.stdout);
+      const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context;
+      assert.match(context, new RegExp(`^${name} is inactive: its bundled native runtime is missing or cannot start here`), started.stdout);
+      assert.equal(output.systemMessage?.startsWith(`${name} is inactive`) ?? false, notice, started.stdout);
+      assert.equal(/Tell the user once/.test(context), !notice, context);
+    }
+    // Later hooks stay quiet instead of repeating it on every prompt and tool call.
+    const prompted = run('craft-delivery', 'prompt-routing', JSON.stringify({ session_id: 'S-1', cwd: project, prompt: 'implement it' }));
+    assert.equal(prompted.status, 0, prompted.stderr);
+    assert.doesNotMatch(prompted.stdout, /inactive|unavailable/);
     // A command a person or skill runs fails explicitly instead.
     const command = launch(pkg('craft-delivery'), ['route', '--root', project, '--intent', 'implement'], { cwd: project, env: plain });
     assert.deepEqual([command.status, command.stdout], [1, '']);

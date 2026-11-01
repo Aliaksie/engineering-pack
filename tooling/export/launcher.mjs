@@ -5,8 +5,8 @@ import { nativeTargets } from '../native-release.mjs';
 
 // Hook commands run the package's native runtime through a generated launcher: `bin/craft`
 // (POSIX sh, incl. Git Bash on Windows) and `bin/craft.cmd` (cmd and PowerShell). The
-// launchers only select the bundled executable; without one for this platform they answer
-// each registered hook as a failed runtime would.
+// launchers only select the bundled executable; without a working one they keep shell policy
+// closed and say once, when a session starts, that the package is inactive.
 const UNAVAILABLE = 'bundled native runtime unavailable';
 // Bash (incl. Git Bash and macOS /bin/sh) names the platform itself; other shells ask uname once.
 const PLATFORMS = { 'x86_64-unknown-linux-gnu': ["'Linux x86_64'", 'linux*:x86_64'], 'aarch64-apple-darwin': ["'Darwin arm64'", 'darwin*:arm64'],
@@ -16,21 +16,31 @@ export const hookArguments = (platform, definition, item) =>
   ['hook', platform, definition.event, '--package', item.manifest.name, '--handler', definition.handler, '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
 
 // The wire answer of a hook whose runtime is unavailable: `{stdout, stderr, exitCode}`.
-export function fallback(platform, definition, handler) {
+// Every package says it is inactive when a session starts: shown to the person where the host
+// displays a session-start notice, and to the model, which hears it again after compaction.
+// Other hooks stay quiet; repeating it on every tool call or prompt is only noise.
+export function fallback(platform, definition, item) {
   const mapping = hookMapping(platform, definition);
-  if (!mapping || handler === 'observe') return { stdout: '', stderr: '', exitCode: 0 };
+  if (!mapping) return { stdout: '', stderr: '', exitCode: 0 };
   const denied = definition.tool === 'shell' && definition.event === 'before-tool' && mapping.deny;
   const reason = `Policy could not be evaluated: ${UNAVAILABLE}`;
-  const context = mapping.context && !denied ? `Routing/checkpoint unavailable: ${UNAVAILABLE}` : '';
+  const shown = definition.event === 'session-start' && mapping.notice;
+  const supported = nativeTargets.map(({ platform: os, arch }) => `${os} ${arch}`).join(', ');
+  const inactive = `${item.manifest.name} is inactive: its bundled native runtime is missing or cannot start here (built for ${supported}). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.`;
+  const context = ['session-start', 'after-compact'].includes(definition.event) && mapping.context
+    ? (shown || definition.event === 'after-compact' ? inactive : `${inactive} Tell the user once.`) : '';
+  const notice = shown ? { systemMessage: inactive } : {};
+  if (definition.handler === 'observe' && !context) return { stdout: '', stderr: '', exitCode: 0 };
   if (platform === 'claude' && denied) return { stdout: '', stderr: `${reason}\n`, exitCode: 2 };
   let output;
+  // Cursor and Copilot get the explicit answers the runtime gives them.
   if (platform === 'cursor') output = definition.event === 'before-tool' ? { permission: denied ? 'deny' : 'allow', ...(denied ? { user_message: reason, agent_message: reason } : {}) }
     : definition.event === 'before-prompt' ? { continue: true } : context ? { additional_context: context } : undefined;
   else if (platform === 'copilot') output = definition.event === 'before-tool' ? { permissionDecision: denied ? 'deny' : 'allow', ...(denied ? { permissionDecisionReason: reason } : {}) }
     : context ? { additionalContext: context } : undefined;
-  else if (platform === 'gemini') output = denied ? { decision: 'deny', reason } : context ? { hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;
+  else if (platform === 'gemini') output = denied ? { decision: 'deny', reason } : context ? { ...notice, hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;
   else output = denied ? { hookSpecificOutput: { hookEventName: mapping.name, permissionDecision: 'deny', permissionDecisionReason: reason } }
-    : context ? { hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;
+    : context ? { ...notice, hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;
   return { stdout: output ? `${JSON.stringify(output)}\n` : '', stderr: '', exitCode: 0 };
 }
 
@@ -59,7 +69,7 @@ if [ -n "$binary" ] && [ -f "$binary" ]; then
   # The runtime exits 0-2; anything else means it could not start or crashed.
   [ "$status" -le 2 ] && exit "$status"
 fi
-# No working bundled runtime: answer registered hooks as a failed runtime would.
+# No working bundled runtime: deny shell policy, say once at session start that it is inactive.
 case "$1 $2 $3 $7" in
 ${fallbacks.join('\n')}
   'hook '*) exit 0 ;;
@@ -82,7 +92,7 @@ function cmd(answers) {
 export function launchers(item, platform) {
   const answers = item.manifest.hooks.filter(definition => hookMapping(platform, definition)).map(definition => {
     const args = hookArguments(platform, definition, item);
-    return { key: [args[0], args[1], args[2], args[6]].join(' '), wire: fallback(platform, definition, args[6]) };
+    return { key: [args[0], args[1], args[2], args[6]].join(' '), wire: fallback(platform, definition, item) };
   }).filter(({ wire }) => wire.stdout || wire.stderr || wire.exitCode)
     .filter((answer, index, all) => all.findIndex(other => other.key === answer.key) === index);
   return [['bin/craft', sh(answers)], ['bin/craft.cmd', cmd(answers)]];
