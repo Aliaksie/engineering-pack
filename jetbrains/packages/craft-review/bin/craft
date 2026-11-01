@@ -13,6 +13,8 @@ case $platform in
 esac
 # A development build, as for the other runtime entry points.
 [ -n "$CRAFT_NATIVE_BINARY" ] && binary=$CRAFT_NATIVE_BINARY
+# The hook command already ran it and it failed: answer without starting it again.
+[ -n "$CRAFT_NATIVE_FAILED" ] && binary=
 if [ -n "$binary" ] && [ -f "$binary" ]; then
   [ -x "$binary" ] || chmod u+x "$binary" 2>/dev/null
   "$binary" "$@"

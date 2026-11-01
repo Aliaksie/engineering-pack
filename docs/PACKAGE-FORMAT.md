@@ -46,9 +46,10 @@ A hook declaration names a normalized event, a tool scope and the native handler
 | `review-read-only` | Read-only review publication guard (shell scope) |
 | `observe` | Lifecycle telemetry only: no decision, no context, nonblocking on any failure |
 
-Hooks and native tools run in the bundled `craft` executable through the generated
-`bin/craft` launcher (`bin/craft.cmd` on Windows), which selects the executable installed
-under the package's `support/native-bin/`. Installed packages remain self-contained; do not
+Hooks and native tools run in the bundled `craft` executable installed under the package's
+`support/native-bin/`. A registered hook command selects it with shell builtins and falls back
+to the generated `bin/craft` launcher (`bin/craft.cmd` on Windows) when the shell does not
+name the platform or the executable fails to start; native tools use the launcher. Installed packages remain self-contained; do not
 import authoring tooling or a sibling package at runtime. Hook tools are `shell` or `any`;
 normalized events are `session-start`, `before-prompt`, `before-tool`, `after-tool`,
 `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where the host

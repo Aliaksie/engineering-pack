@@ -36,7 +36,9 @@ JavaScript may live; `npm run architecture` enforces them
 
 ## Interaction
 
-Every runtime path is one `craft` process started through the package launcher:
+Every runtime path is one `craft` process. Registered hook commands select it in the host's own
+shell (Gemini, whose one command must run in bash and PowerShell, and shells that do not name
+the platform, such as dash, use the package launcher); everything else starts the launcher:
 
 - **Hooks.** The host runs `craft hook <host> <lifecycle>`. `craft` reads the payload
   (64 KiB bound), maps it to host-neutral lifecycle facts with the embedded host table, runs

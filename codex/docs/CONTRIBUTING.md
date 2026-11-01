@@ -100,7 +100,7 @@ The **Performance** workflow runs on pull requests, pushes to `main` and manual 
 Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
 installed release `craft`: startup, the prompt, tool and stop hooks, and warm and cold Project
 Intelligence refresh. Each hook runs in three layers: the native binary (`native`), the package
-launcher (`launcher`) and the launcher through the shell hosts use (`host`). Every run records
+launcher (`launcher`) and the registered hook command under the shell hosts use (`host`). Every run records
 wall time, user and system CPU, peak memory and, where the platform allows, instructions and
 cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
 timed runs, and only failed commands or checks fail the job.
