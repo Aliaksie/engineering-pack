@@ -75,7 +75,9 @@ Missing or ambiguous installations remain explicit; accounting does not prove re
 Use `craft-delivery:inspect-architecture` for a boundary that affects the solution and
 `craft-delivery:plan-change` for material unresolved implementation choices. Use
 `craft-delivery:route-work` to select independent practices and stack guidance when needed,
-then `craft-delivery:apply-change` for the authorized implementation. Local work remains usable
+then `craft-delivery:apply-change` for the authorized implementation. When the request
+supplies a story or acceptance criteria to build, carry them through
+`craft-delivery:implement-story`. Local work remains usable
 without a remote tracker or model worker.
 
 Before source edits, establish a safe change boundary through `craft-delivery:apply-change`,
