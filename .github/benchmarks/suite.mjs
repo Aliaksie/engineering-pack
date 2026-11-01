@@ -87,7 +87,7 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
     memoryBytes: os.totalmem(), runner: Object.fromEntries(['RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT']
       .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])) },
-  tools: { node: process.version, git: version('git', ['--version']), gitPath: version(windows ? 'where' : 'which', ['git']), bash: version(bash, ['--version']) },
+  tools: { node: process.version, git: version('git', ['--version']), bash: version(bash, ['--version']) },
   runs, coldRuns, fixtureRevision: git(options.fixture, 'rev-parse', 'HEAD').trim(),
   runtime: { target: targets[0], sourceRevision: manifest.sourceRevision ?? null,
     nativeSha256: createHash('sha256').update(fs.readFileSync(native)).digest('hex'), nativeBytes: fs.statSync(native).size, pluginBytes: directoryBytes(plugin) },
@@ -97,10 +97,10 @@ const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stri
 
 // `--metrics all` records every metric this platform and execution mode supports and skips the rest
 // (peak memory on Windows; hardware counters under a shell or without counter permissions).
-function measure(name, cwd, args) {
+function measure(name, cwd, args, cellEnv = env) {
   const file = `raw/${name.replaceAll('/', '--')}.json`;
   const result = spawnSync(options.hyperfine, ['--output', 'pipe', '--style', 'basic', '--metrics', 'all', '-n', name,
-    '--export-json', slash(path.join(output, file)), ...args], { cwd, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    '--export-json', slash(path.join(output, file)), ...args], { cwd, env: cellEnv, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
   process.stdout.write(result.stdout);
   if (result.status !== 0) results.failures.push(`${name}: hyperfine exited ${result.status}: ${(result.stderr || result.error?.message || '').trim()}`);
   else results.cells.push({ name, file });
@@ -117,12 +117,27 @@ const registered = event => {
 };
 const reset = ['--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(seed)} ${quote(path.join(root, '.craft'))}`];
 measure('startup/native', root, ['-N', '--warmup', '3', '--runs', String(runs), `${quote(native)} --help`]);
-// One snapshot query through the Git on PATH and, on Windows, through the Git executable the
-// Git for Windows PATH entry forwards to: whether each Git call pays for a second process start.
+// One snapshot query and the Git-heaviest hook under each Git installation users start: the
+// runner's own PATH, and the preinstalled one a runner PATH skips. macOS apps opened outside a
+// terminal get launchd's PATH, whose Git is the /usr/bin/git forwarder; Windows hosts outside
+// Git Bash get the Git for Windows cmd\git.exe forwarder.
 const statusQuery = 'status --porcelain=v1 -z --untracked-files=all';
-const gits = { path: 'git', ...(windows ? { direct: path.resolve(run('git', ['--exec-path']).trim(), '../../bin/git.exe') } : {}) };
-for (const [layer, program] of Object.entries(gits)) {
-  measure(`git/status/${layer}`, root, ['-N', '--warmup', '3', '--runs', String(runs), `${layer === 'path' ? program : quote(program)} -C ${quote(root)} ${statusQuery}`]);
+const exe = windows ? 'git.exe' : 'git';
+const firstGit = dirs => dirs.map(dir => path.join(dir, exe)).find(file => fs.statSync(file, { throwIfNoEntry: false })?.isFile()) ?? null;
+const runnerPath = (process.env.PATH ?? process.env.Path ?? '').split(path.delimiter).filter(Boolean);
+const tools = path.dirname(process.execPath);
+const installations = { runner: runnerPath,
+  ...(process.platform === 'darwin' ? { apple: ['/usr/bin', '/bin', '/usr/sbin', '/sbin', tools] } : {}),
+  ...(windows ? { cmd: [path.resolve(run('git', ['--exec-path']).trim(), '../../../cmd'), ...runnerPath.filter(dir => !firstGit([dir]))] } : {}) };
+results.tools.gits = {};
+for (const [installation, dirs] of Object.entries(installations)) {
+  const program = firstGit(dirs);
+  results.tools.gits[installation] = program;
+  if (!program) { results.failures.push(`git/${installation}: no Git on its PATH`); continue; }
+  const pathEnv = { ...Object.fromEntries(Object.entries(env).filter(([key]) => key.toUpperCase() !== 'PATH')), PATH: dirs.join(path.delimiter) };
+  measure(`git/${installation}/status`, root, ['-N', '--warmup', '3', '--runs', String(runs), `git -C ${quote(root)} ${statusQuery}`], pathEnv);
+  measure(`git/${installation}/hook-stop`, root, ['--warmup', '3', '--runs', String(runs), ...reset, '--input', slash(payloads.stop),
+    '-N', `${quote(native)} ${hookArguments('turn-end')}`], pathEnv);
 }
 for (const { cell, event } of HOOKS) {
   const layers = {
