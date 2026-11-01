@@ -12,6 +12,11 @@ craft route --root examples/project --intent review --file services/orders/Order
 Intents: `implement`, `plan`, `review`, `story`, `investigate`, `locate`, `research`,
 `status`, `verify`, `explore`, `run-check`. An unknown intent is an error.
 
+`--artifact` names what the request produces when that decides the workflow: `spec-audit`
+(assess a specification; `story`) or `adr` (record a decision; `plan`). Without it, `story`
+leads with the story workflow and `plan` with change planning. An artifact that does not
+apply to the intent is an error. Prompt hints set it from the request.
+
 The result contains:
 
 - a [loading plan](PLAYBOOKS.md): workflow, practices and independent language, runtime,

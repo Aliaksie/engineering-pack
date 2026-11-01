@@ -20,8 +20,9 @@ const KINDS: [&str; 7] = [
     "provider",
     "layer",
 ];
-const DIMENSIONS: [&str; 8] = [
+const DIMENSIONS: [&str; 9] = [
     "intents",
+    "artifacts",
     "risks",
     "languages",
     "runtimes",
@@ -213,6 +214,7 @@ fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
         let values = strings(values, &label, false, |value| match dimension.as_str() {
             "paths" => true,
             "intents" => intents.contains(&value) && kebab(value),
+            "artifacts" => lists(catalog, "artifacts", value),
             "languages" => LANGUAGES.contains(&value) && kebab(value),
             "layers" => LAYERS.contains(&value) && kebab(value),
             _ => kebab(value),
@@ -228,8 +230,15 @@ fn entry(entry: &Value, catalog: &Value, ids: &mut HashSet<String>) -> Result {
             }
         }
     }
-    if id.starts_with("workflow:") && (!selector.contains_key("intents") || selector.len() != 1) {
-        return Err(format!("{id} workflow requires only an intent selector"));
+    // A workflow is chosen by intent, and optionally by what the request produces.
+    let workflow_selector = selector.contains_key("intents")
+        && selector
+            .keys()
+            .all(|dimension| dimension == "intents" || dimension == "artifacts");
+    if id.starts_with("workflow:") && !workflow_selector {
+        return Err(format!(
+            "{id} workflow requires an intent selector and allows only artifacts besides it"
+        ));
     }
     let specialization = !id.starts_with("workflow:") && !id.starts_with("practice:");
     let selects_non_stack = selector
@@ -279,6 +288,7 @@ pub fn validate(catalog: &Value) -> Result {
         &[
             "formatVersion",
             "intents",
+            "artifacts",
             "stackIntents",
             "extensions",
             "layerExtensions",
@@ -294,6 +304,7 @@ pub fn validate(catalog: &Value) -> Result {
     strings(&catalog["stackIntents"], "stackIntents", false, |intent| {
         intents.contains(&intent)
     })?;
+    strings(&catalog["artifacts"], "artifacts", true, kebab)?;
     mappings(map)?;
     let entries = catalog["entries"]
         .as_array()

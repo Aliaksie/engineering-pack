@@ -49,6 +49,30 @@
       }
     },
     {
+      "id": "workflow:adr",
+      "skills": [
+        "craft-delivery:write-adr"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "plan"
+        ],
+        "artifacts": [
+          "adr"
+        ]
+      },
+      "value": {
+        "problem": "A consequential choice is recorded as a change plan, losing its context, alternatives and consequences.",
+        "contribution": "Record the decision rationale in a concise repository-native ADR.",
+        "inputs": "The decision, its drivers, considered options and repository conventions.",
+        "result": "ADR draft with context, decision, alternatives and consequences.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
       "id": "workflow:plan",
       "skills": [
         "craft-delivery:plan-change"
@@ -159,9 +183,33 @@
       }
     },
     {
+      "id": "workflow:story-audit",
+      "skills": [
+        "craft-stories:audit-specs"
+      ],
+      "references": [],
+      "when": {
+        "intents": [
+          "story"
+        ],
+        "artifacts": [
+          "spec-audit"
+        ]
+      },
+      "value": {
+        "problem": "A specification is assessed by drafting stories from it, so conflicts and missing decisions stay implicit.",
+        "contribution": "Report cited gaps, conflicts and blocking decisions without changing the specification.",
+        "inputs": "Supplied specification sections and any grounded implementation facts.",
+        "result": "Findings with source citations, consequences and decision owners.",
+        "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
+        "consumer": "Explicit user workflow or composed delivery flow.",
+        "evidence": "Paired model task outcomes remain pending; deterministic fixtures verify selection only."
+      }
+    },
+    {
       "id": "workflow:story",
       "skills": [
-        "craft-stories:write-stories"
+        "craft-stories:workflow-prepare-stories"
       ],
       "references": [],
       "when": {
@@ -171,7 +219,7 @@
       },
       "value": {
         "problem": "Task authoring can invent requirements or require an unavailable tracker.",
-        "contribution": "Reuse source and criterion IDs for local drafts; expose unresolved choices and dependency provenance.",
+        "contribution": "Ground, audit and draft in one packet; reuse source and criterion IDs for local drafts and expose unresolved choices and dependency provenance.",
         "inputs": "Task text, accessible code and specification evidence.",
         "result": "Local story draft with checkable criteria and unknowns.",
         "boundaries": "Use only for the affected behavior and matched selectors; selection grants no additional authorization.",
@@ -1080,6 +1128,10 @@
     "verify",
     "run-check",
     "explore"
+  ],
+  "artifacts": [
+    "spec-audit",
+    "adr"
   ],
   "layerExtensions": {
     ".tsx": "ui",

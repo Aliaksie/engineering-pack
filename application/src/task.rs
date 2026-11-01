@@ -113,6 +113,7 @@ pub fn start(
         delegate: false,
         task: None,
         verification_mode: None,
+        artifact: None,
     };
     let plan = crate::guidance::route(settings, &route, recorder, parent)?;
     let role = plan["execution"]["role"].as_str().unwrap_or_default();

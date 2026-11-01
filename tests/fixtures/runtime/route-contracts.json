@@ -4312,7 +4312,7 @@
             "authorization": "no model switch or delegation executed"
           },
           "skills": [
-            "craft-stories:write-stories",
+            "craft-stories:workflow-prepare-stories",
             "craft-stories:ground-spec"
           ],
           "skillAvailability": "not-verified",
@@ -4334,7 +4334,7 @@
               {
                 "id": "workflow:story",
                 "skills": [
-                  "craft-stories:write-stories"
+                  "craft-stories:workflow-prepare-stories"
                 ],
                 "references": [],
                 "when": {
@@ -4557,7 +4557,7 @@
             "authorization": "no model switch or delegation executed"
           },
           "skills": [
-            "craft-stories:write-stories",
+            "craft-stories:workflow-prepare-stories",
             "craft-stories:ground-spec"
           ],
           "skillAvailability": "not-verified",
@@ -4588,7 +4588,7 @@
               {
                 "id": "workflow:story",
                 "skills": [
-                  "craft-stories:write-stories"
+                  "craft-stories:workflow-prepare-stories"
                 ],
                 "references": [],
                 "when": {
@@ -32744,7 +32744,7 @@
             "authorization": "no model switch or delegation executed"
           },
           "skills": [
-            "craft-stories:write-stories",
+            "craft-stories:workflow-prepare-stories",
             "craft-stories:ground-spec"
           ],
           "skillAvailability": "not-verified",
@@ -32766,7 +32766,7 @@
               {
                 "id": "workflow:story",
                 "skills": [
-                  "craft-stories:write-stories"
+                  "craft-stories:workflow-prepare-stories"
                 ],
                 "references": [],
                 "when": {

@@ -19,6 +19,8 @@ pub struct Request<'a> {
     pub settings: &'a Value,
     pub risks: &'a [String],
     pub verification_mode: Option<&'a str>,
+    /// What the request produces when it decides the workflow: `spec-audit`, `adr`.
+    pub artifact: Option<&'a str>,
 }
 
 /// The file extension, without a leading-dot file name counting as one.
@@ -148,6 +150,7 @@ fn matches(context: &Context, request: &Request, dimension: &str, choices: &Valu
         match dimension {
             "paths" => context.paths.iter().any(|file| member(file, choice)),
             "intents" => request.intent == choice,
+            "artifacts" => request.artifact == Some(choice),
             "risks" => request.risks.iter().any(|risk| risk == choice),
             _ => context.has(dimension, choice),
         }
@@ -243,6 +246,19 @@ pub fn plan(request: &Request, catalog: &Value) -> Value {
         if !matched.is_empty() {
             selections.push(selection(entry, &matched));
         }
+    }
+    // A workflow selected for the requested artifact replaces the intent's default one.
+    let workflow = |entry: &Value| {
+        entry["id"]
+            .as_str()
+            .is_some_and(|id| id.starts_with("workflow:"))
+    };
+    let specific = |entry: &Value| entry["when"].get("artifacts").is_some();
+    if selections
+        .iter()
+        .any(|entry| workflow(entry) && specific(entry))
+    {
+        selections.retain(|entry| !workflow(entry) || specific(entry));
     }
     let id = |entry: &Value| entry["id"].as_str().unwrap_or_default().to_string();
     let ids = |prefixes: &[&str]| -> Vec<String> {

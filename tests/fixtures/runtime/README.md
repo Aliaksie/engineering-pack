@@ -84,7 +84,9 @@ every module or silently ignoring the file.
 messages omitted. The Rust engine replays every case, including key order. Correction: the
 implement workflow selects `craft-delivery:workflow-deliver-change` instead of the
 `craft-delivery:apply-change` primitive; `session-contracts.json` plans and the
-`cli-contracts.json` route case carry the same route.
+`cli-contracts.json` route case carry the same route. Correction: the story workflow selects
+`craft-stories:workflow-prepare-stories` instead of the `craft-stories:write-stories` skill
+(three route cases and the `plan:stage-story` session plan).
 
 `locate-contracts.json` freezes 66 bounded literal search cases at `b27ec99` and
 `discovery-contracts.json` freezes 92 discovery planning, reuse and result cases at `266b8d1`,
@@ -96,7 +98,9 @@ and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust 
 the trees and runs the `craft context-report` command, comparing output bytes and the session
 activity counters.
 Correction: each bundle also holds the deliver-change workflow file, with the apply-change
-content, so implement routes measure it under its new target and path.
+content, so implement routes measure it under its new target and path. Likewise each bundle
+with the write-stories skill holds the prepare-stories workflow file with the same content:
+`intent:story` now leads with `craft-stories:workflow-prepare-stories`.
 
 `delivery-contracts.json` freezes delivery hook plans, decisions, failures and hint records
 at `bb12534` (`cargo test -p craft-engine --lib delivery`). Correction: plan facts now state

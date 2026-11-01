@@ -128,6 +128,7 @@ fn run_route(request: &Value) -> Result<Value> {
             delegate: options["delegate"] == true,
             task: options["task"].as_str(),
             verification_mode: options["verificationMode"].as_str(),
+            artifact: options["artifact"].as_str(),
         },
     )
 }
@@ -289,6 +290,7 @@ fn path_selectors_cannot_borrow_provider_evidence_from_another_module() {
             settings: &settings,
             risks: &[],
             verification_mode: None,
+            artifact: None,
         };
         loading::plan(&request, catalog)["practices"].clone()
     };
@@ -303,4 +305,74 @@ fn path_selectors_cannot_borrow_provider_evidence_from_another_module() {
         .unwrap();
     entry["when"]["providers"] = json!(["bedrock"]);
     assert!(!practices(&catalog).as_array().unwrap().contains(&id));
+}
+
+#[test]
+fn an_artifact_selects_its_workflow_in_place_of_the_intent_default() {
+    let route = |intent: &str, artifact: Option<&str>| {
+        run_route(
+            &json!({"project": {"formatVersion": 1}, "options": {"intent": intent, "artifact": artifact}}),
+        )
+    };
+    let lead = |result: Result<Value>| {
+        let result = result.unwrap();
+        (
+            result["loading"]["workflow"].clone(),
+            result["skills"].clone(),
+        )
+    };
+    assert_eq!(
+        lead(route("story", None)),
+        (
+            json!("workflow:story"),
+            json!([
+                "craft-stories:workflow-prepare-stories",
+                "craft-stories:ground-spec"
+            ])
+        )
+    );
+    assert_eq!(
+        lead(route("story", Some("spec-audit"))),
+        (
+            json!("workflow:story-audit"),
+            json!(["craft-stories:audit-specs", "craft-stories:ground-spec"])
+        )
+    );
+    assert_eq!(
+        lead(route("plan", Some("adr"))),
+        (
+            json!("workflow:adr"),
+            json!([
+                "craft-delivery:write-adr",
+                "craft-delivery:inspect-architecture"
+            ])
+        )
+    );
+    assert_eq!(route("plan", Some("adr")).unwrap()["artifact"], "adr");
+    assert!(route("story", None).unwrap().get("artifact").is_none());
+    assert_eq!(
+        route("implement", Some("adr")).unwrap_err(),
+        "artifact adr does not apply to intent implement"
+    );
+    assert_eq!(
+        route("story", Some("essay")).unwrap_err(),
+        "unknown artifact: essay"
+    );
+}
+
+#[test]
+fn a_workflow_may_select_only_by_intent_and_artifact() {
+    let original = catalog::catalog().unwrap();
+    let index = catalog::entries(original)
+        .position(|entry| entry["id"] == "workflow:adr")
+        .unwrap();
+    for when in [
+        json!({"intents": ["plan"], "artifacts": ["adr"], "risks": ["auth"]}),
+        json!({"intents": ["plan"], "artifacts": ["essay"]}),
+        json!({"artifacts": ["adr"]}),
+    ] {
+        let mut catalog = original.clone();
+        catalog["entries"][index]["when"] = when.clone();
+        assert!(catalog::validate(&catalog).is_err(), "{when}");
+    }
 }

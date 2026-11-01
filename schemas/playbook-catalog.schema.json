@@ -7,6 +7,7 @@
   "required": [
     "formatVersion",
     "intents",
+    "artifacts",
     "stackIntents",
     "extensions",
     "layerExtensions",
@@ -24,6 +25,16 @@
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
       "minItems": 1,
+      "uniqueItems": true
+    },
+    "artifacts": {
+      "description": "What a request produces when it selects a workflow of its own besides its intent's default, such as an ADR.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "minItems": 0,
       "uniqueItems": true
     },
     "stackIntents": {
@@ -129,6 +140,16 @@
               "uniqueItems": true
             },
             "intents": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "artifacts": {
+              "description": "Listed catalog artifacts; a workflow selecting one replaces its intent's default workflow.",
               "type": "array",
               "items": {
                 "type": "string",

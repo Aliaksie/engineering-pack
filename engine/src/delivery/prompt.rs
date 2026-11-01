@@ -438,8 +438,27 @@ fn parts(words: &[String]) -> impl Iterator<Item = &[String]> {
         .filter(|part| !part.is_empty())
 }
 
-pub(super) fn intent(prompt: &str) -> Option<&'static str> {
-    let mut found = None;
+/// What a prompt asks for: its intent and, where it decides the workflow, the artifact.
+#[derive(Debug, PartialEq)]
+pub(super) struct Request {
+    pub intent: &'static str,
+    pub artifact: Option<&'static str>,
+}
+
+/// The artifact a request with `intent` produces when it selects a workflow of its own:
+/// assessing a specification is an audit, writing or recording an ADR is an ADR.
+fn artifact(intent: &str, words: &[String]) -> Option<&'static str> {
+    let words = skip_openers(words);
+    let creates = words.first().is_some_and(|w| CREATE.contains(&w.as_str()));
+    match intent {
+        "story" if !creates => Some("spec-audit"),
+        "plan" if creates && words.iter().any(|w| w == "adr" || w == "adrs") => Some("adr"),
+        _ => None,
+    }
+}
+
+pub(super) fn request(prompt: &str) -> Option<Request> {
+    let mut found: Option<Request> = None;
     for clause in clauses(prompt) {
         for (index, part) in parts(&clause).enumerate() {
             // A later sub-clause counts only when it leads with a request of its own.
@@ -450,10 +469,18 @@ pub(super) fn intent(prompt: &str) -> Option<&'static str> {
                 }
                 continue;
             };
-            match found {
-                None => found = Some(intent),
-                Some("locate" | "investigate") if intent == "implement" => {
-                    return Some(intent);
+            let artifact = artifact(intent, part);
+            match &mut found {
+                None => found = Some(Request { intent, artifact }),
+                Some(Request {
+                    intent: "locate" | "investigate",
+                    ..
+                }) if intent == "implement" => {
+                    return Some(Request { intent, artifact });
+                }
+                // "Should we split orders out? Write an ADR": the same intent names its artifact.
+                Some(earlier) if earlier.intent == intent && earlier.artifact.is_none() => {
+                    earlier.artifact = artifact;
                 }
                 Some(_) => {}
             }
@@ -464,7 +491,40 @@ pub(super) fn intent(prompt: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::intent;
+    use super::request;
+
+    fn intent(prompt: &str) -> Option<&'static str> {
+        request(prompt).map(|request| request.intent)
+    }
+
+    fn artifact(prompt: &str) -> Option<&'static str> {
+        request(prompt).and_then(|request| request.artifact)
+    }
+
+    #[test]
+    fn assessing_a_spec_and_recording_an_adr_name_their_artifact() {
+        for prompt in [
+            "Review the PRD for bulk cancellation",
+            "What is missing from this spec?",
+            "Can you check the requirements for contradictions?",
+            "Is the requirement clear enough?",
+        ] {
+            assert_eq!(artifact(prompt), Some("spec-audit"), "{prompt}");
+        }
+        for prompt in [
+            "Write user stories for bulk cancellation",
+            "Split the epic into smaller stories",
+            "Review the ADR for the queue",
+            "Plan the migration",
+        ] {
+            assert_eq!(artifact(prompt), None, "{prompt}");
+        }
+        assert_eq!(artifact("Write an ADR for event sourcing"), Some("adr"));
+        assert_eq!(
+            artifact("Should we split orders out? Write an ADR"),
+            Some("adr")
+        );
+    }
 
     #[test]
     fn openers_do_not_change_the_request() {
