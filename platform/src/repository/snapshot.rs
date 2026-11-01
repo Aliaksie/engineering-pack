@@ -131,6 +131,27 @@ impl Content {
     }
 }
 
+/// The working-tree inventory Git would list with `ls-files --cached --others
+/// --exclude-standard`: every index path (any stage) and every untracked, not ignored path
+/// from `status --untracked-files=all`, without starting a third Git process. A rename or
+/// copy entry is followed by its source path, which is not untracked.
+fn inventory<'a>(status: &'a [u8], index: &'a [u8]) -> Vec<&'a [u8]> {
+    let mut paths: Vec<&[u8]> = index
+        .split(|b| *b == 0)
+        .filter_map(|entry| Some(&entry[entry.iter().position(|b| *b == b'\t')? + 1..]))
+        .filter(|path| !path.is_empty())
+        .collect();
+    let mut entries = status.split(|b| *b == 0);
+    while let Some(entry) = entries.next() {
+        if let Some(path) = entry.strip_prefix(b"?? ") {
+            paths.push(path);
+        } else if entry.len() > 3 && (entry[..2].contains(&b'R') || entry[..2].contains(&b'C')) {
+            entries.next();
+        }
+    }
+    paths
+}
+
 /// One worktree: `{checkout, head, status, gitAvailable, fingerprints}`.
 pub fn state(root: &Path) -> Value {
     let mut issues: Vec<String> = Vec::new();
@@ -154,25 +175,20 @@ pub fn state(root: &Path) -> Value {
             self::checkout(root),
         ),
     };
-    let status = git(
-        root,
-        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        OUTPUT,
-    );
-    let index = git(root, &["ls-files", "--stage", "-z"], OUTPUT);
-    let inventory = process::git(
-        root,
-        &[
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-        ],
-        OUTPUT,
-    )
-    .ok()
-    .flatten();
+    // Raw bytes: a name that is not UTF-8 must stay recognizable as such in the inventory.
+    let raw = |args: &[&str]| process::git(root, args, OUTPUT).ok().flatten();
+    let status_bytes = raw(&["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+    let index_bytes = raw(&["ls-files", "--stage", "-z"]);
+    let inventory = status_bytes
+        .as_deref()
+        .zip(index_bytes.as_deref())
+        .map(|(status, index)| inventory(status, index));
+    let text = |bytes: &Option<Vec<u8>>| {
+        bytes
+            .as_deref()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+    };
+    let (status, index) = (text(&status_bytes), text(&index_bytes));
     if status.is_none() {
         issues.push("Git status could not be inspected".into());
     }
@@ -190,10 +206,8 @@ pub fn state(root: &Path) -> Value {
     };
     let started = Instant::now();
     let mut paths: Vec<(String, bool)> = inventory
-        .as_deref()
-        .unwrap_or_default()
-        .split(|b| *b == 0)
-        .filter(|p| !p.is_empty())
+        .iter()
+        .flatten()
         .map(|p| match std::str::from_utf8(p) {
             Ok(text) => (text.to_string(), true),
             Err(_) => (String::from_utf8_lossy(p).into_owned(), false),
@@ -596,5 +610,131 @@ mod tests {
         std::os::unix::fs::symlink("sub", repository.0.join("link")).unwrap();
         assert!(roots("link").unwrap_err().to_string().contains("symlinks"));
         assert_eq!(roots("missing").unwrap_err().code(), "ENOENT");
+    }
+}
+
+#[cfg(test)]
+mod inventory_tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(root: &Path, args: &[&str]) -> Vec<u8> {
+        let output = Command::new("git")
+            .args([
+                "-c",
+                "user.name=n",
+                "-c",
+                "user.email=n@x",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(["-c", "core.autocrlf=false", "-C"])
+            .arg(root)
+            .args(args)
+            .output()
+            .unwrap();
+        output.stdout
+    }
+
+    fn listed(root: &Path) -> Vec<Vec<u8>> {
+        let mut paths: Vec<Vec<u8>> = git(
+            root,
+            &[
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ],
+        )
+        .split(|b| *b == 0)
+        .filter(|p| !p.is_empty())
+        .map(<[u8]>::to_vec)
+        .collect();
+        paths.sort();
+        paths.dedup();
+        paths
+    }
+
+    fn derived(root: &Path) -> Vec<Vec<u8>> {
+        let status = git(
+            root,
+            &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        );
+        let index = git(root, &["ls-files", "--stage", "-z"]);
+        let mut paths: Vec<Vec<u8>> = inventory(&status, &index)
+            .into_iter()
+            .map(<[u8]>::to_vec)
+            .collect();
+        paths.sort();
+        paths.dedup();
+        paths
+    }
+
+    /// The derived inventory names exactly what the `ls-files` inventory it replaces named,
+    /// through renames, deletions, ignored and nested content and a merge conflict.
+    #[test]
+    fn the_inventory_matches_the_git_listing_it_replaces() {
+        let root = std::env::temp_dir().join(format!("craft-inventory-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("src/deep")).unwrap();
+        let root = fs::canonicalize(&root).unwrap();
+        let write = |path: &str, text: &str| {
+            let file = root.join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(file, text).unwrap();
+        };
+        for path in [
+            "a.txt",
+            "b.txt",
+            "conflict.txt",
+            "src/deep/c.txt",
+            "with space.txt",
+            "ünï.txt",
+            "gone.txt",
+        ] {
+            write(path, "one\n");
+        }
+        write(".gitignore", "ignored/\n*.log\n");
+        git(&root, &["init", "-q", "-b", "main"]);
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-qm", "init"]);
+        git(&root, &["checkout", "-q", "-b", "other"]);
+        write("conflict.txt", "other\n");
+        git(&root, &["commit", "-qam", "other"]);
+        git(&root, &["checkout", "-q", "main"]);
+        write("conflict.txt", "main\n");
+        git(&root, &["commit", "-qam", "main"]);
+        git(&root, &["merge", "-q", "other"]);
+        // Staged rename, modification, deletion, new, ignored and nested content.
+        git(&root, &["mv", "b.txt", "renamed.txt"]);
+        write("a.txt", "changed\n");
+        fs::remove_file(root.join("gone.txt")).unwrap();
+        write("new/inner/d.txt", "new\n");
+        write("new space/e f.txt", "new\n");
+        write("staged.txt", "new\n");
+        git(&root, &["add", "staged.txt"]);
+        write("ignored/x.txt", "x\n");
+        write("trace.log", "x\n");
+        fs::create_dir_all(root.join("nested")).unwrap();
+        git(&root.join("nested"), &["init", "-q"]);
+        write("nested/n.txt", "n\n");
+
+        let status = git(
+            &root,
+            &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        );
+        assert!(
+            status.windows(3).any(|w| w == b"UU "),
+            "a conflict is present"
+        );
+        assert!(
+            status.windows(3).any(|w| w == b"R  "),
+            "a rename is present"
+        );
+        let expected = listed(&root);
+        assert!(expected.contains(&b"nested/".to_vec()));
+        assert_eq!(derived(&root), expected);
+        let _ = fs::remove_dir_all(&root);
     }
 }
