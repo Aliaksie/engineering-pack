@@ -1,8 +1,9 @@
 //! The intent a submitted prompt asks for, from its leading words only. A request is read
 //! clause by clause: courtesy and modal openers are skipped, the first clause that leads
 //! with a known request names the intent, and a later change request turns a lookup or
-//! diagnosis into implementation. Statements, chat and conversation questions name none:
-//! a missing hint costs less than a misleading one.
+//! diagnosis into implementation. For verbs that create or assess, what the request is
+//! about (code, product artifacts, tests, decisions) names the intent. Statements, chat and
+//! conversation questions name none: a missing hint costs less than a misleading one.
 use crate::values::js_space;
 
 /// Openers that do not change what is asked: "please", "can you", "I'd like you to".
@@ -34,6 +35,7 @@ const OPENERS: &[&[&str]] = &[
     &["i", "want", "to"],
     &["i", "need", "to"],
     &["we", "need", "to"],
+    &["try", "to"],
 ];
 
 /// Leading words per intent, longest phrases first within an intent.
@@ -48,7 +50,6 @@ const LEADS: &[(&[&str], &str)] = &[
     (&["diagnose"], "investigate"),
     (&["troubleshoot"], "investigate"),
     (&["look", "over"], "review"),
-    (&["review"], "review"),
     (&["should", "we"], "plan"),
     (&["plan"], "plan"),
     (&["design"], "plan"),
@@ -58,16 +59,13 @@ const LEADS: &[(&[&str], &str)] = &[
     (&["check", "if"], "verify"),
     (&["verify"], "verify"),
     (&["test"], "verify"),
-    (&["who", "owns"], "locate"),
-    (&["who", "maintains"], "locate"),
-    (&["which", "file"], "locate"),
-    (&["which", "files"], "locate"),
     (&["find"], "locate"),
     (&["locate"], "locate"),
     (&["search"], "locate"),
     (&["where"], "locate"),
     (&["research"], "research"),
     (&["explore"], "explore"),
+    (&["reproduce"], "explore"),
     (&["implement"], "implement"),
     (&["fix"], "implement"),
     (&["add"], "implement"),
@@ -88,6 +86,7 @@ const LEADS: &[(&[&str], &str)] = &[
     (&["convert"], "implement"),
     (&["upgrade"], "implement"),
     (&["port"], "implement"),
+    (&["stabilize"], "implement"),
 ];
 
 /// Words that make a leading verb the subject of a statement: "review comments are addressed",
@@ -153,54 +152,166 @@ fn skip_openers(mut words: &[String]) -> &[String] {
     words
 }
 
+/// What a request is about, from the artifacts it names: the small taxonomy that lets one
+/// verb serve several actors. "Review the PRD" is product work, "review the change" is code
+/// review, "write tests" is verification and "write an ADR" is a decision.
+#[derive(Clone, Copy, PartialEq)]
+enum Subject {
+    Exploration,
+    Report,
+    Tests,
+    Product,
+    Decision,
+    Code,
+}
+
+const SUBJECTS: &[(Subject, &[&str])] = &[
+    (
+        Subject::Exploration,
+        &["charter", "charters", "exploratory"],
+    ),
+    (Subject::Report, &["report", "reports"]),
+    (
+        Subject::Tests,
+        &[
+            "test",
+            "tests",
+            "scenario",
+            "scenarios",
+            "coverage",
+            "covered",
+        ],
+    ),
+    (
+        Subject::Product,
+        &[
+            "spec",
+            "specs",
+            "specification",
+            "prd",
+            "requirement",
+            "requirements",
+            "story",
+            "stories",
+            "criteria",
+            "epic",
+        ],
+    ),
+    (
+        Subject::Decision,
+        &[
+            "adr",
+            "adrs",
+            "decision",
+            "decisions",
+            "options",
+            "tradeoffs",
+            "offs",
+        ],
+    ),
+];
+
+fn subject(words: &[String]) -> Subject {
+    SUBJECTS
+        .iter()
+        .find(|(_, names)| words.iter().any(|w| names.contains(&w.as_str())))
+        .map_or(Subject::Code, |(subject, _)| *subject)
+}
+
+/// Verbs that produce an artifact; the subject names the intent.
+const CREATE: &[&str] = &["write", "draft", "prepare", "turn", "record", "produce"];
+/// Verbs that assess something; the subject names the intent.
+const ASSESS: &[&str] = &[
+    "review",
+    "audit",
+    "assess",
+    "evaluate",
+    "compare",
+    "recommend",
+    "estimate",
+];
+
+fn created(subject: Subject) -> Option<&'static str> {
+    Some(match subject {
+        Subject::Exploration => "explore",
+        Subject::Report => return None,
+        Subject::Tests => "verify",
+        Subject::Product => "story",
+        Subject::Decision => "plan",
+        Subject::Code => "implement",
+    })
+}
+
+fn assessed(verb: &str, subject: Subject) -> Option<&'static str> {
+    Some(match (verb, subject) {
+        (_, Subject::Report) => return None,
+        (_, Subject::Product) => "story",
+        (_, Subject::Decision) => "plan",
+        ("review" | "audit", _) => "review",
+        _ => "plan",
+    })
+}
+
 /// The intent one sub-clause leads with.
 fn lead(words: &[String]) -> Option<&'static str> {
     let words = skip_openers(words);
     let first = words.first()?.as_str();
     let next = |at: usize| words.get(at).map(String::as_str);
-    let object = |names: &[&str]| words.iter().any(|w| names.contains(&w.as_str()));
+    let names = |names: &[&str]| words.iter().any(|w| names.contains(&w.as_str()));
+    let about = subject(words);
+    let statement = words
+        .iter()
+        .skip(1)
+        .take(2)
+        .any(|w| AUXILIARIES.contains(&w.as_str()) || STATEMENTS.contains(&w.as_str()));
     match first {
-        "add" if object(&["test", "tests"]) => return Some("verify"),
-        "check" if object(&["pr", "diff", "change", "changes", "commit", "branch"]) => {
-            return Some("review");
+        _ if statement && (CREATE.contains(&first) || ASSESS.contains(&first)) => None,
+        _ if CREATE.contains(&first) => created(about),
+        _ if ASSESS.contains(&first) => assessed(first, about),
+        "add" if about == Subject::Tests => Some("verify"),
+        "do" if names(&["review"]) => assessed("review", about),
+        "check" if matches!(next(1), Some("that" | "whether" | "if")) => Some("verify"),
+        "check" => match about {
+            Subject::Product => Some("story"),
+            _ if names(&["pr", "diff", "change", "changes", "commit", "branch"]) => Some("review"),
+            _ => None,
+        },
+        "run" => names(CHECKS).then_some("run-check"),
+        "what" | "which" if names(&["status"]) => Some("status"),
+        "who" | "which" if names(&["owns", "own", "maintains", "depends"]) => Some("locate"),
+        "what" | "which" => match about {
+            Subject::Product => Some("story"),
+            Subject::Decision => Some("plan"),
+            Subject::Tests => Some("verify"),
+            _ => names(&["file", "files"]).then_some("locate"),
+        },
+        "is" | "are" => (about == Subject::Tests).then_some("verify"),
+        "does" | "do" => {
+            names(&["support", "supports", "handle", "handles"]).then_some("investigate")
         }
-        "how" if matches!(next(1), Some("does" | "do")) && object(&["work", "works"]) => {
-            return Some("investigate");
+        "how" if matches!(next(1), Some("big" | "much" | "long")) => Some("plan"),
+        "how" if matches!(next(1), Some("does" | "do")) && names(&["work", "works"]) => {
+            Some("investigate")
         }
-        "write" | "draft" => {
-            return Some(if object(&["test", "tests"]) {
-                "verify"
-            } else if object(&["adr", "adrs"]) {
-                "plan"
-            } else if object(&["story", "stories"]) {
-                "story"
-            } else {
-                "implement"
-            });
-        }
-        "run" => {
-            let checks = words.iter().skip(1).any(|w| CHECKS.contains(&w.as_str()));
-            return checks.then_some("run-check");
-        }
-        "what" if words.iter().any(|w| w == "status") => return Some("status"),
         "where"
             if next(1).is_some_and(|w| AUXILIARIES.contains(&w) || w == "did" || w == "do")
                 && next(2).is_some_and(|w| SPEAKERS.contains(&w))
                 && words.len() <= 5 =>
         {
-            return None;
+            None
         }
-        _ => {}
+        _ => {
+            let (phrase, intent) = LEADS.iter().find(|(phrase, _)| starts(words, phrase))?;
+            // A verb led by a statement is its subject; question words take auxiliaries.
+            let question = matches!(first, "why" | "where" | "should");
+            let statement = words
+                .iter()
+                .skip(phrase.len())
+                .take(2)
+                .any(|w| AUXILIARIES.contains(&w.as_str()) || STATEMENTS.contains(&w.as_str()));
+            (question || !statement).then_some(*intent)
+        }
     }
-    let (phrase, intent) = LEADS.iter().find(|(phrase, _)| starts(words, phrase))?;
-    // A verb led by a statement is its subject; question words take auxiliaries.
-    let question = matches!(first, "why" | "where" | "who" | "which" | "should");
-    let statement = words
-        .iter()
-        .skip(phrase.len())
-        .take(2)
-        .any(|w| AUXILIARIES.contains(&w.as_str()) || STATEMENTS.contains(&w.as_str()));
-    (question || !statement).then_some(*intent)
 }
 
 /// Sub-clauses joined by "and" or "then": "find the bug and fix it".
@@ -287,6 +398,34 @@ mod tests {
         assert_eq!(intent("Write a parser for the config"), Some("implement"));
         assert_eq!(intent("Run the order module checks"), Some("run-check"));
         assert_eq!(intent("Run the app"), None);
+    }
+
+    #[test]
+    fn what_a_request_is_about_decides_the_intent_across_actors() {
+        assert_eq!(
+            intent("Review the change in services/orders"),
+            Some("review")
+        );
+        assert_eq!(
+            intent("Review the PRD for bulk cancellation"),
+            Some("story")
+        );
+        assert_eq!(intent("Review the ADR for the queue"), Some("plan"));
+        assert_eq!(
+            intent("Draft acceptance criteria for refunds"),
+            Some("story")
+        );
+        assert_eq!(
+            intent("Prepare an exploratory test charter"),
+            Some("explore")
+        );
+        assert_eq!(intent("Write a bug report for the coupon field"), None);
+        assert_eq!(
+            intent("Is the cancellation flow covered by tests?"),
+            Some("verify")
+        );
+        assert_eq!(intent("What are the trade-offs here?"), Some("plan"));
+        assert_eq!(intent("Which team owns pricing?"), Some("locate"));
     }
 
     #[test]
