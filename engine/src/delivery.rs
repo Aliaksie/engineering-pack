@@ -2,7 +2,7 @@
 //! context a hook delivers and when an identical routing hint stays quiet. Lifecycle facts
 //! come from the application; host event names and wire formats never enter this policy.
 use crate::routing::catalog::SOURCE;
-use crate::values::{js_space, lower_hex};
+use crate::values::lower_hex;
 use serde_json::{Value, json};
 
 /// Host-neutral facts about one hook event.
@@ -32,32 +32,6 @@ pub struct Plan {
     pub offer_handoff: bool,
 }
 
-const PROMPT_INTENTS: [(&[&str], &str); 4] = [
-    (&["review", "/review"], "review"),
-    (&["plan", "/plan"], "plan"),
-    (&["verify", "/verify"], "verify"),
-    (&["find", "locate", "where"], "locate"),
-];
-
-/// Whether `prompt`, after leading white space, starts with `word` (ASCII case-insensitive)
-/// followed by a word boundary.
-fn leads_with(prompt: &str, word: &str) -> bool {
-    let text = prompt.trim_start_matches(js_space);
-    text.get(..word.len())
-        .is_some_and(|head| head.eq_ignore_ascii_case(word))
-        && !text[word.len()..]
-            .chars()
-            .next()
-            .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
-}
-
-fn prompt_intent(prompt: &str) -> Option<&'static str> {
-    PROMPT_INTENTS
-        .iter()
-        .find(|(words, _)| words.iter().any(|word| leads_with(prompt, word)))
-        .map(|(_, intent)| *intent)
-}
-
 /// What a lifecycle fact asks for under the effective `settings`. Checkpoints are saved at
 /// turn completion and before context changes, never after each tool call.
 pub fn plan(facts: &Facts, settings: &Value) -> Plan {
@@ -66,7 +40,7 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     } else if facts.edit && settings["routing"]["editHints"] == true {
         Some("implement")
     } else {
-        facts.prompt.and_then(prompt_intent)
+        facts.prompt.and_then(prompt::intent)
     };
     let checkpoint = facts.session && settings["checkpoint"]["enabled"] == true;
     let services = settings["services"]
@@ -154,5 +128,6 @@ pub fn hint_valid(previous: &Value, key: &str, now: f64) -> bool {
     previous["key"] == key && now >= emitted && now - emitted < HINT_TTL_MS as f64
 }
 
+mod prompt;
 #[cfg(test)]
 mod tests;
