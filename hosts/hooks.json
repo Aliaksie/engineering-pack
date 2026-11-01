@@ -21,6 +21,7 @@
         "name": "SessionStart",
         "context": true,
         "deny": false,
+        "notice": true,
         "matcher": "startup|resume"
       },
       "before-compact": {
@@ -63,6 +64,7 @@
         "name": "SessionStart",
         "context": true,
         "deny": false,
+        "notice": true,
         "matcher": "startup|resume"
       },
       "before-compact": {
@@ -177,7 +179,8 @@
       "session-start": {
         "name": "SessionStart",
         "context": true,
-        "deny": false
+        "deny": false,
+        "notice": true
       },
       "before-compact": {
         "name": "PreCompress",

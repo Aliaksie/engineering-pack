@@ -114,6 +114,7 @@ These are called by hosts and integrations, not typed by users:
 | `craft statusline <host> --package <name>` | Host status line or an explicit status read ([installation](INSTALL.md#first-use)) |
 | JSON request on standard input (`workers`, `actions`, `control`) | An integration that drives worker, review and compaction phases ([host controls](HOST-CONTROL.md)) |
 
-Without a bundled executable for the platform, the launcher answers as a failed runtime
-would: a shell enforcement hook denies, observation stays silent and context delivery reports
-itself unavailable.
+Without a working bundled executable for the platform, a shell enforcement hook denies and
+each package reports itself inactive once when a session starts: to the person on hosts that
+show a session-start message (Claude, Codex, Gemini), and to the model on every host, again
+after compaction. Its other hooks stay silent.
