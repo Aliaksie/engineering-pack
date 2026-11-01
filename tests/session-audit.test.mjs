@@ -29,11 +29,11 @@ const assistant = (root, session, id, calls) => calls.map(input => ({ type: 'ass
 test('a Claude session joins host tool use with the events Craft recorded for that session only', t => {
   const root = project(t), session = 'audited-session';
   // Real hook deliveries record the session pseudonym exactly as an installed host does.
-  deliverHook(root, 'before-prompt', { prompt: 'Can you plan the next step?', session, host: 'claude' });
+  deliverHook(root, 'before-prompt', { prompt: 'What is the next step?', session, host: 'claude' });
   deliverHook(root, 'before-tool', { tool: 'read', file: path.join(root, 'index.js'), session, host: 'claude' });
   deliverHook(root, 'before-prompt', { prompt: 'unrelated', session: 'other-session', host: 'claude' });
   const transcript = write(root, `${session}.jsonl`, [
-    { type: 'user', sessionId: session, cwd: root, timestamp: '2026-10-30T10:00:00Z', message: { content: 'Can you plan the next step?' } },
+    { type: 'user', sessionId: session, cwd: root, timestamp: '2026-10-30T10:00:00Z', message: { content: 'What is the next step?' } },
     // Two blocks of one model call repeat its usage; a second call adds once more.
     ...assistant(root, session, 'm1', [{ name: 'Read', input: { file_path: 'index.js' } }, { name: 'Read', input: { file_path: 'index.js' } }]),
     ...assistant(root, session, 'm2', [{ name: 'Bash', input: { command: 'rg -n x . && craft locate --root . x' } },

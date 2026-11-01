@@ -81,7 +81,11 @@ a chain, advice stops rather than inventing a stronger model.
 
 ## Hints and guidance size
 
-Prompt and edit hooks add compact routing hints (`routing.editHints`). Identical hints are
+Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
+the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
+later change request turns a lookup into `implement`, and statements, chat or questions
+about the conversation get no hint. The words are English and matched deterministically;
+an unrecognized request simply gets none. Identical hints are
 suppressed for up to 15 minutes (`routing.dedupeHints`); session start and compaction reset
 this. Suppression never blocks work.
 

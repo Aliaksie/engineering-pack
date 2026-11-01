@@ -6451,7 +6451,7 @@
     }
    },
    "result": {
-    "intent": null,
+    "intent": "review",
     "invalidateHint": false,
     "services": false,
     "saveCheckpoint": false,
@@ -7151,7 +7151,7 @@
     }
    },
    "result": {
-    "intent": null,
+    "intent": "review",
     "invalidateHint": false,
     "services": false,
     "saveCheckpoint": false,
