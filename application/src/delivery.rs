@@ -87,6 +87,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
     let facts = delivery::Facts {
         session: session.is_some(),
+        context_supported: event.context_supported,
         edit: event.edit,
         prompt,
         started: event.lifecycle == "session-start",
@@ -109,9 +110,6 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let file = project_file(root, event.cwd, event.file);
     let routing = match (plan.intent, file) {
         (Some(intent), Some(file)) => {
-            if !event.context_supported {
-                recorder.report("host", "HOST_CAPABILITY_UNAVAILABLE", Map::new(), hook);
-            }
             let files = if file.is_empty() {
                 vec![]
             } else {

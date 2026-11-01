@@ -9,6 +9,8 @@ use serde_json::{Value, json};
 #[derive(Default)]
 pub struct Facts<'a> {
     pub session: bool,
+    /// The host can show this event's context to the model; routing hints need it.
+    pub context_supported: bool,
     pub edit: bool,
     /// The submitted prompt, for prompt events only.
     pub prompt: Option<&'a str>,
@@ -59,7 +61,9 @@ fn prompt_intent(prompt: &str) -> Option<&'static str> {
 /// What a lifecycle fact asks for under the effective `settings`. Checkpoints are saved at
 /// turn completion and before context changes, never after each tool call.
 pub fn plan(facts: &Facts, settings: &Value) -> Plan {
-    let intent = if facts.edit && settings["routing"]["editHints"] == true {
+    let intent = if !facts.context_supported {
+        None
+    } else if facts.edit && settings["routing"]["editHints"] == true {
         Some("implement")
     } else {
         facts.prompt.and_then(prompt_intent)

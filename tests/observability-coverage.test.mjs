@@ -52,7 +52,9 @@ test('route, session and integration commands produce correlated roots and meani
   assert.ok(trace.filter(event=>event.name==='guidance.selected').every(event=>event.parentOperationId===routing.operationId));
   const session=command(root,'session'); assert.equal(session.usage.status,'unknown');
   const sessionEvents=readTelemetry(root), status=sessionEvents.find(event=>event.name==='session.observed');
-  assert.ok(sessionEvents.some(event=>event.traceId===status.traceId && event.name==='diagnostic' && event.reasonCode==='HOST_OBSERVATION_UNAVAILABLE'));
+  // Unknown occupancy is a session state on host.observed, not a failure diagnostic.
+  assert.ok(sessionEvents.some(event=>event.traceId===status.traceId && event.name==='host.observed' && event.attributes.occupancyKnown===false));
+  assert.ok(!sessionEvents.some(event=>event.traceId===status.traceId && event.name==='diagnostic'));
   command(root,'prepare-services');
   assert.ok(readTelemetry(root).some(event=>event.name==='integration.prepared' && event.parentOperationId));
 });

@@ -21,6 +21,7 @@ fn plans_replay_the_frozen_corpus() {
         let facts = &case["facts"];
         let facts = Facts {
             session: flag(facts, "session"),
+            context_supported: flag(facts, "contextSupported"),
             edit: flag(facts, "edit"),
             prompt: facts["prompt"].as_str(),
             started: flag(facts, "started"),

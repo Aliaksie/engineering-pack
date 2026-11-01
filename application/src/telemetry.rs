@@ -88,6 +88,8 @@ pub struct Recorder {
     /// Startup diagnostics, reported once against the first event.
     pending: Vec<&'static str>,
     batch: Vec<Value>,
+    /// Keep the batch in memory until `finish`, so the caller can still `discard` it.
+    held: bool,
     export: Vec<Value>,
     local_drops: u64,
     queue_drops: u64,
@@ -129,6 +131,7 @@ impl Recorder {
             identity_unavailable: false,
             pending,
             batch: Vec::new(),
+            held: false,
             export: Vec::new(),
             local_drops: 0,
             queue_drops: 0,
@@ -150,6 +153,18 @@ impl Recorder {
         if self.host.is_none() {
             self.host = host.map(str::to_string);
         }
+    }
+
+    /// Write nothing before `finish`; the run can then be dropped as a whole.
+    pub fn hold(&mut self) {
+        self.held = true;
+    }
+
+    /// Drop every event not yet written or queued for export.
+    pub fn discard(&mut self) {
+        self.batch.clear();
+        self.export.clear();
+        self.queue_drops = 0;
     }
 
     /// Attribute events to a capability package; the event envelope keeps only known names.
@@ -381,7 +396,7 @@ impl Recorder {
         }
         if self.local {
             self.batch.push(event);
-            if self.batch.len() >= store::BATCH_EVENTS {
+            if self.batch.len() >= store::BATCH_EVENTS && !self.held {
                 self.flush();
             }
         }

@@ -206,6 +206,15 @@ fn replay(case: &Value, projects: &Value) -> Run {
     }
 }
 
+/// Session states the JavaScript entry also reported as failure diagnostics; the native
+/// status records them on its observations instead.
+const STATE_DIAGNOSTICS: [&str; 4] = [
+    "CHECKPOINT_STALE",
+    "HOST_OBSERVATION_UNAVAILABLE",
+    "MODEL_ADVICE_UNAVAILABLE",
+    "ATTEMPT_BUDGET_EXHAUSTED",
+];
+
 /// Expected events with the order the native trace records them in being irrelevant.
 fn expected_events(case: &Value) -> Vec<Value> {
     let mut events: Vec<Value> = case["telemetry"]
@@ -213,6 +222,12 @@ fn expected_events(case: &Value) -> Vec<Value> {
         .unwrap()
         .iter()
         .filter(|event| event["name"] != "cli.command")
+        .filter(|event| {
+            event["name"] != "diagnostic"
+                || !STATE_DIAGNOSTICS
+                    .iter()
+                    .any(|code| event["reasonCode"] == *code)
+        })
         .cloned()
         .collect();
     events.sort_by_key(Value::to_string);
@@ -510,4 +525,49 @@ fn a_project_budget_on_a_listed_claude_model_names_the_restart() {
         "{}",
         text.stdout
     );
+}
+
+#[test]
+fn a_refresh_is_recorded_only_when_the_session_state_changes() {
+    let base = scratch().join("refresh");
+    let root = base.join("project");
+    fs::create_dir_all(root.join(".craft")).unwrap();
+    fs::write(root.join(".craft/project.json"), r#"{"formatVersion":1}"#).unwrap();
+    let bundle = scratch().join("bundle");
+    let refresh = |declared: Value| {
+        let data = base.join("data.json");
+        fs::write(&data, declared.to_string()).unwrap();
+        let argv = [
+            "codex",
+            "--package",
+            "craft-delivery",
+            "--bundle",
+            bundle.to_str().unwrap(),
+            "--root",
+            root.to_str().unwrap(),
+            "--data",
+            data.to_str().unwrap(),
+        ]
+        .map(String::from);
+        let outcome = statusline::run(&argv, &mut "".as_bytes(), false);
+        assert_eq!(outcome.exit_code, 0, "{}", outcome.stderr);
+        events(&root).len()
+    };
+    let exploring =
+        json!({"sessionId": "refresh-session", "task": {"stage": "explore", "status": "working"}});
+    let first = refresh(exploring.clone());
+    assert!(first > 0);
+    assert_eq!(
+        refresh(exploring.clone()),
+        first,
+        "an unchanged refresh records nothing"
+    );
+    let verifying =
+        json!({"sessionId": "refresh-session", "task": {"stage": "verify", "status": "working"}});
+    let changed = refresh(verifying);
+    assert!(changed > first, "a new session state is recorded");
+    // Without a session there is no last refresh to compare with.
+    let anonymous = json!({"task": {"stage": "verify", "status": "working"}});
+    let once = refresh(anonymous.clone());
+    assert!(refresh(anonymous) > once);
 }
