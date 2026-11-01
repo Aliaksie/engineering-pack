@@ -25,13 +25,14 @@ export const CASES = [
   { id: 'indirect-shell-execution', command: 'sh -c "git push"', expected: 'deny' },
   { id: 'command-substitution', command: 'echo "$(git push)"', expected: 'deny' }
 ];
-// The generated Claude read-only hook as registered: its launcher and arguments.
+// The generated Claude read-only hook as registered: its package launcher and arguments.
 export function readOnlyHook(repo) {
   const packageRoot = path.join(repo, 'dist/claude/plugins/craft-review');
   const config = path.join(packageRoot, 'platform-hooks/hooks.json');
   if (!fs.existsSync(config)) throw new Error('build exports before measuring hooks');
   const command = JSON.parse(fs.readFileSync(config, 'utf8')).hooks.PreToolUse.flatMap(group => group.hooks)
-    .map(hook => /^"\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/craft" (hook claude before-tool .* --handler review-read-only .*)$/.exec(hook.command)).find(Boolean);
+    // Its arguments end the command, after the launcher it falls back to.
+    .map(hook => /exec "\$r\/bin\/craft" (hook claude before-tool .* --handler review-read-only .*)$/.exec(hook.command)).find(Boolean);
   if (!command) throw new Error('no registered read-only review hook');
   return { packageRoot, launcher: path.join(packageRoot, 'bin', 'craft'), args: command[1].split(' ') };
 }

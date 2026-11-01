@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { HOSTS } from '../hosts/registry.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
-import { hookPackage, runHook } from './hook-command.mjs';
+import { hookPackage, registeredHook, runHook } from './hook-command.mjs';
 
 // Records below the state directory: `<family>/<name>` or `sessions/<id>/<name>`.
 const stateNames = root => {
@@ -196,13 +196,13 @@ test('Claude and Codex restore context through the documented compact session-st
   }
 });
 
-test('Copilot runs the same launcher arguments from Bash and PowerShell', () => {
+test('Copilot runs the same runtime arguments from Bash and PowerShell', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'dist/copilot/.github/hooks/craft-capabilities.json'), 'utf8'));
   for (const hooks of Object.values(config.hooks)) for (const hook of hooks) {
-    const bash = /^"\.\/packages\/([a-z-]+)\/bin\/craft" (hook copilot .+)$/.exec(hook.bash);
-    const powershell = /^& "\.\/packages\/([a-z-]+)\/bin\/craft\.cmd" (hook copilot .+)$/.exec(hook.powershell);
-    assert.ok(bash && powershell, JSON.stringify(hook));
-    assert.deepEqual(bash.slice(1), powershell.slice(1));
+    const bash = registeredHook(hook.bash);
+    assert.match(bash.root, /^\.\/packages\/[a-z-]+$/);
+    assert.match(bash.args, /^hook copilot /);
+    assert.deepEqual(registeredHook(hook.powershell), bash);
     assert.ok(!/\bnode\b/.test(hook.bash + hook.powershell), 'hooks need no Node.js');
   }
 });
