@@ -87,7 +87,7 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
     memoryBytes: os.totalmem(), runner: Object.fromEntries(['RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT']
       .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])) },
-  tools: { node: process.version, git: version('git', ['--version']), bash: version(bash, ['--version']) },
+  tools: { node: process.version, git: version('git', ['--version']), gitPath: version(windows ? 'where' : 'which', ['git']), bash: version(bash, ['--version']) },
   runs, coldRuns, fixtureRevision: git(options.fixture, 'rev-parse', 'HEAD').trim(),
   runtime: { target: targets[0], sourceRevision: manifest.sourceRevision ?? null,
     nativeSha256: createHash('sha256').update(fs.readFileSync(native)).digest('hex'), nativeBytes: fs.statSync(native).size, pluginBytes: directoryBytes(plugin) },
@@ -117,6 +117,13 @@ const registered = event => {
 };
 const reset = ['--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(seed)} ${quote(path.join(root, '.craft'))}`];
 measure('startup/native', root, ['-N', '--warmup', '3', '--runs', String(runs), `${quote(native)} --help`]);
+// One snapshot query through the Git on PATH and, on Windows, through the Git executable the
+// Git for Windows PATH entry forwards to: whether each Git call pays for a second process start.
+const statusQuery = 'status --porcelain=v1 -z --untracked-files=all';
+const gits = { path: 'git', ...(windows ? { direct: path.resolve(run('git', ['--exec-path']).trim(), '../../bin/git.exe') } : {}) };
+for (const [layer, program] of Object.entries(gits)) {
+  measure(`git/status/${layer}`, root, ['-N', '--warmup', '3', '--runs', String(runs), `${layer === 'path' ? program : quote(program)} -C ${quote(root)} ${statusQuery}`]);
+}
 for (const { cell, event } of HOOKS) {
   const layers = {
     native: ['-N', `${quote(native)} ${hookArguments(event)}`],
