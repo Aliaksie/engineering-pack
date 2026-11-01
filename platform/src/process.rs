@@ -1,7 +1,7 @@
 //! Shell-free Git and process-table observations with a wall-clock and captured-output
 //! bound, and whether recorded owner processes still run.
 use craft_engine::scratch::Liveness;
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 use std::{ffi::OsStr, path::PathBuf};
 use std::{
     ffi::OsString,
@@ -51,11 +51,11 @@ fn executable(path: &Path) -> bool {
         .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 const FORWARDER: &str = "/usr/bin/git";
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 const XCODE: &str = "/Applications/Xcode.app/Contents/Developer";
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 const COMMAND_LINE_TOOLS: &str = "/Library/Developer/CommandLineTools";
 
 /// The developer-directory Git that the `/usr/bin/git` forwarder would start, when that
@@ -63,7 +63,7 @@ const COMMAND_LINE_TOOLS: &str = "/Library/Developer/CommandLineTools";
 /// its `Contents/Developer`), else the `xcode-select` choice, else the Command Line Tools
 /// when no default Xcode is installed; with a default Xcode and no choice the answer is left
 /// to `xcrun`.
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 fn developer_git(
     path: Option<&OsStr>,
     developer_dir: Option<&OsStr>,
@@ -272,6 +272,7 @@ fn capture(
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     fn resolve(
         path: &str,
         developer_dir: Option<&str>,
@@ -287,6 +288,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn the_forwarder_is_bypassed_only_for_an_unambiguous_developer_directory() {
         const CLT: &str = "/Library/Developer/CommandLineTools/usr/bin/git";
         const XCODE_GIT: &str = "/Applications/Xcode.app/Contents/Developer/usr/bin/git";
@@ -332,6 +334,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn another_git_first_on_path_is_kept() {
         let clt = "/Library/Developer/CommandLineTools/usr/bin/git";
         let brew = "/opt/homebrew/bin/git";
