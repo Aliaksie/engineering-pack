@@ -93,6 +93,12 @@ and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust 
 the trees and runs the `craft context-report` command, comparing output bytes and the session
 activity counters.
 
+`delivery-contracts.json` freezes delivery hook plans, decisions, failures and hint records
+at `bb12534` (`cargo test -p craft-engine --lib delivery`). Correction: plan facts now state
+`contextSupported`. The frozen plans are hosts that can show the event's context; each routed
+plan has a `:no-context` copy where the host cannot, which routes nothing and leaves every other
+step unchanged.
+
 `checkpoint-contracts.json` freezes 1765 JavaScript engine responses at `c27951a` for
 repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison and change
 detection, session-state validation, activity counters, task binding/contract/source/context
@@ -177,8 +183,10 @@ parser prose are classes. Corrections: a Claude read with an empty payload repor
 empty declaration reports (JavaScript failed to parse it, and waited on a terminal); a
 non-object payload, declaration or declared host is refused (JavaScript accepted arrays
 and scalars, spread a string host into indexed fields and threw a `TypeError` on a `null`
-payload); a `null` declared host counts as absent, as before. The native replay excludes
-additive host capability fields and `hostContext` from this historical stdout comparison.
+payload); a `null` declared host counts as absent, as before. A stale checkpoint, unknown
+occupancy, unavailable model advice and an exhausted attempt budget are session states on
+the status observations, no longer also failure diagnostics on every refresh. The native
+replay excludes additive host capability fields and `hostContext` from this historical stdout comparison.
 Saved host observations now resolve JSON session identities, including live status-line
 payloads; `application/tests/host_setup.rs` checks that CLI, JSON and status-line reads
 report the same saved usage and host context.

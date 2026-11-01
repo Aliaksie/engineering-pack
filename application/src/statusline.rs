@@ -8,11 +8,15 @@ use crate::failure::Failure;
 use crate::project::absolute;
 use crate::project::read_input;
 use crate::telemetry::{Operation, Recorder, now_ms};
-use craft_engine::values::js_length;
+use craft_engine::session::status as session_status;
+use craft_engine::{identity, values::js_length};
+use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::io::{IsTerminal, Read, Write};
+use std::path::{Path, PathBuf};
 
 const MAX_PAYLOAD: usize = 65_536;
+const REFRESH_BYTES: usize = 1024;
 const HOSTS: &str = include_str!("../../hosts/session.json");
 const USAGE: &str = "usage: craft statusline <host> --package name [--root project] [--data task.json] [--json] [--native-stdin] [--bundle root]";
 /// Set by the package launcher: the installed package whose guidance the status accounts.
@@ -271,20 +275,61 @@ fn render(status: &Value, commands: &Value) -> String {
     line
 }
 
+/// The session's last recorded refresh of this host and package status line.
+struct Refresh {
+    file: PathBuf,
+    key: String,
+}
+
+fn refresh(
+    root: &Path,
+    session: Option<&str>,
+    request: &Request,
+    status: &Value,
+) -> Option<Refresh> {
+    let name = format!(
+        "statusline-{}.json",
+        &identity(&[&request.host, &request.package])[..24]
+    );
+    let file = state::file(root, &name, true, Some(session?)).ok()?;
+    Some(Refresh {
+        file,
+        key: session_status::refresh_key(status),
+    })
+}
+
+/// Whether this refresh is recorded; a recorded one becomes the session's last refresh.
+fn recorded(refresh: &Refresh) -> bool {
+    let previous = state::read(&refresh.file, REFRESH_BYTES)
+        .ok()
+        .flatten()
+        .unwrap_or(Value::Null);
+    let now = now_ms();
+    if !session_status::record_refresh(&previous, &refresh.key, now) {
+        return false;
+    }
+    let record = json!({"formatVersion": 1, "key": refresh.key, "at": now});
+    // An unwritable record only means the next refresh is recorded too.
+    let _ = state::write(&refresh.file, &record, REFRESH_BYTES, false);
+    true
+}
+
 fn status(
     request: &mut Request,
     stdin: &mut dyn Read,
     interactive: bool,
     recorder: &mut Recorder,
     parent: &Operation,
-) -> Result<String, Failure> {
+) -> Result<(String, Option<Refresh>), Failure> {
     let data = declared(request, stdin, interactive, recorder, parent)?;
     let bundles = bundle(request)?;
-    let mut status =
-        crate::status::for_root(&absolute(&request.root), &data, &bundles, recorder, parent)?;
+    let root = absolute(&request.root);
+    let mut status = crate::status::for_root(&root, &data, &bundles, recorder, parent)?;
+    let refresh = refresh(&root, data["sessionId"].as_str(), request, &status);
     let capabilities = capabilities(&request.host).expect("parsed host");
     if !request.json {
-        return Ok(format!("{}\n", render(&status, &capabilities["commands"])));
+        let text = format!("{}\n", render(&status, &capabilities["commands"]));
+        return Ok((text, refresh));
     }
     let mut capabilities = capabilities;
     // The model limits are the bundled input to advice; the resolved values are in `usage`,
@@ -297,10 +342,11 @@ fn status(
     if let Some(session_host) = fields.insert("host".into(), capabilities) {
         fields.insert("sessionHost".into(), session_host);
     }
-    Ok(format!(
+    let text = format!(
         "{}\n",
         serde_json::to_string_pretty(&status).expect("JSON values serialize")
-    ))
+    );
+    Ok((text, refresh))
 }
 
 /// One status read under `host.session`. `interactive` says stdin is a terminal.
@@ -327,13 +373,18 @@ pub fn run(args: &[String], stdin: &mut dyn Read, interactive: bool) -> Outcome 
         .filter(|host| capabilities(host).is_some());
     let mut recorder = Recorder::open(&absolute(hint("--root").unwrap_or(".")), None, host);
     recorder.package(hint("--package"));
+    // A display refreshes often; only refreshes that report a new state are recorded.
+    recorder.hold();
     let operation = recorder.start("host.session", None);
     let result = parse(args).and_then(|mut request| {
         status(&mut request, stdin, interactive, &mut recorder, &operation)
     });
     match result {
-        Ok(text) => {
+        Ok((text, refresh)) => {
             recorder.complete(operation, Map::new(), None);
+            if refresh.is_some_and(|refresh| !recorded(&refresh)) {
+                recorder.discard();
+            }
             outcome(0, text, String::new(), recorder.finish())
         }
         Err(failure) => {

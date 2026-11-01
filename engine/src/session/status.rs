@@ -1354,3 +1354,69 @@ pub fn status(request: Request) -> Result<Value> {
     }
     Ok(status)
 }
+
+/// How long a status display may repeat the same state before a refresh is recorded again.
+pub const REFRESH_HEARTBEAT_MS: i64 = 10 * 60 * 1000;
+
+/// What a status refresh tells an audit: the session state, not the moving token count.
+pub fn refresh_key(status: &Value) -> String {
+    digest(&json!([
+        status["usage"]["status"],
+        status["pressure"],
+        status["recommendation"]["action"],
+        status["suggestion"]["action"],
+        status["checkpoint"]["status"],
+        status["modelAdvice"]["decision"],
+        status["budget"]["exceeded"],
+        status["task"]["stage"],
+        status["task"]["status"],
+        status["diagnostics"],
+    ]))
+}
+
+/// Whether a refresh is recorded: it reports a state other than the `previous` recorded one
+/// `{key, at}`, or that record is older than the heartbeat.
+pub fn record_refresh(previous: &Value, key: &str, now: i64) -> bool {
+    match (previous["key"].as_str(), previous["at"].as_i64()) {
+        (Some(last), Some(at)) => last != key || !(0..REFRESH_HEARTBEAT_MS).contains(&(now - at)),
+        _ => true,
+    }
+}
+
+#[cfg(test)]
+mod refresh_tests {
+    use super::*;
+
+    #[test]
+    fn an_unchanged_refresh_waits_for_the_heartbeat() {
+        let status = json!({"usage": {"status": "observed", "currentTokens": 10}, "pressure": "healthy", "diagnostics": []});
+        let key = refresh_key(&status);
+        let mut moved = status.clone();
+        moved["usage"]["currentTokens"] = json!(20);
+        assert_eq!(
+            refresh_key(&moved),
+            key,
+            "token counts alone are not a new state"
+        );
+        let mut changed = status.clone();
+        changed["pressure"] = json!("high");
+        assert_ne!(refresh_key(&changed), key);
+
+        let previous = json!({"key": key, "at": 1_000});
+        assert!(!record_refresh(
+            &previous,
+            &key,
+            1_000 + REFRESH_HEARTBEAT_MS - 1
+        ));
+        assert!(record_refresh(
+            &previous,
+            &key,
+            1_000 + REFRESH_HEARTBEAT_MS
+        ));
+        assert!(record_refresh(&previous, &refresh_key(&changed), 1_001));
+        // A clock that moved backwards, or no usable record, records the refresh.
+        assert!(record_refresh(&previous, &key, 999));
+        assert!(record_refresh(&Value::Null, &key, 1_000));
+        assert!(record_refresh(&json!({"key": key}), &key, 1_000));
+    }
+}

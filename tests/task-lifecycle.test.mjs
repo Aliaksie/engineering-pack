@@ -251,6 +251,17 @@ test('scope and risk changes invalidate completed acceptance and continuation wi
   assert.equal(readCheckpoint(root, 'host-session').continuation.currentState, 'Acceptance checked');
 });
 
+test('a stale checkpoint is a recorded session state, not a failure', t => {
+  const { root, command, start } = fixture(t); start();
+  command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');
+  command('task-start', '--task', 'fix-value', '--goal', 'Fix the value', '--stage', 'verify', '--file', 'value.mjs', '--risk', 'security');
+  const before = readTelemetry(root).length;
+  assert.equal(command('session').checkpoint.status, 'stale-or-incomplete');
+  const events = readTelemetry(root).slice(before);
+  assert.equal(events.find(event => event.name === 'session.observed').attributes.reason, 'stale');
+  assert.deepEqual(events.filter(event => event.outcome === 'failure').map(event => event.reasonCode), []);
+});
+
 test('same-SHA branch and detached transitions require rebinding and new acceptance', t => {
   const { root, git, command, start } = fixture(t); start();
   const complete = () => command('task-step', '--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks/value', '--outcome', 'passed', '--result', 'Acceptance checked', '--next', 'Return the result', '--complete');

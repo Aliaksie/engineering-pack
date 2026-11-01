@@ -172,24 +172,24 @@ function sequence(t, host) {
   return { records: records(dir), telemetry };
 }
 const signature = event => `${event.attributes?.package} ${event.name} ${event.outcome} ${event.reasonCode ?? ''} ${Object.keys(event.attributes ?? {}).sort()}`;
-// Records and events that exist only because routing hints reached the model.
-const delivered = { records: /\/routing-<hash>\.json$/, telemetry: /^craft-delivery cache\.observed /, diagnostic: /^craft-delivery diagnostic failure HOST_CAPABILITY_UNAVAILABLE / };
+// Records and events that exist only because a host can show routing hints to the model.
+const delivered = { records: /\/routing-<hash>\.json$/, telemetry: /^craft-delivery (?:cache\.observed|routing\.completed|guidance\.selected) / };
 
 test('one lifecycle sequence records the same state and telemetry on every host', (t) => {
   const runs = Object.fromEntries(native.map(host => [host, sequence(t, host)]));
   const portable = host => ({
     records: runs[host].records.filter(name => !delivered.records.test(name)),
-    telemetry: runs[host].telemetry.map(signature).filter(line => !delivered.telemetry.test(line) && !delivered.diagnostic.test(line)).sort(),
+    telemetry: runs[host].telemetry.map(signature).filter(line => !delivered.telemetry.test(line)).sort(),
   });
   for (const host of native) {
     assert.deepEqual(portable(host), portable(native[0]), `${host} differs from ${native[0]}`);
     const hinted = HOSTS[host].events['before-prompt'].context;
     assert.equal(runs[host].records.some(name => delivered.records.test(name)), hinted, `${host}: routing record follows prompt context`);
-    assert.equal(runs[host].telemetry.map(signature).some(line => delivered.telemetry.test(line)), hinted, `${host}: hint cache follows prompt context`);
+    assert.equal(runs[host].telemetry.map(signature).some(line => delivered.telemetry.test(line)), hinted, `${host}: routing telemetry follows prompt context`);
   }
 });
 
-test('a declared host limit is not recorded as a failure', { todo: 'prompt routing on hosts without prompt context reports HOST_CAPABILITY_UNAVAILABLE' }, (t) => {
+test('a declared host limit is not recorded as a failure', (t) => {
   for (const host of native) {
     const failures = sequence(t, host).telemetry.filter(event => event.outcome === 'failure').map(signature);
     assert.deepEqual(failures, [], host);

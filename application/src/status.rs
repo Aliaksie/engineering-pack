@@ -58,6 +58,9 @@ pub fn run(
                 attributes.insert("decision".into(), action.clone());
             }
             attributes.insert("pressure".into(), status["pressure"].clone());
+            if status["checkpoint"]["status"] == "stale-or-incomplete" {
+                attributes.insert("reason".into(), json!("stale"));
+            }
             attributes.insert(
                 "occupancyKnown".into(),
                 json!(status["usage"]["status"] == "observed"),
@@ -287,20 +290,9 @@ fn observe(
             "Repository observation unavailable: {error}"
         )));
     }
-    if result["checkpoint"]["status"] == "stale-or-incomplete" {
-        recorder.report("checkpoint", "CHECKPOINT_STALE", Map::new(), operation);
-    }
-    if result["usage"]["status"] != "observed" {
-        recorder.report(
-            "host",
-            "HOST_OBSERVATION_UNAVAILABLE",
-            Map::new(),
-            operation,
-        );
-    }
-    if result["recommendation"]["action"] == "return-control" {
-        recorder.report("attempt", "ATTEMPT_BUDGET_EXHAUSTED", Map::new(), operation);
-    }
+    // A stale checkpoint, unknown occupancy, unavailable advice and an exhausted attempt
+    // budget are session states, recorded on `session.observed`, `host.observed`,
+    // `model.advice` and `session.advice` below; none is a failure of this status read.
     let mut advised = Map::new();
     for (name, value) in [
         ("capabilityClass", &result["capability"]["class"]),
@@ -311,9 +303,6 @@ fn observe(
         }
     }
     recorder.observe("model.advice", advised, operation, &[]);
-    if result["modelAdvice"]["decision"] == "unavailable" {
-        recorder.report("model", "MODEL_ADVICE_UNAVAILABLE", Map::new(), operation);
-    }
     let activity = &result["activity"];
     let exhausted = matches!((activity["attempts"].as_f64(), activity["maxAttempts"].as_f64()), (Some(a), Some(m)) if a >= m);
     let mut advice = Map::new();
