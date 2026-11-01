@@ -269,7 +269,7 @@
           "authorization": "no model switch or delegation executed"
         },
         "skills": [
-          "craft-delivery:apply-change",
+          "craft-delivery:workflow-deliver-change",
           "craft-engineering:foundations",
           "craft-engineering:testing-engineering"
         ],
@@ -296,7 +296,7 @@
             {
               "id": "workflow:implement",
               "skills": [
-                "craft-delivery:apply-change"
+                "craft-delivery:workflow-deliver-change"
               ],
               "references": [],
               "when": {

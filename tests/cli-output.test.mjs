@@ -25,7 +25,7 @@ test('routine CLI output is compact while JSON and verbose retain full acceptanc
   };
   const started = invoke('task-start', '--task', 'T1', '--goal', 'Correct the value', '--file', 'value.mjs');
   assert.match(started, /Task bound: T1/);
-  assert.match(started, /Skills: .*craft-delivery:apply-change/);
+  assert.match(started, /Skills: .*craft-delivery:workflow-deliver-change/);
   const step = ['--stage', 'verify', '--target', 'acceptance:value', '--approach', 'manual-check', '--evidence', 'checks:value', '--outcome', 'passed', '--result', 'Value verified', '--next', 'Return the result'];
   const compact = invoke('task-step', ...step);
   assert.match(compact, /acceptance:value — passed/);

@@ -81,7 +81,10 @@ every module or silently ignoring the file.
 
 `route-contracts.json` freezes 120 JavaScript responses for the `route` use case at
 `173123c`: effective settings, then the application route over CLI options, with error
-messages omitted. The Rust engine replays every case unchanged, including key order.
+messages omitted. The Rust engine replays every case, including key order. Correction: the
+implement workflow selects `craft-delivery:workflow-deliver-change` instead of the
+`craft-delivery:apply-change` primitive; `session-contracts.json` plans and the
+`cli-contracts.json` route case carry the same route.
 
 `locate-contracts.json` freezes 66 bounded literal search cases at `b27ec99` and
 `discovery-contracts.json` freezes 92 discovery planning, reuse and result cases at `266b8d1`,
@@ -92,6 +95,8 @@ including the JavaScript engine discovery fixtures they retired.
 and indexes the supplied roots; physical roots appear as `<bundle:N>`. The Rust replay rebuilds
 the trees and runs the `craft context-report` command, comparing output bytes and the session
 activity counters.
+Correction: each bundle also holds the deliver-change workflow file, with the apply-change
+content, so implement routes measure it under its new target and path.
 
 `delivery-contracts.json` freezes delivery hook plans, decisions, failures and hint records
 at `bb12534` (`cargo test -p craft-engine --lib delivery`). Correction: plan facts now state
