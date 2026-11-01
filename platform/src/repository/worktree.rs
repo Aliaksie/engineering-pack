@@ -3,7 +3,6 @@
 //! inventory; changes run to completion and are never killed half-way.
 use crate::process;
 use std::path::Path;
-use std::process::Stdio;
 
 const OUTPUT: usize = 65_536;
 const MESSAGE: usize = 512;
@@ -11,12 +10,8 @@ const MESSAGE: usize = 512;
 /// A Git command that changes the repository: its success, standard output and the first
 /// part of its error output for the refusal.
 fn change(dir: &Path, args: &[&str]) -> Result<(bool, String, String), String> {
-    let output = process::git_command()
-        .args(["-c", "core.fsmonitor=false", "-C"])
-        .arg(dir)
+    let output = process::git_command(dir)
         .args(args)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .stdin(Stdio::null())
         .output()
         .map_err(|error| format!("Git failed: {error}"))?;
     let text = |bytes: &[u8], bound: usize| {

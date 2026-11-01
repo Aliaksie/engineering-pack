@@ -1,23 +1,29 @@
 //! Shell-free Git and process-table observations with a wall-clock and captured-output
 //! bound, and whether recorded owner processes still run.
 use craft_engine::scratch::Liveness;
+#[cfg(any(target_os = "macos", test))]
+use std::{ffi::OsStr, path::PathBuf};
 use std::{
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
     process::{Command, Stdio},
     sync::{OnceLock, mpsc},
     thread,
     time::{Duration, Instant},
 };
 
-/// A command that starts Git. On macOS, `/usr/bin/git` is an `xcrun` forwarder that looks up
-/// the developer directory on every call (~10 ms each, several per hook); when it is the Git
-/// on `PATH` and the active developer directory is unambiguous, the Git inside it starts
-/// directly. Any other first Git on `PATH`, or any doubt, keeps the plain `git` lookup.
-pub(crate) fn git_command() -> Command {
+/// Git run in `dir`, the one way every Craft Git command starts: no file-system monitor, no
+/// optional index lock (an inventory never rewrites the index), no credential prompt and no
+/// standard input. Callers add the subcommand and decide how to bound its output.
+///
+/// On macOS, `/usr/bin/git` is an `xcrun` forwarder that looks up the developer directory on
+/// every call (~10 ms each, several per hook); when it is the Git on `PATH` and the active
+/// developer directory is unambiguous, the Git inside it starts directly. Any other first Git
+/// on `PATH`, or any doubt, keeps the plain `git` lookup.
+pub(crate) fn git_command(dir: &Path) -> Command {
     static PROGRAM: OnceLock<OsString> = OnceLock::new();
-    Command::new(PROGRAM.get_or_init(|| {
+    let mut command = Command::new(PROGRAM.get_or_init(|| {
         #[cfg(target_os = "macos")]
         if let Some(git) = developer_git(
             std::env::var_os("PATH").as_deref(),
@@ -28,7 +34,14 @@ pub(crate) fn git_command() -> Command {
             return git.into_os_string();
         }
         OsString::from("git")
-    }))
+    }));
+    command
+        .args(["-c", "core.fsmonitor=false", "-C"])
+        .arg(dir)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null());
+    command
 }
 
 #[cfg(target_os = "macos")]
@@ -96,12 +109,8 @@ pub fn git_within(
     max_bytes: usize,
     timeout: Duration,
 ) -> Result<Option<Vec<u8>>, String> {
-    let mut command = git_command();
-    command
-        .args(["-c", "core.fsmonitor=false", "-C"])
-        .arg(root)
-        .args(args)
-        .env("GIT_OPTIONAL_LOCKS", "0");
+    let mut command = git_command(root);
+    command.args(args);
     capture(what, command, max_bytes, timeout)
 }
 
