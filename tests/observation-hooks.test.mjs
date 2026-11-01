@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { copy } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
-import { hookPackage, runHook } from './hook-command.mjs';
+import { hookPackage, registeredHook, runHook } from './hook-command.mjs';
 import { stateFile } from './state.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -41,17 +41,20 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       if (!mapping) continue;
       const handlers = config.hooks[mapping.name].flatMap(group => group.hooks ?? [group]);
       const expected = `hook ${host} ${definition.event} --package ${pkg} --handler observe --scope any`;
-      const matches = handlers.filter(handler => (handler.command ?? handler.bash).endsWith(` ${expected}`)
-        && (['claude', 'codex'].includes(host) || (handler.command ?? handler.bash).includes(`/packages/${pkg}/`)));
+      const matches = handlers.filter(handler => {
+        const { root: at, args } = registeredHook(handler.command ?? handler.bash);
+        return args === expected && (['claude', 'codex'].includes(host) || at === `./packages/${pkg}`);
+      });
       assert.equal(matches.length, 1, `${host}: missing or duplicate registration for ${definition.event}`);
-      const command = matches[0].command ?? matches[0].bash;
-      if (host === 'copilot') assert.equal(matches[0].powershell, `& ${command.replace('/bin/craft"', '/bin/craft.cmd"')}`);
-      // The registered command exactly: the launcher (quoted except for Gemini's PowerShell-safe
-      // relative path) and plain arguments, no Node.js.
-      const match = (host === 'gemini' ? /^(\.\/packages\/[a-z0-9-]+\/bin\/craft) (hook .+)$/ : /^"([^"]+)" (hook .+)$/).exec(command);
-      assert.ok(match, command);
-      const launcher = match[1].replace('${CLAUDE_PLUGIN_ROOT}', packageRoot).replace('${PLUGIN_ROOT}', packageRoot).replace(/^\.\/packages\//, `${root}/packages/`);
-      const result = spawnSync(process.platform === 'win32' ? `"${launcher}.cmd"` : launcher, match[2].split(' '), {
+      const registration = registeredHook(matches[0].command ?? matches[0].bash);
+      // The host shell starts the runtime itself, except Gemini's one command for bash and PowerShell.
+      assert.equal(registration.direct, host !== 'gemini');
+      if (host === 'copilot') assert.deepEqual(registeredHook(matches[0].powershell), registration);
+      if (host === 'codex') assert.deepEqual(registeredHook(matches[0].commandWindows), { ...registration, root: '$env:PLUGIN_ROOT' });
+      assert.ok(!/\bnode\b/.test(JSON.stringify(matches[0])), 'hooks need no Node.js');
+      const launcher = path.join(registration.root.replace('${CLAUDE_PLUGIN_ROOT}', packageRoot).replace('${PLUGIN_ROOT}', packageRoot)
+        .replace(/^\.\/packages\//, `${root}/packages/`), 'bin/craft');
+      const result = spawnSync(process.platform === 'win32' ? `"${launcher}.cmd"` : launcher, registration.args.split(' '), {
         cwd: root, encoding: 'utf8', shell: process.platform === 'win32', input: JSON.stringify({
           cwd: root, session_id: 'PRIVATE_SESSION_MARKER', tool_name: 'Read',
           prompt: 'PRIVATE_PROMPT_MARKER', tool_input: { file_path: 'PRIVATE_PATH_MARKER' }

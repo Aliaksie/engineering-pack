@@ -57,6 +57,63 @@ test('a launcher runs the bundled runtime for this platform without Node or an o
   assert.match(damaged.stderr, /Policy could not be evaluated: bundled native runtime unavailable/);
 });
 
+// Host shells start the bundled runtime themselves; the launcher is only their fallback. Shells
+// that name the platform (Bash, incl. Git Bash and macOS sh; zsh; PowerShell) skip it; others,
+// such as dash, still run it. A runtime that crashes is not started a second time.
+test('registered hook commands start the bundled runtime without the launcher', { skip: !current && 'no artifact for this platform' }, t => {
+  const shell = file => command => [file, ['-c', command]];
+  const ps = command => ['powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command]];
+  const names = file => spawnSync(file, ['-c', 'printf %s "$OSTYPE"'], { encoding: 'utf8' }).stdout !== '';
+  const plans = windows ? { claude: [['command', shell('bash'), true]], codex: [['commandWindows', ps, true]], copilot: [['bash', shell('bash'), true], ['powershell', ps, true]] }
+    : Object.fromEntries(['claude', 'codex', 'cursor', 'copilot'].map(host => [host, [[host === 'copilot' ? 'bash' : 'command', shell('sh'), names('sh')], [host === 'copilot' ? 'bash' : 'command', shell('bash'), true]]]));
+  for (const [host, plan] of Object.entries(plans)) {
+    const { root, project } = exported(t, host);
+    const workspace = !['claude', 'codex'].includes(host);
+    const cwd = workspace ? root : project;
+    if (workspace) fs.cpSync(path.join(project, '.craft'), path.join(root, '.craft'), { recursive: true });
+    const packageRoot = hookPackage(root, host, 'craft-review');
+    assemble(packageRoot);
+    const runtime = path.join(packageRoot, 'support/native-bin', current.target, 'native-bin', `craft${windows ? '.exe' : ''}`);
+    if (!windows) fs.chmodSync(runtime, 0o755);
+    const config = read(workspace ? path.join(root, { cursor: '.cursor/hooks.json', copilot: '.github/hooks/craft-capabilities.json' }[host]) : path.join(packageRoot, 'platform-hooks/hooks.json'));
+    const entry = Object.values(config.hooks).flat().flatMap(group => group.hooks ?? [group]).find(hook => /--handler review-read-only/.test(hook.command ?? hook.bash));
+    const env = { ...plain, CLAUDE_PLUGIN_ROOT: packageRoot, PLUGIN_ROOT: packageRoot };
+    const run = (field, form) => {
+      const [file, args] = form(host === 'claude' ? entry[field].replaceAll('${CLAUDE_PLUGIN_ROOT}', packageRoot) : entry[field]);
+      return spawnSync(file, args, { cwd, env, input: publish(cwd), encoding: 'utf8' });
+    };
+    const decision = result => host === 'claude' ? (result.status === 2 ? 'deny' : 'allow')
+      : (({ hookSpecificOutput, permissionDecision, permission } = {}) => hookSpecificOutput?.permissionDecision ?? permissionDecision ?? permission)(JSON.parse(result.stdout || '{}'));
+    const reason = result => host === 'claude' ? result.stderr : result.stdout;
+    // A launcher that only records being started.
+    const marker = path.join(root, `${host}-launcher-started`);
+    const launchers = ['bin/craft', 'bin/craft.cmd'].map(name => [path.join(packageRoot, name), fs.readFileSync(path.join(packageRoot, name))]);
+    fs.writeFileSync(launchers[0][0], `#!/bin/sh\necho started >> "${marker}"\nexit 1\n`);
+    fs.writeFileSync(launchers[1][0], `@echo started>>"${marker}"\r\nexit /b 1\r\n`);
+    for (const [field, form, direct] of plan) {
+      fs.rmSync(marker, { force: true });
+      const result = run(field, form);
+      const label = `${host} ${field} via ${form('')[0]}`;
+      if (!direct) { assert.ok(fs.existsSync(marker), `${label}: expected the launcher`); continue; }
+      assert.ok(!fs.existsSync(marker), `${label}: started the launcher`);
+      assert.equal(decision(result), 'deny', `${label}: ${result.status} ${result.stdout} ${result.stderr}`);
+      assert.match(reason(result), /read-only review/);
+    }
+    for (const [file, text] of launchers) fs.writeFileSync(file, text);
+    if (windows) continue;
+    // A runtime that crashes runs once; the launcher then keeps shell policy closed.
+    const count = path.join(root, `${host}-runtime-started`);
+    fs.writeFileSync(runtime, `#!/bin/sh\necho started >> "${count}"\ncat > /dev/null\nexit 3\n`);
+    for (const [field, form] of plan) {
+      fs.rmSync(count, { force: true });
+      const result = run(field, form);
+      assert.equal(fs.readFileSync(count, 'utf8'), 'started\n', `${host} ${field}: runtime runs once`);
+      assert.equal(decision(result), 'deny', `${host} ${field}: ${result.status} ${result.stdout} ${result.stderr}`);
+      assert.match(reason(result), /Policy could not be evaluated: bundled native runtime unavailable/);
+    }
+  }
+});
+
 test('without a bundled runtime, launchers answer as a failed runtime would', t => {
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini']) {
     const { root, project } = exported(t, host);

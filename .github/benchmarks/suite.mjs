@@ -1,6 +1,6 @@
 // Measure an installed Claude export with Hyperfine: startup, hooks and Project Intelligence refresh.
-// Hooks run in three layers: the native binary, the package launcher, and the launcher under the
-// shell hosts use. Writes raw Hyperfine JSON, checked outputs and Bencher Metric Format results.
+// Hooks run in three layers: the native binary, the package launcher, and the registered hook
+// command under the shell hosts use. Writes raw Hyperfine JSON, checked outputs and Bencher Metric Format results.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,13 +107,21 @@ function measure(name, cwd, args) {
   save();
 }
 
+// The command the plugin registers for this hook, as Claude runs it: its root substituted, under bash.
+const hookConfig = JSON.parse(fs.readFileSync(path.join(plugin, 'platform-hooks/hooks.json'), 'utf8'));
+const registered = event => {
+  const commands = Object.values(hookConfig.hooks).flat().flatMap(group => group.hooks).map(hook => hook.command)
+    .filter(command => command.endsWith(` ${hookArguments(event)}`));
+  if (commands.length !== 1) throw new Error(`expected one registered ${event} hook, found ${commands.length}`);
+  return commands[0].replaceAll('${CLAUDE_PLUGIN_ROOT}', slash(plugin));
+};
 const reset = ['--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(seed)} ${quote(path.join(root, '.craft'))}`];
 measure('startup/native', root, ['-N', '--warmup', '3', '--runs', String(runs), `${quote(native)} --help`]);
 for (const { cell, event } of HOOKS) {
   const layers = {
     native: ['-N', `${quote(native)} ${hookArguments(event)}`],
     launcher: ['-N', `${quote(path.join(plugin, windows ? 'bin/craft.cmd' : 'bin/craft'))} ${hookArguments(event)}`],
-    host: ['--shell', windows ? quote(bash) : bash, `${quote(path.join(plugin, 'bin/craft'))} ${hookArguments(event)}`]
+    host: ['--shell', windows ? quote(bash) : bash, registered(event)]
   };
   for (const [layer, command] of Object.entries(layers)) {
     measure(`hook/${cell}/${layer}`, root, ['--warmup', '3', '--runs', String(runs), ...reset, '--input', slash(payloads[cell]), ...command]);

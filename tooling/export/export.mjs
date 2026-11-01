@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { hookMapping } from '../../hosts/registry.mjs';
-import { emitLaunchers, hookArguments } from './launcher.mjs';
+import { emitLaunchers, hookArguments, powershellHook, shellHook } from './launcher.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
 import { featureSupport } from '../../hosts/capabilities.mjs';
 
@@ -119,10 +119,11 @@ export function emitHooks(item, destination, platform) {
     const mapping = hookMapping(platform, definition);
     if (!mapping) continue;
     const args = hookArguments(platform, definition, item).join(' ');
-    // Codex runs hooks in the session shell and sets PLUGIN_ROOT only in the environment;
+    // The host shell starts the bundled runtime itself. Codex runs hooks in the session shell
+    // and sets PLUGIN_ROOT only in the environment;
     // on Windows that shell is PowerShell, which takes `commandWindows` instead.
-    const hooks = [{ type: 'command', command: `"${rootVariable}/bin/craft" ${args}`,
-      ...(platform === 'codex' ? { commandWindows: `& "$env:PLUGIN_ROOT\\bin\\craft.cmd" ${args}; exit $LASTEXITCODE` } : {}) }];
+    const hooks = [{ type: 'command', command: shellHook(rootVariable, args),
+      ...(platform === 'codex' ? { commandWindows: powershellHook('$env:PLUGIN_ROOT', args) } : {}) }];
     const matcher = mapping.matcher ?? (definition.tool === 'shell' ? '^Bash$' : undefined);
     (events[mapping.name] ??= []).push({ ...(matcher ? { matcher } : {}), hooks });
   }

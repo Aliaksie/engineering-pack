@@ -2,7 +2,7 @@ import path from 'node:path';
 import { emitBundle } from '../agents/index.mjs';
 import { HOSTS, hookMapping } from '../../../hosts/registry.mjs';
 import { write, writeJson } from '../export.mjs';
-import { hookArguments } from '../launcher.mjs';
+import { hookArguments, powershellHook, shellHook } from '../launcher.mjs';
 
 export function workspace(platform) {
   return {
@@ -16,12 +16,13 @@ export function workspace(platform) {
         // Workspace overlays preserve relative paths. These fragments are launched from
         // the consumer's project root and must be merged, not replace existing settings.
         const args = hookArguments(platform, definition, item).join(' ');
-        const command = `"./packages/${manifest.name}/bin/craft" ${args}`;
+        const command = shellHook(`./packages/${manifest.name}`, args);
         if (platform === 'cursor') (events[mapping.name] ??= []).push({ command });
-        // Gemini runs hooks with bash, or PowerShell on Windows, which does not run a command
-        // that starts with a quoted path; kebab-case package paths need no quoting.
+        // Gemini runs one command with bash, or PowerShell on Windows, so it keeps the launcher,
+        // which both start; PowerShell does not run a command that starts with a quoted path,
+        // and kebab-case package paths need no quoting.
         else if (platform === 'gemini') (events[mapping.name] ??= []).push({ hooks: [{ name: `craft-${manifest.name}-${definition.name}`, type: 'command', command: `./packages/${manifest.name}/bin/craft ${args}`, timeout: 10000 }] });
-        else if (platform === 'copilot') (events[mapping.name] ??= []).push({ type: 'command', bash: command, powershell: `& "./packages/${manifest.name}/bin/craft.cmd" ${args}`, cwd: '.', timeoutSec: 10 });
+        else if (platform === 'copilot') (events[mapping.name] ??= []).push({ type: 'command', bash: command, powershell: powershellHook(`./packages/${manifest.name}`, args), cwd: '.', timeoutSec: 10 });
         else (events[mapping.name] ??= []).push({ hooks: [{ name: `craft-${manifest.name}-${definition.name}`, type: 'command', command, timeout: 10000 }] });
       }
       writeJson(output, HOSTS[platform].config, platform === 'gemini' ? { hooks: events } : { version: 1, hooks: events });

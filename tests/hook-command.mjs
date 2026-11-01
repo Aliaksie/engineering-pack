@@ -14,6 +14,20 @@ export function hookCommand(packageRoot, host, hook) {
   const args = ['hook', host, definition.event, '--package', manifest.name, '--handler', definition.handler, '--scope', definition.tool === 'shell' ? 'shell' : 'any'];
   return { launcher, args, exists: fs.existsSync(launcher) };
 }
+// The package root and arguments of a registered command in any of its forms: the host shell
+// selecting the runtime itself (sh or PowerShell), or a plain launcher call (Gemini).
+export function registeredHook(text) {
+  const selected = /^\$?r ?= ?"([^"]+)"; .*(?:exec "\$r\/bin\/craft"|& "\$r\\bin\\craft\.cmd") (hook \S.*?)(?:; exit \$LASTEXITCODE)?$/.exec(text);
+  if (selected) {
+    const [, root, args] = selected;
+    // The runtime itself gets the same arguments as the launcher it falls back to.
+    if (!text.includes(`"$b" ${args}; `) && !text.includes(`& $b ${args}; `)) throw new Error(`runtime and launcher arguments differ: ${text}`);
+    return { root, args, direct: true };
+  }
+  const plain = /^"?([^" ]+?)\/bin\/craft"? (hook \S.*)$/.exec(text);
+  if (!plain) throw new Error(`unrecognized hook command: ${text}`);
+  return { root: plain[1], args: plain[2], direct: false };
+}
 export function runHook(packageRoot, host, hook, { input = '', cwd, env = process.env } = {}) {
   const { launcher, args } = hookCommand(packageRoot, host, hook);
   const options = { cwd, env, input, encoding: 'utf8' };
