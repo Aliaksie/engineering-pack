@@ -49,7 +49,7 @@ test('context report covers configured skills and leaves missing optional packag
   fs.cpSync('packages/craft-engineering', directory, { recursive: true });
   const partial = contextReport(directory, plan, { budgetBytes: 1000000 });
   assert.equal(partial.complete, false);
-  assert.ok(partial.missing.some(({ target }) => target === 'craft-delivery:apply-change'));
+  assert.ok(partial.missing.some(({ target }) => target === 'craft-delivery:workflow-deliver-change'));
   assert.equal(partial.budget.status, 'unknown');
   assert.ok(partial.totals.bytes > 0);
 });

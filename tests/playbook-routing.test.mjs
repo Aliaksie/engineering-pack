@@ -69,7 +69,7 @@ test('testing-only routes never select product implementation, even with module 
   for (const verificationMode of [undefined, 'manual', 'automation', 'test-code']) {
     const result = route({ intent: 'verify', files: ['ui/main.tsx'], project, verificationMode });
     assert.ok(result.skills.includes('craft-engineering:workflow-verify-feature'));
-    assert.ok(!result.skills.includes('craft-delivery:apply-change'));
+    assert.ok(!result.skills.some((skill) => ['craft-delivery:apply-change', 'craft-delivery:workflow-deliver-change'].includes(skill)));
     assert.equal(result.taskBoundary.productEdits, 'not-selected');
     assert.equal(result.taskBoundary.testEdits, verificationMode === 'test-code' ? 'requested-test-scope-only' : 'not-selected');
     if (verificationMode === 'manual') {

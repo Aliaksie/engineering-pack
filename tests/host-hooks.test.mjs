@@ -97,7 +97,7 @@ test('explicit verify prompts select testing-only context rather than feature im
     const capable = HOSTS[host].events['before-prompt'].context;
     assert.equal(result.stdout.includes('workflow-verify-feature'), capable, host);
     assert.equal(result.stdout.includes('testing-only'), capable, host);
-    assert.ok(!result.stdout.includes('apply-change'), host);
+    assert.ok(!/apply-change|deliver-change/.test(result.stdout), host);
   }
 });
 

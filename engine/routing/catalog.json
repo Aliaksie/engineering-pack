@@ -30,7 +30,7 @@
     {
       "id": "workflow:implement",
       "skills": [
-        "craft-delivery:apply-change"
+        "craft-delivery:workflow-deliver-change"
       ],
       "references": [],
       "when": {
