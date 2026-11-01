@@ -1,14 +1,94 @@
 //! Shell-free Git and process-table observations with a wall-clock and captured-output
 //! bound, and whether recorded owner processes still run.
 use craft_engine::scratch::Liveness;
+#[cfg(any(target_os = "macos", all(test, unix)))]
+use std::{ffi::OsStr, path::PathBuf};
 use std::{
+    ffi::OsString,
     io::Read,
     path::Path,
     process::{Command, Stdio},
-    sync::mpsc,
+    sync::{OnceLock, mpsc},
     thread,
     time::{Duration, Instant},
 };
+
+/// Git run in `dir`, the one way every Craft Git command starts: no file-system monitor, no
+/// optional index lock (an inventory never rewrites the index), no credential prompt and no
+/// standard input. Callers add the subcommand and decide how to bound its output.
+///
+/// On macOS, `/usr/bin/git` is an `xcrun` forwarder that looks up the developer directory on
+/// every call (~10 ms each, several per hook); when it is the Git on `PATH` and the active
+/// developer directory is unambiguous, the Git inside it starts directly. Any other first Git
+/// on `PATH`, or any doubt, keeps the plain `git` lookup.
+pub(crate) fn git_command(dir: &Path) -> Command {
+    static PROGRAM: OnceLock<OsString> = OnceLock::new();
+    let mut command = Command::new(PROGRAM.get_or_init(|| {
+        #[cfg(target_os = "macos")]
+        if let Some(git) = developer_git(
+            std::env::var_os("PATH").as_deref(),
+            std::env::var_os("DEVELOPER_DIR").as_deref(),
+            std::fs::read_link("/var/db/xcode_select_link").ok(),
+            executable,
+        ) {
+            return git.into_os_string();
+        }
+        OsString::from("git")
+    }));
+    command
+        .args(["-c", "core.fsmonitor=false", "-C"])
+        .arg(dir)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null());
+    command
+}
+
+#[cfg(target_os = "macos")]
+fn executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(path)
+        .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+const FORWARDER: &str = "/usr/bin/git";
+#[cfg(any(target_os = "macos", all(test, unix)))]
+const XCODE: &str = "/Applications/Xcode.app/Contents/Developer";
+#[cfg(any(target_os = "macos", all(test, unix)))]
+const COMMAND_LINE_TOOLS: &str = "/Library/Developer/CommandLineTools";
+
+/// The developer-directory Git that the `/usr/bin/git` forwarder would start, when that
+/// forwarder is the first Git on `path`. The directory is `DEVELOPER_DIR` (an Xcode bundle or
+/// its `Contents/Developer`), else the `xcode-select` choice, else the Command Line Tools
+/// when no default Xcode is installed; with a default Xcode and no choice the answer is left
+/// to `xcrun`.
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn developer_git(
+    path: Option<&OsStr>,
+    developer_dir: Option<&OsStr>,
+    selected: Option<PathBuf>,
+    executable: impl Fn(&Path) -> bool,
+) -> Option<PathBuf> {
+    let first = std::env::split_paths(path?)
+        .map(|dir| dir.join("git"))
+        .find(|git| executable(git))?;
+    if first != Path::new(FORWARDER) {
+        return None;
+    }
+    let candidates = match developer_dir.filter(|dir| !dir.is_empty()) {
+        Some(dir) => vec![
+            Path::new(dir).join("usr/bin/git"),
+            Path::new(dir).join("Contents/Developer/usr/bin/git"),
+        ],
+        None => match selected {
+            Some(dir) => vec![dir.join("usr/bin/git")],
+            None if executable(&Path::new(XCODE).join("usr/bin/git")) => return None,
+            None => vec![Path::new(COMMAND_LINE_TOOLS).join("usr/bin/git")],
+        },
+    };
+    candidates.into_iter().find(|git| executable(git))
+}
 
 pub fn git(root: &Path, args: &[&str], max_bytes: usize) -> Result<Option<Vec<u8>>, String> {
     git_within(
@@ -29,12 +109,8 @@ pub fn git_within(
     max_bytes: usize,
     timeout: Duration,
 ) -> Result<Option<Vec<u8>>, String> {
-    let mut command = Command::new("git");
-    command
-        .args(["-c", "core.fsmonitor=false", "-C"])
-        .arg(root)
-        .args(args)
-        .env("GIT_OPTIONAL_LOCKS", "0");
+    let mut command = git_command(root);
+    command.args(args);
     capture(what, command, max_bytes, timeout)
 }
 
@@ -195,6 +271,90 @@ fn capture(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    fn resolve(
+        path: &str,
+        developer_dir: Option<&str>,
+        selected: Option<&str>,
+        present: &[&str],
+    ) -> Option<PathBuf> {
+        developer_git(
+            Some(OsStr::new(path)),
+            developer_dir.map(OsStr::new),
+            selected.map(PathBuf::from),
+            |git| present.iter().any(|file| git == Path::new(file)),
+        )
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn the_forwarder_is_bypassed_only_for_an_unambiguous_developer_directory() {
+        const CLT: &str = "/Library/Developer/CommandLineTools/usr/bin/git";
+        const XCODE_GIT: &str = "/Applications/Xcode.app/Contents/Developer/usr/bin/git";
+        let path = "/opt/none:/usr/bin/:/bin";
+        // No choice and no default Xcode: the Command Line Tools.
+        assert_eq!(
+            resolve(path, None, None, &[FORWARDER, CLT]),
+            Some(CLT.into())
+        );
+        // No choice with a default Xcode installed: left to xcrun.
+        assert_eq!(
+            resolve(path, None, None, &[FORWARDER, CLT, XCODE_GIT]),
+            None
+        );
+        // The xcode-select choice wins over the default search.
+        let beta = "/Applications/Xcode-beta.app/Contents/Developer";
+        let beta_git = "/Applications/Xcode-beta.app/Contents/Developer/usr/bin/git";
+        assert_eq!(
+            resolve(path, None, Some(beta), &[FORWARDER, CLT, beta_git]),
+            Some(beta_git.into())
+        );
+        // DEVELOPER_DIR wins over the choice, as a bundle or its Contents/Developer.
+        assert_eq!(
+            resolve(
+                path,
+                Some("/Applications/Xcode-beta.app"),
+                Some(COMMAND_LINE_TOOLS),
+                &[FORWARDER, CLT, beta_git]
+            ),
+            Some(beta_git.into())
+        );
+        assert_eq!(
+            resolve(path, Some(beta), None, &[FORWARDER, CLT, beta_git]),
+            Some(beta_git.into())
+        );
+        // A named directory without Git, or a missing Git, falls back to the forwarder.
+        assert_eq!(
+            resolve(path, Some("/nowhere"), None, &[FORWARDER, CLT]),
+            None
+        );
+        assert_eq!(resolve(path, None, Some(beta), &[FORWARDER, CLT]), None);
+        assert_eq!(resolve(path, None, None, &[FORWARDER]), None);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn another_git_first_on_path_is_kept() {
+        let clt = "/Library/Developer/CommandLineTools/usr/bin/git";
+        let brew = "/opt/homebrew/bin/git";
+        assert_eq!(
+            resolve(
+                "/opt/homebrew/bin:/usr/bin",
+                None,
+                None,
+                &[brew, FORWARDER, clt]
+            ),
+            None
+        );
+        // An earlier directory without Git does not count; no Git at all keeps the lookup.
+        assert_eq!(
+            resolve("/opt/homebrew/bin:/usr/bin", None, None, &[FORWARDER, clt]),
+            Some(clt.into())
+        );
+        assert_eq!(resolve("/opt/homebrew/bin", None, None, &[clt]), None);
+        assert_eq!(developer_git(None, None, None, |_| true), None);
+    }
     #[cfg(unix)]
     fn shell(script: &str) -> Command {
         let mut command = Command::new("/bin/sh");

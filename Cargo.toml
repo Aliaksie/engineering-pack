@@ -24,3 +24,11 @@ tree-sitter-rust = "=0.24.2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+
+# One executable ships in every package for every target: size over build time. Nothing
+# catches an unwinding panic, and a hook command treats any crash exit as a crash.
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+strip = "symbols"
