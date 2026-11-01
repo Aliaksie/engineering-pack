@@ -8,7 +8,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::{Child, Stdio},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -267,7 +267,7 @@ impl Listing {
         mode: &[&str],
         pathspecs: &[String],
     ) -> Result<(Child, BufReader<std::process::ChildStdout>), Error> {
-        let mut child = Command::new("git")
+        let mut child = crate::process::git_command()
             .args(["-C"])
             .arg(root)
             .args(["ls-files", "-z"])
@@ -382,6 +382,7 @@ pub fn eligible(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     struct Fixture(std::path::PathBuf);
     impl Fixture {

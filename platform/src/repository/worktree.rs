@@ -3,7 +3,7 @@
 //! inventory; changes run to completion and are never killed half-way.
 use crate::process;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 const OUTPUT: usize = 65_536;
 const MESSAGE: usize = 512;
@@ -11,7 +11,7 @@ const MESSAGE: usize = 512;
 /// A Git command that changes the repository: its success, standard output and the first
 /// part of its error output for the refusal.
 fn change(dir: &Path, args: &[&str]) -> Result<(bool, String, String), String> {
-    let output = Command::new("git")
+    let output = process::git_command()
         .args(["-c", "core.fsmonitor=false", "-C"])
         .arg(dir)
         .args(args)
@@ -247,7 +247,7 @@ pub fn remove(repository: &Path, path: &Path, branch: &str) -> Vec<String> {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::{fs, process::Command};
 
     struct Repository(std::path::PathBuf);
     impl Drop for Repository {
