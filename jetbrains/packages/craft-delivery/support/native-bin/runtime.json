@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "packVersion": "0.0.2",
-  "sourceRevision": "3293dcb65c83c1903389c7536ef18b189d528b5f",
+  "sourceRevision": "760fd41f9e4921b77c2f6ac2d4ebe78e5e6db815",
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "artifacts": [
     {
@@ -9,7 +9,7 @@
       "platform": "linux",
       "arch": "x64",
       "executable": "x86_64-unknown-linux-gnu/native-bin/craft",
-      "sha256": "674bf40dd360fd5ad3e4c5e7aa2018748f7349baacaf47935e330b60a29fd34a",
+      "sha256": "363485a2857472a76b929102d9a93d1d9ee12da36b14fca8de2563f92f1f1248",
       "binaryVersion": "0.0.1",
       "sourceDirty": false
     },
@@ -18,7 +18,7 @@
       "platform": "darwin",
       "arch": "arm64",
       "executable": "aarch64-apple-darwin/native-bin/craft",
-      "sha256": "97a1ea7c0457465f94fc0adbf7cdeafab03daf122b8f620ebce2f8e2e466ced0",
+      "sha256": "0d14e35d7aa039671214103152d99f0c34e44ac1395f3f220289b2a47f079245",
       "binaryVersion": "0.0.1",
       "sourceDirty": false
     },
@@ -27,7 +27,7 @@
       "platform": "win32",
       "arch": "x64",
       "executable": "x86_64-pc-windows-msvc/native-bin/craft.exe",
-      "sha256": "4a781137f671f40aa109e65a5f939032ee5c24c2ab68937ddedb4f9bb2526474",
+      "sha256": "c25da1f69a1438482b689550933d06bda48edc268b879ce0231ca53f802934fe",
       "binaryVersion": "0.0.1",
       "sourceDirty": false
     }

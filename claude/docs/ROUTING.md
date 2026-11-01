@@ -81,9 +81,25 @@ a chain, advice stops rather than inventing a stronger model.
 
 ## Hints and guidance size
 
-Prompt and edit hooks add compact routing hints (`routing.editHints`). Identical hints are
-suppressed for up to 15 minutes (`routing.dedupeHints`); session start and compaction reset
-this. Suppression never blocks work.
+Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
+the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
+later change request turns a lookup into `implement`, and statements, chat or questions
+about the conversation get no hint. The words are English and matched deterministically;
+an unrecognized request simply gets none.
+
+For requests that create or assess something, what they are about decides the intent:
+
+| About | Create ("write", "draft", "prepare") | Assess ("review", "compare", "what…") |
+|---|---|---|
+| Code or a change | `implement` | `review` (`plan` for compare/evaluate) |
+| Spec, PRD, story, acceptance criteria | `story` | `story` |
+| Tests, scenarios, coverage | `verify` | `verify` for questions, `review` for review |
+| ADR, decision, options, trade-offs | `plan` | `plan` |
+| Exploratory charter | `explore` | — |
+| Report (bug report) | no hint | no hint |
+
+Identical hints are suppressed for up to 15 minutes (`routing.dedupeHints`); session start
+and compaction reset this. Suppression never blocks work.
 
 ```sh
 craft context-report --root examples/project --intent review --file services/orders/Order.java --budget-bytes 20000
