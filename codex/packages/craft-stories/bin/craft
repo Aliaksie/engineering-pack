@@ -20,9 +20,10 @@ if [ -n "$binary" ] && [ -f "$binary" ]; then
   # The runtime exits 0-2; anything else means it could not start or crashed.
   [ "$status" -le 2 ] && exit "$status"
 fi
-# No working bundled runtime: answer registered hooks as a failed runtime would.
+# No working bundled runtime: deny shell policy, say once at session start that it is inactive.
 case "$1 $2 $3 $7" in
-
+  'hook codex session-start observe') printf '%s\n' '{"systemMessage":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
+  'hook codex after-compact observe') printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
   'hook '*) exit 0 ;;
 esac
 printf '%s\n' 'craft: bundled native runtime unavailable' >&2

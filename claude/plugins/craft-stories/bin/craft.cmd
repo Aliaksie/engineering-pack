@@ -7,6 +7,14 @@ if not exist "%binary%" goto unavailable
 "%binary%" %*
 if %ERRORLEVEL% GEQ 0 if %ERRORLEVEL% LEQ 2 exit /b %ERRORLEVEL%
 :unavailable
+if "%~1 %~2 %~3 %~7"=="hook claude session-start observe" goto answer0
+if "%~1 %~2 %~3 %~7"=="hook claude after-compact observe" goto answer1
 if "%~1"=="hook" exit /b 0
 >&2 echo craft: bundled native runtime unavailable
 exit /b 1
+:answer0
+echo {"systemMessage":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
+exit /b 0
+:answer1
+echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-stories is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
+exit /b 0

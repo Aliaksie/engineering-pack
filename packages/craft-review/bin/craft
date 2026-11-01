@@ -20,7 +20,7 @@ if [ -n "$binary" ] && [ -f "$binary" ]; then
   # The runtime exits 0-2; anything else means it could not start or crashed.
   [ "$status" -le 2 ] && exit "$status"
 fi
-# No working bundled runtime: answer registered hooks as a failed runtime would.
+# No working bundled runtime: deny shell policy, say once at session start that it is inactive.
 case "$1 $2 $3 $7" in
 
   'hook '*) exit 0 ;;

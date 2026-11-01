@@ -8,9 +8,17 @@ if not exist "%binary%" goto unavailable
 if %ERRORLEVEL% GEQ 0 if %ERRORLEVEL% LEQ 2 exit /b %ERRORLEVEL%
 :unavailable
 if "%~1 %~2 %~3 %~7"=="hook codex before-tool review-read-only" goto answer0
+if "%~1 %~2 %~3 %~7"=="hook codex session-start observe" goto answer1
+if "%~1 %~2 %~3 %~7"=="hook codex after-compact observe" goto answer2
 if "%~1"=="hook" exit /b 0
 >&2 echo craft: bundled native runtime unavailable
 exit /b 1
 :answer0
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Policy could not be evaluated: bundled native runtime unavailable"}}
+exit /b 0
+:answer1
+echo {"systemMessage":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
+exit /b 0
+:answer2
+echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
 exit /b 0

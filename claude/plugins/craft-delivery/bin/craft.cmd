@@ -7,26 +7,14 @@ if not exist "%binary%" goto unavailable
 "%binary%" %*
 if %ERRORLEVEL% GEQ 0 if %ERRORLEVEL% LEQ 2 exit /b %ERRORLEVEL%
 :unavailable
-if "%~1 %~2 %~3 %~7"=="hook claude before-tool deliver" goto answer0
-if "%~1 %~2 %~3 %~7"=="hook claude before-prompt deliver" goto answer1
-if "%~1 %~2 %~3 %~7"=="hook claude session-start deliver" goto answer2
-if "%~1 %~2 %~3 %~7"=="hook claude after-tool deliver" goto answer3
-if "%~1 %~2 %~3 %~7"=="hook claude after-compact deliver" goto answer4
+if "%~1 %~2 %~3 %~7"=="hook claude session-start deliver" goto answer0
+if "%~1 %~2 %~3 %~7"=="hook claude after-compact deliver" goto answer1
 if "%~1"=="hook" exit /b 0
 >&2 echo craft: bundled native runtime unavailable
 exit /b 1
 :answer0
-echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"Routing/checkpoint unavailable: bundled native runtime unavailable"}}
+echo {"systemMessage":"craft-delivery is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-delivery is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
 exit /b 0
 :answer1
-echo {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Routing/checkpoint unavailable: bundled native runtime unavailable"}}
-exit /b 0
-:answer2
-echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Routing/checkpoint unavailable: bundled native runtime unavailable"}}
-exit /b 0
-:answer3
-echo {"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"Routing/checkpoint unavailable: bundled native runtime unavailable"}}
-exit /b 0
-:answer4
-echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Routing/checkpoint unavailable: bundled native runtime unavailable"}}
+echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-delivery is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
 exit /b 0
