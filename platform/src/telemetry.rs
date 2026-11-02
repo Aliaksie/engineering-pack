@@ -15,7 +15,9 @@ use std::{
 pub const MAX_BYTES: u64 = 1_048_576;
 pub const BATCH_EVENTS: usize = 32;
 const LINE_BYTES: usize = 8192;
-const LOCK_WAIT: Duration = Duration::from_millis(25);
+/// Every installed package's hook writes this log, and hosts start them in parallel, so a
+/// writer must outwait the others' appends even on a slow or emulated machine.
+const LOCK_WAIT: Duration = Duration::from_millis(250);
 
 /// The physical project root, or the absolute spelling when it cannot be resolved.
 pub fn root(root: &Path) -> PathBuf {
@@ -281,6 +283,26 @@ mod tests {
         );
         fs::write(&log, vec![b'x'; MAX_BYTES as usize + 1]).unwrap();
         assert!(!append(&fixture.0, &[json!({ "n": 5 })]));
+    }
+
+    #[test]
+    fn a_writer_outwaits_a_concurrent_hook_append() {
+        // Parallel hooks of the installed packages contend for the log; on an emulated
+        // runner one append held the lock past the former 25 ms wait and lost its events.
+        let fixture = Fixture::new();
+        let log = state::file(&fixture.0, "telemetry/events.jsonl", true, None).unwrap();
+        let lock = PathBuf::from(format!("{}.lock", log.display()));
+        fs::write(&lock, "").unwrap();
+        let releaser = {
+            let lock = lock.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(80));
+                fs::remove_file(lock).unwrap();
+            })
+        };
+        assert!(append(&fixture.0, &[json!({ "n": 1 })]));
+        releaser.join().unwrap();
+        assert_eq!(fs::read_to_string(&log).unwrap(), "{\"n\":1}\n");
     }
 
     #[test]
