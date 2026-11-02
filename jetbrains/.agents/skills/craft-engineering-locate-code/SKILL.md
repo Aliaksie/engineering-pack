@@ -16,7 +16,7 @@ pass rather than repeatedly loading files into the strongest model's context. Wh
 <package-root>/bin/craft locate --root <project> --path src --term Dispatch --term receipt
 ```
 
-A routing hint's `lookup.run` is this command ready to run; add the question. From the source checkout, use `npm run locate -- ...`. On Windows the launcher is `bin\craft.cmd`.
+A routing hint's `lookup.run` is this command ready to run; add the question. A hint's `answer` holds verified rows with complete coverage for its question: answer from them, and search only beyond that question. From the source checkout, use `npm run locate -- ...`. On Windows the launcher is `bin\craft.cmd`.
 
 For a structural question, ask it instead of a term: `--declaration <name>`, `--callers <name>`,
 `--imports <target>`, `--section <heading>` or `--outline <document>`, with `--path` scopes as

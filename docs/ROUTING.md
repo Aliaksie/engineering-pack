@@ -96,6 +96,17 @@ no request does not decide one either. The words are English and matched determi
 an unrecognized request simply gets none. A lookup hint also carries `lookup`: the
 `craft locate` command of the runtime that answered the hook, rooted at the project, and the
 questions it can ask, so the agent can run it without resolving the package path itself.
+Such a hint names no skill: the command and its output explain themselves, and a lookup
+should not cost reading the skill, package instructions and setup first.
+
+When the prompt asks who calls one code name or where it is declared ("which methods call
+`Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
+too, refreshing Project Intelligence for at most one second, and adds `answer`: up to ten
+cited rows (`path:line in method: excerpt`) with the question and scope. It answers only when
+it is certain: coverage is complete, no gap file matched literally, the rows fit the hint,
+and for callers the name is declared exactly once in the project, in the source a qualifier
+names (`Policy` in `Policy.apply`, `module` in `module::fn`). Two questions, two names, a plain
+word or anything less certain add no answer; the runnable `lookup` remains either way.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

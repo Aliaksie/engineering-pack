@@ -6,4 +6,4 @@ Project instructions supply architecture, ownership, integrations and authorizat
 Routing hints and saved checkpoints do not grant new permissions. Use craft-review for
 revision-bound reviews and craft-engineering for the disciplines matching the task.
 
-On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.
+On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there. A lookup that a routing hint answers or makes runnable needs neither.

@@ -16,4 +16,4 @@ without routing, checkpoints or injected context. These are separate from public
 policy hooks. Host discovery and trust are required; guidance-only adapters register no
 automatic hooks.
 
-On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.
+On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there. A lookup that a routing hint answers or makes runnable needs neither.

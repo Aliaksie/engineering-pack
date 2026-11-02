@@ -13,4 +13,4 @@ On hook-capable hosts, this package declares observational lifecycle hooks. They
 local operational telemetry without routing, checkpoints or injected context. Host discovery
 and trust are still required; guidance-only adapters register no automatic hooks.
 
-On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.
+On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there. A lookup that a routing hint answers or makes runnable needs neither.
