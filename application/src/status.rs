@@ -370,6 +370,13 @@ fn observe(
     if context.as_ref().is_some_and(|c| c["stale"] == true) {
         result["taskEvidenceStale"] = json!(true);
     }
+    if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
+        match crate::delivery::planning(root, session) {
+            Ok(planning) if !planning.is_empty() => result["planning"] = json!(planning),
+            Ok(_) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
+        }
+    }
     result["packVersion"] = pack_version().map_or(Value::Null, Value::String);
     if let Some(mut saved) = host_context {
         saved.as_object_mut().unwrap().remove("lastEvent");

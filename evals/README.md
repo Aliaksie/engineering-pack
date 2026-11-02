@@ -32,7 +32,7 @@ model. `task.toml` names the actor, scenario and the Craft mechanism it expects.
 | `fix-discount-quantity` | Does Craft stay out of the way of a small bug fix? | Hidden behavior and conventions, untouched tests, scope; Craft overhead |
 | `pi-callers-lookup` | Is a structural question (who calls a method) answered from Project Intelligence? | Exact caller set despite literal decoys, invented paths; lookups and shell searches |
 | `literal-search-tool-choice` | Is a text question still answered by a literal search with Project Intelligence on? | Every mention found; lookups and shell searches |
-| `plan-discount-cap` | Is a plan grounded in the code and kept as a Craft work plan? | Cites the right files and functions, says how to verify, changes no source; `craft_plan_created` |
+| `plan-discount-cap` | Is a plan grounded in the code and kept as the session's planning evidence? | Cites the right files and functions, says how to verify, changes no source; `craft_planning_evidence` |
 
 ## Run
 
@@ -74,7 +74,7 @@ Craft's state under `artifacts/`, and `verifier/reward.json`.
 | `tests_untouched`, `scope_ok` | The agent left existing tests alone and changed only the expected area |
 | `craft_events`, `craft_hooks` | Craft's runtime ran inside the host; 0 means it never ran |
 | `craft_hook_ms_total`, `craft_hook_ms_max`, `craft_failures` | What Craft cost the session, and its failed operations |
-| `craft_routing`, `craft_guidance`, `craft_lookups`, `craft_checkpoints`, `craft_task_bound`, `craft_plan_created` | Which mechanisms engaged |
+| `craft_routing`, `craft_guidance`, `craft_lookups`, `craft_checkpoints`, `craft_task_bound`, `craft_plan_created`, `craft_planning_evidence` | Which mechanisms engaged |
 | `expected_skill_selected` | Craft selected the skill this task calls for (`tests/expected.json`) |
 
 Task-specific values (`callers_found`, `invented_paths`, `mentions_found`, `cites_code`,

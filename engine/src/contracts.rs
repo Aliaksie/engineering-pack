@@ -309,13 +309,13 @@ pub fn validate_project(project: &Value) -> Result {
     Ok(())
 }
 
-/// Whether the consumer turned Project Intelligence on for routed lookups.
+/// Whether routed lookups use Project Intelligence: on unless the project turns it off.
 pub fn evidence_enabled(project: &Value) -> Result<bool> {
     match project
         .get("evidence")
         .and_then(|evidence| evidence.get("enabled"))
     {
-        None => Ok(false),
+        None => Ok(true),
         Some(Value::Bool(enabled)) => Ok(*enabled),
         Some(_) => Err("evidence.enabled must be a boolean".into()),
     }

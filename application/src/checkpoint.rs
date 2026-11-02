@@ -163,6 +163,12 @@ pub fn recover(
         let current = snapshot::workspace(root, saved.get("repositories"), false)?;
         let mut recovered = checkpoint::compare(&saved, &current);
         let current = recovered["current"].clone();
+        // Planning evidence is referenced, never copied into the checkpoint.
+        match crate::delivery::planning(root, session) {
+            Ok(planning) if !planning.is_empty() => recovered["planning"] = json!(planning),
+            Ok(_) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), &operation),
+        }
         recovered["taskRecovery"] = task_recovery(
             root, session, &saved, &current, recorder, &operation,
         )

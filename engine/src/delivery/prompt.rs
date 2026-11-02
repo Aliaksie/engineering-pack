@@ -4,7 +4,7 @@
 //! diagnosis into implementation. For verbs that create or assess, what the request is
 //! about (code, product artifacts, tests, decisions) names the intent. Statements, chat and
 //! conversation questions name none: a missing hint costs less than a misleading one.
-use crate::values::js_space;
+use crate::values::{js_blank, js_space};
 
 /// Openers that do not change what is asked: "please", "can you", "I'd like you to".
 const OPENERS: &[&[&str]] = &[
@@ -151,9 +151,62 @@ fn separator(c: char) -> bool {
     js_space(c) || (c.is_ascii_punctuation() && c != '_')
 }
 
+/// A file name with an extension (`ANSWER.md`, `src/order.js`): a short extension that
+/// starts with a letter after a stem of at least two characters or a path.
+fn file_name(token: &str) -> bool {
+    let Some((stem, extension)) = token.rsplit_once('.') else {
+        return false;
+    };
+    (1..=5).contains(&extension.len())
+        && extension.starts_with(|c: char| c.is_ascii_alphabetic())
+        && extension.chars().all(|c| c.is_ascii_alphanumeric())
+        && (stem.len() >= 2 || stem.contains('/'))
+        && stem.ends_with(|c: char| c.is_ascii_alphanumeric() || matches!(c, '_' | '-'))
+}
+
+/// The word a file name reads as, so a request can tell where its output goes.
+const FILE: &str = "_file_";
+
+/// Keeps dotted names whole before clauses split at `.`: a file name reads as [`FILE`], and
+/// `3.0` or `Policy.apply` as one word. Surrounding quotes, brackets and the trailing
+/// sentence punctuation stay where they are.
+fn protect(prompt: &str) -> String {
+    let mut out = String::with_capacity(prompt.len());
+    let mut rest = prompt;
+    while let Some(start) = rest.find(|c: char| !js_space(c)) {
+        out.push_str(&rest[..start]);
+        rest = &rest[start..];
+        let end = rest.find(js_space).unwrap_or(rest.len());
+        let token = &rest[..end];
+        rest = &rest[end..];
+        let core = token.trim_start_matches(['(', '[', '{', '"', '\'', '`', '<']);
+        let lead = &token[..token.len() - core.len()];
+        let core = core.trim_end_matches([
+            ')', ']', '}', '"', '\'', '`', '>', '.', ',', ';', ':', '!', '?',
+        ]);
+        let trail = &token[lead.len() + core.len()..];
+        out.push_str(lead);
+        if file_name(core) {
+            out.push_str(FILE);
+        } else {
+            let chars: Vec<char> = core.chars().collect();
+            for (i, c) in chars.iter().enumerate() {
+                let inner = i > 0
+                    && i + 1 < chars.len()
+                    && chars[i - 1].is_ascii_alphanumeric()
+                    && chars[i + 1].is_ascii_alphanumeric();
+                out.push(if *c == '.' && inner { '_' } else { *c });
+            }
+        }
+        out.push_str(trail);
+    }
+    out.push_str(rest);
+    out
+}
+
 /// The clauses of a prompt as word keys, split at sentence and clause punctuation.
 fn clauses(prompt: &str) -> Vec<Vec<String>> {
-    prompt
+    protect(prompt)
         .split(['.', '?', '!', ';', ',', '\n'])
         .map(|clause| {
             clause
@@ -310,9 +363,128 @@ fn assessed(verb: &str, subject: Subject) -> Option<&'static str> {
     })
 }
 
+/// Verbs that put a result somewhere: "write the answer to ANSWER.md".
+const OUTPUTS: &[&str] = &[
+    "write", "save", "put", "store", "dump", "output", "add", "append", "record", "copy",
+];
+/// What an output instruction delivers: the result of the request, not new work.
+const RESULTS: &[&str] = &[
+    "it",
+    "them",
+    "this",
+    "that",
+    "these",
+    "those",
+    "everything",
+    "answer",
+    "answers",
+    "result",
+    "results",
+    "list",
+    "output",
+    "findings",
+    "callers",
+    "mentions",
+    "matches",
+    "occurrences",
+    "usages",
+    "references",
+    "locations",
+    "paths",
+    "names",
+    "lines",
+];
+const DETERMINERS: &[&str] = &[
+    "the", "a", "an", "your", "my", "our", "all", "every", "each", "of", "final", "full",
+];
+
+/// "Write them to `ANSWER.md`", "save the list to notes/smtp.md": where the result of the
+/// request goes. A file written while doing the work is a side effect, never the request.
+fn output_instruction(words: &[String]) -> bool {
+    let is = |w: &String, set: &[&str]| set.contains(&w.as_str());
+    let Some(to) = words
+        .iter()
+        .position(|w| matches!(w.as_str(), "to" | "in" | "into" | "as" | "under"))
+    else {
+        return false;
+    };
+    words.first().is_some_and(|w| is(w, OUTPUTS))
+        && to > 1
+        && words[1..to].iter().any(|w| is(w, RESULTS))
+        && words[1..to]
+            .iter()
+            .all(|w| is(w, RESULTS) || is(w, DETERMINERS))
+        && words[to..].iter().any(|w| w == FILE)
+}
+
+/// Who else a clause can be about: "a teammate wants to change…", "the team asked…".
+const OTHERS: &[&str] = &[
+    "teammate",
+    "teammates",
+    "colleague",
+    "colleagues",
+    "coworker",
+    "coworkers",
+    "team",
+    "manager",
+    "lead",
+    "reviewer",
+    "reviewers",
+    "customer",
+    "customers",
+    "client",
+    "clients",
+    "someone",
+    "somebody",
+    "designer",
+    "architect",
+    "stakeholder",
+    "stakeholders",
+    "boss",
+    "he",
+    "she",
+    "they",
+];
+/// What a third party does in a statement about them.
+const REPORTS: &[&str] = &[
+    "wants", "want", "asked", "asks", "needs", "plans", "is", "are", "will", "would", "said",
+    "says", "wonders", "wondered", "reported", "reports",
+];
+
+/// A statement about what someone else wants or did: context, never the user's own request.
+/// "A teammate wants to change the signature" does not ask to change it.
+fn third_party(words: &[String]) -> bool {
+    let start = words
+        .iter()
+        .position(|w| {
+            !matches!(
+                w.as_str(),
+                "a" | "an" | "the" | "my" | "our" | "one" | "another"
+            )
+        })
+        .unwrap_or(words.len());
+    words
+        .get(start)
+        .is_some_and(|w| OTHERS.contains(&w.as_str()))
+        && words[start + 1..]
+            .iter()
+            .take(2)
+            .any(|w| REPORTS.contains(&w.as_str()))
+}
+
 /// The intent one sub-clause leads with.
 fn lead(words: &[String]) -> Option<&'static str> {
     let words = skip_openers(words);
+    if third_party(words) || output_instruction(words) {
+        return None;
+    }
+    // "…and asked which methods call it": the question someone asked is the request.
+    if words
+        .first()
+        .is_some_and(|w| matches!(w.as_str(), "asked" | "asks" | "wonders" | "wondered"))
+    {
+        return lead(&words[1..]);
+    }
     let first = words.first()?.as_str();
     let next = |at: usize| words.get(at).map(String::as_str);
     let names = |names: &[&str]| words.iter().any(|w| names.contains(&w.as_str()));
@@ -458,13 +630,27 @@ fn artifact(intent: &str, words: &[String]) -> Option<&'static str> {
 }
 
 pub(super) fn request(prompt: &str) -> Option<Request> {
+    // "so we plan this?" followed by pasted text: when the user's own question names no
+    // request, the material after it does not decide one either.
+    if let Some((question, material)) = prompt.trim_start().split_once("\n\n")
+        && question.trim_end().ends_with('?')
+        && !js_blank(material)
+    {
+        return requested(question);
+    }
+    requested(prompt)
+}
+
+fn requested(prompt: &str) -> Option<Request> {
     let mut found: Option<Request> = None;
     for clause in clauses(prompt) {
         for (index, part) in parts(&clause).enumerate() {
             // A later sub-clause counts only when it leads with a request of its own.
             let Some(intent) = lead(part) else {
-                // Only an opener ("go ahead and …") leaves the request to the next part.
-                if index == 0 && !skip_openers(part).is_empty() {
+                // Only an opener ("go ahead and …") or a statement about someone else
+                // leaves the request to the next part.
+                if index == 0 && !skip_openers(part).is_empty() && !third_party(skip_openers(part))
+                {
                     break;
                 }
                 continue;
@@ -499,6 +685,84 @@ mod tests {
 
     fn artifact(prompt: &str) -> Option<&'static str> {
         request(prompt).and_then(|request| request.artifact)
+    }
+
+    #[test]
+    fn where_the_result_goes_never_decides_the_request() {
+        for (prompt, expected) in [
+            (
+                "Find every place we read SMTP_HOST and save the list to notes/smtp.md",
+                Some("locate"),
+            ),
+            (
+                "Which services call the billing API? Put the answer in docs/callers.md.",
+                Some("locate"),
+            ),
+            (
+                "Plan the migration and write the plan to PLAN.md.",
+                Some("plan"),
+            ),
+            (
+                "The 3.0 notes must list every mention of `LEGACY_TAX_RATE`. Write them to `ANSWER.md`.",
+                None,
+            ),
+            ("Write them to ANSWER.md", None),
+            // Writing a file is the request when what is written is new work.
+            (
+                "Write a regression test for the rounding bug",
+                Some("verify"),
+            ),
+            (
+                "Update ANSWER.md with the corrected totals",
+                Some("implement"),
+            ),
+            (
+                "Implement the discount cap described in PLAN.md",
+                Some("implement"),
+            ),
+        ] {
+            assert_eq!(intent(prompt), expected, "{prompt}");
+        }
+    }
+
+    #[test]
+    fn someone_elses_plans_are_context_and_their_question_is_the_request() {
+        assert_eq!(
+            intent(
+                "A teammate wants to change the signature of `DiscountPolicy.applyDiscount` and asked which methods call it directly. Write the answer to `ANSWER.md`."
+            ),
+            Some("locate")
+        );
+        assert_eq!(intent("The team wants to migrate the orders table"), None);
+        assert_eq!(
+            intent("My colleague is going to rename Order. Where is it used?"),
+            Some("locate")
+        );
+    }
+
+    #[test]
+    fn pasted_material_after_a_question_does_not_decide() {
+        assert_eq!(
+            intent("so we paln this ?\n\nFix routing contamination from output artifacts."),
+            None
+        );
+        assert_eq!(
+            intent("can we plan this?\n\nAdd a retry to the webhook sender."),
+            Some("plan")
+        );
+        assert_eq!(
+            intent("Fix the retry.\n\nThe sender drops webhooks?"),
+            Some("implement")
+        );
+    }
+
+    #[test]
+    fn dotted_names_stay_one_word() {
+        assert_eq!(
+            intent("Explain `Order.total` in src/order.js"),
+            Some("investigate")
+        );
+        assert_eq!(intent("Where is v2.3 configured?"), Some("locate"));
     }
 
     #[test]

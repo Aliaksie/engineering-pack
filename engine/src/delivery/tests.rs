@@ -23,6 +23,8 @@ fn plans_replay_the_frozen_corpus() {
             session: flag(facts, "session"),
             context_supported: flag(facts, "contextSupported"),
             edit: flag(facts, "edit"),
+            established: None,
+            file_routed: false,
             prompt: facts["prompt"].as_str(),
             started: flag(facts, "started"),
             context_changing: flag(facts, "contextChanging"),
@@ -77,4 +79,114 @@ fn hint_records_replay_the_frozen_corpus() {
         let observed = hint_valid(&case["previous"], key, case["now"].as_f64().unwrap());
         assert_eq!(json!(observed), case["result"], "{case}");
     }
+}
+
+#[test]
+fn an_edit_is_a_side_effect_of_the_intent_a_request_established() {
+    let settings = json!({"routing": {"editHints": true}});
+    let edit = |established, file_routed| {
+        let facts = Facts {
+            session: true,
+            context_supported: true,
+            edit: true,
+            established,
+            file_routed,
+            ..Facts::default()
+        };
+        let plan = plan(&facts, &settings);
+        (plan.intent, plan.establish)
+    };
+    assert_eq!(edit(None, false), (Some("implement"), Some("implement")));
+    assert_eq!(
+        edit(Some("implement"), false),
+        (Some("implement"), Some("implement"))
+    );
+    assert_eq!(edit(Some("implement"), true), (None, None));
+    for intent in ["plan", "locate", "review", "verify"] {
+        assert_eq!(edit(Some(intent), false), (None, None), "{intent}");
+    }
+}
+
+#[test]
+fn a_request_establishes_its_intent_even_where_its_hint_cannot_be_shown() {
+    let settings = json!({"routing": {"editHints": true}});
+    let prompt = |text, context_supported, session| {
+        let facts = Facts {
+            session,
+            context_supported,
+            prompt: Some(text),
+            established: Some("implement"),
+            ..Facts::default()
+        };
+        let plan = plan(&facts, &settings);
+        (plan.intent, plan.establish)
+    };
+    let question = "Which methods call applyDiscount?";
+    assert_eq!(
+        prompt(question, true, true),
+        (Some("locate"), Some("locate"))
+    );
+    assert_eq!(prompt(question, false, true), (None, Some("locate")));
+    assert_eq!(prompt(question, true, false), (Some("locate"), None));
+    assert_eq!(prompt("thanks", true, true), (None, None));
+}
+
+#[test]
+fn intent_records_keep_the_files_routed_under_one_intent() {
+    let request = established(&Value::Null, "plan", None).unwrap();
+    assert_eq!(
+        request,
+        json!({"formatVersion": 1, "intent": "plan", "files": []})
+    );
+    assert_eq!(validate_intent(&request), Ok(()));
+    assert_eq!(established(&request, "plan", None), None);
+    let edited = established(&Value::Null, "implement", Some("src/a.rs")).unwrap();
+    assert!(file_routed(&edited, "src/a.rs"));
+    assert!(!file_routed(&edited, "src/b.rs"));
+    assert_eq!(established(&edited, "implement", Some("src/a.rs")), None);
+    // A new request starts afresh: its edits route again.
+    let renewed = established(&edited, "implement", None).unwrap();
+    assert!(!file_routed(&renewed, "src/a.rs"));
+    let mut record = edited;
+    for n in 0..=INTENT_FILES {
+        record = established(&record, "implement", Some(&format!("f{n}"))).unwrap();
+    }
+    assert_eq!(validate_intent(&record), Ok(()));
+    assert!(!file_routed(&record, "src/a.rs"));
+    for invalid in [
+        json!({"formatVersion": 2, "intent": "plan", "files": []}),
+        json!({"formatVersion": 1, "files": []}),
+        json!({"formatVersion": 1, "intent": "plan", "files": [1]}),
+    ] {
+        assert!(validate_intent(&invalid).is_err(), "{invalid}");
+    }
+}
+
+#[test]
+fn a_planning_session_records_its_artifacts_as_evidence_without_reading_them() {
+    let hash = |c: char| c.to_string().repeat(64);
+    let plan = established(&Value::Null, "plan", None).unwrap();
+    let first = planning_recorded(&plan, "PLAN.md", &hash('a')).unwrap();
+    assert_eq!(
+        first["planning"],
+        json!([{"path": "PLAN.md", "contentHash": hash('a'), "revision": 1, "intent": "plan"}])
+    );
+    assert_eq!(validate_intent(&first), Ok(()));
+    assert_eq!(planning_recorded(&first, "PLAN.md", &hash('a')), None);
+    let second = planning_recorded(&first, "PLAN.md", &hash('b')).unwrap();
+    assert_eq!(second["planning"][0]["revision"], 2);
+    assert_eq!(second["planning"][0]["contentHash"], hash('b'));
+    // Outside a planning session a write is no evidence; a later request keeps the evidence.
+    let implement = established(&second, "implement", None).unwrap();
+    assert_eq!(planning_recorded(&implement, "PLAN.md", &hash('c')), None);
+    assert_eq!(implement["planning"], second["planning"]);
+    let mut record = plan;
+    for n in 0..=PLANNING_ARTIFACTS {
+        record = planning_recorded(&record, &format!("plan-{n}.md"), &hash('a')).unwrap();
+    }
+    assert_eq!(validate_intent(&record), Ok(()));
+    assert_eq!(record["planning"][0]["path"], "plan-1.md");
+    let invalid = json!({"formatVersion": 1, "intent": "plan", "files": [],
+        "planning": [{"path": "PLAN.md", "contentHash": "x", "revision": 1, "intent": "plan"}]});
+    assert!(validate_intent(&invalid).is_err());
 }

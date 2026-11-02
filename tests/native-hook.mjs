@@ -11,10 +11,11 @@ export function deliverHook(cwd, lifecycle, { tool = 'other', file = null, promp
   const args = ['hook', host, lifecycle, '--package', 'craft-delivery', '--handler', 'deliver', '--scope', 'any'];
   const child = spawnSync(process.env.CRAFT_NATIVE_BINARY, args, { cwd, input: JSON.stringify(payload), encoding: 'utf8' });
   if (child.status !== 0) throw new Error(child.stderr);
-  const received = child.stdout ? JSON.parse(child.stdout).hookSpecificOutput?.additionalContext : undefined;
+  const output = child.stdout ? JSON.parse(child.stdout) : {};
+  const received = output.hookSpecificOutput?.additionalContext ?? output.additional_context;
   const lines = received ? received.split('\n') : [];
   const isSession = line => line.startsWith('Craft session') || line.startsWith('Unfinished tasks of earlier sessions')
-    || line.startsWith('Open work plans');
+    || line.startsWith('Open work plans') || line.startsWith('Planning evidence of earlier sessions');
   const identity = lines.filter(isSession);
   const text = lines.filter(line => !isSession(line)).join('\n');
   if (!text) return { session: identity, context: undefined };

@@ -10,7 +10,7 @@ keywords = ["developer", "s1-short-bug"]
 [metadata]
 actor = "developer"
 scenario = "S1 short localized bug"
-expected_mechanism = "Minimal intervention: routed to apply-change, no plan or delegation"
+expected_mechanism = "Minimal intervention: routed to the deliver-change workflow, no plan or delegation"
 
 [agent]
 timeout_sec = 900.0

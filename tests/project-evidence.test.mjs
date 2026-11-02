@@ -477,12 +477,14 @@ test('locate routes structural questions to verified evidence only under full sc
   write('docs/guide.md', '# Guide\n\n## Install\n\ntext\n');
   write('native/lib.go', 'func ping() {}\n');
   write('crate/src/lib.rs', 'use crate::net::{self, ping as p};\nfn run() {\n    assert_eq!(net::ping(), ());\n}\n');
-  // Off by default: literal search, nothing indexed.
+  // Turned off per project: literal search, nothing indexed.
+  config({ enabled: false });
   const disabled = ask('--callers', 'ping', '--path', 'src');
   assert.deepEqual([disabled.route.answeredBy, disabled.route.reason], ['locate', 'index-disabled']);
   assert.ok(disabled.matches.length > 0);
   assert.equal(fs.existsSync(path.join(root, '.craft/state/intelligence')), false);
-  config({ enabled: true });
+  // On by default.
+  fs.rmSync(path.join(root, '.craft/project.json'));
   const callers = ask('--callers', 'ping', '--path', 'src');
   assert.deepEqual([callers.route.answeredBy, callers.route.reason], ['intelligence', 'covered']);
   assert.deepEqual(callers.results.map(row => [row.path, row.line, row.container.name]), [['src/A.java', 3, 'go']]);

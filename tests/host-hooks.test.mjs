@@ -103,8 +103,9 @@ test('explicit verify prompts select testing-only context rather than feature im
 
 test('edit routing defaults on and can be disabled and prompt hints omit the full catalog evidence', (t) => {
   const quiet = fixture(t, { routing: { editHints: false } });
-  const enabled = fixture(t);
   for (const host of native) {
+    // One folder per host: an edit routes once per file in a session.
+    const enabled = fixture(t);
     const ordinary = invoke(host, 'craft-delivery', 'routing', payload(host, quiet, '', 'edit'), quiet);
     assert.equal(ordinary.status, 0, ordinary.stderr);
     assert.ok(!ordinary.stdout.includes('Routing hints'), host);
@@ -127,7 +128,8 @@ test('opted-in native hooks reuse only emitted hints and re-emit after compactio
     const capable = HOSTS[host].events['before-prompt'].context;
     assert.equal(first.stdout.includes('Routing hints'), capable, host);
     assert.ok(!next.stdout.includes('Routing hints'), host);
-    if (!capable) assert.ok(only(stateNames(dir), /^$/), host);
+    // A host that cannot show the hint still records the intent the request established.
+    if (!capable) assert.ok(only(stateNames(dir), /^(?:manifest\.json|intent\.json)/), host);
     else assert.ok(Buffer.byteLength(next.stdout) < Buffer.byteLength(first.stdout));
     const compact = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session' }, dir);
     assert.equal(compact.status, 0, compact.stderr);

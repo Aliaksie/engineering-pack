@@ -89,8 +89,17 @@ a chain, advice stops rather than inventing a stronger model.
 Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
 the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
 later change request turns a lookup into `implement`, and statements, chat or questions
-about the conversation get no hint. The words are English and matched deterministically;
+about the conversation get no hint. Where a result goes ("write them to `ANSWER.md`") never
+decides the intent, what someone else wants ("a teammate wants to change…") is context
+while the question they asked is the request, and text pasted after a question that names
+no request does not decide one either. The words are English and matched deterministically;
 an unrecognized request simply gets none.
+
+A recognized request establishes the session's intent, also on hosts that cannot show the
+prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
+`ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
+established another intent, once per file until the next request, and only at one tool hook:
+before the tool runs where the host shows context there, otherwise after it.
 
 For requests that create, change or assess something, what they are about decides the
 intent. Feedback and reading requests ("any feedback…", "look at the diff…") are reviews when

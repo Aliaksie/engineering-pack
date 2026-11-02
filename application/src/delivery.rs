@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
 
 const HINT_BYTES: usize = 2048;
+const INTENT_BYTES: usize = 16384;
 
 /// One delivery hook event, in host-neutral facts.
 pub struct Event<'a> {
@@ -20,7 +21,10 @@ pub struct Event<'a> {
     pub host: &'a str,
     pub lifecycle: &'a str,
     pub session: Option<&'a str>,
+    /// The tool writes a file.
     pub edit: bool,
+    /// This tool hook delivers an edit's context on the host.
+    pub edit_context: bool,
     pub file: Option<&'a str>,
     pub prompt: Option<&'a str>,
     pub context_supported: bool,
@@ -85,10 +89,26 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
+    // An edit outside the project has no project route; it is not a delivery failure.
+    let file = project_file(root, event.cwd, event.file);
+    let intent_file = match session {
+        Some(session) if prompt.is_some() || event.edit => Some(intent_file(root, session, true)?),
+        _ => None,
+    };
+    let record = intent_file.as_deref().map_or(Value::Null, |file| {
+        read_intent(file).unwrap_or_else(|_| {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            Value::Null
+        })
+    });
     let facts = delivery::Facts {
         session: session.is_some(),
         context_supported: event.context_supported,
-        edit: event.edit,
+        edit: event.edit && event.edit_context,
+        established: record["intent"].as_str(),
+        file_routed: file
+            .as_deref()
+            .is_some_and(|file| delivery::file_routed(&record, file)),
         prompt,
         started: event.lifecycle == "session-start",
         context_changing: event.lifecycle == "before-compact",
@@ -106,9 +126,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     } else {
         None
     };
-    // An edit outside the project has no project route; it is not a delivery failure.
-    let file = project_file(root, event.cwd, event.file);
-    let routing = match (plan.intent, file) {
+    let routing = match (plan.intent, file.as_deref()) {
         (Some(intent), Some(file)) => {
             let files = if file.is_empty() {
                 vec![]
@@ -131,6 +149,37 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
         _ => None,
     };
+    // A request establishes its intent; an edit only once it is routed.
+    let routed_edit = event.edit && routing.is_some();
+    if let (Some(intent), Some(target)) = (plan.establish, intent_file.as_deref())
+        && (prompt.is_some() || routed_edit)
+    {
+        let edited = file.as_deref().filter(|_| routed_edit);
+        if write_intent(target, |record| {
+            delivery::established(record, intent, edited)
+        })
+        .is_err()
+        {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
+    }
+    // A file written while the session plans is its planning evidence, by content hash.
+    if let (true, "after-tool", Some(target), Some(path)) = (
+        event.edit && record["intent"] == "plan",
+        event.lifecycle,
+        intent_file.as_deref(),
+        file.as_deref().filter(|f| !f.is_empty()),
+    ) {
+        let recorded = content_hash(&root.join(path)).and_then(|hash| match hash {
+            Some(hash) => write_intent(target, |record| {
+                delivery::planning_recorded(record, path, &hash)
+            }),
+            None => Ok(()),
+        });
+        if recorded.is_err() {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
+    }
     let mut saved = None;
     if let (true, Some(session)) = (plan.save_checkpoint, session) {
         // Only state and explicit metadata: never prompts, transcripts or tool output.
@@ -156,6 +205,13 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         if plan.offer_handoff && task.is_none() {
             match crate::handoff::offer(root, session) {
                 Ok(offered) if !offered.is_empty() => identity["handoff"] = json!(offered),
+                Ok(_) => {}
+                Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+            }
+        }
+        if plan.offer_handoff && task.is_none() {
+            match earlier_planning(root, session) {
+                Ok(found) if !found.is_empty() => identity["planning"] = json!(found),
                 Ok(_) => {}
                 Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
             }
@@ -193,6 +249,98 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
 fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, Failure> {
     let name = format!("routing-{}.json", &identity(&[host, session])[..24]);
     Ok(state::file(root, &name, true, Some(session))?)
+}
+
+fn intent_file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {
+    Ok(state::file(root, "intent.json", create, Some(session))?)
+}
+
+/// Bytes hashed for planning evidence; a larger file is not recorded.
+const ARTIFACT_BYTES: u64 = 2 * 1024 * 1024;
+
+/// The content hash of a regular file, `None` when it is absent or too large.
+fn content_hash(file: &Path) -> Result<Option<String>, Failure> {
+    match std::fs::symlink_metadata(file) {
+        Ok(meta) if meta.is_file() && meta.len() <= ARTIFACT_BYTES => {
+            let bytes = std::fs::read(file).map_err(|e| e.to_string())?;
+            Ok(Some(hash(&bytes)))
+        }
+        Ok(_) => Ok(None),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e.to_string().into()),
+    }
+}
+
+/// This session's planning evidence, each artifact with whether its file still has the
+/// recorded content.
+pub fn planning(root: &Path, session: &str) -> Result<Vec<Value>, Failure> {
+    let record = read_intent(&intent_file(root, session, false)?)?;
+    planning_of(root, &record)
+}
+
+fn planning_of(root: &Path, record: &Value) -> Result<Vec<Value>, Failure> {
+    let entries = record["planning"].as_array().cloned().unwrap_or_default();
+    entries
+        .into_iter()
+        .map(|mut entry| {
+            let path = entry["path"].as_str().unwrap_or_default();
+            let current = content_hash(&root.join(path))?;
+            entry["current"] = json!(current.as_deref() == entry["contentHash"].as_str());
+            Ok(entry)
+        })
+        .collect()
+}
+
+/// Planning evidence of earlier sessions in this worktree whose files still have the recorded
+/// content, newest first: what a new session may continue from. No tasks are implied.
+pub fn earlier_planning(root: &Path, session: &str) -> Result<Vec<Value>, Failure> {
+    let own = state::location(root, Some(session))?.session_id;
+    let mut found: Vec<(i64, Value)> = Vec::new();
+    for directory in state::sweep::sessions(root, craft_engine::session::handoff::SCANNED)? {
+        let Some(entry) = directory
+            .entries
+            .iter()
+            .find(|e| e.file && e.name == "intent.json")
+        else {
+            continue;
+        };
+        if directory.id == own {
+            continue;
+        }
+        let Ok(record) = read_intent(&directory.path.join("intent.json")) else {
+            continue;
+        };
+        for mut artifact in planning_of(root, &record)? {
+            if artifact["current"] == true {
+                artifact.as_object_mut().expect("entry").remove("current");
+                artifact["from"] = json!(directory.id);
+                found.push((entry.modified, artifact));
+            }
+        }
+    }
+    found.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
+    Ok(found
+        .into_iter()
+        .take(delivery::PLANNING_ARTIFACTS)
+        .map(|(_, artifact)| artifact)
+        .collect())
+}
+
+fn read_intent(file: &Path) -> Result<Value, Failure> {
+    let record = read_record(file, INTENT_BYTES).map_err(|f| f.message)?;
+    delivery::validate_intent(&record)?;
+    Ok(record)
+}
+
+/// Apply `update` to the current record under its lock; a busy record keeps its state.
+fn write_intent(file: &Path, update: impl FnOnce(&Value) -> Option<Value>) -> Result<(), Failure> {
+    let Some(_lock) = state::lock(file)? else {
+        return Ok(());
+    };
+    match update(&read_intent(file)?) {
+        Some(next) => Ok(state::write(file, &next, INTENT_BYTES, false)?),
+        None => Ok(()),
+    }
 }
 
 fn generation_file(file: &Path) -> PathBuf {

@@ -81,7 +81,10 @@ fs.mkdirSync(project);
 // A relative archive path: Git Bash's GNU tar reads `C:` in an absolute path as a remote host.
 run('tar', ['-xf', path.relative(project, archive)], { cwd: project });
 git(project, 'init', '-q'); git(project, 'add', '.'); git(project, 'commit', '-qm', 'fixture');
-const firstRefresh = JSON.parse(run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(project), '--json'], { env }));
+const refreshOnce = () => JSON.parse(run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(project), '--json'], { env }));
+const firstRefresh = refreshOnce();
+// One untimed warm refresh, for where its time goes (Git inventory, file metadata, reading, store).
+const warmRefresh = refreshOnce();
 
 const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--version']),
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
@@ -91,7 +94,8 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
   runs, coldRuns, fixtureRevision: git(options.fixture, 'rev-parse', 'HEAD').trim(),
   runtime: { target: targets[0], sourceRevision: manifest.sourceRevision ?? null,
     nativeSha256: createHash('sha256').update(fs.readFileSync(native)).digest('hex'), nativeBytes: fs.statSync(native).size, pluginBytes: directoryBytes(plugin) },
-  projectIntelligence: { files: firstRefresh.files, failed: firstRefresh.failed, evidence: firstRefresh.coverage?.evidence, bytesScanned: firstRefresh.bytesScanned },
+  projectIntelligence: { files: firstRefresh.files, failed: firstRefresh.failed, evidence: firstRefresh.coverage?.evidence, bytesScanned: firstRefresh.bytesScanned,
+    phasesMs: { cold: firstRefresh.phasesMs, warm: warmRefresh.phasesMs }, wallTimeMs: { cold: firstRefresh.wallTimeMs, warm: warmRefresh.wallTimeMs } },
   cells: [], checks: [], failures: [] };
 const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
 

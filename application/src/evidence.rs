@@ -86,16 +86,18 @@ pub(crate) fn refresh(
 ) -> Result<Value, Failure> {
     let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
     let started = Instant::now();
+    // Where the wall time goes, so a slow platform can be diagnosed from one refresh.
+    let mut phases = Phases::default();
     let exclusions =
         craft_engine::contracts::evidence_exclusions(&crate::project::configuration(root)?)?;
-    let retired = store.retain_providers(ACTIVE)?;
-    let epoch = store.begin_inventory()?;
-    let mut inventory = Inventory::start(root, &exclusions)?;
-    store.begin_batch()?;
+    let retired = phases.time(Phase::Store, || store.retain_providers(ACTIVE))?;
+    let epoch = phases.time(Phase::Store, || store.begin_inventory())?;
+    let mut inventory = phases.time(Phase::Inventory, || Inventory::start(root, &exclusions))?;
+    phases.time(Phase::Store, || store.begin_batch())?;
     let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
         (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
     let mut excluded = 0u64;
-    while let Some(path) = inventory.next_path()? {
+    while let Some(path) = phases.time(Phase::Inventory, || inventory.next_path())? {
         let skipped = craft_engine::contracts::excluded(&path, &exclusions);
         if !skipped {
             observe(&path);
@@ -108,13 +110,13 @@ pub(crate) fn refresh(
             continue;
         }
         // Git's tracked inventory includes deleted files; completion retires them.
-        if !root.join(&path).try_exists()? {
+        if !phases.time(Phase::Metadata, || root.join(&path).try_exists())? {
             continue;
         }
         let provider = for_path(&path).ok_or("eligible source has no provider")?;
         files += 1;
         let observed_at = now();
-        let content = match read_source(root, &path) {
+        let content = match phases.time(Phase::Read, || read_source(root, &path)) {
             Ok(content) => content,
             Err(error) => {
                 store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
@@ -123,8 +125,10 @@ pub(crate) fn refresh(
             }
         };
         bytes += content.len() as u64;
-        let digest = hash(&content);
-        if store.reuse(&path, provider, &digest, epoch)? {
+        let digest = phases.time(Phase::Read, || hash(&content));
+        if phases.time(Phase::Store, || {
+            store.reuse(&path, provider, &digest, epoch)
+        })? {
             reused += 1;
             continue;
         }
@@ -134,7 +138,7 @@ pub(crate) fn refresh(
             deferred += 1;
             continue;
         }
-        match extract(&path, &content) {
+        match phases.time(Phase::Extract, || extract(&path, &content)) {
             Ok(extraction) => {
                 if !budget.accept(&extraction)? {
                     store.defer(&path, provider, epoch)?;
@@ -142,7 +146,9 @@ pub(crate) fn refresh(
                     deferred += 1;
                     continue;
                 }
-                store.replace(&extraction, &observed_at, epoch)?;
+                phases.time(Phase::Store, || {
+                    store.replace(&extraction, &observed_at, epoch)
+                })?;
                 changed += 1;
             }
             Err(error) => {
@@ -151,14 +157,49 @@ pub(crate) fn refresh(
             }
         }
     }
-    store.commit_batch()?;
-    let removed = store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)?;
+    phases.time(Phase::Store, || store.commit_batch())?;
+    let removed = phases.time(Phase::Store, || {
+        store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)
+    })?;
     Ok(
         json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
             "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
             "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
-            "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),"scope":root}),
+            "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),
+            "phasesMs":phases.report(),"scope":root}),
     )
+}
+
+#[derive(Clone, Copy)]
+enum Phase {
+    /// Listing sources: Git's tracked and untracked files, or a directory walk.
+    Inventory,
+    /// Whether an inventoried source still exists.
+    Metadata,
+    /// Reading and hashing source content.
+    Read,
+    Extract,
+    /// The evidence database.
+    Store,
+}
+
+#[derive(Default)]
+struct Phases([std::time::Duration; 5]);
+
+impl Phases {
+    fn time<T>(&mut self, phase: Phase, work: impl FnOnce() -> T) -> T {
+        let started = Instant::now();
+        let result = work();
+        self.0[phase as usize] += started.elapsed();
+        result
+    }
+
+    /// Milliseconds per phase, to a tenth.
+    fn report(&self) -> Value {
+        let ms = |phase: Phase| (self.0[phase as usize].as_secs_f64() * 10_000.0).round() / 10.0;
+        json!({"inventory": ms(Phase::Inventory), "metadata": ms(Phase::Metadata),
+            "read": ms(Phase::Read), "extract": ms(Phase::Extract), "store": ms(Phase::Store)})
+    }
 }
 
 /// Rehash each cited source once and mark it verified or stale. A row from a verified source

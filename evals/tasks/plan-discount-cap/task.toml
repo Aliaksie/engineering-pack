@@ -10,7 +10,7 @@ keywords = ["developer", "probe-planning"]
 [metadata]
 actor = "developer"
 scenario = "Planning: plan a change, no code"
-expected_mechanism = "Routed to planning; a work plan recorded in Craft state that cites real files and functions"
+expected_mechanism = "Routed to planning; PLAN.md recorded as the session's planning evidence, citing real files and functions; no managed work plan or tasks required"
 
 [agent]
 timeout_sec = 300.0

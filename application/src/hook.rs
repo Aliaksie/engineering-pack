@@ -61,6 +61,17 @@ fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
     table[host]["events"].get(lifecycle).cloned()
 }
 
+/// Whether `lifecycle` is the one tool hook that delivers an edit's context on `host`: before
+/// the tool runs where the host shows context there, otherwise after it.
+pub(crate) fn delivers_edit_context(host: &str, lifecycle: &str) -> bool {
+    let shows = |lifecycle| mapping(host, lifecycle).is_some_and(|m| m["context"] == true);
+    match lifecycle {
+        "before-tool" => shows("before-tool"),
+        "after-tool" => !shows("before-tool") && shows("after-tool"),
+        _ => false,
+    }
+}
+
 /// JSON text with lone UTF-16 surrogate escapes replaced by U+FFFD. JavaScript accepts
 /// them; rejecting the whole payload would hide the rest of the command from policy.
 pub(crate) fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {
@@ -283,6 +294,9 @@ fn session_line(session: &Value) -> String {
         format!("Craft session (pass as --session; no authorization implied): {identity}");
     if let Some(handoff) = session.get("handoff") {
         line.push_str(&format!("\nUnfinished tasks of earlier sessions in this worktree. Only if the user's request continues one, adopt it with `craft task-adopt --session <id> --from <from>`; records are copied and authorization is not renewed: {handoff}"));
+    }
+    if let Some(planning) = session.get("planning") {
+        line.push_str(&format!("\nPlanning evidence of earlier sessions in this worktree, files unchanged since. A plan document, not a managed work plan: it holds no tasks and starts no execution: {planning}"));
     }
     if let Some(plans) = session.get("plans") {
         line.push_str(&format!("\nOpen work plans in this worktree. Only if the user's request continues one, start a ready task with `craft task-start --session <id> --plan <plan> --task <task>`; a task held in another session (here: false) needs --take-over, as that session may still be working: {plans}"));
