@@ -204,9 +204,28 @@ fn protect(prompt: &str) -> String {
     out
 }
 
+/// A hard-wrapped sentence as one line: a line break before a lowercase letter continues the
+/// sentence. Any other line break (a list item, heading, new sentence) still ends a clause.
+fn unwrap_lines(prompt: &str) -> String {
+    let mut out = String::with_capacity(prompt.len());
+    let mut lines = prompt.split('\n').peekable();
+    while let Some(line) = lines.next() {
+        out.push_str(line);
+        if let Some(next) = lines.peek() {
+            let continues = next
+                .trim_start()
+                .chars()
+                .next()
+                .is_some_and(char::is_lowercase);
+            out.push(if continues { ' ' } else { '\n' });
+        }
+    }
+    out
+}
+
 /// The clauses of a prompt as word keys, split at sentence and clause punctuation.
 fn clauses(prompt: &str) -> Vec<Vec<String>> {
-    protect(prompt)
+    protect(&unwrap_lines(prompt))
         .split(['.', '?', '!', ';', ',', '\n'])
         .map(|clause| {
             clause
@@ -733,6 +752,13 @@ mod tests {
             ),
             Some("locate")
         );
+        // The task text as written: hard-wrapped mid-sentence.
+        assert_eq!(
+            intent(
+                "A teammate wants to change the signature of `DiscountPolicy.applyDiscount` in this\nrepository and asked which methods call it directly.\n\nWrite the answer to `ANSWER.md` at the repository root, one caller per line, as\n`<path from the repository root>#<method name>`, for example\n`src/main/java/com/acme/billing/Example.java#run`. Do not change any other file.\n"
+            ),
+            Some("locate")
+        );
         assert_eq!(intent("The team wants to migrate the orders table"), None);
         assert_eq!(
             intent("My colleague is going to rename Order. Where is it used?"),
@@ -752,6 +778,27 @@ mod tests {
         );
         assert_eq!(
             intent("Fix the retry.\n\nThe sender drops webhooks?"),
+            Some("implement")
+        );
+    }
+
+    #[test]
+    fn a_line_break_inside_a_sentence_does_not_end_it() {
+        assert_eq!(
+            intent("Where is the discount\ncalculated for promo codes?"),
+            Some("locate")
+        );
+        assert_eq!(
+            intent("Plan the discount cap for each\nstorefront, but do not implement it yet."),
+            Some("plan")
+        );
+        // A new line that starts a sentence or a list item still ends the clause.
+        assert_eq!(
+            intent("The team wants a cap\nFix the rounding bug"),
+            Some("implement")
+        );
+        assert_eq!(
+            intent("Notes from the call\n- fix the rounding bug"),
             Some("implement")
         );
     }

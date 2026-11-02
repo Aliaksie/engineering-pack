@@ -89,6 +89,26 @@ test('prompt routing hints appear only where the native context schema supports 
   }
 });
 
+test('a lookup hint carries a lookup command the agent can run as given', (t) => {
+  const dir = fixture(t);
+  fs.writeFileSync(path.join(dir, 'orders.py'), 'RATE = LEGACY_TAX_RATE\n');
+  // A real project: the lookup reads its Git inventory.
+  for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
+  for (const host of native) {
+    const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: `lookup-${host}`, prompt: 'Where is LEGACY_TAX_RATE used?' }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+    if (!HOSTS[host].events['before-prompt'].context) continue;
+    const hint = JSON.parse(context.slice(context.indexOf('{')));
+    assert.equal(hint.intent, 'locate', host);
+    const [program, ...args] = hint.lookup.run;
+    const lookup = spawnSync(program, [...args, '--term', 'LEGACY_TAX_RATE'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(lookup.status, 0, `${host}: ${lookup.stderr}`);
+    assert.match(lookup.stdout, /orders\.py/, host);
+  }
+});
+
 test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {
   const dir = fixture(t);
   for (const host of native) {

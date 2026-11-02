@@ -92,7 +92,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     // An edit outside the project has no project route; it is not a delivery failure.
     let file = project_file(root, event.cwd, event.file);
     let intent_file = match session {
-        Some(session) if prompt.is_some() || event.edit => Some(intent_file(root, session, true)?),
+        Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
+            Some(intent_file(root, session, true)?)
+        }
         _ => None,
     };
     let record = intent_file.as_deref().map_or(Value::Null, |file| {
@@ -145,6 +147,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             };
             let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;
+            // This hook's own executable is the runtime the lookup runs.
+            let runtime = std::env::current_exe().ok();
+            let runtime = runtime.as_deref().and_then(Path::to_str);
+            if let Some(lookup) = delivery::lookup(intent, runtime, &root.to_string_lossy()) {
+                plan["lookup"] = lookup;
+            }
             Some(plan)
         }
         _ => None,
@@ -156,7 +164,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     {
         let edited = file.as_deref().filter(|_| routed_edit);
         if write_intent(target, |record| {
-            delivery::established(record, intent, edited)
+            delivery::established(record, intent, edited, now_ms() as u64)
         })
         .is_err()
         {
@@ -184,7 +192,17 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if let (true, Some(session)) = (plan.save_checkpoint, session) {
         // Only state and explicit metadata: never prompts, transcripts or tool output.
         let metadata = task.as_ref().map_or(json!({}), |t| json!({"taskId": t}));
-        checkpoint::save(root, session, &metadata, None, recorder, hook)?;
+        let checkpoint = checkpoint::save(root, session, &metadata, None, recorder, hook)?;
+        // Whatever tool wrote it (an edit, a shell redirect, a script), a file the turn
+        // changed after the plan was requested is the session's planning evidence.
+        if let (true, Some(target), Some(since)) = (
+            event.lifecycle == "turn-end" && record["intent"] == "plan",
+            intent_file.as_deref(),
+            record["since"].as_u64(),
+        ) && planning_written(root, target, &checkpoint["state"]["status"], since).is_err()
+        {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
     }
     if let Some(session) = session {
         if plan.recover_checkpoint {
@@ -269,6 +287,40 @@ fn content_hash(file: &Path) -> Result<Option<String>, Failure> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(e.to_string().into()),
     }
+}
+
+/// Record as planning evidence each file in a snapshot `status` modified at or after `since`
+/// (Unix milliseconds). Paths are relative to the repository root, so a project below it
+/// finds none.
+fn planning_written(root: &Path, target: &Path, status: &Value, since: u64) -> Result<(), Failure> {
+    let mut written = Vec::new();
+    for path in delivery::written_paths(status.as_array().map_or(&[], Vec::as_slice)) {
+        let file = root.join(&path);
+        let modified = std::fs::symlink_metadata(&file)
+            .and_then(|meta| meta.modified())
+            .ok()
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|elapsed| elapsed.as_millis());
+        if modified.is_some_and(|ms| ms >= u128::from(since))
+            && let Some(hash) = content_hash(&file)?
+        {
+            written.push((path, hash));
+        }
+    }
+    if written.is_empty() {
+        return Ok(());
+    }
+    write_intent(target, |record| {
+        let mut next: Option<Value> = None;
+        for (path, hash) in &written {
+            if let Some(updated) =
+                delivery::planning_recorded(next.as_ref().unwrap_or(record), path, hash)
+            {
+                next = Some(updated);
+            }
+        }
+        next
+    })
 }
 
 /// This session's planning evidence, each artifact with whether its file still has the

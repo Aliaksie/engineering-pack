@@ -119,6 +119,21 @@ test('session situation replay', t => {
       const offered = line ? JSON.parse(line.slice(line.indexOf(': [') + 2)).map(entry => entry.path) : [];
       return { planning, offered, workPlans: fs.existsSync(path.join(root, '.craft/state/plans')) };
     },
+    // Codex writes files from its shell tool: no edit event, only the turn end sees the file.
+    // A file already changed before the plan was requested is not evidence.
+    'plan-written-by-shell-is-planning-evidence': root => {
+      fs.writeFileSync(path.join(root, 'notes.md'), 'earlier work\n');
+      const earlier = new Date(Date.now() - 60_000);
+      fs.utimesSync(path.join(root, 'notes.md'), earlier, earlier);
+      deliverHook(root, 'before-prompt', { prompt: 'Plan how to cap the discount at 50%. Write the plan to PLAN.md.', session: 'planner', host: 'codex' });
+      deliverHook(root, 'before-tool', { tool: 'shell', session: 'planner', host: 'codex' });
+      fs.writeFileSync(path.join(root, 'PLAN.md'), '# Cap the discount\n');
+      deliverHook(root, 'after-tool', { tool: 'shell', session: 'planner', host: 'codex' });
+      deliverHook(root, 'turn-end', { session: 'planner', host: 'codex' });
+      const planning = (run(['session', '--root', root, '--session', 'planner']).planning ?? [])
+        .map(({ path: file, revision, current, intent }) => ({ path: file, revision, current, intent }));
+      return { planning, workPlans: fs.existsSync(path.join(root, '.craft/state/plans')) };
+    },
     'lookup-default': root => lookup(root),
     'lookup-enabled': root => lookup(root, enabled),
     'lookup-unindexed': root => {
