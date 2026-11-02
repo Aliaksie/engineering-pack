@@ -5,8 +5,10 @@ telemetry is on by default for `craft` commands, hooks and the status line. It d
 pack operations, never the quality of the engineering result, and it makes no model calls.
 
 On hook-capable hosts the engineering, stories and review packages declare observational
-hooks; delivery records the same event through its routing and checkpoint hooks. They
-record one `host.hook` event per hook and never decide, inject context or block. A direct
+hooks; delivery records the same event through its routing and checkpoint hooks. They never
+decide, inject context or block. Observation records one `host.hook` event at session start
+and compaction, and any input it could not read in full; a prompt, tool call or turn end is
+recorded once, by the hook that acts on it, not again by every installed package. A direct
 command records its own operation but does not prove that hooks run.
 
 ## What is recorded

@@ -105,7 +105,8 @@ Carry the chosen evidence/execution approach and checkpoint boundary from planni
 when risk, evidence or phase changes; do not poll model/session advice every turn. Use
 `craft-engineering-foundations` for bounded batching, worker returns and continuation detail.
 
-Exercise the acceptance conditions with real checks. Structural validity does not establish
+Exercise the acceptance conditions with real checks, sized to the boundary and the consumer's
+verification policy as in `craft-delivery-apply-change`. Structural validity does not establish
 user-facing quality: review presentation or usefulness when the declared artifact criteria
 require it. Update inaccurate maintained context through `craft-delivery-maintain-context`. Use `craft-delivery-review-code` for a requested or
 risk-justified review, keeping its scope aligned with the current changes. Selecting independent

@@ -44,7 +44,7 @@ A hook declaration names a normalized event, a tool scope and the native handler
 |---|---|
 | `deliver` | Routing hints, checkpoints, service metadata and hint reuse |
 | `review-read-only` | Read-only review publication guard (shell scope) |
-| `observe` | Lifecycle telemetry only: no decision, no context, nonblocking on any failure |
+| `observe` | Lifecycle telemetry only, at session start, compaction and unread input: no decision, no context, nonblocking on any failure |
 
 Hooks and native tools run in the bundled `craft` executable installed under the package's
 `support/native-bin/`. A registered hook command selects it with shell builtins and falls back

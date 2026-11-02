@@ -46,6 +46,10 @@ work is useful when it clarifies behavior, not a required artifact for every edi
 failure, permission, compatibility or concurrency cases when those risks actually change.
 Use each check's real arguments and working directory, preserve its exit status and separate
 pre-existing failures from regressions.
+Size checks to the boundary: focused checks for the changed behavior while working and
+before intermediate commits, the declared full checks once at hand-off, such as before a pull
+request. Follow the consumer's stated verification policy. When a pre-commit hook or CI owns
+the full checks, do not repeat them locally; report them as left to that hook or CI, not passed.
 
 Inspect the final diff for accidental scope, obsolete comments and changed user-facing facts.
 Use `craft-delivery:maintain-context` where documentation became inaccurate and
