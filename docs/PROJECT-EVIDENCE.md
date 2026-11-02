@@ -40,6 +40,12 @@ craft locate --root . --outline docs/guide.md
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
 
+A qualified `--declaration` or `--callers` value (`Type.method`, `Type::method`, `module::fn`,
+`Type#method`; a trailing `()` is dropped) matches its last segment: the index stores call sites
+by the called name, not by the resolved receiver, so rows are every match of that name and
+`route.name` and `route.qualifier` say the qualifier was not resolved. A qualified value that does
+not end in a name is refused.
+
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
 verified evidence. In-scope sources the index cannot answer for are its gaps: pending or failed
 extraction, a source changed since it was cited, or a candidate in a language the question's
