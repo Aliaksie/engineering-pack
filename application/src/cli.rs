@@ -375,6 +375,7 @@ fn route_request<'a>(
         delegate: options.values.contains_key("delegate"),
         task: options.get("task"),
         verification_mode: options.get("verification-mode"),
+        artifact: options.get("artifact"),
     }
 }
 

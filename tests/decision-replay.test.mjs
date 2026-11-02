@@ -18,8 +18,10 @@ function replay(t, title, cases, observe) {
   for (const { id, expected, current } of cases) {
     const observed = observe(id);
     assert.deepEqual(observed, current, `${id}: decision changed; update current deliberately`);
-    // The prompt corpus also records the skills a hint names; expectations name the intent only.
-    const relevant = Object.fromEntries(Object.keys(expected).map(key => [key, observed[key]]));
+    // The prompt corpus also records the skills a hint names; expectations name the intent and
+    // optionally the leading workflow, the first skill the hint names.
+    const derived = { ...observed, workflow: observed.skills?.[0] ?? null };
+    const relevant = Object.fromEntries(Object.keys(expected).map(key => [key, derived[key]]));
     if (JSON.stringify(relevant) === JSON.stringify(expected)) {
       matched++;
       continue;

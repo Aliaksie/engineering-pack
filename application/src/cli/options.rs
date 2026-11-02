@@ -64,6 +64,7 @@ const OPTIONS: &[&str] = &[
     "bundle",
     "budget-bytes",
     "verification-mode",
+    "artifact",
     "json",
     "verbose",
     "max-output-bytes",

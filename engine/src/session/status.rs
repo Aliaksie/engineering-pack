@@ -329,6 +329,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             delegate: false,
             task: None,
             verification_mode: None,
+            artifact: None,
         },
     )?["checks"]
         .clone();
@@ -779,6 +780,7 @@ pub fn needs(input: &Value, settings: &Value, state: Option<&Value>, saved: &Val
                 delegate: false,
                 task: None,
                 verification_mode: task["verificationMode"].as_str(),
+                artifact: None,
             },
         )
     });

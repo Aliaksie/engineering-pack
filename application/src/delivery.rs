@@ -123,6 +123,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 delegate: false,
                 task: None,
                 verification_mode: None,
+                artifact: plan.artifact,
             };
             let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;

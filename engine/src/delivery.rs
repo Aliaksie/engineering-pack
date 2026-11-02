@@ -23,6 +23,8 @@ pub struct Facts<'a> {
 #[derive(Debug, PartialEq)]
 pub struct Plan {
     pub intent: Option<&'static str>,
+    /// What a prompt asks to produce when it decides the workflow: `spec-audit`, `adr`.
+    pub artifact: Option<&'static str>,
     pub invalidate_hint: bool,
     pub services: bool,
     pub save_checkpoint: bool,
@@ -35,12 +37,17 @@ pub struct Plan {
 /// What a lifecycle fact asks for under the effective `settings`. Checkpoints are saved at
 /// turn completion and before context changes, never after each tool call.
 pub fn plan(facts: &Facts, settings: &Value) -> Plan {
-    let intent = if !facts.context_supported {
-        None
+    let (intent, artifact) = if !facts.context_supported {
+        (None, None)
     } else if facts.edit && settings["routing"]["editHints"] == true {
-        Some("implement")
+        (Some("implement"), None)
     } else {
-        facts.prompt.and_then(prompt::intent)
+        facts
+            .prompt
+            .and_then(prompt::request)
+            .map_or((None, None), |request| {
+                (Some(request.intent), request.artifact)
+            })
     };
     let checkpoint = facts.session && settings["checkpoint"]["enabled"] == true;
     let services = settings["services"]
@@ -48,6 +55,7 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
         .is_some_and(|s| !s.is_empty());
     Plan {
         intent,
+        artifact,
         invalidate_hint: facts.session
             && settings["routing"]["dedupeHints"] == true
             && (facts.started || facts.context_changing || facts.context_restored),

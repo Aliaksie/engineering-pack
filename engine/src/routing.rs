@@ -204,6 +204,8 @@ pub struct Request<'a> {
     /// A task to read through the configured task service.
     pub task: Option<&'a str>,
     pub verification_mode: Option<&'a str>,
+    /// What the request produces when it decides the workflow: `spec-audit`, `adr`.
+    pub artifact: Option<&'a str>,
 }
 
 /// The routing plan for one request: guidance to load, execution, checks and operations.
@@ -219,6 +221,23 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
         return Err(
             "verificationMode requires verify intent and manual, automation or test-code".into(),
         );
+    }
+    if let Some(artifact) = request.artifact {
+        if !catalog::lists(catalog, "artifacts", artifact) {
+            return Err(format!("unknown artifact: {artifact}"));
+        }
+        let selects = |entry: &Value, dimension: &str, value: &str| {
+            entry["when"][dimension]
+                .as_array()
+                .is_some_and(|values| values.iter().any(|v| v == value))
+        };
+        if !catalog::entries(catalog)
+            .any(|entry| selects(entry, "intents", intent) && selects(entry, "artifacts", artifact))
+        {
+            return Err(format!(
+                "artifact {artifact} does not apply to intent {intent}"
+            ));
+        }
     }
     let mut changed: Vec<String> = Vec::new();
     for file in request.files {
@@ -280,6 +299,7 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
             settings,
             risks: request.risks,
             verification_mode: request.verification_mode,
+            artifact: request.artifact,
         },
         catalog,
     );
@@ -398,6 +418,9 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
         "skillAvailability": "not-verified",
         "execution": execution,
     });
+    if let Some(artifact) = request.artifact {
+        plan["artifact"] = json!(artifact);
+    }
     if intent == "verify" {
         plan["taskBoundary"] = json!({
             "kind": "testing-only",

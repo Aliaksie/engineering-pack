@@ -12,6 +12,11 @@ craft route --root examples/project --intent review --file services/orders/Order
 Intents: `implement`, `plan`, `review`, `story`, `investigate`, `locate`, `research`,
 `status`, `verify`, `explore`, `run-check`. An unknown intent is an error.
 
+`--artifact` names what the request produces when that decides the workflow: `spec-audit`
+(assess a specification; `story`) or `adr` (record a decision; `plan`). Without it, `story`
+leads with the story workflow and `plan` with change planning. An artifact that does not
+apply to the intent is an error. Prompt hints set it from the request.
+
 The result contains:
 
 - a [loading plan](PLAYBOOKS.md): workflow, practices and independent language, runtime,
@@ -87,7 +92,9 @@ later change request turns a lookup into `implement`, and statements, chat or qu
 about the conversation get no hint. The words are English and matched deterministically;
 an unrecognized request simply gets none.
 
-For requests that create or assess something, what they are about decides the intent:
+For requests that create, change or assess something, what they are about decides the
+intent. Feedback and reading requests ("any feedback…", "look at the diff…") are reviews when
+they name a change and otherwise follow the same table:
 
 | About | Create ("write", "draft", "prepare") | Assess ("review", "compare", "what…") |
 |---|---|---|
@@ -96,7 +103,7 @@ For requests that create or assess something, what they are about decides the in
 | Tests, scenarios, coverage | `verify` | `verify` for questions, `review` for review |
 | ADR, decision, options, trade-offs | `plan` | `plan` |
 | Exploratory charter | `explore` | — |
-| Report (bug report) | no hint | no hint |
+| Report, message, notes, summary | no hint | no hint |
 
 Identical hints are suppressed for up to 15 minutes (`routing.dedupeHints`); session start
 and compaction reset this. Suppression never blocks work.
