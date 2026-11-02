@@ -4,7 +4,7 @@ use crate::syntax::{self, Anchor, Fact};
 use craft_engine::{Extraction, identity};
 use tree_sitter::Node;
 
-pub const PROVIDER: &str = "rust-tree-sitter-0.24.2/v1";
+pub const PROVIDER: &str = "rust-tree-sitter-0.24.2/v2";
 
 fn declaration(kind: &str) -> Option<&'static str> {
     match kind {
@@ -59,6 +59,34 @@ fn callee(node: Node) -> Option<Node> {
         "generic_function" => callee(node.child_by_field_name("function")?),
         _ => None,
     }
+}
+
+/// A path to a function used as a value, `and_then(prompt::request)` or `let f = a::f;`: its
+/// name token. Only a lowercase last segment counts, so enum variants, constants and types,
+/// which Rust spells capitalized, are not taken for functions. A bare identifier is left out:
+/// it is far more often a local value than a function.
+fn reference<'a>(node: Node<'a>, source: &str) -> Option<Node<'a>> {
+    if node.kind() != "scoped_identifier" {
+        return None;
+    }
+    let parent = node.parent()?;
+    let value = match parent.kind() {
+        "arguments"
+        | "array_expression"
+        | "tuple_expression"
+        | "return_expression"
+        | "reference_expression" => true,
+        "let_declaration" => parent.child_by_field_name("value") == Some(node),
+        "field_initializer" => parent.child_by_field_name("value") == Some(node),
+        "assignment_expression" => parent.child_by_field_name("right") == Some(node),
+        _ => false,
+    };
+    let name = node.child_by_field_name("name")?;
+    let function = source[name.byte_range()]
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_lowercase() || c == '_');
+    (value && function && name.kind() == "identifier").then_some(name)
 }
 
 /// `name(` inside a macro invocation's arguments, outside attributes and macro definitions.
@@ -147,6 +175,11 @@ pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
             } else {
                 None
             };
+            let (name, kind) = match (name, reference(node, source)) {
+                (Some(name), _) => (Some(name), "rust:invokes-syntax"),
+                (None, Some(name)) => (Some(name), "rust:references-syntax"),
+                (None, None) => (None, ""),
+            };
             if let Some(name) = name {
                 let anchor = Anchor {
                     range: name.byte_range(),
@@ -154,7 +187,7 @@ pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
                 };
                 let name = source[name.byte_range()].to_string();
                 return Some(Fact {
-                    kind: "rust:invokes-syntax",
+                    kind,
                     target: Some(name.clone()),
                     name,
                     container: container(path, node, source),
@@ -190,6 +223,29 @@ mod tests {
                 (e.name.as_str(), owner.map(|o| o.name.as_str()))
             })
             .collect()
+    }
+
+    #[test]
+    fn function_paths_used_as_values_are_references_not_calls() {
+        let source = b"fn run() {\n    let a = x.and_then(prompt::request);\n    let f = self::plan;\n    let s = S { h: a::handle, k: Kind::Callers };\n    go(MAX::LIMIT, crate::Ty, &b::check);\n    prompt::request(x);\n}\n";
+        let result = extract("lib.rs", source).unwrap();
+        assert_eq!(
+            rows(&result, "rust:references-syntax"),
+            [
+                ("request", Some("run")),
+                ("plan", Some("run")),
+                ("handle", Some("run")),
+                ("check", Some("run"))
+            ]
+        );
+        assert_eq!(
+            rows(&result, "rust:invokes-syntax"),
+            [
+                ("and_then", Some("run")),
+                ("go", Some("run")),
+                ("request", Some("run"))
+            ]
+        );
     }
 
     #[test]

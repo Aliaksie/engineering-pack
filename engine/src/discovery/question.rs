@@ -53,7 +53,15 @@ impl Ask {
                     "rust:declares-type",
                 ],
             ),
-            Ask::Callers => ("name", &["java:invokes-syntax", "rust:invokes-syntax"]),
+            Ask::Callers => (
+                "name",
+                &[
+                    "java:invokes-syntax",
+                    "java:references-syntax",
+                    "rust:invokes-syntax",
+                    "rust:references-syntax",
+                ],
+            ),
             Ask::Imports => (
                 "target",
                 &[
@@ -89,7 +97,14 @@ impl Ask {
 
 pub struct Question {
     pub ask: Ask,
+    /// The value as asked.
     pub value: String,
+    /// What the index and literal search match: the value, or for a qualified declaration or
+    /// callers value (`Type.method`, `Type::method`, `module::fn`) its last segment.
+    pub name: String,
+    /// The qualifier left off `name`. Stored evidence keeps only the bare name, so rows are
+    /// every match by name and the qualifier stays unresolved.
+    pub qualifier: Option<String>,
     /// Normalized relative scopes; `.` is the whole root.
     pub scopes: Vec<String>,
     /// Rows per page, and the evidence ID a continued page starts after.
@@ -143,6 +158,8 @@ pub fn question(input: &Value) -> Result<Question, String> {
         return Ok(Question {
             ask,
             value: file.clone(),
+            name: file.clone(),
+            qualifier: None,
             scopes: vec![file],
             limit,
             after,
@@ -151,13 +168,48 @@ pub fn question(input: &Value) -> Result<Question, String> {
     if scopes.is_empty() || scopes.iter().any(|s| s == ".") {
         scopes = vec![".".into()];
     }
+    let (name, qualifier) = match ask {
+        Ask::Declaration | Ask::Callers => qualified(&value)?,
+        _ => (value.clone(), None),
+    };
     Ok(Question {
         ask,
         value,
+        name,
+        qualifier,
         scopes,
         limit,
         after,
     })
+}
+
+/// Split a declaration or callers value at its last `::`, `.` or `#` into the bare name the
+/// evidence stores and its qualifier; a trailing `()` is dropped. A qualified value must end
+/// in a name, or no lookup could match it.
+fn qualified(value: &str) -> Result<(String, Option<String>), String> {
+    let value = value.strip_suffix("()").unwrap_or(value);
+    let split = ["::", ".", "#"]
+        .iter()
+        .filter_map(|separator| value.rfind(separator).map(|at| (at, at + separator.len())))
+        .max();
+    let Some((end, start)) = split else {
+        return Ok((value.to_string(), None));
+    };
+    let (qualifier, name) = (&value[..end], &value[start..]);
+    let identifier = name
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || c == '_' || c == '$')
+        && name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '$');
+    if qualifier.is_empty() || !identifier {
+        return Err(
+            "a qualified value must end in a name, as in Type.method, Type::method or module::fn"
+                .into(),
+        );
+    }
+    Ok((name.to_string(), Some(qualifier.to_string())))
 }
 
 /// Whether `path` lies in one of the scopes, by whole path components.
@@ -267,6 +319,10 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
         ("scopes".into(), json!(question.scopes)),
         ("reason".into(), json!(reason)),
     ]);
+    if let Some(qualifier) = &question.qualifier {
+        route.insert("name".into(), json!(question.name));
+        route.insert("qualifier".into(), json!(qualifier));
+    }
     if !detail.is_null() {
         route.insert("detail".into(), detail);
     }
@@ -279,7 +335,7 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
 pub fn literal(question: &Question, paths: Option<&[String]>) -> Value {
     let term = match question.ask {
         Ask::Outline => "#",
-        _ => question.value.as_str(),
+        _ => question.name.as_str(),
     };
     match paths {
         Some(paths) => json!({"terms": [term], "paths": paths, "maxFiles": paths.len().max(1)}),
@@ -324,6 +380,66 @@ mod tests {
         ] {
             assert!(question(&invalid).is_err(), "{invalid}");
         }
+    }
+
+    #[test]
+    fn qualified_declarations_and_callers_match_their_last_segment() {
+        let parts = |ask_name: &str, value: &str| {
+            let q = ask(json!({"ask": ask_name, "value": value}));
+            (q.name, q.qualifier)
+        };
+        let some = |name: &str, qualifier: &str| (name.to_string(), Some(qualifier.to_string()));
+        assert_eq!(
+            parts("callers", "DiscountPolicy.applyDiscount"),
+            some("applyDiscount", "DiscountPolicy")
+        );
+        assert_eq!(
+            parts("callers", "prompt::request"),
+            some("request", "prompt")
+        );
+        assert_eq!(
+            parts("declaration", "crate::delivery::plan()"),
+            some("plan", "crate::delivery")
+        );
+        assert_eq!(parts("callers", "Order#total"), some("total", "Order"));
+        assert_eq!(
+            parts("callers", "com.shop.Policy.apply"),
+            some("apply", "com.shop.Policy")
+        );
+        assert_eq!(parts("callers", "Vec::<u8>::new"), some("new", "Vec::<u8>"));
+        assert_eq!(parts("callers", "run()"), ("run".into(), None));
+        assert_eq!(parts("callers", "run"), ("run".into(), None));
+        // Imports and sections keep their dots.
+        assert_eq!(parts("imports", "./state.js"), ("./state.js".into(), None));
+        assert_eq!(
+            parts("section", "Release 0.0.3"),
+            ("Release 0.0.3".into(), None)
+        );
+        for invalid in ["Type.", "::run", "Type::<T>", "a.b-c", ".run"] {
+            assert!(
+                question(&json!({"ask": "callers", "value": invalid})).is_err(),
+                "{invalid}"
+            );
+        }
+        let q = ask(json!({"ask": "callers", "value": "prompt::request", "paths": ["src"]}));
+        let routed = route(&q, &Coverage::default());
+        assert_eq!(
+            (&routed["value"], &routed["name"], &routed["qualifier"]),
+            (
+                &json!("prompt::request"),
+                &json!("request"),
+                &json!("prompt")
+            )
+        );
+        assert_eq!(
+            literal(&q, None),
+            json!({"terms": ["request"], "paths": ["src"]})
+        );
+        let plain = route(
+            &ask(json!({"ask": "callers", "value": "run"})),
+            &Coverage::default(),
+        );
+        assert!(plain.get("name").is_none() && plain.get("qualifier").is_none());
     }
 
     #[test]

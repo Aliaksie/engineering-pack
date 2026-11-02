@@ -35,10 +35,16 @@ craft locate --root . --outline docs/guide.md
 | Question | Matches | Answered from |
 |---|---|---|
 | `--declaration <name>` | declared name | JavaScript, Java, Rust |
-| `--callers <name>` | invoked method name, with its enclosing declaration | Java, Rust |
+| `--callers <name>` | invoked method name, or a function passed as a value (a Java method reference, a lowercase Rust path such as `prompt::request` used as a value), with its enclosing declaration; a bare identifier passed as a value is not matched | Java, Rust |
 | `--imports <target>` | import target as spelled; one full path per Rust `use` leaf | JavaScript, Java, Rust |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
+
+A qualified `--declaration` or `--callers` value (`Type.method`, `Type::method`, `module::fn`,
+`Type#method`; a trailing `()` is dropped) matches its last segment: the index stores call sites
+by the called name, not by the resolved receiver, so rows are every match of that name and
+`route.name` and `route.qualifier` say the qualifier was not resolved. A qualified value that does
+not end in a name is refused.
 
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
 verified evidence. In-scope sources the index cannot answer for are its gaps: pending or failed

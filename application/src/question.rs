@@ -121,7 +121,7 @@ fn observe(
         .collect();
     let mut result = store.query(&Query {
         field,
-        value: &question.value,
+        value: &question.name,
         after: &question.after,
         limit: question.limit,
         source: None,
@@ -193,6 +193,12 @@ pub fn text(result: &Value) -> String {
         detail => text.push_str(&format!("; {}", shown(detail))),
     }
     text.push('\n');
+    if let Some(qualifier) = route["qualifier"].as_str() {
+        text.push_str(&format!(
+            "matched by name {}; qualifier {qualifier} not resolved, so rows are every match of that name\n",
+            shown(&route["name"])
+        ));
+    }
     let literal = |text: &mut String, search: &Value, label: &str| {
         let matches = search["matches"].as_array().map_or(&[][..], Vec::as_slice);
         text.push_str(&format!(

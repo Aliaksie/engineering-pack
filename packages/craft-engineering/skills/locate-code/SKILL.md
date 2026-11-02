@@ -19,7 +19,8 @@ For a structural question, ask it instead of a term: `--declaration <name>`, `--
 usual. When the project enables evidence, Craft answers from verified evidence and searches the
 sources it does not cover literally; otherwise it searches literally. The first output line names
 the route and any gaps. Treat "absent within this coverage" as absence; any other empty answer is
-not. Names are matched exactly as spelled; text inside bodies or prose stays a `--term` search.
+not. Names are matched exactly as spelled; a qualified name (`Type.method`, `module::fn`) matches
+its last segment on any receiver. Text inside bodies or prose stays a `--term` search.
 
 With a task already bound by `task-start`, pass the verified `--session` id to reuse
 current packets; no per-lookup task JSON is needed. Without a binding, use explicit session

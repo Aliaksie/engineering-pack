@@ -29,6 +29,7 @@ pub fn kinds(provider: &str) -> &'static [&'static str] {
             "java:imports",
             "java:imports-static",
             "java:invokes-syntax",
+            "java:references-syntax",
         ],
         crate::markdown::PROVIDER => &["md:section"],
         crate::rust::PROVIDER => &[
@@ -39,6 +40,7 @@ pub fn kinds(provider: &str) -> &'static [&'static str] {
             "rust:declares-type",
             "rust:imports",
             "rust:invokes-syntax",
+            "rust:references-syntax",
         ],
         _ => &[],
     }
@@ -68,12 +70,12 @@ mod tests {
             ),
             (
                 "A.java",
-                "import a.B; import static a.C.d; class A { A() {} void f() { g(); } }",
+                "import a.B; import static a.C.d; class A { A() {} void f() { g(this::f); } }",
             ),
             ("a.md", "# Title\n"),
             (
                 "a.rs",
-                "use a::{b, c}; mod m; macro_rules! n { () => {} } const C: u8 = 1; struct S; fn f() { g(); n!(h()); }",
+                "use a::{b, c}; mod m; macro_rules! n { () => {} } const C: u8 = 1; struct S; fn f() { g(a::f); n!(h()); }",
             ),
         ] {
             let extraction = extract(path, source.as_bytes()).unwrap();

@@ -504,6 +504,24 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual([rust.route.answeredBy, rust.results.map(row => [row.kind, row.line, row.container.name])],
     ['intelligence', [['rust:invokes-syntax', 3, 'run']]]);
   assert.deepEqual(ask('--imports', 'crate::net::ping', '--path', 'crate').results.map(row => [row.line, row.column]), [[1, 24]]);
+  // A qualified name matches the bare name the evidence stores and says the qualifier is
+  // unresolved, never a confident absence of the spelled form.
+  const qualified = ask('--callers', 'A.ping', '--path', 'src');
+  assert.deepEqual([qualified.route.value, qualified.route.name, qualified.route.qualifier, qualified.results.map(row => row.line), qualified.route.complete],
+    ['A.ping', 'ping', 'A', [3], true]);
+  assert.deepEqual(ask('--callers', 'net::ping', '--path', 'crate').results.map(row => row.line), [3]);
+  assert.match(locate(['--callers', 'A.ping', '--path', 'src']), /^intelligence \(covered\): callers A\.ping in src\nmatched by name ping; qualifier A not resolved/);
+  assert.deepEqual(ask('--declaration', 'lib::ping', '--path', 'native').gapSearch.matches.map(match => match.path), ['native/lib.go']);
+  // A function passed as a value is a caller beside the calls: a Java method reference and a
+  // Rust path in argument position, but not a capitalized path (variant, constant, type).
+  write('refs/B.java', 'class B {\n void each(java.util.List<String> xs) {\n  xs.forEach(A::ping);\n }\n}\n');
+  write('refs/lib.rs', 'fn wire() {\n    let f = x.map(net::ping);\n    go(Kind::Ping);\n}\n');
+  assert.deepEqual(ask('--callers', 'A::ping', '--path', 'refs').results.map(row => [row.path, row.line, row.kind, row.container.name]),
+    [['refs/B.java', 3, 'java:references-syntax', 'each'], ['refs/lib.rs', 2, 'rust:references-syntax', 'wire']]);
+  assert.deepEqual(ask('--callers', 'Ping', '--path', 'refs').results, []);
+  const unnamed = nativeCommand(['locate', '--root', root, '--callers', 'A.', '--path', 'src'], { binary });
+  assert.notEqual(unnamed.exitCode, 0);
+  assert.match(unnamed.stderr + unnamed.stdout, /qualified value must end in a name/);
   // Go source no provider reads is searched literally beside the index answer.
   const combined = ask('--declaration', 'ping', '--path', 'src', '--path', 'native');
   assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { go: 1 } }]);
