@@ -39,8 +39,9 @@ claude plugin validate ./dist/distribution --strict
 
 The workflow validates the version, changelog and tag absence, runs workflow linting, dependency
 security checks, CodeQL and `npm run check`. It builds and tests release `craft` on Linux
-x86-64, macOS Apple Silicon and Windows x86-64. It
-then archives the eight adapter bundles, the distribution and the three native bundles with
+x86-64, macOS Apple Silicon and Windows x86-64, and runs every host's registered hook command
+from its installed export under that host's shells on each of them ([installed
+hosts](CONTRIBUTING.md#installed-hosts)). It then archives the eight adapter bundles, the distribution and the three native bundles with
 `native-release.json`, provenance and `SHA256SUMS`. Before publication it creates GitHub
 artifact attestations for all fifteen assets. It pushes only the `vX.Y.Z` tag, refreshes
 `distribution-next` at that revision and publishes the GitHub Release once all fifteen assets

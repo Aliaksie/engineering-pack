@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "packVersion": "0.0.2",
-  "sourceRevision": "d3d8264ff680a31af3ccb9ae787fd30e7b4c011e",
+  "sourceRevision": "57dd6e43fc00f04001180d8a0a2ccfdcb3b855d8",
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "artifacts": [
     {
@@ -27,7 +27,7 @@
       "platform": "win32",
       "arch": "x64",
       "executable": "x86_64-pc-windows-msvc/native-bin/craft.exe",
-      "sha256": "8d5cc3d080915e1b327c7198e164d357a734fa3f3c52c67ae0d8ff2649a54fd4",
+      "sha256": "fb21b94d845c694a2824e8f4d3a55737a64b029b51a24fb71e3327c518907b47",
       "binaryVersion": "0.0.1",
       "sourceDirty": false
     }

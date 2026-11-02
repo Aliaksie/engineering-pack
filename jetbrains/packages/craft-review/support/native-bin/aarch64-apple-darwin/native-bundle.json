@@ -14,7 +14,7 @@
     "rust-tree-sitter-0.24.2/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "d3d8264ff680a31af3ccb9ae787fd30e7b4c011e",
+  "sourceRevision": "57dd6e43fc00f04001180d8a0a2ccfdcb3b855d8",
   "sourceDirty": false,
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "files": [
