@@ -73,7 +73,7 @@ impl Fixture {
             .unwrap();
         let offer = verified["actionOffer"]["offer"]["id"]
             .as_str()
-            .unwrap()
+            .unwrap_or_else(|| panic!("no offer: {verified}"))
             .to_string();
         Self { repo, offer }
     }

@@ -291,7 +291,10 @@ impl Fixture {
                 &bundle(),
             ])
             .unwrap();
-        let id = proposed["offer"]["id"].as_str().unwrap().to_string();
+        let id = proposed["offer"]["id"]
+            .as_str()
+            .unwrap_or_else(|| panic!("no offer: {proposed}"))
+            .to_string();
         if let Some(decision) = decision {
             self.decide(&id, decision);
         }
