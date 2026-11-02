@@ -207,21 +207,23 @@ fn discover(
         let operation = recorder.start("search.completed", Some(parent));
         let result = search::scan(&root, &search, repositories.as_deref()).map_err(Failure::from);
         let (attributes, failure) = match &result {
+            // A search that stops at its declared bounds or skips binary, oversized or linked
+            // files did what it promised: the result and `complete` report the limit, which
+            // is no failure of the operation.
             Ok(result) => {
-                if result["truncated"] == true
-                    || result["skipped"]
-                        .as_object()
-                        .is_some_and(|m| m.values().any(|v| v.as_u64().unwrap_or(0) > 0))
-                {
-                    recorder.report("discovery", "SEARCH_INCOMPLETE", Map::new(), &operation);
-                }
+                let skipped = result["skipped"]
+                    .as_object()
+                    .is_some_and(|m| m.values().any(|v| v.as_u64().unwrap_or(0) > 0));
                 (
                     Map::from_iter([
                         (
                             "evidenceCount".into(),
                             json!(result["matches"].as_array().unwrap().len()),
                         ),
-                        ("complete".into(), json!(result["truncated"] != true)),
+                        (
+                            "complete".into(),
+                            json!(result["truncated"] != true && !skipped),
+                        ),
                     ]),
                     None,
                 )
