@@ -83,6 +83,25 @@ test('a Codex rollout counts turns and commands, keeps absent values unknown and
   assert.match(markdown(card), /\| Model calls \| unknown \|/);
 });
 
+test('a lookup seen in the transcript and in Craft events counts once', () => {
+  const transcript = { host: 'claude', window: {}, prompts: 1, tools: { Bash: 7 }, reads: [], skills: [],
+    commands: ['craft locate --callers f', 'craft locate --term f', ...Array.from({ length: 5 }, (_, i) => `rg n${i}`)] };
+  const event = (name, operationId, extra = {}) => ({ schemaVersion: 1, name, operationId, outcome: 'success', ...extra });
+  const events = [
+    event('cli.command', 'a', { attributes: { command: 'locate' } }),
+    event('cli.command', 'b', { attributes: { command: 'locate' } }),
+    event('discovery.completed', 'c', { parentOperationId: 'b' }),
+    event('discovery.completed', 'd'),
+  ];
+  const card = audit(transcript, events, null);
+  assert.equal(card.craft.lookups, 3, 'two locate runs plus one discovery outside them');
+  assert.match(markdown(card), /\| Routing, lookups, checkpoints \| 0, 3, 0 \|/);
+  assert.equal(card.signals.some(signal => signal.startsWith('search-without-lookup')), false);
+  // A structural locate the transcript did not capture still counts from its event alone.
+  assert.equal(audit({ ...transcript, commands: transcript.commands.slice(2) }, events.slice(0, 1), null).craft.lookups, 1);
+  assert.ok(audit({ ...transcript, commands: transcript.commands.slice(2) }, [], null).signals.some(signal => signal.startsWith('search-without-lookup')));
+});
+
 test('an unknown transcript is rejected', t => {
   const root = project(t);
   assert.throws(() => readTranscript(write(root, 'x.jsonl', [{ hello: 1 }])), /unrecognized transcript/);

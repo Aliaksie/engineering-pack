@@ -111,12 +111,18 @@ export function audit(transcript, events, report) {
   for (const command of transcript.commands) for (const [, sub, script] of command.matchAll(CRAFT)) increment(craftCommands, sub ?? script);
   const searches = transcript.commands.filter(command => SEARCH.test(command)).length;
   const rereads = transcript.reads && transcript.reads.length - new Set(transcript.reads).size;
-  const lookups = (names['discovery.completed'] ?? 0) + Object.entries(craftCommands).filter(([name]) => LOOKUPS.has(name)).reduce((t, [, n]) => t + n, 0);
+  // A lookup the agent ran can show in the transcript, in Craft's events, or both: count it once.
+  // A literal locate records its discovery as a child of the command, so only discovery outside
+  // a locate command adds to it.
+  const locates = new Set(events.filter(e => e.name === 'cli.command' && e.attributes?.command === 'locate').map(e => e.operationId));
+  const discoveries = events.filter(e => e.name === 'discovery.completed' && !locates.has(e.parentOperationId)).length;
+  const ran = Object.entries(craftCommands).filter(([name]) => LOOKUPS.has(name)).reduce((t, [, n]) => t + n, 0);
+  const lookups = Math.max(ran, locates.size) + discoveries;
   const card = {
     host: transcript.host, window: transcript.window, prompts: transcript.prompts,
     agent: { modelCalls: transcript.modelCalls, tokens: transcript.tokens ?? null, toolCalls: Object.values(transcript.tools).reduce((t, n) => t + n, 0),
       tools: transcript.tools, searchCommands: searches, fileReads: transcript.reads?.length ?? null, rereads, skillsInvoked: transcript.skills, craftCommands },
-    craft: { events: events.length, eventNames: names, hooks: { count: hookMs.length, p50Ms: percentile(hookMs, 0.5), p95Ms: percentile(hookMs, 0.95), maxMs: hookMs.at(-1) ?? null },
+    craft: { events: events.length, eventNames: names, lookups, hooks: { count: hookMs.length, p50Ms: percentile(hookMs, 0.5), p95Ms: percentile(hookMs, 0.95), maxMs: hookMs.at(-1) ?? null },
       guidanceSelected: guidance, failures: diagnostics, features: report?.features ?? null, completeHistory: report?.storage?.completeHistory ?? null,
       retainedFrom: report?.window?.first ?? null },
   };
@@ -132,7 +138,7 @@ function signals(card) {
   for (const [failure, n] of Object.entries(card.craft.failures)) {
     if (card.prompts > 0 && n >= card.prompts) found.push(`repeated-failure: ${failure} ×${n}, at least once per prompt`);
   }
-  if (card.agent.searchCommands >= MANY_SEARCHES && (count('discovery.completed') + Object.keys(card.agent.craftCommands).filter(n => LOOKUPS.has(n)).length) === 0) {
+  if (card.agent.searchCommands >= MANY_SEARCHES && card.craft.lookups === 0) {
     found.push(`search-without-lookup: ${card.agent.searchCommands} shell searches, no Craft lookup`);
   }
   if ((card.agent.rereads ?? 0) >= MANY_REREADS) found.push(`rereads: ${card.agent.rereads} repeated file reads`);
@@ -155,7 +161,7 @@ export function markdown(card) {
     ['Skills invoked by the agent', card.agent.skillsInvoked ? (card.agent.skillsInvoked.join(', ') || 'none') : 'unknown'],
     ['Craft commands run', show(card.agent.craftCommands)], ['Craft events', show(card.craft.events)],
     ['Hooks', `${card.craft.hooks.count} (p50 ${show(card.craft.hooks.p50Ms)} ms, p95 ${show(card.craft.hooks.p95Ms)} ms, max ${show(card.craft.hooks.maxMs)} ms)`],
-    ['Routing, lookups, checkpoints', ['routing.completed', 'discovery.completed', 'checkpoint.saved'].map(n => card.craft.eventNames[n] ?? 0).join(', ')],
+    ['Routing, lookups, checkpoints', [card.craft.eventNames['routing.completed'] ?? 0, card.craft.lookups, card.craft.eventNames['checkpoint.saved'] ?? 0].join(', ')],
     ['Guidance selected', show(card.craft.guidanceSelected)], ['Failures', show(card.craft.failures)],
     ['Complete Craft history', show(card.craft.completeHistory)],
   ];
