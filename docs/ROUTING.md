@@ -89,7 +89,10 @@ a chain, advice stops rather than inventing a stronger model.
 Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
 the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
 later change request turns a lookup into `implement`, and statements, chat or questions
-about the conversation get no hint. The words are English and matched deterministically;
+about the conversation get no hint. Where a result goes ("write them to `ANSWER.md`") never
+decides the intent, what someone else wants ("a teammate wants to change…") is context
+while the question they asked is the request, and text pasted after a question that names
+no request does not decide one either. The words are English and matched deterministically;
 an unrecognized request simply gets none.
 
 For requests that create, change or assess something, what they are about decides the
