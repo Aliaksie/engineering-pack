@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { bencherMetrics } from './bencher-metrics.mjs';
+import { consumer, directoryBytes, git, gitBash, measurer, quote, run, slash, version, windows } from './fixture.mjs';
 
 const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH]';
 const options = { runs: '30', 'cold-runs': '10', hyperfine: 'hyperfine' };
@@ -19,25 +20,12 @@ for (let i = 2; i < process.argv.length; i += 2) {
 const runs = Number(options.runs), coldRuns = Number(options['cold-runs']);
 if (!options.export || !options.fixture || !options.output || !(runs > 0) || !(coldRuns > 0) || fs.existsSync(options.output)) throw new Error(usage);
 
-const windows = process.platform === 'win32';
 const benchmarks = path.dirname(fileURLToPath(import.meta.url));
 const output = path.resolve(options.output), raw = path.join(output, 'raw');
 fs.mkdirSync(raw, { recursive: true });
-// Hyperfine splits -N commands with shell-words, where backslashes escape: hand it forward slashes.
-const slash = file => windows ? file.replaceAll('\\', '/') : file;
-const quote = file => `"${slash(file)}"`;
-const run = (command, args, settings = {}) => {
-  const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...settings });
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed: ${result.stderr || result.error?.message || result.stdout}`);
-  return result.stdout;
-};
-const version = (command, args) => { try { return run(command, args).trim().split('\n')[0]; } catch { return null; } };
-const git = (cwd, ...args) => run('git', ['-c', 'core.autocrlf=false', '-c', 'commit.gpgsign=false', '-c', 'user.name=bench', '-c', 'user.email=bench@example.invalid', ...args], { cwd });
-const directoryBytes = directory => fs.readdirSync(directory, { withFileTypes: true, recursive: true })
-  .filter(entry => entry.isFile()).reduce((total, entry) => total + fs.statSync(path.join(entry.parentPath, entry.name)).size, 0);
 
 // Hosts start hooks through bash; on Windows that is Git Bash, never System32's WSL bash.
-const bash = options.bash ?? (windows ? path.resolve(run('git', ['--exec-path']).trim(), '../../../bin/bash.exe') : 'bash');
+const bash = options.bash ?? gitBash();
 
 const HOOKS = [
   { cell: 'prompt', event: 'before-prompt', payload: { hook_event_name: 'UserPromptSubmit', prompt: 'Implement a guard in src/item-0.mjs and add a test' } },
@@ -55,13 +43,9 @@ const bundle = path.join(plugin, 'support/native-bin', targets[0]);
 const native = path.join(bundle, 'native-bin', windows ? 'craft.exe' : 'craft');
 const manifest = JSON.parse(fs.readFileSync(path.join(bundle, 'native-bundle.json'), 'utf8'));
 
-// Consumer fixture: 200 small sources in a committed Git repository, with Craft enabled.
 const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-performance-'));
-const root = path.join(workspace, 'consumer'), home = path.join(workspace, 'home'), seed = path.join(workspace, 'seed');
-fs.mkdirSync(path.join(root, 'src'), { recursive: true }); fs.mkdirSync(path.join(root, '.craft')); fs.mkdirSync(home);
-for (let n = 0; n < 200; n++) fs.writeFileSync(path.join(root, `src/item-${n}.mjs`), `export function item${n}(value) {\n  return value + ${n};\n}\n`);
-fs.writeFileSync(path.join(root, '.craft/project.json'), '{"formatVersion":1}\n');
-git(root, 'init', '-q'); git(root, 'add', '.'); git(root, 'commit', '-qm', 'fixture');
+const root = consumer(path.join(workspace, 'consumer')), home = path.join(workspace, 'home'), seed = path.join(workspace, 'seed');
+fs.mkdirSync(home);
 const env = { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: slash(plugin), CLAUDE_PROJECT_DIR: slash(root) };
 const payloads = Object.fromEntries(HOOKS.map(({ cell, payload }) => {
   const file = path.join(workspace, `${cell}.json`);
@@ -99,17 +83,8 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
   cells: [], checks: [], failures: [] };
 const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
 
-// `--metrics all` records every metric this platform and execution mode supports and skips the rest
-// (peak memory on Windows; hardware counters under a shell or without counter permissions).
-function measure(name, cwd, args) {
-  const file = `raw/${name.replaceAll('/', '--')}.json`;
-  const result = spawnSync(options.hyperfine, ['--output', 'pipe', '--style', 'basic', '--metrics', 'all', '-n', name,
-    '--export-json', slash(path.join(output, file)), ...args], { cwd, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  process.stdout.write(result.stdout);
-  if (result.status !== 0) results.failures.push(`${name}: hyperfine exited ${result.status}: ${(result.stderr || result.error?.message || '').trim()}`);
-  else results.cells.push({ name, file });
-  save();
-}
+
+const measure = measurer({ hyperfine: options.hyperfine, output, results, save });
 
 // The command the plugin registers for this hook, as Claude runs it: its root substituted, under bash.
 const hookConfig = JSON.parse(fs.readFileSync(path.join(plugin, 'platform-hooks/hooks.json'), 'utf8'));
