@@ -103,6 +103,22 @@ test('session situation replay', t => {
       ['before-tool', 'src/Order.java'], ['after-tool', 'src/Order.java'], ['before-tool', 'src/Order.java']]),
     'edit-routes-after-tool-without-before-tool-context': root => sequence(root, 'cursor', [
       ['before-tool', 'src/Order.java'], ['after-tool', 'src/Order.java']]),
+    'plan-file-is-planning-evidence': root => {
+      const write = text => {
+        deliverHook(root, 'before-tool', { tool: 'edit', file: path.join(root, 'PLAN.md'), session: 'planner', host: 'claude' });
+        fs.writeFileSync(path.join(root, 'PLAN.md'), text);
+        deliverHook(root, 'after-tool', { tool: 'edit', file: path.join(root, 'PLAN.md'), session: 'planner', host: 'claude' });
+      };
+      deliverHook(root, 'before-prompt', { prompt: 'Plan how to cap the discount at 50%. Write the plan to PLAN.md.', session: 'planner', host: 'claude' });
+      write('# Cap the discount\n');
+      write('# Cap the discount\n\n1. Clamp in applyDiscount.\n');
+      const planning = (run(['session', '--root', root, '--session', 'planner']).planning ?? [])
+        .map(({ path: file, revision, current, intent }) => ({ path: file, revision, current, intent }));
+      const line = deliverHook(root, 'session-start', { session: 'next', host: 'claude' }).session
+        .find(text => text.startsWith('Planning evidence of earlier sessions'));
+      const offered = line ? JSON.parse(line.slice(line.indexOf(': [') + 2)).map(entry => entry.path) : [];
+      return { planning, offered, workPlans: fs.existsSync(path.join(root, '.craft/state/plans')) };
+    },
     'lookup-default': root => lookup(root),
     'lookup-enabled': root => lookup(root, enabled),
     'lookup-unindexed': root => {

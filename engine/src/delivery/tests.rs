@@ -161,3 +161,32 @@ fn intent_records_keep_the_files_routed_under_one_intent() {
         assert!(validate_intent(&invalid).is_err(), "{invalid}");
     }
 }
+
+#[test]
+fn a_planning_session_records_its_artifacts_as_evidence_without_reading_them() {
+    let hash = |c: char| c.to_string().repeat(64);
+    let plan = established(&Value::Null, "plan", None).unwrap();
+    let first = planning_recorded(&plan, "PLAN.md", &hash('a')).unwrap();
+    assert_eq!(
+        first["planning"],
+        json!([{"path": "PLAN.md", "contentHash": hash('a'), "revision": 1, "intent": "plan"}])
+    );
+    assert_eq!(validate_intent(&first), Ok(()));
+    assert_eq!(planning_recorded(&first, "PLAN.md", &hash('a')), None);
+    let second = planning_recorded(&first, "PLAN.md", &hash('b')).unwrap();
+    assert_eq!(second["planning"][0]["revision"], 2);
+    assert_eq!(second["planning"][0]["contentHash"], hash('b'));
+    // Outside a planning session a write is no evidence; a later request keeps the evidence.
+    let implement = established(&second, "implement", None).unwrap();
+    assert_eq!(planning_recorded(&implement, "PLAN.md", &hash('c')), None);
+    assert_eq!(implement["planning"], second["planning"]);
+    let mut record = plan;
+    for n in 0..=PLANNING_ARTIFACTS {
+        record = planning_recorded(&record, &format!("plan-{n}.md"), &hash('a')).unwrap();
+    }
+    assert_eq!(validate_intent(&record), Ok(()));
+    assert_eq!(record["planning"][0]["path"], "plan-1.md");
+    let invalid = json!({"formatVersion": 1, "intent": "plan", "files": [],
+        "planning": [{"path": "PLAN.md", "contentHash": "x", "revision": 1, "intent": "plan"}]});
+    assert!(validate_intent(&invalid).is_err());
+}

@@ -16,9 +16,13 @@ fi
 jq -r 'select(.name == "guidance.selected") | .attributes.skill' "$events" | sort | uniq -c >"$out/craft-skills.txt"
 count() { jq -s --arg name "$1" '[.[] | select(.name == $name)] | length' "$events"; }
 present() { if [ -n "$(find "$state" -path "$1" -print -quit 2>/dev/null)" ]; then echo 1; else echo 0; fi; }
+# Artifacts a planning session recorded as its planning evidence (path and content hash only).
+planning=$(find "$state/sessions" -name intent.json -print0 2>/dev/null \
+  | xargs -0 cat 2>/dev/null | jq -s '[.[].planning // [] | .[] | select(.intent == "plan")] | length' 2>/dev/null)
 
 jq -s --slurpfile expected "$expected" \
-  --argjson task_bound "$(present '*/task.json')" --argjson plans "$(present "$state/plans/*/*")" '
+  --argjson task_bound "$(present '*/task.json')" --argjson plans "$(present "$state/plans/*/*")" \
+  --argjson planning "${planning:-0}" '
   def named($n): [.[] | select(.name == $n)];
   [named("guidance.selected")[].attributes.skill] as $selected
   | (named("host.hook") | map(.durationMs // 0) | sort) as $hooks
@@ -34,5 +38,6 @@ jq -s --slurpfile expected "$expected" \
       craft_failures: ([.[] | select(.outcome == "failure")] | length),
       craft_task_bound: $task_bound,
       craft_plan_created: $plans,
+      craft_planning_evidence: $planning,
       expected_skill_selected: (if (($expected[0].expectedSkills // []) - $selected | length) == 0 then 1 else 0 end)
     }' "$events"

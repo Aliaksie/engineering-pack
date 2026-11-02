@@ -15,7 +15,7 @@ export function deliverHook(cwd, lifecycle, { tool = 'other', file = null, promp
   const received = output.hookSpecificOutput?.additionalContext ?? output.additional_context;
   const lines = received ? received.split('\n') : [];
   const isSession = line => line.startsWith('Craft session') || line.startsWith('Unfinished tasks of earlier sessions')
-    || line.startsWith('Open work plans');
+    || line.startsWith('Open work plans') || line.startsWith('Planning evidence of earlier sessions');
   const identity = lines.filter(isSession);
   const text = lines.filter(line => !isSession(line)).join('\n');
   if (!text) return { session: identity, context: undefined };

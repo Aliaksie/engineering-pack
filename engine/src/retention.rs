@@ -94,9 +94,8 @@ fn hex_record(name: &str, prefix: &str, suffix: &str) -> bool {
 fn recognized(name: &str) -> bool {
     matches!(
         name,
-        "manifest.json" | "checkpoint.json" | "task.json" | "host-context.json"
+        "manifest.json" | "checkpoint.json" | "task.json" | "host-context.json" | "intent.json"
     ) || hex_record(name, "routing-", ".json")
-        || hex_record(name, "intent-", ".json")
         || hex_record(name, "routing-", ".json.generation")
         || ["activity-", "workers-", "control-"]
             .iter()

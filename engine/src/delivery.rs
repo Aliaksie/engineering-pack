@@ -163,7 +163,21 @@ pub fn hint_valid(previous: &Value, key: &str, now: f64) -> bool {
 /// How many routed files an intent record keeps; an older file routes again.
 pub const INTENT_FILES: usize = 32;
 
-/// A session intent record `{formatVersion: 1, intent, files}`; `Null` is no record.
+/// How many planning artifacts an intent record keeps; the oldest is dropped first.
+pub const PLANNING_ARTIFACTS: usize = 8;
+
+fn planning_entry(entry: &Value) -> bool {
+    entry["path"].as_str().is_some_and(|p| !p.is_empty())
+        && entry["contentHash"]
+            .as_str()
+            .is_some_and(|h| lower_hex(h, 64))
+        && entry["revision"].as_u64().is_some_and(|r| r >= 1)
+        && entry["intent"] == "plan"
+}
+
+/// A session intent record `{formatVersion: 1, intent, files, planning?}`; `Null` is no
+/// record. `planning` lists the artifacts written while the session planned:
+/// `{path, contentHash, revision, intent: "plan"}`.
 pub fn validate_intent(state: &Value) -> Result<(), String> {
     if state.is_null() {
         return Ok(());
@@ -171,7 +185,14 @@ pub fn validate_intent(state: &Value) -> Result<(), String> {
     let files = state["files"]
         .as_array()
         .is_some_and(|files| files.len() <= INTENT_FILES && files.iter().all(Value::is_string));
-    if state["formatVersion"] != 1 || !state["intent"].is_string() || !files {
+    let planning = match state.get("planning") {
+        None => true,
+        Some(Value::Array(entries)) => {
+            entries.len() <= PLANNING_ARTIFACTS && entries.iter().all(planning_entry)
+        }
+        Some(_) => false,
+    };
+    if state["formatVersion"] != 1 || !state["intent"].is_string() || !files || !planning {
         return Err("invalid session intent state".into());
     }
     Ok(())
@@ -208,7 +229,37 @@ pub fn established(record: &Value, intent: &str, file: Option<&str>) -> Option<V
         let excess = files.len().saturating_sub(INTENT_FILES);
         files.drain(..excess);
     }
-    Some(json!({"formatVersion": 1, "intent": intent, "files": files}))
+    let mut next = json!({"formatVersion": 1, "intent": intent, "files": files});
+    if let Some(planning) = record.get("planning") {
+        next["planning"] = planning.clone();
+    }
+    Some(next)
+}
+
+/// The intent record after `path` was written with content `hash` while the session plans:
+/// the artifact becomes planning evidence, its revision rising with each new content. `None`
+/// outside a planning session or when the content is unchanged. The content is never read.
+pub fn planning_recorded(record: &Value, path: &str, hash: &str) -> Option<Value> {
+    if record["intent"] != "plan" {
+        return None;
+    }
+    let mut entries = record["planning"].as_array().cloned().unwrap_or_default();
+    match entries.iter_mut().find(|e| e["path"] == path) {
+        Some(entry) if entry["contentHash"] == hash => return None,
+        Some(entry) => {
+            entry["contentHash"] = json!(hash);
+            entry["revision"] = json!(entry["revision"].as_u64().unwrap_or(0) + 1);
+        }
+        None => {
+            entries
+                .push(json!({"path": path, "contentHash": hash, "revision": 1, "intent": "plan"}));
+            let excess = entries.len().saturating_sub(PLANNING_ARTIFACTS);
+            entries.drain(..excess);
+        }
+    }
+    let mut next = record.clone();
+    next["planning"] = json!(entries);
+    Some(next)
 }
 
 mod prompt;
