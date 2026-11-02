@@ -20,7 +20,9 @@
     "workflows/deliver-change.md",
     "workflows/ship-change.md"
   ],
-  "standards": [],
+  "standards": [
+    "standards/task-runtime.md"
+  ],
   "evals": [
     "evals/no-tracker.json",
     "evals/session-efficiency.json",

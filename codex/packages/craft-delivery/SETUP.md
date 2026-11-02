@@ -1,7 +1,9 @@
 # First-use setup and session visibility
 
 On first use of Craft Capabilities in a conversation, give one brief setup notice
-alongside the requested work. Reuse it across pack packages; repeat only when setup
+alongside the requested work. Each package's instructions carry the notice facts, so
+ordinary work does not need this page; read it for an explicit setup check or a setup,
+hook or usage question. Reuse the notice across pack packages; repeat only when setup
 changes or the user asks. This guidance works when a skill loads the package
 instructions; installation alone cannot guarantee a welcome message. Never rely
 on an unverified hook to deliver the notice explaining how to activate hooks.
