@@ -61,8 +61,9 @@ export function shellHook(root, args) {
 export function powershellHook(root, args) {
   const windows = nativeTargets.find(({ platform }) => platform === 'win32').target;
   return `$r = "${root}"; $b = if ($env:CRAFT_NATIVE_BINARY) { $env:CRAFT_NATIVE_BINARY } else { "$r\\${executable(windows).replaceAll('/', '\\')}" }; `
-    // An executable that cannot start throws instead of setting an exit code.
-    + `if (Test-Path -LiteralPath $b) { $env:CRAFT_PACKAGE_ROOT = $r; $s = 3; try { & $b ${args}; $s = $LASTEXITCODE } catch {}; if ($s -ge 0 -and $s -le 2) { exit $s }; $env:CRAFT_NATIVE_FAILED = '1' }; `
+    // An executable that cannot start throws instead of setting an exit code. A .NET check, not
+    // Test-Path: that cmdlet autoloads a module, about 100 ms on every hook call.
+    + `if ([System.IO.File]::Exists($b)) { $env:CRAFT_PACKAGE_ROOT = $r; $s = 3; try { & $b ${args}; $s = $LASTEXITCODE } catch {}; if ($s -ge 0 -and $s -le 2) { exit $s }; $env:CRAFT_NATIVE_FAILED = '1' }; `
     + `& "$r\\bin\\craft.cmd" ${args}; exit $LASTEXITCODE`;
 }
 function sh(answers) {
