@@ -14,6 +14,10 @@ jobs:
     name: Native
     needs: fast
     uses: ./.github/workflows/native.yml
+  hosts:
+    name: Installed hosts
+    needs: fast
+    uses: ./.github/workflows/hosts.yml
   security:
     name: Security
     needs: fast
@@ -26,7 +30,7 @@ jobs:
       skip-dependencies: true
   release:
     name: Release
-    needs: [fast, native, security]
+    needs: [fast, native, hosts, security]
     if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
