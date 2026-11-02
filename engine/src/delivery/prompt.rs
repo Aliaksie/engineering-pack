@@ -1,7 +1,8 @@
 //! The intent a submitted prompt asks for, from its leading words only. A request is read
 //! clause by clause: courtesy and modal openers are skipped, the first clause that leads
-//! with a known request names the intent, and a later change request turns a lookup or
-//! diagnosis into implementation. For verbs that create or assess, what the request is
+//! with a known request names the intent, and a change request anywhere turns a lookup,
+//! diagnosis or test request into implementation: a test-only route for a requested change
+//! would exclude the change itself. For verbs that create or assess, what the request is
 //! about (code, product artifacts, tests, decisions) names the intent. Statements, chat and
 //! conversation questions name none: a missing hint costs less than a misleading one.
 use crate::values::{js_blank, js_space};
@@ -93,6 +94,9 @@ const LEADS: &[(&[&str], &str)] = &[
     (&["convert"], "implement"),
     (&["upgrade"], "implement"),
     (&["port"], "implement"),
+    // Not a creating verb: what it puts somewhere is code, even "…in the message".
+    (&["include"], "implement"),
+    (&["handle"], "implement"),
     (&["stabilize"], "implement"),
 ];
 
@@ -680,8 +684,10 @@ fn requested(prompt: &str) -> Option<Request> {
             let artifact = artifact(intent, part);
             match &mut found {
                 None => found = Some(Request { intent, artifact }),
+                // "Write a failing test, then fix it": the change includes its tests, while a
+                // testing-only route would exclude the change.
                 Some(Request {
-                    intent: "locate" | "investigate",
+                    intent: "locate" | "investigate" | "verify",
                     ..
                 }) if intent == "implement" => {
                     return Some(Request { intent, artifact });
@@ -880,6 +886,25 @@ mod tests {
             Some("review")
         );
         assert_eq!(intent("Plan it, then implement it"), Some("plan"));
+    }
+
+    #[test]
+    fn a_requested_change_with_a_test_is_implementation_in_either_order() {
+        for prompt in [
+            "Fix the rounding bug and write a regression test",
+            "Write a failing test for the rounding bug, then fix it",
+            "tooling/native-install.mjs: when --current-target is given on an unsupported platform, the error says only \"unsupported current native platform\". Include the detected platform and architecture in the message, and add a test for it. Keep the change minimal.",
+            "Include the order id in the refund log line and add a test",
+            "Handle an empty cart in the discount calculation and cover it with tests",
+        ] {
+            assert_eq!(intent(prompt), Some("implement"), "{prompt}");
+        }
+        // Test work alone keeps its testing-only route.
+        assert_eq!(intent("Add a test for the refund rounding"), Some("verify"));
+        assert_eq!(
+            intent("Write tests for the refund flow, don't change product code"),
+            Some("verify")
+        );
     }
 
     #[test]

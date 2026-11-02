@@ -118,6 +118,9 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
   // `total` is declared twice: its callers may call either one.
   java('Cart', '  long total() { return 1; }\n  long sum(Cart c) { return c.total(); }');
   java('Order', '  long total() { return 2; }');
+  // `charge` is also called from a script no index answers for: the callers row set is open.
+  java('Fee', '  long charge() { return 3; }\n  long twice(Fee f) { return f.charge() * 2; }');
+  fs.writeFileSync(path.join(dir, 'bill.js'), 'export const bill = fee => fee.charge();\n');
   for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
   const hint = (host, prompt) => {
     const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: `answer-${host}-${prompt.length}`, prompt }, dir);
@@ -136,6 +139,7 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
     assert.equal(ambiguous.answer, undefined, host);
     assert.ok(ambiguous.lookup.run, host);
     assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?').answer, undefined, host);
+    assert.equal(hint(host, 'Who calls `Fee.charge`?').answer, undefined, `${host}: a literal match outside the index leaves callers open`);
   }
 });
 

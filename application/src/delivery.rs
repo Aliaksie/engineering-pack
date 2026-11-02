@@ -273,8 +273,8 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     Ok(decision)
 }
 
-/// Index refresh a prompt-time lookup may spend; the prompt waits for it, and sources it
-/// defers are searched literally.
+/// Index refresh all prompt-time lookups of one prompt may spend together; the prompt waits
+/// for it, and sources it defers are searched literally.
 const PROMPT_REFRESH_MS: u64 = 1_000;
 
 /// The cited answer to the structural lookup a prompt asks, or `None` when it asks none or
@@ -288,9 +288,14 @@ fn prompt_answer(
 ) -> Option<Value> {
     let (ask, value) = answer::question(prompt)?;
     let operation = recorder.start("discovery.completed", Some(hook));
+    let started = std::time::Instant::now();
     let lookup = |ask: &str, recorder: &mut Recorder| {
         let input = json!({"ask": ask, "value": value, "paths": [], "limit": answer::ROWS});
-        crate::question::answer(root, &input, PROMPT_REFRESH_MS, |request| {
+        let spent = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        // A later lookup queries the index this prompt just refreshed, so it needs no budget of
+        // its own; one millisecond keeps the refresh bounded rather than unlimited.
+        let refresh = PROMPT_REFRESH_MS.saturating_sub(spent).max(1);
+        crate::question::answer(root, &input, refresh, |request| {
             let context = crate::discovery::Context {
                 root,
                 session: None,
@@ -303,8 +308,10 @@ fn prompt_answer(
         .ok()
     };
     let result = lookup(ask, recorder);
+    // A cold or partial index cannot answer callers, so the declaration lookup would only
+    // add latency to a prompt that gets no answer.
     let declarations = match (ask, &result) {
-        ("callers", Some(_)) => lookup("declaration", recorder),
+        ("callers", Some(result)) if answer::answerable(result) => lookup("declaration", recorder),
         _ => None,
     };
     let answered = result

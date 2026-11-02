@@ -92,6 +92,15 @@ test('discovery correlates cache/search and records bounded failures without inp
   assert.throws(()=>command(root,'locate','--term','PRIVATE_SEARCH_MARKER','--path','missing'));
   assert.ok(readTelemetry(root).some(event=>event.name==='search.completed' && event.outcome==='failure' && event.reasonCode));
 });
+test('a bounded search that skips files reports the limit, not a failure',t=>{
+  const root=fixture(t);
+  fs.writeFileSync(path.join(root,'source.txt'),'BOUNDED_MARKER');
+  fs.writeFileSync(path.join(root,'image.bin'),Buffer.from([0,1,2,0,66,79,85,78,68,69,68]));
+  command(root,'locate','--path','.','--term','BOUNDED_MARKER');
+  const events=readTelemetry(root);
+  assert.deepEqual(events.filter(event=>event.outcome==='failure').map(event=>event.reasonCode),[]);
+  assert.equal(events.find(event=>event.name==='search.completed').attributes.complete,false);
+});
 test('invalid configuration, state and arguments retain original failures and structured reasons',t=>{
   const root=fixture(t);
   fs.writeFileSync(path.join(root,'.craft/project.json'),'PRIVATE_INVALID_JSON');

@@ -174,6 +174,13 @@ fn complete_rows(result: &Value) -> Option<&[Value]> {
     .then_some(rows.as_slice())
 }
 
+/// Whether a lookup `result` can answer at all, before any further lookup is spent on it:
+/// a callers result that is incomplete, empty or too large answers nothing whatever its
+/// declaration says.
+pub fn answerable(result: &Value) -> bool {
+    complete_rows(result).is_some()
+}
+
 /// Whether the source at `path` is named by the qualifier's last segment: `Type` in
 /// `Type.method` names `Type.java`, `module` in `module::fn` names `module.rs` or
 /// `module/mod.rs`.
@@ -251,6 +258,16 @@ pub fn answered(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_complete_bounded_result_is_worth_a_further_lookup() {
+        let row = json!({"path": "src/a.rs", "line": 3, "excerpt": "a()"});
+        let result = |complete: bool, rows: Vec<Value>| json!({"route": {"answeredBy": "intelligence", "complete": complete}, "results": rows, "continuation": null});
+        assert!(answerable(&result(true, vec![row.clone()])));
+        assert!(!answerable(&result(false, vec![row.clone()])));
+        assert!(!answerable(&result(true, vec![])));
+        assert!(!answerable(&result(true, vec![row; ROWS + 1])));
+    }
 
     #[test]
     fn a_lookup_prompt_names_one_question_and_one_code_name() {
