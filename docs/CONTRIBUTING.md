@@ -121,8 +121,8 @@ tracked for `native` rows only.
 
 ### Installed hosts
 
-The **Installed hosts** workflow runs before every release and on manual dispatch, on Linux,
-macOS and Windows. Each host export gets the release `craft`, and each host's registered
+The **Installed hosts** workflow runs before every release, on manual dispatch and on pull
+requests that change it, on Linux, macOS and Windows. Each host export gets the release `craft`, and each host's registered
 routing hook (prompt, shell tool, stop) runs from that installed layout under every shell that
 host uses there: `sh`, `bash` and `zsh` where installed on Linux and macOS; on Windows, Git
 Bash for Claude and Cursor (Cursor's Windows hook shell is undocumented) and Windows PowerShell
