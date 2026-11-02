@@ -95,6 +95,12 @@ while the question they asked is the request, and text pasted after a question t
 no request does not decide one either. The words are English and matched deterministically;
 an unrecognized request simply gets none.
 
+A recognized request establishes the session's intent, also on hosts that cannot show the
+prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
+`ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
+established another intent, once per file until the next request, and only at one tool hook:
+before the tool runs where the host shows context there, otherwise after it.
+
 For requests that create, change or assess something, what they are about decides the
 intent. Feedback and reading requests ("any feedback…", "look at the diff…") are reviews when
 they name a change and otherwise follow the same table:

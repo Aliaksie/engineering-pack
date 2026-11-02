@@ -96,6 +96,7 @@ fn recognized(name: &str) -> bool {
         name,
         "manifest.json" | "checkpoint.json" | "task.json" | "host-context.json"
     ) || hex_record(name, "routing-", ".json")
+        || hex_record(name, "intent-", ".json")
         || hex_record(name, "routing-", ".json.generation")
         || ["activity-", "workers-", "control-"]
             .iter()

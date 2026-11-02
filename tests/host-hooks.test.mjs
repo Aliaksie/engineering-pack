@@ -127,7 +127,8 @@ test('opted-in native hooks reuse only emitted hints and re-emit after compactio
     const capable = HOSTS[host].events['before-prompt'].context;
     assert.equal(first.stdout.includes('Routing hints'), capable, host);
     assert.ok(!next.stdout.includes('Routing hints'), host);
-    if (!capable) assert.ok(only(stateNames(dir), /^$/), host);
+    // A host that cannot show the hint still records the intent the request established.
+    if (!capable) assert.ok(only(stateNames(dir), /^(?:manifest\.json|intent-)/), host);
     else assert.ok(Buffer.byteLength(next.stdout) < Buffer.byteLength(first.stdout));
     const compact = invoke(host, 'craft-delivery', 'checkpoint', { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session' }, dir);
     assert.equal(compact.status, 0, compact.stderr);

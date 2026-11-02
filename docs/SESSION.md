@@ -360,6 +360,7 @@ continuation at milestones rather than relying on a final callback.
       task.json             # active task binding
       activity-<id>.json    # per-task activity, lookups and attempts
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
+      intent-<id>.json      # intent the session's requests established, files routed under it
     telemetry/              # events.jsonl(.1), key.json, captures.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}

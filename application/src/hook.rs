@@ -61,6 +61,17 @@ fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
     table[host]["events"].get(lifecycle).cloned()
 }
 
+/// Whether `lifecycle` is the one tool hook that delivers an edit's context on `host`: before
+/// the tool runs where the host shows context there, otherwise after it.
+pub(crate) fn delivers_edit_context(host: &str, lifecycle: &str) -> bool {
+    let shows = |lifecycle| mapping(host, lifecycle).is_some_and(|m| m["context"] == true);
+    match lifecycle {
+        "before-tool" => shows("before-tool"),
+        "after-tool" => !shows("before-tool") && shows("after-tool"),
+        _ => false,
+    }
+}
+
 /// JSON text with lone UTF-16 surrogate escapes replaced by U+FFFD. JavaScript accepts
 /// them; rejecting the whole payload would hide the rest of the command from policy.
 pub(crate) fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {

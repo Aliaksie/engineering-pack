@@ -70,6 +70,16 @@ test('session situation replay', t => {
     const { answeredBy, reason, complete } = run(['locate', '--root', root, '--callers', 'applyDiscount', '--path', 'src']).route;
     return { answeredBy, reason, complete };
   };
+  // Hook events in one session: the hint each one delivers and how often routing ran.
+  const sequence = (root, host, steps) => {
+    const hints = steps.map(([lifecycle, value]) => {
+      const input = lifecycle === 'before-prompt' ? { prompt: value } : { tool: 'edit', file: path.join(root, value) };
+      return deliverHook(root, lifecycle, { ...input, session: 'sequence', host }).context?.data?.intent ?? null;
+    });
+    const log = path.join(root, '.craft/state/telemetry/events.jsonl');
+    const events = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [];
+    return { hints, routings: events.filter(event => event.name === 'routing.completed').length };
+  };
   const enabled = { formatVersion: 1, evidence: { enabled: true } };
   const situations = {
     'edit-first': root => intent(root, 'edit'),
@@ -80,6 +90,19 @@ test('session situation replay', t => {
         .find(text => text.startsWith('Unfinished tasks of earlier sessions'));
       return { offered: line ? JSON.parse(line.slice(line.indexOf(': [') + 2)).map(task => task.task) : [] };
     },
+    'plan-file-in-plan-session': root => sequence(root, 'claude', [
+      ['before-prompt', 'Plan how to cap the discount at 50%. Write the plan to PLAN.md.'],
+      ['before-tool', 'PLAN.md'], ['after-tool', 'PLAN.md']]),
+    'answer-file-in-lookup-session': root => sequence(root, 'claude', [
+      ['before-prompt', 'Which methods call applyDiscount? Write them to ANSWER.md.'],
+      ['before-tool', 'ANSWER.md'], ['after-tool', 'ANSWER.md']]),
+    'edit-routes-once-per-tool-call': root => sequence(root, 'claude', [
+      ['before-tool', 'src/Order.java'], ['after-tool', 'src/Order.java']]),
+    'implement-session-routes-each-new-file': root => sequence(root, 'claude', [
+      ['before-prompt', 'Fix the rounding in applyDiscount.'],
+      ['before-tool', 'src/Order.java'], ['after-tool', 'src/Order.java'], ['before-tool', 'src/Order.java']]),
+    'edit-routes-after-tool-without-before-tool-context': root => sequence(root, 'cursor', [
+      ['before-tool', 'src/Order.java'], ['after-tool', 'src/Order.java']]),
     'lookup-default': root => lookup(root),
     'lookup-enabled': root => lookup(root, enabled),
     'lookup-unindexed': root => {
