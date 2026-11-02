@@ -15,6 +15,8 @@ const events = root => {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map(JSON.parse) : [];
 };
 
+const BOUNDARIES = ['session-start', 'before-compact', 'after-compact'];
+
 for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini']) {
   test(`${host}: registered standalone ${pkg} observational hooks record lifecycle without delivery effects`, t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engineering observation '));
@@ -63,7 +65,13 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stderr, '');
       assert.equal(result.stdout, '', 'observation must not emit permission decisions or context');
-      const hook = events(root).filter(event => event.name === 'host.hook').at(-1);
+      // A prompt, tool call or turn end is recorded by the handler acting on it, not by observers.
+      const hooks = events(root).filter(event => event.name === 'host.hook');
+      if (!BOUNDARIES.includes(definition.event)) {
+        assert.ok(hooks.every(hook => hook.attributes.lifecycle !== definition.event), `${definition.event} recorded`);
+        continue;
+      }
+      const hook = hooks.at(-1);
       assert.equal(hook.attributes.lifecycle, definition.event);
       assert.equal(hook.host, host);
       assert.equal(hook.attributes.package, pkg);
@@ -72,7 +80,7 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     }
     const recorded = events(root);
     assert.equal(recorded.filter(event => event.name === 'host.hook').length,
-      definitions.filter(definition => HOSTS[host].events[definition.event]).length);
+      definitions.filter(definition => HOSTS[host].events[definition.event] && BOUNDARIES.includes(definition.event)).length);
     assert.ok(recorded.every(event => event.name === 'host.hook'));
     assert.ok(recorded.some(event => typeof event.attributes.contextSupported === 'boolean'));
     assert.ok(!JSON.stringify(recorded).includes('PRIVATE_'));

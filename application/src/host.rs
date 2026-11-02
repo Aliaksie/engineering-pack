@@ -176,6 +176,17 @@ pub fn run(input: &Value) -> Result<Value, String> {
         result["export"] = json!(recorder.finish());
         return Ok(result);
     }
+    // Observation records a session's boundaries; a prompt, tool call or turn end is recorded
+    // once, by the handler that acts on it, not again by every installed package.
+    if observational
+        && facts.input_status == "complete"
+        && !matches!(
+            facts.lifecycle,
+            "session-start" | "before-compact" | "after-compact"
+        )
+    {
+        return Ok(json!({"decision": "allow", "failed": false, "export": recorder.finish()}));
+    }
     let mut decision = json!({"decision": "allow"});
     let mut failed = false;
     let applies = facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell");

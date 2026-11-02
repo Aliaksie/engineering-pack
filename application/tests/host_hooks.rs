@@ -86,20 +86,29 @@ fn view(events: &[Value]) -> Vec<String> {
 }
 
 #[test]
-fn observation_records_the_lifecycle_without_reading_the_project() {
+fn observation_records_session_boundaries_without_reading_the_project() {
     let fixture = project("observe", Some("INVALID"));
-    let result = hook(facts(
-        &fixture.0,
-        "observe",
-        json!({"package": "craft-engineering", "tool": "read", "lifecycle": "after-tool"}),
-    ));
-    assert_eq!(result["decision"], "allow");
-    assert_eq!(result["failed"], false);
-    assert_eq!(result["export"], Value::Null);
+    for lifecycle in [
+        "before-prompt",
+        "before-tool",
+        "after-tool",
+        "turn-end",
+        "session-start",
+    ] {
+        let result = hook(facts(
+            &fixture.0,
+            "observe",
+            json!({"package": "craft-engineering", "tool": "read", "lifecycle": lifecycle}),
+        ));
+        assert_eq!(result["decision"], "allow");
+        assert_eq!(result["failed"], false);
+        assert_eq!(result["export"], Value::Null);
+    }
+    // A routine event is recorded by the handler that acts on it, not by every observer.
     assert_eq!(
         view(&events(&fixture.0)),
         [
-            r#"host.hook<> success {"lifecycle":"after-tool","inputStatus":"complete","decision":"allow","contextSupported":true,"package":"craft-engineering","identityScope":"session"}"#,
+            r#"host.hook<> success {"lifecycle":"session-start","inputStatus":"complete","decision":"allow","contextSupported":true,"package":"craft-engineering","identityScope":"session"}"#,
         ]
     );
     let event = &events(&fixture.0)[0];
@@ -269,7 +278,11 @@ fn hooks_resolve_the_project_from_a_nested_working_directory() {
         .ancestors()
         .any(|a| a.join(".git").exists() || a.join(".craft/project.json").exists())
     {
-        hook(facts(&bare.0, "observe", json!({})));
+        hook(facts(
+            &bare.0,
+            "observe",
+            json!({"lifecycle": "session-start"}),
+        ));
         assert_eq!(events(&bare.0).len(), 1);
     }
 }
@@ -305,11 +318,11 @@ fn a_git_entry_alone_marks_the_project_root() {
     hook(facts(
         &nested,
         "observe",
-        json!({"contextSupported": false}),
+        json!({"contextSupported": false, "lifecycle": "session-start"}),
     ));
     assert_eq!(
         view(&events(&fixture.0))[0],
-        r#"host.hook<> success {"lifecycle":"before-tool","inputStatus":"complete","decision":"allow","contextSupported":false,"package":"craft-review","identityScope":"session"}"#
+        r#"host.hook<> success {"lifecycle":"session-start","inputStatus":"complete","decision":"allow","contextSupported":false,"package":"craft-review","identityScope":"session"}"#
     );
     assert!(!nested.join(".craft").exists());
 }
