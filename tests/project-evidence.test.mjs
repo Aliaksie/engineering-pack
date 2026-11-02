@@ -512,6 +512,13 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual(ask('--callers', 'net::ping', '--path', 'crate').results.map(row => row.line), [3]);
   assert.match(locate(['--callers', 'A.ping', '--path', 'src']), /^intelligence \(covered\): callers A\.ping in src\nmatched by name ping; qualifier A not resolved/);
   assert.deepEqual(ask('--declaration', 'lib::ping', '--path', 'native').gapSearch.matches.map(match => match.path), ['native/lib.go']);
+  // A function passed as a value is a caller beside the calls: a Java method reference and a
+  // Rust path in argument position, but not a capitalized path (variant, constant, type).
+  write('refs/B.java', 'class B {\n void each(java.util.List<String> xs) {\n  xs.forEach(A::ping);\n }\n}\n');
+  write('refs/lib.rs', 'fn wire() {\n    let f = x.map(net::ping);\n    go(Kind::Ping);\n}\n');
+  assert.deepEqual(ask('--callers', 'A::ping', '--path', 'refs').results.map(row => [row.path, row.line, row.kind, row.container.name]),
+    [['refs/B.java', 3, 'java:references-syntax', 'each'], ['refs/lib.rs', 2, 'rust:references-syntax', 'wire']]);
+  assert.deepEqual(ask('--callers', 'Ping', '--path', 'refs').results, []);
   const unnamed = nativeCommand(['locate', '--root', root, '--callers', 'A.', '--path', 'src'], { binary });
   assert.notEqual(unnamed.exitCode, 0);
   assert.match(unnamed.stderr + unnamed.stdout, /qualified value must end in a name/);

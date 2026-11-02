@@ -35,7 +35,7 @@ craft locate --root . --outline docs/guide.md
 | Question | Matches | Answered from |
 |---|---|---|
 | `--declaration <name>` | declared name | JavaScript, Java, Rust |
-| `--callers <name>` | invoked method name, with its enclosing declaration | Java, Rust |
+| `--callers <name>` | invoked method name, or a function passed as a value (a Java method reference, a lowercase Rust path such as `prompt::request` used as a value), with its enclosing declaration; a bare identifier passed as a value is not matched | Java, Rust |
 | `--imports <target>` | import target as spelled; one full path per Rust `use` leaf | JavaScript, Java, Rust |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |

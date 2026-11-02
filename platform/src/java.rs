@@ -3,7 +3,7 @@ use crate::syntax::{self, Anchor, Fact};
 use craft_engine::{Extraction, identity};
 use tree_sitter::Node;
 
-pub const PROVIDER: &str = "java-tree-sitter-0.23.5/v1";
+pub const PROVIDER: &str = "java-tree-sitter-0.23.5/v2";
 
 fn declaration(kind: &str) -> Option<&'static str> {
     match kind {
@@ -74,6 +74,28 @@ pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
                 let name = source[name.byte_range()].to_string();
                 return Some(Fact {
                     kind: "java:invokes-syntax",
+                    target: Some(name.clone()),
+                    name,
+                    container: container(path, node, source),
+                    anchor: Some(anchor),
+                });
+            }
+            // `Type::method`, `obj::method`, `this::method`: the method is passed, not called
+            // here. Constructor references (`Type::new`) name no method.
+            if node.kind() == "method_reference" {
+                let mut cursor = node.walk();
+                let name = node
+                    .named_children(&mut cursor)
+                    .skip(1)
+                    .filter(|n| n.kind() == "identifier")
+                    .last()?;
+                let anchor = Anchor {
+                    range: name.byte_range(),
+                    position: name.start_position(),
+                };
+                let name = source[name.byte_range()].to_string();
+                return Some(Fact {
+                    kind: "java:references-syntax",
                     target: Some(name.clone()),
                     name,
                     container: container(path, node, source),
@@ -161,6 +183,34 @@ mod tests {
                     && e.target.as_deref() == Some("java.util.Collections.*"))
         );
         assert!(extract("Bad.java", b"class Bad { void broken( }").is_err());
+    }
+
+    #[test]
+    fn method_references_are_cited_apart_from_calls() {
+        let source = b"class A { void f(java.util.List<String> xs) { xs.forEach(Policy::apply); xs.map(this::trim).map(String::new); } }";
+        let result = extract("A.java", source).unwrap();
+        let references: Vec<_> = result
+            .evidence
+            .iter()
+            .filter(|e| e.kind == "java:references-syntax")
+            .map(|e| (e.name.as_str(), &source[e.start_byte..e.end_byte]))
+            .collect();
+        assert_eq!(
+            references,
+            [("apply", &b"apply"[..]), ("trim", &b"trim"[..])]
+        );
+        let owner = result
+            .evidence
+            .iter()
+            .find(|e| e.kind == "java:references-syntax")
+            .and_then(|r| {
+                result
+                    .evidence
+                    .iter()
+                    .find(|e| Some(&e.id) == r.container.as_ref())
+            })
+            .unwrap();
+        assert_eq!(owner.name, "f");
     }
 
     #[test]

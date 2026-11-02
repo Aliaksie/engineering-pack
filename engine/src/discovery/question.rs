@@ -53,7 +53,15 @@ impl Ask {
                     "rust:declares-type",
                 ],
             ),
-            Ask::Callers => ("name", &["java:invokes-syntax", "rust:invokes-syntax"]),
+            Ask::Callers => (
+                "name",
+                &[
+                    "java:invokes-syntax",
+                    "java:references-syntax",
+                    "rust:invokes-syntax",
+                    "rust:references-syntax",
+                ],
+            ),
             Ask::Imports => (
                 "target",
                 &[
