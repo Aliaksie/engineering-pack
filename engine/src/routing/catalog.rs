@@ -304,7 +304,10 @@ pub fn validate(catalog: &Value) -> Result {
     strings(&catalog["stackIntents"], "stackIntents", false, |intent| {
         intents.contains(&intent)
     })?;
-    strings(&catalog["artifacts"], "artifacts", true, kebab)?;
+    // Optional: a catalog without artifact workflows names none.
+    if catalog.get("artifacts").is_some() {
+        strings(&catalog["artifacts"], "artifacts", true, kebab)?;
+    }
     mappings(map)?;
     let entries = catalog["entries"]
         .as_array()

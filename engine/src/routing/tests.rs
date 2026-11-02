@@ -376,3 +376,12 @@ fn a_workflow_may_select_only_by_intent_and_artifact() {
         assert!(catalog::validate(&catalog).is_err(), "{when}");
     }
 }
+
+#[test]
+fn a_catalog_without_artifact_workflows_may_omit_artifacts() {
+    let mut catalog = catalog::catalog().unwrap().clone();
+    let entries = catalog["entries"].as_array_mut().unwrap();
+    entries.retain(|entry| entry["when"].get("artifacts").is_none());
+    catalog.as_object_mut().unwrap().remove("artifacts");
+    assert_eq!(catalog::validate(&catalog), Ok(()));
+}

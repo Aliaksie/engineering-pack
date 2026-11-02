@@ -40,7 +40,8 @@ test('authoring resolves catalog targets against registered package skills and r
 
 test('published schema and catalog agree on required contract fields', () => {
   const schema = JSON.parse(fs.readFileSync('schemas/playbook-catalog.schema.json', 'utf8'));
-  assert.deepEqual(Object.keys(catalog).sort(), schema.required.toSorted());
+  assert.deepEqual(schema.required.filter((key) => !Object.hasOwn(catalog, key)), []);
+  assert.deepEqual(Object.keys(catalog).filter((key) => !Object.hasOwn(schema.properties, key)), []);
   const required = schema.$defs.entry.properties.value.required;
   assert.deepEqual(Object.keys(catalog.entries[0].value).sort(), required.toSorted());
   const unknown = Object.keys(catalog.entries[0]).filter((key) => !Object.hasOwn(schema.$defs.entry.properties, key));
