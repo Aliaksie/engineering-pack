@@ -102,7 +102,8 @@ should not cost reading the skill, package instructions and setup first.
 
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
-too, refreshing Project Intelligence for at most one second, and adds `answer`: up to ten
+too, refreshing Project Intelligence for at most one second per prompt (the declaration check
+for callers runs only on a result that could answer and shares that second), and adds `answer`: up to ten
 cited rows (`path:line in method: excerpt`) with the question and scope. It answers only when
 it is certain: coverage is complete, no gap file matched literally, the rows fit the hint,
 and for callers the name is declared exactly once in the project, in the source a qualifier
