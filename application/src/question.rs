@@ -17,13 +17,15 @@ use std::path::Path;
 
 /// Extraction time one routed lookup may spend; sources it defers stay pending and are
 /// searched literally, and a later lookup continues the refresh.
-const REFRESH_MS: u64 = 2_000;
+pub const REFRESH_MS: u64 = 2_000;
 
-/// Answer `input` (`ask`, `value`, `paths`, optional `limit` and `after`). `locate` runs a
-/// literal search request. `route.complete` says whether an empty answer is an absence.
+/// Answer `input` (`ask`, `value`, `paths`, optional `limit` and `after`), refreshing the
+/// index for at most `refresh_ms`. `locate` runs a literal search request. `route.complete`
+/// says whether an empty answer is an absence.
 pub fn answer(
     root: &Path,
     input: &Value,
+    refresh_ms: u64,
     locate: impl FnOnce(&Value) -> Result<Value, Failure>,
 ) -> Result<Value, Failure> {
     let question = question::question(input)?;
@@ -34,7 +36,7 @@ pub fn answer(
     };
     let mut answer = None;
     if coverage.enabled {
-        match observe(&root, &question, &mut coverage) {
+        match observe(&root, &question, refresh_ms, &mut coverage) {
             Ok(result) => answer = result,
             Err(failure) => coverage.unavailable = Some(failure.message),
         }
@@ -68,6 +70,7 @@ pub fn answer(
 fn observe(
     root: &Path,
     question: &Question,
+    refresh_ms: u64,
     coverage: &mut Coverage,
 ) -> Result<Option<Value>, Failure> {
     let database = state::shared(root, "intelligence", true)?.join("project.sqlite");
@@ -79,7 +82,7 @@ fn observe(
         .copied()
         .filter(|provider| kinds(provider).iter().any(|kind| wanted.contains(kind)))
         .collect();
-    let mut budget = Budget::from_input(&json!({"maxDurationMs": REFRESH_MS}))?;
+    let mut budget = Budget::from_input(&json!({"maxDurationMs": refresh_ms}))?;
     let refreshed = crate::evidence::refresh(root, &mut store, &mut budget, &mut |path| {
         if question::within(path, &question.scopes)
             && question.ask.candidate(path)

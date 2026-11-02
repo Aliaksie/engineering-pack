@@ -1,0 +1,435 @@
+//! The structural lookup a prompt asks for in so many words, and the cited answer a prompt
+//! hook may deliver with its routing hint. Both abstain unless they are sure: a wrong answer
+//! in the prompt costs more than none, and the runnable lookup stays in the hint either way.
+use super::prompt::own;
+use crate::values::js_space;
+use serde_json::{Value, json};
+
+/// Words that ask who calls something.
+const CALLERS: &[&str] = &[
+    "call", "calls", "called", "calling", "caller", "callers", "invoke", "invokes", "invoked",
+    "invoking",
+];
+/// Words that ask where something is declared.
+const DECLARATION: &[&str] = &[
+    "declared",
+    "declares",
+    "declaration",
+    "declarations",
+    "defined",
+    "defines",
+    "definition",
+    "definitions",
+];
+
+/// Extensions that make a dotted name a file rather than `Type.member`: `Policy.apply` is
+/// code, `config.json` a file. A method named like an extension reads as a file and asks
+/// nothing.
+const EXTENSIONS: &[&str] = &[
+    "c",
+    "cc",
+    "cfg",
+    "cjs",
+    "conf",
+    "cpp",
+    "cs",
+    "css",
+    "csv",
+    "env",
+    "go",
+    "gradle",
+    "h",
+    "hpp",
+    "htm",
+    "html",
+    "ini",
+    "java",
+    "js",
+    "json",
+    "jsx",
+    "kt",
+    "kts",
+    "lock",
+    "log",
+    "md",
+    "mjs",
+    "php",
+    "properties",
+    "py",
+    "rb",
+    "rs",
+    "scala",
+    "scss",
+    "sh",
+    "sql",
+    "swift",
+    "toml",
+    "ts",
+    "tsx",
+    "txt",
+    "xml",
+    "yaml",
+    "yml",
+];
+
+fn file(name: &str) -> bool {
+    !name.contains("::")
+        && !name.contains('#')
+        && name.rsplit_once('.').is_some_and(|(_, extension)| {
+            EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str())
+        })
+}
+
+/// Most rows an answer delivers; a longer answer stays with the runnable lookup.
+pub const ROWS: usize = 10;
+/// Most bytes of one serialized answer.
+pub const ANSWER_BYTES: usize = 1600;
+const EXCERPT_CHARS: usize = 120;
+
+const USE: &str = "Verified Project Intelligence rows from the current files with complete coverage of this scope: they answer this question without another search";
+
+fn identifier(part: &str) -> bool {
+    part.chars()
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || c == '_' || c == '$')
+        && part
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '$')
+}
+
+/// A token's code name: identifiers joined by `::`, `.` or `#`, optionally called as `()`.
+/// A bare word counts only when it reads as code on its own (quoted, `snake_case` or
+/// `camelCase`); "Checkout" in a sentence is a word, not a symbol.
+fn code_name(token: &str) -> Option<String> {
+    let token = token.trim_start_matches(['(', '[', '{', '"', '\'', '<']);
+    let quoted = token.starts_with('`');
+    let mut core = token.trim_start_matches('`');
+    // Closing punctuation and brackets, but a call's own `()` stays.
+    let core = loop {
+        let trimmed =
+            core.trim_end_matches(['`', '"', '\'', ']', '}', '>', '.', ',', ';', ':', '!', '?']);
+        match trimmed.strip_suffix(')') {
+            Some(rest) if !trimmed.ends_with("()") => core = rest,
+            _ => break trimmed,
+        }
+    };
+    let called = core.ends_with("()");
+    let name = core.strip_suffix("()").unwrap_or(core);
+    let qualified = name.contains("::") || name.contains(['.', '#']);
+    let mut parts = name.split("::").flat_map(|part| part.split(['.', '#']));
+    if name.is_empty() || file(name) || !parts.all(identifier) {
+        return None;
+    }
+    let chars: Vec<char> = name.chars().collect();
+    let camel = chars
+        .windows(2)
+        .any(|pair| pair[0].is_lowercase() && pair[1].is_uppercase());
+    (quoted || called || qualified || camel || name.contains('_')).then(|| name.to_string())
+}
+
+/// The structural lookup a prompt asks for: `callers` or `declaration` and the one code name
+/// it names. Both questions, neither, or more than one name ask nothing.
+pub fn question(prompt: &str) -> Option<(&'static str, String)> {
+    let text = own(prompt);
+    let words: Vec<String> = text
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect();
+    let asks = |set: &[&str]| words.iter().any(|word| set.contains(&word.as_str()));
+    let ask = match (asks(CALLERS), asks(DECLARATION)) {
+        (true, false) => "callers",
+        (false, true) => "declaration",
+        _ => return None,
+    };
+    let mut names = Vec::new();
+    for name in text.split(js_space).filter_map(code_name) {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    match <[String; 1]>::try_from(names) {
+        Ok([name]) => Some((ask, name)),
+        Err(_) => None,
+    }
+}
+
+/// The rows of a lookup result that answers for its whole scope: from verified evidence,
+/// complete coverage, no literal gap match left to interpret and no further page.
+fn complete_rows(result: &Value) -> Option<&[Value]> {
+    let route = &result["route"];
+    let indexed = matches!(
+        route["answeredBy"].as_str(),
+        Some("intelligence" | "intelligence+locate")
+    );
+    let gaps = result["gapSearch"]["matches"]
+        .as_array()
+        .is_some_and(|matches| !matches.is_empty());
+    let rows = result["results"].as_array()?;
+    (indexed
+        && route["complete"] == true
+        && !gaps
+        && result["continuation"].is_null()
+        && (1..=ROWS).contains(&rows.len()))
+    .then_some(rows.as_slice())
+}
+
+/// Whether the source at `path` is named by the qualifier's last segment: `Type` in
+/// `Type.method` names `Type.java`, `module` in `module::fn` names `module.rs` or
+/// `module/mod.rs`.
+fn named_by(path: &str, qualifier: &str) -> bool {
+    let last = ["::", ".", "#"]
+        .iter()
+        .filter_map(|separator| qualifier.rfind(separator).map(|at| at + separator.len()))
+        .max()
+        .map_or(qualifier, |start| &qualifier[start..]);
+    let mut parts = path.rsplit('/');
+    let file = parts.next().unwrap_or_default();
+    let stem = file.split_once('.').map_or(file, |(stem, _)| stem);
+    let stem = match stem {
+        "mod" | "index" | "__init__" => parts.next().unwrap_or_default(),
+        stem => stem,
+    };
+    stem == last
+}
+
+fn line(row: &Value) -> Option<String> {
+    let path = row["path"].as_str()?;
+    let number = row["line"].as_u64()?;
+    let within = row["container"]["name"]
+        .as_str()
+        .map_or(String::new(), |name| format!(" in {name}"));
+    let excerpt = row["excerpt"].as_str().unwrap_or_default().trim();
+    let excerpt = match excerpt.char_indices().nth(EXCERPT_CHARS) {
+        Some((end, _)) => format!("{}…", &excerpt[..end]),
+        None => excerpt.to_string(),
+    };
+    Some(format!("{path}:{number}{within}: {excerpt}"))
+}
+
+/// The cited answer a hook may deliver for `ask` about `value`, from the lookup `result` and,
+/// for callers, the `declarations` lookup of the same name. Callers answer only for a name
+/// declared exactly once, so every row calls that declaration; a qualified name must also
+/// name the declaring source. Anything less certain, larger or incomplete answers nothing.
+pub fn answered(
+    ask: &str,
+    value: &str,
+    result: &Value,
+    declarations: Option<&Value>,
+) -> Option<Value> {
+    let rows = complete_rows(result)?;
+    let qualifier = result["route"]["qualifier"].as_str();
+    let owned = |row: &Value| {
+        qualifier.is_none_or(|qualifier| {
+            row["path"]
+                .as_str()
+                .is_some_and(|path| named_by(path, qualifier))
+        })
+    };
+    let rows: Vec<&Value> = match ask {
+        "callers" => match complete_rows(declarations?)? {
+            [declaration] if owned(declaration) => rows.iter().collect(),
+            _ => return None,
+        },
+        "declaration" => rows.iter().filter(|row| owned(row)).collect(),
+        _ => return None,
+    };
+    if rows.is_empty() {
+        return None;
+    }
+    let lines = rows.into_iter().map(line).collect::<Option<Vec<_>>>()?;
+    let answer = json!({
+        "question": format!("{ask} {value}"),
+        "scopes": result["route"]["scopes"],
+        "complete": true,
+        "rows": lines,
+        "use": USE,
+    });
+    (answer.to_string().len() <= ANSWER_BYTES).then_some(answer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_lookup_prompt_names_one_question_and_one_code_name() {
+        let eval = "A teammate wants to change the signature of `DiscountPolicy.applyDiscount` in this\nrepository and asked which methods call it directly.\n\nWrite the answer to `ANSWER.md` at the repository root, one caller per line, as\n`<path from the repository root>#<method name>`, for example\n`src/main/java/com/acme/billing/Example.java#run`. Do not change any other file.";
+        assert_eq!(
+            question(eval),
+            Some(("callers", "DiscountPolicy.applyDiscount".into()))
+        );
+        for (prompt, expected) in [
+            (
+                "Who calls prompt::request?",
+                Some(("callers", "prompt::request")),
+            ),
+            (
+                "who calls `apply_discount()`",
+                Some(("callers", "apply_discount")),
+            ),
+            (
+                "Where is applyDiscount defined?",
+                Some(("declaration", "applyDiscount")),
+            ),
+            (
+                "Where is `Checkout` declared?",
+                Some(("declaration", "Checkout")),
+            ),
+            (
+                "Which methods call `Policy.apply`?",
+                Some(("callers", "Policy.apply")),
+            ),
+            ("Who calls Order#total?", Some(("callers", "Order#total"))),
+            ("Who calls the code in `orders.py`?", None),
+            // A word in a sentence is not a symbol; neither is a file or a version.
+            ("Who calls Checkout?", None),
+            ("Who calls the code in src/order.js?", None),
+            ("Where is v2.3 defined?", None),
+            // Both questions, neither, or two names ask nothing.
+            ("Where is `run` defined and who calls it?", None),
+            ("Where is `run` used?", None),
+            ("Who calls `run` or `start`?", None),
+        ] {
+            assert_eq!(
+                question(prompt),
+                expected.map(|(ask, name)| (ask, name.to_string())),
+                "{prompt}"
+            );
+        }
+    }
+
+    #[test]
+    fn pasted_material_does_not_name_the_lookup() {
+        let prompt = "Who calls `apply`?\n\nlog: `retry_once` failed, see `Worker.run`";
+        assert_eq!(question(prompt), Some(("callers", "apply".into())));
+    }
+
+    fn row(path: &str, line: u64, container: Option<&str>) -> Value {
+        let mut row = json!({"path": path, "line": line, "excerpt": "  x = policy.apply(1);  "});
+        if let Some(name) = container {
+            row["container"] = json!({"name": name});
+        }
+        row
+    }
+
+    fn result(rows: Vec<Value>, qualifier: Option<&str>) -> Value {
+        let mut route = json!({"answeredBy": "intelligence", "complete": true, "scopes": ["."]});
+        if let Some(qualifier) = qualifier {
+            route["qualifier"] = json!(qualifier);
+        }
+        json!({"results": rows, "continuation": null, "route": route})
+    }
+
+    #[test]
+    fn callers_answer_only_for_one_declaration_named_by_the_qualifier() {
+        let callers = result(
+            vec![row("src/Checkout.java", 14, Some("finish"))],
+            Some("Policy"),
+        );
+        let one = result(vec![row("src/Policy.java", 5, None)], Some("Policy"));
+        let answer = answered("callers", "Policy.apply", &callers, Some(&one)).unwrap();
+        assert_eq!(
+            answer["rows"],
+            json!(["src/Checkout.java:14 in finish: x = policy.apply(1);"])
+        );
+        assert_eq!(answer["question"], "callers Policy.apply");
+        // Two declarations: the rows may call either one.
+        let two = result(
+            vec![
+                row("src/Policy.java", 5, None),
+                row("src/Other.java", 3, None),
+            ],
+            Some("Policy"),
+        );
+        assert_eq!(
+            answered("callers", "Policy.apply", &callers, Some(&two)),
+            None
+        );
+        // The one declaration lives elsewhere: the qualifier may name an outside type.
+        let elsewhere = result(vec![row("src/Other.java", 3, None)], Some("Policy"));
+        assert_eq!(
+            answered("callers", "Policy.apply", &callers, Some(&elsewhere)),
+            None
+        );
+        assert_eq!(answered("callers", "Policy.apply", &callers, None), None);
+        // A Rust module path names its file or its folder's mod.rs.
+        let unqualified = result(
+            vec![row("a/b.rs", 1, None)],
+            Some("engine::delivery::prompt"),
+        );
+        let module = result(vec![row("src/prompt/mod.rs", 9, None)], None);
+        assert!(answered("callers", "prompt::request", &unqualified, Some(&module)).is_some());
+    }
+
+    #[test]
+    fn incomplete_or_oversized_answers_abstain() {
+        let one = result(vec![row("src/Policy.java", 5, None)], None);
+        let callers = result(vec![row("src/A.java", 1, None)], None);
+        assert!(answered("callers", "apply", &callers, Some(&one)).is_some());
+        let mut partial = callers.clone();
+        partial["route"]["complete"] = json!(false);
+        let mut literal = callers.clone();
+        literal["route"]["answeredBy"] = json!("locate");
+        let mut gaps = callers.clone();
+        gaps["route"]["answeredBy"] = json!("intelligence+locate");
+        gaps["gapSearch"] = json!({"matches": [{"path": "web/a.js", "line": 2}]});
+        let mut paged = callers.clone();
+        paged["continuation"] = json!({"after": "0".repeat(64)});
+        let empty = result(vec![], None);
+        let many = result(
+            (0..=ROWS as u64)
+                .map(|n| row("src/A.java", n + 1, None))
+                .collect(),
+            None,
+        );
+        for (name, case) in [
+            ("partial", &partial),
+            ("literal", &literal),
+            ("gaps", &gaps),
+            ("paged", &paged),
+            ("empty", &empty),
+            ("many", &many),
+        ] {
+            assert_eq!(
+                answered("callers", "apply", case, Some(&one)),
+                None,
+                "{name}"
+            );
+        }
+        let mut clean_gaps = gaps.clone();
+        clean_gaps["gapSearch"] = json!({"matches": []});
+        assert!(answered("callers", "apply", &clean_gaps, Some(&one)).is_some());
+        let mut long = row("src/A.java", 1, Some("run"));
+        long["excerpt"] = json!("y".repeat(400));
+        let rows = (0..ROWS).map(|_| long.clone()).collect();
+        assert_eq!(
+            answered("callers", "apply", &result(rows, None), Some(&one)),
+            None
+        );
+    }
+
+    #[test]
+    fn declarations_keep_the_rows_the_qualifier_names() {
+        let both = result(
+            vec![
+                row("src/Policy.java", 5, None),
+                row("src/Other.java", 3, None),
+            ],
+            Some("Policy"),
+        );
+        let answer = answered("declaration", "Policy.apply", &both, None).unwrap();
+        assert_eq!(answer["rows"].as_array().unwrap().len(), 1);
+        let none = result(vec![row("src/Other.java", 3, None)], Some("Policy"));
+        assert_eq!(answered("declaration", "Policy.apply", &none, None), None);
+        assert!(
+            answered(
+                "declaration",
+                "apply",
+                &result(vec![row("a.rs", 1, None)], None),
+                None
+            )
+            .is_some()
+        );
+    }
+}

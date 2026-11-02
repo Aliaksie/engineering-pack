@@ -92,6 +92,8 @@ test('a lookup seen in the transcript and in Craft events counts once', () => {
     event('cli.command', 'b', { attributes: { command: 'locate' } }),
     event('discovery.completed', 'c', { parentOperationId: 'b' }),
     event('discovery.completed', 'd'),
+    // A prompt-time lookup's gap search is part of that lookup.
+    event('discovery.completed', 'e', { parentOperationId: 'd' }),
   ];
   const card = audit(transcript, events, null);
   assert.equal(card.craft.lookups, 3, 'two locate runs plus one discovery outside them');

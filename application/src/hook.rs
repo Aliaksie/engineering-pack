@@ -262,6 +262,7 @@ fn render(context: &Value, host: &str) -> String {
                 "intent",
                 "execution",
                 "skills",
+                "answer",
                 "lookup",
                 "references",
                 "modules",

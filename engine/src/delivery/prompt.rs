@@ -649,15 +649,18 @@ fn artifact(intent: &str, words: &[String]) -> Option<&'static str> {
 }
 
 pub(super) fn request(prompt: &str) -> Option<Request> {
-    // "so we plan this?" followed by pasted text: when the user's own question names no
-    // request, the material after it does not decide one either.
-    if let Some((question, material)) = prompt.trim_start().split_once("\n\n")
-        && question.trim_end().ends_with('?')
-        && !js_blank(material)
-    {
-        return requested(question);
+    requested(own(prompt))
+}
+
+/// The user's own words: "so we plan this?" followed by pasted text is the question alone.
+/// When the question names no request, the material after it does not decide one either.
+pub(super) fn own(prompt: &str) -> &str {
+    match prompt.trim_start().split_once("\n\n") {
+        Some((question, material)) if question.trim_end().ends_with('?') && !js_blank(material) => {
+            question
+        }
+        _ => prompt,
     }
-    requested(prompt)
 }
 
 fn requested(prompt: &str) -> Option<Request> {

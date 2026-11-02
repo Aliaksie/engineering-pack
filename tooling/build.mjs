@@ -41,7 +41,7 @@ export function build(repo, target) {
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
     for (const { manifest } of packages) {
       const destination = path.join(stage, packageFolder, manifest.name);
-      fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.\n');
+      fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there. A lookup that a routing hint answers or makes runnable needs neither.\n');
       const adapter = reports.find(entry => entry.package === manifest.name);
       const setup = {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,

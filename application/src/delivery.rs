@@ -6,7 +6,8 @@ use crate::project;
 use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
 use crate::telemetry::{Operation, Recorder, now_ms};
-use craft_engine::{delivery, hash, identity, routing};
+use craft_engine::delivery::{self, answer};
+use craft_engine::{hash, identity, routing};
 use craft_platform::{state, telemetry::uuid};
 use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
@@ -152,6 +153,14 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             let runtime = runtime.as_deref().and_then(Path::to_str);
             if let Some(lookup) = delivery::lookup(intent, runtime, &root.to_string_lossy()) {
                 plan["lookup"] = lookup;
+                // A ready lookup explains itself: naming its skill sent models to read the
+                // skill, then the package instructions and setup, before one command.
+                if let Some(plan) = plan.as_object_mut() {
+                    plan.remove("skills");
+                }
+                if let Some(answer) = prompt.and_then(|p| prompt_answer(root, p, recorder, hook)) {
+                    plan["answer"] = answer;
+                }
             }
             Some(plan)
         }
@@ -262,6 +271,63 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         decision["warning"] = json!(format!("Routing hint reuse unavailable: {message}"));
     }
     Ok(decision)
+}
+
+/// Index refresh a prompt-time lookup may spend; the prompt waits for it, and sources it
+/// defers are searched literally.
+const PROMPT_REFRESH_MS: u64 = 1_000;
+
+/// The cited answer to the structural lookup a prompt asks, or `None` when it asks none or
+/// the answer is not certain. The lookup is recorded as a discovery under the hook; one that
+/// cannot run leaves the prompt with its runnable lookup alone.
+fn prompt_answer(
+    root: &Path,
+    prompt: &str,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Option<Value> {
+    let (ask, value) = answer::question(prompt)?;
+    let operation = recorder.start("discovery.completed", Some(hook));
+    let lookup = |ask: &str, recorder: &mut Recorder| {
+        let input = json!({"ask": ask, "value": value, "paths": [], "limit": answer::ROWS});
+        crate::question::answer(root, &input, PROMPT_REFRESH_MS, |request| {
+            let context = crate::discovery::Context {
+                root,
+                session: None,
+                task: None,
+                preferences: None,
+                observed: &json!({}),
+            };
+            crate::discovery::run(request, context, recorder, &operation)
+        })
+        .ok()
+    };
+    let result = lookup(ask, recorder);
+    let declarations = match (ask, &result) {
+        ("callers", Some(_)) => lookup("declaration", recorder),
+        _ => None,
+    };
+    let answered = result
+        .as_ref()
+        .and_then(|result| answer::answered(ask, &value, result, declarations.as_ref()));
+    let rows = answered
+        .as_ref()
+        .and_then(|a| a["rows"].as_array())
+        .map_or(0, Vec::len);
+    let attributes = Map::from_iter([
+        ("evidenceCount".to_string(), json!(rows)),
+        ("complete".to_string(), json!(answered.is_some())),
+        (
+            "reason".to_string(),
+            json!(match (&result, &answered) {
+                (None, _) => "unavailable",
+                (_, None) => "incomplete",
+                _ => "observed",
+            }),
+        ),
+    ]);
+    recorder.complete(operation, attributes, None);
+    answered
 }
 
 fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, Failure> {
