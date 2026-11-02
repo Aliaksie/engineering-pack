@@ -93,7 +93,9 @@ about the conversation get no hint. Where a result goes ("write them to `ANSWER.
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
 no request does not decide one either. The words are English and matched deterministically;
-an unrecognized request simply gets none.
+an unrecognized request simply gets none. A lookup hint also carries `lookup`: the
+`craft locate` command of the runtime that answered the hook, rooted at the project, and the
+questions it can ask, so the agent can run it without resolving the package path itself.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

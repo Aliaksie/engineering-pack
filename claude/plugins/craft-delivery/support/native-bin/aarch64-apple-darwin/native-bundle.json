@@ -9,12 +9,12 @@
   "provider": "javascript-tree-sitter-0.25.0/v2",
   "providers": [
     "javascript-tree-sitter-0.25.0/v2",
-    "java-tree-sitter-0.23.5/v1",
+    "java-tree-sitter-0.23.5/v2",
     "markdown-sections/v1",
-    "rust-tree-sitter-0.24.2/v1"
+    "rust-tree-sitter-0.24.2/v2"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "57dd6e43fc00f04001180d8a0a2ccfdcb3b855d8",
+  "sourceRevision": "dc9e3f02b268262692378a378f03e59de234dce4",
   "sourceDirty": false,
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "files": [
@@ -30,13 +30,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 7677696,
-      "sha256": "2863c44556a6c8bfb1548da800cb451625eb9b6a2f10195abd5322c7127c6213"
+      "bytes": 7694240,
+      "sha256": "4d97ebc7b3df71c158582947a330adbab576020c8345f1bf05bf8bc5d2a82b6f"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "dd2b7a90d1f4f7a4927c4ebf8db34c8f20ee0490865a5eef2d8fc28529989060"
+      "sha256": "a91a078c9e09af75952015dfbb6bc0ab5b68abbaf0ebd232939a18e293cda297"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
