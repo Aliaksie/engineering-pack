@@ -228,6 +228,17 @@ newer plans.
 Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
 [acceptance contracts](ACCEPTANCE.md).
 
+#### Planning evidence
+
+A plan document is not a work plan. A file written while the session's request established
+the `plan` intent ([routing](ROUTING.md#hints-and-guidance-size)), such as a requested
+`PLAN.md`, is recorded as the session's planning evidence: its path, content hash, a
+revision that rises with each new content, and `intent: "plan"`. The text is never parsed:
+it creates no tasks and does not mean execution has started. Turning it into a work plan
+stays an explicit `plan-create`. Checkpoint recovery and `craft session` list the session's
+evidence with whether each file still has the recorded content. A new session without a
+task is offered the evidence of earlier sessions whose files are unchanged.
+
 ### Several repositories
 
 From a folder that contains several repositories, select the task's repositories
@@ -360,6 +371,7 @@ continuation at milestones rather than relying on a final callback.
       task.json             # active task binding
       activity-<id>.json    # per-task activity, lookups and attempts
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
+      intent.json           # intent the requests established, routed files, planning evidence
     telemetry/              # events.jsonl(.1), key.json, captures.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}

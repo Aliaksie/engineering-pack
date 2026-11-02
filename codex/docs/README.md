@@ -16,7 +16,7 @@ with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 | [Review](REVIEW.md) | Revision-bound local review and bot integration |
 | [Shipping](../packages/craft-delivery/workflows/ship-change.md) | Authorized commit, push, install, deploy, publish and license phases |
 | [Integrations](INTEGRATIONS.md) | Git, codehost and tracker bindings |
-| [Project evidence](PROJECT-EVIDENCE.md) | Opt-in local index of declarations and imports |
+| [Project evidence](PROJECT-EVIDENCE.md) | Local index of declarations and imports that lookups use by default |
 | [Observability](OBSERVABILITY.md) | Local usage events, privacy, retention and OTLP opt-in |
 | [Security](SECURITY.md) | Trust and execution boundaries, read-only review guard |
 

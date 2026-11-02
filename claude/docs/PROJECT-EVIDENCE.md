@@ -1,6 +1,6 @@
 # Project evidence (preview)
 
-An opt-in local index of syntax facts that agents can cite instead of searching again:
+A local index of syntax facts that agents can cite instead of searching again:
 JavaScript declarations and literal imports (`.js`, `.mjs`, `.jsx`, `.cjs`), Java
 declarations, imports and method-invocation syntax (`.java`), Rust items, `use` paths and
 call syntax (`.rs`), and Markdown sections (`.md`, `.markdown`). It records syntax, not
@@ -16,14 +16,16 @@ craft project-evidence query   --enable --root . --value stateFile --verify
 craft project-evidence status  --enable --root . --json
 ```
 
-Without `--enable`, nothing is read or written. Other operations are `version`, `backup` (a
+Without `--enable`, these commands read and write nothing. Other operations are `version`, `backup` (a
 consistent snapshot beside the database; never overwrites an existing backup) and `rebuild`
 (clears derived evidence; run `refresh` next).
 
 ## Routed lookups
 
-With `"evidence": {"enabled": true}` in `.craft/project.json`, `craft locate` answers
-structural questions from this index:
+`craft locate` answers structural questions from this index, building it in the project's
+`.craft/state/intelligence/` on first use. Turn this off per project with
+`"evidence": {"enabled": false}` in `.craft/project.json`; lookups then search literally
+(`route.reason` `index-disabled`):
 
 ```sh
 craft locate --root . --callers processOpts --path modules/core

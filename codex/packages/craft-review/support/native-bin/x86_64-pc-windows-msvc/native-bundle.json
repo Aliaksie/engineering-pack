@@ -14,7 +14,7 @@
     "rust-tree-sitter-0.24.2/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "51e8a1d379774867c55ac42f7bbe3e828cbd9545",
+  "sourceRevision": "d3d8264ff680a31af3ccb9ae787fd30e7b4c011e",
   "sourceDirty": false,
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "files": [
@@ -30,13 +30,13 @@
     },
     {
       "path": "native-bin/craft.exe",
-      "bytes": 8315392,
-      "sha256": "10f76b41c9b3558873f093ce594ddf001acb6077e6bb06f33907fe5ea6a960b9"
+      "bytes": 8360448,
+      "sha256": "8d5cc3d080915e1b327c7198e164d357a734fa3f3c52c67ae0d8ff2649a54fd4"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "15e3475e9b70639e2177d8e81b2c3eabdded2d01285b97d49c705ea919b737e0"
+      "sha256": "2dc47735b6bd3d4fa5a4b64888575ec4ab7a26ced77a665d291f975356ecb544"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
