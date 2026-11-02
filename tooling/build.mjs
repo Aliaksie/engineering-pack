@@ -41,8 +41,8 @@ export function build(repo, target) {
     const packageFolder = target === 'claude' ? 'plugins' : 'packages';
     for (const { manifest } of packages) {
       const destination = path.join(stage, packageFolder, manifest.name);
-      fs.appendFileSync(path.join(destination, 'AGENTS.md'), '\nOn first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there. A lookup that a routing hint answers or makes runnable needs neither.\n');
       const adapter = reports.find(entry => entry.package === manifest.name);
+      fs.appendFileSync(path.join(destination, 'AGENTS.md'), `\n${setupNotice(adapter.hooks, setupControls(target))}\n`);
       const setup = {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
         controls: setupControls(target), featureSupport: featureSupport(target)
@@ -88,6 +88,20 @@ export function build(repo, target) {
     fs.rmSync(stage, { recursive: true, force: true });
     throw error;
   }
+}
+
+// The first-use notice carries its own facts so ordinary work never needs SETUP.md;
+// that page serves the explicit setup check and setup or usage questions.
+export function setupNotice(hooks, controls) {
+  const hookFact = hooks.startsWith('unsupported')
+    ? 'this export registers no automatic hooks'
+    : `this export declares automatic hooks (\`${hooks}\`), but installation does not prove they run`;
+  const commands = Object.entries(controls.commands).map(([use, command]) => `\`${command}\` (${use})`);
+  const controlFact = commands.length ? ` Native controls (${controls.surface}): ${commands.join(', ')}.` : '';
+  return 'On first use in a conversation, give one brief setup notice for all Craft packages alongside the work: '
+    + `${hookFact}.${controlFact} Users can ask "Check Craft Capabilities setup, hook activity and session usage." `
+    + 'Read [setup and session visibility](SETUP.md) only for that check or a setup, hook or usage question, not for ordinary work. '
+    + 'A lookup that a routing hint answers or makes runnable needs no notice.';
 }
 
 // Check generated exports without re-running a model or contacting a service.

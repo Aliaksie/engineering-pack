@@ -94,8 +94,8 @@ use their own installation above; an IDE-managed process may use a separate prof
 
 Ask the agent: **"Check Craft Capabilities setup, hook activity and session usage."**
 
-Each package's `SETUP.md` and `SETUP.json` drive one short notice on first skill use: what the
-host supports, what remains unverified and what to do next.
+Each package's instructions carry one short notice for first use: what the host supports, what
+remains unverified and what to ask next. `SETUP.md` and `SETUP.json` serve that setup check.
 
 An enabled plugin or trusted project does not prove hooks run. Do some ordinary work and look
 for fresh `host.hook` events in `telemetry/events.jsonl` (`craft settings --root <project>`

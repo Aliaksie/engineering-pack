@@ -99,6 +99,11 @@ test('all adapters preserve resources, separate names, and report actual feature
       assert.deepEqual(notice, { adapter: target, hooks: setup.hooks, sessionAdvice: setup.sessionAdvice,
         controls: { surface: setup.controls.surface, commands: setup.controls.commands } });
       if (target !== 'codex') assert.deepEqual(setup.controls.commands, {});
+      // The first-use notice is self-contained; SETUP.md is not read for ordinary work.
+      const instructions = fs.readFileSync(path.join(directory, 'AGENTS.md'), 'utf8');
+      assert.ok(instructions.includes(setup.hooks.startsWith('unsupported') ? 'registers no automatic hooks' : `\`${setup.hooks}\``), `${target}: notice lacks hook fact`);
+      for (const command of Object.values(setup.controls.commands)) assert.ok(instructions.includes(`\`${command}\``), `${target}: notice lacks ${command}`);
+      assert.match(instructions, /\(SETUP\.md\) only for that check or a setup, hook or usage question, not for ordinary work/);
       for (const asset of [...manifest.standards, ...manifest.evals, ...manifest.tools.map((tool) => tool.runtime === 'native' ? 'bin/craft' : tool.path)]) {
         assert.ok(fs.existsSync(path.join(directory, asset)), `${target}: missing ${asset}`);
       }
