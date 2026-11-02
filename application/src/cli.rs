@@ -508,20 +508,25 @@ fn locate(
         if let Some(after) = options.get("after") {
             input["after"] = json!(after);
         }
-        return crate::question::answer(&root(options), &input, |request| {
-            crate::discovery::run(
-                request,
-                crate::discovery::Context {
-                    root: &root(options),
-                    session,
-                    task: task.as_deref(),
-                    preferences: options.get("preferences").map(Path::new),
-                    observed: &observed,
-                },
-                recorder,
-                parent,
-            )
-        });
+        return crate::question::answer(
+            &root(options),
+            &input,
+            crate::question::REFRESH_MS,
+            |request| {
+                crate::discovery::run(
+                    request,
+                    crate::discovery::Context {
+                        root: &root(options),
+                        session,
+                        task: task.as_deref(),
+                        preferences: options.get("preferences").map(Path::new),
+                        observed: &observed,
+                    },
+                    recorder,
+                    parent,
+                )
+            },
+        );
     }
     let request = match options.get("data") {
         Some(file) => read_input(recorder, parent, file)?,

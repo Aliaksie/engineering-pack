@@ -47,3 +47,17 @@ test('each craft locate run counts as one lookup, whatever it records beneath it
 test('no lookup recorded scores zero', { skip: !tools && 'needs bash and jq' }, () => {
   assert.equal(rewards([event('routing.completed', 'a')]).craft_lookups, 0);
 });
+
+test('a prompt-time lookup counts once and as an answer only when delivered', { skip: !tools && 'needs bash and jq' }, () => {
+  const result = rewards([
+    event('host.hook', 'h1'),
+    // Answered in the hint; its gap search is a child of the lookup.
+    event('discovery.completed', 'p1', { parentOperationId: 'h1', attributes: { complete: true, evidenceCount: 4 } }),
+    event('discovery.completed', 'g1', { parentOperationId: 'p1' }),
+    // Abstained: still a lookup, not an answer.
+    event('host.hook', 'h2'),
+    event('discovery.completed', 'p2', { parentOperationId: 'h2', attributes: { complete: false, evidenceCount: 0 } }),
+  ]);
+  assert.equal(result.craft_lookups, 2);
+  assert.equal(result.craft_prompt_answers, 1);
+});

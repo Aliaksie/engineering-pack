@@ -53,7 +53,8 @@ test('prompt routing replay', t => {
   // A separate session per case: an identical hint is suppressed within one session.
   replay(t, 'prompt routing', cases, id => {
     const data = deliverHook(root, 'before-prompt', { prompt: prompts.get(id), session: id, host: 'claude' }).context?.data;
-    return { intent: data?.intent ?? null, skills: data?.skills ?? [] };
+    // A ready lookup names no skill; a prompt the hook answered records the question it answered.
+    return { intent: data?.intent ?? null, skills: data?.skills ?? [], ...(data?.answer && { answer: data.answer.question }) };
   });
 });
 

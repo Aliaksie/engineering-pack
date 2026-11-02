@@ -26,12 +26,18 @@ jq -s --slurpfile expected "$expected" \
   def named($n): [.[] | select(.name == $n)];
   [named("guidance.selected")[].attributes.skill] as $selected
   | (named("host.hook") | map(.durationMs // 0) | sort) as $hooks
-  # One lookup per `craft locate` run, plus discovery outside one; a literal locate records
-  # its discovery as a child, which must not count twice.
+  # One lookup per `craft locate` run, plus discovery outside one; a literal locate, or a
+  # prompt-time lookup searching its gaps, records that search as a child, which must not
+  # count twice.
   | ([.[] | select(.name == "cli.command" and .attributes.command == "locate") | .operationId])
       as $locates
+  | ([named("discovery.completed")[] | .operationId]) as $discovery_ids
   | ([named("discovery.completed")[] | select((.parentOperationId // "") as $p
-      | $locates | index([$p]) | not)] | length) as $discoveries
+      | ($locates + $discovery_ids) | index([$p]) | not)] | length) as $discoveries
+  # Prompt-time lookups a hook answered in the routing hint.
+  | ([named("host.hook")[] | .operationId]) as $hook_ids
+  | ([named("discovery.completed")[] | select(.attributes.complete == true
+      and ((.parentOperationId // "") as $p | $hook_ids | index([$p])))] | length) as $answers
   | {
       craft_events: length,
       craft_hooks: ($hooks | length),
@@ -40,6 +46,7 @@ jq -s --slurpfile expected "$expected" \
       craft_routing: (named("routing.completed") | length),
       craft_guidance: (named("guidance.selected") | length),
       craft_lookups: (($locates | length) + $discoveries),
+      craft_prompt_answers: $answers,
       craft_checkpoints: (named("checkpoint.saved") | length),
       craft_failures: ([.[] | select(.outcome == "failure")] | length),
       craft_task_bound: $task_bound,

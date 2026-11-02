@@ -306,6 +306,7 @@ pub fn planning_recorded(record: &Value, path: &str, hash: &str) -> Option<Value
     Some(next)
 }
 
+pub mod answer;
 mod prompt;
 #[cfg(test)]
 mod tests;

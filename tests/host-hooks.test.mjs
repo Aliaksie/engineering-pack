@@ -109,6 +109,36 @@ test('a lookup hint carries a lookup command the agent can run as given', (t) =>
   }
 });
 
+test('a callers prompt gets cited rows only when the name has one declaration', (t) => {
+  const dir = fixture(t);
+  const java = (name, body) => fs.writeFileSync(path.join(dir, `${name}.java`), `class ${name} {\n${body}\n}\n`);
+  java('Policy', '  long apply(long cents) { return cents; }');
+  java('Checkout', '  long finish(Policy p) {\n    return p.apply(10);\n  }');
+  java('Quote', '  long preview(Policy p) {\n    return p.apply(5);\n  }');
+  // `total` is declared twice: its callers may call either one.
+  java('Cart', '  long total() { return 1; }\n  long sum(Cart c) { return c.total(); }');
+  java('Order', '  long total() { return 2; }');
+  for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
+  const hint = (host, prompt) => {
+    const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: `answer-${host}-${prompt.length}`, prompt }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+    return context && JSON.parse(context.slice(context.indexOf('{')));
+  };
+  for (const host of native.filter(host => HOSTS[host].events['before-prompt'].context)) {
+    const answered = hint(host, 'Which methods call `Policy.apply`?');
+    assert.equal(answered.intent, 'locate', host);
+    assert.equal(answered.skills, undefined, `${host}: a ready lookup names no skill`);
+    assert.deepEqual(answered.answer.rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);'], host);
+    assert.equal(answered.answer.complete, true);
+    const ambiguous = hint(host, 'Who calls `total`?');
+    assert.equal(ambiguous.answer, undefined, host);
+    assert.ok(ambiguous.lookup.run, host);
+    assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?').answer, undefined, host);
+  }
+});
+
 test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {
   const dir = fixture(t);
   for (const host of native) {

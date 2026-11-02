@@ -112,10 +112,11 @@ export function audit(transcript, events, report) {
   const searches = transcript.commands.filter(command => SEARCH.test(command)).length;
   const rereads = transcript.reads && transcript.reads.length - new Set(transcript.reads).size;
   // A lookup the agent ran can show in the transcript, in Craft's events, or both: count it once.
-  // A literal locate records its discovery as a child of the command, so only discovery outside
-  // a locate command adds to it.
+  // A literal locate, or a prompt-time lookup searching its gaps, records that search as a
+  // child, so only discovery outside a locate command or another discovery adds to it.
   const locates = new Set(events.filter(e => e.name === 'cli.command' && e.attributes?.command === 'locate').map(e => e.operationId));
-  const discoveries = events.filter(e => e.name === 'discovery.completed' && !locates.has(e.parentOperationId)).length;
+  const nested = new Set([...locates, ...events.filter(e => e.name === 'discovery.completed').map(e => e.operationId)]);
+  const discoveries = events.filter(e => e.name === 'discovery.completed' && !nested.has(e.parentOperationId)).length;
   const ran = Object.entries(craftCommands).filter(([name]) => LOOKUPS.has(name)).reduce((t, [, n]) => t + n, 0);
   const lookups = Math.max(ran, locates.size) + discoveries;
   const card = {
