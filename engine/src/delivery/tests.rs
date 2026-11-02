@@ -133,23 +133,33 @@ fn a_request_establishes_its_intent_even_where_its_hint_cannot_be_shown() {
 
 #[test]
 fn intent_records_keep_the_files_routed_under_one_intent() {
-    let request = established(&Value::Null, "plan", None).unwrap();
+    let request = established(&Value::Null, "plan", None, 1000).unwrap();
     assert_eq!(
         request,
-        json!({"formatVersion": 1, "intent": "plan", "files": []})
+        json!({"formatVersion": 1, "intent": "plan", "files": [], "since": 1000})
     );
     assert_eq!(validate_intent(&request), Ok(()));
-    assert_eq!(established(&request, "plan", None), None);
-    let edited = established(&Value::Null, "implement", Some("src/a.rs")).unwrap();
+    // An edit under the same intent keeps when it started; a new request starts again.
+    let planned = established(&request, "plan", Some("PLAN.md"), 2000).unwrap();
+    assert_eq!(planned["since"], 1000);
+    assert_eq!(
+        established(&planned, "plan", None, 3000).unwrap()["since"],
+        3000
+    );
+    assert_eq!(established(&request, "plan", None, 1000), None);
+    let edited = established(&Value::Null, "implement", Some("src/a.rs"), 1000).unwrap();
     assert!(file_routed(&edited, "src/a.rs"));
     assert!(!file_routed(&edited, "src/b.rs"));
-    assert_eq!(established(&edited, "implement", Some("src/a.rs")), None);
+    assert_eq!(
+        established(&edited, "implement", Some("src/a.rs"), 1000),
+        None
+    );
     // A new request starts afresh: its edits route again.
-    let renewed = established(&edited, "implement", None).unwrap();
+    let renewed = established(&edited, "implement", None, 1000).unwrap();
     assert!(!file_routed(&renewed, "src/a.rs"));
     let mut record = edited;
     for n in 0..=INTENT_FILES {
-        record = established(&record, "implement", Some(&format!("f{n}"))).unwrap();
+        record = established(&record, "implement", Some(&format!("f{n}")), 1000).unwrap();
     }
     assert_eq!(validate_intent(&record), Ok(()));
     assert!(!file_routed(&record, "src/a.rs"));
@@ -157,6 +167,7 @@ fn intent_records_keep_the_files_routed_under_one_intent() {
         json!({"formatVersion": 2, "intent": "plan", "files": []}),
         json!({"formatVersion": 1, "files": []}),
         json!({"formatVersion": 1, "intent": "plan", "files": [1]}),
+        json!({"formatVersion": 1, "intent": "plan", "files": [], "since": "now"}),
     ] {
         assert!(validate_intent(&invalid).is_err(), "{invalid}");
     }
@@ -165,7 +176,7 @@ fn intent_records_keep_the_files_routed_under_one_intent() {
 #[test]
 fn a_planning_session_records_its_artifacts_as_evidence_without_reading_them() {
     let hash = |c: char| c.to_string().repeat(64);
-    let plan = established(&Value::Null, "plan", None).unwrap();
+    let plan = established(&Value::Null, "plan", None, 1000).unwrap();
     let first = planning_recorded(&plan, "PLAN.md", &hash('a')).unwrap();
     assert_eq!(
         first["planning"],
@@ -177,7 +188,7 @@ fn a_planning_session_records_its_artifacts_as_evidence_without_reading_them() {
     assert_eq!(second["planning"][0]["revision"], 2);
     assert_eq!(second["planning"][0]["contentHash"], hash('b'));
     // Outside a planning session a write is no evidence; a later request keeps the evidence.
-    let implement = established(&second, "implement", None).unwrap();
+    let implement = established(&second, "implement", None, 1000).unwrap();
     assert_eq!(planning_recorded(&implement, "PLAN.md", &hash('c')), None);
     assert_eq!(implement["planning"], second["planning"]);
     let mut record = plan;
@@ -189,4 +200,31 @@ fn a_planning_session_records_its_artifacts_as_evidence_without_reading_them() {
     let invalid = json!({"formatVersion": 1, "intent": "plan", "files": [],
         "planning": [{"path": "PLAN.md", "contentHash": "x", "revision": 1, "intent": "plan"}]});
     assert!(validate_intent(&invalid).is_err());
+}
+
+#[test]
+fn a_status_names_the_files_a_turn_may_have_written() {
+    let status = json!([
+        "?? PLAN.md",
+        " M src/cart.js",
+        "A  notes/new.md",
+        " D gone.md",
+        "D  staged-gone.md",
+        "R  docs/renamed.md",
+        "docs/original.md",
+        "MM both.md"
+    ]);
+    assert_eq!(
+        written_paths(status.as_array().unwrap()),
+        [
+            "PLAN.md",
+            "src/cart.js",
+            "notes/new.md",
+            "docs/renamed.md",
+            "both.md"
+        ]
+    );
+    let many: Vec<Value> = (0..40).map(|n| json!(format!("?? f{n}"))).collect();
+    assert_eq!(written_paths(&many).len(), INTENT_FILES);
+    assert!(written_paths(&[json!(""), json!("??"), json!(1)]).is_empty());
 }

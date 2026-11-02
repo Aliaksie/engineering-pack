@@ -233,7 +233,12 @@ Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are describe
 A plan document is not a work plan. A file written while the session's request established
 the `plan` intent ([routing](ROUTING.md#hints-and-guidance-size)), such as a requested
 `PLAN.md`, is recorded as the session's planning evidence: its path, content hash, a
-revision that rises with each new content, and `intent: "plan"`. The text is never parsed:
+revision that rises with each new content, and `intent: "plan"`. An edit tool records it when
+the edit finishes. Whatever tool wrote it, a shell redirect included, the turn end records
+each file Git reports added, modified or untracked whose modification time is not before the
+request that established `plan` (the intent record's `since`, Unix milliseconds). A file
+changed earlier is not evidence. Git reports paths from the repository root, so a project
+below it gets evidence from edit tools only. The text is never parsed:
 it creates no tasks and does not mean execution has started. Turning it into a work plan
 stays an explicit `plan-create`. Checkpoint recovery and `craft session` list the session's
 evidence with whether each file still has the recorded content. A new session without a

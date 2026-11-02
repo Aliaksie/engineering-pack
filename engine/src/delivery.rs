@@ -175,9 +175,10 @@ fn planning_entry(entry: &Value) -> bool {
         && entry["intent"] == "plan"
 }
 
-/// A session intent record `{formatVersion: 1, intent, files, planning?}`; `Null` is no
-/// record. `planning` lists the artifacts written while the session planned:
-/// `{path, contentHash, revision, intent: "plan"}`.
+/// A session intent record `{formatVersion: 1, intent, files, since?, planning?}`; `Null` is
+/// no record. `since` is when the intent was established, in Unix milliseconds. `planning`
+/// lists the artifacts written while the session planned: `{path, contentHash, revision,
+/// intent: "plan"}`.
 pub fn validate_intent(state: &Value) -> Result<(), String> {
     if state.is_null() {
         return Ok(());
@@ -192,7 +193,9 @@ pub fn validate_intent(state: &Value) -> Result<(), String> {
         }
         Some(_) => false,
     };
-    if state["formatVersion"] != 1 || !state["intent"].is_string() || !files || !planning {
+    let since = state.get("since").is_none_or(Value::is_u64);
+    if state["formatVersion"] != 1 || !state["intent"].is_string() || !files || !planning || !since
+    {
         return Err("invalid session intent state".into());
     }
     Ok(())
@@ -206,9 +209,11 @@ pub fn file_routed(record: &Value, file: &str) -> bool {
             .is_some_and(|files| files.iter().any(|f| f == file))
 }
 
-/// The intent record after an event establishes `intent`: a request starts it afresh, an
-/// edit adds its routed `file`. `None` when the record does not change.
-pub fn established(record: &Value, intent: &str, file: Option<&str>) -> Option<Value> {
+/// The intent record after an event establishes `intent` at `now` (Unix milliseconds): a
+/// request starts it afresh, an edit adds its routed `file` and keeps when it started. `None`
+/// when the record does not change.
+pub fn established(record: &Value, intent: &str, file: Option<&str>, now: u64) -> Option<Value> {
+    let continued = file.is_some() && record["intent"] == intent;
     let mut files: Vec<Value> = match file {
         Some(_) if record["intent"] == intent => {
             record["files"].as_array().cloned().unwrap_or_default()
@@ -230,10 +235,38 @@ pub fn established(record: &Value, intent: &str, file: Option<&str>) -> Option<V
         files.drain(..excess);
     }
     let mut next = json!({"formatVersion": 1, "intent": intent, "files": files});
+    match record.get("since") {
+        Some(since) if continued => next["since"] = since.clone(),
+        _ if continued => {}
+        _ => next["since"] = json!(now),
+    }
     if let Some(planning) = record.get("planning") {
         next["planning"] = planning.clone();
     }
     Some(next)
+}
+
+/// Files a turn may have written, from a snapshot's `-z` porcelain status entries: added,
+/// modified and untracked paths, never a deletion or the origin of a rename or copy. Paths are
+/// relative to the repository root. At most [`INTENT_FILES`].
+pub fn written_paths(status: &[Value]) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut origin = false;
+    for entry in status.iter().filter_map(Value::as_str) {
+        if std::mem::take(&mut origin) {
+            continue;
+        }
+        let code = entry.get(..2).unwrap_or_default();
+        origin = code.contains(['R', 'C']);
+        match entry.get(3..) {
+            Some(path) if !path.is_empty() && !code.contains('D') => paths.push(path.to_string()),
+            _ => {}
+        }
+        if paths.len() == INTENT_FILES {
+            break;
+        }
+    }
+    paths
 }
 
 /// The intent record after `path` was written with content `hash` while the session plans:
