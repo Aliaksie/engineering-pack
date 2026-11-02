@@ -85,16 +85,15 @@ export function preparePackage(item, packages, destination, platform) {
   }
   for (const workflow of manifest.workflows) {
     const info = frontmatter(fs.readFileSync(path.join(item.root, workflow), 'utf8'));
-    entries.push({ name: `workflow-${info.name}`, info });
+    entries.push({ name: `workflow-${info.name}`, info, file: path.join(item.root, workflow) });
   }
   fs.rmSync(skillsDir, { recursive: true, force: true });
   for (const entry of entries) {
     const name = skillName(manifest.name, entry.name, platform);
     const target = path.join(skillsDir, name);
     if (entry.source) copy(entry.source, target);
-    let body = entry.source
-      ? packageDocument(entry.info.body, path.join(entry.source, 'SKILL.md'), path.join(target, 'SKILL.md'), item, packages, destination, platform)
-      : renderText(entry.info.body, packages, platform);
+    const sourceFile = entry.source ? path.join(entry.source, 'SKILL.md') : entry.file;
+    let body = packageDocument(entry.info.body, sourceFile, path.join(target, 'SKILL.md'), item, packages, destination, platform);
     // Bare local skill citations are logical IDs in source. Avoid touching file/reference paths.
     if (platform !== 'claude') for (const local of manifest.skills) {
       const id = path.basename(local);

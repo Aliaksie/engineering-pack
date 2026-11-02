@@ -117,6 +117,11 @@ test('all adapters preserve resources, separate names, and report actual feature
         }
         const instructions = /\[package instructions\]\(([^)]+)\)/.exec(info.body)?.[1];
         assert.ok(instructions && fs.existsSync(path.resolve(location, instructions)), `${target}: missing instructions for ${name}`);
+        // Workflows and skills alike must link to files the export actually ships.
+        for (const [, href] of info.body.matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
+          if (/^[a-z]+:/i.test(href)) continue;
+          assert.ok(fs.existsSync(path.resolve(location, href)), `${target}: ${name} links to missing ${href}`);
+        }
       }
       if (manifest.hooks.length) {
         assert.match(entry.hooks, target === 'agents' ? /unsupported/ : /native/);
