@@ -88,7 +88,8 @@ a chain, advice stops rather than inventing a stronger model.
 
 Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
 the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
-later change request turns a lookup into `implement`, and statements, chat or questions
+change request turns a lookup or a test request into `implement` ("write a failing test,
+then fix it" is a change, not testing-only work), and statements, chat or questions
 about the conversation get no hint. Where a result goes ("write them to `ANSWER.md`") never
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
