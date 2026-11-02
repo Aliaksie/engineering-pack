@@ -98,7 +98,7 @@ See [observability and privacy](OBSERVABILITY.md).
 
 ## Project evidence
 
-`project-evidence version|refresh|status|query|backup|rebuild --enable` maintains an opt-in
+`project-evidence version|refresh|status|query|backup|rebuild --enable` maintains the
 local index of declarations and imports. See [project evidence](PROJECT-EVIDENCE.md).
 
 ## Host entry points
