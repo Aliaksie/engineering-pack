@@ -228,3 +228,16 @@ fn a_status_names_the_files_a_turn_may_have_written() {
     assert_eq!(written_paths(&many).len(), INTENT_FILES);
     assert!(written_paths(&[json!(""), json!("??"), json!(1)]).is_empty());
 }
+
+#[test]
+fn a_locate_route_names_the_lookup_command_it_can_run() {
+    let found = lookup("locate", Some("/plugins/craft/bin/craft"), "/app").unwrap();
+    assert_eq!(
+        found["run"],
+        json!(["/plugins/craft/bin/craft", "locate", "--root", "/app"])
+    );
+    assert!(found["ask"].as_str().unwrap().contains("--callers <name>"));
+    assert_eq!(lookup("implement", Some("/bin/craft"), "/app"), None);
+    assert_eq!(lookup("locate", None, "/app"), None);
+    assert_eq!(lookup("locate", Some(""), "/app"), None);
+}

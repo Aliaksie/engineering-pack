@@ -147,6 +147,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             };
             let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;
+            // This hook's own executable is the runtime the lookup runs.
+            let runtime = std::env::current_exe().ok();
+            let runtime = runtime.as_deref().and_then(Path::to_str);
+            if let Some(lookup) = delivery::lookup(intent, runtime, &root.to_string_lossy()) {
+                plan["lookup"] = lookup;
+            }
             Some(plan)
         }
         _ => None,

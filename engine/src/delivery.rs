@@ -114,6 +114,17 @@ pub fn decision(
     json!({"decision": "allow", "context": context})
 }
 
+/// The lookup a locate route can run now: the runtime that answered the hook and the
+/// project root, then one question. Naming only the skill left the command behind a
+/// `<package-root>` placeholder, and models searched with shell tools instead.
+pub fn lookup(intent: &str, runtime: Option<&str>, root: &str) -> Option<Value> {
+    let runtime = runtime.filter(|runtime| intent == "locate" && !runtime.is_empty())?;
+    Some(json!({
+        "run": [runtime, "locate", "--root", root],
+        "ask": "one of --callers <name>, --declaration <name>, --imports <target>, --section <heading>, --outline <document>, or --term <text> (repeatable); --path <dir> scopes it and is required outside Git",
+    }))
+}
+
 /// A hook that could not be evaluated: shell policy fails closed, other hooks continue
 /// and say why their context is unavailable.
 pub fn failure(enforcement: bool, message: &str) -> Value {

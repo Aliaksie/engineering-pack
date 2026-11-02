@@ -258,7 +258,15 @@ fn render(context: &Value, host: &str) -> String {
         Some("routing") => {
             let data = &context["data"];
             let mut hint = Map::new();
-            for key in ["intent", "execution", "skills", "references", "modules", "missing"] {
+            for key in [
+                "intent",
+                "execution",
+                "skills",
+                "lookup",
+                "references",
+                "modules",
+                "missing",
+            ] {
                 if let Some(value) = data.get(key) {
                     hint.insert(key.into(), value.clone());
                 }
