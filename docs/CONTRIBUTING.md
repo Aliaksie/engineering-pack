@@ -119,6 +119,25 @@ node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output <new
 on Windows, and its hardware counters cover only directly started processes, so counters are
 tracked for `native` rows only.
 
+### Installed hosts
+
+The **Installed hosts** workflow runs before every release and on manual dispatch, on Linux,
+macOS and Windows. Each host export gets the release `craft`, and each host's registered
+routing hook (prompt, shell tool, stop) runs from that installed layout under every shell that
+host uses there: `sh`, `bash` and `zsh` where installed on Linux and macOS; on Windows, Git
+Bash for Claude and Cursor (Cursor's Windows hook shell is undocumented) and Windows PowerShell
+and `pwsh` for Codex `commandWindows`, Copilot `powershell` and Gemini. A command fails the job
+when its exit code or output differs from the runtime called directly, or when it writes to
+stderr. Hyperfine then times each command; it subtracts the shell's start, which is reported in
+its own `shell/<name>/start` row. Results stay in the run artifacts for 90 days. Locally, after
+installing the runtime into every export:
+
+```sh
+npm run build && npm run build:native
+for host in claude codex cursor copilot gemini; do node tooling/native-install.mjs dist/project-evidence dist/$host --current-target; done
+node .github/benchmarks/hosts.mjs --dist dist --output <new-results-directory>
+```
+
 ### Engineering eval
 
 The **Engineering eval** workflow runs real Codex sessions against the tasks in `evals/` with
