@@ -5,8 +5,8 @@
 to `distribution-next`; a versioned release also promotes its attested bundle to
 `distribution`. Nothing is published to npm.
 
-`package.json` holds the pack version. Capability manifests and runtime metadata are
-synchronized projections: `npm run version:sync -- patch|minor|major|<x.y.z>` updates them
+`package.json` holds the pack version. Capability manifests, runtime metadata and the Cargo
+workspace version (with its `Cargo.lock` entries) are synchronized projections: `npm run version:sync -- patch|minor|major|<x.y.z>` updates them
 and `npm run version:check` rejects drift. Marketplace identifiers stay `craft-capabilities`
 (Claude) and `engineering-pack` (Codex, Gemini).
 

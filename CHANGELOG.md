@@ -6,6 +6,7 @@
   time, so repository evidence stops going missing when several queries run at once.
 - Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
   the candidate `distribution-next` branch, so stable installs no longer point at candidate files.
+- `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
 
 ## 0.0.3
 

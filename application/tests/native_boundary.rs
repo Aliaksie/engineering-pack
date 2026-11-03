@@ -18,6 +18,17 @@ fn invoke(binary: &str, input: &[u8]) -> (bool, Value) {
 }
 
 #[test]
+fn the_binary_reports_the_pack_version() {
+    let pack: Value = serde_json::from_str(include_str!("../../package.json")).unwrap();
+    let (success, response) = invoke(
+        env!("CARGO_BIN_EXE_craft"),
+        br#"{"formatVersion":1,"operation":"version"}"#,
+    );
+    assert!(success, "{response}");
+    assert_eq!(response["result"]["binaryVersion"], pack["version"]);
+}
+
+#[test]
 fn the_request_protocol_rejects_malformed_and_unsupported_requests() {
     let binary = env!("CARGO_BIN_EXE_craft");
     for (input, code) in [
