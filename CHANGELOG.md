@@ -26,6 +26,10 @@
   only when the effective settings change, instead of on every hook; failures are still
   recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
   session last recorded, under its telemetry pseudonym.
+- Prompt routing stays silent on questions that need no project work: an HTTP or exit
+  "status code" question is no longer read as a progress question, and an instruction that
+  only says where the answer goes ("Write only the number to `ANSWER.md`") no longer turns a
+  question into a code change.
 - Prompt routing: progress questions about ongoing work ("Where are we with the invoice
   export?", "How is the migration going?") get a status hint instead of a code lookup;
   reports of a failing check ("The test is failing again", "CI is red") and "how is X

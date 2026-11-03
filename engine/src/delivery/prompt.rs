@@ -443,9 +443,14 @@ const RESULTS: &[&str] = &[
     "paths",
     "names",
     "lines",
+    "number",
+    "count",
+    "value",
+    "total",
 ];
 const DETERMINERS: &[&str] = &[
-    "the", "a", "an", "your", "my", "our", "all", "every", "each", "of", "final", "full",
+    "the", "a", "an", "your", "my", "our", "all", "every", "each", "of", "final", "full", "only",
+    "just",
 ];
 
 /// "Write them to `ANSWER.md`", "save the list to notes/smtp.md": where the result of the
@@ -575,7 +580,15 @@ fn lead(words: &[String]) -> Option<&'static str> {
         "list" => asked(about),
         "run" if about == Subject::Exploration => Some("explore"),
         "run" => names(CHECKS).then_some("run-check"),
-        "what" | "which" if names(&["status", "progress"]) => Some("status"),
+        // "What is the status of the export?"; an HTTP or exit "status code" is no progress.
+        "what" | "which"
+            if names(&["progress"])
+                || words.iter().enumerate().any(|(at, w)| {
+                    w == "status" && !matches!(next(at + 1), Some("code" | "codes" | "line"))
+                }) =>
+        {
+            Some("status")
+        }
         "what" | "who" if names(&["affected", "impacted", "breaks", "break"]) => {
             Some("investigate")
         }
@@ -770,6 +783,21 @@ mod tests {
 
     fn artifact(prompt: &str) -> Option<&'static str> {
         request(prompt).and_then(|request| request.artifact)
+    }
+
+    #[test]
+    fn questions_that_need_no_project_work_get_no_hint() {
+        for prompt in [
+            "Which HTTP status code means \"Too Many Requests\"?\n\nWrite only the number to `ANSWER.md` at the repository root. Do not change any other file.",
+            "What status code does the API return for a missing order?",
+            "Write only the number to `ANSWER.md` at the repository root.",
+        ] {
+            assert_eq!(intent(prompt), None, "{prompt}");
+        }
+        assert_eq!(
+            intent("What is the status of the invoice export?"),
+            Some("status")
+        );
     }
 
     #[test]
