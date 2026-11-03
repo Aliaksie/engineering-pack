@@ -10,9 +10,13 @@ const MESSAGE: usize = 512;
 /// A Git command that changes the repository: its success, standard output and the first
 /// part of its error output for the refusal.
 fn change(dir: &Path, args: &[&str]) -> Result<(bool, String, String), String> {
-    let output = process::git_command(dir)
+    let mut command = process::git_command(dir);
+    command
         .args(args)
-        .output()
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let output = process::spawn(&mut command)
+        .and_then(std::process::Child::wait_with_output)
         .map_err(|error| format!("Git failed: {error}"))?;
     let text = |bytes: &[u8], bound: usize| {
         let text = String::from_utf8_lossy(&bytes[..bytes.len().min(bound)]);

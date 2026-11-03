@@ -7,11 +7,24 @@ use std::{
     ffi::OsString,
     io::Read,
     path::Path,
-    process::{Command, Stdio},
-    sync::{OnceLock, mpsc},
+    process::{Child, Command, Stdio},
+    sync::{Mutex, OnceLock, mpsc},
     thread,
     time::{Duration, Instant},
 };
+
+/// Start `command`; every Craft child process starts here. On macOS the standard library
+/// creates a child's pipes and only then marks them close-on-exec, so a child another
+/// thread starts in between inherits them; the pipe then reports end-of-file only when that
+/// unrelated child exits, and a bounded read of a fast Git query times out. Starting one
+/// child at a time closes that window for every child Craft starts.
+pub(crate) fn spawn(command: &mut Command) -> std::io::Result<Child> {
+    static SPAWNING: Mutex<()> = Mutex::new(());
+    let _one = SPAWNING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    command.spawn()
+}
 
 /// Git run in `dir`, the one way every Craft Git command starts: no file-system monitor, no
 /// optional index lock (an inventory never rewrites the index), no credential prompt and no
@@ -209,12 +222,11 @@ fn capture(
     max_bytes: usize,
     timeout: Duration,
 ) -> Result<Option<Vec<u8>>, String> {
-    let mut child = match command
+    command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-    {
+        .stderr(Stdio::null());
+    let mut child = match spawn(&mut command) {
         Ok(child) => child,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(format!("{what} failed: {error}")),
@@ -393,6 +405,44 @@ mod tests {
             .contains("did not complete")
         );
         assert!(start.elapsed() < Duration::from_secs(2));
+    }
+    /// A capture never waits for a long-lived child another thread starts meanwhile: its
+    /// pipe reaches end-of-file when its own child exits. An inherited pipe would hold it
+    /// until the bound, since every sleeper outlives the bound; a merely slow start would not.
+    #[cfg(unix)]
+    #[test]
+    fn captures_do_not_wait_for_children_other_threads_start() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let stop = AtomicBool::new(false);
+        thread::scope(|scope| {
+            scope.spawn(|| {
+                let mut sleepers = Vec::new();
+                while !stop.load(Ordering::Relaxed) {
+                    let mut sleeper = Command::new("sleep");
+                    sleeper.arg("30").stdin(Stdio::null()).stdout(Stdio::null());
+                    sleepers.push(spawn(&mut sleeper).unwrap());
+                    thread::sleep(Duration::from_millis(5));
+                }
+                for mut sleeper in sleepers {
+                    let _ = sleeper.kill();
+                    let _ = sleeper.wait();
+                }
+            });
+            let captures: Vec<_> = (0..6)
+                .map(|_| {
+                    scope.spawn(|| {
+                        (0..400)
+                            .map(|_| {
+                                capture("Test", shell("printf abc"), 3, Duration::from_secs(10))
+                            })
+                            .find(Result::is_err)
+                    })
+                })
+                .collect();
+            let failed = captures.into_iter().find_map(|c| c.join().unwrap());
+            stop.store(true, Ordering::Relaxed);
+            assert_eq!(failed, None, "a capture waited for an unrelated child");
+        });
     }
     #[test]
     fn liveness_knows_this_process_and_observes_others_on_every_platform() {

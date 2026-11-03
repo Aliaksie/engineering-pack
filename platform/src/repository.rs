@@ -267,14 +267,15 @@ impl Listing {
         mode: &[&str],
         pathspecs: &[String],
     ) -> Result<(Child, BufReader<std::process::ChildStdout>), Error> {
-        let mut child = crate::process::git_command(root)
+        let mut command = crate::process::git_command(root);
+        command
             .args(["ls-files", "-z"])
             .args(mode)
             .arg("--")
             .args(pathspecs)
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
+            .stderr(Stdio::null());
+        let mut child = crate::process::spawn(&mut command)?;
         let reader = BufReader::new(child.stdout.take().ok_or("missing Git output")?);
         Ok((child, reader))
     }

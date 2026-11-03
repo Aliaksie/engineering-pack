@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- On macOS, a Git query no longer waits for an unrelated process Craft started at the same
+  time, so repository evidence stops going missing when several queries run at once.
+
 ## 0.0.3
 
 Native runtime:
