@@ -12,6 +12,11 @@ pub const LANGUAGES: &[&Language] = &[
     &crate::typescript::TSX,
     &crate::python::LANGUAGE,
     &crate::go::LANGUAGE,
+    &crate::basic::C,
+    &crate::basic::CPP,
+    &crate::basic::CSHARP,
+    &crate::basic::PHP,
+    &crate::basic::RUBY,
 ];
 
 /// Every provider this binary extracts with.

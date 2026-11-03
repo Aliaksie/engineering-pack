@@ -25,8 +25,8 @@ pub const ASKS: &[(&str, Ask)] = &[
 /// Source code that could declare, call or import a name, whether or not a provider reads it.
 const CODE: &[&str] = &[
     "c", "cc", "cjs", "clj", "cpp", "cs", "cts", "cxx", "dart", "ex", "exs", "go", "groovy", "h",
-    "hpp", "java", "js", "jsx", "kt", "kts", "lua", "m", "mjs", "mm", "mts", "php", "py", "rb",
-    "rs", "scala", "swift", "ts", "tsx",
+    "hh", "hpp", "hxx", "java", "js", "jsx", "kt", "kts", "lua", "m", "mjs", "mm", "mts", "php",
+    "py", "pyi", "rb", "rs", "scala", "swift", "ts", "tsx",
 ];
 /// Documents with headings.
 const DOCUMENTS: &[&str] = &["adoc", "asciidoc", "markdown", "md", "org", "rst"];

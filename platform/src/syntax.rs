@@ -379,13 +379,13 @@ fn owner(node: Node, containers: &HashSet<usize>, boundaries: &HashSet<usize>) -
     None
 }
 
-/// A quoted literal's text; an escape needs the language's interpretation and stays
-/// unresolved. Unquoted text (a dotted module name) is returned as is.
+/// A quoted literal's text (or a C `<system>` include); an escape needs the language's
+/// interpretation and stays unresolved. Unquoted text (a dotted module name) is returned as is.
 fn unquote(raw: &str) -> Option<String> {
     let quoted = raw.len() >= 2
-        && ['"', '\'', '`']
+        && [('"', '"'), ('\'', '\''), ('`', '`'), ('<', '>')]
             .iter()
-            .any(|q| raw.starts_with(*q) && raw.ends_with(*q));
+            .any(|(open, close)| raw.starts_with(*open) && raw.ends_with(*close));
     match quoted {
         true if raw.contains('\\') => None,
         true => Some(raw[1..raw.len() - 1].into()),
@@ -484,6 +484,7 @@ pub(crate) mod tests {
         assert_eq!(unquote("'./a.js'").as_deref(), Some("./a.js"));
         assert_eq!(unquote("\"fmt\"").as_deref(), Some("fmt"));
         assert_eq!(unquote("os.path").as_deref(), Some("os.path"));
+        assert_eq!(unquote("<stdio.h>").as_deref(), Some("stdio.h"));
         assert_eq!(unquote("'a\\u0062'"), None);
     }
 }

@@ -1,3 +1,4 @@
+pub mod basic;
 pub mod documents;
 mod error;
 pub use error::Error;

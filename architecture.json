@@ -16,9 +16,9 @@
       "kind": "rust-crate",
       "crate": "craft-platform",
       "responsibility": "Filesystem, state persistence, locks, Git, processes, search, SQLite, bounded HTTP and syntax providers.",
-      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "queries/*.scm"],
       "dependsOn": ["engine"],
-      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-java", "tree-sitter-javascript", "tree-sitter-rust"],
+      "externalDependencies": ["getrandom", "rusqlite", "rustix", "rustls", "rustls-platform-verifier", "serde_json", "sha2", "tree-sitter", "tree-sitter-c", "tree-sitter-c-sharp", "tree-sitter-cpp", "tree-sitter-go", "tree-sitter-java", "tree-sitter-javascript", "tree-sitter-php", "tree-sitter-python", "tree-sitter-ruby", "tree-sitter-rust", "tree-sitter-typescript"],
       "shipped": true
     },
     "application": {
