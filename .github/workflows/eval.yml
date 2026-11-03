@@ -24,6 +24,10 @@ on:
         description: Task directories under evals/tasks to run, as a glob (for example pi-*)
         type: string
         default: '*'
+      craft_ref:
+        description: Build the Craft arm from this tag or commit (for example v0.0.3) instead of the checkout; tasks always come from the checkout
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -44,6 +48,7 @@ jobs:
       JOB: ${{ inputs.job || 'qualify' }}
       ATTEMPTS: ${{ inputs.attempts }}
       TASKS: ${{ inputs.tasks || '*' }}
+      CRAFT_REF: ${{ inputs.craft_ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,12 +61,27 @@ jobs:
           package-manager-cache: false
       - name: Set up Rust
         run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+      - name: Check out the Craft ref under evaluation
+        if: inputs.craft_ref != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.craft_ref }}
+          path: .craft-ref
+          persist-credentials: false
       - name: Build Codex export with the native runtime
         run: |
-          cargo fetch --locked
-          npm run build:codex
-          npm run build:native
-          node tooling/native-install.mjs dist/project-evidence dist/codex --current-target
+          # The export is built where the evaluated Craft lives; the image takes it from dist/codex.
+          source=.
+          [[ -n "$CRAFT_REF" ]] && source=.craft-ref
+          (cd "$source" \
+            && cargo fetch --locked \
+            && npm run build:codex \
+            && npm run build:native \
+            && node tooling/native-install.mjs dist/project-evidence dist/codex --current-target)
+          if [[ "$source" != . ]]; then
+            rm -rf dist/codex && mkdir -p dist && cp -R "$source/dist/codex" dist/codex
+          fi
+          echo "Craft arm: $(jq -r .version "$source/package.json") from ${CRAFT_REF:-the checkout}"
       - name: Build trial image
         run: docker build --file evals/image/Dockerfile --tag craft-eval:local .
       - name: Install Harbor
@@ -103,7 +123,7 @@ jobs:
           # A run that failed before any trial still gets a summary, not a second failure.
           if [[ -d ".eval-results/harbor/$JOB-$GITHUB_RUN_ID" ]]; then
             node tooling/eval-summary.mjs ".eval-results/harbor/$JOB-$GITHUB_RUN_ID" \
-              --title "$JOB (${ATTEMPTS:-job default} attempts per task and arm, tasks $TASKS)" >>"$GITHUB_STEP_SUMMARY"
+              --title "$JOB (${ATTEMPTS:-job default} attempts per task and arm, tasks $TASKS, Craft from ${CRAFT_REF:-the checkout})" >>"$GITHUB_STEP_SUMMARY"
           else
             echo "### $JOB: no trial ran" >>"$GITHUB_STEP_SUMMARY"
           fi

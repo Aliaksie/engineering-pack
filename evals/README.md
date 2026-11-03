@@ -72,7 +72,9 @@ them. Model-backed jobs run only on manual dispatch (`diagnose` or `compare`) wi
 to keep, fix or remove a mechanism) and `tasks` narrows the run to task directories matching a
 glob such as `pi-*`, for example a vanilla reference on only the probes that need one. Results are
 kept as a workflow artifact for 90 days and summarized on the run page (see below). `compare`
-runs three attempts per task and arm unless `attempts` says otherwise.
+runs three attempts per task and arm unless `attempts` says otherwise. `craft_ref` builds the Craft arm
+from a tag or commit such as `v0.0.3` while the tasks still come from the checkout, so a
+released version can be measured on probes written after it.
 
 Locally, with Docker, Node, Rust and Harbor (`uv tool install harbor==0.25.0`). The image needs
 the linux x86_64 runtime, so build the export on Linux x86_64 or inside a `linux/amd64`
