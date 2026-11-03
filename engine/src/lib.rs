@@ -154,6 +154,10 @@ pub struct Extraction {
     pub hash: String,
     pub provider: String,
     pub evidence: Vec<Evidence>,
+    /// The source did not parse cleanly: evidence covers what lies outside syntax errors, and
+    /// the source is still searched literally.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub partial: bool,
 }
 
 impl Extraction {
@@ -277,6 +281,7 @@ mod tests {
             hash,
             provider: "p".into(),
             evidence: vec![evidence(container)],
+            partial: false,
         };
         let digest = hash(b"a");
         assert!(extraction(digest.clone(), None).validate().is_ok());

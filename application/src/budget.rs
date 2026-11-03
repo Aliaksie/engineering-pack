@@ -98,6 +98,7 @@ mod tests {
             hash: "a".repeat(64),
             provider: "test".into(),
             evidence: vec![],
+            partial: false,
         };
         let size = serde_json::to_vec(&extraction).unwrap().len() as u64;
         let mut budget = Budget::from_input(&json!({"maxOutputBytes": size - 1})).unwrap();

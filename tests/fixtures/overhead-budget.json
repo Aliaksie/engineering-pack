@@ -4,7 +4,7 @@
   "hosts": {
     "claude": {
       "always": 4657,
-      "hooks": 2032,
+      "hooks": 2461,
       "guidance": {
         "implement": 17839,
         "verify": 12452,
@@ -17,7 +17,7 @@
     },
     "codex": {
       "always": 5942,
-      "hooks": 2031,
+      "hooks": 2460,
       "guidance": {
         "implement": 18199,
         "verify": 12632,
@@ -56,7 +56,7 @@
     },
     "gemini": {
       "always": 6553,
-      "hooks": 2016,
+      "hooks": 2445,
       "guidance": {
         "implement": 17892,
         "verify": 12489,

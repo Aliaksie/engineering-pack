@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Project Intelligence reads TypeScript, Python and Go: `craft locate --declaration`,
+  `--callers` (with the enclosing function or method) and `--imports` answer from the index
+  for `.ts`, `.tsx`, `.py` and `.go` sources, as for Java and Rust. JavaScript now answers
+  `--callers` too. C, C++, C#, PHP and Ruby get declarations and callers by name.
+- `craft locate --imports` finds a named import (`import { X } from`, `from m import X`) and
+  matches a module by its trailing path or module segments, so `utils/buffer`, `Gson` or
+  `_urlparse` find `../utils/buffer.js`, `com.google.gson.Gson` and `._urlparse`.
+- A source with a syntax error is indexed outside the error instead of skipped, and reported
+  as `partial` (`partialSources` in status); it is still searched literally beside the index.
+  A source that cannot be read still fails.
+- JavaScript declaration kinds name what was declared: `js:declares-function`, `-class`,
+  `-method` or `-variable` instead of `js:declares`. Stored indexes are rebuilt once on first
+  use.
 - `craft locate --term` finds every file `git grep` finds within its bounds: in a Git worktree
   Git preselects the files that contain a term, so large assets, lockfiles and unrelated text
   no longer use up the byte bound, and a binary file never counts against it. Matching files

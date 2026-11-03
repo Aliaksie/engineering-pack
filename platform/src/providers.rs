@@ -1,58 +1,64 @@
+use crate::syntax::Language;
 use craft_engine::Extraction;
 use std::path::Path;
+use std::sync::LazyLock;
 
-pub const ACTIVE: &[&str] = &[
-    crate::javascript::PROVIDER,
-    crate::java::PROVIDER,
-    crate::markdown::PROVIDER,
-    crate::rust::PROVIDER,
+/// Languages read by the common syntax extractor.
+pub const LANGUAGES: &[&Language] = &[
+    &crate::javascript::LANGUAGE,
+    &crate::java::LANGUAGE,
+    &crate::rust::LANGUAGE,
+    &crate::typescript::LANGUAGE,
+    &crate::typescript::TSX,
+    &crate::python::LANGUAGE,
+    &crate::go::LANGUAGE,
+    &crate::basic::C,
+    &crate::basic::CPP,
+    &crate::basic::CSHARP,
+    &crate::basic::PHP,
+    &crate::basic::RUBY,
 ];
+
+/// Every provider this binary extracts with.
+pub static ACTIVE: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
+    let mut active: Vec<_> = LANGUAGES.iter().map(|l| l.provider).collect();
+    active.push(crate::markdown::PROVIDER);
+    active
+});
+
+fn language(path: &str) -> Option<&'static Language> {
+    let extension = Path::new(path).extension()?.to_str()?;
+    LANGUAGES
+        .iter()
+        .copied()
+        .find(|l| l.extensions.contains(&extension))
+}
 
 pub fn for_path(path: &str) -> Option<&'static str> {
     match Path::new(path).extension().and_then(|s| s.to_str()) {
-        Some("js" | "mjs" | "jsx" | "cjs") => Some(crate::javascript::PROVIDER),
-        Some("java") => Some(crate::java::PROVIDER),
         Some("md" | "markdown") => Some(crate::markdown::PROVIDER),
-        Some("rs") => Some(crate::rust::PROVIDER),
-        _ => None,
+        _ => language(path).map(|l| l.provider),
     }
 }
 
 /// The evidence kinds a provider can extract.
 pub fn kinds(provider: &str) -> &'static [&'static str] {
-    match provider {
-        crate::javascript::PROVIDER => &["js:declares", "js:dynamic-import", "js:imports"],
-        crate::java::PROVIDER => &[
-            "java:declares-constructor",
-            "java:declares-method",
-            "java:declares-type",
-            "java:imports",
-            "java:imports-static",
-            "java:invokes-syntax",
-            "java:references-syntax",
-        ],
-        crate::markdown::PROVIDER => &["md:section"],
-        crate::rust::PROVIDER => &[
-            "rust:declares-const",
-            "rust:declares-fn",
-            "rust:declares-macro",
-            "rust:declares-module",
-            "rust:declares-type",
-            "rust:imports",
-            "rust:invokes-syntax",
-            "rust:references-syntax",
-        ],
-        _ => &[],
+    if provider == crate::markdown::PROVIDER {
+        return &["md:section"];
     }
+    LANGUAGES
+        .iter()
+        .find(|l| l.provider == provider)
+        .map_or(&[], |l| l.kinds)
 }
 
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
     match for_path(path) {
-        Some(crate::javascript::PROVIDER) => crate::javascript::extract(path, bytes),
-        Some(crate::java::PROVIDER) => crate::java::extract(path, bytes),
         Some(crate::markdown::PROVIDER) => crate::markdown::extract(path, bytes),
-        Some(crate::rust::PROVIDER) => crate::rust::extract(path, bytes),
-        _ => Err("unsupported source extension".into()),
+        Some(_) => language(path)
+            .ok_or("unsupported source extension")?
+            .extract(path, bytes),
+        None => Err("unsupported source extension".into()),
     }
 }
 
@@ -80,9 +86,24 @@ mod tests {
         ] {
             let extraction = extract(path, source.as_bytes()).unwrap();
             let declared = kinds(for_path(path).unwrap());
+            assert!(!extraction.evidence.is_empty(), "{path}");
             for item in &extraction.evidence {
                 assert!(declared.contains(&item.kind.as_str()), "{}", item.kind);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod declared {
+    /// A language's declared kinds are exactly what its query can produce, and its queries
+    /// compile.
+    #[test]
+    fn declared_kinds_match_query_captures() {
+        for language in super::LANGUAGES {
+            let mut declared: Vec<String> = language.kinds.iter().map(|k| k.to_string()).collect();
+            declared.sort();
+            assert_eq!(declared, language.query_kinds(), "{}", language.provider);
         }
     }
 }

@@ -35,11 +35,16 @@ test('native refresh, reuse, failure, deletion and selected-source verification'
   assert.equal(verification(run('query', { value: 'before', verify: true })), 'stale-or-unavailable');
   assert.equal(run('refresh').changed, 1);
   assert.equal(run('query', { value: 'before' }).results.length, 0);
+  // A syntax error indexes what lies outside it and marks the source partial.
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
-  assert.equal(run('refresh').failed, 1);
+  const partial = run('refresh');
+  assert.deepEqual([partial.changed, partial.failed, partial.coverage.partialSources], [1, 0, 1]);
   assert.equal(run('query', { value: 'after' }).results.length, 0);
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from([0x65, 0xff]));
+  assert.equal(run('refresh').failed, 1);
   fs.writeFileSync(path.join(root, 'a.mjs'), '// empty');
-  assert.equal(run('refresh').coverage.failedSources, 0);
+  const clean = run('refresh').coverage;
+  assert.deepEqual([clean.failedSources, clean.partialSources], [0, 0]);
   fs.unlinkSync(path.join(root, 'b.mjs'));
   assert.equal(run('refresh').removed, 1);
   assert.equal(run('query', { value: 'other' }).results.length, 0);
@@ -159,7 +164,8 @@ test('bounded extraction persists pending work, hides stale facts and advances p
   const { root, run } = fixture(t);
   for (const name of ['a', 'b', 'c']) fs.writeFileSync(path.join(root, `${name}.mjs`), `export const ${name} = 1;`);
   run('refresh');
-  fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
+  // Not UTF-8: no provider can read it, so it fails; a syntax error alone indexes partially.
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from([0x65, 0xff]));
   fs.writeFileSync(path.join(root, 'b.mjs'), 'export const replacement = 2;');
   fs.writeFileSync(path.join(root, 'c.mjs'), 'export const tail = 3;');
   const first = run('refresh', { maxFiles: 1 });
@@ -198,7 +204,7 @@ test('byte batches skip oversized sources, bound failed attempts and resume with
   assert.equal(run('query', { value: 'old' }).results.length, 0);
   assert.equal(run('query', { value: 'small' }).results.length, 1);
   assert.equal(run('refresh', { maxBytes: Buffer.byteLength(large) }).coverage.pendingSources, 0);
-  fs.writeFileSync(path.join(root, 'a.mjs'), 'export {');
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from('export \xff', 'latin1'));
   fs.writeFileSync(path.join(root, 'b.mjs'), 'export const next = 2;');
   const failed = run('refresh', { maxBytes: 8 });
   assert.equal(failed.failed, 1);
@@ -271,7 +277,8 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   const first = run('refresh');
   assert.equal(first.changed, 2);
   assert.equal(first.coverage.sources, 2);
-  assert.equal(run('version').providers.length, 4);
+  const providers = run('version').providers;
+  assert.ok(['java-', 'javascript-', 'markdown-'].every(name => providers.some(p => p.startsWith(name))), providers);
   const schema = run('query', { value: 'schema', verify: true, excerpt: true });
   const call = schema.results.find(row => row.kind === 'java:invokes-syntax');
   const declaration = schema.results.find(row => row.kind === 'java:declares-method');
@@ -296,7 +303,7 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   assert.equal(changed.changed, 1);
   assert.equal(changed.reused, 1);
   assert.equal(run('query', { field: 'id', value: call.id }).results.length, 0);
-  fs.writeFileSync(path.join(root, 'Generator.java'), 'class Generator { String broken( }');
+  fs.writeFileSync(path.join(root, 'Generator.java'), Buffer.from('class Generator { \xff }', 'latin1'));
   assert.equal(run('refresh').failed, 1);
   assert.equal(run('query', { value: 'replacement' }).results.length, 0);
   assert.equal(run('query', { value: 'kept' }).results.length, 1);
@@ -475,7 +482,7 @@ test('locate routes structural questions to verified evidence only under full sc
   const ask = (...args) => JSON.parse(locate([...args, '--json']));
   write('src/A.java', 'class A {\n void go() {\n  ping();\n }\n void ping() {}\n}\n');
   write('docs/guide.md', '# Guide\n\n## Install\n\ntext\n');
-  write('native/lib.go', 'func ping() {}\n');
+  write('native/lib.kt', 'fun ping() {}\n');
   write('crate/src/lib.rs', 'use crate::net::{self, ping as p};\nfn run() {\n    assert_eq!(net::ping(), ());\n}\n');
   // Turned off per project: literal search, nothing indexed.
   config({ enabled: false });
@@ -511,7 +518,7 @@ test('locate routes structural questions to verified evidence only under full sc
     ['A.ping', 'ping', 'A', [3], true]);
   assert.deepEqual(ask('--callers', 'net::ping', '--path', 'crate').results.map(row => row.line), [3]);
   assert.match(locate(['--callers', 'A.ping', '--path', 'src']), /^intelligence \(covered\): callers A\.ping in src\nmatched by name ping; qualifier A not resolved/);
-  assert.deepEqual(ask('--declaration', 'lib::ping', '--path', 'native').gapSearch.matches.map(match => match.path), ['native/lib.go']);
+  assert.deepEqual(ask('--declaration', 'lib::ping', '--path', 'native').gapSearch.matches.map(match => match.path), ['native/lib.kt']);
   // A function passed as a value is a caller beside the calls: a Java method reference and a
   // Rust path in argument position, but not a capitalized path (variant, constant, type).
   write('refs/B.java', 'class B {\n void each(java.util.List<String> xs) {\n  xs.forEach(A::ping);\n }\n}\n');
@@ -522,16 +529,16 @@ test('locate routes structural questions to verified evidence only under full sc
   const unnamed = nativeCommand(['locate', '--root', root, '--callers', 'A.', '--path', 'src'], { binary });
   assert.notEqual(unnamed.exitCode, 0);
   assert.match(unnamed.stderr + unnamed.stdout, /qualified value must end in a name/);
-  // Go source no provider reads is searched literally beside the index answer.
+  // Kotlin source no provider reads is searched literally beside the index answer.
   const combined = ask('--declaration', 'ping', '--path', 'src', '--path', 'native');
-  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { go: 1 } }]);
+  assert.deepEqual([combined.route.answeredBy, combined.route.reason, combined.route.detail], ['intelligence+locate', 'gaps-searched', { unindexed: { kt: 1 } }]);
   assert.deepEqual(combined.results.map(row => [row.path, row.kind]), [['src/A.java', 'java:declares-method']]);
-  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.go', 'func ping() {}']]);
+  assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.kt', 'fun ping() {}']]);
   assert.equal(combined.route.complete, true);
-  assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed go 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.go:1: func ping\(\) \{\}\n$/);
+  assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed kt 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.kt:1: fun ping\(\) \{\}\n$/);
   // A gap file the literal search skips leaves an empty answer short of absence: Git's text
   // search names the oversized file as containing the value, but its lines are not read.
-  write('scripts/big.py', `# pong ${'x'.repeat(270 * 1024)}\n`);
+  write('scripts/big.kt', `// pong ${'x'.repeat(270 * 1024)}\n`);
   const skipped = ask('--declaration', 'pong', '--path', 'scripts');
   assert.deepEqual([skipped.route.answeredBy, skipped.gapSearch.skipped.oversized, skipped.route.complete], ['intelligence+locate', 1, false]);
   assert.match(locate(['--declaration', 'pong', '--path', 'scripts']), /No match: not proof of absence\.\n$/);

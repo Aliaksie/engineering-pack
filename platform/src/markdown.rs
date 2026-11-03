@@ -254,6 +254,7 @@ pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
         hash: hash(bytes),
         provider: PROVIDER.into(),
         evidence: outline.evidence,
+        partial: false,
     };
     result.validate()?;
     Ok(result)

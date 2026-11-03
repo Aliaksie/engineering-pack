@@ -107,10 +107,11 @@ impl Store {
     ) -> Result<(), Error> {
         extraction.validate()?;
         let tx = self.connection.savepoint()?;
-        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records) VALUES (?1,?2,?3,'ok',?4,?5,?6)
-            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='ok',diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records
+        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records) VALUES (?1,?2,?3,?7,?4,?5,?6)
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome=excluded.outcome,diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records
             RETURNING sid",
-            params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch, extraction.evidence.len() as i64], |r| r.get(0))?;
+            params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch, extraction.evidence.len() as i64,
+                if extraction.partial { "partial" } else { "ok" }], |r| r.get(0))?;
         tx.execute("DELETE FROM evidence WHERE sid=?1", [sid])?;
         let mut insert = tx.prepare_cached(
             "INSERT INTO evidence VALUES (unhex(?1),?2,?3,?4,?5,?6,?7,?8,?9,unhex(?10))",
@@ -231,7 +232,7 @@ impl Store {
         hash: &str,
         epoch: i64,
     ) -> Result<bool, Error> {
-        let count = self.connection.prepare_cached("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed')")?
+        let count = self.connection.prepare_cached("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed','partial')")?
             .execute(params![path,provider,hash,epoch])?;
         self.written()?;
         Ok(count != 0)
@@ -342,11 +343,11 @@ impl Store {
                 .query_row(sql, [], |r| r.get::<_, i64>(0))
                 .map_err(Error::from)
         };
-        let (sources, failed, pending, evidence) = self.connection.query_row(
+        let (sources, failed, pending, evidence, partial) = self.connection.query_row(
             "SELECT count(*), count(*) FILTER (WHERE outcome='failed'), count(*) FILTER (WHERE outcome='pending'),
-                coalesce(sum(records) FILTER (WHERE outcome='ok'),0) FROM sources",
+                coalesce(sum(records) FILTER (WHERE outcome IN ('ok','partial')),0), count(*) FILTER (WHERE outcome='partial') FROM sources",
             [],
-            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, i64>(3)?)),
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, i64>(3)?, r.get::<_, i64>(4)?)),
         )?;
         let exclusions: String = self.connection.query_row(
             "SELECT value FROM metadata WHERE key='exclusions'",
@@ -368,12 +369,12 @@ impl Store {
             "excludedSources":scalar("SELECT value FROM metadata WHERE key='excluded_sources'")?,
             "generation":scalar("SELECT value FROM metadata WHERE key='generation'")?,
             "inventoryComplete":scalar("SELECT value FROM metadata WHERE key='inventory_complete'")? == 1,
-            "sources":sources, "failedSources":failed, "pendingSources":pending, "evidence":evidence,
+            "sources":sources, "failedSources":failed, "pendingSources":pending, "partialSources":partial, "evidence":evidence,
             "freshness":"stored-snapshot", "completeness":"unknown outside declared provider coverage"}))
     }
 
-    /// Sources without current evidence, as `(path, provider, outcome)` in path order, where
-    /// the outcome is `pending` or `failed`.
+    /// Sources without complete current evidence, as `(path, provider, outcome)` in path order,
+    /// where the outcome is `pending`, `failed` or `partial`.
     pub fn unextracted(&self) -> Result<Vec<(String, String, String)>, Error> {
         let mut statement = self.connection.prepare(
             "SELECT path,provider,outcome FROM sources WHERE outcome<>'ok' ORDER BY path,provider",
@@ -391,11 +392,15 @@ impl Store {
             "name" => "e.name=?1",
             "path" => "s.path=?1",
             "target" => "e.target=?1",
-            _ => return Err("query field must be id, name, path or target".into()),
+            // An import as asked: a named import by its name, a module by its whole trailing
+            // path or module segments (`utils/buffer` matches `../utils/buffer.js`, `Gson`
+            // matches `com.google.gson.Gson`, `b` matches `crate::a::b`).
+            "import" => IMPORT,
+            _ => return Err("query field must be id, name, path, target or import".into()),
         };
         if !(1..=200).contains(&query.limit)
             || query.value.len() > 4096
-            || query.kinds.len() > 16
+            || query.kinds.len() > 256
             || query.under.len() > 32
             || query
                 .kinds
@@ -422,7 +427,7 @@ impl Store {
         let list = |items: &[&str]| (!items.is_empty()).then(|| json!(items).to_string());
         let (kinds, directories) = (list(query.kinds), list(&under));
         let filters = format!(
-            "{column} AND s.outcome='ok' AND (?2 IS NULL OR s.path=?2)
+            "{column} AND s.outcome IN ('ok','partial') AND (?2 IS NULL OR s.path=?2)
             AND (?3 IS NULL OR e.kind IN (SELECT value FROM json_each(?3)))
             AND (?4 IS NULL OR EXISTS (SELECT 1 FROM json_each(?4) u
                 WHERE s.path=u.value OR substr(s.path,1,length(u.value)+1)=u.value||'/'))"
@@ -528,6 +533,12 @@ fn one(items: &[&str]) -> Value {
         _ => Value::Null,
     }
 }
+
+const IMPORT: &str = "(CASE WHEN e.kind LIKE '%:imports-name' THEN e.name=?1 ELSE EXISTS (
+    SELECT 1 FROM json_each('[\"\",\".js\",\".mjs\",\".cjs\",\".jsx\",\".ts\",\".mts\",\".cts\",\".tsx\",\".py\"]') x
+    WHERE substr(e.target, -length(?1||x.value)) = ?1||x.value
+      AND (length(e.target) = length(?1||x.value)
+        OR substr(e.target, -length(?1||x.value)-1, 1) IN ('/', '.', ':'))) END)";
 
 /// One evidence lookup: an exact field match, narrowed before pagination.
 pub struct Query<'a> {
@@ -761,6 +772,97 @@ mod tests {
         );
         drop(store);
         std::fs::remove_file(&database).unwrap();
+    }
+
+    #[test]
+    fn partial_sources_answer_and_stay_listed_as_gaps() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        let extraction =
+            crate::java::extract("A.java", b"class A { void go() { ping(); } void broken( }")
+                .unwrap();
+        assert!(extraction.partial);
+        store.replace(&extraction, "1", epoch).unwrap();
+        let rows = store.query(&Query::new("name", "ping")).unwrap();
+        assert_eq!(rows["results"][0]["container"]["name"], "go");
+        assert_eq!(
+            store.unextracted().unwrap(),
+            [(
+                "A.java".into(),
+                crate::java::PROVIDER.into(),
+                "partial".into()
+            )]
+        );
+        let status = store.status().unwrap();
+        assert_eq!(
+            (&status["partialSources"], &status["failedSources"]),
+            (&json!(1), &json!(0))
+        );
+        assert!(
+            store
+                .reuse("A.java", crate::java::PROVIDER, &extraction.hash, epoch)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn imports_match_names_and_trailing_module_segments() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        for (path, source) in [
+            (
+                "src/a.ts",
+                "import { decode } from '../utils/buffer'\nimport { AdrSlug as Slug } from './AdrSlug.js'\n",
+            ),
+            (
+                "src/b.ts",
+                "import x from './my_buffer'\nexport * from 'utils/buffer'\n",
+            ),
+            (
+                "h/c.py",
+                "from ._urlparse import urlparse\nimport a_urlparse\n",
+            ),
+            ("g/C.java", "import com.google.gson.Gson;\nclass C {}"),
+            ("r/lib.rs", "use crate::a::b;\nuse crate::ab;\n"),
+        ] {
+            let extraction = crate::providers::extract(path, source.as_bytes()).unwrap();
+            store.replace(&extraction, "1", epoch).unwrap();
+        }
+        let found = |value: &str| -> Vec<(String, String)> {
+            store.query(&Query::new("import", value)).unwrap()["results"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| {
+                    (
+                        r["path"].as_str().unwrap().into(),
+                        r["kind"].as_str().unwrap().into(),
+                    )
+                })
+                .collect()
+        };
+        let pairs = |rows: &[(&str, &str)]| -> Vec<(String, String)> {
+            rows.iter()
+                .map(|(p, k)| (p.to_string(), k.to_string()))
+                .collect()
+        };
+        assert_eq!(
+            found("utils/buffer"),
+            pairs(&[("src/a.ts", "ts:imports"), ("src/b.ts", "ts:imports")])
+        );
+        assert_eq!(found("buffer"), found("utils/buffer"));
+        assert_eq!(
+            found("AdrSlug"),
+            pairs(&[("src/a.ts", "ts:imports"), ("src/a.ts", "ts:imports-name")])
+        );
+        assert_eq!(found("_urlparse"), pairs(&[("h/c.py", "python:imports")]));
+        assert_eq!(
+            found("urlparse"),
+            pairs(&[("h/c.py", "python:imports-name")])
+        );
+        assert_eq!(found("Gson"), pairs(&[("g/C.java", "java:imports")]));
+        assert_eq!(found("b"), pairs(&[("r/lib.rs", "rust:imports")]));
+        assert!(found("uffer").is_empty());
     }
 
     #[test]

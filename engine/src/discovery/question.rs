@@ -25,8 +25,8 @@ pub const ASKS: &[(&str, Ask)] = &[
 /// Source code that could declare, call or import a name, whether or not a provider reads it.
 const CODE: &[&str] = &[
     "c", "cc", "cjs", "clj", "cpp", "cs", "cts", "cxx", "dart", "ex", "exs", "go", "groovy", "h",
-    "hpp", "java", "js", "jsx", "kt", "kts", "lua", "m", "mjs", "mm", "mts", "php", "py", "rb",
-    "rs", "scala", "swift", "ts", "tsx",
+    "hh", "hpp", "hxx", "java", "js", "jsx", "kt", "kts", "lua", "m", "mjs", "mm", "mts", "php",
+    "py", "pyi", "rb", "rs", "scala", "swift", "ts", "tsx",
 ];
 /// Documents with headings.
 const DOCUMENTS: &[&str] = &["adoc", "asciidoc", "markdown", "md", "org", "rst"];
@@ -36,44 +36,26 @@ impl Ask {
         ASKS.iter().find(|(_, ask)| *ask == self).unwrap().0
     }
 
-    /// The evidence field matched and the kinds that answer this question.
-    pub fn evidence(self) -> (&'static str, &'static [&'static str]) {
+    /// The evidence field matched and whether an evidence kind answers this question. Kinds
+    /// are `<language>:<role>`, so a new language answers without a change here.
+    pub fn evidence(self) -> (&'static str, fn(&str) -> bool) {
+        fn role(kind: &str) -> &str {
+            kind.split_once(':').map_or("", |(_, role)| role)
+        }
         match self {
-            Ask::Declaration => (
-                "name",
-                &[
-                    "java:declares-constructor",
-                    "java:declares-method",
-                    "java:declares-type",
-                    "js:declares",
-                    "rust:declares-const",
-                    "rust:declares-fn",
-                    "rust:declares-macro",
-                    "rust:declares-module",
-                    "rust:declares-type",
-                ],
-            ),
-            Ask::Callers => (
-                "name",
-                &[
-                    "java:invokes-syntax",
-                    "java:references-syntax",
-                    "rust:invokes-syntax",
-                    "rust:references-syntax",
-                ],
-            ),
-            Ask::Imports => (
-                "target",
-                &[
-                    "java:imports",
-                    "java:imports-static",
-                    "js:dynamic-import",
-                    "js:imports",
-                    "rust:imports",
-                ],
-            ),
-            Ask::Section => ("name", &["md:section"]),
-            Ask::Outline => ("path", &["md:section"]),
+            Ask::Declaration => ("name", |kind| {
+                let role = role(kind);
+                role == "declares" || role.starts_with("declares-")
+            }),
+            Ask::Callers => ("name", |kind| {
+                matches!(role(kind), "invokes-syntax" | "references-syntax")
+            }),
+            Ask::Imports => ("import", |kind| {
+                let role = role(kind);
+                role == "imports" || role.starts_with("imports-") || role == "dynamic-import"
+            }),
+            Ask::Section => ("name", |kind| kind == "md:section"),
+            Ask::Outline => ("path", |kind| kind == "md:section"),
         }
     }
 
@@ -241,6 +223,8 @@ pub struct Coverage {
     /// In-scope sources whose provider answers the question but which are not extracted.
     pub pending: Vec<String>,
     pub failed: Vec<String>,
+    /// In-scope sources that parsed with syntax errors: indexed outside them, searched too.
+    pub partial: Vec<String>,
     /// In-scope candidate sources no provider answers for.
     pub unindexed: Vec<String>,
     /// Cited sources that changed after the refresh; their rows are left out.
@@ -250,11 +234,17 @@ pub struct Coverage {
 impl Coverage {
     /// Every in-scope source the index cannot answer for, in path order.
     pub fn gaps(&self) -> Vec<String> {
-        let mut gaps: Vec<_> = [&self.pending, &self.failed, &self.unindexed, &self.changed]
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
+        let mut gaps: Vec<_> = [
+            &self.pending,
+            &self.failed,
+            &self.partial,
+            &self.unindexed,
+            &self.changed,
+        ]
+        .into_iter()
+        .flatten()
+        .cloned()
+        .collect();
         gaps.sort();
         gaps.dedup();
         gaps
@@ -274,6 +264,7 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
     for (name, paths) in [
         ("pending", &coverage.pending),
         ("failed", &coverage.failed),
+        ("partial", &coverage.partial),
         ("changed", &coverage.changed),
         ("excluded", &coverage.excluded_within),
     ] {
@@ -475,6 +466,7 @@ mod tests {
             excluded_within: Vec::new(),
             pending: paths(&["src/B.java"]),
             failed: paths(&["src/A.java"]),
+            partial: Vec::new(),
             unindexed: paths(&["src/lib.rs", "src/x.RS", "src/a.py"]),
             changed: paths(&["src/A.java"]),
         };

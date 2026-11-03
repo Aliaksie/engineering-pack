@@ -1,135 +1,47 @@
 //! Java syntax relationships only. Method names are not resolved call targets.
-use crate::syntax::{self, Anchor, Fact};
-use craft_engine::{Extraction, identity};
+use crate::syntax::{Language, Vocabulary};
+use craft_engine::Extraction;
 use tree_sitter::Node;
 
-pub const PROVIDER: &str = "java-tree-sitter-0.23.5/v2";
+pub const PROVIDER: &str = "java-tree-sitter-0.23.5/v3";
 
-fn declaration(kind: &str) -> Option<&'static str> {
-    match kind {
-        "class_declaration"
-        | "interface_declaration"
-        | "enum_declaration"
-        | "record_declaration"
-        | "annotation_type_declaration" => Some("java:declares-type"),
-        "method_declaration" => Some("java:declares-method"),
-        "constructor_declaration" | "compact_constructor_declaration" => {
-            Some("java:declares-constructor")
-        }
-        _ => None,
-    }
-}
+pub const LANGUAGE: Language = Language {
+    name: "java",
+    provider: PROVIDER,
+    extensions: &["java"],
+    grammar: || tree_sitter_java::LANGUAGE.into(),
+    query: || include_str!("../queries/java.scm").into(),
+    vocabulary: Vocabulary::Craft,
+    kinds: &[
+        "java:declares-constructor",
+        "java:declares-method",
+        "java:declares-type",
+        "java:imports",
+        "java:imports-static",
+        "java:invokes-syntax",
+        "java:references-syntax",
+    ],
+    import: Some(import),
+};
 
-fn container(path: &str, node: Node, source: &str) -> Option<String> {
-    let mut parent = node.parent();
-    while let Some(node) = parent {
-        // A local/anonymous type's initializer is not an invocation by the outer method.
-        if matches!(
-            node.kind(),
-            "class_body" | "enum_body" | "interface_body" | "annotation_type_body"
-        ) {
-            return None;
-        }
-        if matches!(
-            node.kind(),
-            "method_declaration" | "constructor_declaration" | "compact_constructor_declaration"
-        ) {
-            let name = node.child_by_field_name("name")?;
-            return Some(identity(&[
-                path,
-                PROVIDER,
-                declaration(node.kind())?,
-                &source[name.byte_range()],
-                &node.start_byte().to_string(),
-            ]));
-        }
-        parent = node.parent();
+/// `import a.b.C;` imports `a.b.C`; `import a.b.*;` imports `a.b.*`.
+fn import(node: Node, source: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    let target = node
+        .named_children(&mut cursor)
+        .find(|n| matches!(n.kind(), "identifier" | "scoped_identifier"))?;
+    let mut target = source[target.byte_range()].to_string();
+    if node
+        .named_children(&mut cursor)
+        .any(|n| n.kind() == "asterisk")
+    {
+        target.push_str(".*");
     }
-    None
+    Some(target)
 }
 
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
-    syntax::extract(
-        path,
-        bytes,
-        PROVIDER,
-        tree_sitter_java::LANGUAGE.into(),
-        |node, source| {
-            if let Some(kind) = declaration(node.kind()) {
-                let name = node.child_by_field_name("name")?;
-                return Some(Fact {
-                    kind,
-                    name: source[name.byte_range()].into(),
-                    target: None,
-                    container: None,
-                    anchor: None,
-                });
-            }
-            if node.kind() == "method_invocation" {
-                let name = node.child_by_field_name("name")?;
-                let anchor = Anchor {
-                    range: name.byte_range(),
-                    position: name.start_position(),
-                };
-                let name = source[name.byte_range()].to_string();
-                return Some(Fact {
-                    kind: "java:invokes-syntax",
-                    target: Some(name.clone()),
-                    name,
-                    container: container(path, node, source),
-                    anchor: Some(anchor),
-                });
-            }
-            // `Type::method`, `obj::method`, `this::method`: the method is passed, not called
-            // here. Constructor references (`Type::new`) name no method.
-            if node.kind() == "method_reference" {
-                let mut cursor = node.walk();
-                let name = node
-                    .named_children(&mut cursor)
-                    .skip(1)
-                    .filter(|n| n.kind() == "identifier")
-                    .last()?;
-                let anchor = Anchor {
-                    range: name.byte_range(),
-                    position: name.start_position(),
-                };
-                let name = source[name.byte_range()].to_string();
-                return Some(Fact {
-                    kind: "java:references-syntax",
-                    target: Some(name.clone()),
-                    name,
-                    container: container(path, node, source),
-                    anchor: Some(anchor),
-                });
-            }
-            if node.kind() == "import_declaration" {
-                let mut cursor = node.walk();
-                let target = node
-                    .named_children(&mut cursor)
-                    .find(|n| matches!(n.kind(), "identifier" | "scoped_identifier"))?;
-                let mut target = source[target.byte_range()].to_string();
-                if node
-                    .named_children(&mut cursor)
-                    .any(|n| n.kind() == "asterisk")
-                {
-                    target.push_str(".*");
-                }
-                let kind = if node.children(&mut cursor).any(|n| n.kind() == "static") {
-                    "java:imports-static"
-                } else {
-                    "java:imports"
-                };
-                return Some(Fact {
-                    kind,
-                    name: target.clone(),
-                    target: Some(target),
-                    container: None,
-                    anchor: None,
-                });
-            }
-            None
-        },
-    )
+    LANGUAGE.extract(path, bytes)
 }
 
 #[cfg(test)]
@@ -182,7 +94,11 @@ mod tests {
                 .any(|e| e.kind == "java:imports-static"
                     && e.target.as_deref() == Some("java.util.Collections.*"))
         );
-        assert!(extract("Bad.java", b"class Bad { void broken( }").is_err());
+        assert!(
+            extract("Bad.java", b"class Bad { void broken( }")
+                .unwrap()
+                .partial
+        );
     }
 
     #[test]

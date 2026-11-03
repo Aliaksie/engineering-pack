@@ -13,6 +13,6 @@
     {"id":"plan-written-by-shell-is-planning-evidence","situation":"A planning session writes PLAN.md from a shell tool, with an older uncommitted file present; the turn end records only PLAN.md","expected":{"planning":[{"path":"PLAN.md","revision":1,"current":true,"intent":"plan"}],"workPlans":false},"current":{"planning":[{"path":"PLAN.md","revision":1,"current":true,"intent":"plan"}],"workPlans":false}},
     {"id":"lookup-default","situation":"Callers lookup in a Java repository with default project settings","expected":{"answeredBy":"intelligence","reason":"covered","complete":true},"current":{"answeredBy":"intelligence","reason":"covered","complete":true}},
     {"id":"lookup-enabled","situation":"Callers lookup in a Java repository with Project Intelligence enabled","expected":{"answeredBy":"intelligence","reason":"covered","complete":true},"current":{"answeredBy":"intelligence","reason":"covered","complete":true}},
-    {"id":"lookup-unindexed","situation":"Callers lookup reaching a JavaScript source the index does not read for callers","expected":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true},"current":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true}}
+    {"id":"lookup-unindexed","situation":"Callers lookup reaching a Kotlin source no provider reads","expected":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true},"current":{"answeredBy":"intelligence+locate","reason":"gaps-searched","complete":true}}
   ]
 }

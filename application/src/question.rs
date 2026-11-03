@@ -80,11 +80,16 @@ fn observe(
     // A background refresh releases the store between short chunks; wait for its turn.
     let _guard = database_guard_within(&database, LOOKUP_WAIT)?;
     let mut store = Store::open(&database)?;
-    let (field, wanted) = question.ask.evidence();
+    let (field, answers) = question.ask.evidence();
+    let wanted: Vec<&str> = ACTIVE
+        .iter()
+        .flat_map(|provider| kinds(provider).iter().copied())
+        .filter(|kind| answers(kind))
+        .collect();
     let answering: Vec<_> = ACTIVE
         .iter()
         .copied()
-        .filter(|provider| kinds(provider).iter().any(|kind| wanted.contains(kind)))
+        .filter(|provider| kinds(provider).iter().any(|kind| answers(kind)))
         .collect();
     let mut budget = Budget::from_input(&json!({"maxDurationMs": refresh_ms}))?;
     let refreshed = crate::evidence::refresh(root, &mut store, &mut budget, &mut |path| {
@@ -113,6 +118,7 @@ fn observe(
         if answering.contains(&provider.as_str()) && question::within(&path, &question.scopes) {
             match outcome.as_str() {
                 "failed" => coverage.failed.push(path),
+                "partial" => coverage.partial.push(path),
                 _ => coverage.pending.push(path),
             }
         }
@@ -132,7 +138,7 @@ fn observe(
         after: &question.after,
         limit: question.limit,
         source: None,
-        kinds: wanted,
+        kinds: &wanted,
         // An outline's document is its source, matched by the path field itself.
         under: if field == "path" { &[] } else { &under },
     })?;
