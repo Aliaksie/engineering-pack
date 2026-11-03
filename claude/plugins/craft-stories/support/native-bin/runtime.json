@@ -27,7 +27,7 @@
       "platform": "win32",
       "arch": "x64",
       "executable": "x86_64-pc-windows-msvc/native-bin/craft.exe",
-      "sha256": "6ad435090753ca31882486cfd465cf7fa760ce42ece66724cbf5fd46d9af41fd",
+      "sha256": "6bda87d92ede7be1601e9007490e37d2665a8f76da95c7caf1f90cbdf73f8a30",
       "binaryVersion": "0.0.1",
       "sourceDirty": false
     }

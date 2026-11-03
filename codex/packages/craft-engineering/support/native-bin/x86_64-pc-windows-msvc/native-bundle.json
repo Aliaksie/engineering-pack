@@ -31,12 +31,12 @@
     {
       "path": "native-bin/craft.exe",
       "bytes": 8407040,
-      "sha256": "6ad435090753ca31882486cfd465cf7fa760ce42ece66724cbf5fd46d9af41fd"
+      "sha256": "6bda87d92ede7be1601e9007490e37d2665a8f76da95c7caf1f90cbdf73f8a30"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "611e99bfddcbf59c77d02bfcbe227369a7925ce3caff2ef80488382fe0098963"
+      "sha256": "e6926e5971824caaa66177f7e2302364789f2ac8d66145dcf8780ef4d0dea53c"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
