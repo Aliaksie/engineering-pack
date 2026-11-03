@@ -76,7 +76,9 @@ function cargoProjections(root, version) {
   ];
 }
 
-export function synchronizeVersion(root, version = packVersion(root), check = false) {
+// `cargo: false` limits the projections to what package exports carry; the Rust workspace
+// does not feed them. Version sync, version check, validation and release keep it.
+export function synchronizeVersion(root, version = packVersion(root), check = false, { cargo = true } = {}) {
   parseVersion(version);
   const projections = versionFiles(root).map(name => {
     const file = projectionFile(root, name);
@@ -84,7 +86,7 @@ export function synchronizeVersion(root, version = packVersion(root), check = fa
     return { name, file, current: data.version, text: `${JSON.stringify({ ...data, version }, null, 2)}\n` };
   });
   // Every path is read and validated before any projection is written.
-  projections.push(...cargoProjections(root, version));
+  if (cargo) projections.push(...cargoProjections(root, version));
   const stale = projections.filter(projection => projection.current !== version);
   if (check && stale.length) throw new Error(`version drift: ${stale[0].name}`);
   if (!check) for (const { file, text } of stale) fs.writeFileSync(file, text);

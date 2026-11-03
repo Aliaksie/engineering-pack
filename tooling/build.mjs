@@ -21,7 +21,7 @@ export const ADAPTERS = { claude, codex, cursor, copilot, gemini, agents, 'gemin
 const MARKER = '.capability-build.json';
 
 export function build(repo, target) {
-  const version = synchronizeVersion(repo, undefined, true);
+  const version = synchronizeVersion(repo, undefined, true, { cargo: false });
   if (!Object.hasOwn(ADAPTERS, target)) throw new Error(`unknown adapter ${target}`);
   const packages = loadCapabilities(repo);
   const dist = path.join(repo, 'dist');

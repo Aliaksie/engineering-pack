@@ -74,6 +74,10 @@ test('version synchronization rejects a Cargo workspace it cannot project comple
   fs.writeFileSync(lock,fs.readFileSync(lock,'utf8').replace(lockEntry('craft-engine','0.0.2'),''));
   assert.throws(()=>synchronizeVersion(root,'0.1.0'),/no entry for craft-engine/);
   assert.equal(packVersion(root),'0.0.2');
+  // Package exports carry no Cargo projection, so a source copy without the workspace builds.
+  for (const name of ['Cargo.toml','Cargo.lock']) fs.rmSync(path.join(root,name));
+  assert.throws(()=>synchronizeVersion(root,undefined,true),/ENOENT/);
+  assert.equal(synchronizeVersion(root,undefined,true,{cargo:false}),'0.0.2');
 });
 test('current releases publish merged 0.0.2 without incrementing; tags and main agree',t=>{
   const {root,remote,source}=fixture(t), prepared=prepareRelease(root,source,'current');
