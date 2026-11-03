@@ -11,6 +11,8 @@ node_modules/
 
 dist/
 .eval-results/
+# Generated from evals/probes by tooling/eval-probes.mjs.
+evals/tasks/repo-*/
 
 **/.craft/state/
 **/.craft/worktrees/

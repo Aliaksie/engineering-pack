@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - evals/**
+      - tooling/eval-probes.mjs
       - .github/workflows/eval.yml
   workflow_dispatch:
     inputs:
@@ -65,6 +66,8 @@ jobs:
         run: docker build --file evals/image/Dockerfile --tag craft-eval:local .
       - name: Install Harbor
         run: pipx install "harbor==$HARBOR_VERSION"
+      - name: Generate unfamiliar-repository probes
+        run: node tooling/eval-probes.mjs
       - name: Lint tasks
         # The trial image is built locally above, so it has no registry digest to pin.
         run: harbor lint --select ALL --ignore unpinned-image evals/tasks/*/

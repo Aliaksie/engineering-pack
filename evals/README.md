@@ -20,6 +20,8 @@ runtime depends on it; trials install the exported Codex packages like a user wo
 | `jobs/qualify.yaml` | No model: the reference solution must pass every task and an idle agent must fail it |
 | `jobs/diagnose.yaml` | Craft only: which mechanisms engaged on each task |
 | `jobs/compare.yaml` | Matched vanilla and Craft arms |
+| `probes/unfamiliar-repos.json` | Unfamiliar-repository probes: pinned public repositories, questions and ground truth |
+| `image/answer-grade.sh` | Shared grader for cited answers against a probe's ground truth |
 | `tasks/<name>/` | One [Harbor task](https://docs.harborframework.com/tasks/overview): instruction, fixture repository, reference solution, hidden verifier |
 
 ## Tasks
@@ -39,6 +41,28 @@ model. `task.toml` names the actor, scenario and the Craft mechanism it expects.
 
 The `idle-*` tasks (keyword `probe-no-advantage`) have nothing for Craft to improve. Run them
 with the `compare` job and `tasks: idle-*`; the Craft arm should cost what vanilla costs.
+
+## Unfamiliar-repository probes
+
+Does Project Intelligence help on a repository the agent has never seen? Each probe asks one
+question with a deterministic, cited answer on a public repository fetched at a frozen commit
+when the task image is built: one repository per supported language (TypeScript, Python, Java,
+Go, Rust) and one documentation-heavy repository with architecture decision records. Questions
+come from developers (where is it declared, who calls it), reviewers (what does this change
+touch), architects (which file owns it, which decision record is current) and QA (where is it
+tested).
+
+`evals/probes/unfamiliar-repos.json` is the only source. `npm run eval:probes` writes one
+Git-ignored task per question as `tasks/repo-<id>/`; the workflow does this before every run.
+The answer is a list of paths, or `<path>#<function>` for callers, graded by
+`image/answer-grade.sh`: every expected citation (or, for `"match": "any"`, at least one), no
+citation outside the expected and allowed ones, and no invented path. Run them with
+`tasks: repo-*`, or one repository with `repo-<name>-*`.
+
+Before changing ground truth, clone each repository at its pinned commit into one directory and
+run `node tooling/eval-probes.mjs --verify <directory>`: every cited path must exist and every
+cited function must appear in its file. Questions use the repository's own words where a user
+would, and never mention Craft.
 
 ## Run
 
@@ -60,6 +84,7 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64   # on Apple silicon
 npm run build:codex && npm run build:native
 node tooling/native-install.mjs dist/project-evidence dist/codex --current-target
 docker build --file evals/image/Dockerfile --tag craft-eval:local .
+npm run eval:probes
 harbor run --config evals/jobs/qualify.yaml
 OPENAI_API_KEY=... harbor run --config evals/jobs/diagnose.yaml
 harbor view .eval-results/harbor
