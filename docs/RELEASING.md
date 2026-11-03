@@ -34,7 +34,8 @@ claude plugin validate ./dist/distribution --strict
 
 ## Versioned release
 
-1. In a PR, run `npm run version:sync -- <bump>` and add the matching `CHANGELOG.md` section.
+1. In a PR, run `npm run version:sync -- <bump>` and rename `CHANGELOG.md`’s `## Unreleased`
+   section to the version, editing its entries into release notes.
 2. After merging, run **Release → Run workflow** on `main`.
 
 The workflow validates the version, changelog and tag absence, runs workflow linting, dependency

@@ -75,6 +75,8 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 - Follow consumer commit policy and existing authorization; implementation alone does not
   authorize commits. Keep authorized commits coherent and verified, and internal plans/session
   records untracked and out of shipped references. Add prose only for an unmet reader need.
+- A PR that changes behavior users or consumers can observe adds a line under `## Unreleased`
+  in `CHANGELOG.md`: what changed for them, merged facts only, no plans or promises.
 
 - Preserve project-specific configuration in the consumer. Do not assume a language, UI
   framework, cloud, tracker, repository layout or architecture.
