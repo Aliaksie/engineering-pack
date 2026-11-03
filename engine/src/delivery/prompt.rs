@@ -137,6 +137,33 @@ fn names_failure(words: &[String]) -> bool {
             .any(|end| w.len() > end.len() && w.ends_with(end))
     })
 }
+/// What fails when a project check fails: "the test is failing again", "CI is red".
+const FAILING_CHECKS: &[&str] = &[
+    "test", "tests", "build", "builds", "pipeline", "ci", "suite", "check", "checks", "lint",
+    "job", "jobs", "e2e",
+];
+/// How a statement reports a failure; the base form "fail" is left out, as it reads as a
+/// request or a question ("make the test fail").
+const FAILURES: &[&str] = &[
+    "fails", "failed", "failing", "broke", "broken", "breaking", "red", "crashes", "crashed",
+    "crashing", "flaky", "flakes",
+];
+/// Words that open a question or condition rather than a report: "when the build fails…".
+const CONDITIONS: &[&str] = &[
+    "when", "if", "whenever", "once", "after", "before", "until", "unless", "how", "what", "which",
+    "who", "why", "where", "do", "does", "can", "could", "should", "would", "will",
+];
+/// A report that a project check fails, without a request: "the checkout test keeps
+/// failing", "the build is broken again". It asks for diagnosis; other observations ("the
+/// save button stays disabled") name no intent.
+fn reports_failing_check(words: &[String]) -> bool {
+    let is = |w: &String, set: &[&str]| set.contains(&w.as_str());
+    !words.first().is_some_and(|w| is(w, CONDITIONS))
+        && words
+            .iter()
+            .position(|w| is(w, FAILURES))
+            .is_some_and(|at| words[..at].iter().any(|w| is(w, FAILING_CHECKS)))
+}
 /// Who a conversation question asks about: "where were we?", "where did we leave off?".
 const SPEAKERS: &[&str] = &["we", "i"];
 
@@ -595,6 +622,31 @@ fn lead(words: &[String]) -> Option<&'static str> {
             Some("plan")
         }
         "how" if matches!(next(1), Some("far")) => Some("status"),
+        // "How is the invoice export going?", "how's the migration coming along?"; a bare
+        // "how is it going?" is conversation.
+        "how" if words.last().is_some_and(|w| w == "going" || w == "along") => {
+            (words.len() > 4).then_some("status")
+        }
+        // "How is the session token validated?": how something is done in the code.
+        "how"
+            if next(1).is_some_and(|w| matches!(w, "is" | "are" | "was" | "were"))
+                && words.len() > 3
+                && words
+                    .last()
+                    .is_some_and(|w| w.len() > 4 && (w.ends_with("ed") || w.ends_with("en"))) =>
+        {
+            Some("investigate")
+        }
+        // Progress on ongoing work: "where are we with the invoice export?", "where do we
+        // stand on refunds?". A bare "where are we?" stays conversation.
+        "where"
+            if names(&["stand", "stands"])
+                || (next(1).is_some_and(|w| AUXILIARIES.contains(&w))
+                    && next(2).is_some_and(|w| SPEAKERS.contains(&w) || w == "things")
+                    && matches!(next(3), Some("with" | "on"))) =>
+        {
+            Some("status")
+        }
         // "How does the retry work?", not "how do I run it?".
         "how"
             if matches!(next(1), Some("does" | "do"))
@@ -612,7 +664,8 @@ fn lead(words: &[String]) -> Option<&'static str> {
         _ => {
             let Some((phrase, intent)) = LEADS.iter().find(|(phrase, _)| starts(words, phrase))
             else {
-                return names_failure(words).then_some("investigate");
+                return (names_failure(words) || reports_failing_check(words))
+                    .then_some("investigate");
             };
             // A verb led by a statement is its subject; question words take auxiliaries.
             let question = matches!(first, "why" | "where" | "should");
@@ -621,7 +674,11 @@ fn lead(words: &[String]) -> Option<&'static str> {
                 .skip(phrase.len())
                 .take(2)
                 .any(|w| AUXILIARIES.contains(&w.as_str()) || STATEMENTS.contains(&w.as_str()));
-            (question || !statement).then_some(*intent)
+            // "Test fails on CI": the check is the subject of a reported failure.
+            if !question && statement {
+                return reports_failing_check(words).then_some("investigate");
+            }
+            Some(*intent)
         }
     }
 }
@@ -863,7 +920,6 @@ mod tests {
     fn statements_and_conversation_questions_name_no_intent() {
         for prompt in [
             "Review comments are addressed, push the fix",
-            "Test fails on CI",
             "Fix is merged",
             "Where were we?",
             "where did we leave off",
@@ -1019,6 +1075,57 @@ mod tests {
             Some("investigate")
         );
         assert_eq!(intent("The error message is confusing"), None);
+    }
+
+    #[test]
+    fn a_reported_failing_check_asks_for_diagnosis() {
+        for prompt in [
+            "The test is failing again",
+            "Test fails on CI",
+            "The checkout e2e tests keep failing",
+            "CI is red on main",
+            "the nightly build is broken again",
+            "Our integration suite crashed overnight",
+        ] {
+            assert_eq!(intent(prompt), Some("investigate"), "{prompt}");
+        }
+        // A request, question or condition about a failing check keeps its own reading, and
+        // an observation that names no check names no intent.
+        for (prompt, expected) in [
+            ("Write a failing test for the rounding bug", Some("verify")),
+            ("The tests are failing, fix them", Some("implement")),
+            ("Run the suite and tell me what fails", Some("run-check")),
+            ("How do I make the test fail?", None),
+            ("When the build fails, who gets notified?", None),
+            ("The save button stays disabled after editing", None),
+            ("Fix is merged", None),
+        ] {
+            assert_eq!(intent(prompt), expected, "{prompt}");
+        }
+    }
+
+    #[test]
+    fn progress_on_ongoing_work_is_a_status_question() {
+        for prompt in [
+            "Where are we with the invoice export?",
+            "where are we on the refund migration",
+            "Where do we stand on bulk cancellation?",
+            "How is the invoice export going?",
+            "How's the payments migration coming along?",
+        ] {
+            assert_eq!(intent(prompt), Some("status"), "{prompt}");
+        }
+        assert_eq!(intent("Where are we?"), None);
+        assert_eq!(intent("How is it going?"), None);
+        assert_eq!(
+            intent("Where is the invoice export implemented?"),
+            Some("locate")
+        );
+        assert_eq!(
+            intent("How is the session token validated?"),
+            Some("investigate")
+        );
+        assert_eq!(intent("How are you?"), None);
         assert_eq!(
             intent("don't change anything yet, just tell me where the tax is applied"),
             Some("locate")

@@ -101,6 +101,7 @@ export function buildNativeBundle() {
   const binary = path.join(metadata.target_directory, target, 'release', executable);
   const versionResponse = JSON.parse(execFileSync(binary, [], { input: JSON.stringify({ formatVersion: 1, operation: 'version' }), encoding: 'utf8', timeout: 10000 }));
   if (versionResponse.ok !== true || versionResponse.formatVersion !== 1 || versionResponse.result?.schemaVersion !== 4) throw new Error('incompatible native binary');
+  if (versionResponse.result.binaryVersion !== packVersion(repository)) throw new Error('native binary version differs from the pack version');
   const stage = fs.mkdtempSync(path.join(parent, '.bundle-'));
   try {
     fs.copyFileSync(path.join(repository, 'LICENSE'), path.join(stage, 'LICENSE'));

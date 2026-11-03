@@ -58,7 +58,7 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let root = event.root;
-    let settings = project::loaded(recorder, hook, root, None)?;
+    let settings = project::hook_loaded(recorder, hook, root)?;
     let session = event.session.filter(|s| !s.is_empty());
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);

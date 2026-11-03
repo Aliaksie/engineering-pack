@@ -207,8 +207,9 @@ fn read_only_review_denies_publishing_shell_commands_only_when_configured() {
         .iter()
         .map(|e| e["name"].as_str().unwrap().to_string())
         .collect();
-    // A non-shell call to a shell-scoped hook records the hook only.
-    assert_eq!(names.iter().filter(|n| *n == "project.loaded").count(), 3);
+    // A non-shell call to a shell-scoped hook records the hook only; unchanged settings
+    // are recorded once per session.
+    assert_eq!(names.iter().filter(|n| *n == "project.loaded").count(), 1);
     assert_eq!(names.iter().filter(|n| *n == "host.hook").count(), 4);
     let applied = events(&guarded.0)
         .iter()
@@ -224,6 +225,102 @@ fn read_only_review_denies_publishing_shell_commands_only_when_configured() {
         ))["decision"],
         "allow"
     );
+}
+
+fn loads(root: &Path) -> Vec<String> {
+    events(root)
+        .iter()
+        .filter(|e| e["name"] == "project.loaded")
+        .map(|e| {
+            format!(
+                "{}{}",
+                e["outcome"].as_str().unwrap(),
+                e["reasonCode"]
+                    .as_str()
+                    .map_or(String::new(), |r| format!("[{r}]"))
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn hooks_record_project_settings_once_per_session_until_they_change() {
+    let fixture = project("settings-once", Some(r#"{"formatVersion":1}"#));
+    let config = fixture.0.join(".craft/project.json");
+    let shell = |extra: Value| hook(facts(&fixture.0, "review-read-only", extra));
+    let deliver = |session: &str| {
+        hook(facts(
+            &fixture.0,
+            "deliver",
+            json!({"package": "craft-delivery", "lifecycle": "before-prompt", "scope": "any",
+                "prompt": "explain the module", "session": session}),
+        ))
+    };
+    for _ in 0..3 {
+        assert_eq!(shell(json!({"command": "git status"}))["decision"], "allow");
+    }
+    deliver("S-1");
+    assert_eq!(loads(&fixture.0), ["success"]);
+    assert_eq!(
+        events(&fixture.0)
+            .iter()
+            .filter(|e| e["name"] == "host.hook")
+            .count(),
+        4
+    );
+
+    // Changed settings are recorded again, then not while unchanged.
+    fs::write(&config, r#"{"formatVersion":1,"review":{"readOnly":true}}"#).unwrap();
+    assert_eq!(shell(json!({"command": "git push"}))["decision"], "deny");
+    shell(json!({"command": "git status"}));
+    assert_eq!(loads(&fixture.0), ["success", "success"]);
+
+    // Every failure is recorded; the settings that follow it are recorded again.
+    fs::write(&config, "{").unwrap();
+    shell(json!({"command": "git status"}));
+    shell(json!({"command": "git status"}));
+    fs::write(&config, r#"{"formatVersion":1,"review":{"readOnly":true}}"#).unwrap();
+    shell(json!({"command": "git status"}));
+    assert_eq!(
+        loads(&fixture.0),
+        [
+            "success",
+            "success",
+            "failure[CONFIG_INVALID]",
+            "failure[CONFIG_INVALID]",
+            "success"
+        ]
+    );
+
+    // Another session records the same settings for itself.
+    deliver("S-2");
+    deliver("S-2");
+    assert_eq!(loads(&fixture.0).len(), 6);
+
+    // The record is telemetry state keyed by pseudonym; no session state is added for it.
+    let record =
+        fs::read_to_string(fixture.0.join(".craft/state/telemetry/settings.json")).unwrap();
+    assert!(!record.contains("S-1") && !record.contains("S-2"));
+    let record: Value = serde_json::from_str(&record).unwrap();
+    assert_eq!(record["sessions"].as_array().unwrap().len(), 2);
+    for session in fs::read_dir(fixture.0.join(".craft/state/sessions")).unwrap() {
+        assert!(!session.unwrap().path().join("settings.json").exists());
+    }
+}
+
+#[test]
+fn hooks_without_a_session_record_project_settings_each_time() {
+    let fixture = project("settings-sessionless", Some(r#"{"formatVersion":1}"#));
+    for _ in 0..2 {
+        let mut input = facts(
+            &fixture.0,
+            "review-read-only",
+            json!({"command": "git status"}),
+        );
+        input.as_object_mut().unwrap().remove("session");
+        hook(input);
+    }
+    assert_eq!(loads(&fixture.0), ["success", "success"]);
 }
 
 #[test]

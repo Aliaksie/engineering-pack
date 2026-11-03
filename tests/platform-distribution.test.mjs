@@ -75,10 +75,28 @@ test('GitHub branch exposes all native entry points and reproducible plugin sour
     assert.equal(read(path.join(output, plugin.source.path, '.codex-plugin/plugin.json')).name, plugin.name);
     assert.ok(fs.existsSync(path.join(output, plugin.source.path, 'bin/craft')));
   }
-  const remoteLinks = files(output).filter(file => file.endsWith('.md')).flatMap(file => fs.readFileSync(file, 'utf8').match(/https:\/\/github\.com\/Aliaksie\/engineering-pack\/blob\/distribution[^)\s]*/g) ?? []);
-  assert.ok(remoteLinks.some(link => link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution-next/')));
-  assert.ok(remoteLinks.every(link => !link.startsWith('https://github.com/Aliaksie/engineering-pack/blob/distribution/')));
+  // Stable promotes candidate bytes unchanged: links must name the release, not a channel.
+  const version = read(path.join(fixture, 'package.json')).version;
+  const remoteLinks = files(output).filter(file => file.endsWith('.md')).flatMap(file => fs.readFileSync(file, 'utf8').match(/https:\/\/github\.com\/Aliaksie\/engineering-pack\/blob\/[^)\s]*/g) ?? []);
+  assert.ok(remoteLinks.length > 0);
+  const released = new RegExp(`^https://github\\.com/Aliaksie/engineering-pack/blob/v${version.replaceAll('.', '\\.')}/(?:docs|schemas)/`);
+  for (const link of remoteLinks) {
+    assert.match(link, released);
+    const target = link.slice(link.indexOf(`/v${version}/`) + `/v${version}/`.length).split('#')[0];
+    assert.ok(fs.existsSync(path.join(repo, ...target.split('/').map(decodeURIComponent))), `${link} has no source file`);
+  }
   assert.ok(!files(output).some(file => /(?:^|[/\\])(?:\.git|\.plan|node_modules|\.github)(?:[/\\]|$)/.test(path.relative(output, file))));
   fs.unlinkSync(path.join(output, '.engineering-distribution.json'));
   assert.throws(() => assembleDistribution(fixture), /unmanaged/);
+});
+
+test('GitHub branch rejects plugin links to generated files outside the plugin', t => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'github-distribution-'));
+  t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
+  for (const host of ['gemini-extension', 'claude', 'codex', 'jetbrains']) copy(path.join(repo, 'dist', host), path.join(fixture, 'dist', host));
+  fs.copyFileSync(path.join(repo, 'package.json'), path.join(fixture, 'package.json'));
+  const plugin = read(path.join(fixture, 'dist/claude/.claude-plugin/marketplace.json')).plugins[0].source;
+  fs.writeFileSync(path.join(fixture, 'dist/claude', plugin, 'EXTRA.md'), '[report](../../adapter-report.json)\n');
+  assert.throws(() => assembleDistribution(fixture), /adapter-report\.json, which has no source path/);
+  assert.ok(!fs.existsSync(path.join(fixture, 'dist/distribution')));
 });

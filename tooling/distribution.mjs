@@ -10,6 +10,8 @@ import { packVersion } from './version.mjs';
 
 const targets = ['gemini-extension', 'claude', 'codex', 'jetbrains'];
 const marker = '.engineering-distribution.json';
+// Adapter roots copy these repository paths unchanged; other root files are generated.
+const sourceCopies = new Set(['docs', 'schemas', 'LICENSE']);
 
 // One branch exposes native entry points while preserving each adapter's resource layout.
 export function assembleDistribution(repo) {
@@ -43,13 +45,18 @@ export function assembleDistribution(repo) {
     writeJson(stage, '.agents/plugins/marketplace.json', codex);
     // Hosts cache individual plugins. Links outside a plugin must remain reachable
     // without assuming that the rest of the marketplace was installed alongside it.
+    // Stable promotes these bytes unchanged, so links pin the release tag rather than a
+    // channel branch. The tag names a source revision, so adapter copies map to their source.
+    const source = `https://github.com/Aliaksie/engineering-pack/blob/v${version}`;
     for (const directory of [...claude.plugins.map(plugin => plugin.source), ...codex.plugins.map(plugin => plugin.source.path)]) {
       const pluginRoot = path.join(stage, directory);
       for (const file of files(pluginRoot).filter(file => file.endsWith('.md'))) {
         const text = rewriteLinks(fs.readFileSync(file, 'utf8'), file, file, resolved => {
           const relative = path.relative(pluginRoot, resolved);
           if (relative !== '..' && !relative.startsWith(`..${path.sep}`)) return resolved;
-          return `https://github.com/Aliaksie/engineering-pack/blob/distribution-next/${path.relative(stage, resolved).split(path.sep).map(encodeURIComponent).join('/')}`;
+          const [, ...parts] = path.relative(stage, resolved).split(path.sep);
+          if (!sourceCopies.has(parts[0])) throw new Error(`${path.relative(stage, file)} links outside its plugin to ${path.relative(stage, resolved)}, which has no source path`);
+          return `${source}/${parts.map(encodeURIComponent).join('/')}`;
         });
         fs.writeFileSync(file, text);
       }

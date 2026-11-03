@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- On macOS, a Git query no longer waits for an unrelated process Craft started at the same
+  time, so repository evidence stops going missing when several queries run at once.
+- Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
+  the candidate `distribution-next` branch, so stable installs no longer point at candidate files.
+- `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
+- Host hooks record a successful `project.loaded` telemetry event once per session and again
+  only when the effective settings change, instead of on every hook; failures are still
+  recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
+  session last recorded, under its telemetry pseudonym.
+- Prompt routing: progress questions about ongoing work ("Where are we with the invoice
+  export?", "How is the migration going?") get a status hint instead of a code lookup;
+  reports of a failing check ("The test is failing again", "CI is red") and "how is X
+  validated?" questions get a diagnosis (investigate) hint instead of none.
+
 ## 0.0.3
 
 Native runtime:

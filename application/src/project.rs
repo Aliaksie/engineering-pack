@@ -121,6 +121,31 @@ pub(crate) fn loaded(
     )
 }
 
+/// `settings` for a host hook. Hooks load them on every event, so a success is recorded as
+/// `project.loaded` only when the session has not yet recorded these effective settings;
+/// a failure is always recorded and makes the next success record again.
+pub(crate) fn hook_loaded(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    root: &Path,
+) -> Result<Value, Failure> {
+    let operation = recorder.start("project.loaded", Some(parent));
+    let loaded = settings(root, None);
+    match &loaded {
+        Ok(settings) => {
+            let digest = craft_engine::digest(&craft_engine::canonical(settings));
+            if recorder.settings_changed(Some(&digest)) {
+                recorder.complete(operation, Map::new(), None);
+            }
+        }
+        Err(error) => {
+            recorder.settings_changed(None);
+            recorder.complete(operation, Map::new(), Some(error.code("CONFIG_INVALID")));
+        }
+    }
+    loaded
+}
+
 pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failure> {
     let mut result = resolve(root, request.preferences, &request.overrides)?;
     let (facts, session) = request.workers.unwrap_or((json!({}), None));

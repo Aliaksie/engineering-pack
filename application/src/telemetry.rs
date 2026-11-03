@@ -3,7 +3,7 @@
 //! the caller, which posts it once the command's output is written.
 use crate::failure::Failure;
 use craft_engine::{telemetry, timestamp, values::js_length};
-use craft_platform::telemetry as store;
+use craft_platform::{state, telemetry as store};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
@@ -11,6 +11,10 @@ pub mod retained;
 
 const PACKAGE: &str = include_str!("../../package.json");
 const EXPORT_EVENTS: usize = 32;
+/// Digests of the project settings recent sessions last recorded, by session pseudonym.
+const SETTINGS: &str = "telemetry/settings.json";
+const SETTINGS_BYTES: usize = 8192;
+const SETTINGS_SESSIONS: usize = 32;
 
 pub fn now_ms() -> i64 {
     std::time::SystemTime::now()
@@ -153,6 +157,60 @@ impl Recorder {
         if self.host.is_none() {
             self.host = host.map(str::to_string);
         }
+    }
+
+    /// Whether `digest`, the settings this session just loaded, differs from the ones it
+    /// last recorded; `None`, settings that failed to load, forgets them. Without a
+    /// session pseudonym or a readable record every load counts as changed. Only the most
+    /// recent sessions are kept, and a busy writer leaves the record for the next load.
+    pub fn settings_changed(&mut self, digest: Option<&str>) -> bool {
+        if !self.enabled || self.session.is_none() {
+            return true;
+        }
+        let id = self.correlation();
+        if self.identity_unavailable {
+            return true;
+        }
+        let Ok(file) = state::file(&self.root, SETTINGS, true, None) else {
+            return true;
+        };
+        let entries = |file: &Path| -> Vec<(String, String)> {
+            let record = state::read(file, SETTINGS_BYTES).ok().flatten();
+            let Some(record) = record.filter(|record| record["formatVersion"] == 1) else {
+                return Vec::new();
+            };
+            record["sessions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|e| Some((e[0].as_str()?.into(), e[1].as_str()?.into())))
+                .collect()
+        };
+        let recorded = |entries: &[(String, String)]| {
+            entries
+                .iter()
+                .find(|(session, _)| *session == id)
+                .map(|(_, digest)| digest.clone())
+        };
+        if recorded(&entries(&file)).as_deref() == digest {
+            return digest.is_none();
+        }
+        let Ok(Some(_lock)) = state::lock(&file) else {
+            return true;
+        };
+        let mut entries = entries(&file);
+        entries.retain(|(session, _)| *session != id);
+        if let Some(digest) = digest {
+            entries.push((id, digest.to_string()));
+        }
+        let keep = entries.len().saturating_sub(SETTINGS_SESSIONS);
+        let sessions: Vec<Value> = entries[keep..]
+            .iter()
+            .map(|(session, digest)| json!([session, digest]))
+            .collect();
+        let record = json!({ "formatVersion": 1, "sessions": sessions });
+        let _ = state::write(&file, &record, SETTINGS_BYTES, false);
+        true
     }
 
     /// Write nothing before `finish`; the run can then be dropped as a whole.
