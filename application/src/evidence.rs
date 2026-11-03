@@ -147,7 +147,7 @@ pub(crate) fn refresh(
     let mut phases = Phases::default();
     let exclusions =
         craft_engine::contracts::evidence_exclusions(&crate::project::configuration(root)?)?;
-    let retired = phases.time(Phase::Store, || store.retain_providers(ACTIVE))?;
+    let retired = phases.time(Phase::Store, || store.retain_providers(&ACTIVE))?;
     let epoch = phases.time(Phase::Store, || store.begin_inventory())?;
     let mut inventory = phases.time(Phase::Inventory, || Inventory::start(root, &exclusions))?;
     phases.time(Phase::Store, || store.begin_batch())?;

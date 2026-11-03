@@ -36,44 +36,26 @@ impl Ask {
         ASKS.iter().find(|(_, ask)| *ask == self).unwrap().0
     }
 
-    /// The evidence field matched and the kinds that answer this question.
-    pub fn evidence(self) -> (&'static str, &'static [&'static str]) {
+    /// The evidence field matched and whether an evidence kind answers this question. Kinds
+    /// are `<language>:<role>`, so a new language answers without a change here.
+    pub fn evidence(self) -> (&'static str, fn(&str) -> bool) {
+        fn role(kind: &str) -> &str {
+            kind.split_once(':').map_or("", |(_, role)| role)
+        }
         match self {
-            Ask::Declaration => (
-                "name",
-                &[
-                    "java:declares-constructor",
-                    "java:declares-method",
-                    "java:declares-type",
-                    "js:declares",
-                    "rust:declares-const",
-                    "rust:declares-fn",
-                    "rust:declares-macro",
-                    "rust:declares-module",
-                    "rust:declares-type",
-                ],
-            ),
-            Ask::Callers => (
-                "name",
-                &[
-                    "java:invokes-syntax",
-                    "java:references-syntax",
-                    "rust:invokes-syntax",
-                    "rust:references-syntax",
-                ],
-            ),
-            Ask::Imports => (
-                "target",
-                &[
-                    "java:imports",
-                    "java:imports-static",
-                    "js:dynamic-import",
-                    "js:imports",
-                    "rust:imports",
-                ],
-            ),
-            Ask::Section => ("name", &["md:section"]),
-            Ask::Outline => ("path", &["md:section"]),
+            Ask::Declaration => ("name", |kind| {
+                let role = role(kind);
+                role == "declares" || role.starts_with("declares-")
+            }),
+            Ask::Callers => ("name", |kind| {
+                matches!(role(kind), "invokes-syntax" | "references-syntax")
+            }),
+            Ask::Imports => ("target", |kind| {
+                let role = role(kind);
+                role == "imports" || role.starts_with("imports-") || role == "dynamic-import"
+            }),
+            Ask::Section => ("name", |kind| kind == "md:section"),
+            Ask::Outline => ("path", |kind| kind == "md:section"),
         }
     }
 
