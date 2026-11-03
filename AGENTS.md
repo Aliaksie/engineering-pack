@@ -10,7 +10,9 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 
 | Command | Purpose |
 |---|---|
-| `npm run build` | Export Claude, Codex, Cursor, Copilot, Gemini and AGENTS bundles into dist |
+| `npm run build` | Export Claude, Codex, Cursor, Copilot, Gemini, JetBrains and AGENTS bundles into dist |
+| `npm run build:native` | Build the native `craft` bundle for the current platform |
+| `npm run build:distribution` | Assemble `dist/distribution` with the published branch layout |
 | `npm run check` | Validate source, craft blocks, exports, script syntax and tests |
 | `npm test` | Build exports, then run Node tests |
 | `npm run validate` | Validate capability manifests and referenced source files |
@@ -18,11 +20,12 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run architecture` | Check the declared module map, dependency rules and JavaScript placement |
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
+| `npm run version:sync -- <x.y.z>` | Set the pack version and its projections; `version:check` rejects drift |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
 | `npm run eval:audit -- <transcript.jsonl>` | Engagement card for one real Claude Code or Codex session |
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
-| `npm run locate -- ...` | Batch bounded literal searches into compact source evidence |
+| `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
 | `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |
 | `npm run session:attempt -- ...` | Record one bounded acceptance attempt without executing a retry |

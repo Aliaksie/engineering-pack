@@ -12,6 +12,8 @@ import { readCheckpoint } from './checkpoint-cli.mjs';
 import { runHook } from './hook-command.mjs';
 import { craft } from './review-tools.mjs';
 
+const packVersion = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 // Traces and diagnostics as `craft` records them. Envelope sanitizing and trace context:
 // `cargo test -p craft-engine telemetry`; OTLP mapping and collector outcomes: `otlp_contracts`;
 // export queue bounds: `cargo test -p craft-application a_full_export_queue`.
@@ -28,7 +30,7 @@ function tree(events, topName) {
   assert.ok(top,`missing ${topName} root`);
   const trace=events.filter(event => event.traceId===top.traceId), ids=new Set(trace.map(event => event.operationId));
   for (const event of trace) {
-    assert.equal(event.schemaVersion,1); assert.equal(event.packVersion,'0.0.2');
+    assert.equal(event.schemaVersion,1); assert.equal(event.packVersion,packVersion);
     assert.equal(typeof event.timestamp,'string');
     if (event.parentOperationId) assert.ok(ids.has(event.parentOperationId),`${event.name} missing parent`);
     if (event.kind==='operation') assert.ok(event.durationMs>=0);

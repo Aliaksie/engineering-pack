@@ -50,10 +50,10 @@ Gemini CLI:
 gemini extensions install https://github.com/Aliaksie/engineering-pack --ref distribution
 ```
 
-The stable `distribution` branch needs Node 22+ on PATH for its bundled commands and hooks.
-The `distribution-next` branch carries the candidate with a bundled native executable and
-no Node requirement. Swap the branch name in the commands above to try it. Other hosts,
-updates and rollback are covered in [installation](docs/INSTALL.md).
+Each package bundles a native `craft` executable; no Node is needed. `distribution` is the
+stable release; `distribution-next` carries the candidate built from every change to `main`.
+Swap the branch name in the commands above to try it. Other hosts, updates and rollback are
+covered in [installation](docs/INSTALL.md).
 
 ## Try it
 
@@ -114,13 +114,14 @@ OpenTelemetry endpoint; bounded local usage metadata is on by default and can be
 
 ## Direction
 
-- Project Intelligence: a local index of declarations and imports that agents cite instead
-  of searching again ([preview](docs/PROJECT-EVIDENCE.md)).
+- Project Intelligence: a local index of declarations, callers, imports and document sections
+  that lookups answer from, on by default ([preview](docs/PROJECT-EVIDENCE.md)). Next: more
+  languages and questions about unfamiliar code.
 - Session continuity across compaction and handoffs, driven by host observations rather than
   estimates.
-- Measured, paired evaluations of whether guidance improves outcomes. Today's checks
-  establish deterministic behavior, not better model results ([evaluation](docs/EVALUATION.md)).
-- Promotion of the native runtime to the stable channel.
+- Low overhead where Craft adds nothing, checked by short model probes, decision replays and
+  audits of real sessions. These find problems; they are not proof that guidance improves
+  results ([evaluation](docs/EVALUATION.md)).
 
 ## Learn more
 

@@ -7,9 +7,19 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 const CORPUS: &str = include_str!("../../tests/fixtures/runtime/statusline-contracts.json");
+const PACKAGE: &str = include_str!("../../package.json");
 
+/// The corpus was captured at pack version 0.0.2; the status line reports the installed
+/// version, so the recorded value stands for whatever `package.json` holds now.
 fn corpus() -> Value {
-    serde_json::from_str(CORPUS).unwrap()
+    let version = serde_json::from_str::<Value>(PACKAGE).unwrap()["version"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let recorded = r#"\"packVersion\": \"0.0.2\""#;
+    assert!(CORPUS.contains(recorded), "corpus pack version moved");
+    let current = format!(r#"\"packVersion\": \"{version}\""#);
+    serde_json::from_str(&CORPUS.replace(recorded, &current)).unwrap()
 }
 
 /// One scratch directory per test binary; the bundle root is an empty installed package.

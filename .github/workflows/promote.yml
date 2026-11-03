@@ -1,0 +1,77 @@
+name: Promote
+
+# Promotes one published release's attested distribution archive to the stable branch.
+# Release calls it after publishing; a manual run promotes an earlier release again.
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Released version to promote (X.Y.Z)
+        required: true
+        type: string
+      stable:
+        description: Expected full SHA of the distribution branch; empty reads the current tip
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote
+    if: github.repository == 'Aliaksie/engineering-pack' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: engineering-pack-distribution
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      attestations: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Download and verify release distribution
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          EXPECTED_STABLE: ${{ inputs.stable }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version" >&2; exit 1; }
+          test "$(gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = false
+          mkdir -p "${RUNNER_TEMP}/release" "${RUNNER_TEMP}/distribution"
+          cd "${RUNNER_TEMP}/release"
+          archive="engineering-pack-${VERSION}-distribution.tar.gz"
+          gh release download "v${VERSION}" --repo "$GITHUB_REPOSITORY" --pattern "$archive" --pattern SHA256SUMS --pattern PROVENANCE.txt
+          awk -v a="./${archive}" '$2 == a || $2 == "PROVENANCE.txt"' SHA256SUMS > selected
+          test "$(wc -l < selected)" = 2
+          sha256sum --check --strict selected
+          gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify PROVENANCE.txt --repo "$GITHUB_REPOSITORY"
+          revision="$(sed -n 's/^Release revision: //p' PROVENANCE.txt)"
+          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
+          tar -xzf "$archive" -C "${RUNNER_TEMP}/distribution"
+          stable="${EXPECTED_STABLE:-$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/distribution | cut -f1)}"
+          echo "Promoting over distribution ${stable}"
+          echo "stable=${stable}" >> "$GITHUB_OUTPUT"
+      - name: Promote to distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROMOTE_VERSION: ${{ inputs.version }}
+          PROMOTE_REVISION: ${{ steps.release.outputs.revision }}
+          PROMOTE_STABLE: ${{ steps.release.outputs.stable }}
+        run: node tooling/promote-distribution.mjs "${RUNNER_TEMP}/distribution"
