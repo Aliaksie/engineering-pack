@@ -56,11 +56,14 @@ test('a generated task pins the source commit, keeps the answer out of reach and
     for (const cited of probe.expected) assert.ok(!visible.includes(cited), `${cited} leaks into what the agent sees`);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'tests', 'truth.json'), 'utf8')).expected, probe.expected);
     assert.match(fs.readFileSync(path.join(dir, 'task.toml'), 'utf8'), /answer_file = "ANSWER.md"/);
-    assert.ok(fs.statSync(path.join(dir, 'tests', 'test.sh')).mode & 0o100);
+    // Task scripts run in Linux containers; Windows has no executable bit to check.
+    if (process.platform !== 'win32') assert.ok(fs.statSync(path.join(dir, 'tests', 'test.sh')).mode & 0o100);
   } finally { fs.rmSync(out, { recursive: true, force: true }); }
 });
 
-test('a reference answer with quotes and dollars survives the generated shell', () => {
+// Generated scripts run only in the Linux task containers; Windows bash would get a C:\ path
+// inside the script text.
+test('a reference answer with quotes and dollars survives the generated shell', { skip: process.platform === 'win32' && 'task scripts run in Linux containers' }, () => {
   const { files } = taskFiles({ id: 'q', repository: 'r', actor: 'qa', kind: 'k', format: 'path', question: 'q',
     expected: ["it's/$Gson$Types.java"] }, { url: 'https://github.com/a/b', commit: 'a'.repeat(40), language: 'java' });
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-solve-'));
