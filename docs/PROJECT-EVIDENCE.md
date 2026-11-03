@@ -17,8 +17,16 @@ craft project-evidence status  --enable --root . --json
 ```
 
 Without `--enable`, these commands read and write nothing. Other operations are `version`, `backup` (a
-consistent snapshot beside the database; never overwrites an existing backup) and `rebuild`
-(clears derived evidence; run `refresh` next).
+consistent snapshot beside the database; never overwrites an existing backup), `rebuild`
+(clears derived evidence; run `refresh` next) and `warm` (refreshes in chunks of about 250 ms
+of extraction until nothing is deferred, releasing the store between chunks; at most a minute).
+
+When a session starts in a Git worktree with evidence enabled, the session-start hook runs
+`warm` as a detached background process and returns at once, so the session's first lookup
+usually finds a warm index instead of indexing within its own budget. A lookup waits up to
+400 ms for a chunk to release the store. `CRAFT_EVIDENCE_WARM=0` in the host's environment
+turns the background start off, for example for checkouts removed right after a session. On Windows the hook does not start it: a detached
+child there would inherit the host's output pipe, so the first lookup indexes as before.
 
 ## Routed lookups
 

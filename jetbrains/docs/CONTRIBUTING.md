@@ -101,8 +101,8 @@ Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) meas
 installed release `craft`: startup, the prompt, tool and stop hooks, and warm and cold Project
 Intelligence refresh. Each hook runs in three layers: the native binary (`native`), the package
 launcher (`launcher`) and the registered hook command under the shell hosts use (`host`). Every run records
-wall time, user and system CPU, peak memory and, where the platform allows, instructions and
-cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
+wall time (median, range and 95th percentile), user and system CPU, peak memory and, where the
+platform allows, instructions and cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
 timed runs, and only failed commands or checks fail the job.
 
 [Bencher](https://bencher.dev) keeps the history and compares a pull request with `main`,
@@ -118,6 +118,22 @@ node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output <new
 `--runs 3 --cold-runs 2` gives a quick integration run. Stock Hyperfine reports no peak memory
 on Windows, and its hardware counters cover only directly started processes, so counters are
 tracked for `native` rows only.
+
+### Overhead budget
+
+`node tooling/overhead.mjs` measures, for every export, what Craft adds to a host session without
+running a model:
+
+- **always**: the skill listing the host shows on every model call (formatted as each host
+  lists skills, per `listing` in `hosts/hooks.json`) plus the instruction files it always loads;
+- **hooks**: bytes the context-injecting hooks return across a fixed session of prompts and
+  edits, from small talk to a routed fix, with machine paths counted as placeholders;
+- **guidance**: bytes of the skill files each routed intent selects.
+
+`tests/overhead-budget.test.mjs` fails when a number exceeds its ceiling in
+`tests/fixtures/overhead-budget.json`, or when a hook adds context to a prompt Craft has nothing
+for. Lower a ceiling when a change reduces overhead; raise one only with the reason in the pull
+request. Listing formats marked `assumed` follow host documentation, not a recorded session.
 
 ### Installed hosts
 

@@ -32,6 +32,8 @@ and task identities when known, or perform a bounded fresh lookup and report reu
 Do not fabricate session identity or create a new task for each search.
 Configure file, match and byte budgets for the
 question. Inspect truncation, skipped files and searched scope before treating no match as absence.
+Files listed after the match bound contain a term too; narrow `--path` or raise `--max-matches`
+only when their lines matter.
 Literal evidence does not by itself identify the authoritative implementation.
 
 Follow the most relevant definition to its caller, boundary test or configuration as needed.

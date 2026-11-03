@@ -1,6 +1,6 @@
 # Task runtime for multi-step delivery
 
-Use this page with `craft-delivery-workflow-deliver-change` when work is multi-step, spans
+Use this page with `craft-delivery:workflow-deliver-change` when work is multi-step, spans
 sessions, is delegated, involves several repositories or needs Craft scratch files, and the
 bundled local runtime is available. A tiny, understood correction needs none of it.
 
@@ -57,7 +57,7 @@ integration result.
 
 Carry the chosen evidence/execution approach and checkpoint boundary from planning. Reassess
 when risk, evidence or phase changes; do not poll model/session advice every turn. Use
-`craft-engineering-foundations` for bounded batching, worker returns and continuation detail.
+`craft-engineering:foundations` for bounded batching, worker returns and continuation detail.
 
 After correcting a recorded permission/tool/prerequisite blocker, use `task-step` with
 `--outcome prerequisite-resolved` against its original stage and target, citing the actual
