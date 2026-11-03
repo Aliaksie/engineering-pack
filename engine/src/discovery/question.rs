@@ -223,6 +223,8 @@ pub struct Coverage {
     /// In-scope sources whose provider answers the question but which are not extracted.
     pub pending: Vec<String>,
     pub failed: Vec<String>,
+    /// In-scope sources that parsed with syntax errors: indexed outside them, searched too.
+    pub partial: Vec<String>,
     /// In-scope candidate sources no provider answers for.
     pub unindexed: Vec<String>,
     /// Cited sources that changed after the refresh; their rows are left out.
@@ -232,11 +234,17 @@ pub struct Coverage {
 impl Coverage {
     /// Every in-scope source the index cannot answer for, in path order.
     pub fn gaps(&self) -> Vec<String> {
-        let mut gaps: Vec<_> = [&self.pending, &self.failed, &self.unindexed, &self.changed]
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect();
+        let mut gaps: Vec<_> = [
+            &self.pending,
+            &self.failed,
+            &self.partial,
+            &self.unindexed,
+            &self.changed,
+        ]
+        .into_iter()
+        .flatten()
+        .cloned()
+        .collect();
         gaps.sort();
         gaps.dedup();
         gaps
@@ -256,6 +264,7 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
     for (name, paths) in [
         ("pending", &coverage.pending),
         ("failed", &coverage.failed),
+        ("partial", &coverage.partial),
         ("changed", &coverage.changed),
         ("excluded", &coverage.excluded_within),
     ] {
@@ -457,6 +466,7 @@ mod tests {
             excluded_within: Vec::new(),
             pending: paths(&["src/B.java"]),
             failed: paths(&["src/A.java"]),
+            partial: Vec::new(),
             unindexed: paths(&["src/lib.rs", "src/x.RS", "src/a.py"]),
             changed: paths(&["src/A.java"]),
         };

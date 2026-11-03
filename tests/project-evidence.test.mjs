@@ -35,11 +35,16 @@ test('native refresh, reuse, failure, deletion and selected-source verification'
   assert.equal(verification(run('query', { value: 'before', verify: true })), 'stale-or-unavailable');
   assert.equal(run('refresh').changed, 1);
   assert.equal(run('query', { value: 'before' }).results.length, 0);
+  // A syntax error indexes what lies outside it and marks the source partial.
   fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
-  assert.equal(run('refresh').failed, 1);
+  const partial = run('refresh');
+  assert.deepEqual([partial.changed, partial.failed, partial.coverage.partialSources], [1, 0, 1]);
   assert.equal(run('query', { value: 'after' }).results.length, 0);
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from([0x65, 0xff]));
+  assert.equal(run('refresh').failed, 1);
   fs.writeFileSync(path.join(root, 'a.mjs'), '// empty');
-  assert.equal(run('refresh').coverage.failedSources, 0);
+  const clean = run('refresh').coverage;
+  assert.deepEqual([clean.failedSources, clean.partialSources], [0, 0]);
   fs.unlinkSync(path.join(root, 'b.mjs'));
   assert.equal(run('refresh').removed, 1);
   assert.equal(run('query', { value: 'other' }).results.length, 0);
@@ -159,7 +164,8 @@ test('bounded extraction persists pending work, hides stale facts and advances p
   const { root, run } = fixture(t);
   for (const name of ['a', 'b', 'c']) fs.writeFileSync(path.join(root, `${name}.mjs`), `export const ${name} = 1;`);
   run('refresh');
-  fs.writeFileSync(path.join(root, 'a.mjs'), 'export const {');
+  // Not UTF-8: no provider can read it, so it fails; a syntax error alone indexes partially.
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from([0x65, 0xff]));
   fs.writeFileSync(path.join(root, 'b.mjs'), 'export const replacement = 2;');
   fs.writeFileSync(path.join(root, 'c.mjs'), 'export const tail = 3;');
   const first = run('refresh', { maxFiles: 1 });
@@ -198,7 +204,7 @@ test('byte batches skip oversized sources, bound failed attempts and resume with
   assert.equal(run('query', { value: 'old' }).results.length, 0);
   assert.equal(run('query', { value: 'small' }).results.length, 1);
   assert.equal(run('refresh', { maxBytes: Buffer.byteLength(large) }).coverage.pendingSources, 0);
-  fs.writeFileSync(path.join(root, 'a.mjs'), 'export {');
+  fs.writeFileSync(path.join(root, 'a.mjs'), Buffer.from('export \xff', 'latin1'));
   fs.writeFileSync(path.join(root, 'b.mjs'), 'export const next = 2;');
   const failed = run('refresh', { maxBytes: 8 });
   assert.equal(failed.failed, 1);
@@ -297,7 +303,7 @@ test('Java syntax callers are cited independently of callee resolution and coexi
   assert.equal(changed.changed, 1);
   assert.equal(changed.reused, 1);
   assert.equal(run('query', { field: 'id', value: call.id }).results.length, 0);
-  fs.writeFileSync(path.join(root, 'Generator.java'), 'class Generator { String broken( }');
+  fs.writeFileSync(path.join(root, 'Generator.java'), Buffer.from('class Generator { \xff }', 'latin1'));
   assert.equal(run('refresh').failed, 1);
   assert.equal(run('query', { value: 'replacement' }).results.length, 0);
   assert.equal(run('query', { value: 'kept' }).results.length, 1);

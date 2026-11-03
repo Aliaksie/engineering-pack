@@ -154,9 +154,9 @@ impl Language {
                 Some(ParseOptions::new().progress_callback(&mut cancel)),
             )
             .ok_or("parser deadline exceeded")?;
-        if tree.root_node().has_error() {
-            return Err("source syntax error".into());
-        }
+        // A grammar may reject valid source (TypeScript overload signatures, newer syntax).
+        // Facts outside syntax errors are kept and the source is marked partial.
+        let partial = tree.root_node().has_error();
         let meanings: Vec<Meaning> = query
             .capture_names()
             .iter()
@@ -195,6 +195,9 @@ impl Language {
             let Some((role, kind, node)) = fact else {
                 continue;
             };
+            if partial && (damaged(node) || name.is_some_and(|n| n.is_missing())) {
+                continue;
+            }
             let pattern = found.pattern_index;
             let fact = match role {
                 Role::Declares => {
@@ -323,6 +326,7 @@ impl Language {
             hash: hash(bytes),
             provider: self.provider.into(),
             evidence,
+            partial,
         };
         result.validate()?;
         Ok(result)
@@ -341,6 +345,22 @@ struct Fact<'tree> {
     container: bool,
     /// The query pattern that named the kind.
     pattern: usize,
+}
+
+/// A node that is a syntax error or lies inside one: what the parser recovered there is not
+/// evidence. A declaration whose body holds an error is still declared.
+fn damaged(node: Node) -> bool {
+    if node.is_error() || node.is_missing() {
+        return true;
+    }
+    let mut parent = node.parent();
+    while let Some(ancestor) = parent {
+        if ancestor.is_error() {
+            return true;
+        }
+        parent = ancestor.parent();
+    }
+    false
 }
 
 /// The nearest enclosing container of a reference, unless a boundary comes first: a nested

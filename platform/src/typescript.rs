@@ -101,4 +101,29 @@ mod tests {
             [("ts:invokes-syntax", "render", Some("View"))]
         );
     }
+
+    /// The grammar rejects some valid TypeScript (here an overload call signature in an
+    /// interface, as in hono's `src/context.ts`): what lies outside the error is still cited,
+    /// nothing recovered inside it is, and the source is marked partial.
+    #[test]
+    fn grammar_errors_keep_evidence_outside_them() {
+        let source = b"interface NewResponse {\n  (data: string): Response\n  <T>(data: T): T extends string ? Response : Promise<Response>\n}\nexport class Context {\n  json(o: object) { return render(o) }\n}\n";
+        let result = LANGUAGE.extract("src/context.ts", source).unwrap();
+        assert!(result.partial);
+        let declared: Vec<_> = rows(&result, "declares").into_iter().map(|r| r.1).collect();
+        assert!(
+            declared.contains(&"Context") && declared.contains(&"json"),
+            "{declared:?}"
+        );
+        assert_eq!(
+            rows(&result, "invokes"),
+            [("ts:invokes-syntax", "render", Some("json"))]
+        );
+        assert!(
+            !LANGUAGE
+                .extract("src/ok.ts", b"export const a = 1\n")
+                .unwrap()
+                .partial
+        );
+    }
 }

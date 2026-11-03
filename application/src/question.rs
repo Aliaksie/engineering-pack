@@ -118,6 +118,7 @@ fn observe(
         if answering.contains(&provider.as_str()) && question::within(&path, &question.scopes) {
             match outcome.as_str() {
                 "failed" => coverage.failed.push(path),
+                "partial" => coverage.partial.push(path),
                 _ => coverage.pending.push(path),
             }
         }

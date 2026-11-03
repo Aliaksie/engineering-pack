@@ -53,7 +53,7 @@ mod tests {
         assert_eq!(result.evidence[2].line, 2);
         assert_eq!(result.evidence[3].kind, "js:dynamic-import");
         assert_eq!(result.evidence[3].target, None);
-        assert!(extract("bad.js", b"export function {").is_err());
+        assert!(extract("bad.js", b"export function {").unwrap().partial);
         assert!(extract("bad.js", &[255]).is_err());
         assert!(
             extract("empty.js", b"// empty")

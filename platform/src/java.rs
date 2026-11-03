@@ -94,7 +94,11 @@ mod tests {
                 .any(|e| e.kind == "java:imports-static"
                     && e.target.as_deref() == Some("java.util.Collections.*"))
         );
-        assert!(extract("Bad.java", b"class Bad { void broken( }").is_err());
+        assert!(
+            extract("Bad.java", b"class Bad { void broken( }")
+                .unwrap()
+                .partial
+        );
     }
 
     #[test]

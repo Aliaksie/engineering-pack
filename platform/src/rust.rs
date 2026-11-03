@@ -207,6 +207,6 @@ mod tests {
                 .iter()
                 .any(|e| e.kind == "rust:declares-macro" && e.name == "m")
         );
-        assert!(extract("bad.rs", b"fn broken( {}").is_err());
+        assert!(extract("bad.rs", b"fn broken( {}").unwrap().partial);
     }
 }
