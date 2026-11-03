@@ -1,12 +1,42 @@
 # Project evidence (preview)
 
-A local index of syntax facts that agents can cite instead of searching again:
-JavaScript declarations and literal imports (`.js`, `.mjs`, `.jsx`, `.cjs`), Java
-declarations, imports and method-invocation syntax (`.java`), Rust items, `use` paths and
-call syntax (`.rs`), and Markdown sections (`.md`, `.markdown`). It records syntax, not
-resolved calls: runtime dispatch, package exports, overloads and receiver types are not
-resolved, and direct search remains useful. Rust macro arguments are not parsed, so a call
-there is recorded from its `name(` spelling.
+A local index of syntax facts that agents can cite instead of searching again: declarations,
+call sites with their enclosing function, and imports in source code, and sections in
+Markdown (`.md`, `.markdown`). It records syntax, not resolved calls: runtime dispatch,
+package exports, overloads and receiver types are not resolved, and direct search remains
+useful.
+
+## Languages
+
+One extractor reads every language with a [Tree-sitter](https://tree-sitter.github.io/)
+grammar and a query that names its declarations, calls and imports. Languages differ only in
+that query.
+
+| Level | Languages | Answers |
+|---|---|---|
+| Full | TypeScript (`.ts`, `.mts`, `.cts`, `.tsx`), JavaScript (`.js`, `.mjs`, `.cjs`, `.jsx`), Python (`.py`, `.pyi`), Java, Go, Rust | `--declaration`, `--callers` with the enclosing function or method, `--imports` by module and by imported name |
+| Basic | C (`.c`, `.h`), C++ (`.cc`, `.cpp`, `.cxx`, `.hh`, `.hpp`, `.hxx`), C#, PHP, Ruby | `--declaration` and `--callers` by name with the enclosing function or method; C and C++ `#include` as imports |
+
+What each level does not do:
+
+- No language resolves a call to its declaration: rows are every call spelled with the name.
+  A method call `a.f()` is cited by `f`; `new F()` (JavaScript, TypeScript) by `F`.
+- JavaScript and TypeScript: a function passed as a value (`app.use(handler)`) is not a call.
+  Functions are declared by `function`, by a variable, property or object key bound to an
+  arrow or function expression, and by class methods and fields.
+- Python: calls in a class body outside a method have no enclosing function. Decorators are
+  not calls.
+- Go: a function value passed as an argument is not a call. Top-level `var` and `const` are
+  declared; local ones are not.
+- Rust macro arguments are not parsed, so a call there is recorded from its `name(` spelling.
+- Basic languages record no imports (except C and C++ includes) and no functions passed as
+  values. C# and PHP declarations are those of the grammar's own tags query (classes,
+  interfaces, methods, namespaces; PHP functions and fields), so C# structs, records and enums
+  are not declared.
+- A grammar can reject valid source (tree-sitter-typescript 0.23.2 rejects overload call
+  signatures, `export type *` and generic arrow functions in `.ts` files). Facts outside the
+  syntax error are kept and the source is `partial`: it answers lookups and is also searched
+  literally, so an empty answer there is not an absence.
 
 ## Use
 
@@ -42,9 +72,9 @@ craft locate --root . --outline docs/guide.md
 
 | Question | Matches | Answered from |
 |---|---|---|
-| `--declaration <name>` | declared name | JavaScript, Java, Rust |
-| `--callers <name>` | invoked method name, or a function passed as a value (a Java method reference, a lowercase Rust path such as `prompt::request` used as a value), with its enclosing declaration; a bare identifier passed as a value is not matched | Java, Rust |
-| `--imports <target>` | import target as spelled; one full path per Rust `use` leaf | JavaScript, Java, Rust |
+| `--declaration <name>` | declared name | every language above |
+| `--callers <name>` | called function or method name, or a function passed as a value (a Java method reference, a lowercase Rust path such as `prompt::request` used as a value), with its enclosing declaration; a bare identifier passed as a value is not matched | every language above |
+| `--imports <target>` | an imported name (`import { X } from`, `from m import X`), or a module by its whole trailing path or module segments: `utils/buffer` matches `../utils/buffer.js`, `Gson` matches `com.google.gson.Gson`, `b` matches `crate::a::b` (one full path per Rust `use` leaf) | full languages, C and C++ includes |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
 
@@ -55,9 +85,10 @@ by the called name, not by the resolved receiver, so rows are every match of tha
 not end in a name is refused.
 
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
-verified evidence. In-scope sources the index cannot answer for are its gaps: pending or failed
-extraction, a source changed since it was cited, or a candidate in a language the question's
-providers do not read (a `.js` or `.ts` file for `--callers`, an `.rst` file for `--section`).
+verified evidence. In-scope sources the index cannot answer for are its gaps: pending, failed
+or partial extraction, a source changed since it was cited, or a candidate in a language the
+question's providers do not read (a `.kt` file for `--callers`, an `.rst` file for
+`--section`).
 Up to 200 gap files are searched literally for the spelled value beside the index rows
 (`route.answeredBy` `intelligence+locate`, `route.reason` `gaps-searched`, `route.detail`
 counting them). The whole scope is searched literally instead (`locate`) when the reason is
@@ -74,7 +105,8 @@ line span and first line, then literal matches. `--json` prints the structure. P
 `--max-matches` rows (30, up to 200); `--after` continues the index rows, without repeating
 the gap search.
 
-- **Query** matches an exact `id`, `name`, `path` or syntax `target` (`--field`, `--value`),
+- **Query** matches an exact `id`, `name`, `path` or syntax `target`, or an `import` as
+  `--imports` matches it (`--field`, `--value`),
   30 rows per page (up to 200) in path and line order, with an `--after` continuation that
   is refused once its row is no longer stored. Narrow before paging with `--kind <kind>`,
   `--under <directory>` (whole path components) or `--source <path>`. A truncated page
@@ -86,8 +118,8 @@ the gap search.
   `--max-files`, `--max-bytes`, `--max-output-bytes` and `--max-duration-ms` limit one run;
   deferred sources stay pending (and hidden) until a later refresh. Writes commit in batches,
   so an interrupted refresh keeps every committed batch and the next refresh continues from
-  there. Check `pendingSources` and `failedSources`: `inventoryComplete` describes discovery
-  only.
+  there. Check `pendingSources`, `failedSources` and `partialSources`: `inventoryComplete`
+  describes discovery only.
 - **Scope**: list generated or vendored paths in `.craft/project.json` as
   `"evidence": {"exclude": ["samples/", "vendor/bundles"]}` (project-relative prefixes,
   matched by whole path components). Refresh skips them and retires facts already stored
@@ -106,9 +138,12 @@ the gap search.
   get a resolution record with the target's current hash; that is a declared path, not a
   proven call.
 
-Java invocation rows carry the spelled method name and, when inside a method or constructor,
-their `container`: the enclosing declaration's ID, kind, name and line. Calls in lambdas keep
-their outer container; that does not mean they run when the outer method does.
+Call rows carry the spelled name and, when inside a function, method or constructor, their
+`container`: the enclosing declaration's ID, kind, name and line. Calls in lambdas, closures
+and nested anonymous functions keep their outer container; that does not mean they run when the
+outer function does. Code directly in a class or impl body has no container. Kinds are
+`<language>:<role>`, for example `ts:declares-class`, `python:invokes-syntax`,
+`go:imports`, `js:imports-name`.
 
 Markdown `md:section` rows are named by their heading text as spelled (inline markup kept,
 closing `#`s removed). A section runs from its heading to the next heading of the same or a
@@ -144,5 +179,15 @@ per-file checksums ([local builds](INSTALL.md#local-builds-and-project-overlays)
 Dependencies are pinned in `Cargo.lock`: [rusqlite](https://docs.rs/crate/rusqlite/0.40.2),
 [Tree-sitter](https://docs.rs/crate/tree-sitter/0.27.1) with the
 [JavaScript](https://docs.rs/crate/tree-sitter-javascript/0.25.0),
-[Java](https://docs.rs/crate/tree-sitter-java/0.23.5) and
-[Rust](https://docs.rs/crate/tree-sitter-rust/0.24.2) grammars.
+[TypeScript](https://docs.rs/crate/tree-sitter-typescript/0.23.2),
+[Python](https://docs.rs/crate/tree-sitter-python/0.25.0),
+[Java](https://docs.rs/crate/tree-sitter-java/0.23.5),
+[Go](https://docs.rs/crate/tree-sitter-go/0.25.0),
+[Rust](https://docs.rs/crate/tree-sitter-rust/0.24.2),
+[C](https://docs.rs/crate/tree-sitter-c/0.24.2),
+[C++](https://docs.rs/crate/tree-sitter-cpp/0.23.4),
+[C#](https://docs.rs/crate/tree-sitter-c-sharp/0.23.5),
+[PHP](https://docs.rs/crate/tree-sitter-php/0.25.1) and
+[Ruby](https://docs.rs/crate/tree-sitter-ruby/0.23.1) grammars. Queries for each language are
+in `platform/queries/`; C#, PHP and Ruby use their grammar's tags query with a few added call
+patterns.
