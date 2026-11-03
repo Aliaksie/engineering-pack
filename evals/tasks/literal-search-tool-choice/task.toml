@@ -11,6 +11,7 @@ keywords = ["developer", "probe-tool-choice"]
 actor = "developer"
 scenario = "Tool choice: a literal search with Project Intelligence on"
 expected_mechanism = "A literal search; no structural lookup forced onto a text question"
+answer_file = "ANSWER.md"
 
 [agent]
 timeout_sec = 300.0

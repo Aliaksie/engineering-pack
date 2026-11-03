@@ -23,6 +23,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run version:sync -- <x.y.z>` | Set the pack version and its projections; `version:check` rejects drift |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
 | `npm run eval:audit -- <transcript.jsonl>` | Engagement card for one real Claude Code or Codex session |
+| `npm run eval:summary -- <harbor-job>` | Per-task, per-arm exploration and correctness of one engineering-eval run |
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |

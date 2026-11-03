@@ -41,8 +41,8 @@ them. Model-backed jobs run only on manual dispatch (`diagnose` or `compare`) wi
 `CRAFT_CODEX_API_KEY` repository secret. `attempts` repeats every trial (3 before deciding
 to keep, fix or remove a mechanism) and `tasks` narrows the run to task directories matching a
 glob such as `pi-*`, for example a vanilla reference on only the probes that need one. Results are
-kept as a workflow artifact for 90 days and summarized on the run page: reward, Craft
-engagement and overhead, model steps, tool calls, shell searches, tokens, cost and time.
+kept as a workflow artifact for 90 days and summarized on the run page (see below). `compare`
+runs three attempts per task and arm unless `attempts` says otherwise.
 
 Locally, with Docker, Node, Rust and Harbor (`uv tool install harbor==0.25.0`). The image needs
 the linux x86_64 runtime, so build the export on Linux x86_64 or inside a `linux/amd64`
@@ -65,6 +65,16 @@ Each trial directory holds `result.json` (tokens, cost when the host reports it,
 errors), `agent/trajectory.json` (every step and tool call), the collected repository with
 Craft's state under `artifacts/`, and `verifier/reward.json`.
 `harbor view .eval-results/harbor` browses them.
+
+`npm run eval:summary -- .eval-results/harbor/<job>` writes the table the workflow shows on the
+run page (`--json` for the values). Per task and arm it gives N, correct trials and the median
+exploration: tool calls, shell commands, searches, file reads (of them, reads of installed
+package guidance), input tokens and seconds, plus the bytes injected outside the conversation
+and Craft's hook time. A task whose `task.toml` names `answer_file` in its metadata is measured
+until the agent first writes that file; others over the whole trial. The Craft arm is shown
+relative to the vanilla arm, and a comparison with fewer than three attempts per arm is marked
+as not deciding. Counts come from the trajectory and are best-effort; a value it does not carry
+stays unknown.
 
 `reward` is the hidden behavioral check. The other reward values explain it:
 
