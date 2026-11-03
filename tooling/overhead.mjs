@@ -91,6 +91,18 @@ export function portable(text, paths) {
   return text;
 }
 
+// Every way a path may be printed: as given, resolved (Windows 8.3 short names expanded), with
+// forward slashes, and as a Windows verbatim path. Longest first, so no spelling is cut short.
+export function spellings(value, placeholder) {
+  const forms = new Set([value]);
+  try { forms.add(fs.realpathSync.native(value)); } catch { /* a path that does not exist yet */ }
+  for (const form of [...forms]) {
+    forms.add(form.replaceAll('\\', '/'));
+    if (/^[A-Za-z]:\\/.test(form)) forms.add(`\\\\?\\${form}`);
+  }
+  return Object.fromEntries([...forms].sort((a, b) => b.length - a.length).map(form => [form, placeholder]));
+}
+
 // Bytes on stdout of every context-injecting hook the export registers, per scenario.
 export function hooks(exportRoot, host, binary) {
   const events = HOSTS[host].events ?? {};
@@ -99,7 +111,8 @@ export function hooks(exportRoot, host, binary) {
     return JSON.parse(fs.readFileSync(manifest, 'utf8')).hooks.map(hook => ({ pkg, ...hook }));
   }).filter(hook => events[hook.event]?.context && hook.handler !== 'review-read-only');
   if (!registered.length) return { bytes: 0, scenarios: {} };
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-overhead-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-overhead-')));
+  const machine = { ...spellings(root, '<root>'), ...spellings(binary, '<craft>') };
   try {
     project(root);
     const session = `overhead-${host}`;
@@ -110,7 +123,7 @@ export function hooks(exportRoot, host, binary) {
         const args = ['hook', host, hook.event, '--package', hook.pkg, '--handler', hook.handler, '--scope', 'any'];
         const child = spawnSync(binary, args, { cwd: root, input: JSON.stringify(payload(host, root, session, scenario)), encoding: 'utf8', env: { ...process.env, CRAFT_EVIDENCE_WARM: '0' } });
         if (child.status !== 0 && child.status !== 2) throw new Error(`${host} ${hook.pkg} ${hook.event}: ${child.stderr}`);
-        bytes += Buffer.byteLength(portable(child.stdout ?? '', { [root]: '<root>', [binary]: '<craft>' }));
+        bytes += Buffer.byteLength(portable(child.stdout ?? '', machine));
       }
       if (events[scenario.lifecycle]?.context) scenarios[scenario.id] = bytes;
     }

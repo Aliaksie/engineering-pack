@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXPORTS, SCENARIOS, listingEntry, measure, portable } from '../tooling/overhead.mjs';
+import { EXPORTS, SCENARIOS, listingEntry, measure, portable, spellings } from '../tooling/overhead.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const budget = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/overhead-budget.json'), 'utf8'));
@@ -36,5 +36,8 @@ test('listing entries follow each host table and machine paths count as placehol
   for (const host of EXPORTS) assert.match(listingEntry(host, entry), /^- \S+: Decide\./);
   assert.equal(portable('{"run":["/opt/x/craft","--root","C:\\\\work"]}', { '/opt/x/craft': '<craft>', 'C:\\work': '<root>' }),
     '{"run":["<craft>","--root","<root>"]}');
+  const windows = spellings('C:\\Users\\RUNNER~1\\craft', '<root>');
+  assert.deepEqual(Object.keys(windows).sort(), ['C:/Users/RUNNER~1/craft', 'C:\\Users\\RUNNER~1\\craft', '\\\\?\\C:\\Users\\RUNNER~1\\craft'].sort());
+  assert.equal(portable(JSON.stringify(JSON.stringify({ run: ['\\\\?\\C:\\Users\\RUNNER~1\\craft'] })), windows), JSON.stringify(JSON.stringify({ run: ['<root>'] })));
   assert.ok(SCENARIOS.some(({ id }) => NO_ADVANTAGE.includes(id)));
 });
