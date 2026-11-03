@@ -11,6 +11,7 @@ keywords = ["developer", "probe-planning"]
 actor = "developer"
 scenario = "Planning: plan a change, no code"
 expected_mechanism = "Routed to planning; PLAN.md recorded as the session's planning evidence, citing real files and functions; no managed work plan or tasks required"
+answer_file = "PLAN.md"
 
 [agent]
 timeout_sec = 300.0

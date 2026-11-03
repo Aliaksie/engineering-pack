@@ -20,8 +20,9 @@ RUN mkdir -p "$CODEX_HOME" \
  && rm "$CODEX_HOME/config.toml" \
  && test -x /opt/craft/codex/packages/craft-delivery/support/native-bin/x86_64-unknown-linux-gnu/native-bin/craft
 
-# Every task verifier grades Craft's engagement with the same script.
-COPY evals/image/craft-rewards.sh /opt/craft-eval/craft-rewards.sh
+# Every task verifier grades Craft's engagement with the same script; cited-answer probes share
+# one grader.
+COPY evals/image/craft-rewards.sh evals/image/answer-grade.sh /opt/craft-eval/
 
 RUN git config --system user.name "Eval Fixture" \
  && git config --system user.email "fixture@example.invalid" \

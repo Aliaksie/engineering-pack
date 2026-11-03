@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { nativeBinary } from './lib/native-binary.mjs';
 
-const SEARCH = /(?:^|[\s;&|(])(?:rg|grep|egrep|find|fd|ag|ack)\s|git\s+grep\s/;
+export const SEARCH = /(?:^|[\s;&|(])(?:rg|grep|egrep|find|fd|ag|ack)\s|git\s+grep\s/;
 const CRAFT = /(?:^|[\s;&|(/])craft(?:\.exe)?\s+([a-z][a-z-]*)|npm run (locate|route|session|context:report|telemetry:report)\b/g;
 const LOOKUPS = new Set(['locate', 'question', 'route']);
 // Thresholds for the signals; they flag a session for a closer look, they do not grade it.

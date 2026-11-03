@@ -1,6 +1,7 @@
-# Matched vanilla and Craft arms: same image, task, model, effort and limits.
+# Matched vanilla and Craft arms: same image, task, model, effort and limits. Three attempts
+# per task and arm, so one noisy trial cannot decide a comparison.
 jobs_dir: .eval-results/harbor
-n_attempts: 1
+n_attempts: 3
 n_concurrent_trials: 1
 retry:
   max_retries: 0

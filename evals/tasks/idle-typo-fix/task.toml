@@ -1,0 +1,27 @@
+schema_version = "1.4"
+# The repository with Craft's state; the verifier gets it in a fresh sandbox.
+artifacts = ["/app"]
+
+[task]
+name = "craft/idle-typo-fix"
+description = "Trivial edit: one misspelled word in a customer-facing message."
+keywords = ["developer", "probe-no-advantage"]
+
+[metadata]
+actor = "developer"
+scenario = "No advantage: a one-word fix the agent can find with one search"
+expected_mechanism = "Craft stays out of the way: no guidance reads, plan or lookup beyond what vanilla needs"
+
+[agent]
+timeout_sec = 300.0
+user = "node"
+
+[verifier]
+environment_mode = "separate"
+timeout_sec = 120.0
+
+[environment]
+network_mode = "public"
+workdir = "/app"
+cpus = 2
+memory_mb = 4096

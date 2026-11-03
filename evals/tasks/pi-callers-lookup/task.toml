@@ -11,6 +11,7 @@ keywords = ["developer", "probe-pi-lookup"]
 actor = "developer"
 scenario = "PI lookup: who calls a method"
 expected_mechanism = "Routed to a structural lookup answered by Project Intelligence; few shell searches"
+answer_file = "ANSWER.md"
 
 [agent]
 timeout_sec = 300.0
