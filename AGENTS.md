@@ -25,6 +25,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run eval:audit -- <transcript.jsonl>` | Engagement card for one real Claude Code or Codex session |
 | `npm run eval:probes` | Generate the unfamiliar-repository probe tasks from their manifest |
 | `npm run eval:summary -- <harbor-job>` | Per-task, per-arm exploration and correctness of one engineering-eval run |
+| `npm run overhead` | Bytes each export adds per session: skill listing, hook context, routed guidance |
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |

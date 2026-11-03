@@ -1,6 +1,12 @@
 {
   "claude": {
     "skills": null,
+    "listing": {
+      "names": "plugin",
+      "paths": false,
+      "instructions": [],
+      "evidence": "observed"
+    },
     "events": {
       "before-tool": {
         "name": "PreToolUse",
@@ -44,6 +50,12 @@
   },
   "codex": {
     "skills": null,
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [],
+      "evidence": "observed"
+    },
     "events": {
       "before-tool": {
         "name": "PreToolUse",
@@ -87,6 +99,14 @@
   },
   "cursor": {
     "skills": ".cursor/skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "AGENTS.md"
+      ],
+      "evidence": "assumed"
+    },
     "config": ".cursor/hooks.json",
     "events": {
       "before-tool": {
@@ -123,6 +143,15 @@
   },
   "copilot": {
     "skills": ".github/skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "AGENTS.md",
+        ".github/copilot-instructions.md"
+      ],
+      "evidence": "assumed"
+    },
     "config": ".github/hooks/craft-capabilities.json",
     "events": {
       "before-tool": {
@@ -159,6 +188,14 @@
   },
   "gemini": {
     "skills": ".gemini/skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "GEMINI.md"
+      ],
+      "evidence": "assumed"
+    },
     "config": ".gemini/settings.json",
     "events": {
       "before-tool": {
@@ -196,14 +233,39 @@
   },
   "gemini-extension": {
     "skills": "skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "GEMINI.md"
+      ],
+      "evidence": "assumed"
+    },
     "events": {}
   },
   "jetbrains": {
     "skills": ".agents/skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "AGENTS.md",
+        ".aiassistant/rules/engineering-pack.md"
+      ],
+      "evidence": "assumed"
+    },
     "events": {}
   },
   "agents": {
     "skills": ".agents/skills",
+    "listing": {
+      "names": "flat",
+      "paths": true,
+      "instructions": [
+        "AGENTS.md"
+      ],
+      "evidence": "assumed"
+    },
     "events": {}
   }
 }

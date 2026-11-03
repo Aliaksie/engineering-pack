@@ -1,0 +1,110 @@
+{
+  "formatVersion": 1,
+  "note": "Ceilings for tooling/overhead.mjs. Lower them when a change reduces overhead; raise one only with the reason in the pull request.",
+  "hosts": {
+    "claude": {
+      "always": 4657,
+      "hooks": 3152,
+      "guidance": {
+        "implement": 17839,
+        "verify": 12452,
+        "review": 18101,
+        "plan": 12767,
+        "locate": 5106,
+        "investigate": 4898,
+        "explore": 5087
+      }
+    },
+    "codex": {
+      "always": 6492,
+      "hooks": 3146,
+      "guidance": {
+        "implement": 18250,
+        "verify": 12668,
+        "review": 18510,
+        "plan": 12977,
+        "locate": 5304,
+        "investigate": 5093,
+        "explore": 5285
+      }
+    },
+    "cursor": {
+      "always": 6877,
+      "hooks": 656,
+      "guidance": {
+        "implement": 17892,
+        "verify": 12489,
+        "review": 18152,
+        "plan": 12798,
+        "locate": 5125,
+        "investigate": 4914,
+        "explore": 5106
+      }
+    },
+    "copilot": {
+      "always": 6941,
+      "hooks": 129,
+      "guidance": {
+        "implement": 17892,
+        "verify": 12489,
+        "review": 18152,
+        "plan": 12798,
+        "locate": 5125,
+        "investigate": 4914,
+        "explore": 5106
+      }
+    },
+    "gemini": {
+      "always": 6553,
+      "hooks": 2558,
+      "guidance": {
+        "implement": 17892,
+        "verify": 12489,
+        "review": 18152,
+        "plan": 12798,
+        "locate": 5125,
+        "investigate": 4914,
+        "explore": 5106
+      }
+    },
+    "gemini-extension": {
+      "always": 6648,
+      "hooks": 0,
+      "guidance": {
+        "implement": 17768,
+        "verify": 12427,
+        "review": 18028,
+        "plan": 12736,
+        "locate": 5063,
+        "investigate": 4852,
+        "explore": 5044
+      }
+    },
+    "jetbrains": {
+      "always": 11037,
+      "hooks": 0,
+      "guidance": {
+        "implement": 17768,
+        "verify": 12427,
+        "review": 18028,
+        "plan": 12736,
+        "locate": 5063,
+        "investigate": 4852,
+        "explore": 5044
+      }
+    },
+    "agents": {
+      "always": 6877,
+      "hooks": 0,
+      "guidance": {
+        "implement": 17768,
+        "verify": 12427,
+        "review": 18028,
+        "plan": 12736,
+        "locate": 5063,
+        "investigate": 4852,
+        "explore": 5044
+      }
+    }
+  }
+}
