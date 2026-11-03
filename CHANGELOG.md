@@ -32,6 +32,7 @@
   clone of this repository, a lookup a few seconds after session start takes about 0.13 s
   instead of about 1.1 s for each of the first two. A lookup waits up to 400 ms for the
   background refresh to release the store. Windows keeps indexing on the first lookup.
+  `CRAFT_EVIDENCE_WARM=0` turns the background start off.
 - Prompt routing stays silent on questions that need no project work: an HTTP or exit
   "status code" question is no longer read as a progress question, and an instruction that
   only says where the answer goes ("Write only the number to `ANSWER.md`") no longer turns a

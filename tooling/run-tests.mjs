@@ -10,7 +10,8 @@ const selected = readdirSync(suite, { withFileTypes: true })
   .filter(entry => entry.isFile() && entry.name.endsWith('.test.mjs'))
   .map(entry => path.join(suite, entry.name)).sort();
 if (!selected.length) throw new Error('The test directory contains no runnable suites');
-const env = { ...process.env };
+// Fixtures are removed right after their sessions; no background indexing may outlive them.
+const env = { ...process.env, CRAFT_EVIDENCE_WARM: '0' };
 try { env.CRAFT_NATIVE_BINARY = nativeBinary(env); }
 catch (error) { process.stderr.write(`${error.message}\n`); process.exit(1); }
 const runner = spawn(process.execPath, ['--test', ...process.argv.slice(2), ...selected], {

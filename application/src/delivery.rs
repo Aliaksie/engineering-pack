@@ -277,9 +277,13 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
 }
 
 /// Start indexing the project in the background, so the session's first lookup finds a warm
-/// index. Only for a Git worktree with evidence enabled; where the platform cannot detach a
-/// process, the first lookup indexes within its own budget as before.
+/// index. Only for a Git worktree with evidence enabled, unless `CRAFT_EVIDENCE_WARM=0` (for
+/// short-lived checkouts); where the platform cannot detach a process, the first lookup
+/// indexes within its own budget as before.
 fn warm_evidence(root: &Path) {
+    if std::env::var_os("CRAFT_EVIDENCE_WARM").is_some_and(|value| value == "0") {
+        return;
+    }
     let enabled = crate::project::configuration(root)
         .ok()
         .and_then(|config| craft_engine::contracts::evidence_enabled(&config).ok())

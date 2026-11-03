@@ -108,7 +108,7 @@ export function hooks(exportRoot, host, binary) {
       let bytes = 0;
       for (const hook of registered.filter(hook => hook.event === scenario.lifecycle)) {
         const args = ['hook', host, hook.event, '--package', hook.pkg, '--handler', hook.handler, '--scope', 'any'];
-        const child = spawnSync(binary, args, { cwd: root, input: JSON.stringify(payload(host, root, session, scenario)), encoding: 'utf8' });
+        const child = spawnSync(binary, args, { cwd: root, input: JSON.stringify(payload(host, root, session, scenario)), encoding: 'utf8', env: { ...process.env, CRAFT_EVIDENCE_WARM: '0' } });
         if (child.status !== 0 && child.status !== 2) throw new Error(`${host} ${hook.pkg} ${hook.event}: ${child.stderr}`);
         bytes += Buffer.byteLength(portable(child.stdout ?? '', { [root]: '<root>', [binary]: '<craft>' }));
       }

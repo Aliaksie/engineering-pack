@@ -101,7 +101,7 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
     let (mut chunks, mut deferred, mut reason) = (0u64, None, "complete");
     loop {
         // A project removed while warming is not recreated by taking the store's lock.
-        if !root.is_dir() {
+        if !root.is_dir() || !database.parent().is_some_and(Path::is_dir) {
             reason = "removed";
             break;
         }

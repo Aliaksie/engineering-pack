@@ -38,6 +38,15 @@ test('warming indexes the project in chunks and stops once nothing is deferred',
   assert.equal(nativeRequest('warm', { root }).chunks, 1, 'a warm index takes one cheap pass');
 });
 
+test('the session start does not warm when the environment opts out', async t => {
+  const root = fixture(t);
+  const hook = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['hook', 'claude', 'session-start', '--package', 'craft-delivery', '--handler', 'deliver', '--scope', 'any'],
+    { cwd: root, input: JSON.stringify({ session_id: 'cold-session', cwd: root }), encoding: 'utf8', env: { ...process.env, CRAFT_EVIDENCE_WARM: '0' } });
+  assert.equal(hook.status, 0, hook.stderr);
+  await delay(1_000);
+  assert.ok(!indexed(root), 'nothing indexed in the background');
+});
+
 test('warming respects a project that turned evidence off', t => {
   const root = fixture(t, { formatVersion: 1, evidence: { enabled: false } });
   assert.deepEqual(nativeRequest('warm', { root }), { warmed: false, reason: 'disabled', chunks: 0 });
@@ -47,7 +56,7 @@ test('a session start warms the index in the background without delaying the hoo
   const root = fixture(t);
   const started = Date.now();
   const hook = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['hook', 'claude', 'session-start', '--package', 'craft-delivery', '--handler', 'deliver', '--scope', 'any'],
-    { cwd: root, input: JSON.stringify({ session_id: 'warm-session', cwd: root }), encoding: 'utf8', timeout: 10_000 });
+    { cwd: root, input: JSON.stringify({ session_id: 'warm-session', cwd: root }), encoding: 'utf8', timeout: 10_000, env: { ...process.env, CRAFT_EVIDENCE_WARM: '' } });
   assert.equal(hook.status, 0, hook.stderr);
   assert.ok(Date.now() - started < 5_000, 'the hook returned while indexing continues');
   let sources = null;

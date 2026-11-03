@@ -529,8 +529,9 @@ test('locate routes structural questions to verified evidence only under full sc
   assert.deepEqual(combined.gapSearch.matches.map(match => [match.path, match.text]), [['native/lib.go', 'func ping() {}']]);
   assert.equal(combined.route.complete, true);
   assert.match(locate(['--declaration', 'ping', '--path', 'src', '--path', 'native']), /; gaps: unindexed go 1\n[^]*literal search of gap files: 1 match\(es\)\n  native\/lib\.go:1: func ping\(\) \{\}\n$/);
-  // A gap file the literal search skips leaves an empty answer short of absence.
-  write('scripts/big.py', `# ${'x'.repeat(270 * 1024)}\n`);
+  // A gap file the literal search skips leaves an empty answer short of absence: Git's text
+  // search names the oversized file as containing the value, but its lines are not read.
+  write('scripts/big.py', `# pong ${'x'.repeat(270 * 1024)}\n`);
   const skipped = ask('--declaration', 'pong', '--path', 'scripts');
   assert.deepEqual([skipped.route.answeredBy, skipped.gapSearch.skipped.oversized, skipped.route.complete], ['intelligence+locate', 1, false]);
   assert.match(locate(['--declaration', 'pong', '--path', 'scripts']), /No match: not proof of absence\.\n$/);
