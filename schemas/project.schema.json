@@ -724,6 +724,29 @@
               "mainModelSwitch": {
                 "type": "boolean",
                 "description": "Explicit host support declaration; never grants permission to switch models."
+              },
+              "contextLimits": {
+                "type": "object",
+                "maxProperties": 16,
+                "description": "Context limits by exact host model name, over the bundled host table. windowTokens applies only when the host reports no window; budgetTokens is an optional working budget past which advice suggests resuming from the checkpoint in a new session.",
+                "propertyNames": {
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "additionalProperties": false,
+                  "properties": {
+                    "windowTokens": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "budgetTokens": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
               }
             },
             "additionalProperties": false,
@@ -1015,6 +1038,26 @@
               "minimum": 1,
               "maximum": 67108864
             }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project Intelligence enablement and inventory scope.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Route structural lookups (declarations, callers, imports, document sections) through Project Intelligence before literal search. Off by default."
+        },
+        "exclude": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Project-relative path prefixes left out of the evidence inventory, such as generated samples or vendored bundles. Whole path components; a trailing / is accepted.",
+          "items": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

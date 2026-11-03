@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "artifacts": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "platform": "win32",
+      "arch": "x64",
+      "executable": "craft.exe",
+      "sha256": "6ad435090753ca31882486cfd465cf7fa760ce42ece66724cbf5fd46d9af41fd"
+    }
+  ]
+}

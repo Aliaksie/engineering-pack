@@ -3,13 +3,35 @@
   "adapter": "codex",
   "hooks": "native-before-tool-requires-trust",
   "sessionAdvice": {
-    "entry": "support/session.mjs",
+    "entry": "bin/craft",
+    "args": [
+      "statusline",
+      "codex",
+      "--package",
+      "craft-engineering"
+    ],
     "observation": "native-ui-only; no stable usage field in mapped hooks",
     "display": "native /statusline; explicit CLI advice fallback",
+    "usage": "native-ui",
+    "nativeAutoCompact": "documented",
+    "control": "none",
+    "completion": "none",
     "commands": {
       "inspectUsage": "/statusline",
       "compact": "/compact",
       "start-new-session": "/new"
+    },
+    "setup": {
+      "entry": "bin/craft",
+      "args": [
+        "host-setup",
+        "--host",
+        "codex",
+        "--package",
+        "craft-engineering"
+      ],
+      "apply": "manual-native-controls",
+      "permissionSuggestions": "explicit-only; never applied"
     },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },
@@ -21,13 +43,13 @@
       "configureUsage": "/statusline"
     },
     "execution": {
-      "surface": "owned Codex App Server client",
-      "entry": "support/hosts/control.mjs",
+      "surface": "integration-owned host transport driving the native worker, action and control phases",
+      "entry": "bin/craft",
       "nativeHost": "codex",
-      "workers": "bounded read-only native sessions; exact model and supported mode required",
-      "review": "scoped native review/task; no semantic verdict inferred",
-      "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-      "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+      "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+      "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+      "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
       "liveVerification": "not-established-by-export-or-protocol-tests"
     }
   },
@@ -76,8 +98,8 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "delegation": {
-        "support": "explicit-native-binding",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "scoped decision, native lifecycle/output and separate acceptance"
       },
       "checkpoints": {
@@ -101,8 +123,8 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "compaction": {
-        "support": "explicit-native-binding",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "native completion, matching checkpoint/resume and acceptance reference"
       },
       "context-accounting": {
@@ -111,8 +133,8 @@
         "evidence": "unknown when current occupancy is unavailable"
       },
       "review": {
-        "support": "explicit-native-binding",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "support": "integration-owned-transport",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "scoped decision, native lifecycle/output and separate acceptance"
       },
       "telemetry": {
@@ -127,18 +149,18 @@
       }
     },
     "execution": {
-      "surface": "owned Codex App Server client",
-      "entry": "support/hosts/control.mjs",
+      "surface": "integration-owned host transport driving the native worker, action and control phases",
+      "entry": "bin/craft",
       "nativeHost": "codex",
-      "workers": "bounded read-only native sessions; exact model and supported mode required",
-      "review": "scoped native review/task; no semantic verdict inferred",
-      "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-      "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+      "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+      "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+      "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
       "liveVerification": "not-established-by-export-or-protocol-tests"
     },
     "limitations": [
-      "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
-      "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+      "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+      "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
     ]
   }
 }

@@ -1,564 +1,524 @@
-# Session efficiency
+# Sessions
+
+`craft` keeps a small private record per host session: the active task, its acceptance
+receipts, a continuation checkpoint and activity counters. From these and fresh host
+observations it recommends the next step. It never compacts, resets, switches models,
+starts workers or runs anything on its own. Unknown observations stay unknown.
+
+Commands print compact receipts; `--json` or `--verbose` returns the full result. Every
+command and its options are listed by `craft <command> --help`.
+
+## Task lifecycle
 
 ```sh
-npm run session -- --root <project> --session <id> --task <task-id> --data <task.json>
-npm run session -- --root <project> --session <id> --task <task-id> --data <task.json> --json
+craft task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
+craft locate     --root <project> --session <host-id> --term SymbolValue
+craft task-step  --root <project> --session <host-id> --stage implement --target acceptance:value \
+  --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
+craft session    --root <project> --session <host-id>
 ```
 
-Installed bundles expose `node support/cli/main.mjs session`. The default is a small
-status and recommendation; `--json` includes evidence, diagnostics and the selected guidance
-report. `session:advice` uses the same display. No command automatically compacts, resets,
-switches models, starts workers or invokes arbitrary side effects.
+- `task-start` binds one active task to the session, routes guidance and snapshots the
+  checkout. Repeat it with the same id to change stage or files; use a new id for a new
+  outcome. Changing branch, stage, files or risks invalidates earlier acceptance.
+- With `--session`, `route`, `locate`, `context-report`, `session`, `session-attempt` and
+  `checkpoint-save` adopt the bound task. One-off work needs no task.
+- `task-step` records an agent-declared receipt: target, approach, evidence reference,
+  outcome, result and next step. Outcomes are `passed`, `quality-failure`,
+  `permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. `craft`
+  does not read or judge the evidence; shell success never creates a receipt.
+- `--complete` declares accepted completion and is refused while a failure or blocker is
+  open. Source edits invalidate stored completion and verification.
+- After really fixing a permission or tool problem, record `prerequisite-resolved` for the
+  same target. It reopens work; it does not pass acceptance.
 
-Routine `task-start`, `task-step`, `session-attempt`, `checkpoint-save`, `task-offer`,
-`task-decision` and `task-action-check` commands print compact receipts, next actions and
-diagnostics. Use `--json` or `--verbose` for the full structured result, including checkpoint
-state and guidance reports. Programmatic callers still receive the complete object.
+### Session identity and handoff
 
-## Normal task lifecycle
+When a session starts or its context is restored, hooks that can add context begin with the
+session line: `{"id": <host session id>, "task": <bound task or null>}`. Use that id as
+`--session`; without it, work without a task rather than inventing one.
 
-For multi-step work, establish a task once using the host-provided session identity:
+All task records belong to one session. A new session (a new conversation, `/clear`, or after
+"checkpoint, then new session") starts without a task. If it starts without one and
+checkpoints are enabled, the session line also lists up to three unfinished tasks of earlier
+sessions in the same worktree and checkout, newest first: those changed within 14 days and
+not completed. Only the most recent record of a task counts, so a task completed in a later
+session is not offered again. Adopt one only when the user's request continues it:
 
 ```sh
-node cli/main.mjs task-start --root <project> --session <host-id> --task fix-value --goal "Correct the value" --file src/value.mjs
-node cli/main.mjs locate --root <project> --session <host-id> --term SymbolValue
-node cli/main.mjs task-step --root <project> --session <host-id> --stage implement --target acceptance:value --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
-node cli/main.mjs session --root <project> --session <host-id>
+craft task-adopt --root <project> --session <new-id> --from <from>
 ```
 
-Installed bundles use `support/cli/main.mjs`. `task-start` routes relevant guidance and binds
-one active task to the session using private runtime state. The binding includes the Git
-symbolic ref or detached state; after changing it, rerun task-start explicitly. Older bindings
-without that checkout identity also require task-start. No branch name is prohibited. Read the selected resources;
-routing is a selection receipt, not proof they were loaded. Repeating the same id and goal
-preserves attempts and lookup evidence; use a new task id for a new outcome. A material stage
-or file-scope change can rerun `task-start` with the same goal and updated `--stage`/`--file`.
-Explicit task flags on existing commands retain their meaning. `task-step` must target the
-active binding; switch with `task-start` before recording a step for a different task.
+Adoption copies the task record and its checkpoint into the new session and binds the task
+there; the earlier session's records are not changed. The result shows the task as current
+source sees it and compares the checkpoint with the current tree: evidence for changed
+source must be rechecked. Worker and host-control records stay with the earlier session and
+the native work they describe (`notCarried`). Adoption never renews authorization and never
+replaces another task bound to the session or its checkpoint. Repeating it is harmless.
 
-The existing `route`, `locate`, `context-report`, `session`, `session-attempt` and
-`checkpoint-save` commands can adopt this binding when `--session` is supplied without
-`--task`. Missing identity, invalid binding or unavailable storage never establishes a cache
-hit. Direct commands and guidance-only hosts remain usable without the lifecycle. A tiny
-one-off task need not create a record. No undocumented host session discovery is attempted.
+### Work plans
 
-### Workspace and repository scope
-
-The coordination root may be a Git repository or a plain folder containing several
-repositories. Existing single-repository calls need no new flags. From a parent workspace,
-select the task's Git worktree roots explicitly; selection never scans or enrolls siblings:
+A plan belongs to a work item (a feature, a tracker issue, a backlog item), not to a
+session: one goal and up to 64 tasks with dependencies, worked on across sessions. Simple
+work needs none; create one when the work is multi-step, likely to span sessions, delegated,
+or the user asks for it.
 
 ```sh
-# One repository within a non-Git workspace.
-node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-kit --goal "Update the kit" --repository career-kit --file career-kit/src/main.mjs
-# One coordinated task across two repositories.
-node cli/main.mjs task-start --root <workspace> --session <host-id> --task update-contract --goal "Update producer and consumer" --repository career-kit --repository career-profile
+craft plan-create --root <project> --plan checkout-retry --goal "Retry failed checkouts"   --reference tracker:PROJ-123 --data tasks.json      # {"tasks": [{"id": "a", "goal": "...", "dependsOn": []}]}
+craft task-start  --root <project> --session <host-id> --plan checkout-retry --task a
+craft plan        --root <project> --plan checkout-retry
+craft plan-update --root <project> --plan checkout-retry --expected-revision 3 --data changes.json
 ```
 
-Repeat `--repository` for at most eight workspace-relative worktree roots, including `.`
-when applicable. Traversal, absolute paths, symlink aliases and subdirectories masquerading
-as repository roots are rejected. Linked Git worktrees are supported. Keep the coordination
-root/session stable across task steps. Repeating task-start retains its repository selection
-unless a new selection is supplied; a changed selection invalidates prior acceptance.
-Each selected repository retains its own revision, checkout, status and fingerprints in
-`repositorySnapshots`. The combined `workspace:…` revision is a collection identity, never
-a Git commit to pass to Git. Changes or checkout transitions in any selected repository
-invalidate evidence; an unselected sibling does not. Missing or inaccessible selected
-repositories remain unavailable rather than silently shrinking the scope.
+- Task states are fixed: `pending`, `running`, `verifying`, `completed`, `blocked`,
+  `failed`, `abandoned`. A pending task whose dependencies are all completed is shown as
+  `ready`; readiness is derived, never stored.
+- `task-start --plan P --task T` takes the goal, files and repositories from the plan task
+  and claims it: a ready task starts `running` in this session. A task that is not ready, or
+  that another session holds, is refused.
+- `task-step` advances the plan task held by its session: the `verify` stage makes it
+  `verifying`, a blocker `blocked`, `--complete` `completed`; a failed check or a resolved
+  prerequisite keeps it `running` until the session's attempt budget is spent, which makes
+  it `failed` and releases it. Result, next step and evidence reference are copied; a
+  completion also records `verified: {revision, contract, at}`, the source revision and
+  engineering contract digest it was accepted against. Only such a completion readies
+  dependent tasks. A session whose task was taken over can no longer step it.
+- `failed`, `abandoned` and a return to `pending` are set explicitly with `plan-update`,
+  which also adds tasks, dependencies and decisions. It is refused when the plan changed
+  since `--expected-revision`, when dependencies are unknown or cyclic, and for a task held
+  in another session unless `--take-over` is given. A plan is `completed` only when every
+  task is completed or abandoned.
+- When a session starts, the session line lists up to three open plans, newest first, with
+  ready tasks and held tasks (`here` when this session holds one, and minutes since its last
+  step). To continue a task held in another session, repeat `task-start` with `--take-over`:
+  that session may still be working, so take over only when the user's request continues
+  the work here. Its task record and checkpoint are copied into this session; the earlier
+  session's records are not changed and no authorization is renewed.
+- References are opaque labels; reading a tracker issue is a separate, authorized
+  [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
+  plans that link it.
 
-Bound lookup defaults to the selected paths and rejects paths outside them. Parent-folder
-lookup combines the selected repositories' Git inventories, honoring their ignores and
-global scan bounds, and currently does not claim lookup-cache reuse for explicit selections.
-Each repository's instructions, permissions, branch rules and build commands still
-apply independently; this binding does not merge child configuration into parent policy.
-Revision-bound Git operations and reviews still require an actual repository and its refs.
-Without explicit selection, a non-Git root remains limited and compact checkpoint output
-reports incomplete repository inspection. Standalone checkpoint-save also accepts repeated
-`--repository`; recovery reuses that saved selection.
+#### Coordination
 
-### Private scratch and retained evidence
-
-Use `workspace-open` only when a task needs filesystem-backed intermediate material.
-The result supplies a private scratch directory for the session, task and optional
-`--operation` scope. No scratch directory is created by ordinary task binding or inspection.
-The workspace sits beneath `.craft/state/<worktree-id>/shared/` in the selected
-coordination root, for both Git and non-Git folders. Raw
-session/task names are hashed in directory names. Existing checkpoints, receipts, caches
-and telemetry keep their existing stores; there is no duplicate state tree or new `.pack` root.
-Repository selection also participates in workspace identity, so rebinding a task to other
-repositories cannot consume the prior selection's scratch. Prior scoped evidence remains private.
-
-```sh
-node cli/main.mjs workspace-open --root <workspace> --session <host-id> --operation investigation
-node cli/main.mjs workspace-write --root <workspace> --session <host-id> --operation investigation --data <artifact-input.json>
-node cli/main.mjs workspace-promote --root <workspace> --session <host-id> --operation investigation --data <promotion-input.json>
-node cli/main.mjs workspace-release --root <workspace> --session <host-id> --operation investigation
+```bash
+craft plan-next    --root <project> --plan checkout-retry --session <host-id>
+craft task-start   --root <project> --session <host-id> --plan checkout-retry --ready
+craft plan-release --root <project> --plan checkout-retry --task b --session <host-id> --reason "Needs a decision"
 ```
 
-The write input is `{ "name": "result.json", "content": "small structured result" }`;
-promotion is `{ "name": "result.json", "purpose": "acceptance" }`. Managed writes enforce
-file/byte budgets and refuse overwrites. Direct tool writes to the supplied directory are
-cooperative: they must respect the same bounds; the pack cannot intercept arbitrary tools.
-Promotion copies only the named bounded regular file and records operation, time, source
-fingerprint and purpose. Never promote credentials, authorization material, full transcripts
-or complete prompts. Routine receipts often suffice; retaining an artifact is optional.
-The fingerprint is explicitly `sourceAtPromotion`; creation-time source identity is unknown
-for files produced by external tools and is never inferred from a later promotion.
+- `plan-next` only reads. It names the `next` task and groups the rest in plan order:
+  `ready` (children of a parent this session holds first; a task whose paths a running task
+  owns waits instead), `held` here, held `elsewhere`
+  (with `idleMinutes`, `stale` after 120 minutes without a step, `orphaned` when the holding
+  session's folder is gone, `worker` when this session assigned it), `waiting` with the
+  unfinished tasks they wait on, or the running tasks owning their paths (`stuck` behind a failed or abandoned one, which only
+  `plan-update` resolves), `retry` (failed with attempts left), `exhausted`, `parents` whose
+  children are all done, `integrate` and `needsUser` (see parallel workers); `workers` counts
+  this session's running workers.
+- `task-start --plan P --ready` claims that next task. The claim under the plans lock
+  decides, so two sessions asking at once get different tasks. It never takes over a task
+  held elsewhere, stale or not; nothing is released by age.
+- Every start of a task counts an attempt; continuing it with `--take-over` does not. A task
+  allows three starts unless it sets `maxAttempts` (1..10); then the claim is refused until
+  `plan-update` raises `maxAttempts` or abandons the task.
+- `plan-release` returns a held task to `pending` for any session to claim and removes this
+  session's binding to it; `--reason` becomes its next step. Another session's task needs
+  `--take-over`; a parent is released after its held children.
+- A take-over of an orphaned task carries nothing (`carried: false`); the task continues
+  from the plan.
 
-Task completion closes the coordinator's scopes and removes scratch when no other live owner
-remains. Workers release their own scopes after use. Startup/task boundaries and
-`workspace-clean --root <workspace>` reclaim verified closed or stale abandoned workspaces.
-Live process owners are retained regardless of age; uncertain ownership, symlinks, unsafe
-metadata, exhausted bounds or busy locks retain data and expose a reason. A dead managed lock
-can be reclaimed; unknown locks are preserved. Cleanup failure never blocks task acceptance.
-The lock serializes cooperating pack processes; these path checks are not an OS sandbox
-against a hostile same-user process swapping paths concurrently.
+#### Child tasks
 
-Defaults need no configuration: workspace enabled, 20 session/task directories, 8 MiB/64
-scratch files per directory, stale scratch after 24 hours with no live owner, and 1 MiB/16
-intentionally retained evidence files for seven days after inactivity. Active owners are
-never evicted to make space; optional allocation fails at capacity. Effective user/project
-settings may override `workspace.enabled`, `maxSessions`, `scratch.staleAfterHours`,
-`scratch.maxBytes`, `scratch.maxFiles`, `evidence.enabled`, `evidence.retentionDays`,
-`evidence.maxArtifacts` and `evidence.maxBytes`. Disabling persistence does not delete prior
-data. Settings preview creates no workspace. Session JSON exposes paths, actual disk usage,
-cleanup outcomes and retention reasons; compact output shows workspace details only when
-present or exceptional.
-
-Private state is excluded at source boundaries, including nested `.craft/state/`
-paths: lookup, routing, content/index snapshots, review diffs, guidance roots and package
-copying. No `.gitignore`, host `TMPDIR`, host storage, IDE cache or third-party cache is
-rewritten. Standalone build/release/test staging keeps its already-owned command lifecycle;
-this runtime does not migrate unrelated stores for directory consistency.
-
-Runtime state stays beneath the selected root’s `.craft/state/`; Craft storage never
-writes Git metadata. This also applies to linked worktrees and non-Git coordination roots.
-
-At an acceptance boundary, `task-step` requires an agent-declared target, approach, evidence
-identifier, outcome, result and next step. Outcomes are `passed`, `quality-failure`,
-`permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. It records
-the receipt and updates a compact continuation through the existing checkpoint mechanism when enabled. It does not
-read or judge the evidence artifact. Goal/result/next-step text is bounded to 512 characters.
-No prompt, transcript or tool output is automatically captured. Shell success never creates
-an acceptance receipt. Unchanged repository snapshots cannot renew older semantic evidence.
-
-Use `--complete` only for accepted overall completion. A failed receipt or unresolved
-acceptance target prevents that declaration. Success closes only the matching operation and
-target; unrelated success cannot erase a failure series. Source edits invalidate stored
-completion and verification when status is read, even if HEAD did not change. Context
-occupancy remains unknown unless a supported observation supplies it.
-
-After actually correcting a permission, tool or prerequisite issue, record
-`prerequisite-resolved` against the same stage/operation and target, with evidence of
-the correction. This closes only matching blocker receipts; quality failures and other
-targets stay open. It returns the task to working state without marking acceptance or
-verification passed, and cannot be combined with `--complete`. It grants no permission,
-dispatches no retry and does not bypass fresh host/action checks. Run acceptance afterward.
-
-The step response separates recorded acceptance, checkpoint result, next-step suggestion
-and status. A checkpoint failure does not undo a recorded receipt or invent a saved handoff.
-Explicitly disabled checkpoints leave receipts usable. Advice is a recommendation; no test,
-review, worker, model switch, compaction or remote operation is dispatched. A stored notice
-suppresses unchanged repeated step offers during its cooldown; an explicit status query still
-shows the underlying recommendation for inspection. Continue already-authorized work;
-request a new decision only for an additional action that lacks authorization.
-
-## Scoped action recommendations
-
-`task-start` returns logical model advice with the route. It keeps the current execution
-when exact mappings or native switch controls are unavailable. Economical/standard/strong
-profiles are bundled when no profile catalog is supplied; a supplied catalog remains
-consumer-owned. Named capabilities are never invented. Default quality budget is three;
-explicit profile limits override it. Main-model advice works without worker configuration.
-`mainModelSwitch: true` in an execution host is a support declaration, not permission or
-proof of a native switch. Inspect `mainModel` limitations separately from worker mappings.
-
-A verified risk-sensitive step can create an additional review offer automatically.
-Declare applicable risks with `task-start --risk security`. If the exact review scope is
-already authorized, `--review-authorization <user-or-standing-scope-reference>` records that
-fact and avoids a new approval request. A recommendation and an accepted check are separate
-records. Manual review settings suppress optional offers while explicit review work remains usable.
-
-Use the same local task record for optional review, delegation and compaction:
-
-```sh
-node cli/main.mjs task-offer --session <id> --root <project> --action review --scope review:current-source --benefit "Check the verified change risks" --evidence checks/current --data facts.json
-node cli/main.mjs task-decision --session <id> --root <project> --offer <proposal-id> --decision approved --evidence user-message:12
-node cli/main.mjs task-action-check --session <id> --root <project> --offer <proposal-id> --data facts.json
-```
-
-An offer explains trigger, benefit and scope. Present its question through the actual host's
-supported question mechanism. Record `approved` or `declined` only from an actual scoped
-answer; pending, silence and timeout never become approval. `--prior-authorization <reference>`
-can declare existing authorization for an exact offer scope. Existing decisions are preserved;
-use `task-decision` for a later explicit change of decision. Unchanged pending/declined offers
-are suppressed. Source, policy, scope, host/model or material risk changes require re-evaluation.
-
-Facts are **caller-supplied observations**, never preference grants. A review preflight can
-use `{"allowed":true,"supported":true}` after verifying current session/consumer policy and
-actual host capability. `observations` accepts the existing session input shape. Requested
-review or current verified source plus declared risks supports a review recommendation.
-Compaction additionally needs a safe boundary, fresh matching occupancy, a fresh continuation
-and declared reliable compaction support. Unknown/cumulative usage, stale handoffs,
-almost-complete/completed work and unsupported controls cannot justify compaction.
-
-Worker offers require an exact configured role/profile/model mapping, `independentTasks`
-greater than one, and a fresh `workers` observation:
+A plan task may name a `parent` (one level deep), the paths it owns, an engineering contract
+and the shape of the result it returns:
 
 ```json
-{
-  "observations": { "host": { "name": "consumer-host" } },
-  "independentTasks": 3,
-  "allowed": true,
-  "supported": true,
-  "workers": {
-    "capacity": 4,
-    "occupiedSlots": 1,
-    "taskWorkers": 0,
-    "allowed": true,
-    "sessionId": "actual-session-id",
-    "observedAt": "actual-current-ISO-time",
-    "source": "verified-host-slot-observation"
-  }
-}
+{"id": "api", "goal": "Add the API", "parent": "split", "dependsOn": ["model"],
+ "acceptance": ["API exported"], "scope": {"paths": ["src/api/**"], "worktree": "wt/api"},
+ "contract": "contracts/api.json", "returns": "The exported API"}
 ```
 
-Replace observations with actual values; this example is not live evidence. Capacity is total
-host slots. Occupied slots include main, other tasks and every current task worker that still
-occupies a slot, including idle/reusable/nested workers. All roles/models share one task-tree
-ceiling. Do not subtract failed/cancelled/completed workers until the actual host releases
-their slots. Observations expire after 30 seconds and must match the session. A preflight is not a slot reservation; a native controller must serialize/reobserve admission
-before dispatch, with nested workers sharing the same controller. The ceiling is
-the lesser of configured workers and host capacity after main/other occupied slots. A reduction
-stops new assignments without cancelling existing work. Explicit zero suppresses worker plans
-and offers; deterministic tool batching remains independent. `settings --session <id> --facts
-<workers.json>` shows requested/effective/available limits and missing prerequisites.
+- A parent completes only after every child is completed or abandoned; a child cannot wait
+  for its own parent. The session holding the parent can start a child and return to the
+  parent with `task-start --plan P --task <id>`; the parent stays `running` meanwhile.
+- `scope.paths` are project-relative patterns: `*` within a name, `**` across folders, and a
+  pattern naming a folder covers everything below it. When the task starts, its claim
+  records the source revision and the files already changed. `task-step --complete` is then
+  refused with `scope exceeded` when a file committed or changed since the claim lies
+  outside the task's paths (a parent also accepts its children's); widen them with
+  `plan-update`. When the changed files cannot be told completely (no Git, more than 64
+  files already changed at the claim), the step reports `scope: {checked: false, reason}`.
+- `contract` is loaded as the engineering contract of `task-start --plan` unless
+  `--contract` is given; [acceptance contracts](ACCEPTANCE.md) then gate completion.
+- `returns` describes the expected result; the result given at completion is what dependent
+  tasks see.
+- `scope.worktree` is declared for the task and shown to it; it is not created or enforced
+  (worker worktrees come from `plan-assign`, below).
+- `plan` and `plan.md` list unfinished tasks that may work at the same time on intersecting
+  paths under `overlaps`. Starting a task, by `task-start --plan` or `plan-assign`, is
+  refused while a running task that may work at the same time owns intersecting paths.
 
-Every action response distinguishes the offer, decision, current prerequisites and execution.
-`ready: true` means the **declared** decision and prerequisites passed revalidation; it is not a
-permission grant or evidence of native execution. Verify decision references against the real
-conversation/standing policy, then let the supported host perform and observe the action.
-The CLI does not dispatch workers, switch models or invoke compaction. Explicit application
-controllers accept trusted host callbacks for workers, review and compaction. The explicit
-native bindings connect those controls through Codex App Server, Claude SDK or ACP for an
-owning client; JetBrains/AGENTS require an explicit underlying host. Project settings do
-not activate clients. See the [host controller contract](HOST-CONTROL.md).
-Native lifecycle, actual concurrency and model round trips still require isolated integration evaluation.
-Worker success does not close main acceptance. Keep independent authorized work moving while
-an optional action is pending, and never repeat a permission/tool failure through a stronger model.
+`task-start --plan` returns the task's envelope, also shown by `craft plan-envelope --plan P
+--task T`: the task, its dependencies with their results and latest evidence, its parent
+with a reference to the holder's last checkpoint (session, revision, time, next step), its
+children, the latest eight decisions and the plan's references, at most 16 KiB. It carries
+no conversation, other tasks' work or secrets. `--brief` emits it as a worker `brief`
+([host control](HOST-CONTROL.md)): sources are the references and dependency results,
+restrictions the owned paths.
 
-## Three separate measurements
+#### Parallel workers
 
-Runtime receipts and host controllers record observable feature use without model
-classification. Normal delivery requires no feature inspection or bookkeeping; missing
-evidence and semantic judgments stay unknown. For an explicitly requested evaluation,
-`task-features --session <id>` shows outcomes, provenance and source freshness. Use
-`task-feature --session <id> --feature review --feature-status used --reason <reason>
---evidence <reference>` to retain a bounded declaration. Supported statuses are `used`,
-`eligible-but-skipped`, `disabled`, `unsupported`, `not-applicable` and `failed`.
-CLI declarations are marked `agent-declared`; observed controller results and historical
-command counters remain separate. A complete classification is no semantic success verdict.
-`worker-status --session <id>` reads the shared task-tree reservations without dispatching.
+A session may delegate ready tasks that own paths to workers, which the host's agent tool
+runs; `craft` claims, isolates and integrates, and starts nothing itself:
 
-| Measure | Evidence | Unknowns and limits |
+```sh
+craft plan-assign    --root <project> --plan checkout-retry --task api --session <host-id> [--shared]
+craft task-start     --root <project> --session '<host-id>/checkout-retry/api' --plan checkout-retry --task api   # the worker
+craft plan-integrate --root <project> --plan checkout-retry --task api --session <host-id> [--escalate --reason "..." | --discard]
+```
+
+- `plan-assign` claims the task for the worker session `<session>/<plan>/<task>`; the
+  assigning session keeps its own binding. It is refused for a task without `scope.paths`,
+  at `efficiency.delegation.maxWorkers` running workers of this session (default 3, 0
+  disables), and, like any start, while a running task that may work at the same time owns
+  intersecting paths. It returns the envelope, the worker `brief` and the worker's start command.
+- Isolation: for each repository of the task (its `repositories`, else the root when it is a
+  repository's top folder) a worktree is made at
+  `.craft/worktrees/<plan>/<task>-<attempt>[/<repo>]` on the new branch
+  `craft/<plan>/<task>-<attempt>` from the current `HEAD`, where `<attempt>` is the attempt
+  the assignment starts. Add `.craft/worktrees/` to
+  `.gitignore`; `plan-assign` refuses until Git ignores it, and refuses when the task's paths
+  hold uncommitted changes that the worktree would miss. An existing branch or folder is
+  refused, never reused. A plain folder, or `--shared`, has no worktree: the worker changes
+  only its owned paths in the shared checkout, which the overlap rule protects.
+- The worker's `task-start` binds its worktrees as repositories, and the scope check of
+  `task-step --complete` runs there. A completion is checked against what the worktrees hold
+  before anything is committed; a refused one leaves them as they were. An accepted one
+  commits that on their branches (consumer commit hooks apply) and records each branch head.
+- A completed worktree task readies dependents, and lets its parent and the plan complete,
+  only once integrated; `plan-next` lists it under `integrate`. `plan-integrate` (by the
+  assigning session) refuses a branch that moved since verification, a checkout in the middle
+  of a merge or rebase, and uncommitted changes in files the branch changes. It tries the
+  merge without touching the checkout (Git 2.38+); when clean, it merges each repository
+  with one `--no-ff` merge commit, removes the worktrees and deletes the merged branches.
+  Nothing is pushed.
+- On conflicts nothing is merged: the task returns to `running` in the integrating session,
+  counting one attempt, with the conflicted paths and the coordinator commit to merge. That
+  session continues it with `task-start --plan P --task T` (bound to the worktrees), merges
+  the commit in the worktree, resolves, verifies and completes it again, then runs
+  `plan-integrate` again. When no attempt is left, or after `--escalate --reason`, the task
+  `needsUser`: `plan-next` and the session-start line show it until it is integrated or
+  discarded.
+- `--discard` drops the result: the task is `pending` again and its worktrees are removed
+  when clean; the unmerged branch is kept and reported, and a later assignment gets its own. `plan-release` by the assigning
+  session, or `plan-update` setting a worktree task back, removes its worktrees the same way.
+- A worker assignment recorded through the [host control](HOST-CONTROL.md) with scope
+  `plan:<plan>:<task>` that ends `failed`, `cancelled` or `not-started` releases its task.
+
+Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
+it is regenerated after every change for people to read and is never read back.
+`plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
+`craft` versions refuse it, so stop them before upgrading, as for other state changes. A
+plan is written at the first version holding the fields its tasks use: version 4 once a
+task is assigned to a worker (`owner.parent`, `work`, `integration`); version 3 once a
+task records `attempts` (its first claim), `maxAttempts` or `verified`; version 2 when tasks
+use `parent`, `scope`, `contract` or `returns`; otherwise version 1. Older versions refuse
+newer plans.
+
+Opt-in acceptance contracts (`--contract`, `--acceptance-evidence`) are described in
+[acceptance contracts](ACCEPTANCE.md).
+
+#### Planning evidence
+
+A plan document is not a work plan. A file written while the session's request established
+the `plan` intent ([routing](ROUTING.md#hints-and-guidance-size)), such as a requested
+`PLAN.md`, is recorded as the session's planning evidence: its path, content hash, a
+revision that rises with each new content, and `intent: "plan"`. An edit tool records it when
+the edit finishes. Whatever tool wrote it, a shell redirect included, the turn end records
+each file Git reports added, modified or untracked whose modification time is not before the
+request that established `plan` (the intent record's `since`, Unix milliseconds). A file
+changed earlier is not evidence. Git reports paths from the repository root, so a project
+below it gets evidence from edit tools only. The text is never parsed:
+it creates no tasks and does not mean execution has started. Turning it into a work plan
+stays an explicit `plan-create`. Checkpoint recovery and `craft session` list the session's
+evidence with whether each file still has the recorded content. A new session without a
+task is offered the evidence of earlier sessions whose files are unchanged.
+
+### Several repositories
+
+From a folder that contains several repositories, select the task's repositories
+explicitly (up to eight); siblings are never scanned:
+
+```sh
+craft task-start --root <workspace> --session <host-id> --task update-contract \
+  --goal "Update producer and consumer" --repository producer --repository consumer
+```
+
+Each repository keeps its own revision and fingerprints; a change in any selected one
+invalidates evidence. Each repository's own instructions and rules still apply. Missing
+repositories are reported as unavailable, never silently dropped.
+
+### Private scratch
+
+`workspace-open` gives the task a private scratch directory, created only when asked for:
+
+```sh
+craft workspace-write   --root <workspace> --session <host-id> --operation investigation --data artifact.json   # {"name","content"}
+craft workspace-promote --root <workspace> --session <host-id> --operation investigation --data promotion.json  # {"name","purpose"}
+craft workspace-release --root <workspace> --session <host-id> --operation investigation
+```
+
+Managed writes are bounded and never overwrite. Promotion keeps a named file as evidence with
+its source fingerprint; never promote credentials, transcripts or prompts. An operation's
+owner is its session/task/operation identity. Completing the task removes scratch once no
+worker scope is still open; `workspace-clean` reclaims closed and stale workspaces. At
+capacity, the oldest inactive workspace is evicted first, then the oldest open one of another
+task. `craft settings` shows the limits (`workspace.*`).
+
+## Recommendations for review, delegation and compaction
+
+```sh
+craft task-offer        --session <id> --root <project> --action review --scope review:current-source --benefit "Check the risky change" --evidence checks/current --data facts.json
+craft task-decision     --session <id> --root <project> --offer <id> --decision approved --evidence user-message:12
+craft task-action-check --session <id> --root <project> --offer <id> --data facts.json
+```
+
+An offer states trigger, benefit and scope. Ask the user through the host's question
+mechanism and record `approved` or `declined` only from a real answer; silence is never
+approval. `facts.json` holds caller-verified observations (for example
+`{"allowed":true,"supported":true}`), not grants. Source, policy, scope or risk changes
+require a new evaluation.
+
+- **Review** is offered for declared risks (`task-start --risk security`) on verified source.
+- **Compaction** needs a safe boundary, fresh occupancy, a fresh continuation and reliable
+  host compaction.
+- **Workers** need a configured role/model mapping, more than one independent task and a
+  fresh `workers` observation (capacity, occupied slots, session, time; valid for 30
+  seconds). All workers of a task tree share one ceiling.
+
+`ready: true` means the declared decision and prerequisites passed revalidation, not that
+anything ran. Execution belongs to the host or to an integration driving the
+[host controls](HOST-CONTROL.md).
+
+## What is measured
+
+| Measure | Source | Limits |
 |---|---|---|
-| Pack context | `context:report` and the current routed selection: paths, hashes, skills/references, bytes and estimated tokens | Selection does not prove the host loaded a file. Estimates are not occupancy. Missing resources make totals a lower bound. |
-| Current occupancy | Fresh `current-context` observation with counts, capacity, source, timestamp and matching session identity | Cumulative/billing tokens and file reads cannot establish occupancy. Unsupported telemetry stays unknown. |
-| Pack activity | Identity-bound command receipts in private runtime state, plus explicitly declared counters | Covers observed pack commands, not all host tools or provider usage. Missing counters stay unknown. |
+| Pack context | `context-report`: selected files, hashes, bytes, estimated tokens | Selection is not proof of loading; estimates are not occupancy |
+| Context occupancy | A fresh, session-bound host observation (`usage.kind: "current-context"`) | Cumulative or billing tokens never count; otherwise unknown |
+| Pack activity | Receipts of pack commands for the session | Not host tools or provider usage |
 
-For separately installed packages, repeat `--bundle <verified-package-root>` on
-`context-report`, `session`, `session-advice`, `task-step` and action advice commands.
-Agents derive these roots from the loaded skill resources; users need not know cache layouts.
-The API also accepts an array of roots. A single root still works for source trees, complete
-exports and standalone packages. At most 16 explicitly supplied roots are inspected; no host
-cache discovery or sibling imports occur. Manifests identify each package. Multiple distinct
-installations of the same selected package are reported as ambiguous rather than choosing a
-version. Multi-root file entries include `bundleRoot` alongside their relative `path` and hash;
-repeated physical roots and files are counted once. Missing packages keep totals incomplete.
-This measures selected resources, not observed host loads or current context occupancy.
+For separately installed packages, pass each package root with `--bundle`. `task-features`
+and `task-feature` show and declare feature outcomes for evaluations; declarations are
+marked as such.
 
-A task record can begin small:
+## Context pressure and continuation
+
+Occupancy bands default to elevated at 60%, high at 75% and saturated at 85% (`policy.*`).
+Useful work continues; a high-pressure step is finished before context is reconsidered. At a
+safe boundary a stable task with reliable compaction gets "checkpoint, then compact"; a
+saturated session with stale assumptions gets "checkpoint, then new session". Unknown
+occupancy produces no pressure advice. Session age alone never triggers a reset.
+
+"Reliable compaction" means the host has a manual compact command and the continuation is
+checkpointed; it is not a control Craft can trigger.
+
+Context limits are listed per exact host model name: the bundled host table, overridden
+field by field by `execution.hosts.<host>.contextLimits` in the project. A listed
+`windowTokens` is used only when the host reports no window; the usage then says
+`capacitySource: "model-context-limit"`. At high pressure, listed models with a larger
+window appear as `largerWindowModels`. No working budget is assumed. A project that sets
+`budgetTokens` for a model gets a separate cost reminder: past the budget, every turn
+resends the whole context, so at a safe boundary the advice is to resume from the fresh
+checkpoint in a new session (or save one first). Window pressure keeps its own advice.
 
 ```json
-{
-  "sessionId": "work-1",
-  "host": { "name": "consumer-host", "reliableCompaction": true },
-  "task": {
-    "id": "task-1",
-    "revision": "actual-source-revision",
-    "stage": "implement",
-    "status": "working",
-    "files": ["src/changed-file.mjs"],
-    "safeBoundary": false
-  }
-}
+{ "execution": { "hosts": { "claude": { "contextLimits": {
+  "claude-opus-5-5": { "budgetTokens": 200000 }
+} } } } }
 ```
 
-`host.model` is optional and must be known. `usage` accepts `kind: "current-context"`,
-integer `currentTokens` and `capacityTokens`, `source`, ISO `observedAt`, and matching
-`sessionId`. Five-minute freshness is the default. Future, stale, cumulative, invalid and
-other-session counts remain unknown. No private transcript or undocumented host API is read.
+Before any context recommendation, the saved continuation must match the task and the current
+repository fingerprints. A continuation has ten required fields (`goal`, `currentState`,
+`completed`, `approach`, `evidence`, `filesChanged`, `validation`, `remainingWork`,
+`blockers`, `nextStep`):
 
-With an explicit `--session` and `--task`, `route`, `context-report`, `locate` and
-`checkpoint-save` record their own bounded activity. Without a complete explicit or bound identity, these operations
-retain their ordinary behavior without task activity writes. `session` reads existing records;
-it does not increment counters simply for displaying status. Recorded counts take precedence
-over caller declarations. Read/lock failures never establish reuse or checkpoint freshness.
-Git and non-Git roots use the same version 2 storage layout:
+```sh
+craft checkpoint-save --root <project> --session <id> --task <task-id> --data handoff.json
+craft checkpoint-read --root <project> --session <id>
+```
+
+A new session adopts the task ([handoff](#session-identity-and-handoff)), then reads the
+checkpoint, the current diff and routed guidance; it does not replay the conversation and never
+renews authorization.
+
+## Checkpoint and recovery
+
+A checkpoint stores explicit metadata (task, authorization reference, next step, sources,
+continuation) with Git HEAD, status and working-tree fingerprints. Recovery compares them
+with the current tree. Check `changeDetection.complete`: `changed: null` means "unchanged"
+could not be established, and evidence for a changed revision must be rechecked.
+
+Automatic snapshots at turn end and context transitions are on by default
+(`checkpoint.enabled`). Some hosts fire compaction hooks asynchronously, so save the
+continuation at milestones rather than relying on a final callback.
+
+## State storage
 
 ```text
 .craft/
   project.json
   telemetry.json
   state/
-    <worktree-id>/
-      <session-id>/       # checkpoints, bindings, activity, workers, hint/control journals
-      shared/             # telemetry/key/captures and workspace maintenance
+    sessions/<session-id>/
+      manifest.json         # created, workspace identity, host when a hook created it
+      checkpoint.json
+      task.json             # active task binding
+      activity-<id>.json    # per-task activity, lookups and attempts
+      workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
+      intent.json           # intent the requests established, routed files, planning evidence
+    telemetry/              # events.jsonl(.1), key.json, captures.json
+    intelligence/           # project.sqlite(.lock), project.sqlite.backup
+    workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
 ```
 
-The platform resolver hashes the canonical selected root into a 24-character worktree ID
-and an explicit session identity into a 24-character session ID. IDs, rather than Git
-metadata location, isolate roots and sessions. Callers resolve invocation subdirectories
-through the normal project-root resolver before accessing state; explicitly selected nested
-or coordination roots keep their own identities. Linked worktrees have distinct root IDs.
-Project-wide records use the reserved `shared` scope; scratch/evidence beneath it retain
-explicit hashed session/task/operation ownership and their existing cleanup policies.
-`settings` shows this shared directory and layout version. Raw session names never become
-path components. File schemas and retention limits remain unchanged. Directories/files use
-0700/0600 where supported; symlinks, unsafe paths and bounded-file violations are refused.
+Session IDs are hashes of the host session; raw names never become paths. Each root, whether
+a Git worktree, a folder of repositories or a plain folder, has its own `.craft/state/`;
+linked worktrees have their own. Add `.craft/state/` (and `.craft/worktrees/` for parallel
+workers) to `.gitignore`; Craft never edits ignore rules, and changes Git metadata only
+through `plan-assign` and `plan-integrate` (worker worktrees, their branches and merge
+commits). Lookup, snapshots, review and exports exclude state regardless
+of ignores. `craft settings` shows the directory.
 
-Add `.craft/state/` to the consumer's `.gitignore` before use (this repository already
-ignores it at every depth). Craft does not edit consumer ignores or Git metadata. Source
-lookup, snapshots, review and package export exclude state independently of Git ignores;
-consumer-authored configuration remains visible. Runtime cleanup owns only its existing
-bounded scratch, evidence and telemetry lifecycles, never project/telemetry configuration.
-
-On access, the resolver copies matching legacy records from `.git/craft-state/<root-id>/`
-(or a linked worktree's Git directory), flat `.craft/state/`, and `.capabilities/state/`.
-Session records go to the explicit session scope; project-wide records go to `shared`.
-Workspace scratch/evidence ownership trees, telemetry backups and hint generations are
-preserved. Sources are never deleted or written, and configuration is never migrated.
-Copies are bounded (4 MiB/file, 16 MiB and 4096 entries per record tree, depth 16), reject
-symlinks and hard-linked files, and retain existing record validators. A source fingerprint
-receipt is published after copying; identical interrupted copies can be retried, differing
-destination files are refused. Unused legacy records remain available for later access.
-
-Stop older installed plugins before upgrading. Legacy locks block migration; source
-fingerprints are checked again on access and changed sources cause an explicit reconciliation
-error. Old plugins cannot honor new locks, so simultaneous old/new writers are unsupported.
-Do not clear a lock or conflict without verifying the old writer has stopped and reconciling
-records. Retained legacy sources may be removed only through separately authorized cleanup.
-
-Changing a task's stage, files, risks or checkout invalidates completed acceptance and verification.
-Continuation freshness also requires the saved task contract to match; an automatic snapshot
-cannot renew a continuation written for earlier scope.
-
-## Pressure and continuation policy
-
-Default occupancy bands are healthy below 60%, elevated from 60%, high from 75%, saturated
-from 85%. Tune ordered fractions with `policy.elevatedAt`, `compactAt`, `restartAt`; tune
-observation freshness and notice cooldown with `maxAgeMs`, `cooldownMs`. These are advice
-defaults, not universal provider limits. Session age alone never triggers a reset.
-
-Healthy useful work continues. High pressure during a useful bounded step recommends
-finishing it before reconsidering context. `safeBoundary: true` or a completed stage permits
-context-change advice; `almostComplete: true` favors finishing. A stable task with reliable
-host compaction favors checkpoint then compact. Saturation plus `phaseChanged`,
-`staleAssumptions`, or `compacted` with persistent rediscovery favors checkpoint then a new
-session. Without reliable compaction, the fallback is checkpoint plus new session. Unknown
-occupancy yields no invented pressure recommendation. Recorded failures/blockers take priority.
-
-Before recommending a context action, unified status verifies a saved continuation against
-the task identity and complete current Git/index/working-tree fingerprints. Bare
-`handoffSaved`/`checkpointFresh` declarations cannot bypass this check. Missing, changed,
-wrong-task or incomplete checkpoints require a new handoff. Semantic accuracy still requires
-the agent to keep the continuation current: unchanged files cannot prove a reasoning summary.
-Native status updates without a matching continuation do not scan the whole tree just to
-establish its absence. Automatic Git snapshots preserve the continuation's original source binding. They cannot
-renew old semantic notes merely by updating a repository snapshot, infer conversation state,
-or establish task completion.
-
-### Continuation checkpoint
-
-Save the small continuation with:
+State of earlier plugin versions is neither read nor cleaned: `.craft/state/<worktree-id>/`,
+files directly in `.craft/state/`, `.git/craft-state/` and `.capabilities/state/`. Stop older
+installed plugins and delete those folders by hand; their sessions start fresh.
 
 ```sh
-npm run checkpoint:save -- --root <project> --session <id> --task <task-id> --data <handoff.json>
-npm run checkpoint:read -- --root <project> --session <id>
+craft state-clean --root <project>            # preview
+craft state-clean --root <project> --apply    # remove what the preview lists
 ```
 
-`handoff.json` contains a `continuation` object with ten string fields: `goal`, `currentState`,
-`completed`, `approach`, `evidence`, `filesChanged`, `validation`, `remainingWork`, `blockers`,
-`nextStep`. Use paths, hashes and concise summaries. All fields are required; goal and next
-step must be nonempty. Each field is limited to 2,048 characters, the object to 8 KiB.
-Unknown fields, including a transcript field, are rejected. Existing task/authorization/
-nextStep/sources metadata remains supported; `--task` saves the continuation's `taskId`.
+Session directories are kept until cleaned explicitly. `state-clean` lists each one with its size and idle days, and removes it with `--apply` only when no record in it
+changed for 14 days, it holds only records Craft writes, no lock or lease is held and no open
+workspace may belong to it; its checkpoint goes with it. Anything else is kept with a reason.
+A directory is set aside, listed again and removed only if unchanged; an interrupted cleanup
+finishes on the next run.
 
-A new session reads the checkpoint, current repository diff/state and necessary routed
-guidance. It does not replay the previous conversation. Recovery never renews authorization.
-See [checkpoint recovery](ROUTING.md#checkpoint-and-recovery) for incomplete inspection limits.
+Shared families are only measured: `shared` lists each one's bytes and files, or why it
+could not be measured, and what keeps it bounded. Telemetry rotates, workspaces follow
+`workspace-clean` and the evidence database is rebuilt on request (`project-evidence
+rebuild`, then `refresh`).
 
-## Reuse before bounded discovery
+## Lookup reuse
+
+`locate` scans all fresh literal terms in one bounded pass. With a session and task it also
+reuses earlier results while the revision, scoped files, manifests and configuration are
+unchanged; any change rescans the affected scope. `--data` accepts staged requests where
+dependent terms are returned as deferred instead of run. No match is not proof of absence.
+
+## Attempts and capability classes
 
 ```sh
-npm run locate -- --root <project> --session <id> --task <task-id> --path src --term Foo --term Bar --term Baz
+craft session-attempt --root <project> --session <id> --task <task-id> --data attempt.json
 ```
 
-The existing literal locator scans all fresh terms together. Optional session/task identity
-adds a narrow cache of at most 32 compact symbol packets, capped at 64 KiB within bounded
-session state. Resolve reusable items first; five valid packets out of eight requests leave
-three fresh terms in one scan. Entirely reusable requests read no source-file contents.
-Returned matches merge term identifiers and retain paths, line numbers and bounded snippets.
-
-Reuse depends on session/task identity, locator implementation identity, HEAD, the scoped
-file inventory and file version metadata (device/inode/size/mtime/ctime), plus ancestor
-manifests and project configuration. Added, removed or edited files, revision changes,
-manifest/config changes or task changes invalidate the affected scope. Versions are checked
-again after scanning. Symlinks, failed inventory, incomplete/skipped coverage and unavailable
-state never certify a fresh packet. This is local navigation evidence, not a semantic cache
-or a defense against malicious concurrent filesystem changes. Accepted decisions or runtime
-facts outside these literal packets must retain their own source/revision dependencies.
-
-For staged discovery, `locate --data <request.json>` accepts:
-
-```json
-{
-  "paths": ["src"],
-  "requests": [
-    { "id": "implementation", "term": "Foo" },
-    { "id": "framework-guidance", "term": "Bar", "dependsOn": ["implementation"] }
-  ],
-  "maxOutputBytes": 32768
-}
-```
-
-Only independent known literal requests execute. Dependent requests are returned as deferred
-for the next reasoning stage, even if their prerequisite was in the same call. Arbitrary
-commands, writes and mutations are unsupported. The default ceilings remain 500 files,
-80 matches, 2 MiB scanned bytes and 240 characters per snippet; up to 32 terms are accepted.
-`maxOutputBytes` additionally caps serialized result evidence (default 32 KiB, maximum
-64 KiB); truncation is explicit. Metadata too large for the requested cap requires a smaller
-request. Do not interpret no match as proof of absence. No saved tokens/cost or hypothetical
-avoided round-trips are inferred from reuse counters.
-
-Batch independent known reads, metadata and checks at a reasoning boundary. Keep adaptive
-framework discovery, approvals, mutations and dependent checks staged. Batching does not
-change their authorization, failure isolation or recovery semantics.
-
-Existing routing-hint dedupe remains separate: it caches only emitted text identity for
-15 minutes, keyed by current project config, rendered guidance and runtime identity. Routing
-still recomputes. Session start/compaction invalidates it; unsupported delivery or unavailable
-state emits the hint. Suppressed text is not evidence that files were freshly read.
-
-## Meaningful attempts and capability classes
-
-Record an acceptance attempt, not every message or successful mechanical tool call:
-
-```sh
-npm run session:attempt -- --root <project> --session <id> --task <task-id> --data <attempt.json>
-```
-
-The receipt requires `operation`, `target`, `approach`, `evidence` and `outcome`. Outcomes are
-`passed`, `quality-failure`, `permission-denied`, `tool-unavailable`, `blocked`, `prerequisite-resolved`. Use bounded
-identifiers/paths, never raw output. Optional `profile`, `maxAttempts` (1–5) and
-`escalationReason` preserve actual model-profile changes and their explanation.
-
-Complete repository fingerprints plus operation/target/approach identify equivalent failures.
-Incomplete inspection still permits an explicit attempt receipt and budget, but equivalence
-remains unknown. Escalation uses only receipts matching the current complete source fingerprint.
-Changed approach/evidence target or repository contents distinguishes a retry; reverted
-contents can match an earlier failure. A pass ends the current operation's failure series. Profile changes begin a new tier budget;
-configured per-profile limits and the end of the escalation chain still stop further attempts.
-Keep at most 24 receipts, evicting closed history before active failure series. Unrelated
-successful operations cannot erase unresolved blockers or retry budgets. If all 24 slots
-contain active failures, additional failure receipts are rejected explicitly; resolve an
-active operation before recording more. A success can close a series even at capacity.
-Model advice considers only the current series (or its latest closing success), so resolved
-blockers and earlier successes cannot override a later retry series.
-The default failure budget is three, configurable per receipt.
-Repeated identical discovery requests with no new evidence also expose a loop signal.
-A first no-progress failure recommends changing approach. At the budget/equivalence limit,
-return control, or recommend a justified configured escalation. Permission/tool/prerequisite
-failures stop as blocked. Receipts report outcomes supplied by the caller; they do not judge
-acceptance on their own. Unobserved host operations cannot be counted or stopped by the pack.
-
-Routing and unified status expose portable capability suggestions:
+Record acceptance attempts, not every tool call: `operation`, `target`, `approach`,
+`evidence`, `outcome`, optionally `profile` and `escalationReason`. The same failure on
+unchanged source counts against a budget (default three). The first no-progress failure
+suggests a different approach; at the limit, return control or escalate along a configured
+chain. Permission and tool failures stop as blocked; a stronger model never retries them.
 
 | Class | Typical work |
 |---|---|
-| economical | Literal lookup, known-file extraction, formatting, metadata and deterministic checks; prefer a deterministic tool first |
-| standard | Routine implementation, focused debugging, tests and bounded review |
-| strong | Architecture, ambiguous debugging, distributed consistency, security-sensitive or complex cross-module reasoning |
+| economical | Lookup, extraction, formatting, deterministic checks; prefer a tool first |
+| standard | Routine implementation, focused debugging, tests, bounded review |
+| strong | Architecture, ambiguous debugging, distributed consistency, security-sensitive work |
 
-Task risks can justify direct strong reasoning; there is no forced traversal through cheap
-tiers. Configure optional `execution.profiles.<name>.class` alongside existing capabilities,
-quality budgets and `escalateTo` chains. Host model names remain in consumer mappings.
-`model:advice` accepts an optional required `capabilityClass` and `currentProfile`. Unified
-status connects current-task/current-revision failed-attempt evidence to those configured
-profiles. Undeclared capability classes remain unavailable; missing exact model mappings retain
-main execution with an explicit limitation rather than blocking logical advice. Capability classes
-are recommendations, not measured price rankings or proof that a named model is cheaper.
-No actual model switch or delegation occurs. A recorded escalation receipt counts the event;
-a recommendation alone does not.
+Classes are recommendations, not price rankings. Exact model names live in the consumer's
+`execution` configuration; see [model advice](ROUTING.md#testing-only-scope-and-model-advice).
 
 ## Host support
 
-| Host | Automatic occupancy input | Native controls exposed by this adapter | Other evidence |
-|---|---|---|---|
-| Claude Code | Explicit native statusline payload: current input/cache counts, excluding output; session-bound | `/compact`, `/clear` as recommendations | Known payload model id; otherwise unknown |
-| Codex | Native UI only; no stable mapped-hook usage field | `/statusline`, `/compact`, `/new` as recommendations | Explicit normalized observations; unknown model unless supplied |
-| Gemini, Cursor, Copilot, AGENTS, Gemini extension, JetBrains | Unavailable in current adapters | No mapped compact/reset command | Same portable CLI/status policy and explicit normalized observations |
+| Host | Automatic occupancy | Native controls offered as advice |
+|---|---|---|
+| Claude Code | Status-line payload (current input and cache counts) | `/compact`, `/clear` |
+| Codex | None mapped | `/statusline`, `/compact`, `/new` |
+| Copilot | None mapped | `/context`, `/compact` |
+| Gemini CLI and extension | None | `/compress` |
+| Others | None | None mapped |
 
-Use native host indicators first. The pack does not replace the host runtime or configure
-statusline settings automatically. Builds copy the same runtime into every standalone package.
-Unsupported lifecycle enforcement remains visible in adapter reports. Default `mode` is
-`recommend`; deterministic lookup, evidence reuse and local milestone snapshots can run
-under the effective settings. Acceptance receipts still require explicitly supplied evidence. No provider/account changes, cost increases, context
-destruction or unsafe side effects are silently executed.
+Each host entry in `hosts/session.json` (and each export's `sessionAdvice`) also declares
+what the host itself offers, separately from what Craft reads:
 
-## Evaluation and limits
+| Field | Values | Meaning |
+|---|---|---|
+| `usage` | `statusline`, `transition-snapshot`, `native-ui`, `none` | Where the host exposes occupancy. Only `statusline` (Claude) is ingested; a `transition-snapshot` arrives when compaction already started |
+| `nativeAutoCompact` | `documented`, `unknown` | Whether the host documents its own automatic compaction. Craft never configures it |
+| `control` | `none` | A connected transport Craft could use to request compaction. No export ships one |
+| `completion` | `none` | A durable receipt that a compaction finished. Without it there is no verified context cycle |
 
-The source-checkout fixture at `examples/evals/session-efficiency/` exercises a
-resumed task with reusable evidence, two failed attempts and a small checkpoint. Use the
-existing collector and retain local configs, outputs and judgments under ignored
-`.eval-results/`. Deterministic policy tests establish behavior; actual paired model runs are
-needed before reporting turn, latency, cost or correctness improvements. Unknown measurements
-stay unknown. A compact continuation fixture does not establish behavior in a genuinely
-saturated long conversation.
+A manual compact command is `commands.compact`; it is what "reliable compaction" requires.
 
-The operational view includes the canonical pack version. Supporting local telemetry is
-enabled by default and independent of session counters and host occupancy; see
-[observability and privacy](OBSERVABILITY.md) for content, limits, disable configuration
-and explicit remote opt-in. Telemetry volume never estimates host context usage.
+## Host observations
 
-## Effective default policy
+`host-setup --host <host> --package <package>` previews display configuration, compaction
+controls, editable configuration keys and opt-in permission suggestions for the installed
+launcher. `--apply` configures only the Claude Code display on macOS/Linux, preserving
+other settings and refusing to replace an existing custom display. Setup never grants
+permissions or changes native auto-compaction. Exported `sessionAdvice.setup` names this
+entry point. See [installation](INSTALL.md#first-use).
 
-`node cli/main.mjs settings --root <project>` shows the effective policy,
-with the origin of each leaf value and the private state directory. CLI and hooks share
-the same resolver. Routing hints, hint deduplication, milestone snapshots and lookup reuse
-are enabled by default; explicit false disables the respective automatic behavior.
-`runtimeApplied` lists connected controls and `prerequisites` identifies integration limits.
-Semantic acceptance and continuation still require agent-supplied evidence; settings never
-start workers, review or native compaction.
+A Claude status-line callback now retains its latest valid observation in the native
+payload's worktree. A later `session --session <actual-id>` reuses that snapshot; use the
+same project root and session identity. Explicit usage declarations take precedence.
+Missing, stale, invalid and cross-session usage remains unknown.
 
-Precedence is bundled defaults, personal preferences, project settings, then task overrides.
-Personal preferences live at `~/.config/craft/preferences.json`; `--preferences <file>`
-selects an explicit file for reproducible inspection. Missing files contribute no values.
-Preference paths reject symlinks; on POSIX, the file and its parent must also be user-owned
-and not writable by others. Windows relies on consumer-managed ACLs. Files are limited to 64 KiB. Preferences and task overrides accept
-only `routing`, `checkpoint` and `efficiency`; they cannot declare permissions, services
-or host model mappings. No configuration file is generated in the project.
+A connected integration can also forward a bounded native event:
 
-For a personal override, save `{"efficiency":{"delegation":{"maxWorkers":0}}}` in
-the preference file. For a project override, add
-`"efficiency":{"batching":{"maxConcurrency":2}}` to `.craft/project.json`.
-Use `--data <file>` for a task override with the same restricted preference shape.
-Explicit `false` and zero survive merging; omitted nested siblings retain defaults.
-Worker ceilings apply to the shared reservation ledger when a trusted controller adapter is
-connected. They accept nonnegative safe integers and do not establish host capacity
-or authorization. Review, delegation and context actions default to recommendation.
+```sh
+"<package-root>/bin/craft" host-observe --host codex --session <thread-id> \
+  --root <project-root> --data native-event.json --observed-at <receive-time>
+```
 
-A manual policy can use:
+The owning transport supplies an ISO receive timestamp, not a new timestamp invented when
+replaying a saved file. Intake rejects events more than two minutes old, future timestamps,
+wrong session identities and updates older than the retained snapshot. `session` applies its
+ordinary configurable observation freshness window as well. No private host transcript is
+read. This command is an integration boundary, not an app-server connection or authentication
+of caller-supplied data.
+
+The Codex adapter accepts `thread/tokenUsage/updated` and the `item/started` / `item/completed`
+notifications for a `contextCompaction` item. Latest request `last.inputTokens` supplies
+input occupancy, including cached input once; `total` supplies cumulative session
+consumption separately under `hostContext.consumption`. Latest-request input does not count
+messages/tools appended afterward or the output reservation. Missing model capacity leaves
+pressure unknown. A plugin alone cannot subscribe to its host's app-server connection.
+
+Mapped before/after-compaction hooks retain lifecycle observations on their own. Starting
+or resuming compaction invalidates the saved occupancy; a fresh usage event is needed to
+restore it. Codex completion requires matching item and turn identities to the start;
+unpaired completion stays `completion-observed`. An after-compaction hook stays
+`resume-observed`; `hookCompaction` preserves that phase separately when a more precise
+native item is already known. Hook phases never replace a native item identity. Neither status establishes that task continuation was verified: compare
+the checkpoint and current source independently. `hostContext` is the latest timestamped
+snapshot, not an event history, a compaction request transport or billing evidence. It is
+bounded to one 16 KiB record per session and participates in normal `state-clean` retention.
+
+Native protocol sources: [Claude status-line payload](https://code.claude.com/docs/en/statusline)
+and [Codex app-server events](https://learn.chatgpt.com/docs/app-server). Native automatic
+compaction belongs to the host; `nativeAutoCompact` declares documentation support rather
+than the setting or runtime state of a particular session.
+
+## Settings
+
+`craft settings --root <project>` shows the effective policy, where each value came from
+and the private state directory. Precedence: bundled defaults, personal preferences
+(`~/.config/craft/preferences.json` or `--preferences`), project `.craft/project.json`, task
+overrides (`--data`). Preferences and task overrides accept only `routing`, `checkpoint` and
+`efficiency`; they cannot grant permissions or map models.
+
+A fully manual policy:
 
 ```json
 {
@@ -576,17 +536,4 @@ A manual policy can use:
 }
 ```
 
-Explicit commands remain available. A preference is never execution permission, a
-model mapping, a hook trust decision or evidence of observed feature use.
-
-Structured task contracts and criterion evidence are opt-in through the existing
-`task-start --contract` and `task-step --acceptance-evidence` commands. See
-[acceptance contracts](ACCEPTANCE.md#task-command-persistence) for input shapes,
-conditional ledger replacement, completion gates and version-2 session compatibility.
-
-The developer acceptance pilot in source-checkout `examples/evals/developer-acceptance/README.md`
-provides a reproducible two-criterion bug fix and adversarial reporting variants. Its
-source test composes cited context, persists a contract, executes independent checks
-and rejects missing or stale coverage through the task CLI. The direct tiny-fix variant
-uses no session runtime. Deterministic results establish mechanics; usefulness and
-shorter-guidance decisions require separate retained paired model runs.
+Explicit commands keep working under any policy.

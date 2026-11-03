@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "adapter": "codex",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -38,7 +38,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "prompt-routing",
@@ -48,7 +48,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "restore",
@@ -56,10 +56,11 @@
           "name": "SessionStart",
           "context": true,
           "deny": false,
+          "notice": true,
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "checkpoint",
@@ -69,7 +70,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "milestone",
@@ -79,7 +80,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "turn-checkpoint",
@@ -89,7 +90,7 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         },
         {
           "id": "compact-restore",
@@ -100,18 +101,18 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/context.mjs"
+          "handler": "deliver"
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
-        "surface": "owned Codex App Server client",
-        "entry": "support/hosts/control.mjs",
+        "surface": "integration-owned host transport driving the native worker, action and control phases",
+        "entry": "bin/craft",
         "nativeHost": "codex",
-        "workers": "bounded read-only native sessions; exact model and supported mode required",
-        "review": "scoped native review/task; no semantic verdict inferred",
-        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+        "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+        "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -159,8 +160,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -184,8 +185,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "compaction": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -194,8 +195,8 @@
             "evidence": "unknown when current occupancy is unavailable"
           },
           "review": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -210,28 +211,50 @@
           }
         },
         "execution": {
-          "surface": "owned Codex App Server client",
-          "entry": "support/hosts/control.mjs",
+          "surface": "integration-owned host transport driving the native worker, action and control phases",
+          "entry": "bin/craft",
           "nativeHost": "codex",
-          "workers": "bounded read-only native sessions; exact model and supported mode required",
-          "review": "scoped native review/task; no semantic verdict inferred",
-          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+          "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+          "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
-          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
-          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+          "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+          "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "codex",
+          "--package",
+          "craft-delivery"
+        ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "documented",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
           "start-new-session": "/new"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "codex",
+            "--package",
+            "craft-delivery"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
@@ -241,7 +264,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -276,10 +299,11 @@
           "name": "SessionStart",
           "context": true,
           "deny": false,
+          "notice": true,
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -289,7 +313,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -299,7 +323,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -309,7 +333,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -319,7 +343,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -330,7 +354,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -340,18 +364,18 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
-        "surface": "owned Codex App Server client",
-        "entry": "support/hosts/control.mjs",
+        "surface": "integration-owned host transport driving the native worker, action and control phases",
+        "entry": "bin/craft",
         "nativeHost": "codex",
-        "workers": "bounded read-only native sessions; exact model and supported mode required",
-        "review": "scoped native review/task; no semantic verdict inferred",
-        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+        "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+        "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -399,8 +423,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -424,8 +448,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "compaction": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -434,8 +458,8 @@
             "evidence": "unknown when current occupancy is unavailable"
           },
           "review": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -450,28 +474,50 @@
           }
         },
         "execution": {
-          "surface": "owned Codex App Server client",
-          "entry": "support/hosts/control.mjs",
+          "surface": "integration-owned host transport driving the native worker, action and control phases",
+          "entry": "bin/craft",
           "nativeHost": "codex",
-          "workers": "bounded read-only native sessions; exact model and supported mode required",
-          "review": "scoped native review/task; no semantic verdict inferred",
-          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+          "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+          "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
-          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
-          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+          "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+          "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "codex",
+          "--package",
+          "craft-engineering"
+        ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "documented",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
           "start-new-session": "/new"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "codex",
+            "--package",
+            "craft-engineering"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
@@ -481,7 +527,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -504,7 +550,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "shell",
-          "handler": "hooks/read-only.mjs"
+          "handler": "review-read-only"
         },
         {
           "id": "observe-session-start",
@@ -512,10 +558,11 @@
           "name": "SessionStart",
           "context": true,
           "deny": false,
+          "notice": true,
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -525,7 +572,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -535,7 +582,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -545,7 +592,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -555,7 +602,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -566,7 +613,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -576,18 +623,18 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
-        "surface": "owned Codex App Server client",
-        "entry": "support/hosts/control.mjs",
+        "surface": "integration-owned host transport driving the native worker, action and control phases",
+        "entry": "bin/craft",
         "nativeHost": "codex",
-        "workers": "bounded read-only native sessions; exact model and supported mode required",
-        "review": "scoped native review/task; no semantic verdict inferred",
-        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+        "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+        "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -635,8 +682,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -660,8 +707,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "compaction": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -670,8 +717,8 @@
             "evidence": "unknown when current occupancy is unavailable"
           },
           "review": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -686,28 +733,50 @@
           }
         },
         "execution": {
-          "surface": "owned Codex App Server client",
-          "entry": "support/hosts/control.mjs",
+          "surface": "integration-owned host transport driving the native worker, action and control phases",
+          "entry": "bin/craft",
           "nativeHost": "codex",
-          "workers": "bounded read-only native sessions; exact model and supported mode required",
-          "review": "scoped native review/task; no semantic verdict inferred",
-          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+          "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+          "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
-          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
-          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+          "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+          "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "codex",
+          "--package",
+          "craft-review"
+        ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "documented",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
           "start-new-session": "/new"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "codex",
+            "--package",
+            "craft-review"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
@@ -717,7 +786,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -740,10 +809,11 @@
           "name": "SessionStart",
           "context": true,
           "deny": false,
+          "notice": true,
           "matcher": "startup|resume",
           "event": "session-start",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-prompt",
@@ -753,7 +823,7 @@
           "deny": false,
           "event": "before-prompt",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-tool",
@@ -763,7 +833,7 @@
           "deny": true,
           "event": "before-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-tool",
@@ -773,7 +843,7 @@
           "deny": false,
           "event": "after-tool",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-before-compact",
@@ -783,7 +853,7 @@
           "deny": false,
           "event": "before-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-after-compact",
@@ -794,7 +864,7 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         },
         {
           "id": "observe-turn-end",
@@ -804,18 +874,18 @@
           "deny": false,
           "event": "turn-end",
           "tool": "any",
-          "handler": "hooks/observe.mjs"
+          "handler": "observe"
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
-        "surface": "owned Codex App Server client",
-        "entry": "support/hosts/control.mjs",
+        "surface": "integration-owned host transport driving the native worker, action and control phases",
+        "entry": "bin/craft",
         "nativeHost": "codex",
-        "workers": "bounded read-only native sessions; exact model and supported mode required",
-        "review": "scoped native review/task; no semantic verdict inferred",
-        "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+        "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+        "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -863,8 +933,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -888,8 +958,8 @@
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "compaction": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -898,8 +968,8 @@
             "evidence": "unknown when current occupancy is unavailable"
           },
           "review": {
-            "support": "explicit-native-binding",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "support": "integration-owned-transport",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -914,28 +984,50 @@
           }
         },
         "execution": {
-          "surface": "owned Codex App Server client",
-          "entry": "support/hosts/control.mjs",
+          "surface": "integration-owned host transport driving the native worker, action and control phases",
+          "entry": "bin/craft",
           "nativeHost": "codex",
-          "workers": "bounded read-only native sessions; exact model and supported mode required",
-          "review": "scoped native review/task; no semantic verdict inferred",
-          "compaction": "native completion plus source/checkpoint-bound resume acceptance; capability-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "workers": "native phases reserve capacity, bind the configured model and record observed lifecycle; the transport starts, observes and cancels workers",
+          "review": "native phases claim the approved offer and record the scoped result; no semantic verdict inferred",
+          "compaction": "native phases bind the checkpoint and count use only after matching resume evidence",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
-          "Native controls require an owning integration; installing hooks or copying runtime files does not connect it.",
-          "Missing native model/mode/command/resume support fails closed; write-capable workers are not enabled."
+          "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
+          "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "codex",
+          "--package",
+          "craft-stories"
+        ],
         "observation": "native-ui-only; no stable usage field in mapped hooks",
         "display": "native /statusline; explicit CLI advice fallback",
+        "usage": "native-ui",
+        "nativeAutoCompact": "documented",
+        "control": "none",
+        "completion": "none",
         "commands": {
           "inspectUsage": "/statusline",
           "compact": "/compact",
           "start-new-session": "/new"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "codex",
+            "--package",
+            "craft-stories"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
         },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },

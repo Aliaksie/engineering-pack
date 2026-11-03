@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-delivery",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Project-grounded planning, implementation, review and repository context.",
   "instructions": "AGENTS.md",
   "skills": [
@@ -20,7 +20,9 @@
     "workflows/deliver-change.md",
     "workflows/ship-change.md"
   ],
-  "standards": [],
+  "standards": [
+    "standards/task-runtime.md"
+  ],
   "evals": [
     "evals/no-tracker.json",
     "evals/session-efficiency.json",
@@ -41,43 +43,43 @@
       "name": "routing",
       "event": "before-tool",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "prompt-routing",
       "event": "before-prompt",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "restore",
       "event": "session-start",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "checkpoint",
       "event": "before-compact",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "milestone",
       "event": "after-tool",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "turn-checkpoint",
       "event": "turn-end",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     },
     {
       "name": "compact-restore",
       "event": "after-compact",
       "tool": "any",
-      "handler": "hooks/context.mjs"
+      "handler": "deliver"
     }
   ],
   "mcp": [],

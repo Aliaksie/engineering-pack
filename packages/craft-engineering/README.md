@@ -9,8 +9,10 @@ Begin with `foundations` for cross-cutting changes. Choose `backend-foundations`
 lead to focused references. React guidance requires a React implementation. `design-agent`
 and `evaluate-agent` address model-driven behavior without assuming its provider.
 
-`locate-code` produces scoped evidence before expensive reasoning. It favors one bounded
-search batch and permits an economical worker only when the host and user authorize it.
+`locate-code` produces scoped evidence before expensive reasoning. Structural questions
+(declarations, callers, imports, document sections) are answered from the local Project
+Intelligence index, on by default; text questions use one bounded search batch. It permits an
+economical worker only when the host and user authorize it.
 Language, framework, runtime and cloud remain independent selections.
 
 `testing-engineering` supports verification design and interpretation. For manual testers,

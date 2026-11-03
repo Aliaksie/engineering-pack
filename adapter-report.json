@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "adapter": "gemini-extension",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -66,15 +66,15 @@
           "supported": false
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
         "surface": "explicit underlying-agent binding; guidance-only without one",
-        "entry": "support/hosts/control.mjs",
+        "entry": "bin/craft",
         "nativeHost": null,
         "workers": "underlying-agent-dependent",
         "review": "underlying-agent-dependent",
         "compaction": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -123,7 +123,7 @@
           },
           "delegation": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -148,7 +148,7 @@
           },
           "compaction": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -158,7 +158,7 @@
           },
           "review": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -174,12 +174,12 @@
         },
         "execution": {
           "surface": "explicit underlying-agent binding; guidance-only without one",
-          "entry": "support/hosts/control.mjs",
+          "entry": "bin/craft",
           "nativeHost": null,
           "workers": "underlying-agent-dependent",
           "review": "underlying-agent-dependent",
           "compaction": "underlying-agent-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
@@ -187,10 +187,34 @@
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "gemini-extension",
+          "--package",
+          "craft-delivery"
+        ],
         "observation": "unavailable-in-current-adapter",
         "display": "explicit CLI advice fallback",
-        "commands": {},
+        "usage": "none",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
+        "commands": {
+          "compact": "/compress"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-delivery"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -200,7 +224,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -265,15 +289,15 @@
           "supported": false
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
         "surface": "explicit underlying-agent binding; guidance-only without one",
-        "entry": "support/hosts/control.mjs",
+        "entry": "bin/craft",
         "nativeHost": null,
         "workers": "underlying-agent-dependent",
         "review": "underlying-agent-dependent",
         "compaction": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -322,7 +346,7 @@
           },
           "delegation": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -347,7 +371,7 @@
           },
           "compaction": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -357,7 +381,7 @@
           },
           "review": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -373,12 +397,12 @@
         },
         "execution": {
           "surface": "explicit underlying-agent binding; guidance-only without one",
-          "entry": "support/hosts/control.mjs",
+          "entry": "bin/craft",
           "nativeHost": null,
           "workers": "underlying-agent-dependent",
           "review": "underlying-agent-dependent",
           "compaction": "underlying-agent-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
@@ -386,10 +410,34 @@
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "gemini-extension",
+          "--package",
+          "craft-engineering"
+        ],
         "observation": "unavailable-in-current-adapter",
         "display": "explicit CLI advice fallback",
-        "commands": {},
+        "usage": "none",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
+        "commands": {
+          "compact": "/compress"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-engineering"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -399,7 +447,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -455,15 +503,15 @@
           "supported": false
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
         "surface": "explicit underlying-agent binding; guidance-only without one",
-        "entry": "support/hosts/control.mjs",
+        "entry": "bin/craft",
         "nativeHost": null,
         "workers": "underlying-agent-dependent",
         "review": "underlying-agent-dependent",
         "compaction": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -512,7 +560,7 @@
           },
           "delegation": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -537,7 +585,7 @@
           },
           "compaction": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -547,7 +595,7 @@
           },
           "review": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -563,12 +611,12 @@
         },
         "execution": {
           "surface": "explicit underlying-agent binding; guidance-only without one",
-          "entry": "support/hosts/control.mjs",
+          "entry": "bin/craft",
           "nativeHost": null,
           "workers": "underlying-agent-dependent",
           "review": "underlying-agent-dependent",
           "compaction": "underlying-agent-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
@@ -576,10 +624,34 @@
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "gemini-extension",
+          "--package",
+          "craft-review"
+        ],
         "observation": "unavailable-in-current-adapter",
         "display": "explicit CLI advice fallback",
-        "commands": {},
+        "usage": "none",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
+        "commands": {
+          "compact": "/compress"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-review"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [
@@ -589,7 +661,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -642,15 +714,15 @@
           "supported": false
         }
       ],
-      "runtime": "support/cli/main.mjs",
+      "runtime": "bin/craft",
       "executionControls": {
         "surface": "explicit underlying-agent binding; guidance-only without one",
-        "entry": "support/hosts/control.mjs",
+        "entry": "bin/craft",
         "nativeHost": null,
         "workers": "underlying-agent-dependent",
         "review": "underlying-agent-dependent",
         "compaction": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "liveVerification": "not-established-by-export-or-protocol-tests"
       },
       "featureSupport": {
@@ -699,7 +771,7 @@
           },
           "delegation": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "checkpoints": {
@@ -724,7 +796,7 @@
           },
           "compaction": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "native completion, matching checkpoint/resume and acceptance reference"
           },
           "context-accounting": {
@@ -734,7 +806,7 @@
           },
           "review": {
             "support": "underlying-agent-dependent",
-            "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+            "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
             "evidence": "scoped decision, native lifecycle/output and separate acceptance"
           },
           "telemetry": {
@@ -750,12 +822,12 @@
         },
         "execution": {
           "surface": "explicit underlying-agent binding; guidance-only without one",
-          "entry": "support/hosts/control.mjs",
+          "entry": "bin/craft",
           "nativeHost": null,
           "workers": "underlying-agent-dependent",
           "review": "underlying-agent-dependent",
           "compaction": "underlying-agent-dependent",
-          "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+          "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
           "liveVerification": "not-established-by-export-or-protocol-tests"
         },
         "limitations": [
@@ -763,10 +835,34 @@
         ]
       },
       "sessionAdvice": {
-        "entry": "support/session.mjs",
+        "entry": "bin/craft",
+        "args": [
+          "statusline",
+          "gemini-extension",
+          "--package",
+          "craft-stories"
+        ],
         "observation": "unavailable-in-current-adapter",
         "display": "explicit CLI advice fallback",
-        "commands": {},
+        "usage": "none",
+        "nativeAutoCompact": "unknown",
+        "control": "none",
+        "completion": "none",
+        "commands": {
+          "compact": "/compress"
+        },
+        "setup": {
+          "entry": "bin/craft",
+          "args": [
+            "host-setup",
+            "--host",
+            "gemini-extension",
+            "--package",
+            "craft-stories"
+          ],
+          "apply": "manual-native-controls",
+          "permissionSuggestions": "explicit-only; never applied"
+        },
         "activation": "explicit-only; no statusline settings or hooks changed"
       },
       "limitations": [

@@ -13,7 +13,10 @@ Reports classify findings as high/medium/low and recommend `approve`, `request-c
 `needs-verification`. A clean review can explicitly say the change looks good for approval;
 missing required evidence prevents that conclusion. Recommendations do not post approvals.
 
-`bin/prepare-review.mjs` snapshots a local Git revision range without running project code.
-`bin/check-review.mjs` validates the returned findings against that snapshot. Publication
-belongs to a separately authorized job, which must check that the remote base and head still match.
+`bin/craft review-prepare` snapshots a local Git revision range without running project code.
+`bin/craft review-check` validates the returned findings against that snapshot. Publication
+belongs to a separately authorized job, which must check that the remote base and head still
+match; `bin/craft review-publication` turns a checked review into a comment-only plan for it.
+`bin/craft review-followup` reads a fetched GitHub pull request and says
+what its reviewer should do next, without storing anything. On Windows, use `bin\craft.cmd`.
 See [review integration](../../docs/REVIEW.md) and [service bindings](../../docs/INTEGRATIONS.md).

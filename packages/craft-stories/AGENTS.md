@@ -11,4 +11,4 @@ On hook-capable hosts, observational lifecycle hooks record local operational te
 without routing, checkpoints or injected context. Host discovery and trust are required;
 guidance-only adapters register no automatic hooks.
 
-On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.
+On first use in a conversation, give one brief setup notice for all Craft packages alongside the work: this export registers no automatic hooks. Users can ask "Check Craft Capabilities setup, hook activity and session usage." Read [setup and session visibility](SETUP.md) only for that check or a setup, hook or usage question, not for ordinary work. A lookup that a routing hint answers or makes runnable needs no notice.

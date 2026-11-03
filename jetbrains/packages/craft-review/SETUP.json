@@ -3,10 +3,32 @@
   "adapter": "jetbrains",
   "hooks": "unsupported-not-installed",
   "sessionAdvice": {
-    "entry": "support/session.mjs",
+    "entry": "bin/craft",
+    "args": [
+      "statusline",
+      "jetbrains",
+      "--package",
+      "craft-review"
+    ],
     "observation": "unavailable-in-current-adapter",
     "display": "explicit CLI advice fallback",
+    "usage": "none",
+    "nativeAutoCompact": "unknown",
+    "control": "none",
+    "completion": "none",
     "commands": {},
+    "setup": {
+      "entry": "bin/craft",
+      "args": [
+        "host-setup",
+        "--host",
+        "jetbrains",
+        "--package",
+        "craft-review"
+      ],
+      "apply": "manual-native-controls",
+      "permissionSuggestions": "explicit-only; never applied"
+    },
     "activation": "explicit-only; no statusline settings or hooks changed"
   },
   "controls": {
@@ -14,12 +36,12 @@
     "commands": {},
     "execution": {
       "surface": "explicit underlying-agent binding; guidance-only without one",
-      "entry": "support/hosts/control.mjs",
+      "entry": "bin/craft",
       "nativeHost": null,
       "workers": "underlying-agent-dependent",
       "review": "underlying-agent-dependent",
       "compaction": "underlying-agent-dependent",
-      "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
       "liveVerification": "not-established-by-export-or-protocol-tests"
     }
   },
@@ -69,7 +91,7 @@
       },
       "delegation": {
         "support": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "scoped decision, native lifecycle/output and separate acceptance"
       },
       "checkpoints": {
@@ -94,7 +116,7 @@
       },
       "compaction": {
         "support": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "native completion, matching checkpoint/resume and acceptance reference"
       },
       "context-accounting": {
@@ -104,7 +126,7 @@
       },
       "review": {
         "support": "underlying-agent-dependent",
-        "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+        "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
         "evidence": "scoped decision, native lifecycle/output and separate acceptance"
       },
       "telemetry": {
@@ -120,12 +142,12 @@
     },
     "execution": {
       "surface": "explicit underlying-agent binding; guidance-only without one",
-      "entry": "support/hosts/control.mjs",
+      "entry": "bin/craft",
       "nativeHost": null,
       "workers": "underlying-agent-dependent",
       "review": "underlying-agent-dependent",
       "compaction": "underlying-agent-dependent",
-      "activation": "explicit owned client and authority verification; no automatic attachment, installation or trust",
+      "activation": "an integration you own supplies the host transport and verifies authority; installation attaches nothing",
       "liveVerification": "not-established-by-export-or-protocol-tests"
     },
     "limitations": [

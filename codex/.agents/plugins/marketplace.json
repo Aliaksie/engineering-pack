@@ -1,7 +1,7 @@
 {
   "name": "engineering-pack",
   "interface": {
-    "displayName": "Engineering Pack"
+    "displayName": "Craft Capabilities"
   },
   "plugins": [
     {

@@ -16,4 +16,4 @@ without routing, checkpoints or injected context. These are separate from public
 policy hooks. Host discovery and trust are required; guidance-only adapters register no
 automatic hooks.
 
-On first use in a conversation, read [setup and session visibility](SETUP.md) and give the brief setup notice described there.
+On first use in a conversation, give one brief setup notice for all Craft packages alongside the work: this export declares automatic hooks (`native-before-tool-requires-trust`), but installation does not prove they run. Native controls (Codex terminal CLI only; verify desktop/IDE controls separately): `/hooks` (reviewHooks), `/status` (inspectUsage), `/statusline` (configureUsage). Users can ask "Check Craft Capabilities setup, hook activity and session usage." Read [setup and session visibility](SETUP.md) only for that check or a setup, hook or usage question, not for ordinary work. A lookup that a routing hint answers or makes runnable needs no notice.

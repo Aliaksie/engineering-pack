@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "artifacts": [
+    {
+      "target": "aarch64-apple-darwin",
+      "platform": "darwin",
+      "arch": "arm64",
+      "executable": "craft",
+      "sha256": "f4b2c847a9c4ec0678d0614fc8ef1f8afe67ad5dc6b1652a69d4dfff87b3fcc7"
+    }
+  ]
+}

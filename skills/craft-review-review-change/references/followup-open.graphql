@@ -1,0 +1,30 @@
+query FollowUpOpen($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(first: 20, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage }
+      nodes {
+        number url title state isDraft headRefOid
+        author { __typename login }
+        commits(last: 1) { nodes { commit { oid committedDate } } }
+        comments(first: 50) {
+          pageInfo { hasNextPage }
+          nodes { body createdAt author { __typename login } }
+        }
+        reviews(first: 50) {
+          pageInfo { hasNextPage }
+          nodes { body state submittedAt commit { oid } author { __typename login } }
+        }
+        reviewThreads(first: 50) {
+          pageInfo { hasNextPage }
+          nodes {
+            id path line isResolved isOutdated
+            comments(first: 20) {
+              pageInfo { hasNextPage }
+              nodes { body createdAt author { __typename login } }
+            }
+          }
+        }
+      }
+    }
+  }
+}
