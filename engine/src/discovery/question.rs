@@ -50,7 +50,7 @@ impl Ask {
             Ask::Callers => ("name", |kind| {
                 matches!(role(kind), "invokes-syntax" | "references-syntax")
             }),
-            Ask::Imports => ("target", |kind| {
+            Ask::Imports => ("import", |kind| {
                 let role = role(kind);
                 role == "imports" || role.starts_with("imports-") || role == "dynamic-import"
             }),

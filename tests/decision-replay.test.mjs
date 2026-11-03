@@ -138,7 +138,7 @@ test('session situation replay', t => {
     'lookup-default': root => lookup(root),
     'lookup-enabled': root => lookup(root, enabled),
     'lookup-unindexed': root => {
-      fs.writeFileSync(path.join(root, 'src/cart.mjs'), 'export const total = items => applyDiscount(items.length);\n');
+      fs.writeFileSync(path.join(root, 'src/cart.kt'), 'fun total(items: List<Int>) = applyDiscount(items.size)\n');
       return lookup(root, enabled);
     },
   };

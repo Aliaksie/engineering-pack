@@ -8,6 +8,10 @@ pub const LANGUAGES: &[&Language] = &[
     &crate::javascript::LANGUAGE,
     &crate::java::LANGUAGE,
     &crate::rust::LANGUAGE,
+    &crate::typescript::LANGUAGE,
+    &crate::typescript::TSX,
+    &crate::python::LANGUAGE,
+    &crate::go::LANGUAGE,
 ];
 
 /// Every provider this binary extracts with.
@@ -34,21 +38,13 @@ pub fn for_path(path: &str) -> Option<&'static str> {
 
 /// The evidence kinds a provider can extract.
 pub fn kinds(provider: &str) -> &'static [&'static str] {
-    static KINDS: LazyLock<Vec<(&'static str, Vec<&'static str>)>> = LazyLock::new(|| {
-        let mut kinds: Vec<_> = LANGUAGES
-            .iter()
-            .map(|l| {
-                let kinds = l.kinds().into_iter().map(|k| &*k.leak()).collect();
-                (l.provider, kinds)
-            })
-            .collect();
-        kinds.push((crate::markdown::PROVIDER, vec!["md:section"]));
-        kinds
-    });
-    KINDS
+    if provider == crate::markdown::PROVIDER {
+        return &["md:section"];
+    }
+    LANGUAGES
         .iter()
-        .find(|(p, _)| *p == provider)
-        .map_or(&[], |(_, kinds)| kinds.as_slice())
+        .find(|l| l.provider == provider)
+        .map_or(&[], |l| l.kinds)
 }
 
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
@@ -89,6 +85,20 @@ mod tests {
             for item in &extraction.evidence {
                 assert!(declared.contains(&item.kind.as_str()), "{}", item.kind);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod declared {
+    /// A language's declared kinds are exactly what its query can produce, and its queries
+    /// compile.
+    #[test]
+    fn declared_kinds_match_query_captures() {
+        for language in super::LANGUAGES {
+            let mut declared: Vec<String> = language.kinds.iter().map(|k| k.to_string()).collect();
+            declared.sort();
+            assert_eq!(declared, language.query_kinds(), "{}", language.provider);
         }
     }
 }

@@ -1,9 +1,4 @@
-; JavaScript syntax evidence: no claims about runtime calls or package resolution.
-(function_declaration name: (identifier) @name) @declares
-(generator_function_declaration name: (identifier) @name) @declares
-(class_declaration name: (identifier) @name) @declares
-(variable_declarator name: (identifier) @name) @declares
-
-(import_statement source: (string) @target) @imports
-(export_statement source: (string) @target) @imports
-(call_expression function: (import)) @dynamic-import
+; JavaScript only.
+(field_definition
+  property: [(property_identifier) (private_property_identifier)] @name
+  value: [(arrow_function) (function_expression)]) @declares.method @container

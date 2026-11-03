@@ -391,11 +391,15 @@ impl Store {
             "name" => "e.name=?1",
             "path" => "s.path=?1",
             "target" => "e.target=?1",
-            _ => return Err("query field must be id, name, path or target".into()),
+            // An import as asked: a named import by its name, a module by its whole trailing
+            // path or module segments (`utils/buffer` matches `../utils/buffer.js`, `Gson`
+            // matches `com.google.gson.Gson`, `b` matches `crate::a::b`).
+            "import" => IMPORT,
+            _ => return Err("query field must be id, name, path, target or import".into()),
         };
         if !(1..=200).contains(&query.limit)
             || query.value.len() > 4096
-            || query.kinds.len() > 16
+            || query.kinds.len() > 256
             || query.under.len() > 32
             || query
                 .kinds
@@ -528,6 +532,12 @@ fn one(items: &[&str]) -> Value {
         _ => Value::Null,
     }
 }
+
+const IMPORT: &str = "(CASE WHEN e.kind LIKE '%:imports-name' THEN e.name=?1 ELSE EXISTS (
+    SELECT 1 FROM json_each('[\"\",\".js\",\".mjs\",\".cjs\",\".jsx\",\".ts\",\".mts\",\".cts\",\".tsx\",\".py\"]') x
+    WHERE substr(e.target, -length(?1||x.value)) = ?1||x.value
+      AND (length(e.target) = length(?1||x.value)
+        OR substr(e.target, -length(?1||x.value)-1, 1) IN ('/', '.', ':'))) END)";
 
 /// One evidence lookup: an exact field match, narrowed before pagination.
 pub struct Query<'a> {
@@ -761,6 +771,66 @@ mod tests {
         );
         drop(store);
         std::fs::remove_file(&database).unwrap();
+    }
+
+    #[test]
+    fn imports_match_names_and_trailing_module_segments() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        for (path, source) in [
+            (
+                "src/a.ts",
+                "import { decode } from '../utils/buffer'\nimport { AdrSlug as Slug } from './AdrSlug.js'\n",
+            ),
+            (
+                "src/b.ts",
+                "import x from './my_buffer'\nexport * from 'utils/buffer'\n",
+            ),
+            (
+                "h/c.py",
+                "from ._urlparse import urlparse\nimport a_urlparse\n",
+            ),
+            ("g/C.java", "import com.google.gson.Gson;\nclass C {}"),
+            ("r/lib.rs", "use crate::a::b;\nuse crate::ab;\n"),
+        ] {
+            let extraction = crate::providers::extract(path, source.as_bytes()).unwrap();
+            store.replace(&extraction, "1", epoch).unwrap();
+        }
+        let found = |value: &str| -> Vec<(String, String)> {
+            store.query(&Query::new("import", value)).unwrap()["results"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| {
+                    (
+                        r["path"].as_str().unwrap().into(),
+                        r["kind"].as_str().unwrap().into(),
+                    )
+                })
+                .collect()
+        };
+        let pairs = |rows: &[(&str, &str)]| -> Vec<(String, String)> {
+            rows.iter()
+                .map(|(p, k)| (p.to_string(), k.to_string()))
+                .collect()
+        };
+        assert_eq!(
+            found("utils/buffer"),
+            pairs(&[("src/a.ts", "ts:imports"), ("src/b.ts", "ts:imports")])
+        );
+        assert_eq!(found("buffer"), found("utils/buffer"));
+        assert_eq!(
+            found("AdrSlug"),
+            pairs(&[("src/a.ts", "ts:imports"), ("src/a.ts", "ts:imports-name")])
+        );
+        assert_eq!(found("_urlparse"), pairs(&[("h/c.py", "python:imports")]));
+        assert_eq!(
+            found("urlparse"),
+            pairs(&[("h/c.py", "python:imports-name")])
+        );
+        assert_eq!(found("Gson"), pairs(&[("g/C.java", "java:imports")]));
+        assert_eq!(found("b"), pairs(&[("r/lib.rs", "rust:imports")]));
+        assert!(found("uffer").is_empty());
     }
 
     #[test]

@@ -36,6 +36,9 @@ pub struct Language {
     pub grammar: fn() -> tree_sitter::Language,
     pub query: fn() -> String,
     pub vocabulary: Vocabulary,
+    /// Every evidence kind the query can produce, declared so a lookup can choose providers
+    /// without compiling queries; a test holds it equal to the query's captures.
+    pub kinds: &'static [&'static str],
     pub import: Option<Import>,
 }
 
@@ -108,8 +111,9 @@ impl Language {
         })
     }
 
-    /// Every evidence kind this language's query can produce.
-    pub fn kinds(&self) -> Vec<String> {
+    /// The evidence kinds the compiled query's captures name.
+    #[cfg(test)]
+    pub(crate) fn query_kinds(&self) -> Vec<String> {
         let mut kinds: Vec<String> = self
             .compiled()
             .capture_names()
@@ -230,10 +234,14 @@ impl Language {
                         },
                         None => target.and_then(|t| unquote(&source[t.byte_range()])),
                     };
+                    // A named import is cited by the name it imports, from its module.
+                    let imported = name.map(|n| source[n.byte_range()].to_string());
                     Fact {
                         role,
                         kind: kind.clone(),
-                        name: target.clone().unwrap_or_else(|| "unresolved import".into()),
+                        name: imported
+                            .or_else(|| target.clone())
+                            .unwrap_or_else(|| "unresolved import".into()),
                         target,
                         node,
                         anchor: node,

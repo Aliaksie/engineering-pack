@@ -13,6 +13,16 @@ pub const LANGUAGE: Language = Language {
     grammar: || tree_sitter_rust::LANGUAGE.into(),
     query: || include_str!("../queries/rust.scm").into(),
     vocabulary: Vocabulary::Craft,
+    kinds: &[
+        "rust:declares-const",
+        "rust:declares-fn",
+        "rust:declares-macro",
+        "rust:declares-module",
+        "rust:declares-type",
+        "rust:imports",
+        "rust:invokes-syntax",
+        "rust:references-syntax",
+    ],
     import: Some(import),
 };
 

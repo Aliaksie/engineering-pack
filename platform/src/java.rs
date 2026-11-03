@@ -12,6 +12,15 @@ pub const LANGUAGE: Language = Language {
     grammar: || tree_sitter_java::LANGUAGE.into(),
     query: || include_str!("../queries/java.scm").into(),
     vocabulary: Vocabulary::Craft,
+    kinds: &[
+        "java:declares-constructor",
+        "java:declares-method",
+        "java:declares-type",
+        "java:imports",
+        "java:imports-static",
+        "java:invokes-syntax",
+        "java:references-syntax",
+    ],
     import: Some(import),
 };
 
