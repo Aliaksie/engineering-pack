@@ -1,9 +1,9 @@
 # Releasing
 
 `packages/` on `main` is the source. Two generated branches serve installation:
-`distribution` (stable) and `distribution-next` (candidate). CI and manual releases publish
-only to `distribution-next`; promoting a candidate to stable is a separate, explicit
-decision. Nothing is published to npm.
+`distribution` (stable) and `distribution-next` (candidate). CI publishes every change on `main`
+to `distribution-next`; a versioned release also promotes its attested bundle to
+`distribution`. Nothing is published to npm.
 
 `package.json` holds the pack version. Capability manifests and runtime metadata are
 synchronized projections: `npm run version:sync -- patch|minor|major|<x.y.z>` updates them
@@ -44,9 +44,10 @@ from its installed export under that host's shells on each of them ([installed
 hosts](CONTRIBUTING.md#installed-hosts)). It then archives the eight adapter bundles, the distribution and the three native bundles with
 `native-release.json`, provenance and `SHA256SUMS`. Before publication it creates GitHub
 artifact attestations for all fifteen assets. It pushes only the `vX.Y.Z` tag, refreshes
-`distribution-next` at that revision and publishes the GitHub Release once all fifteen assets
-are uploaded. It never bumps versions, commits to `main` or forces a ref. The repository must
-allow the workflow token to write tags, releases and the installation branch.
+`distribution-next` at that revision, publishes the GitHub Release once all fifteen assets
+are uploaded and then promotes the release to `distribution` (below). It never bumps
+versions, commits to `main` or forces a ref. The repository must allow the workflow token to
+write tags, releases and both installation branches.
 
 Consumers can verify a downloaded asset against this repository's build identity:
 
@@ -55,7 +56,22 @@ gh attestation verify <downloaded-asset> --repo Aliaksie/engineering-pack
 ```
 
 The workflow uses GitHub OIDC and artifact attestations for this public repository; it needs
-no signing secret or paid service.
+no signing secret or paid service. Native executables are not code-signed or notarized;
+attestations and checksums establish build identity and integrity, not a platform signature.
+
+### Stable promotion
+
+After the GitHub Release is published, the Release workflow calls **Promote**. It downloads
+that release's `distribution` archive, checks it against `SHA256SUMS` and its artifact
+attestation, confirms that the `vX.Y.Z` tag resolves to the revision in `PROVENANCE.txt`, and
+commits the archive's tree onto the current `distribution` tip. The push is a fast-forward: if
+`distribution` moved during the run, it fails and nothing changes. Stable therefore holds the
+exact released bytes, not a rebuild. `distribution-next` keeps following `main`.
+
+**Promote → Run workflow** on `main` repeats this for any published release, optionally with
+the expected `distribution` SHA. Use it to retry a failed promotion or to roll stable back to
+an earlier attested release; history is never rewritten and promoting the same release again
+changes nothing. Promotion does not convert private state that a newer release already wrote.
 
 ### Recovery
 

@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.2",
+  "packVersion": "0.0.3",
   "target": "x86_64-unknown-linux-gnu",
   "profile": "release",
   "protocolVersion": 1,
@@ -14,7 +14,7 @@
     "rust-tree-sitter-0.24.2/v2"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "f01d62201aa8f234f24bd75bd7803dfc3260e1d5",
+  "sourceRevision": "59c90ded023df0f922f840136d5aa79aeb7f0dcf",
   "sourceDirty": false,
   "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
   "files": [
@@ -31,12 +31,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 9215096,
-      "sha256": "99da17e9d947452df3c7414d5c119335ba72f44b06c0b61f3b1f75eb7ea3ad65"
+      "sha256": "ef4f7f50a01e965158bfbee583106a2acf941b928dac0e85e4b01cf077f7a417"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 263,
-      "sha256": "1c20e99342ef7316631af0b5b6bdfebc652c0da39518096bb2f8c26d569fc733"
+      "sha256": "95a9bd4502259fdb991b7ceb87ef8542ea54ff4acff67099cd1ad064fc781e8d"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",

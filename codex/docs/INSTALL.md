@@ -5,23 +5,27 @@ dependencies, source checkout or local build.
 
 ## Channels
 
-| Branch | Contents | Runtime requirement |
-|---|---|---|
-| `distribution` | Current stable release | Bundled commands and hooks need Node 22+ on PATH |
-| `distribution-next` | Candidate built from `main` on every successful CI run | None: each package bundles a native `craft` executable |
+| Branch | Contents |
+|---|---|
+| `distribution` | Current stable release |
+| `distribution-next` | Candidate built from `main` on every successful CI run |
 
-The commands below use `distribution`. To try the candidate, substitute `distribution-next`
-in a disposable project. Guidance-only use needs neither Node nor a native executable; local
-Git operations need Git.
+Both channels bundle a native `craft` executable in each package; no Node is needed. The
+commands below use `distribution`. To try the candidate, substitute `distribution-next` in a
+disposable project. Guidance-only use needs no executable; local Git operations need Git.
 
-Candidate bundles ship executables for macOS 15+ on Apple Silicon, Linux x86-64 (glibc) and
-Windows x86-64; the launcher picks the one for the current OS and CPU. Elsewhere (macOS Intel,
-Linux ARM, musl) the read-only review guard denies shell commands, other hooks continue and an
-explicit command fails with a clear error. Bundle checksums detect damage; they are not
-signatures.
+Bundles ship executables for macOS 15+ on Apple Silicon, Linux x86-64 (glibc) and Windows
+x86-64; the hook command or launcher picks the one for the current OS and CPU. Elsewhere
+(macOS Intel, Linux ARM, musl) the read-only review guard denies shell commands, other hooks
+continue, the package says once at session start that it is inactive, and an explicit command
+fails with a clear error. Executables are not code-signed or notarized. Bundle checksums
+detect damage; release assets also carry GitHub artifact attestations
+([releasing](RELEASING.md)).
 
 To roll back, reselect the complete previous bundle; never mix executables and adapters from
-different bundles. Replacing a bundle keeps the consumer's private state.
+different bundles. A previous release is available as a GitHub Release asset or as an earlier
+commit of `distribution` (for example `Aliaksie/engineering-pack#<commit>` in Claude Code or
+`--ref <commit>` in Codex). Replacing a bundle keeps the consumer's private state.
 
 ## Claude Code
 
@@ -132,7 +136,7 @@ For another host, change `--host` to its adapter name. Codex terminal CLI uses `
 surfaces. Other adapters explain their supported controls and remaining gaps. No setup
 command changes native auto-compaction or triggers it.
 
-For B11's opt-in command rules, run:
+For opt-in command permission rules, run:
 
 ```sh
 "<package-root>/bin/craft" permissions --host codex

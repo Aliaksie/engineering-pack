@@ -32,6 +32,6 @@ with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 | [Package format](PACKAGE-FORMAT.md) | Manifest, skills, workflows, tools, hooks and MCP |
 | [Playbook catalog](PLAYBOOKS.md) | Logical identities, selection rules and shared engineering concepts |
 | [Naming](NAMING.md) | Package, skill, workflow and configuration naming |
-| [Evaluation](EVALUATION.md) | Package scenarios, paired runs and limits on model-quality claims |
+| [Evaluation](EVALUATION.md) | Package scenarios, the Harbor engineering eval, decision replay, session audits and limits on model-quality claims |
 | [Contributing](CONTRIBUTING.md) | Prerequisites, local checks, CI and diagnostics |
-| [Releasing](RELEASING.md) | Channels, publication and versioned releases |
+| [Releasing](RELEASING.md) | Channels, versioned releases and stable promotion |

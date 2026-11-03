@@ -5,8 +5,10 @@ routing and `resolve-service` for Git, codehost or task-tracker tool selection. 
 and local files work without a tracker; remote operations need explicit service bindings.
 
 Exported packages run the bundled native `craft` through `bin/craft`. It produces
-routing/tool plans without executing work. Optional lifecycle hooks provide routing hints
-and default milestone checkpoint snapshots; they do not force skills to load on every host.
+routing/tool plans without executing work. Optional lifecycle hooks route each prompt by the request it
+makes, record the session's intent and any planning document it writes as planning evidence,
+answer a certain single-name lookup with cited rows, and save milestone checkpoint snapshots;
+they do not force skills to load on every host.
 Edit hints and hint deduplication default to enabled and can be disabled. Service metadata
 and bounded lookup results can be reused across turns.
 
@@ -17,8 +19,9 @@ pack activity and next-step advice; `session-attempt` records explicit acceptanc
 Missing host telemetry stays unknown. Neither command compacts a session or switches models.
 See [session status](../../docs/SESSION.md) for receipts, bounded continuation and reuse.
 
-Code review routes to `craft-review` when available. Implementation uses the relevant
-parts of `craft-engineering`. The target project still owns architecture and permissions.
+Implementation requests go through `workflow-deliver-change`, which uses `implement-story`
+for a supplied story. Code review routes to `craft-review` when available. Implementation
+uses the relevant parts of `craft-engineering`. The target project still owns architecture and permissions.
 See [integrations](../../docs/INTEGRATIONS.md) and [adapters](../../docs/ADAPTERS.md).
 
 `configure-service` sets up and checks a real authorized CLI/MCP read. `ship-change` covers

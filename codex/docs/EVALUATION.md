@@ -13,7 +13,7 @@ the actual response with per-criterion evidence:
 ```json
 {
   "package": "craft-engineering",
-  "packageVersion": "0.0.2",
+  "packageVersion": "0.0.3",
   "case": "mixed-stack",
   "adapter": "codex",
   "model": "actual-model-id",

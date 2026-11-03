@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "adapter": "gemini-extension",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -224,7 +224,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -447,7 +447,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -661,7 +661,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
