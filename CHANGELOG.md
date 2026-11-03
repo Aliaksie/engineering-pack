@@ -9,7 +9,8 @@
 - `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
 - Host hooks record a successful `project.loaded` telemetry event once per session and again
   only when the effective settings change, instead of on every hook; failures are still
-  recorded each time. The session directory keeps the last recorded digest in `settings.json`.
+  recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
+  session last recorded, under its telemetry pseudonym.
 - Prompt routing: progress questions about ongoing work ("Where are we with the invoice
   export?", "How is the migration going?") get a status hint instead of a code lookup;
   reports of a failing check ("The test is failing again", "CI is red") and "how is X

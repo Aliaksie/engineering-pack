@@ -296,6 +296,16 @@ fn hooks_record_project_settings_once_per_session_until_they_change() {
     deliver("S-2");
     deliver("S-2");
     assert_eq!(loads(&fixture.0).len(), 6);
+
+    // The record is telemetry state keyed by pseudonym; no session state is added for it.
+    let record =
+        fs::read_to_string(fixture.0.join(".craft/state/telemetry/settings.json")).unwrap();
+    assert!(!record.contains("S-1") && !record.contains("S-2"));
+    let record: Value = serde_json::from_str(&record).unwrap();
+    assert_eq!(record["sessions"].as_array().unwrap().len(), 2);
+    for session in fs::read_dir(fixture.0.join(".craft/state/sessions")).unwrap() {
+        assert!(!session.unwrap().path().join("settings.json").exists());
+    }
 }
 
 #[test]
