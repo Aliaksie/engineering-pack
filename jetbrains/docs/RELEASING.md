@@ -5,8 +5,8 @@
 to `distribution-next`; a versioned release also promotes its attested bundle to
 `distribution`. Nothing is published to npm.
 
-`package.json` holds the pack version. Capability manifests and runtime metadata are
-synchronized projections: `npm run version:sync -- patch|minor|major|<x.y.z>` updates them
+`package.json` holds the pack version. Capability manifests, runtime metadata and the Cargo
+workspace version (with its `Cargo.lock` entries) are synchronized projections: `npm run version:sync -- patch|minor|major|<x.y.z>` updates them
 and `npm run version:check` rejects drift. Marketplace identifiers stay `craft-capabilities`
 (Claude) and `engineering-pack` (Codex, Gemini).
 
@@ -34,7 +34,8 @@ claude plugin validate ./dist/distribution --strict
 
 ## Versioned release
 
-1. In a PR, run `npm run version:sync -- <bump>` and add the matching `CHANGELOG.md` section.
+1. In a PR, run `npm run version:sync -- <bump>` and rename `CHANGELOG.md`’s `## Unreleased`
+   section to the version, editing its entries into release notes.
 2. After merging, run **Release → Run workflow** on `main`.
 
 The workflow validates the version, changelog and tag absence, runs workflow linting, dependency
