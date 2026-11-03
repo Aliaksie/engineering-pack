@@ -194,7 +194,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
         let evaluated = match facts.handler {
             Handler::Observe => Ok(decision.clone()),
             Handler::ReviewReadOnly => {
-                project::loaded(&mut recorder, &hook, &root, None).map(|settings| {
+                project::hook_loaded(&mut recorder, &hook, &root, facts.session).map(|settings| {
                     review::read_only_decision(&settings, facts.tool == "shell", facts.command)
                 })
             }

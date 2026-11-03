@@ -377,6 +377,7 @@ continuation at milestones rather than relying on a final callback.
       activity-<id>.json    # per-task activity, lookups and attempts
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
       intent.json           # intent the requests established, routed files, planning evidence
+      settings.json         # digest of the settings last recorded as project.loaded
     telemetry/              # events.jsonl(.1), key.json, captures.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}

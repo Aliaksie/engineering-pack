@@ -1,7 +1,7 @@
 //! Project configuration use cases: effective settings with value origins, private
 //! state placement and the current worker budget.
 use crate::failure::Failure;
-use crate::telemetry::{Operation, Recorder, now_ms, observe};
+use crate::telemetry::{Operation, Recorder, now_ms, observe, valid_session};
 use craft_engine::{contracts, values, workers};
 use craft_platform::{documents, state};
 use serde_json::{Map, Value, json};
@@ -119,6 +119,50 @@ pub(crate) fn loaded(
         Map::new(),
         |_, _| settings(root, preferences),
     )
+}
+
+/// The session record of the settings a hook last recorded as `project.loaded`.
+const RECORDED: &str = "settings.json";
+const RECORDED_BYTES: usize = 1024;
+
+/// `settings` for a host hook. Hooks load them on every event, so a success is recorded as
+/// `project.loaded` only when the session has not yet recorded these effective settings;
+/// a failure is always recorded and makes the next success record again.
+pub(crate) fn hook_loaded(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    root: &Path,
+    session: Option<&str>,
+) -> Result<Value, Failure> {
+    let session = session.filter(|session| valid_session(session) && recorder.enabled());
+    let Some(session) = session else {
+        return loaded(recorder, parent, root, None);
+    };
+    let operation = recorder.start("project.loaded", Some(parent));
+    let file = state::file(root, RECORDED, false, Some(session)).ok();
+    let loaded = settings(root, None);
+    let digest = match &loaded {
+        Ok(settings) => craft_engine::digest(&craft_engine::canonical(settings)),
+        Err(error) => {
+            if let Some(file) = &file {
+                let _ = std::fs::remove_file(file);
+            }
+            recorder.complete(operation, Map::new(), Some(error.code("CONFIG_INVALID")));
+            return loaded;
+        }
+    };
+    let recorded = file
+        .as_deref()
+        .and_then(|file| state::read(file, RECORDED_BYTES).ok().flatten())
+        .is_some_and(|record| record["formatVersion"] == 1 && record["digest"] == digest);
+    if !recorded {
+        recorder.complete(operation, Map::new(), None);
+        // Best effort: without the record the next hook records the settings again.
+        let record = json!({ "formatVersion": 1, "digest": digest });
+        let _ = state::file(root, RECORDED, true, Some(session))
+            .and_then(|file| state::write(&file, &record, RECORDED_BYTES, false));
+    }
+    loaded
 }
 
 pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failure> {

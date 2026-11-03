@@ -7,6 +7,9 @@
 - Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
   the candidate `distribution-next` branch, so stable installs no longer point at candidate files.
 - `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
+- Host hooks record a successful `project.loaded` telemetry event once per session and again
+  only when the effective settings change, instead of on every hook; failures are still
+  recorded each time. The session directory keeps the last recorded digest in `settings.json`.
 
 ## 0.0.3
 

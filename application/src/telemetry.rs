@@ -155,6 +155,11 @@ impl Recorder {
         }
     }
 
+    /// Whether any sink records events, so callers can skip work done only for them.
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     /// Write nothing before `finish`; the run can then be dropped as a whole.
     pub fn hold(&mut self) {
         self.held = true;
