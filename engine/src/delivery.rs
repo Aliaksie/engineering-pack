@@ -154,12 +154,48 @@ pub fn validate_hint(state: &Value) -> Result<(), String> {
     Ok(())
 }
 
+/// The part of a routing context a host is shown: the hint fields that carry something, and
+/// the task identity only once a task is bound (the session line already names the session).
+/// Other contexts are shown whole.
+pub fn shown(context: &Value) -> Value {
+    if context["kind"] != "routing" {
+        return context.clone();
+    }
+    let data = &context["data"];
+    let carries = |value: &Value| match value {
+        Value::Array(list) => !list.is_empty(),
+        Value::Object(map) => !map.is_empty(),
+        other => crate::values::truthy(other),
+    };
+    let mut hint = serde_json::Map::new();
+    for key in [
+        "intent",
+        "execution",
+        "skills",
+        "answer",
+        "lookup",
+        "references",
+        "modules",
+        "missing",
+        "taskBoundary",
+    ] {
+        if let Some(value) = data.get(key).filter(|value| carries(value)) {
+            hint.insert(key.into(), value.clone());
+        }
+    }
+    if crate::values::truthy(&data["taskIdentity"]["task"]) {
+        hint.insert("taskIdentity".into(), data["taskIdentity"].clone());
+    }
+    json!({"kind": "routing", "data": hint})
+}
+
 /// The identity of a routing hint: the routing rules, the invalidation `generation`, the
-/// effective settings and the structured context the host would receive.
+/// effective settings and what the host would be shown, so a hint that reads the same is
+/// not sent twice even when the route behind it (files, reasons) differs.
 pub fn hint_key(generation: Option<&str>, settings: &Value, context: &Value) -> String {
     let rules = [env!("CARGO_PKG_VERSION"), &crate::hash(SOURCE.as_bytes())];
     crate::digest(
-        &json!({"rules": rules, "generation": generation, "settings": settings, "context": context}),
+        &json!({"rules": rules, "generation": generation, "settings": settings, "context": shown(context)}),
     )
 }
 

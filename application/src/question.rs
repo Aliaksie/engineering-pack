@@ -8,7 +8,7 @@ use craft_engine::{
 };
 use craft_platform::{
     providers::{ACTIVE, for_path, kinds},
-    repository::database_guard,
+    repository::database_guard_within,
     state,
     store::{Query, Store},
 };
@@ -67,6 +67,9 @@ pub fn answer(
 
 /// Refresh and record the scope's coverage; when the index can answer, query it and verify the
 /// cited sources, leaving out rows from sources that changed since the refresh.
+/// How long a lookup waits for the store while another process refreshes it.
+const LOOKUP_WAIT: std::time::Duration = std::time::Duration::from_millis(400);
+
 fn observe(
     root: &Path,
     question: &Question,
@@ -74,7 +77,8 @@ fn observe(
     coverage: &mut Coverage,
 ) -> Result<Option<Value>, Failure> {
     let database = state::shared(root, "intelligence", true)?.join("project.sqlite");
-    let _guard = database_guard(&database)?;
+    // A background refresh releases the store between short chunks; wait for its turn.
+    let _guard = database_guard_within(&database, LOOKUP_WAIT)?;
     let mut store = Store::open(&database)?;
     let (field, wanted) = question.ask.evidence();
     let answering: Vec<_> = ACTIVE
@@ -157,6 +161,70 @@ fn observe(
 }
 
 /// Text view: the route, the index rows grouped by source, then literal matches.
+fn literal(text: &mut String, search: &Value, label: &str) {
+    let shown = crate::render::shown;
+    let matches = search["matches"].as_array().map_or(&[][..], Vec::as_slice);
+    text.push_str(&format!(
+        "{label}: {} match(es){}\n",
+        matches.len(),
+        if search["truncated"] == true {
+            format!(", truncated by {}", shown(&search["truncation"]))
+        } else {
+            String::new()
+        }
+    ));
+    for found in matches {
+        text.push_str(&format!(
+            "  {}:{}: {}\n",
+            shown(&found["path"]),
+            shown(&found["line"]),
+            shown(&found["text"])
+        ));
+    }
+    if let Some(more) = search["moreFiles"]
+        .as_array()
+        .filter(|more| !more.is_empty())
+    {
+        text.push_str(&format!(
+            "  also in {} file(s), lines not shown:\n",
+            more.len()
+        ));
+        for path in more {
+            text.push_str(&format!("  {}\n", shown(path)));
+        }
+    }
+}
+
+/// A literal `craft locate --term` result as text: matches, files whose lines did not fit,
+/// what was skipped and reused. `--json` keeps the full receipt.
+pub fn literal_text(result: &Value) -> String {
+    let mut text = String::new();
+    literal(&mut text, result, "literal search");
+    let skipped: Vec<_> = result["skipped"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(reason, count)| {
+            count
+                .as_u64()
+                .filter(|count| *count > 0)
+                .map(|count| format!("{reason} {count}"))
+        })
+        .collect();
+    if !skipped.is_empty() {
+        text.push_str(&format!("skipped: {}\n", skipped.join(", ")));
+    }
+    if let Some(reused) = result["discovery"]["reused"].as_u64().filter(|n| *n > 0) {
+        text.push_str(&format!(
+            "reused {reused} term(s) validated earlier in this task\n"
+        ));
+    }
+    if result["matches"].as_array().is_none_or(Vec::is_empty) {
+        text.push_str("No match: not proof of absence.\n");
+    }
+    text
+}
+
 pub fn text(result: &Value) -> String {
     let shown = crate::render::shown;
     let route = &result["route"];
@@ -202,26 +270,6 @@ pub fn text(result: &Value) -> String {
             shown(&route["name"])
         ));
     }
-    let literal = |text: &mut String, search: &Value, label: &str| {
-        let matches = search["matches"].as_array().map_or(&[][..], Vec::as_slice);
-        text.push_str(&format!(
-            "{label}: {} match(es){}\n",
-            matches.len(),
-            if search["truncated"] == true {
-                format!(", truncated by {}", shown(&search["truncation"]))
-            } else {
-                String::new()
-            }
-        ));
-        for found in matches {
-            text.push_str(&format!(
-                "  {}:{}: {}\n",
-                shown(&found["path"]),
-                shown(&found["line"]),
-                shown(&found["text"])
-            ));
-        }
-    };
     let rows = result["results"].as_array();
     if rows.is_some() {
         text.push_str(&crate::evidence::render(result, false));

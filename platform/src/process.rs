@@ -26,6 +26,31 @@ pub(crate) fn spawn(command: &mut Command) -> std::io::Result<Child> {
     command.spawn()
 }
 
+/// Start `program` in `dir` and leave it running after this process exits, with no standard
+/// streams and its own process group, so a host waiting for hook output never waits for it.
+/// Windows starts children with every inheritable handle, including the host's output pipe,
+/// and marking those handles needs `unsafe`; there it is unsupported.
+pub fn spawn_detached(program: &Path, args: &[&str], dir: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        // Not waited for: the child is reparented when this short-lived process exits.
+        spawn(&mut command).map(drop)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (program, args, dir);
+        Err(std::io::ErrorKind::Unsupported.into())
+    }
+}
+
 /// Git run in `dir`, the one way every Craft Git command starts: no file-system monitor, no
 /// optional index lock (an inventory never rewrites the index), no credential prompt and no
 /// standard input. Callers add the subcommand and decide how to bound its output.
@@ -127,6 +152,48 @@ pub fn git_within(
     capture(what, command, max_bytes, timeout)
 }
 
+/// Paths of files under `root` that contain any of `terms` as a case-sensitive literal, as
+/// Git's own text search finds them: tracked and untracked files outside ignores, binary
+/// files excluded, NUL-separated and relative to `root` (also below the top level). `pathspecs` narrow the search;
+/// none means the whole worktree. Empty output when nothing matches, `None` when Git cannot
+/// search here.
+pub fn git_grep_files(
+    root: &Path,
+    terms: &[String],
+    pathspecs: &[String],
+    max_bytes: usize,
+) -> Result<Option<Vec<u8>>, String> {
+    let mut command = git_command(root);
+    // Literal, case-sensitive, text files only, names only; never a pager, an external
+    // grep or a configured pattern type.
+    command.args([
+        "-c",
+        "grep.patternType=fixed",
+        "-c",
+        "grep.fallbackToNoIndex=false",
+        "grep",
+        "--untracked",
+        "--no-recurse-submodules",
+        "-F",
+        "-I",
+        "-l",
+        "-z",
+    ]);
+    for term in terms {
+        command.arg("-e").arg(term);
+    }
+    command.arg("--");
+    command.args(pathspecs.iter().map(|spec| format!(":(literal){spec}")));
+    // Exit status 1 means no file matched: an answer, not a failure.
+    capture_status(
+        "Git text search",
+        command,
+        max_bytes,
+        Duration::from_secs(5),
+        |code| code == Some(0) || code == Some(1),
+    )
+}
+
 /// The Windows process table as `tasklist` CSV, or `None` when it cannot be listed.
 #[cfg(windows)]
 pub fn tasks(max_bytes: usize) -> Option<Vec<u8>> {
@@ -218,9 +285,20 @@ fn listed(csv: &[u8]) -> Option<std::collections::HashSet<u32>> {
 
 fn capture(
     what: &str,
+    command: Command,
+    max_bytes: usize,
+    timeout: Duration,
+) -> Result<Option<Vec<u8>>, String> {
+    capture_status(what, command, max_bytes, timeout, |code| code == Some(0))
+}
+
+/// Captured output when `accepted` holds for the exit code, `None` otherwise.
+fn capture_status(
+    what: &str,
     mut command: Command,
     max_bytes: usize,
     timeout: Duration,
+    accepted: fn(Option<i32>) -> bool,
 ) -> Result<Option<Vec<u8>>, String> {
     command
         .stdin(Stdio::null())
@@ -260,7 +338,7 @@ fn capture(
         }
         match child.try_wait() {
             Ok(Some(status)) if output.is_some() => {
-                break Ok(if status.success() {
+                break Ok(if accepted(status.code()) {
                     output.take()
                 } else {
                     None

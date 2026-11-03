@@ -1616,9 +1616,12 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
                 !structured && !args.iter().any(|arg| arg == "--json" || arg == "--verbose");
             let text = match command.render {
                 Render::Receipt(receipt) if compact => receipt(action, value),
-                // A structural lookup reads as text; literal locate output stays one JSON line.
+                // A lookup reads as text; `--json` keeps the full receipt on one line.
                 Render::Line if compact && value.get("route").is_some() => {
                     crate::question::text(value)
+                }
+                Render::Line if compact && value.get("matches").is_some() => {
+                    crate::question::literal_text(value)
                 }
                 Render::Line => format!("{value}\n"),
                 _ => render(value),

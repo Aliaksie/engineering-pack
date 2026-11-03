@@ -3,14 +3,20 @@ use crate::telemetry::Recorder;
 use craft_engine::hash;
 use craft_platform::{
     providers::{ACTIVE, extract, for_path},
-    repository::{Inventory, database_guard, eligible, now, read_source},
+    repository::{Inventory, database_guard, database_guard_within, eligible, now, read_source},
     state,
     store::{Query, Store},
 };
 use serde_json::{Value, json};
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
+    if operation == "warm" {
+        return warm(Path::new(input["root"].as_str().ok_or("root is required")?));
+    }
     let mut budget = if operation == "refresh" {
         Some(super::budget::Budget::from_input(input)?)
     } else {
@@ -74,6 +80,57 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
         "refresh" => refresh(&root, &mut store, budget.as_mut().unwrap(), &mut |_| {}),
         _ => Err("unknown evidence operation".into()),
     }
+}
+
+/// Extraction time one warming chunk spends before it releases the store to a waiting lookup.
+const WARM_CHUNK_MS: u64 = 250;
+/// How long warming waits for a store another process holds, and how long it runs at most.
+const WARM_WAIT: Duration = Duration::from_secs(2);
+const WARM_LIMIT: Duration = Duration::from_secs(60);
+
+/// Refresh the store in short chunks until nothing is deferred, releasing it between chunks so
+/// a prompt-time lookup takes its turn. Started in the background when a session starts, so
+/// the first lookup finds a warm index instead of indexing within its own short budget.
+pub fn warm(root: &Path) -> Result<Value, Failure> {
+    let root = state::canonical_root(root)?;
+    if !craft_engine::contracts::evidence_enabled(&crate::project::configuration(&root)?)? {
+        return Ok(json!({"warmed": false, "reason": "disabled", "chunks": 0}));
+    }
+    let database = state::shared(&root, "intelligence", true)?.join("project.sqlite");
+    let started = Instant::now();
+    let (mut chunks, mut deferred, mut reason) = (0u64, None, "complete");
+    loop {
+        // A project removed while warming is not recreated by taking the store's lock.
+        if !root.is_dir() || !database.parent().is_some_and(Path::is_dir) {
+            reason = "removed";
+            break;
+        }
+        let Ok(guard) = database_guard_within(&database, WARM_WAIT) else {
+            reason = "busy";
+            break;
+        };
+        let mut store = Store::open(&database)?;
+        let mut budget =
+            super::budget::Budget::from_input(&json!({"maxDurationMs": WARM_CHUNK_MS}))?;
+        let result = refresh(&root, &mut store, &mut budget, &mut |_| {})?;
+        drop(store);
+        drop(guard);
+        chunks += 1;
+        deferred = result["deferred"].as_u64();
+        if deferred == Some(0) {
+            break;
+        }
+        if started.elapsed() >= WARM_LIMIT {
+            reason = "time";
+            break;
+        }
+        // Let a lookup waiting on the store take it before the next chunk.
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    Ok(
+        json!({"warmed": deferred == Some(0), "reason": reason, "chunks": chunks, "deferred": deferred,
+        "wallTimeMs": started.elapsed().as_millis()}),
+    )
 }
 
 /// One bounded refresh of the store from the root's inventory. `observe` sees each inventoried
@@ -258,8 +315,10 @@ pub(crate) fn verify(root: &Path, result: &mut Value, excerpt: bool) -> Result<(
 /// Longest excerpt, in characters; a longer line is cut and marked with `…`.
 const EXCERPT_CHARS: usize = 160;
 
-const OPERATIONS: &[&str] = &["version", "refresh", "status", "query", "backup", "rebuild"];
-const USAGE: &str = "project-evidence version|refresh|status|query|backup|rebuild --enable --root <directory> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
+const OPERATIONS: &[&str] = &[
+    "version", "refresh", "warm", "status", "query", "backup", "rebuild",
+];
+const USAGE: &str = "project-evidence version|refresh|warm|status|query|backup|rebuild --enable --root <directory> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
 
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.

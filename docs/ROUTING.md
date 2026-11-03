@@ -59,9 +59,12 @@ not claim a defect exists.
 craft locate --root <project> --path src --term Handler --term configKey --max-matches 20
 ```
 
-One bounded scan for all literal terms. It respects Git ignores and skips symlinks, binary
-and oversized files. It reports limits and truncation, and returns path, line and snippet
-evidence. It neither classifies definitions nor proves absence. Session reuse is described
+One bounded scan for all literal terms. In a Git worktree, Git's own text search first names
+the files that contain a term, so file, byte and match bounds are spent only on those and the
+file set equals what `git grep` finds. It respects Git ignores and skips symlinks, binary and
+oversized files. It prints path, line and snippet evidence as text, lists the matching files
+whose lines no longer fit the match bound, and reports truncation and skips; `--json` prints the
+full receipt. It neither classifies definitions nor proves absence. Session reuse is described
 in [sessions](SESSION.md#lookup-reuse).
 
 ## Delegation and model advice

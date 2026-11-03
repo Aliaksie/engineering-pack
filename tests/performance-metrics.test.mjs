@@ -20,6 +20,8 @@ test('maps every recorded Hyperfine metric to a Bencher measure with median and 
   assert.equal(metrics['hook/stop/native']['peak-memory'].value, 4194304);
   assert.equal(metrics['hook/stop/native'].instructions.value, 30);
   assert.equal(metrics['startup/native'].latency.value, 6e6, 'even run counts use the middle pair');
+  assert.deepEqual(metrics['hook/stop/native']['latency-p95'], { value: 3e6 });
+  assert.deepEqual(metrics['startup/native']['latency-p95'], { value: 7e6 });
   assert.deepEqual(metrics['install/native-binary'], { 'file-size': { value: 1000 } });
   assert.deepEqual(metrics['install/plugin'], { 'file-size': { value: 2000 } });
 });

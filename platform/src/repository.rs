@@ -39,6 +39,12 @@ pub fn read_source(root: &Path, relative: &str) -> Result<Vec<u8>, Error> {
 }
 
 pub fn database_guard(path: &Path) -> Result<File, Error> {
+    database_guard_within(path, std::time::Duration::ZERO)
+}
+
+/// The database lock, waiting up to `wait` while another Craft process holds it, so a lookup
+/// can take its turn between the chunks of a background refresh.
+pub fn database_guard_within(path: &Path, wait: std::time::Duration) -> Result<File, Error> {
     for ancestor in path.ancestors() {
         if let Ok(meta) = fs::symlink_metadata(ancestor)
             && meta.file_type().is_symlink()
@@ -80,8 +86,13 @@ pub fn database_guard(path: &Path) -> Result<File, Error> {
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let file = options.open(format!("{}.lock", path.display()))?;
-    file.try_lock()
-        .map_err(|_| Error::busy("project evidence is busy"))?;
+    let started = std::time::Instant::now();
+    while file.try_lock().is_err() {
+        if started.elapsed() >= wait {
+            return Err(Error::busy("project evidence is busy"));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     Ok(file)
 }
 

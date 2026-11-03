@@ -29,6 +29,7 @@
     "eval:audit": "node tooling/session-audit.mjs",
     "eval:summary": "node tooling/eval-summary.mjs",
     "eval:probes": "node tooling/eval-probes.mjs",
+    "overhead": "node tooling/overhead.mjs",
     "route": "node tooling/craft.mjs route",
     "operation": "node tooling/craft.mjs operation",
     "checkpoint:save": "node tooling/craft.mjs checkpoint-save",

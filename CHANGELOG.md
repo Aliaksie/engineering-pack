@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- `craft locate --term` finds every file `git grep` finds within its bounds: in a Git worktree
+  Git preselects the files that contain a term, so large assets, lockfiles and unrelated text
+  no longer use up the byte bound, and a binary file never counts against it. Matching files
+  whose lines exceed the match bound are listed in `moreFiles`. Structural lookups searching
+  unindexed files benefit the same way.
+- Routing hints leave out empty fields and show the task identity only once a task is bound
+  (the session line already names the session), and a hint that reads the same as the last one
+  is not sent again, for example on an edit of a second file of the same kind. Over a typical
+  prompt-and-edit session, hook context drops by about a third on Claude, Codex and Gemini.
+- Codex skills are listed as `<package>:<skill>` (for example `craft-engineering:foundations`)
+  instead of repeating the package name (`craft-engineering:craft-engineering-foundations`);
+  the skill list Codex sends with every model call shrinks by about 1.1 KB. Routing hints on
+  Codex name skills the same way. Hosts with one shared skill folder keep `<package>-<skill>`.
+- `craft locate --term` prints matches as compact text; `--json` (or `--verbose`) prints the
+  full JSON receipt as before.
 - On macOS, a Git query no longer waits for an unrelated process Craft started at the same
   time, so repository evidence stops going missing when several queries run at once.
 - Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
@@ -11,6 +26,17 @@
   only when the effective settings change, instead of on every hook; failures are still
   recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
   session last recorded, under its telemetry pseudonym.
+- Project Intelligence warms up when a session starts: on macOS and Linux the session-start
+  hook starts `craft project-evidence warm` in the background for a Git worktree with evidence
+  enabled and returns at once. The first lookup then usually finds a warm index; on a fresh
+  clone of this repository, a lookup a few seconds after session start takes about 0.13 s
+  instead of about 1.1 s for each of the first two. A lookup waits up to 400 ms for the
+  background refresh to release the store. Windows keeps indexing on the first lookup.
+  `CRAFT_EVIDENCE_WARM=0` turns the background start off.
+- Prompt routing stays silent on questions that need no project work: an HTTP or exit
+  "status code" question is no longer read as a progress question, and an instruction that
+  only says where the answer goes ("Write only the number to `ANSWER.md`") no longer turns a
+  question into a code change.
 - Prompt routing: progress questions about ongoing work ("Where are we with the invoice
   export?", "How is the migration going?") get a status hint instead of a code lookup;
   reports of a failing check ("The test is failing again", "CI is red") and "how is X

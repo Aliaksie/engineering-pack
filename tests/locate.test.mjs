@@ -37,13 +37,49 @@ test('locate bounds work and output, excludes binary and oversized content', t =
   write(root, 'binary', Buffer.from('needle\0'));
   write(root, 'huge', 'needle'.repeat(50_000));
   const result = locate(root, { terms: ['needle'] });
-  assert.equal(result.skipped.binary, 1);
+  // Git's text search never offers the binary file, so it is neither read nor counted.
+  assert.equal(result.skipped.binary, 0);
+  assert.ok(result.matches.every(match => match.path !== 'binary'));
   assert.equal(result.skipped.oversized, 1);
   assert.equal(result.matches[0].text.length, 240);
   assert.equal(result.matches[0].snippetTruncated, true);
   assert.ok(locate(root, { terms: ['needle'], maxMatches: 1 }).truncation.includes('maxMatches'));
   assert.ok(locate(root, { terms: ['needle'], maxFiles: 1 }).truncation.includes('maxFiles'));
   assert.ok(locate(root, { terms: ['needle'], maxBytes: 2 }).truncation.includes('maxBytes'));
+});
+
+test('the byte bound is spent only on files that contain a term, so search finds what git grep finds', t => {
+  const root = fixture(t);
+  // Large assets and text sorted before the only match used to exhaust the byte bound.
+  write(root, 'a-docs/logo.bin', Buffer.concat([Buffer.from([0x89, 0x50, 0]), Buffer.alloc(200_000, 7)]));
+  for (let i = 0; i < 8; i++) write(root, `b-text/${i}.txt`, 'filler line\n'.repeat(10_000));
+  write(root, 'src/router/case.test.ts', 'runTest()\n');
+  const result = locate(root, { terms: ['runTest'], maxBytes: 65_536 });
+  assert.deepEqual(result.matches.map(match => match.path), ['src/router/case.test.ts']);
+  assert.equal(result.truncated, false);
+  assert.equal(result.filesScanned, 1);
+  assert.equal(result.bytesRead, 10);
+});
+
+test('files whose lines exceed the match bound are still named', t => {
+  const root = fixture(t);
+  for (const name of ['a.txt', 'b.txt', 'c.txt']) write(root, name, 'needle\nneedle\n');
+  const result = locate(root, { terms: ['needle'], maxMatches: 3 });
+  assert.deepEqual(result.matches.map(match => match.path), ['a.txt', 'a.txt', 'b.txt']);
+  assert.deepEqual(result.truncation, ['maxMatches']);
+  assert.deepEqual(result.moreFiles, ['c.txt']);
+});
+
+test('without Git a binary file is recognised from its start and does not spend the byte bound', t => {
+  const root = fixture(t, false);
+  write(root, 'src/a.bin', Buffer.concat([Buffer.from('needle\0'), Buffer.alloc(100_000, 7)]));
+  write(root, 'src/b.txt', 'needle\n');
+  const result = locate(root, { terms: ['needle'], paths: ['src'], maxBytes: 50_000 });
+  assert.deepEqual(result.matches.map(match => match.path), ['src/b.txt']);
+  assert.equal(result.skipped.binary, 1);
+  assert.equal(result.truncated, false);
+  assert.equal(result.bytesRead, 7);
+  assert.deepEqual(result.moreFiles, []);
 });
 
 test('non-Git search requires bounded explicit scope and does not follow symlinks', t => {

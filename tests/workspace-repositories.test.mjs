@@ -197,7 +197,8 @@ for (const privateDirectory of ['.craft', '.capabilities']) test(`${privateDirec
   assert.deepEqual(before.status, []);
   const result = nativeLocate(repo, { terms: ['PRIVATE_NEEDLE'], paths: ['.'], maxFiles: 100, maxMatches: 10, maxBytes: 10000 });
   assert.deepEqual(result.matches, []);
-  assert.equal(result.filesScanned, 1);
+  // Git names the private file as containing the term; it is never read.
+  assert.equal(result.filesScanned, 0);
   assert.deepEqual(run(['route', '--root', repo, '--intent', 'implement', '--file', `nested/${privateDirectory}/state/tempting.py`]).files, []);
   const head = git('kit', 'rev-parse', 'HEAD'); git('kit', 'add', '.'); git('kit', 'commit', '-qm', 'private fixture');
   const review = prepareSnapshot(root, { root: repo, base: head, head: 'HEAD' });

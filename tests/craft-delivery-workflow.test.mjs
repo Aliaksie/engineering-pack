@@ -82,7 +82,7 @@ test('each host export runs the delivery commands through its package launcher',
     const result = launch(pkg, ['route', '--root', root, '--intent', 'implement', '--file', 'src/total.mjs'], { cwd: root });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).loading.workflow, 'workflow:implement');
-    const located = launch(pkg, ['locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2'], { cwd: root });
+    const located = launch(pkg, ['locate', '--root', root, '--path', 'src', '--term', 'total', '--max-matches', '2', '--json'], { cwd: root });
     assert.equal(located.status, 0, located.stderr);
     assert.equal(JSON.parse(located.stdout).matches[0].path, 'src/total.mjs');
     const prepared = launch(pkg, ['prepare-services', '--root', root, '--available-command', 'git'], { cwd: root });

@@ -85,7 +85,7 @@ test('prompt routing hints appear only where the native context schema supports 
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
     assert.equal(context.includes('Routing hints'), HOSTS[host].events['before-prompt'].context, host);
-    if (context) assert.ok(context.includes(host === 'claude' ? 'craft-review:review-change' : 'craft-review-review-change'));
+    if (context) assert.ok(context.includes(HOSTS[host].listing.names === 'plugin' ? 'craft-review:review-change' : 'craft-review-review-change'), host);
   }
 });
 
@@ -189,6 +189,21 @@ test('opted-in native hooks reuse only emitted hints and re-emit after compactio
     assert.equal(compact.status, 0, compact.stderr);
     const resumed = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
     assert.equal(resumed.stdout.includes('Routing hints'), capable, host);
+  }
+});
+
+test('a hint that reads the same is not sent again for another file, and empty fields are omitted', (t) => {
+  for (const host of native) {
+    const dir = fixture(t);
+    const edit = file => invoke(host, 'craft-delivery', 'routing', { ...payload(host, dir, '', 'edit'), ...(host === 'copilot' ? { toolArgs: { path: file } } : { tool_input: { file_path: file } }) }, dir);
+    const first = edit('src/total.mjs'), second = edit('src/total.test.mjs'), other = edit('scripts/build.py');
+    for (const result of [first, second, other]) assert.equal(result.status, 0, result.stderr);
+    const capable = HOSTS[host].events['before-tool'].context;
+    assert.equal(first.stdout.includes('Routing hints'), capable, host);
+    assert.ok(!second.stdout.includes('Routing hints'), `${host}: identical hint re-sent`);
+    // A different language changes what the host is shown, so it routes again.
+    assert.equal(other.stdout.includes('python.md'), capable, host);
+    if (capable) for (const empty of ['"modules":[]', '"missing":[]', '"task":null']) assert.ok(!first.stdout.includes(empty.replaceAll('"', '\\"')), `${host}: ${empty}`);
   }
 });
 
