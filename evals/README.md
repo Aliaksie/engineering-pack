@@ -33,6 +33,12 @@ model. `task.toml` names the actor, scenario and the Craft mechanism it expects.
 | `pi-callers-lookup` | Is a structural question (who calls a method) answered from Project Intelligence? | Exact caller set despite literal decoys, invented paths; lookups and shell searches |
 | `literal-search-tool-choice` | Is a text question still answered by a literal search with Project Intelligence on? | Every mention found; lookups and shell searches |
 | `plan-discount-cap` | Is a plan grounded in the code and kept as the session's planning evidence? | Cites the right files and functions, says how to verify, changes no source; `craft_planning_evidence` |
+| `idle-typo-fix` | Does Craft add cost to a one-word fix? | The corrected text, nothing else changed; Craft overhead |
+| `idle-one-file-question` | Does Craft add cost to a question about one named file? | The exact number; exploration until the answer |
+| `idle-general-question` | Does Craft stay silent when the repository is irrelevant? | The exact number; exploration until the answer |
+
+The `idle-*` tasks (keyword `probe-no-advantage`) have nothing for Craft to improve. Run them
+with the `compare` job and `tasks: idle-*`; the Craft arm should cost what vanilla costs.
 
 ## Run
 
