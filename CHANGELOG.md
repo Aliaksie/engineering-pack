@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.0.3
 
-Native runtime (published to `distribution-next`):
+Native runtime:
 
 - One bundled `craft` executable per supported platform (macOS Apple Silicon, Linux x86-64,
   Windows x86-64) runs every hook, command and the status line. Installed packages no longer
@@ -27,6 +27,97 @@ Native runtime (published to `distribution-next`):
   `.craft/state/<worktree-id>/`, `.git/craft-state/` and `.capabilities/state/` by hand.
   `state-clean` no longer reports `layout` or `previousShared`. `craft settings` reports
   state `formatVersion` 4.
+- Registered hook commands start the bundled executable from the host's own shell; the
+  `bin/craft` launcher remains the fallback (for example dash as `/bin/sh`, or a missing
+  executable). A routed prompt hook takes about 9–11 ms instead of 25 ms on macOS.
+- Fewer and cheaper Git process starts per hook (on macOS the `/usr/bin/git` forwarder is
+  skipped when the developer directory is unambiguous) and a size-optimized release build.
+- When a package's bundled runtime cannot run, it says so once at session start instead of
+  adding "Routing/checkpoint unavailable" to every prompt and tool call.
+- Telemetry lock waits are longer, so parallel hooks of the installed packages no longer drop
+  events on slow machines.
+
+Routing:
+
+- Prompts are routed by the request they lead with, through a deterministic classifier that
+  skips courtesy openers, reads clause by clause and decides create/assess verbs by what they
+  are about. Developer, QA, reviewer, product and architect requests all get hints; statements
+  and questions about the conversation get none. See `docs/ROUTING.md`.
+- Implementation requests select the `craft-delivery:workflow-deliver-change` workflow, which
+  carries a supplied story through `craft-delivery:implement-story`. A story request leads with
+  `craft-stories:workflow-prepare-stories`; assessing a spec leads with
+  `craft-stories:audit-specs` and writing an ADR with `craft-delivery:write-adr`.
+  `craft route --artifact <name>` selects an artifact's workflow.
+- A prompt's request, not the files written while doing it, decides the intent: output file
+  names, others' wants and pasted text decide nothing. The session's intent is recorded in
+  `intent.json`; an edit routes `implement` only when no request established another intent,
+  once per file, and on one tool hook.
+- A change request that also asks for a test routes `implement`, not a testing-only `verify`.
+- Hosts that cannot show context for an event (Cursor and Copilot prompts, several before-tool
+  hooks) build no route and record no failure.
+
+Project Intelligence:
+
+- Structural lookups: `craft locate --declaration | --callers | --imports | --section |
+  --outline` answer from a local, verified index, refreshed within a time budget, with the
+  enclosing declaration per row and a literal search over sources the index does not cover.
+  Rust, Java, JavaScript (declarations and imports) and Markdown sections are indexed; plain (non-Git) workspace folders and nested
+  worktrees are walked; `evidence.exclude` in `.craft/project.json` scopes the inventory.
+- On by default; opt out per project with `"evidence": {"enabled": false}` in
+  `.craft/project.json`. The `project-evidence` commands still require `--enable`.
+- Qualified names (`Type.method`, `Type::method`, `module::fn`, `Type#method`) match their last
+  segment instead of reporting a false "absent"; Java method references and Rust functions
+  passed as values count as callers. Existing indexes re-extract on the next lookup.
+- A prompt that asks who calls one name or where it is declared gets up to ten cited rows in
+  its routing hint when the answer is certain, and abstains otherwise. The hint carries a
+  ready-to-run `lookup` command, and no longer sends the model through skill and setup files
+  first. Prompt-time lookups share one second of index refresh per prompt.
+- A bounded literal search that stopped at its limits or skipped files reports
+  `complete: false` and is no longer recorded as a failure (`SEARCH_INCOMPLETE` is no longer
+  emitted).
+- Refreshes report `phasesMs` (inventory, metadata, read, extract, store). The index store is
+  schema 4.
+
+Sessions and context:
+
+- `host-setup --host <host> --package <package>` previews display controls, context policy and
+  integration gaps; on macOS and Linux `--apply` connects Claude's status line.
+  `host-observe` accepts forwarded Claude and Codex usage and compaction observations.
+  `permissions --host <host>` previews opt-in inspection-command rules without writing grants.
+- A file written while the session plans, such as a requested `PLAN.md`, is recorded as
+  planning evidence (path, content hash, revision), also when a shell command wrote it.
+  Checkpoint recovery and `craft session` list it; a new session is offered unchanged earlier
+  evidence. The text is never parsed and creates no work plan.
+- Session states (stale checkpoint, unavailable host observation or model advice, exhausted
+  attempt budget) are recorded as states, not failures. Status line refreshes are recorded
+  only when the reported state changes, or every ten minutes.
+- One `host.hook` record per hook event instead of one per installed package.
+
+Guidance:
+
+- Each package's `AGENTS.md` carries a self-contained first-use notice; `SETUP.md` is read only
+  for a setup, hook or usage question.
+- The deliver-change workflow is lean for scoped changes; task binding, workers, workspace
+  scope, acceptance receipts and action offers move to `craft-delivery/standards/task-runtime.md`
+  for multi-step work. Workflow links are rebased in every export.
+- `apply-change` and `deliver-change` size verification: focused checks while working, the
+  declared full checks once at hand-off, and checks a pre-commit hook or CI owns are reported
+  as left to it, not as passed.
+
+Release, evaluation and verification (repository only, not shipped):
+
+- A Harbor engineering eval with fix, callers-lookup, literal-search and planning tasks, model-free
+  qualification on pull requests and a manual vanilla vs Craft comparison.
+- `npm run eval:audit -- <transcript.jsonl>` prints an engagement card for one real Claude Code
+  or Codex session; decision replay checks realistic prompts and session situations.
+- Host conformance tests check every hook against its host table; the Installed hosts workflow
+  runs each host's registered hook command under that host's shells on Linux, macOS and
+  Windows before a release.
+- Hyperfine performance suite on all three platforms with history in Bencher.
+- A versioned release now promotes its attested `distribution` archive to the stable branch
+  as a fast-forward commit; **Promote** can also be run by hand to retry or roll back. 0.0.3
+  is the first native stable release.
+  Native executables are not code-signed or notarized.
 
 ## 0.0.2
 

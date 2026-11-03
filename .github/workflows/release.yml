@@ -41,6 +41,8 @@ jobs:
       actions: read
       id-token: write
       attestations: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -123,3 +125,12 @@ jobs:
             .eval-results/release-notes.md
           if-no-files-found: ignore
           retention-days: 14
+  promote:
+    name: Promote to stable
+    needs: release
+    permissions:
+      contents: write
+      attestations: read
+    uses: ./.github/workflows/promote.yml
+    with:
+      version: ${{ needs.release.outputs.version }}

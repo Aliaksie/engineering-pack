@@ -8,13 +8,14 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { installNativeArtifacts } from '../tooling/native-install.mjs';
 import { nativeTargets } from '../tooling/native-release.mjs';
+import { packVersion } from '../tooling/version.mjs';
 import { launch } from './craft.mjs';
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const hash = value => createHash('sha256').update(value).digest('hex');
 function fixture(t) {
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-native-install-')));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
-  const options = { input: path.join(temporary, 'input'), destination: path.join(temporary, 'host'), revision: 'a'.repeat(40), version: '0.0.2', lockSha256: 'b'.repeat(64) };
+  const options = { input: path.join(temporary, 'input'), destination: path.join(temporary, 'host'), revision: 'a'.repeat(40), version: packVersion(repo), lockSha256: 'b'.repeat(64) };
   for (const { target, platform } of nativeTargets) {
     const root = path.join(options.input, target);
     fs.mkdirSync(path.join(root, 'native-bin'), { recursive: true });
