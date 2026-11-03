@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { MANIFEST, generate, taskFiles, validate } from '../tooling/eval-probes.mjs';
+import { MANIFEST, generate, mentions, taskFiles, validate } from '../tooling/eval-probes.mjs';
 
 const grader = fileURLToPath(new URL('../evals/image/answer-grade.sh', import.meta.url));
 const tools = ['bash', 'jq'].every(tool => spawnSync(tool, ['--version']).status === 0);
@@ -63,8 +63,24 @@ test('a generated task pins the source commit, keeps the answer out of reach and
 test('a reference answer with quotes and dollars survives the generated shell', () => {
   const { files } = taskFiles({ id: 'q', repository: 'r', actor: 'qa', kind: 'k', format: 'path', question: 'q',
     expected: ["it's/$Gson$Types.java"] }, { url: 'https://github.com/a/b', commit: 'a'.repeat(40), language: 'java' });
-  const run = spawnSync('bash', ['-c', files['solution/solve.sh'].replace('/app/ANSWER.md', '/dev/stdout')], { encoding: 'utf8' });
-  assert.equal(run.stdout, "it's/$Gson$Types.java\n");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-solve-'));
+  try {
+    // A file, not /dev/stdout: Node's child stdio on Linux is a socket, which cannot be reopened.
+    const answer = path.join(dir, 'ANSWER.md');
+    const run = spawnSync('bash', ['-c', files['solution/solve.sh'].replace('/app/ANSWER.md', answer)], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(fs.readFileSync(answer, 'utf8'), "it's/$Gson$Types.java\n");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a cited name matches only as a whole identifier, with regex characters taken literally', () => {
+  assert.ok(mentions('final class $Gson$Types {', '$Gson$Types'));
+  assert.ok(!mentions('class X$Gson$Types {', '$Gson$Types'));
+  assert.ok(mentions('def set(self):', 'set'));
+  assert.ok(!mentions('def reset(self): offset_set = 1', 'set'));
+  assert.ok(!mentions('a.b', 'a+b'));
+  assert.ok(mentions('call a+b here', 'a+b'));
+  assert.ok(!mentions('aXb', 'a.b'));
 });
 
 function grade(truth, answer, files = []) {

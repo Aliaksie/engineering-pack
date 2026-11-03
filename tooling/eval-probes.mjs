@@ -158,6 +158,13 @@ export function generate(manifest, out) {
   return names;
 }
 
+// A whole identifier: `$` and `_` belong to names in the supported languages, so `\b` (which
+// treats `$` as a boundary) would miss `$Gson$Types` and match inside `my_name`.
+export function mentions(text, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\w$])${escaped}(?![\\w$])`).test(text);
+}
+
 // Every cited path must exist in a clone at the pinned commit; a symbol's name must appear in
 // its file. Catches stale ground truth before a paid run does.
 export function verify(manifest, clones) {
@@ -173,7 +180,7 @@ export function verify(manifest, clones) {
       const [file, symbol] = cited.split('#');
       const full = path.join(clones, probe.repository, file);
       if (!fs.existsSync(full)) { problems.push(`${probe.id}: ${file} does not exist`); continue; }
-      if (symbol && !new RegExp(`\\b${symbol.replace(/[$]/g, '\\$')}\\b`).test(fs.readFileSync(full, 'utf8'))) {
+      if (symbol && !mentions(fs.readFileSync(full, 'utf8'), symbol)) {
         problems.push(`${probe.id}: ${symbol} does not appear in ${file}`);
       }
     }
