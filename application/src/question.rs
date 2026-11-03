@@ -157,6 +157,70 @@ fn observe(
 }
 
 /// Text view: the route, the index rows grouped by source, then literal matches.
+fn literal(text: &mut String, search: &Value, label: &str) {
+    let shown = crate::render::shown;
+    let matches = search["matches"].as_array().map_or(&[][..], Vec::as_slice);
+    text.push_str(&format!(
+        "{label}: {} match(es){}\n",
+        matches.len(),
+        if search["truncated"] == true {
+            format!(", truncated by {}", shown(&search["truncation"]))
+        } else {
+            String::new()
+        }
+    ));
+    for found in matches {
+        text.push_str(&format!(
+            "  {}:{}: {}\n",
+            shown(&found["path"]),
+            shown(&found["line"]),
+            shown(&found["text"])
+        ));
+    }
+    if let Some(more) = search["moreFiles"]
+        .as_array()
+        .filter(|more| !more.is_empty())
+    {
+        text.push_str(&format!(
+            "  also in {} file(s), lines not shown:\n",
+            more.len()
+        ));
+        for path in more {
+            text.push_str(&format!("  {}\n", shown(path)));
+        }
+    }
+}
+
+/// A literal `craft locate --term` result as text: matches, files whose lines did not fit,
+/// what was skipped and reused. `--json` keeps the full receipt.
+pub fn literal_text(result: &Value) -> String {
+    let mut text = String::new();
+    literal(&mut text, result, "literal search");
+    let skipped: Vec<_> = result["skipped"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(reason, count)| {
+            count
+                .as_u64()
+                .filter(|count| *count > 0)
+                .map(|count| format!("{reason} {count}"))
+        })
+        .collect();
+    if !skipped.is_empty() {
+        text.push_str(&format!("skipped: {}\n", skipped.join(", ")));
+    }
+    if let Some(reused) = result["discovery"]["reused"].as_u64().filter(|n| *n > 0) {
+        text.push_str(&format!(
+            "reused {reused} term(s) validated earlier in this task\n"
+        ));
+    }
+    if result["matches"].as_array().is_none_or(Vec::is_empty) {
+        text.push_str("No match: not proof of absence.\n");
+    }
+    text
+}
+
 pub fn text(result: &Value) -> String {
     let shown = crate::render::shown;
     let route = &result["route"];
@@ -202,26 +266,6 @@ pub fn text(result: &Value) -> String {
             shown(&route["name"])
         ));
     }
-    let literal = |text: &mut String, search: &Value, label: &str| {
-        let matches = search["matches"].as_array().map_or(&[][..], Vec::as_slice);
-        text.push_str(&format!(
-            "{label}: {} match(es){}\n",
-            matches.len(),
-            if search["truncated"] == true {
-                format!(", truncated by {}", shown(&search["truncation"]))
-            } else {
-                String::new()
-            }
-        ));
-        for found in matches {
-            text.push_str(&format!(
-                "  {}:{}: {}\n",
-                shown(&found["path"]),
-                shown(&found["line"]),
-                shown(&found["text"])
-            ));
-        }
-    };
     let rows = result["results"].as_array();
     if rows.is_some() {
         text.push_str(&crate::evidence::render(result, false));

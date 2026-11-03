@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `craft locate --term` finds every file `git grep` finds within its bounds: in a Git worktree
+  Git preselects the files that contain a term, so large assets, lockfiles and unrelated text
+  no longer use up the byte bound, and a binary file never counts against it. Matching files
+  whose lines exceed the match bound are listed in `moreFiles`. Structural lookups searching
+  unindexed files benefit the same way.
+- `craft locate --term` prints matches as compact text; `--json` (or `--verbose`) prints the
+  full JSON receipt as before.
 - On macOS, a Git query no longer waits for an unrelated process Craft started at the same
   time, so repository evidence stops going missing when several queries run at once.
 - Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of

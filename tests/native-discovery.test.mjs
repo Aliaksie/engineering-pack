@@ -18,7 +18,7 @@ function fixture(t) {
   const data = path.join(root, '.git', 'locate-request.json');
   const invoke = request => {
     fs.writeFileSync(data, JSON.stringify(request));
-    const outcome = nativeCommand(['locate', '--root', root, '--session', 'session', '--task', 'task', '--data', data], { binary });
+    const outcome = nativeCommand(['locate', '--root', root, '--session', 'session', '--task', 'task', '--data', data, '--json'], { binary });
     assert.equal(outcome.exitCode, 0, outcome.stderr);
     return JSON.parse(outcome.stdout);
   };
@@ -59,7 +59,7 @@ test('native discovery respects a held session lock and preserves deferred looku
 test('locate CLI forwards bounded requests to the same native use case', t => {
   const { root, binary } = fixture(t);
   const argv = ['locate', '--root', root, '--term', 'needle', '--term', 'alpha', '--path', 'source.txt', '--max-files', '0x10', '--max-output-bytes', '4096'];
-  const direct = spawnSync(binary, argv, { encoding: 'utf8' });
+  const direct = spawnSync(binary, [...argv, '--json'], { encoding: 'utf8' });
   assert.equal(direct.status, 0, direct.stderr);
   const result = JSON.parse(direct.stdout);
   assert.deepEqual(run(argv), result);
@@ -67,7 +67,7 @@ test('locate CLI forwards bounded requests to the same native use case', t => {
   assert.equal(result.bounds.maxFiles, 16);
   assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 4096);
   // Without a bound task the session adds no scope and writes no receipt.
-  const unbound = spawnSync(binary, [...argv, '--session', 'session'], { encoding: 'utf8' });
+  const unbound = spawnSync(binary, [...argv, '--session', 'session', '--json'], { encoding: 'utf8' });
   assert.equal(unbound.status, 0, unbound.stderr);
   assert.deepEqual(JSON.parse(unbound.stdout), result);
   for (const value of ['-1', 'Infinity', '1.5', 'invalid']) {

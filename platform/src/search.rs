@@ -211,10 +211,24 @@ fn inventory(root: &Path) -> Result<Option<Vec<u8>>, String> {
     )
 }
 
-fn selected_inventory(root: &Path, repositories: &[String]) -> Result<Vec<u8>, SearchError> {
+/// Files Git's literal text search finds for `terms`, as NUL-separated paths relative to
+/// `root`, or `None` when `root` has no Git worktree to search.
+fn candidates(
+    root: &Path,
+    terms: &[String],
+    pathspecs: &[String],
+) -> Result<Option<Vec<u8>>, String> {
+    process::git_grep_files(root, terms, pathspecs, 2_097_152)
+}
+
+fn selected_candidates(
+    root: &Path,
+    repositories: &[String],
+    terms: &[String],
+) -> Result<Vec<u8>, SearchError> {
     let mut paths = Vec::new();
     for (scope, canonical) in crate::repository::snapshot::roots(root, repositories)? {
-        let output = inventory(&canonical)?
+        let output = candidates(&canonical, terms, &[])?
             .ok_or_else(|| format!("Selected repository inventory failed: {scope}"))?;
         for name in output.split(|b| *b == 0).filter(|p| !p.is_empty()) {
             if scope != "." {
@@ -228,6 +242,9 @@ fn selected_inventory(root: &Path, repositories: &[String]) -> Result<Vec<u8>, S
     Ok(paths)
 }
 
+/// Bytes read to classify a file as binary, as Git does: a NUL among the first 8000 bytes.
+const SNIFF_BYTES: usize = 8000;
+
 pub fn scan(
     root: &Path,
     request: &Search,
@@ -239,9 +256,12 @@ pub fn scan(
             return Err(format!("Symlink scope is not supported: {scope}").into());
         }
     }
+    // Git preselects the files that contain a term, so bounds are spent only on files that
+    // can match and the file set equals what `git grep` finds; without a worktree the
+    // explicit paths are walked and every text file is read.
     let output = match repositories {
-        Some(roots) => Some(selected_inventory(&root, roots)?),
-        None => inventory(&root)?,
+        Some(roots) => Some(selected_candidates(&root, roots, &request.terms)?),
+        None => candidates(&root, &request.terms, &request.scopes)?,
     };
     let git_inventory = output.is_some();
     if !git_inventory && request.scopes.is_empty() {
@@ -269,13 +289,20 @@ pub fn scan(
     let mut matches = Vec::new();
     let mut bytes_read = 0;
     let mut files_scanned = 0;
+    let mut more_files = Vec::new();
     let mut files: Vec<_> = scan.files.iter().cloned().collect();
     files.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
-    for name in files {
+    for (index, name) in files.iter().enumerate() {
         if matches.len() >= request.max_matches {
             scan.truncate("maxMatches");
+            // Git already named every file that contains a term: list those whose lines no
+            // longer fit, so a file-level answer stays as complete as `git grep -l`.
+            if git_inventory {
+                more_files.extend(files[index..].iter().cloned());
+            }
             break;
         }
+        let name = name.clone();
         let read = (|| -> Result<Option<Vec<u8>>, String> {
             let Some(absolute) = safe_file(&root, &name).map_err(|e| e.to_string())? else {
                 scan.skip("symlink");
@@ -289,10 +316,6 @@ pub fn scan(
                 scan.skip("oversized");
                 return Ok(None);
             }
-            if stat.len() > (request.max_bytes - bytes_read) as u64 {
-                scan.truncate("maxBytes");
-                return Ok(None);
-            }
             let file = open_source(&absolute).map_err(|e| e.to_string())?;
             #[cfg(unix)]
             {
@@ -302,10 +325,26 @@ pub fn scan(
                     return Err("source changed at open".into());
                 }
             }
+            // A binary file is recognised from its start and never spends the byte bound.
+            let mut file = file.take(stat.len());
             let mut bytes = Vec::new();
-            file.take(stat.len())
+            (&mut file)
+                .take(SNIFF_BYTES as u64)
                 .read_to_end(&mut bytes)
                 .map_err(|e| e.to_string())?;
+            if bytes.contains(&0) {
+                scan.skip("binary");
+                return Ok(None);
+            }
+            if stat.len() > (request.max_bytes - bytes_read) as u64 {
+                scan.truncate("maxBytes");
+                return Ok(None);
+            }
+            file.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+            if bytes.contains(&0) {
+                scan.skip("binary");
+                return Ok(None);
+            }
             Ok(Some(bytes))
         })();
         let bytes = match read {
@@ -316,11 +355,11 @@ pub fn scan(
                 continue;
             }
         };
-        bytes_read += bytes.len();
-        if bytes.contains(&0) {
-            scan.skip("binary");
+        if bytes.len() > request.max_bytes - bytes_read {
+            scan.truncate("maxBytes");
             continue;
         }
+        bytes_read += bytes.len();
         files_scanned += 1;
         matches.extend(discovery::matches(
             &String::from_utf8_lossy(&bytes),
@@ -333,7 +372,7 @@ pub fn scan(
         }
     }
     Ok(
-        json!({"inventory":if git_inventory { "git" } else { "explicit-paths" },"terms":request.terms,"paths":request.scopes,"bounds":request.bounds(),"filesScanned":files_scanned,"bytesRead":bytes_read,"matches":matches,"skipped":scan.skipped,"truncated":!scan.truncation.is_empty(),"truncation":scan.truncation,"limitations":LIMITATIONS}),
+        json!({"inventory":if git_inventory { "git" } else { "explicit-paths" },"terms":request.terms,"paths":request.scopes,"bounds":request.bounds(),"filesScanned":files_scanned,"bytesRead":bytes_read,"matches":matches,"skipped":scan.skipped,"truncated":!scan.truncation.is_empty(),"truncation":scan.truncation,"moreFiles":more_files,"limitations":LIMITATIONS}),
     )
 }
 

@@ -63,9 +63,10 @@ test('compact receipt commands keep structured opt-ins and inspection commands k
   // Inspection prints its data whatever the detail requested.
   assert.equal(JSON.parse(craft('checkpoint-read')).saved.formatVersion, 1);
   assert.deepEqual(Object.keys(JSON.parse(craft('task-step', '--help'))), ['usage', 'mode', 'output']);
-  // Search results stay on one line whatever the detail requested.
+  // A literal search reads as text; JSON and verbose keep the full receipt on one line.
   fs.writeFileSync(path.join(root, 'needle.txt'), 'needle\n');
-  for (const detail of [[], ['--json'], ['--verbose']]) {
+  assert.equal(craft('locate', '--term', 'needle', '--path', '.'), 'literal search: 1 match(es)\n  needle.txt:1: needle\n');
+  for (const detail of [['--json'], ['--verbose']]) {
     const text = craft('locate', '--term', 'needle', '--path', '.', ...detail);
     assert.equal(text.indexOf('\n'), text.length - 1);
     assert.equal(JSON.parse(text).matches[0].path, 'needle.txt');
