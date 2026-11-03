@@ -18,6 +18,14 @@ function checkedDirectory(directory) {
   } else fs.mkdirSync(directory);
 }
 
+// Published crates that declare MIT but omit the license file; see tooling/native/notices.
+const supplementalNotices = new Set([
+  'tree-sitter-cpp@0.23.4',
+  'tree-sitter-java@0.23.5',
+  'tree-sitter-ruby@0.23.1',
+  'tree-sitter-typescript@0.23.2',
+]);
+
 function notices(metadata, stage) {
   const packages = new Map(metadata.packages.map(pkg => [pkg.id, pkg]));
   const nodes = new Map(metadata.resolve.nodes.map(node => [node.id, node]));
@@ -39,8 +47,8 @@ function notices(metadata, stage) {
     let files = fs.readdirSync(directory).filter(name => /^(LICENSE|COPYING|NOTICE)([._-].*)?$/i.test(name))
       .map(name => path.join(directory, name)).filter(file => fs.statSync(file).isFile());
     if (pkg.license_file) files.push(path.resolve(directory, pkg.license_file));
-    if (pkg.name === 'tree-sitter-java' && pkg.version === '0.23.5') {
-      files.push(path.join(repository, 'tooling/native/notices/tree-sitter-java-0.23.5-LICENSE'));
+    if (supplementalNotices.has(`${pkg.name}@${pkg.version}`)) {
+      files.push(path.join(repository, `tooling/native/notices/${pkg.name}-${pkg.version}-LICENSE`));
     }
     files = [...new Set(files)].sort();
     if (!files.length) throw new Error(`dependency has no packaged notice: ${pkg.name}@${pkg.version}`);

@@ -18,7 +18,8 @@ test('native bundle works after relocation with checked notices and no Node runt
   assert.equal(manifest.protocolVersion, 1);
   assert.equal(manifest.schemaVersion, 4);
   assert.equal(manifest.profile, 'release');
-  assert.equal(manifest.providers.length, 4);
+  assert.deepEqual(manifest.providers.map(provider => provider.split(/-tree-sitter-|\//)[0]).sort(),
+    ['c', 'cpp', 'csharp', 'go', 'java', 'javascript', 'markdown-sections', 'php', 'python', 'ruby', 'rust', 'tsx', 'typescript']);
   assert.ok(manifest.files.length > 4);
   for (const entry of manifest.files) {
     assert.ok(!path.isAbsolute(entry.path) && !entry.path.split('/').includes('..'));
@@ -27,7 +28,7 @@ test('native bundle works after relocation with checked notices and no Node runt
     assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256);
   }
   const dependencies = JSON.parse(fs.readFileSync(path.join(bundle, 'dependencies.json'), 'utf8'));
-  for (const name of ['tree-sitter-java', 'tree-sitter-javascript', 'tree-sitter-rust', 'rusqlite', 'libsqlite3-sys', 'unicode-ident']) {
+  for (const name of ['tree-sitter-java', 'tree-sitter-cpp', 'tree-sitter-ruby', 'tree-sitter-typescript', 'tree-sitter-javascript', 'tree-sitter-rust', 'rusqlite', 'libsqlite3-sys', 'unicode-ident']) {
     const dependency = dependencies.packages.find(pkg => pkg.name === name);
     assert.ok(dependency?.notices.length);
     for (const notice of dependency.notices) assert.ok(fs.readFileSync(path.join(bundle, notice), 'utf8').length > 100);
