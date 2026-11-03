@@ -32,6 +32,7 @@ test('every export stays within its overhead ceilings and is silent where Craft 
 test('listing entries follow each host table and machine paths count as placeholders', () => {
   const entry = { pkg: 'craft-engineering', dir: 'foundations', name: 'foundations', description: 'Decide.' };
   assert.equal(listingEntry('claude', entry), '- craft-engineering:foundations: Decide.\n');
+  assert.equal(listingEntry('codex', entry), '- craft-engineering:foundations: Decide. (file: r0/foundations/SKILL.md)\n');
   for (const host of EXPORTS) assert.match(listingEntry(host, entry), /^- \S+: Decide\./);
   assert.equal(portable('{"run":["/opt/x/craft","--root","C:\\\\work"]}', { '/opt/x/craft': '<craft>', 'C:\\work': '<root>' }),
     '{"run":["<craft>","--root","<root>"]}');

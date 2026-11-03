@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
-import { hookMapping } from '../../hosts/registry.mjs';
+import { HOSTS, hookMapping } from '../../hosts/registry.mjs';
 import { emitLaunchers, hookArguments, powershellHook, shellHook } from './launcher.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
 import { featureSupport } from '../../hosts/capabilities.mjs';
@@ -25,15 +25,18 @@ export function copy(source, target) {
   }
 }
 
+// Hosts that list plugin skills as `<package>:<skill>` keep the bare skill name; hosts with one
+// flat skill folder need the package prefix to keep names unique.
+export const pluginNames = platform => HOSTS[platform]?.listing?.names === 'plugin';
 export function skillName(pkg, name, platform) {
-  return platform === 'claude' ? name : `${pkg}-${name}`;
+  return pluginNames(platform) ? name : `${pkg}-${name}`;
 }
 
 export function renderText(text, packages, platform) {
   for (const { manifest } of packages) {
     const components = [...manifest.skills.map((entry) => path.basename(entry)), ...manifest.workflows.map((entry) => `workflow-${path.basename(entry, '.md')}`)];
     for (const name of components) {
-      if (platform !== 'claude') text = text.replaceAll(`${manifest.name}:${name}`, `${manifest.name}-${name}`);
+      if (!pluginNames(platform)) text = text.replaceAll(`${manifest.name}:${name}`, `${manifest.name}-${name}`);
     }
   }
   return text;
@@ -61,7 +64,7 @@ function packageDocument(text, sourceFile, targetFile, item, packages, destinati
     const relative = path.relative(item.root, resolved);
     // Files outside the package (e.g. shared docs) retain the package's root-relative layout.
     const parts = relative.split(path.sep);
-    if (parts[0] === 'skills' && parts.length > 1 && platform !== 'claude') {
+    if (parts[0] === 'skills' && parts.length > 1 && !pluginNames(platform)) {
       parts[1] = skillName(item.manifest.name, parts[1], platform);
     }
     if (relative === 'capability.json') return path.join(destination, 'source-capability.json');
@@ -95,7 +98,7 @@ export function preparePackage(item, packages, destination, platform) {
     const sourceFile = entry.source ? path.join(entry.source, 'SKILL.md') : entry.file;
     let body = packageDocument(entry.info.body, sourceFile, path.join(target, 'SKILL.md'), item, packages, destination, platform);
     // Bare local skill citations are logical IDs in source. Avoid touching file/reference paths.
-    if (platform !== 'claude') for (const local of manifest.skills) {
+    if (!pluginNames(platform)) for (const local of manifest.skills) {
       const id = path.basename(local);
       body = body.replaceAll(`\`${id}\``, `\`${manifest.name}-${id}\``);
     }

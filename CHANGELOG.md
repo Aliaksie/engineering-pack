@@ -7,6 +7,14 @@
   no longer use up the byte bound, and a binary file never counts against it. Matching files
   whose lines exceed the match bound are listed in `moreFiles`. Structural lookups searching
   unindexed files benefit the same way.
+- Routing hints leave out empty fields and show the task identity only once a task is bound
+  (the session line already names the session), and a hint that reads the same as the last one
+  is not sent again, for example on an edit of a second file of the same kind. Over a typical
+  prompt-and-edit session, hook context drops by about a third on Claude, Codex and Gemini.
+- Codex skills are listed as `<package>:<skill>` (for example `craft-engineering:foundations`)
+  instead of repeating the package name (`craft-engineering:craft-engineering-foundations`);
+  the skill list Codex sends with every model call shrinks by about 1.1 KB. Routing hints on
+  Codex name skills the same way. Hosts with one shared skill folder keep `<package>-<skill>`.
 - `craft locate --term` prints matches as compact text; `--json` (or `--verbose`) prints the
   full JSON receipt as before.
 - On macOS, a Git query no longer waits for an unrelated process Craft started at the same

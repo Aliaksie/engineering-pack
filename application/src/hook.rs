@@ -3,8 +3,8 @@
 //! mapping table is the data the build uses to register hooks.
 use crate::host;
 use crate::telemetry::Recorder;
-use craft_engine::values::{js_length, truthy};
-use serde_json::{Map, Value, json};
+use craft_engine::values::js_length;
+use serde_json::{Value, json};
 use std::io::{Read, Write};
 
 const MAX_INPUT: usize = 65_536;
@@ -53,6 +53,13 @@ fn arguments(args: &[String]) -> Result<Hook, String> {
         handler: handler.ok_or("--handler is required")?,
         shell,
     })
+}
+
+/// Whether the host lists plugin skills as `<package>:<skill>`; otherwise skills live in one
+/// flat folder as `<package>-<skill>`.
+fn plugin_names(host: &str) -> bool {
+    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
+    table[host]["listing"]["names"] == "plugin"
 }
 
 /// The host's registration of this event, if it supports one.
@@ -256,24 +263,9 @@ fn render(context: &Value, host: &str) -> String {
     match context["kind"].as_str() {
         _ if context.is_string() => context.as_str().unwrap().to_string(),
         Some("routing") => {
-            let data = &context["data"];
-            let mut hint = Map::new();
-            for key in [
-                "intent",
-                "execution",
-                "skills",
-                "answer",
-                "lookup",
-                "references",
-                "modules",
-                "missing",
-            ] {
-                if let Some(value) = data.get(key) {
-                    hint.insert(key.into(), value.clone());
-                }
-            }
+            let mut hint = craft_engine::delivery::shown(context)["data"].take();
             if let Some(skills) = hint.get_mut("skills").and_then(Value::as_array_mut)
-                && host != "claude"
+                && !plugin_names(host)
             {
                 for skill in skills.iter_mut() {
                     if let Some(name) = skill.as_str() {
@@ -281,12 +273,7 @@ fn render(context: &Value, host: &str) -> String {
                     }
                 }
             }
-            for key in ["taskIdentity", "taskBoundary"] {
-                if crate::hook::truthy(data.get(key)) {
-                    hint.insert(key.into(), data[key].clone());
-                }
-            }
-            format!("Routing hints (no authorization implied; reuse until scope/config changes): {}", Value::Object(hint))
+            format!("Routing hints (no authorization implied; reuse until scope/config changes): {hint}")
         }
         Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing: {}", context["data"]),
         Some("services") => format!("Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {}", context["data"]),

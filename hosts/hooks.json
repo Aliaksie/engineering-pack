@@ -51,7 +51,7 @@
   "codex": {
     "skills": null,
     "listing": {
-      "names": "flat",
+      "names": "plugin",
       "paths": true,
       "instructions": [],
       "evidence": "observed"

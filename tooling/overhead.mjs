@@ -28,11 +28,11 @@ function skillFiles(exportRoot, host) {
     fs.readdirSync(path.join(base, pkg, 'skills')).sort().map(dir => ({ pkg, dir, file: path.join(base, pkg, 'skills', dir, 'SKILL.md') })));
 }
 
-// One listing entry as the host renders it: `- <name>: <description>` with the plugin prefix
-// where the host namespaces plugin skills, and the SKILL.md location where it shows one.
+// One listing entry as the host renders it: `- <name>: <description>`, prefixed `<plugin>:` where
+// the skill comes from an installed plugin, with the SKILL.md location where the host shows one.
 export function listingEntry(host, { pkg, dir, name, description }) {
   const { listing } = HOSTS[host];
-  const shown = listing.names === 'plugin' && pkg ? `${pkg}:${name}` : name;
+  const shown = pkg ? `${pkg}:${name}` : name;
   const location = listing.paths ? ` (file: r0/${dir}/SKILL.md)` : '';
   return `- ${shown}: ${description}${location}\n`;
 }
