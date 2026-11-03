@@ -89,6 +89,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         }
     }
+    if event.lifecycle == "session-start" {
+        warm_evidence(root);
+    }
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
     // An edit outside the project has no project route; it is not a delivery failure.
     let file = project_file(root, event.cwd, event.file);
@@ -271,6 +274,28 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         decision["warning"] = json!(format!("Routing hint reuse unavailable: {message}"));
     }
     Ok(decision)
+}
+
+/// Start indexing the project in the background, so the session's first lookup finds a warm
+/// index. Only for a Git worktree with evidence enabled; where the platform cannot detach a
+/// process, the first lookup indexes within its own budget as before.
+fn warm_evidence(root: &Path) {
+    let enabled = crate::project::configuration(root)
+        .ok()
+        .and_then(|config| craft_engine::contracts::evidence_enabled(&config).ok())
+        .unwrap_or(false);
+    if !enabled || !root.ancestors().any(|dir| dir.join(".git").exists()) {
+        return;
+    }
+    // Only the `craft` executable starts itself; a library caller such as a test harness
+    // would start a copy of itself with arguments it does not understand.
+    let program = std::env::current_exe()
+        .ok()
+        .filter(|exe| exe.file_stem().is_some_and(|stem| stem == "craft"));
+    if let (Some(program), Some(root_arg)) = (program, root.to_str()) {
+        let args = ["project-evidence", "warm", "--enable", "--root", root_arg];
+        let _ = craft_platform::process::spawn_detached(&program, &args, root);
+    }
 }
 
 /// Index refresh all prompt-time lookups of one prompt may spend together; the prompt waits

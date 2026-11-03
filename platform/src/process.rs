@@ -26,6 +26,31 @@ pub(crate) fn spawn(command: &mut Command) -> std::io::Result<Child> {
     command.spawn()
 }
 
+/// Start `program` in `dir` and leave it running after this process exits, with no standard
+/// streams and its own process group, so a host waiting for hook output never waits for it.
+/// Windows starts children with every inheritable handle, including the host's output pipe,
+/// and marking those handles needs `unsafe`; there it is unsupported.
+pub fn spawn_detached(program: &Path, args: &[&str], dir: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        // Not waited for: the child is reparented when this short-lived process exits.
+        spawn(&mut command).map(drop)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (program, args, dir);
+        Err(std::io::ErrorKind::Unsupported.into())
+    }
+}
+
 /// Git run in `dir`, the one way every Craft Git command starts: no file-system monitor, no
 /// optional index lock (an inventory never rewrites the index), no credential prompt and no
 /// standard input. Callers add the subcommand and decide how to bound its output.

@@ -8,7 +8,7 @@ use craft_engine::{
 };
 use craft_platform::{
     providers::{ACTIVE, for_path, kinds},
-    repository::database_guard,
+    repository::database_guard_within,
     state,
     store::{Query, Store},
 };
@@ -67,6 +67,9 @@ pub fn answer(
 
 /// Refresh and record the scope's coverage; when the index can answer, query it and verify the
 /// cited sources, leaving out rows from sources that changed since the refresh.
+/// How long a lookup waits for the store while another process refreshes it.
+const LOOKUP_WAIT: std::time::Duration = std::time::Duration::from_millis(400);
+
 fn observe(
     root: &Path,
     question: &Question,
@@ -74,7 +77,8 @@ fn observe(
     coverage: &mut Coverage,
 ) -> Result<Option<Value>, Failure> {
     let database = state::shared(root, "intelligence", true)?.join("project.sqlite");
-    let _guard = database_guard(&database)?;
+    // A background refresh releases the store between short chunks; wait for its turn.
+    let _guard = database_guard_within(&database, LOOKUP_WAIT)?;
     let mut store = Store::open(&database)?;
     let (field, wanted) = question.ask.evidence();
     let answering: Vec<_> = ACTIVE

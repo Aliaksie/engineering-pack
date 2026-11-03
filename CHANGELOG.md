@@ -26,6 +26,12 @@
   only when the effective settings change, instead of on every hook; failures are still
   recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
   session last recorded, under its telemetry pseudonym.
+- Project Intelligence warms up when a session starts: on macOS and Linux the session-start
+  hook starts `craft project-evidence warm` in the background for a Git worktree with evidence
+  enabled and returns at once. The first lookup then usually finds a warm index; on a fresh
+  clone of this repository, a lookup a few seconds after session start takes about 0.13 s
+  instead of about 1.1 s for each of the first two. A lookup waits up to 400 ms for the
+  background refresh to release the store. Windows keeps indexing on the first lookup.
 - Prompt routing stays silent on questions that need no project work: an HTTP or exit
   "status code" question is no longer read as a progress question, and an instruction that
   only says where the answer goes ("Write only the number to `ANSWER.md`") no longer turns a
