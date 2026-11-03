@@ -15,7 +15,6 @@
 - JavaScript declaration kinds name what was declared: `js:declares-function`, `-class`,
   `-method` or `-variable` instead of `js:declares`. Stored indexes are rebuilt once on first
   use.
-
 - `craft locate --term` finds every file `git grep` finds within its bounds: in a Git worktree
   Git preselects the files that contain a term, so large assets, lockfiles and unrelated text
   no longer use up the byte bound, and a binary file never counts against it. Matching files

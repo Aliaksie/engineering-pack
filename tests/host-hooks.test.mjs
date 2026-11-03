@@ -120,7 +120,7 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
   java('Order', '  long total() { return 2; }');
   // `charge` is also called from a script no index answers for: the callers row set is open.
   java('Fee', '  long charge() { return 3; }\n  long twice(Fee f) { return f.charge() * 2; }');
-  fs.writeFileSync(path.join(dir, 'bill.js'), 'export const bill = fee => fee.charge();\n');
+  fs.writeFileSync(path.join(dir, 'bill.kt'), 'fun bill(fee: Fee) = fee.charge()\n');
   for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
   const hint = (host, prompt) => {
     const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: `answer-${host}-${prompt.length}`, prompt }, dir);
