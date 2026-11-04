@@ -97,11 +97,12 @@ about the conversation get no hint. Where a result goes ("write them to `ANSWER.
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
 no request does not decide one either. The words are English and matched deterministically;
-an unrecognized request simply gets none. A lookup hint also carries `lookup`: the
-`craft locate` command of the runtime that answered the hook, rooted at the project, and the
-questions it can ask, so the agent can run it without resolving the package path itself.
-Such a hint names no skill: the command and its output explain themselves, and a lookup
-should not cost reading the skill, package instructions and setup first.
+an unrecognized request simply gets none. A lookup prompt gets a hint only when the hook
+answers it (below): a hint that merely pointed at a command cost the model one or two turns
+more than its own search. An answered hint also carries `lookup`: the `craft locate` command
+of the runtime that answered the hook, rooted at the project, and the questions it can ask,
+for a search beyond the answered question. It names no skill: a lookup should not cost
+reading the skill, package instructions and setup first.
 
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
@@ -111,7 +112,17 @@ cited rows (`path:line in method: excerpt`) with the question and scope. It answ
 it is certain: coverage is complete, no gap file matched literally, the rows fit the hint,
 and for callers the name is declared exactly once in the project, in the source a qualifier
 names (`Policy` in `Policy.apply`, `module` in `module::fn`). Two questions, two names, a plain
-word or anything less certain add no answer; the runnable `lookup` remains either way.
+word or anything less certain add no answer, and then no hint.
+
+A search the model runs itself gets the same certainty without a turn. After a Grep-style
+search tool with a literal pattern, or a shell command whose one `rg`, `grep` or `git grep`
+looks for one literal identifier (word-bounded, optionally qualified or followed by `(`), the
+after-tool hook adds that name's declaration and callers to the tool result, under the same
+rules: declared exactly once, complete coverage, at most ten rows. It refreshes Project
+Intelligence for at most 200 ms, so it answers from the index the session warmed; a regex,
+several patterns, an inverted match or anything less certain adds nothing. Hosts that cannot
+show after-tool context (Copilot) keep the plain search result. `efficiency.lookup.enabled:
+false` turns these answers off.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

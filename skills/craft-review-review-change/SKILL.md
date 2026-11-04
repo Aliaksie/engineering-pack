@@ -5,7 +5,7 @@ description: "Investigate regressions in a specified code change and produce an 
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../packages/craft-review/AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Assess a change
 

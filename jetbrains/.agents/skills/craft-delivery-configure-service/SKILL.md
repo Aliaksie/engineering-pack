@@ -5,7 +5,7 @@ description: "Set up a consumer-owned service binding and verify a needed read a
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../../packages/craft-delivery/AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Connect one requested operation
 

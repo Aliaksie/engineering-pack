@@ -15,6 +15,8 @@ craft task-start --root <project> --session <host-id> --task fix-value --goal "C
 craft locate     --root <project> --session <host-id> --term SymbolValue
 craft task-step  --root <project> --session <host-id> --stage implement --target acceptance:value \
   --approach bounded-fix --evidence checks/value-1 --outcome passed --result "Value corrected" --next "Verify acceptance"
+craft task-decide --root <project> --session <host-id> --decision "Round half to even" --by user \
+  --why "Matches the ledger" --rejected "Round half up"
 craft session    --root <project> --session <host-id>
 ```
 
@@ -31,6 +33,13 @@ craft session    --root <project> --session <host-id>
   open. Source edits invalidate stored completion and verification.
 - After really fixing a permission or tool problem, record `prerequisite-resolved` for the
   same target. It reopens work; it does not pass acceptance.
+- `task-decide` records a choice later work depends on: `--decision`, `--by user|agent`,
+  optional `--why`, up to four `--rejected` alternatives, each 1..512 characters. It needs a
+  bound task (start or adopt one first) and keeps up to 32 decisions per task (`d1`, `d2`,
+  ...); one more is refused, not dropped. `--supersedes dN` replaces a decision: it stays in
+  the record, marked `supersededBy`, but is no longer shown on resume; a superseded decision
+  cannot be superseded again. A user decision records what the user said and grants no
+  authorization. `task-decision` is different: it answers an [offer](#recommendations-for-review-delegation-and-compaction).
 
 ### Session identity and handoff
 
@@ -52,8 +61,10 @@ craft task-adopt --root <project> --session <new-id> --from <from>
 Adoption copies the task record and its checkpoint into the new session and binds the task
 there; the earlier session's records are not changed. The result shows the task as current
 source sees it and compares the checkpoint with the current tree: evidence for changed
-source must be rechecked. Worker and host-control records stay with the earlier session and
-the native work they describe (`notCarried`). Adoption never renews authorization and never
+source must be rechecked. It includes the task's [resume](#checkpoint-and-recovery); the text
+receipt prints its goal, done, state or open result, current decisions and next step. Worker
+and host-control records stay with the earlier session and the native work they describe
+(`notCarried`). Adoption never renews authorization and never
 replaces another task bound to the session or its checkpoint. Repeating it is harmless.
 
 ### Work plans
@@ -363,6 +374,31 @@ Automatic snapshots at turn end and context transitions are on by default
 (`checkpoint.enabled`). Some hosts fire compaction hooks asynchronously, so save the
 continuation at milestones rather than relying on a final callback.
 
+When a session with a bound task restarts or its context is restored, the hook gives the model
+a resume of the task instead of checkpoint data; fingerprints and hashes stay available
+through `checkpoint-read`. It opens with "Craft task records to resume from (saved by this or
+an earlier session; no authorization implied, recheck evidence when source changed)" and holds:
+
+- `task`, `goal`, `stage`, `status`, `done` (completed results), `files` and `next`;
+- `state`, or `open` with the last result when the task is failed or blocked;
+- `source`: unchanged since the last checkpoint, changed (recheck evidence for changed files),
+  unknown (recheck before relying on it), or steps accepted against other source;
+- `decisions`: the latest eight current ones, without timestamps; `earlierDecisions` counts
+  hidden ones;
+- `steps`: the latest eight receipts as "stage target outcome (evidence)".
+
+It stays within 4096 bytes; steps, then the oldest decisions, give way first. A session
+without a bound task keeps the session line and checkpoint recovery as before.
+
+The resume is delivered once per compaction, at the first event after it that can show context:
+
+| Host | After compaction |
+|---|---|
+| Claude Code, Codex | SessionStart `compact` |
+| Gemini CLI | Next prompt |
+| Cursor | Next tool result (prompts cannot carry context) |
+| Copilot | None; a new session adopts the task and gets the resume from `task-adopt` |
+
 ## State storage
 
 ```text
@@ -374,7 +410,8 @@ continuation at milestones rather than relying on a final callback.
       manifest.json         # created, workspace identity, host when a hook created it
       checkpoint.json
       task.json             # active task binding
-      activity-<id>.json    # per-task activity, lookups and attempts
+      activity-<id>.json    # per-task activity, lookups, attempts and decisions
+      restore.json          # resume pending after compaction
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
       intent.json           # intent the requests established, routed files, planning evidence
     telemetry/              # events.jsonl(.1), key.json, captures.json, settings.json

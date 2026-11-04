@@ -5,7 +5,7 @@ description: "Coordinate source identification, regression investigation and rev
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 Establish the requested comparison with `review-change`, then select only the engineering
 references needed for its languages, layers and risks. Gather diff and caller evidence in
