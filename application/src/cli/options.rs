@@ -85,6 +85,10 @@ const OPTIONS: &[&str] = &[
     "section",
     "outline",
     "after",
+    "why",
+    "by",
+    "rejected",
+    "supersedes",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -110,6 +114,7 @@ const REPEATED: &[&str] = &[
     "available-mcp-tool",
     "bundle",
     "reference",
+    "rejected",
 ];
 
 #[derive(Default)]
@@ -166,6 +171,13 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if asked > 1 || asked == 1 && (present("term") || present("data")) {
         return Err("locate takes one structural question or literal --term values".into());
+    }
+    if let Some(name) = ["why", "by", "rejected", "supersedes"]
+        .iter()
+        .find(|name| present(name))
+        .filter(|_| action != "task-decide")
+    {
+        return Err(format!("--{name} is supported by task-decide").into());
     }
     if present("contract") && !["task-start", "acceptance-view"].contains(&action) {
         return Err("--contract is supported by task-start and acceptance-view".into());

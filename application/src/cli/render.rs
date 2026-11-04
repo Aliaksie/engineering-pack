@@ -329,7 +329,34 @@ pub(super) fn action_receipt(action: &str, result: &Value) -> String {
     format!("{}\n", lines.join("\n"))
 }
 
-/// The compact task-start receipt: binding, route, checkpoint, advice and acceptance.
+/// One decision: id, author, text, reason and rejected alternatives.
+fn decision_line(decision: &Value) -> String {
+    let text = |key: &str| decision[key].as_str().unwrap_or_default();
+    let mut line = format!("Decision {} ({}): {}", text("id"), text("by"), text("text"));
+    if let Some(why) = nonempty(&decision["why"]) {
+        line.push_str(&format!(" — because {why}"));
+    }
+    if let Some(rejected) = joined(&decision["rejected"]) {
+        line.push_str(&format!("; rejected: {rejected}"));
+    }
+    line
+}
+
+/// The task-decide receipt.
+pub(super) fn decide_receipt(result: &Value) -> String {
+    let mut lines = vec![decision_line(&result["decision"])];
+    if let Some(earlier) = nonempty(&result["decision"]["supersedes"]) {
+        lines.push(format!("Supersedes: {earlier}"));
+    }
+    lines.push(format!(
+        "Task {}: {} current decision(s); shown when the task resumes",
+        result["task"].as_str().unwrap_or_default(),
+        result["current"]
+    ));
+    format!("{}\n", lines.join("\n"))
+}
+
+/// The task-adopt receipt: what the task is, where it stands, its decisions and the checkpoint.
 pub(super) fn adopt_receipt(result: &Value) -> String {
     let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
     let context = &result["context"];
@@ -355,6 +382,20 @@ pub(super) fn adopt_receipt(result: &Value) -> String {
             }
         ),
     ];
+    let resume = &result["resume"];
+    for (label, key) in [
+        ("Goal", "goal"),
+        ("Done", "done"),
+        ("State", "state"),
+        ("Open", "open"),
+    ] {
+        if let Some(value) = nonempty(&resume[key]) {
+            lines.push(format!("{label}: {}", value.replace('\n', "; ")));
+        }
+    }
+    for decision in resume["decisions"].as_array().into_iter().flatten() {
+        lines.push(decision_line(decision));
+    }
     if let Some(next) = nonempty(&context["nextStep"]) {
         lines.push(format!("Next: {next}"));
     }
@@ -373,7 +414,7 @@ pub(super) fn adopt_receipt(result: &Value) -> String {
             "Not carried (stay with the earlier session): {families}"
         ));
     }
-    lines.join("\n")
+    format!("{}\n", lines.join("\n"))
 }
 
 /// A plan as its Markdown view, or one line per plan of a listing.

@@ -160,12 +160,19 @@ pub fn adopt(
         .filter(|(prefix, _)| directory.entries.iter().any(|e| e.name.starts_with(prefix)))
         .map(|(_, family)| *family)
         .collect();
+    let context = session::context(&state, &repository)?;
+    let source = match recovery["changed"] {
+        Value::Bool(false) => session::resume::Source::Unchanged,
+        Value::Bool(true) => session::resume::Source::Changed,
+        _ => session::resume::Source::Unknown,
+    };
     Ok(json!({
         "session": session,
         "task": task,
         "from": from,
         "adopted": adopted,
-        "context": session::context(&state, &repository)?,
+        "resume": session::resume::view(&state, &context, source),
+        "context": context,
         "checkpoint": recovery,
         "notCarried": not_carried,
         "authorization": "Copied the earlier session's task record and checkpoint; the earlier session is unchanged and no authorization was renewed.",

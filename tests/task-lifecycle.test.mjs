@@ -339,27 +339,33 @@ test('structured CLI completion survives restart, attempt eviction and checkpoin
 });
 
 test('compaction recovery reloads current criterion gaps without renewing evidence', t => {
-  const { root, start, submit, records, command, contract, contractFile } = structuredFixture(t);
+  const { root, start, submit, records, contract, contractFile } = structuredFixture(t);
   start();
   submit(records().slice(0, 1));
-  const recover = () => deliver(root, 'after-compact', { host: 'claude' }).context.data.taskRecovery;
+  // After compaction the model gets the task's resume, with acceptance as current source sees it.
+  const recover = () => {
+    const context = deliver(root, 'after-compact', { host: 'claude' }).context;
+    assert.match(context.text, /^Craft task records to resume from/);
+    return context.data;
+  };
   const pending = recover();
-  assert.equal(pending.status, 'available');
-  assert.equal(pending.checkpointTaskMatches, true);
+  assert.equal(pending.task, 'fix-value');
   assert.equal(pending.acceptance.complete, false);
-  assert.equal(pending.acceptance.criteria[1].status, 'gap');
-  assert.equal(pending.taskContract, command('session').taskContract);
+  assert.ok(pending.acceptance.gap.length > 0);
   submit(records(), ['--complete']);
-  assert.equal(recover().task.goalComplete, true);
+  const complete = recover();
+  assert.equal(complete.status, 'completed');
+  assert.equal(complete.acceptance.complete, true);
   fs.appendFileSync(path.join(root, 'value.mjs'), '// changed after checks\n');
   const stale = recover();
-  assert.equal(stale.task.goalComplete, false);
+  assert.equal(stale.status, 'working');
   assert.equal(stale.acceptance.complete, false);
-  assert.equal(stale.acceptance.records[0].freshness, 'stale');
+  assert.ok(stale.acceptance.staleEvidence > 0);
+  assert.match(stale.source, /recheck/);
   contract.criteria[0].description = 'Revised criterion';
   fs.writeFileSync(contractFile, JSON.stringify(contract));
   start();
-  assert.equal(recover().acceptance.records.length, 0);
+  assert.equal(recover().acceptance.staleEvidence, undefined);
 });
 
 test('checkpoint recovery keeps switched and unreadable tasks separate from historical acceptance', t => {

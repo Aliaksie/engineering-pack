@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `craft task-decide` records a decision on the bound task: what, why, rejected alternatives
+  and whether the user or the agent made it. `--supersedes` replaces an earlier one. Current
+  decisions are shown when the task resumes.
+- After compaction, and when a task is adopted in a new session, the model gets a short resume
+  of the bound task (goal, done, state or open result, files, next step, whether source
+  changed, decisions and latest steps, at most 4 KiB) instead of checkpoint data. Fingerprints
+  stay available through `craft checkpoint-read`.
+- Cursor and Gemini now resume a bound task after compaction, at the next event that can show
+  context: the next tool result on Cursor, the next prompt on Gemini. Copilot has no event that
+  can show it after compaction.
 - A prompt that asks where a name is used gets no declaration answer, even when it mentions the
   declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
   hook answered with the declaring file, the one the question excluded.

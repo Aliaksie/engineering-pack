@@ -169,13 +169,21 @@ pub fn recover(
             Ok(_) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), &operation),
         }
-        recovered["taskRecovery"] = task_recovery(
-            root, session, &saved, &current, recorder, &operation,
+        let changed = recovered["changed"].clone();
+        let mut recovery = task_recovery(
+            root, session, &saved, &current, &changed, recorder, &operation,
         )
         .unwrap_or_else(|_| {
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), &operation);
             json!({"status": "unavailable"})
         });
+        if let Some(resume) = recovery
+            .as_object_mut()
+            .and_then(|r| r.shift_remove("resume"))
+        {
+            recovered["resume"] = resume;
+        }
+        recovered["taskRecovery"] = recovery;
         Ok(recovered)
     })();
     let (attributes, failure) = match &result {
@@ -203,6 +211,7 @@ fn task_recovery(
     session: &str,
     saved: &Value,
     current: &Value,
+    changed: &Value,
     recorder: &mut Recorder,
     operation: &Operation,
 ) -> Result<Value, Failure> {
@@ -227,6 +236,13 @@ fn task_recovery(
         recovery[key] = value.clone();
     }
     recovery["checkpointTaskMatches"] = json!(matches);
+    // The tree comparison speaks for this task only when the checkpoint is the task's.
+    let source = match changed {
+        Value::Bool(false) if matches => craft_engine::session::resume::Source::Unchanged,
+        Value::Bool(true) if matches => craft_engine::session::resume::Source::Changed,
+        _ => craft_engine::session::resume::Source::Unknown,
+    };
+    recovery["resume"] = craft_engine::session::resume::view(&state, &context, source);
     Ok(recovery)
 }
 

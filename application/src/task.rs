@@ -452,3 +452,26 @@ pub fn step(
         json!("Agent-declared acceptance recorded locally; no recommended action was executed.");
     Ok(response)
 }
+
+/// Record one decision on the session's bound task: what, why, rejected alternatives and
+/// who decided. Shown when the task resumes after compaction or in another session.
+pub fn decide(
+    root: &Path,
+    name: &str,
+    input: &Value,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let task = records::active_task(root, Some(name))?
+        .ok_or("task-decide records on the session's bound task; start or adopt one first")?;
+    let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
+    let mut recorded = Value::Null;
+    let state = records::update_state(root, name, &task, recorder, parent, |state| {
+        recorded = session::resume::decide(state, input, &at)?;
+        Ok(())
+    })?;
+    let current = state["decisions"].as_array().map_or(0, |d| {
+        d.iter().filter(|d| d.get("supersededBy").is_none()).count()
+    });
+    Ok(json!({"session": name, "task": task, "decision": recorded, "current": current}))
+}
