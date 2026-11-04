@@ -89,7 +89,8 @@ a chain, advice stops rather than inventing a stronger model.
 
 ## Hints and guidance size
 
-Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
+Prompt and edit hooks add compact routing hints (`routing.promptHints`, `routing.editHints`;
+with `promptHints: false` a request still establishes the session's intent, unshown). A prompt hint names
 the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
 change request turns a lookup or a test request into `implement` ("write a failing test,
 then fix it" is a change, not testing-only work), and statements, chat or questions
@@ -121,8 +122,14 @@ after-tool hook adds that name's declaration and callers to the tool result, und
 rules: declared exactly once, complete coverage, at most ten rows. It refreshes Project
 Intelligence for at most 200 ms, so it answers from the index the session warmed; a regex,
 several patterns, an inverted match or anything less certain adds nothing. Hosts that cannot
-show after-tool context (Copilot) keep the plain search result. `efficiency.lookup.enabled:
-false` turns these answers off.
+show after-tool context (Copilot) keep the plain search result.
+
+A prompt also gets an answer, whatever intent it routes to (or with none), when it asks where a
+dotted configuration key is set (`` Where is `compilerOptions.strict` set? ``: `--key`), which
+documents mention one code name or file (`` Which docs mention `AdrSlug`? ``: `--mentions`),
+or about decision records ("Which ADR decides…", "architecture decision record"): the index of
+every record with its status, when there are at most 24. Same rule as above: complete coverage
+or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

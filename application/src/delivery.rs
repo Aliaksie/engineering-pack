@@ -140,6 +140,8 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     } else {
         None
     };
+    // Hook answers, on prompts and on searches, follow the managed-lookup switch.
+    let answers = settings["efficiency"]["lookup"]["enabled"] == true;
     let routing = match (plan.intent, file.as_deref()) {
         (Some(intent), Some(file)) => {
             let files = if file.is_empty() {
@@ -169,13 +171,23 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 if let Some(plan) = plan.as_object_mut() {
                     plan.remove("skills");
                 }
-                if let Some(answer) = prompt.and_then(|p| prompt_answer(root, p, recorder, hook)) {
-                    plan["answer"] = answer;
-                }
+            }
+            // A verified answer serves any route: a question about decision records reads as
+            // planning, one about a configuration key may route nowhere else.
+            if let Some(answer) = prompt
+                .filter(|_| answers)
+                .and_then(|p| prompt_answer(root, p, recorder, hook))
+            {
+                plan["answer"] = answer;
             }
             // The route still establishes the session's intent below.
             Some(plan).filter(delivery::speaks)
         }
+        // A prompt no intent claims still gets the answer to the lookup it asks, alone.
+        (None, Some(_)) if event.context_supported => prompt
+            .filter(|_| answers)
+            .and_then(|p| prompt_answer(root, p, recorder, hook))
+            .map(|answer| json!({"answer": answer})),
         _ => None,
     };
     // A request establishes its intent; an edit only once it is routed.
@@ -254,7 +266,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let searching = event.lifecycle == "after-tool"
         && event.context_supported
         && decision.get("context").is_none()
-        && settings["efficiency"]["lookup"]["enabled"] == true;
+        && answers;
     if let Some(answer) = searching
         .then(|| search_answer(root, event.pattern, event.command, recorder, hook))
         .flatten()
@@ -398,7 +410,7 @@ fn evidence_answer(
     let operation = recorder.start("discovery.completed", Some(hook));
     let started = std::time::Instant::now();
     let lookup = |ask: &str, recorder: &mut Recorder| {
-        let input = json!({"ask": ask, "value": value, "paths": [], "limit": answer::ROWS});
+        let input = json!({"ask": ask, "value": value, "paths": [], "limit": answer::rows(ask)});
         let spent = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         // A later lookup queries the index the first one just refreshed, so it needs no
         // budget of its own; one millisecond keeps the refresh bounded rather than unlimited.

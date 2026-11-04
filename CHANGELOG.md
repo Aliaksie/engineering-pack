@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Project Intelligence now reads non-code evidence. `craft locate --mentions <name-or-path>`
+  finds the documents that link to a file or name it in a code span. `--decisions <title-word>`
+  lists decision records (Markdown under an `adr`/`decisions` directory) with their status as
+  written, supersession links resolved; `*` lists all. `--key <dotted.key>` finds where a JSON,
+  TOML or YAML key is set, with its value. Lockfiles and configuration files over 64 KiB are
+  searched literally instead of indexed.
+- A prompt that asks where a configuration key is set, which documents mention a name, or about
+  decision records gets the verified answer in the prompt hook, whatever intent it routes to.
+- `routing.promptHints: false` turns prompt routing hints off; the request still sets the
+  session's intent. `efficiency.lookup.enabled: false` now also turns prompt answers off, not
+  only answers on searches.
+- `craft settings` reports `features`: whether Project Intelligence, the background index
+  warm-up and telemetry are on, and where each value came from.
+
 - `craft task-decide` records a decision on the bound task: what, why, rejected alternatives
   and whether the user or the agent made it. `--supersedes` replaces an earlier one. Current
   decisions are shown when the task resumes.

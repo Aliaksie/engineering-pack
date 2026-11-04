@@ -396,7 +396,15 @@ impl Store {
             // path or module segments (`utils/buffer` matches `../utils/buffer.js`, `Gson`
             // matches `com.google.gson.Gson`, `b` matches `crate::a::b`).
             "import" => IMPORT,
-            _ => return Err("query field must be id, name, path, target or import".into()),
+            // A title containing the value, case-insensitively; `*` matches every title.
+            "title" => "(?1='*' OR instr(lower(e.name),lower(?1))>0)",
+            // A dotted key path as asked, or ending in it at a segment boundary.
+            "key" => "(e.name=?1 OR substr(e.name,-length(?1)-1)='.'||?1)",
+            _ => {
+                return Err(
+                    "query field must be id, name, path, target, import, title or key".into(),
+                );
+            }
         };
         if !(1..=200).contains(&query.limit)
             || query.value.len() > 4096

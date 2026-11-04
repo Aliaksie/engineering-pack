@@ -19,7 +19,7 @@ test('native bundle works after relocation with checked notices and no Node runt
   assert.equal(manifest.schemaVersion, 4);
   assert.equal(manifest.profile, 'release');
   assert.deepEqual(manifest.providers.map(provider => provider.split(/-tree-sitter-|\//)[0]).sort(),
-    ['c', 'cpp', 'csharp', 'go', 'java', 'javascript', 'markdown-sections', 'php', 'python', 'ruby', 'rust', 'tsx', 'typescript']);
+    ['c', 'config-keys', 'cpp', 'csharp', 'go', 'java', 'javascript', 'markdown-sections', 'php', 'python', 'ruby', 'rust', 'tsx', 'typescript']);
   assert.ok(manifest.files.length > 4);
   for (const entry of manifest.files) {
     assert.ok(!path.isAbsolute(entry.path) && !entry.path.split('/').includes('..'));

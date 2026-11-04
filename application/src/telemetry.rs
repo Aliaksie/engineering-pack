@@ -103,6 +103,31 @@ fn compact_uuid() -> String {
     store::uuid().unwrap_or_default().replace('-', "")
 }
 
+/// Effective telemetry switches and their origin, for `craft settings`: `.craft/telemetry.json`
+/// when it sets them, `bundled` otherwise; an invalid file keeps local telemetry on, as
+/// `Recorder::open` does.
+pub fn effective(root: &Path) -> Value {
+    let root = store::root(root);
+    match store::configuration(&root) {
+        Ok(config) => {
+            let origin = if config.as_object().is_some_and(|c| !c.is_empty()) {
+                "project"
+            } else {
+                "bundled"
+            };
+            match options(&config) {
+                Ok((local, remote)) => {
+                    json!({"local": local, "remote": remote.is_some(), "origin": origin})
+                }
+                Err(()) => json!({
+                    "local": config.get("local") != Some(&Value::Bool(false)),
+                    "remote": false, "origin": origin, "invalid": true}),
+            }
+        }
+        Err(_) => json!({"local": true, "remote": false, "origin": "project", "invalid": true}),
+    }
+}
+
 impl Recorder {
     pub fn open(root: &Path, session: Option<&str>, host: Option<&str>) -> Self {
         let root = store::root(root);

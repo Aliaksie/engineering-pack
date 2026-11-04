@@ -5572,6 +5572,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": false,
               "dedupeHints": false
             },
@@ -5672,6 +5673,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "project",
             "routing.dedupeHints": "user",
             "checkpoint.enabled": "bundled",

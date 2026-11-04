@@ -2,6 +2,7 @@ pub mod basic;
 pub mod documents;
 mod error;
 pub use error::Error;
+pub mod config;
 pub mod files;
 pub mod go;
 pub mod grounding;

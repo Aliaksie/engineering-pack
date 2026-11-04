@@ -470,6 +470,23 @@ test('native refresh records FIFO sources as unavailable without waiting for a w
   assert.equal(invoke('status').sources, 1);
 });
 
+test('configuration data is left unread and searched literally by a key lookup', { skip: !binary }, t => {
+  const { root } = fixture(t);
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  write('tsconfig.json', '{ "compilerOptions": { "strict": true } }\n');
+  write('fixtures/big.json', `{ "strict": "${'x'.repeat(70 * 1024)}" }\n`);
+  write('web/package-lock.json', '{ "strict": 1 }\n');
+  execFileSync('git', ['-C', root, 'add', '-A']);
+  const outcome = nativeCommand(['locate', '--root', root, '--key', 'strict', '--json'], { binary });
+  assert.equal(outcome.exitCode, 0, outcome.stderr);
+  const answer = JSON.parse(outcome.stdout);
+  assert.deepEqual(answer.results.map(row => [row.path, row.name, row.target]), [['tsconfig.json', 'compilerOptions.strict', 'true']]);
+  assert.deepEqual([answer.route.answeredBy, answer.route.detail.unindexed], ['intelligence+locate', { json: 2 }]);
+  assert.deepEqual(answer.gapSearch.matches.map(match => match.path).sort(), ['fixtures/big.json', 'web/package-lock.json']);
+  // Neither data file is read into the index.
+  assert.equal(nativeRequest('status', { root }, { binary }).sources, 1);
+});
+
 test('locate routes structural questions to verified evidence only under full scope coverage', { skip: !binary }, t => {
   const { root } = fixture(t);
   const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };

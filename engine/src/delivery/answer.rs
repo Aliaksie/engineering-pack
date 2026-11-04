@@ -94,6 +94,53 @@ const EXTENSIONS: &[&str] = &[
     "yml",
 ];
 
+/// Words that ask where a configuration key is set.
+const SETTING: &[&str] = &[
+    "set",
+    "sets",
+    "configure",
+    "configured",
+    "configures",
+    "configuration",
+    "config",
+    "setting",
+    "settings",
+];
+/// Words that ask which documents mention something.
+const MENTIONS: &[&str] = &[
+    "mention",
+    "mentions",
+    "mentioned",
+    "mentioning",
+    "doc",
+    "docs",
+    "document",
+    "documents",
+    "documented",
+    "documentation",
+    "link",
+    "links",
+    "linked",
+];
+/// Words that ask about architecture decision records.
+const RECORDS: &[&str] = &["adr", "adrs"];
+const DECISIONS: &[&str] = &["decision", "decisions"];
+const RECORD_WORDS: &[&str] = &["record", "records", "architecture", "architectural"];
+/// Words that make "ADR" a question about decisions rather than about code that models them.
+const DECIDING: &[&str] = &[
+    "decision",
+    "decisions",
+    "decide",
+    "decides",
+    "decided",
+    "govern",
+    "governs",
+    "current",
+    "supersede",
+    "supersedes",
+    "superseded",
+];
+
 fn file(name: &str) -> bool {
     !name.contains("::")
         && !name.contains('#')
@@ -106,6 +153,19 @@ fn file(name: &str) -> bool {
 pub const ROWS: usize = 10;
 /// Most bytes of one serialized answer.
 pub const ANSWER_BYTES: usize = 1600;
+/// A decision record index is one row per record: titles and statuses together answer which
+/// record is current, so it may run longer than a symbol answer.
+const DECISION_ROWS: usize = 24;
+const DECISION_BYTES: usize = 3200;
+
+/// Most rows a lookup for `ask` may return and still answer.
+pub fn rows(ask: &str) -> usize {
+    if ask == "decisions" {
+        DECISION_ROWS
+    } else {
+        ROWS
+    }
+}
 const EXCERPT_CHARS: usize = 120;
 
 const USE: &str = "Verified Project Intelligence rows from the current files with complete coverage of this scope: they answer this question without another search";
@@ -149,8 +209,53 @@ fn code_name(token: &str) -> Option<String> {
     (quoted || called || qualified || camel || name.contains('_')).then(|| name.to_string())
 }
 
-/// The structural lookup a prompt asks for: `callers` or `declaration` and the one code name
-/// it names. Both questions, neither, or more than one name ask nothing.
+/// A dotted configuration key spelled as code: `compilerOptions.strict`, `jobs.build.runs-on`.
+/// Segments are letters, digits, `_` and `-`; a file name is not a key.
+fn key_name(token: &str) -> Option<String> {
+    let token = token.trim_start_matches(['(', '[', '{', '"', '\'', '<', '`']);
+    let core = token.trim_end_matches([
+        '`', '"', '\'', ']', '}', ')', '>', '.', ',', ';', ':', '!', '?',
+    ]);
+    let segment = |part: &str| {
+        part.chars().next().is_some_and(char::is_alphabetic)
+            && part
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    };
+    (core.contains('.') && !file(core) && core.split('.').all(segment)).then(|| core.to_string())
+}
+
+/// A root-relative file path spelled as one token: `src/hono.ts`, `docs/adr/0001-x.md`.
+fn path_name(token: &str) -> Option<String> {
+    let token = token.trim_start_matches(['(', '[', '{', '"', '\'', '<', '`']);
+    let core = token.trim_end_matches([
+        '`', '"', '\'', ']', '}', ')', '>', '.', ',', ';', ':', '!', '?',
+    ]);
+    let core = core.strip_prefix("./").unwrap_or(core);
+    (file(core)
+        && core
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.' | '/'))
+        && core.split('/').all(|part| !part.is_empty() && part != ".."))
+    .then(|| core.to_string())
+}
+
+/// The one distinct name `name` reads in `text`, or `None` for none or several.
+fn one(text: &str, name: impl Fn(&str) -> Option<String>) -> Option<String> {
+    let mut names = Vec::new();
+    for found in text.split(js_space).filter_map(name) {
+        if !names.contains(&found) {
+            names.push(found);
+        }
+    }
+    <[String; 1]>::try_from(names).ok().map(|[name]| name)
+}
+
+/// The structural lookup a prompt asks for and the one name it names: `callers` or
+/// `declaration` of a code name, `decisions` for a question about decision records (answered
+/// by the index of every record, `*`), `key` for where a dotted configuration key is set, or
+/// `mentions` for the documents naming a code name or file. Competing questions or more than
+/// one name ask nothing.
 pub fn question(prompt: &str) -> Option<(&'static str, String)> {
     let text = own(prompt);
     let words: Vec<String> = text
@@ -159,26 +264,43 @@ pub fn question(prompt: &str) -> Option<(&'static str, String)> {
         .map(str::to_ascii_lowercase)
         .collect();
     let asks = |set: &[&str]| words.iter().any(|word| set.contains(&word.as_str()));
-    let ask = match (asks(CALLERS), asks(DECLARATION)) {
-        (true, false) => "callers",
-        (false, true) if !asks(USAGE) => "declaration",
-        _ => return None,
+    let symbol = match (asks(CALLERS), asks(DECLARATION)) {
+        (true, false) => Some("callers"),
+        (false, true) if !asks(USAGE) => Some("declaration"),
+        (true, true) => return None,
+        _ => None,
     };
-    let mut names = Vec::new();
-    for name in text.split(js_space).filter_map(code_name) {
-        if !names.contains(&name) {
-            names.push(name);
-        }
+    if let Some(ask) = symbol {
+        return one(text, code_name).map(|name| (ask, name));
     }
-    match <[String; 1]>::try_from(names) {
-        Ok([name]) => Some((ask, name)),
-        Err(_) => None,
+    if words.iter().any(|w| w == "adrs")
+        || asks(RECORDS) && asks(DECIDING)
+        || asks(DECISIONS) && asks(RECORD_WORDS)
+    {
+        return Some(("decisions", "*".into()));
     }
+    if asks(SETTING)
+        && let Some(key) = one(text, key_name)
+    {
+        return Some(("key", key));
+    }
+    if asks(MENTIONS) && !asks(USAGE) {
+        let names = one(text, code_name).into_iter().chain(one(text, path_name));
+        return match names.collect::<Vec<_>>().as_slice() {
+            [name] => Some(("mentions", name.clone())),
+            _ => None,
+        };
+    }
+    None
 }
 
 /// The rows of a lookup result that answers for its whole scope: from verified evidence,
 /// complete coverage, no literal gap match left to interpret and no further page.
 fn complete_rows(result: &Value) -> Option<&[Value]> {
+    complete_within(result, ROWS)
+}
+
+fn complete_within(result: &Value, most: usize) -> Option<&[Value]> {
     let route = &result["route"];
     let indexed = matches!(
         route["answeredBy"].as_str(),
@@ -192,7 +314,7 @@ fn complete_rows(result: &Value) -> Option<&[Value]> {
         && route["complete"] == true
         && !gaps
         && result["continuation"].is_null()
-        && (1..=ROWS).contains(&rows.len()))
+        && (1..=most).contains(&rows.len()))
     .then_some(rows.as_slice())
 }
 
@@ -233,7 +355,17 @@ fn line(row: &Value) -> Option<String> {
         Some((end, _)) => format!("{}…", &excerpt[..end]),
         None => excerpt.to_string(),
     };
-    Some(format!("{path}:{number}{within}: {excerpt}"))
+    // A decision record reads as its title and status, a key as its path and value.
+    match (row["kind"].as_str(), row["name"].as_str()) {
+        (Some("md:decision"), Some(title)) => {
+            let status = row["target"].as_str().unwrap_or("no status");
+            Some(format!("{path}:{number}: {title} [{status}]"))
+        }
+        (Some("config:key"), Some(key)) => {
+            Some(format!("{path}:{number}{within}: {key}: {excerpt}"))
+        }
+        _ => Some(format!("{path}:{number}{within}: {excerpt}")),
+    }
 }
 
 /// The cited answer a hook may deliver for `ask` about `value`, from the lookup `result` and,
@@ -246,7 +378,7 @@ pub fn answered(
     result: &Value,
     declarations: Option<&Value>,
 ) -> Option<Value> {
-    let rows = complete_rows(result)?;
+    let rows = complete_within(result, rows(ask))?;
     let qualifier = result["route"]["qualifier"].as_str();
     let owned = |row: &Value| {
         qualifier.is_none_or(|qualifier| {
@@ -261,6 +393,7 @@ pub fn answered(
             _ => return None,
         },
         "declaration" => rows.iter().filter(|row| owned(row)).collect(),
+        "mentions" | "key" | "decisions" => rows.iter().collect(),
         _ => return None,
     };
     if rows.is_empty() {
@@ -274,7 +407,12 @@ pub fn answered(
         "rows": lines,
         "use": USE,
     });
-    (answer.to_string().len() <= ANSWER_BYTES).then_some(answer)
+    let bound = if ask == "decisions" {
+        DECISION_BYTES
+    } else {
+        ANSWER_BYTES
+    };
+    (answer.to_string().len() <= bound).then_some(answer)
 }
 
 /// The one code name a search the model ran looks for: a Grep tool `pattern`, or the first
@@ -487,6 +625,88 @@ mod tests {
                 "{prompt}"
             );
         }
+    }
+
+    #[test]
+    fn decision_key_and_mention_prompts_name_their_question() {
+        for (prompt, expected) in [
+            (
+                "Which architecture decision record is the current decision on how an ADR is uniquely identified?",
+                Some(("decisions", "*")),
+            ),
+            (
+                "Which ADRs govern the React code?",
+                Some(("decisions", "*")),
+            ),
+            ("What did we decide about caching?", None),
+            (
+                "Which ADR decides the cache policy?",
+                Some(("decisions", "*")),
+            ),
+            (
+                "Which file models an ADR's status in the core package?",
+                None,
+            ),
+            (
+                "Where is `compilerOptions.strict` set?",
+                Some(("key", "compilerOptions.strict")),
+            ),
+            (
+                "Which file configures jobs.build.runs-on?",
+                Some(("key", "jobs.build.runs-on")),
+            ),
+            ("Where is config.json set?", None),
+            (
+                "Which docs mention `AdrSlug`?",
+                Some(("mentions", "AdrSlug")),
+            ),
+            (
+                "Which documents link to src/hono.ts?",
+                Some(("mentions", "src/hono.ts")),
+            ),
+            // A document question without a name, or with two, asks nothing.
+            (
+                "Which documentation page explains how to configure connection pool limits?",
+                None,
+            ),
+            ("Which docs mention `a_b` and `c_d`?", None),
+            // A symbol question keeps its meaning beside document words.
+            (
+                "Where is `parseArgs` defined in the docs?",
+                Some(("declaration", "parseArgs")),
+            ),
+        ] {
+            assert_eq!(
+                question(prompt),
+                expected.map(|(ask, name)| (ask, name.to_string())),
+                "{prompt}"
+            );
+        }
+    }
+
+    #[test]
+    fn decisions_and_keys_answer_with_status_and_value() {
+        let decisions: Vec<Value> = (0..12)
+            .map(|n| json!({"path": format!("docs/adr/{n}.md"), "line": 1, "kind": "md:decision", "name": format!("Use {n}"), "target": "accepted", "excerpt": "# Use"}))
+            .collect();
+        let answer = answered("decisions", "*", &result(decisions.clone(), None), None).unwrap();
+        assert_eq!(answer["rows"][0], "docs/adr/0.md:1: Use 0 [accepted]");
+        assert_eq!(answer["rows"].as_array().unwrap().len(), 12);
+        let many: Vec<Value> = decisions
+            .iter()
+            .cycle()
+            .take(DECISION_ROWS + 1)
+            .cloned()
+            .collect();
+        assert!(answered("decisions", "*", &result(many, None), None).is_none());
+        let key = json!({"path": "tsconfig.json", "line": 8, "kind": "config:key", "name": "compilerOptions.strict", "target": "true", "excerpt": "\"strict\": true,", "container": {"name": "compilerOptions"}});
+        assert_eq!(
+            answered("key", "strict", &result(vec![key], None), None).unwrap()["rows"][0],
+            "tsconfig.json:8 in compilerOptions: compilerOptions.strict: \"strict\": true,"
+        );
+        // Symbol answers keep their row bound.
+        let rows = vec![row("docs/a.md", 1, Some("Use")); ROWS + 1];
+        assert!(answered("mentions", "x", &result(rows, None), None).is_none());
     }
 
     #[test]

@@ -1,8 +1,9 @@
 # Project evidence (preview)
 
 A local index of syntax facts that agents can cite instead of searching again: declarations,
-call sites with their enclosing function, and imports in source code, and sections in
-Markdown (`.md`, `.markdown`). It records syntax, not resolved calls: runtime dispatch,
+call sites with their enclosing function, and imports in source code; sections, links,
+code-span mentions and decision records in Markdown (`.md`, `.markdown`); and keys in
+configuration files (`.json`, `.jsonc`, `.toml`, `.yaml`, `.yml`). It records syntax, not resolved calls: runtime dispatch,
 package exports, overloads and receiver types are not resolved, and direct search remains
 useful.
 
@@ -77,6 +78,24 @@ craft locate --root . --outline docs/guide.md
 | `--imports <target>` | an imported name (`import { X } from`, `from m import X`), or a module by its whole trailing path or module segments: `utils/buffer` matches `../utils/buffer.js`, `Gson` matches `com.google.gson.Gson`, `b` matches `crate::a::b` (one full path per Rust `use` leaf) | full languages, C and C++ includes |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
+| `--mentions <name-or-path>` | a code span spelled exactly as the value (`` `AdrSlug` ``, `` `craft_engine::Evidence` ``), or a local link whose destination resolves to the value as a root-relative path (`src/hono.ts`); each row names its section | Markdown |
+| `--decisions <title-word>` | decision records whose title contains the value, case-insensitively; `*` matches every record. Rows carry the status as written, links resolved (`superseded by docs/adr/0002-x.md`) | Markdown under an `adr`, `adrs`, `decisions`, `decision-records` or `architecture-decisions` directory, or named `adr-*` |
+| `--key <dotted.key>` | a configuration key by its dotted path from the document root, or ending in it at a segment (`strict` matches `compilerOptions.strict`); rows carry the scalar value | JSON (also with comments and trailing commas), TOML, YAML |
+
+Markdown links count when written inline (links and images) or as reference
+definitions; autolinks, HTML links and links or code spans that wrap across lines are not
+read. URLs and fragment-only links are not files. A decision record's title is its first
+heading; its status is front matter `status`, a `Status:` line (also a list item or bold)
+before the second heading, or the first line of a `Status` section; none is a record without
+status.
+
+Configuration keys are read by scanners, not full parsers: keys inside arrays and YAML
+sequences are not recorded, inline tables and flow collections are values, and a key segment
+that contains `.` is joined as spelled. A lockfile (`package-lock.json`, `pnpm-lock.yaml`) or a
+JSON, TOML or YAML file over 64 KiB is data (fixtures, schemas): a refresh does not read it, and
+a `--key` lookup searches it literally as an unindexed candidate. Structurally broken JSON fails
+extraction and is searched literally too. `.ini`, `.properties` and `.conf` files are candidates no provider
+reads: a `--key` lookup searches them literally.
 
 A qualified `--declaration` or `--callers` value (`Type.method`, `Type::method`, `module::fn`,
 `Type#method`; a trailing `()` is dropped) matches its last segment: the index stores call sites

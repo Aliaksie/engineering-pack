@@ -92,14 +92,17 @@ fn observe(
         .filter(|provider| kinds(provider).iter().any(|kind| answers(kind)))
         .collect();
     let mut budget = Budget::from_input(&json!({"maxDurationMs": refresh_ms}))?;
-    let refreshed = crate::evidence::refresh(root, &mut store, &mut budget, &mut |path| {
-        if question::within(path, &question.scopes)
-            && question.ask.candidate(path)
-            && !for_path(path).is_some_and(|provider| answering.contains(&provider))
-        {
-            coverage.unindexed.push(path.to_string());
-        }
-    })?;
+    // A source is unindexed for this question when no answering provider reads it, or when the
+    // refresh leaves it unread as data (`unread`).
+    let refreshed =
+        crate::evidence::refresh(root, &mut store, &mut budget, &mut |path, unread| {
+            if question::within(path, &question.scopes)
+                && question.ask.candidate(path)
+                && (unread || !for_path(path).is_some_and(|provider| answering.contains(&provider)))
+            {
+                coverage.unindexed.push(path.to_string());
+            }
+        })?;
     let status = &refreshed["coverage"];
     coverage.inventory_complete = status["inventoryComplete"] == true;
     let exclusions: Vec<String> = serde_json::from_value(status["exclusions"].clone())
