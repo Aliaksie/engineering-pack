@@ -550,16 +550,19 @@ than the setting or runtime state of a particular session.
 ## Settings
 
 `craft settings --root <project>` shows the effective policy, where each value came from
-and the private state directory. Precedence: bundled defaults, personal preferences
+and the private state directory. `features` adds the switches read outside that merge, each
+with its origin: Project Intelligence (`evidence.enabled` in `.craft/project.json`), the
+background index warm-up (`CRAFT_EVIDENCE_WARM=0` in the host environment; not started on
+Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, personal preferences
 (`~/.config/craft/preferences.json` or `--preferences`), project `.craft/project.json`, task
-overrides (`--data`). Preferences and task overrides accept only `routing`, `checkpoint` and
-`efficiency`; they cannot grant permissions or map models.
+overrides (`--data`). Preferences and task overrides accept only `routing`, `checkpoint`,
+`workspace` and `efficiency`; they cannot grant permissions or map models.
 
 A fully manual policy:
 
 ```json
 {
-  "routing": { "editHints": false, "dedupeHints": false },
+  "routing": { "promptHints": false, "editHints": false, "dedupeHints": false },
   "checkpoint": { "enabled": false },
   "efficiency": {
     "lookup": { "enabled": false, "reuse": false },

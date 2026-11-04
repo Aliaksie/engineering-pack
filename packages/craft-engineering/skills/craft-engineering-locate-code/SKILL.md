@@ -19,8 +19,10 @@ pass rather than repeatedly loading files into the strongest model's context. Wh
 A routing hint's `lookup.run` is this command ready to run; add the question. A hint's `answer` holds verified rows with complete coverage for its question: answer from them, and search only beyond that question. From the source checkout, use `npm run locate -- ...`. On Windows the launcher is `bin\craft.cmd`.
 
 For a structural question, ask it instead of a term: `--declaration <name>`, `--callers <name>`,
-`--imports <target>`, `--section <heading>` or `--outline <document>`, with `--path` scopes as
-usual. When the project enables evidence, Craft answers from verified evidence and searches the
+`--imports <target>`, `--section <heading>`, `--outline <document>`, `--mentions <name-or-path>`
+(documents that link to a file or name it in code), `--decisions <title-word>` (decision records
+with their status; `*` lists all) or `--key <dotted.key>` (where a JSON, TOML or YAML key is set),
+with `--path` scopes as usual. When the project enables evidence, Craft answers from verified evidence and searches the
 sources it does not cover literally; otherwise it searches literally. The first output line names
 the route and any gaps. Treat "absent within this coverage" as absence; any other empty answer is
 not. Names are matched exactly as spelled; a qualified name (`Type.method`, `module::fn`) matches
