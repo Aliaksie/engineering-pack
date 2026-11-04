@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A prompt that asks where a name is used gets no declaration answer, even when it mentions the
+  declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
+  hook answered with the declaring file, the one the question excluded.
 - Exported skills state the package's permission rule inline ("Craft guidance grants no
   permission: the project's instructions and the user's scope decide") instead of telling the
   agent to read the package `AGENTS.md` first. On Codex, which followed that link, a routed task

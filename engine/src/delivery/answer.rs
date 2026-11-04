@@ -22,6 +22,28 @@ const DECLARATION: &[&str] = &[
     "definitions",
 ];
 
+/// Words that ask where something is used: a prompt that asks them is not asking for a
+/// declaration, even when it mentions one ("which files use it, apart from the one that
+/// declares it?").
+const USAGE: &[&str] = &[
+    "use",
+    "uses",
+    "used",
+    "using",
+    "usage",
+    "usages",
+    "reference",
+    "references",
+    "referenced",
+    "import",
+    "imports",
+    "imported",
+    "importers",
+    "depend",
+    "depends",
+    "dependents",
+];
+
 /// Extensions that make a dotted name a file rather than `Type.member`: `Policy.apply` is
 /// code, `config.json` a file. A method named like an extension reads as a file and asks
 /// nothing.
@@ -139,7 +161,7 @@ pub fn question(prompt: &str) -> Option<(&'static str, String)> {
     let asks = |set: &[&str]| words.iter().any(|word| set.contains(&word.as_str()));
     let ask = match (asks(CALLERS), asks(DECLARATION)) {
         (true, false) => "callers",
-        (false, true) => "declaration",
+        (false, true) if !asks(USAGE) => "declaration",
         _ => return None,
     };
     let mut names = Vec::new();
@@ -435,6 +457,11 @@ mod tests {
                 "Where is applyDiscount defined?",
                 Some(("declaration", "applyDiscount")),
             ),
+            (
+                "Which files use `AdrSlug`, apart from the file that declares it?",
+                None,
+            ),
+            ("Where is `Checkout` defined and where is it used?", None),
             (
                 "Where is `Checkout` declared?",
                 Some(("declaration", "Checkout")),
