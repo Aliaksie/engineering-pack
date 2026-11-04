@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 type Result<T> = std::result::Result<T, String>;
 
 const MAX_TARGETS: usize = 256;
-const LIMITS: &str = "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound.";
+const LIMITS: &str = "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound.";
 
 /// A guidance target and the selection that requested it.
 pub struct Request {

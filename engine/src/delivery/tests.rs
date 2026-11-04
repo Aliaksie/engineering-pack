@@ -241,3 +241,14 @@ fn a_locate_route_names_the_lookup_command_it_can_run() {
     assert_eq!(lookup("locate", None, "/app"), None);
     assert_eq!(lookup("locate", Some(""), "/app"), None);
 }
+
+#[test]
+fn a_lookup_route_speaks_only_with_a_verified_answer() {
+    let answered = json!({"intent": "locate", "answer": {"rows": ["a.rs:1"]}});
+    assert!(speaks(&answered));
+    assert!(!speaks(
+        &json!({"intent": "locate", "lookup": {"run": ["craft"]}})
+    ));
+    assert!(!speaks(&json!({"intent": "locate", "answer": null})));
+    assert!(speaks(&json!({"intent": "implement", "skills": ["x"]})));
+}

@@ -101,7 +101,7 @@ export function setupNotice(hooks, controls) {
   return 'On first use in a conversation, give one brief setup notice for all Craft packages alongside the work: '
     + `${hookFact}.${controlFact} Users can ask "Check Craft Capabilities setup, hook activity and session usage." `
     + 'Read [setup and session visibility](SETUP.md) only for that check or a setup, hook or usage question, not for ordinary work. '
-    + 'A lookup that a routing hint answers or makes runnable needs no notice.';
+    + 'A lookup needs no notice.';
 }
 
 // Check generated exports without re-running a model or contacting a service.

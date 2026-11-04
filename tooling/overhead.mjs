@@ -137,7 +137,7 @@ export const INTENTS = [
   { intent: 'review' }, { intent: 'plan' }, { intent: 'locate' }, { intent: 'investigate' }, { intent: 'explore' },
 ];
 
-// Bytes of the skill files and required package instructions each routed intent selects.
+// Bytes of the skill files and references each routed intent selects.
 export function guidance(exportRoot, binary) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-overhead-guidance-'));
   try {

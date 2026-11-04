@@ -4851,7 +4851,7 @@
             "capacityTokens": null,
             "status": "unknown; no host observation supplied"
           },
-          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
         }
       }
     },
@@ -4928,7 +4928,7 @@
             "capacityTokens": null,
             "status": "unknown; no host observation supplied"
           },
-          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
         }
       }
     },
@@ -5005,7 +5005,7 @@
             "capacityTokens": null,
             "status": "unknown; no host observation supplied"
           },
-          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
         }
       }
     },
@@ -5086,7 +5086,7 @@
             "capacityTokens": null,
             "status": "unknown; no host observation supplied"
           },
-          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+          "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
         }
       }
     },

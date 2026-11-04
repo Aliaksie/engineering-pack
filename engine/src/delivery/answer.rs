@@ -22,6 +22,28 @@ const DECLARATION: &[&str] = &[
     "definitions",
 ];
 
+/// Words that ask where something is used: a prompt that asks them is not asking for a
+/// declaration, even when it mentions one ("which files use it, apart from the one that
+/// declares it?").
+const USAGE: &[&str] = &[
+    "use",
+    "uses",
+    "used",
+    "using",
+    "usage",
+    "usages",
+    "reference",
+    "references",
+    "referenced",
+    "import",
+    "imports",
+    "imported",
+    "importers",
+    "depend",
+    "depends",
+    "dependents",
+];
+
 /// Extensions that make a dotted name a file rather than `Type.member`: `Policy.apply` is
 /// code, `config.json` a file. A method named like an extension reads as a file and asks
 /// nothing.
@@ -139,7 +161,7 @@ pub fn question(prompt: &str) -> Option<(&'static str, String)> {
     let asks = |set: &[&str]| words.iter().any(|word| set.contains(&word.as_str()));
     let ask = match (asks(CALLERS), asks(DECLARATION)) {
         (true, false) => "callers",
-        (false, true) => "declaration",
+        (false, true) if !asks(USAGE) => "declaration",
         _ => return None,
     };
     let mut names = Vec::new();
@@ -255,6 +277,152 @@ pub fn answered(
     (answer.to_string().len() <= ANSWER_BYTES).then_some(answer)
 }
 
+/// The one code name a search the model ran looks for: a Grep tool `pattern`, or the first
+/// `rg`, `grep` or `git grep` of a shell `command`. Only a literal identifier (optionally
+/// qualified with `.` or `::`, word-bounded or followed by `(`) names something; a regex,
+/// several patterns, an inverted match or a pattern file name nothing.
+pub fn searched(pattern: Option<&str>, command: Option<&str>) -> Option<String> {
+    match pattern.filter(|p| !p.is_empty()) {
+        Some(pattern) => literal_name(pattern),
+        None => shell_search(command?),
+    }
+}
+
+fn literal_name(pattern: &str) -> Option<String> {
+    let core = pattern.strip_prefix("\\b").unwrap_or(pattern);
+    let core = core.strip_suffix("\\b").unwrap_or(core);
+    let core = ["\\(", "("]
+        .iter()
+        .find_map(|call| core.strip_suffix(call))
+        .unwrap_or(core);
+    let core = core.strip_suffix("\\b").unwrap_or(core);
+    let mut parts = core.split("::").flat_map(|part| part.split('.'));
+    (core.chars().count() >= 3 && !file(core) && parts.all(identifier)).then(|| core.to_string())
+}
+
+/// Shell words with plain quoting; `None` for an unterminated quote.
+fn words(command: &str) -> Option<Vec<String>> {
+    let mut words = Vec::new();
+    let mut word: Option<String> = None;
+    let mut quote: Option<char> = None;
+    let mut chars = command.chars();
+    while let Some(c) = chars.next() {
+        match (quote, c) {
+            (Some(open), c) if c == open => quote = None,
+            (Some('"'), '\\') => word.get_or_insert_default().extend(chars.next()),
+            (Some(_), c) => word.get_or_insert_default().push(c),
+            (None, '\'' | '"') => {
+                quote = Some(c);
+                word.get_or_insert_default();
+            }
+            (None, '\\') => word.get_or_insert_default().extend(chars.next()),
+            (None, c) if c.is_whitespace() => words.extend(word.take()),
+            (None, '|' | ';' | '&') => {
+                words.extend(word.take());
+                words.push(c.to_string());
+            }
+            (None, c) => word.get_or_insert_default().push(c),
+        }
+    }
+    words.extend(word);
+    quote.is_none().then_some(words)
+}
+
+/// Options whose value is the next word, for `rg` and for `grep`/`git grep`.
+const RG_VALUED: &[&str] = &[
+    "-A",
+    "-B",
+    "-C",
+    "-g",
+    "-t",
+    "-T",
+    "-m",
+    "-M",
+    "-j",
+    "-r",
+    "--glob",
+    "--iglob",
+    "--type",
+    "--type-not",
+    "--max-count",
+    "--context",
+    "--after-context",
+    "--before-context",
+    "--replace",
+    "--threads",
+    "--sort",
+    "--color",
+    "--colors",
+    "--max-columns",
+];
+const GREP_VALUED: &[&str] = &[
+    "-A",
+    "-B",
+    "-C",
+    "-m",
+    "-d",
+    "-D",
+    "--max-count",
+    "--context",
+    "--after-context",
+    "--before-context",
+    "--max-depth",
+    "--color",
+    "--colour",
+];
+
+fn shell_search(command: &str) -> Option<String> {
+    let words = words(command)?;
+    let mut searches = words
+        .split(|word| matches!(word.as_str(), "|" | ";" | "&"))
+        .filter_map(|segment| match segment {
+            [program, rest @ ..] if program == "rg" => Some((RG_VALUED, rest)),
+            [program, rest @ ..] if program == "grep" => Some((GREP_VALUED, rest)),
+            [git, grep, rest @ ..] if git == "git" && grep == "grep" => Some((GREP_VALUED, rest)),
+            _ => None,
+        });
+    let (valued, arguments) = searches.next()?;
+    if searches.next().is_some() {
+        return None;
+    }
+    let mut patterns = Vec::new();
+    let mut positional = Vec::new();
+    let mut rest = arguments.iter();
+    let mut options = true;
+    while let Some(word) = rest.next() {
+        match word.as_str() {
+            "--" if options => options = false,
+            "-e" | "--regexp" if options => patterns.push(rest.next()?),
+            "-v" | "--invert-match" | "-f" | "--file" if options => return None,
+            flag if options && valued.contains(&flag) => {
+                rest.next()?;
+            }
+            flag if options && flag.starts_with('-') && flag.len() > 1 => {
+                // Combined short flags: an inverted match or a pattern file names nothing.
+                if !flag.starts_with("--") && flag[1..].contains(['v', 'f', 'e']) {
+                    return None;
+                }
+            }
+            _ => positional.push(word),
+        }
+    }
+    let pattern = match (patterns.as_slice(), positional.first()) {
+        ([pattern], _) => pattern,
+        ([], Some(pattern)) => pattern,
+        _ => return None,
+    };
+    literal_name(pattern)
+}
+
+/// The answer a search for `value` gets: its one declaration and its callers, from complete
+/// `callers` and `declarations` lookups. Anything `answered` would not certify answers nothing.
+pub fn usages(value: &str, callers: &Value, declarations: &Value) -> Option<Value> {
+    let mut answer = answered("callers", value, callers, Some(declarations))?;
+    let declaration = line(complete_rows(declarations)?.first()?)?;
+    answer["declaration"] = json!(declaration);
+    (answer.to_string().len() <= ANSWER_BYTES).then_some(answer)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -289,6 +457,11 @@ mod tests {
                 "Where is applyDiscount defined?",
                 Some(("declaration", "applyDiscount")),
             ),
+            (
+                "Which files use `AdrSlug`, apart from the file that declares it?",
+                None,
+            ),
+            ("Where is `Checkout` defined and where is it used?", None),
             (
                 "Where is `Checkout` declared?",
                 Some(("declaration", "Checkout")),
@@ -448,5 +621,97 @@ mod tests {
             )
             .is_some()
         );
+    }
+
+    #[test]
+    fn a_search_names_one_literal_identifier() {
+        let grep = |pattern| searched(Some(pattern), None);
+        assert_eq!(grep("applyDiscount"), Some("applyDiscount".into()));
+        assert_eq!(grep("\\bapply_discount\\b"), Some("apply_discount".into()));
+        assert_eq!(grep("applyDiscount\\("), Some("applyDiscount".into()));
+        assert_eq!(grep("Policy.apply"), Some("Policy.apply".into()));
+        assert_eq!(grep("crate::route"), Some("crate::route".into()));
+        for regex in [
+            "apply.*Discount",
+            "foo|bar",
+            "ab",
+            "config.json",
+            "x y",
+            "^main",
+        ] {
+            assert_eq!(grep(regex), None, "{regex}");
+        }
+        let shell = |command| searched(None, Some(command));
+        assert_eq!(
+            shell("rg -n applyDiscount src"),
+            Some("applyDiscount".into())
+        );
+        assert_eq!(
+            shell("cd app && rg -n 'applyDiscount' -g '*.java' | head -20"),
+            Some("applyDiscount".into())
+        );
+        assert_eq!(
+            shell("grep -rn --include=*.py apply_rate ."),
+            Some("apply_rate".into())
+        );
+        assert_eq!(
+            shell("git grep -n -e TaxRate -- src"),
+            Some("TaxRate".into())
+        );
+        assert_eq!(
+            shell("rg -A 3 -t java applyDiscount"),
+            Some("applyDiscount".into())
+        );
+        assert_eq!(
+            shell("grep -r applyDiscount src"),
+            Some("applyDiscount".into()),
+            "grep -r takes no value"
+        );
+        for none in [
+            "rg -v applyDiscount",
+            "grep -rv applyDiscount .",
+            "rg -e one -e two",
+            "rg -f patterns.txt",
+            "rg 'apply.*'",
+            "rg applyDiscount && grep total src",
+            "cat a.txt",
+            "rg 'unterminated",
+            "ls | wc -l",
+        ] {
+            assert_eq!(shell(none), None, "{none}");
+        }
+        assert_eq!(
+            searched(Some(""), Some("rg -n applyDiscount")),
+            Some("applyDiscount".into())
+        );
+        assert_eq!(searched(None, None), None);
+    }
+
+    #[test]
+    fn a_search_answer_names_the_declaration_and_its_callers() {
+        let callers = result(
+            vec![row("src/Checkout.java", 14, Some("finish"))],
+            Some("Policy"),
+        );
+        let one = result(vec![row("src/Policy.java", 5, None)], Some("Policy"));
+        let answer = usages("Policy.apply", &callers, &one).unwrap();
+        assert!(
+            answer["declaration"]
+                .as_str()
+                .unwrap()
+                .starts_with("src/Policy.java:5")
+        );
+        assert_eq!(answer["rows"].as_array().unwrap().len(), 1);
+        assert_eq!(answer["complete"], true);
+        let two = result(
+            vec![
+                row("src/Policy.java", 5, None),
+                row("src/Rule.java", 2, None),
+            ],
+            None,
+        );
+        assert_eq!(usages("apply", &callers, &two), None);
+        let open = json!({"results": [row("a.rs", 1, None)], "continuation": null, "route": {"answeredBy": "locate", "complete": true}});
+        assert_eq!(usages("apply", &open, &one), None);
     }
 }

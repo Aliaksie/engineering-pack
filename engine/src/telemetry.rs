@@ -170,6 +170,9 @@ const ENUMS: &[(&str, &[&str])] = &[
             "run-check",
             "configure-service",
             "maintain-context",
+            "story",
+            "research",
+            "explore",
         ],
     ),
     (
@@ -559,5 +562,18 @@ mod tests {
             session_identity(&"x".repeat(70), ""),
             "979a542ffef7c6369070ee82f2f7f657"
         );
+    }
+
+    #[test]
+    fn every_routed_intent_is_recorded() {
+        let catalog: Value = serde_json::from_str(crate::routing::catalog::SOURCE).unwrap();
+        let (_, recorded) = ENUMS.iter().find(|(name, _)| *name == "intent").unwrap();
+        for intent in catalog["intents"].as_array().unwrap() {
+            let intent = intent.as_str().unwrap();
+            assert!(
+                recorded.contains(&intent),
+                "{intent} is routed but dropped from telemetry"
+            );
+        }
     }
 }

@@ -27,8 +27,10 @@ any host.
 - Overlay hook commands resolve from the project root. Cursor's Windows hook shell is
   undocumented and unverified.
 - Non-Claude skill names carry the package prefix (`craft-engineering-foundations`).
-- Generated skills link their package instructions instead of relying on the host to load
-  them; links are rebased per layout, and `source-capability.json` keeps the canonical manifest.
+- Generated skills carry the package's permission rule inline ("Craft guidance grants no
+  permission: the project's instructions and the user's scope decide") instead of linking the
+  package instructions, so using a skill costs no second read. `AGENTS.md` still ships with each
+  package; links are rebased per layout, and `source-capability.json` keeps the canonical manifest.
 - No package ships a live MCP connection, and exports grant no tool or model permissions.
 - JetBrains and AGENTS depend on an explicit underlying agent; guidance alone executes nothing.
   For guidance-only use of an overlay, drop its hook configuration.

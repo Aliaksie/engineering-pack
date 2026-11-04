@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- A prompt that asks where a name is used gets no declaration answer, even when it mentions the
+  declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
+  hook answered with the declaring file, the one the question excluded.
+- Exported skills state the package's permission rule inline ("Craft guidance grants no
+  permission: the project's instructions and the user's scope decide") instead of telling the
+  agent to read the package `AGENTS.md` first. On Codex, which followed that link, a routed task
+  reads up to two fewer files. `AGENTS.md` still ships with each package, and `craft
+  context-report` no longer counts it as required guidance (Codex `implement`: 18,107 → 15,577 bytes).
+- When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
+  `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
+  to that tool result on Claude, Codex, Cursor and Gemini, so no extra lookup turn is needed.
+  It answers only with complete coverage of a name declared once; otherwise the search result
+  stays as it was. `efficiency.lookup.enabled: false` turns it off.
+- A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
+  hint. Before, the hint named a `craft locate` command, and models that followed it spent one
+  or two turns more than a plain search. Answered lookups still carry their rows and the command.
+- Telemetry records the `story`, `research` and `explore` intents of a routed request; they
+  were dropped as unknown before.
 - Project Intelligence reads TypeScript, Python and Go: `craft locate --declaration`,
   `--callers` (with the enclosing function or method) and `--imports` answer from the index
   for `.ts`, `.tsx`, `.py` and `.go` sources, as for Java and Rust. JavaScript now answers

@@ -47,6 +47,7 @@ struct Facts<'a> {
     command: &'a Value,
     file: Option<&'a str>,
     prompt: Option<&'a str>,
+    pattern: Option<&'a str>,
 }
 
 fn one_of<'a>(input: &'a Value, name: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -83,6 +84,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         command: &input["command"],
         file: optional("file")?,
         prompt: optional("prompt")?,
+        pattern: optional("pattern")?,
     })
 }
 
@@ -209,6 +211,8 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     edit_context: crate::hook::delivers_edit_context(facts.host, facts.lifecycle),
                     file: facts.file,
                     prompt: facts.prompt,
+                    pattern: facts.pattern,
+                    command: facts.command.as_str(),
                     context_supported: facts.context_supported,
                 };
                 delivery::run(&event, &mut recorder, &hook)

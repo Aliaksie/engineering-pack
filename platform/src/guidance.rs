@@ -234,14 +234,6 @@ pub fn measure(roots: &[String], requests: &[Request]) -> Result<(Vec<Value>, Ve
             &request.target,
             &request.selected_by,
         )?;
-        if reference.is_none() {
-            measure.record(
-                root,
-                &format!("{prefix}AGENTS.md"),
-                &format!("{package}:instructions"),
-                &request.selected_by,
-            )?;
-        }
     }
     let entries = measure
         .entries
@@ -300,34 +292,38 @@ mod tests {
             ("packages/p/AGENTS.md", "i"),
         ]);
         let (entries, missing) = measure(&bundle.root(), &[request("p:a", "workflow:x")]).unwrap();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 1);
         assert!(missing.is_empty());
     }
 
     #[test]
-    fn shared_instructions_count_each_selection_once_per_selector() {
+    fn a_skill_selects_no_package_instructions() {
         let bundle = Bundle::new(&[
             PACKAGE,
             ("packages/p/skills/a/SKILL.md", "a"),
-            ("packages/p/skills/b/SKILL.md", "b"),
             ("packages/p/AGENTS.md", "i"),
         ]);
+        let (entries, _) = measure(&bundle.root(), &[request("p:a", "practice:x")]).unwrap();
+        let paths: Vec<&Value> = entries.iter().map(|entry| &entry["path"]).collect();
+        assert_eq!(paths, [&json!("packages/p/skills/a/SKILL.md")]);
+    }
+
+    #[test]
+    fn a_file_selected_twice_counts_once_per_selector() {
+        let bundle = Bundle::new(&[PACKAGE, ("packages/p/skills/a/SKILL.md", "a")]);
         let (entries, _) = measure(
             &bundle.root(),
             &[
                 request("p:a", "practice:x"),
-                request("p:b", "practice:x"),
-                request("p:b", "practice:y"),
+                request("p:a", "practice:x"),
+                request("p:a", "practice:y"),
             ],
         )
         .unwrap();
-        let instructions = entries
-            .iter()
-            .find(|entry| entry["target"] == "p:instructions")
-            .unwrap();
-        assert_eq!(instructions["selections"], 3);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["selections"], 3);
         assert_eq!(
-            instructions["selectedBy"],
+            entries[0]["selectedBy"],
             json!(["practice:x", "practice:y"])
         );
     }
@@ -353,7 +349,6 @@ mod tests {
             paths,
             [
                 &json!("packages/p/workflows/run.md"),
-                &json!("packages/p/AGENTS.md"),
                 &json!("packages/p/skills/workflow-run/references/r.md")
             ]
         );
@@ -404,7 +399,7 @@ mod tests {
             respelled.display().to_string(),
         ];
         let (entries, missing) = measure(&roots, &[request("p:a", "x")]).unwrap();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 1);
         assert!(missing.is_empty());
         assert!(
             entries

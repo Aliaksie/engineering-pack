@@ -89,7 +89,7 @@ test('prompt routing hints appear only where the native context schema supports 
   }
 });
 
-test('a lookup hint carries a lookup command the agent can run as given', (t) => {
+test('a lookup prompt without a verified answer gets no hint', (t) => {
   const dir = fixture(t);
   fs.writeFileSync(path.join(dir, 'orders.py'), 'RATE = LEGACY_TAX_RATE\n');
   // A real project: the lookup reads its Git inventory.
@@ -99,13 +99,7 @@ test('a lookup hint carries a lookup command the agent can run as given', (t) =>
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
-    if (!HOSTS[host].events['before-prompt'].context) continue;
-    const hint = JSON.parse(context.slice(context.indexOf('{')));
-    assert.equal(hint.intent, 'locate', host);
-    const [program, ...args] = hint.lookup.run;
-    const lookup = spawnSync(program, [...args, '--term', 'LEGACY_TAX_RATE'], { cwd: dir, encoding: 'utf8' });
-    assert.equal(lookup.status, 0, `${host}: ${lookup.stderr}`);
-    assert.match(lookup.stdout, /orders\.py/, host);
+    assert.ok(!context.includes('Routing hints'), `${host}: a pointer to a command costs the model a turn`);
   }
 });
 
@@ -135,12 +129,48 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
     assert.equal(answered.skills, undefined, `${host}: a ready lookup names no skill`);
     assert.deepEqual(answered.answer.rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);'], host);
     assert.equal(answered.answer.complete, true);
-    const ambiguous = hint(host, 'Who calls `total`?');
-    assert.equal(ambiguous.answer, undefined, host);
-    assert.ok(ambiguous.lookup.run, host);
-    assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?').answer, undefined, host);
-    assert.equal(hint(host, 'Who calls `Fee.charge`?').answer, undefined, `${host}: a literal match outside the index leaves callers open`);
+    // The answered hint's lookup runs as given, for a search beyond the answered question.
+    const [program, ...args] = answered.lookup.run;
+    const lookup = spawnSync(program, [...args, '--callers', 'apply'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(lookup.status, 0, `${host}: ${lookup.stderr}`);
+    assert.match(lookup.stdout, /Checkout\.java/, host);
+    assert.equal(hint(host, 'Who calls `total`?'), '', `${host}: an ambiguous name gets no hint`);
+    assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?'), '', host);
+    assert.equal(hint(host, 'Who calls `Fee.charge`?'), '', `${host}: a literal match outside the index leaves callers open`);
   }
+});
+
+test('a search the model ran gets the verified declaration and callers in the same result', (t) => {
+  const dir = fixture(t);
+  const java = (name, body) => fs.writeFileSync(path.join(dir, `${name}.java`), `class ${name} {\n${body}\n}\n`);
+  java('Policy', '  long apply(long cents) { return cents; }');
+  java('Checkout', '  long finish(Policy p) {\n    return p.apply(10);\n  }');
+  java('Quote', '  long preview(Policy p) {\n    return p.apply(5);\n  }');
+  for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
+  const shell = { codex: 'Bash', cursor: 'Shell', gemini: 'run_shell_command' };
+  const context = (host, input) => {
+    const result = invoke(host, 'craft-delivery', 'milestone', { session_id: `search-${host}`, cwd: dir, ...input }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    return output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+  };
+  const answer = text => JSON.parse(text.slice(text.indexOf('{')));
+  const grep = context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } });
+  assert.match(grep, /^Project Intelligence for the search just run/);
+  assert.match(answer(grep).declaration, /^Policy\.java:2/);
+  assert.deepEqual(answer(grep).rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);']);
+  for (const [host, tool] of Object.entries(shell)) {
+    const text = context(host, { tool_name: tool, tool_input: { command: `cd ${JSON.stringify(dir)} && rg -n apply | head` } });
+    if (!HOSTS[host].events['after-tool'].context) { assert.equal(text, '', host); continue; }
+    assert.deepEqual(answer(text).rows, answer(grep).rows, host);
+  }
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'app.*' } }), '', 'a regex names no symbol');
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'finish' } }), '', 'a name nothing calls gets no answer');
+  const copilot = invoke('copilot', 'craft-delivery', 'milestone', { sessionId: 'search-copilot', cwd: dir, toolName: 'bash', toolArgs: { command: 'rg -n apply' } }, dir);
+  assert.equal(copilot.status, 0, copilot.stderr);
+  assert.ok(!copilot.stdout.includes('Project Intelligence'), 'copilot shows no after-tool context');
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, efficiency: { lookup: { enabled: false } } }));
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } }), '', 'lookup disabled: no search answers');
 });
 
 test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {

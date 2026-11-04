@@ -91,17 +91,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -110,18 +99,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -138,10 +115,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -160,10 +137,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -256,18 +233,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:plan",
-        "practice:architecture"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations/references/design-principles.md",
        "path": "packages/craft-engineering/skills/foundations/references/design-principles.md",
        "bytes": 21,
@@ -292,10 +257,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 4,
-      "bytes": 151,
-      "estimatedTokens": 40,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 121,
+      "estimatedTokens": 32,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -314,10 +279,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 3,
      "referencesRequested": 1
     }
    }
@@ -408,24 +373,13 @@
        "selectedBy": [
         "workflow:investigate"
        ]
-      },
-      {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:investigate"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 109,
-      "estimatedTokens": 28,
+      "files": 1,
+      "bytes": 79,
+      "estimatedTokens": 20,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -440,10 +394,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -536,17 +490,6 @@
        ]
       },
       {
-       "target": "craft-review:instructions",
-       "path": "packages/craft-review/AGENTS.md",
-       "bytes": 28,
-       "sha256": "fe187968f51ab389c4466fccd75cd343539e87090795c50371f55d28096cfc96",
-       "estimatedTokens": 7,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:review"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -555,18 +498,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -583,10 +514,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 124,
-      "estimatedTokens": 34,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 63,
+      "estimatedTokens": 18,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -606,10 +537,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -702,18 +633,6 @@
        ]
       },
       {
-       "target": "craft-stories:instructions",
-       "path": "packages/craft-stories/AGENTS.md",
-       "bytes": 29,
-       "sha256": "80f4e32f7a50c5a630eb22fdb07630eb6c6e7d922e29aa2b3a240ee7136eee00",
-       "estimatedTokens": 8,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:story",
-        "practice:task-grounding"
-       ]
-      },
-      {
        "target": "craft-stories:ground-spec",
        "path": "packages/craft-stories/skills/ground-spec/SKILL.md",
        "bytes": 21,
@@ -727,10 +646,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 3,
-      "bytes": 71,
-      "estimatedTokens": 20,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -749,10 +668,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -843,24 +762,13 @@
        "selectedBy": [
         "workflow:locate"
        ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:locate"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 54,
-      "estimatedTokens": 15,
+      "files": 1,
+      "bytes": 21,
+      "estimatedTokens": 6,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -875,10 +783,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -969,24 +877,13 @@
        "selectedBy": [
         "workflow:research"
        ]
-      },
-      {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:research"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 109,
-      "estimatedTokens": 28,
+      "files": 1,
+      "bytes": 79,
+      "estimatedTokens": 20,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -1001,10 +898,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -1104,7 +1001,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -1200,18 +1097,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:verify",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -1225,10 +1110,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 3,
-      "bytes": 75,
-      "estimatedTokens": 21,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -1247,10 +1132,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -1350,7 +1235,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -1444,24 +1329,13 @@
        "selectedBy": [
         "workflow:explore"
        ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:explore"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 127,
-      "estimatedTokens": 33,
+      "files": 1,
+      "bytes": 94,
+      "estimatedTokens": 24,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -1476,10 +1350,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -1575,17 +1449,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -1594,19 +1457,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 3,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing",
-        "layer:ui"
        ]
       },
       {
@@ -1645,10 +1495,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 7,
-      "bytes": 245,
-      "estimatedTokens": 65,
-      "repeatedSelections": 2
+      "files": 5,
+      "bytes": 182,
+      "estimatedTokens": 48,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -1668,10 +1518,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 7,
+     "filesRequested": 5,
      "referencesRequested": 1
     }
    }
@@ -1770,17 +1620,6 @@
        ]
       },
       {
-       "target": "craft-review:instructions",
-       "path": "packages/craft-review/AGENTS.md",
-       "bytes": 28,
-       "sha256": "fe187968f51ab389c4466fccd75cd343539e87090795c50371f55d28096cfc96",
-       "estimatedTokens": 7,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:review"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -1789,18 +1628,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -1828,10 +1655,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 6,
-      "bytes": 145,
-      "estimatedTokens": 40,
-      "repeatedSelections": 1
+      "files": 4,
+      "bytes": 84,
+      "estimatedTokens": 24,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -1852,10 +1679,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 6,
+     "filesRequested": 4,
      "referencesRequested": 1
     }
    }
@@ -1957,17 +1784,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -1976,20 +1792,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 4,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing",
-        "practice:security",
-        "layer:ui"
        ]
       },
       {
@@ -2072,10 +1874,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 11,
-      "bytes": 461,
-      "estimatedTokens": 121,
-      "repeatedSelections": 3
+      "files": 9,
+      "bytes": 398,
+      "estimatedTokens": 104,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -2097,10 +1899,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 11,
+     "filesRequested": 9,
      "referencesRequested": 4
     }
    }
@@ -2194,18 +1996,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:verify",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -2219,10 +2009,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 3,
-      "bytes": 75,
-      "estimatedTokens": 21,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -2241,10 +2031,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -2341,18 +2131,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:verify",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -2377,10 +2155,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 4,
-      "bytes": 96,
-      "estimatedTokens": 27,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 63,
+      "estimatedTokens": 18,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -2400,10 +2178,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 3,
      "referencesRequested": 1
     }
    }
@@ -2522,18 +2300,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:implement",
-        "module:configured-skills"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -2542,19 +2308,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 3,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing",
-        "module:configured-skills"
        ]
       },
       {
@@ -2604,10 +2357,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 8,
-      "bytes": 284,
-      "estimatedTokens": 76,
-      "repeatedSelections": 3
+      "files": 6,
+      "bytes": 221,
+      "estimatedTokens": 59,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -2628,10 +2381,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 8,
+     "filesRequested": 6,
      "referencesRequested": 1
     }
    }
@@ -2750,17 +2503,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -2769,18 +2511,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -2793,17 +2523,6 @@
        "selectedBy": [
         "practice:testing"
        ]
-      },
-      {
-       "target": "craft-stories:instructions",
-       "path": "packages/craft-stories/AGENTS.md",
-       "bytes": 29,
-       "sha256": "80f4e32f7a50c5a630eb22fdb07630eb6c6e7d922e29aa2b3a240ee7136eee00",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "module:configured-skills"
-       ]
       }
      ],
      "missing": [
@@ -2813,10 +2532,10 @@
       }
      ],
      "totals": {
-      "files": 6,
-      "bytes": 189,
-      "estimatedTokens": 51,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -2835,10 +2554,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 6,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -2932,17 +2651,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -2951,18 +2659,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -2979,10 +2675,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3001,10 +2697,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -3098,17 +2794,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -3117,18 +2802,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -3145,10 +2818,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3167,10 +2840,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -3264,17 +2937,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -3283,18 +2945,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -3311,10 +2961,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3333,10 +2983,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -3430,17 +3080,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -3449,18 +3088,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -3477,10 +3104,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3499,10 +3126,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -3596,17 +3223,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -3615,18 +3231,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -3643,10 +3247,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3665,10 +3269,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -3762,17 +3366,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -3781,18 +3374,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -3809,10 +3390,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -3831,10 +3412,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -4454,17 +4035,6 @@
      "complete": false,
      "files": [
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -4473,18 +4043,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -4506,10 +4064,10 @@
       }
      ],
      "totals": {
-      "files": 4,
-      "bytes": 105,
-      "estimatedTokens": 29,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -4528,10 +4086,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -4614,17 +4172,6 @@
      "complete": false,
      "files": [
       {
-       "target": "craft-review:instructions",
-       "path": "packages/craft-review/AGENTS.md",
-       "bytes": 28,
-       "sha256": "fe187968f51ab389c4466fccd75cd343539e87090795c50371f55d28096cfc96",
-       "estimatedTokens": 7,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:review"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -4633,18 +4180,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -4670,10 +4205,10 @@
       }
      ],
      "totals": {
-      "files": 4,
-      "bytes": 103,
-      "estimatedTokens": 28,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -4692,10 +4227,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 2,
      "referencesRequested": 1
     }
    }
@@ -4735,15 +4270,7 @@
        "reason": "file not present in this bundle"
       },
       {
-       "target": "craft-engineering:instructions",
-       "reason": "file not present in this bundle"
-      },
-      {
        "target": "craft-engineering:testing-engineering",
-       "reason": "file not present in this bundle"
-      },
-      {
-       "target": "craft-engineering:instructions",
        "reason": "file not present in this bundle"
       }
      ],
@@ -4765,7 +4292,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -4828,7 +4355,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -4924,18 +4451,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -4954,10 +4469,10 @@
       }
      ],
      "totals": {
-      "files": 3,
-      "bytes": 75,
-      "estimatedTokens": 21,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -4976,10 +4491,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -5135,18 +4650,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -5176,10 +4679,10 @@
       }
      ],
      "totals": {
-      "files": 4,
-      "bytes": 96,
-      "estimatedTokens": 27,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 63,
+      "estimatedTokens": 18,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -5199,10 +4702,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 3,
      "referencesRequested": 1
     }
    }
@@ -5297,17 +4800,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "plugins/craft-delivery/AGENTS.md",
-       "bytes": 27,
-       "sha256": "fbd4f5efdf03ecd677ebcb564f13c0935bf43e78a5d5421b195bdce666f35779",
-       "estimatedTokens": 7,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "plugins/craft-engineering/skills/craft-engineering-foundations/SKILL.md",
        "bytes": 40,
@@ -5316,18 +4808,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "plugins/craft-engineering/AGENTS.md",
-       "bytes": 30,
-       "sha256": "33168a641d7a34b109fcf55bd4f5185ac535a5d8817fdc42e43108f47c6f6b29",
-       "estimatedTokens": 8,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -5355,10 +4835,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 6,
-      "bytes": 258,
-      "estimatedTokens": 66,
-      "repeatedSelections": 1
+      "files": 4,
+      "bytes": 201,
+      "estimatedTokens": 51,
+      "repeatedSelections": 0
      },
      "identicalContent": [],
      "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
@@ -5372,10 +4852,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 6,
+     "filesRequested": 4,
      "referencesRequested": 1
     }
    }
@@ -5467,18 +4947,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "plugins/craft-engineering/AGENTS.md",
-       "bytes": 30,
-       "sha256": "33168a641d7a34b109fcf55bd4f5185ac535a5d8817fdc42e43108f47c6f6b29",
-       "estimatedTokens": 8,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:verify",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "plugins/craft-engineering/skills/craft-engineering-testing-engineering/SKILL.md",
        "bytes": 48,
@@ -5492,10 +4960,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 3,
-      "bytes": 130,
-      "estimatedTokens": 33,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 100,
+      "estimatedTokens": 25,
+      "repeatedSelections": 0
      },
      "identicalContent": [],
      "estimator": "ceil(UTF-8 bytes / 4) per unique path; heuristic, not a tokenizer",
@@ -5509,10 +4977,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -5606,18 +5074,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "workflow:verify",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bytes": 21,
@@ -5631,10 +5087,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 3,
-      "bytes": 75,
-      "estimatedTokens": 21,
-      "repeatedSelections": 1
+      "files": 2,
+      "bytes": 42,
+      "estimatedTokens": 12,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -5653,10 +5109,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 3,
+     "filesRequested": 2,
      "referencesRequested": 0
     }
    }
@@ -5747,24 +5203,13 @@
        "selectedBy": [
         "workflow:explore"
        ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:explore"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 127,
-      "estimatedTokens": 33,
+      "files": 1,
+      "bytes": 94,
+      "estimatedTokens": 24,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -5779,10 +5224,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -5883,19 +5328,6 @@
        ]
       },
       {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bundleRoot": "<bundle:0>",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
-       ]
-      },
-      {
        "target": "craft-engineering:testing-engineering",
        "path": "packages/craft-engineering/skills/testing-engineering/SKILL.md",
        "bundleRoot": "<bundle:0>",
@@ -5927,10 +5359,10 @@
       }
      ],
      "totals": {
-      "files": 4,
-      "bytes": 96,
-      "estimatedTokens": 27,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 63,
+      "estimatedTokens": 18,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -5950,10 +5382,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 4,
+     "filesRequested": 3,
      "referencesRequested": 1
     }
    }
@@ -6121,7 +5553,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -6218,17 +5650,6 @@
        ]
       },
       {
-       "target": "craft-delivery:instructions",
-       "path": "packages/craft-delivery/AGENTS.md",
-       "bytes": 30,
-       "sha256": "52576734e18355b4e33f184478c963913b944a3369ef639bff8315d5c14becfb",
-       "estimatedTokens": 8,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:implement"
-       ]
-      },
-      {
        "target": "craft-engineering:foundations",
        "path": "packages/craft-engineering/skills/foundations/SKILL.md",
        "bytes": 21,
@@ -6237,18 +5658,6 @@
        "selections": 1,
        "selectedBy": [
         "practice:foundations"
-       ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 2,
-       "selectedBy": [
-        "practice:foundations",
-        "practice:testing"
        ]
       },
       {
@@ -6265,10 +5674,10 @@
      ],
      "missing": [],
      "totals": {
-      "files": 5,
-      "bytes": 160,
-      "estimatedTokens": 43,
-      "repeatedSelections": 1
+      "files": 3,
+      "bytes": 97,
+      "estimatedTokens": 26,
+      "repeatedSelections": 0
      },
      "identicalContent": [
       [
@@ -6287,10 +5696,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 5,
+     "filesRequested": 3,
      "referencesRequested": 0
     }
    }
@@ -6457,7 +5866,7 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
      "filesRequested": 0,
@@ -6566,24 +5975,13 @@
        "selectedBy": [
         "workflow:locate"
        ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:locate"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 54,
-      "estimatedTokens": 15,
+      "files": 1,
+      "bytes": 21,
+      "estimatedTokens": 6,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -6598,10 +5996,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }
@@ -6866,24 +6264,13 @@
        "selectedBy": [
         "workflow:locate"
        ]
-      },
-      {
-       "target": "craft-engineering:instructions",
-       "path": "packages/craft-engineering/AGENTS.md",
-       "bytes": 33,
-       "sha256": "2256622ce1f976da487bfbeebad2d1924881ddb1c8ae1e2df318417228225a04",
-       "estimatedTokens": 9,
-       "selections": 1,
-       "selectedBy": [
-        "workflow:locate"
-       ]
       }
      ],
      "missing": [],
      "totals": {
-      "files": 2,
-      "bytes": 1048609,
-      "estimatedTokens": 262153,
+      "files": 1,
+      "bytes": 1048576,
+      "estimatedTokens": 262144,
       "repeatedSelections": 0
      },
      "identicalContent": [],
@@ -6898,10 +6285,10 @@
       "capacityTokens": null,
       "status": "unknown; no host observation supplied"
      },
-     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files, explicit references and required package instructions once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
+     "limits": "Measures package resources, not host-loaded overlay copies. Includes selected entry files and explicit references once per path. Excludes unloaded links, host skill-discovery metadata, tool schemas, conversation and tool output. Missing files make totals a lower bound."
     },
     "activity": {
-     "filesRequested": 2,
+     "filesRequested": 1,
      "referencesRequested": 0
     }
    }

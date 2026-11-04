@@ -9,6 +9,9 @@ import { featureSupport } from '../../hosts/capabilities.mjs';
 // Session observation, display and native commands per host; `craft statusline` embeds the same table.
 const SESSION = JSON.parse(fs.readFileSync(new URL('../../hosts/session.json', import.meta.url), 'utf8'));
 
+// The one package rule every skill carries inline, so no skill needs a second read first.
+export const PERMISSION = "Craft guidance grants no permission: the project's instructions and the user's scope decide.";
+
 export function write(root, file, text) {
   const target = path.join(root, file);
   fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -102,7 +105,7 @@ export function preparePackage(item, packages, destination, platform) {
       const id = path.basename(local);
       body = body.replaceAll(`\`${id}\``, `\`${manifest.name}-${id}\``);
     }
-    write(target, 'SKILL.md', `---\nname: ${name}\ndescription: ${JSON.stringify(entry.info.description)}\n---\n\n<!-- Generated from packages/; edit the portable source and rebuild. -->\n\nRead the shared [package instructions](../../AGENTS.md) when using this capability.\n\n${body.trim()}\n`);
+    write(target, 'SKILL.md', `---\nname: ${name}\ndescription: ${JSON.stringify(entry.info.description)}\n---\n\n<!-- Generated from packages/; edit the portable source and rebuild. -->\n\n${PERMISSION}\n\n${body.trim()}\n`);
     for (const file of files(target).filter((file) => file.endsWith('.md') && path.basename(file) !== 'SKILL.md')) {
       fs.writeFileSync(file, packageDocument(fs.readFileSync(file, 'utf8'), path.join(entry.source, path.relative(target, file)), file, item, packages, destination, platform));
     }
