@@ -82,7 +82,7 @@ craft locate --root . --outline docs/guide.md
 | `--decisions <title-word>` | decision records whose title contains the value, case-insensitively; `*` matches every record. Rows carry the status as written, links resolved (`superseded by docs/adr/0002-x.md`) | Markdown under an `adr`, `adrs`, `decisions`, `decision-records` or `architecture-decisions` directory, or named `adr-*` |
 | `--key <dotted.key>` | a configuration key by its dotted path from the document root, or ending in it at a segment (`strict` matches `compilerOptions.strict`); rows carry the scalar value | JSON (also with comments and trailing commas), TOML, YAML |
 
-Markdown links count when written inline (`[text](path)`, images too) or as reference
+Markdown links count when written inline (links and images) or as reference
 definitions; autolinks, HTML links and links or code spans that wrap across lines are not
 read. URLs and fragment-only links are not files. A decision record's title is its first
 heading; its status is front matter `status`, a `Status:` line (also a list item or bold)
