@@ -43,6 +43,12 @@ pub fn for_path(path: &str) -> Option<&'static str> {
     }
 }
 
+/// Whether a source of `bytes` at `path` is data its provider does not index (a lockfile or
+/// an oversized configuration file), so a refresh leaves it unread.
+pub fn data(path: &str, bytes: u64) -> bool {
+    for_path(path) == Some(crate::config::PROVIDER) && crate::config::data(path, bytes)
+}
+
 /// The evidence kinds a provider can extract.
 pub fn kinds(provider: &str) -> &'static [&'static str] {
     if provider == crate::markdown::PROVIDER {

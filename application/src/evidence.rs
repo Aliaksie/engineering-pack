@@ -2,7 +2,7 @@ use crate::failure::Failure;
 use crate::telemetry::Recorder;
 use craft_engine::hash;
 use craft_platform::{
-    providers::{ACTIVE, extract, for_path},
+    providers::{self, ACTIVE, extract, for_path},
     repository::{Inventory, database_guard, database_guard_within, eligible, now, read_source},
     state,
     store::{Query, Store},
@@ -77,7 +77,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
             result["scope"] = json!(root);
             Ok(result)
         }
-        "refresh" => refresh(&root, &mut store, budget.as_mut().unwrap(), &mut |_| {}),
+        "refresh" => refresh(&root, &mut store, budget.as_mut().unwrap(), &mut |_, _| {}),
         _ => Err("unknown evidence operation".into()),
     }
 }
@@ -112,7 +112,7 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
         let mut store = Store::open(&database)?;
         let mut budget =
             super::budget::Budget::from_input(&json!({"maxDurationMs": WARM_CHUNK_MS}))?;
-        let result = refresh(&root, &mut store, &mut budget, &mut |_| {})?;
+        let result = refresh(&root, &mut store, &mut budget, &mut |_, _| {})?;
         drop(store);
         drop(guard);
         chunks += 1;
@@ -134,12 +134,13 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
 }
 
 /// One bounded refresh of the store from the root's inventory. `observe` sees each inventoried
-/// path outside the consumer's exclusions, eligible or not, before it is read.
+/// path outside the consumer's exclusions, eligible or not, before it is read (`false`), and
+/// again (`true`) when it is left unread as data its provider does not index.
 pub(crate) fn refresh(
     root: &Path,
     store: &mut Store,
     budget: &mut super::budget::Budget,
-    observe: &mut dyn FnMut(&str),
+    observe: &mut dyn FnMut(&str, bool),
 ) -> Result<Value, Failure> {
     let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
     let started = Instant::now();
@@ -157,7 +158,7 @@ pub(crate) fn refresh(
     while let Some(path) = phases.time(Phase::Inventory, || inventory.next_path())? {
         let skipped = craft_engine::contracts::excluded(&path, &exclusions);
         if !skipped {
-            observe(&path);
+            observe(&path, false);
         }
         if !eligible(&path) {
             continue;
@@ -167,7 +168,11 @@ pub(crate) fn refresh(
             continue;
         }
         // Git's tracked inventory includes deleted files; completion retires them.
-        if !phases.time(Phase::Metadata, || root.join(&path).try_exists())? {
+        let Some(size) = phases.time(Phase::Metadata, || size(&root.join(&path)))? else {
+            continue;
+        };
+        if providers::data(&path, size) {
+            observe(&path, true);
             continue;
         }
         let provider = for_path(&path).ok_or("eligible source has no provider")?;
@@ -225,6 +230,15 @@ pub(crate) fn refresh(
             "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),
             "phasesMs":phases.report(),"scope":root}),
     )
+}
+
+/// A source's size, or `None` when it no longer exists.
+fn size(path: &Path) -> std::io::Result<Option<u64>> {
+    match std::fs::metadata(path) {
+        Ok(metadata) => Ok(Some(metadata.len())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
 }
 
 #[derive(Clone, Copy)]

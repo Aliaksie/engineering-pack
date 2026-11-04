@@ -7,8 +7,9 @@
 //! itself contains `.` is joined as spelled, so a dotted name can be ambiguous. JSON may carry
 //! `//` and `/* */` comments and trailing commas; structurally broken JSON is refused.
 //! A lockfile (`package-lock.json`, `pnpm-lock.yaml`) or a file over `CONFIGURATION_BYTES` is
-//! data rather than configuration: its keys are not extracted and it is recorded partial, so a
-//! key lookup searches it literally instead of reading an empty answer as absence.
+//! data rather than configuration (`data`): a refresh does not read it, and a key lookup
+//! searches it literally as an unindexed candidate. Extracted anyway, it is recorded partial
+//! without keys, so an empty answer is never read as absence.
 use crate::syntax::MAX_SOURCE_BYTES;
 use craft_engine::{Evidence, Extraction, hash, identity, valid_path};
 use std::collections::HashMap;
@@ -22,6 +23,11 @@ const DEPTH: usize = 128;
 /// Largest file whose keys are extracted: project configuration measured at most 24 KiB on the
 /// probe repositories, test data and lockfiles from 200 KiB up.
 pub const CONFIGURATION_BYTES: usize = 64 * 1024;
+
+/// Whether a configuration source of `bytes` at `path` is data, left unread by a refresh.
+pub fn data(path: &str, bytes: u64) -> bool {
+    lockfile(path) || bytes > CONFIGURATION_BYTES as u64
+}
 
 fn lockfile(path: &str) -> bool {
     let file = path.rsplit('/').next().unwrap_or(path);

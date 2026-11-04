@@ -92,9 +92,9 @@ status.
 Configuration keys are read by scanners, not full parsers: keys inside arrays and YAML
 sequences are not recorded, inline tables and flow collections are values, and a key segment
 that contains `.` is joined as spelled. A lockfile (`package-lock.json`, `pnpm-lock.yaml`) or a
-JSON, TOML or YAML file over 64 KiB is data (fixtures, schemas): its keys are not extracted and it is recorded partial, so a
-`--key` lookup searches it literally. Structurally broken JSON fails extraction and is
-searched literally too. `.ini`, `.properties` and `.conf` files are candidates no provider
+JSON, TOML or YAML file over 64 KiB is data (fixtures, schemas): a refresh does not read it, and
+a `--key` lookup searches it literally as an unindexed candidate. Structurally broken JSON fails
+extraction and is searched literally too. `.ini`, `.properties` and `.conf` files are candidates no provider
 reads: a `--key` lookup searches them literally.
 
 A qualified `--declaration` or `--callers` value (`Type.method`, `Type::method`, `module::fn`,
