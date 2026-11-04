@@ -165,7 +165,8 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                     plan["answer"] = answer;
                 }
             }
-            Some(plan)
+            // The route still establishes the session's intent below.
+            Some(plan).filter(delivery::speaks)
         }
         _ => None,
     };

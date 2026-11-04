@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
+  hint. Before, the hint named a `craft locate` command, and models that followed it spent one
+  or two turns more than a plain search. Answered lookups still carry their rows and the command.
+- Telemetry records the `story`, `research` and `explore` intents of a routed request; they
+  were dropped as unknown before.
 - Project Intelligence reads TypeScript, Python and Go: `craft locate --declaration`,
   `--callers` (with the enclosing function or method) and `--imports` answer from the index
   for `.ts`, `.tsx`, `.py` and `.go` sources, as for Java and Rust. JavaScript now answers

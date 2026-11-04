@@ -89,7 +89,7 @@ test('prompt routing hints appear only where the native context schema supports 
   }
 });
 
-test('a lookup hint carries a lookup command the agent can run as given', (t) => {
+test('a lookup prompt without a verified answer gets no hint', (t) => {
   const dir = fixture(t);
   fs.writeFileSync(path.join(dir, 'orders.py'), 'RATE = LEGACY_TAX_RATE\n');
   // A real project: the lookup reads its Git inventory.
@@ -99,13 +99,7 @@ test('a lookup hint carries a lookup command the agent can run as given', (t) =>
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
-    if (!HOSTS[host].events['before-prompt'].context) continue;
-    const hint = JSON.parse(context.slice(context.indexOf('{')));
-    assert.equal(hint.intent, 'locate', host);
-    const [program, ...args] = hint.lookup.run;
-    const lookup = spawnSync(program, [...args, '--term', 'LEGACY_TAX_RATE'], { cwd: dir, encoding: 'utf8' });
-    assert.equal(lookup.status, 0, `${host}: ${lookup.stderr}`);
-    assert.match(lookup.stdout, /orders\.py/, host);
+    assert.ok(!context.includes('Routing hints'), `${host}: a pointer to a command costs the model a turn`);
   }
 });
 
@@ -135,11 +129,14 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
     assert.equal(answered.skills, undefined, `${host}: a ready lookup names no skill`);
     assert.deepEqual(answered.answer.rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);'], host);
     assert.equal(answered.answer.complete, true);
-    const ambiguous = hint(host, 'Who calls `total`?');
-    assert.equal(ambiguous.answer, undefined, host);
-    assert.ok(ambiguous.lookup.run, host);
-    assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?').answer, undefined, host);
-    assert.equal(hint(host, 'Who calls `Fee.charge`?').answer, undefined, `${host}: a literal match outside the index leaves callers open`);
+    // The answered hint's lookup runs as given, for a search beyond the answered question.
+    const [program, ...args] = answered.lookup.run;
+    const lookup = spawnSync(program, [...args, '--callers', 'apply'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(lookup.status, 0, `${host}: ${lookup.stderr}`);
+    assert.match(lookup.stdout, /Checkout\.java/, host);
+    assert.equal(hint(host, 'Who calls `total`?'), '', `${host}: an ambiguous name gets no hint`);
+    assert.equal(hint(host, 'Where is LEGACY_TAX_RATE used?'), '', host);
+    assert.equal(hint(host, 'Who calls `Fee.charge`?'), '', `${host}: a literal match outside the index leaves callers open`);
   }
 });
 

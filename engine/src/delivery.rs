@@ -125,6 +125,13 @@ pub fn lookup(intent: &str, runtime: Option<&str>, root: &str) -> Option<Value> 
     }))
 }
 
+/// Whether a route carries anything for the model to use. A lookup route without a verified
+/// answer only points at a command: models that followed it spent one or two turns more than
+/// a plain search, so it stays silent and the model searches as it would without Craft.
+pub fn speaks(route: &Value) -> bool {
+    route["intent"] != "locate" || route.get("answer").is_some_and(|answer| !answer.is_null())
+}
+
 /// A hook that could not be evaluated: shell policy fails closed, other hooks continue
 /// and say why their context is unavailable.
 pub fn failure(enforcement: bool, message: &str) -> Value {

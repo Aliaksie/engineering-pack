@@ -51,10 +51,16 @@ test('prompt routing replay', t => {
   const cases = corpus('prompt-routing').cases;
   const prompts = new Map(cases.map(({ id, prompt }) => [id, prompt]));
   // A separate session per case: an identical hint is suppressed within one session.
+  const log = path.join(root, '.craft/state/telemetry/events.jsonl');
+  const routed = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [])
+    .map(line => JSON.parse(line)).filter(event => event.name === 'routing.completed');
   replay(t, 'prompt routing', cases, id => {
+    const before = routed().length;
     const data = deliverHook(root, 'before-prompt', { prompt: prompts.get(id), session: id, host: 'claude' }).context?.data;
-    // A ready lookup names no skill; a prompt the hook answered records the question it answered.
-    return { intent: data?.intent ?? null, skills: data?.skills ?? [], ...(data?.answer && { answer: data.answer.question }) };
+    // The routed intent, also where the hint stays silent (a lookup without a verified answer);
+    // a ready lookup names no skill; a prompt the hook answered records the question it answered.
+    const intent = routed().slice(before).at(-1)?.attributes?.intent ?? null;
+    return { intent, skills: data?.skills ?? [], ...(data?.answer && { answer: data.answer.question }) };
   });
 });
 
