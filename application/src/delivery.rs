@@ -14,6 +14,7 @@ use std::path::{Component, Path, PathBuf};
 
 const HINT_BYTES: usize = 2048;
 const INTENT_BYTES: usize = 16384;
+const RESTORE_BYTES: usize = 256;
 
 /// One delivery hook event, in host-neutral facts.
 pub struct Event<'a> {
@@ -123,6 +124,10 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         context_changing: event.lifecycle == "before-compact",
         context_restored: event.lifecycle == "after-compact",
         turn_finished: event.lifecycle == "turn-end",
+        // Only a bound task has records to resume from; prompts and tool results carry it.
+        restore_pending: (prompt.is_some() || event.lifecycle == "after-tool")
+            && task.is_some()
+            && session.is_some_and(|session| restore_pending(root, session)),
     };
     let plan = delivery::plan(&facts, &settings);
     if let (true, Some(session)) = (plan.invalidate_hint, session) {
@@ -220,9 +225,21 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         }
     }
+    if let (true, Some(session), Some(_)) = (plan.mark_restore, session, &task)
+        && mark_restore(root, session, true).is_err()
+    {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+    }
     if let Some(session) = session {
         if plan.recover_checkpoint {
             saved = Some(checkpoint::recover(root, session, recorder, hook)?);
+            // Delivered here, so the next prompt does not repeat it.
+            if event.context_supported
+                && restore_pending(root, session)
+                && mark_restore(root, session, false).is_err()
+            {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            }
         } else if plan.read_checkpoint {
             saved = Some(json!({"saved": checkpoint::read(root, session, recorder, hook)?}));
         }
@@ -270,7 +287,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
         decision["session"] = identity;
     }
-    let eligible = routing.is_some()
+    let eligible = decision["context"]["kind"] == "routing"
         && settings["routing"]["dedupeHints"] == true
         && event.context_supported
         && decision.get("context").is_some();
@@ -431,6 +448,24 @@ fn evidence_answer(
 fn hint_file(root: &Path, session: &str, host: &str) -> Result<PathBuf, Failure> {
     let name = format!("routing-{}.json", &identity(&[host, session])[..24]);
     Ok(state::file(root, &name, true, Some(session))?)
+}
+
+/// Whether context changed and the bound task has not been resumed since. Unreadable reads
+/// as not pending: a missed resume costs what it did before, a repeated one costs bytes.
+fn restore_pending(root: &Path, session: &str) -> bool {
+    state::file(root, "restore.json", false, Some(session))
+        .ok()
+        .and_then(|file| read_record(&file, RESTORE_BYTES).ok())
+        .is_some_and(|record| record["pending"] == true)
+}
+
+fn mark_restore(root: &Path, session: &str, pending: bool) -> Result<(), Failure> {
+    let file = state::file(root, "restore.json", pending, Some(session))?;
+    if !pending && !file.exists() {
+        return Ok(());
+    }
+    let record = json!({"formatVersion": 1, "pending": pending});
+    Ok(state::write(&file, &record, RESTORE_BYTES, false)?)
 }
 
 fn intent_file(root: &Path, session: &str, create: bool) -> Result<PathBuf, Failure> {

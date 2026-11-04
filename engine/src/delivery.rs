@@ -24,6 +24,9 @@ pub struct Facts<'a> {
     pub context_changing: bool,
     pub context_restored: bool,
     pub turn_finished: bool,
+    /// Context changed and no restored-context event delivered the task since, at a prompt
+    /// or tool event: hosts without one get the resume at the next event that can show it.
+    pub restore_pending: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,6 +44,8 @@ pub struct Plan {
     pub read_checkpoint: bool,
     /// Offer unfinished tasks of earlier sessions to a session without one.
     pub offer_handoff: bool,
+    /// Remember that context is changing, so the task resumes at the next chance.
+    pub mark_restore: bool,
 }
 
 /// What a lifecycle fact asks for under the effective `settings`. Checkpoints are saved at
@@ -85,14 +90,18 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
             && (facts.started || facts.context_changing || facts.context_restored),
         services: facts.started && services,
         save_checkpoint: checkpoint && (facts.turn_finished || facts.context_changing),
-        recover_checkpoint: checkpoint && (facts.started || facts.context_restored),
+        recover_checkpoint: checkpoint
+            && (facts.started
+                || facts.context_restored
+                || (facts.restore_pending && facts.context_supported)),
         read_checkpoint: checkpoint && facts.context_changing,
         offer_handoff: checkpoint && facts.started,
+        mark_restore: checkpoint && facts.context_changing,
     }
 }
 
-/// The hook decision: routing first, then a saved checkpoint, configured services, or
-/// the continuation reminder before context changes.
+/// The hook decision: a bound task's resume first, then routing, a saved checkpoint,
+/// configured services, or the continuation reminder before context changes.
 pub fn decision(
     routing: Option<&Value>,
     checkpoint: Option<&Value>,
@@ -100,7 +109,13 @@ pub fn decision(
     preserve_continuation: bool,
 ) -> Value {
     let saved = checkpoint.filter(|c| !matches!(c["saved"], Value::Null | Value::Bool(false)));
-    let context = if let Some(routing) = routing {
+    // A bound task resumes from its records: what it is, where it stands, what was decided.
+    let resume = checkpoint
+        .and_then(|c| c.get("resume"))
+        .filter(|r| r.is_object());
+    let context = if let Some(resume) = resume {
+        json!({"kind": "resume", "data": resume})
+    } else if let Some(routing) = routing {
         json!({"kind": "routing", "data": routing})
     } else if let Some(checkpoint) = saved {
         json!({"kind": "checkpoint", "data": checkpoint})

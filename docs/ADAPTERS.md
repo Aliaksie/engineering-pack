@@ -39,11 +39,11 @@ any host.
 
 | Target | Before-tool policy | Compaction / recovery |
 |---|---|---|
-| Claude Code | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact restores context |
-| Codex | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact restores context |
-| Cursor | preToolUse permission response | preCompact is observational; explicit recovery |
-| Copilot | preToolUse decision response | preCompact is a notification; explicit recovery |
-| Gemini CLI | BeforeTool denial | PreCompress is advisory; explicit recovery |
+| Claude Code | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact delivers the task resume |
+| Codex | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact delivers the task resume |
+| Cursor | preToolUse permission response | preCompact is observational; task resume at the next tool result |
+| Copilot | preToolUse decision response | preCompact is a notification; task resume only through `task-adopt` in a new session |
+| Gemini CLI | BeforeTool denial | PreCompress is advisory; task resume at the next prompt |
 | AGENTS | Not installed | Explicit checkpoint CLI only |
 
 Checked against the [Claude](https://code.claude.com/docs/en/hooks),

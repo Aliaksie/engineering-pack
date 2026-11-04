@@ -16,8 +16,9 @@ use craft_engine::values::normalize_numbers;
 use craft_engine::{models, routing, services, values};
 use options::{Options, parse};
 use render::{
-    action_receipt, adopt_receipt, assign_receipt, attempt_receipt, integrate_receipt,
-    plan_receipt, queue_receipt, receipt, release_receipt, render, session_view, task_receipt,
+    action_receipt, adopt_receipt, assign_receipt, attempt_receipt, decide_receipt,
+    integrate_receipt, plan_receipt, queue_receipt, receipt, release_receipt, render, session_view,
+    task_receipt,
 };
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -106,6 +107,7 @@ const COMMANDS: &[Command] = &[
     .receipt(action_receipt),
     Command::run("task-start", task_start).receipt(|_, value| task_receipt(value)),
     Command::run("task-adopt", task_adopt).receipt(|_, value| adopt_receipt(value)),
+    Command::run("task-decide", task_decide).receipt(|_, value| decide_receipt(value)),
     Command::run("task-step", task_step)
         .bundled()
         .receipt(action_receipt),
@@ -980,6 +982,39 @@ fn task_adopt(
     crate::handoff::adopt(&root(options), session, from, recorder, parent)
 }
 
+/// Record a decision on the session's bound task.
+fn task_decide(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let Some(session) = options.get("session").filter(|value| !value.is_empty()) else {
+        return Err("task-decide requires --session".into());
+    };
+    let mut input = Map::new();
+    for (option, field) in [
+        ("decision", "text"),
+        ("why", "why"),
+        ("by", "by"),
+        ("supersedes", "supersedes"),
+    ] {
+        if let Some(value) = options.get(option) {
+            input.insert(field.into(), json!(value));
+        }
+    }
+    let rejected = strings(options, "rejected");
+    if !rejected.is_empty() {
+        input.insert("rejected".into(), json!(rejected));
+    }
+    crate::task::decide(
+        &root(options),
+        session,
+        &Value::Object(input),
+        recorder,
+        parent,
+    )
+}
+
 /// The explicit `--task`, else the session's bound task; binding failures are errors.
 fn bound_task(options: &Options) -> Result<Option<String>, Failure> {
     if let Some(task) = options.get("task") {
@@ -1432,6 +1467,10 @@ fn help(action: &str) -> Value {
         "task-adopt" => json!({
             "usage": "task-adopt --session id --from earlier-session [--root project]",
             "mode": "copy an earlier session's unfinished task and checkpoint into this session and bind it; the earlier session is unchanged and no authorization is renewed",
+        }),
+        "task-decide" => json!({
+            "usage": "task-decide --session id --decision \"what was decided\" --by user|agent [--why \"reason\"] [--rejected \"alternative\" ...] [--supersedes d1] [--root project]",
+            "mode": "record a decision on the session's bound task; it is shown when the task resumes after compaction or in another session. A user decision records what the user said; it grants no authorization",
         }),
         "session-attempt" => json!({
             "usage": "session-attempt --root project --session id --task task-id --data attempt.json",

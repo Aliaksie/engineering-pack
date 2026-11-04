@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 pub mod acceptance;
 pub mod handoff;
 pub mod host_context;
+pub mod resume;
 pub mod status;
 pub mod step;
 pub mod views;
@@ -507,6 +508,7 @@ pub fn validate(state: &Value) -> Result {
         acceptance::validate_evidence(&record.unwrap()["acceptanceEvidence"])?;
     }
     validate_features(state.get("featureOutcomes"))?;
+    resume::validate(state)?;
     if let Some(value) = state.get("recommendations") {
         recommendations(value)?;
     }

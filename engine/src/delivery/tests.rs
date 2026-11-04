@@ -30,6 +30,7 @@ fn plans_replay_the_frozen_corpus() {
             context_changing: flag(facts, "contextChanging"),
             context_restored: flag(facts, "contextRestored"),
             turn_finished: flag(facts, "turnFinished"),
+            restore_pending: false,
         };
         let plan = plan(&facts, &case["settings"]);
         let expected = &case["result"];
@@ -251,4 +252,48 @@ fn a_lookup_route_speaks_only_with_a_verified_answer() {
     ));
     assert!(!speaks(&json!({"intent": "locate", "answer": null})));
     assert!(speaks(&json!({"intent": "implement", "skills": ["x"]})));
+}
+
+#[test]
+fn a_compacted_task_resumes_at_the_next_event_that_can_show_it() {
+    let settings = json!({"checkpoint": {"enabled": true}});
+    let changing = Facts {
+        session: true,
+        context_changing: true,
+        ..Facts::default()
+    };
+    assert!(plan(&changing, &settings).mark_restore);
+    let prompt = |restore_pending, context_supported| {
+        let facts = Facts {
+            session: true,
+            context_supported,
+            prompt: Some("continue"),
+            restore_pending,
+            ..Facts::default()
+        };
+        plan(&facts, &settings).recover_checkpoint
+    };
+    assert!(prompt(true, true));
+    assert!(!prompt(false, true));
+    // An event whose context the host cannot show keeps the restore pending.
+    assert!(!prompt(true, false));
+    let off = json!({"checkpoint": {"enabled": false}});
+    assert!(!plan(&changing, &off).mark_restore);
+}
+
+#[test]
+fn a_resume_comes_before_routing_and_raw_checkpoint_data() {
+    let resume = json!({"task": "fix", "goal": "Fix it"});
+    let checkpoint = json!({"saved": {"taskId": "fix"}, "resume": resume});
+    let routing = json!({"intent": "implement"});
+    let decided = decision(Some(&routing), Some(&checkpoint), None, false);
+    assert_eq!(
+        decided["context"],
+        json!({"kind": "resume", "data": resume})
+    );
+    let raw = json!({"saved": {"taskId": "fix"}});
+    assert_eq!(
+        decision(None, Some(&raw), None, false)["context"]["kind"],
+        "checkpoint"
+    );
 }
