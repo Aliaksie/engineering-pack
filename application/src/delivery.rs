@@ -28,6 +28,9 @@ pub struct Event<'a> {
     pub edit_context: bool,
     pub file: Option<&'a str>,
     pub prompt: Option<&'a str>,
+    /// A search tool's pattern and a shell tool's command, for a search the model ran.
+    pub pattern: Option<&'a str>,
+    pub command: Option<&'a str>,
     pub context_supported: bool,
 }
 
@@ -230,6 +233,17 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
+    // A search the model just ran gets its verified answer in the same tool result: no turn.
+    let searching = event.lifecycle == "after-tool"
+        && event.context_supported
+        && decision.get("context").is_none()
+        && settings["efficiency"]["lookup"]["enabled"] == true;
+    if let Some(answer) = searching
+        .then(|| search_answer(root, event.pattern, event.command, recorder, hook))
+        .flatten()
+    {
+        decision["context"] = json!({"kind": "answer", "data": answer});
+    }
     // The session identity a started or restored session needs for task commands.
     if let (true, Some(session)) = (facts.started || facts.context_restored, session) {
         let mut identity = json!({"id": session, "task": task});
@@ -307,6 +321,10 @@ fn warm_evidence(root: &Path) {
 /// for it, and sources it defers are searched literally.
 const PROMPT_REFRESH_MS: u64 = 1_000;
 
+/// Index refresh a search answer may spend: enough for the few sources an edit changed
+/// since the index was warmed; a larger refresh leaves the search unanswered.
+const SEARCH_REFRESH_MS: u64 = 200;
+
 /// The cited answer to the structural lookup a prompt asks, or `None` when it asks none or
 /// the answer is not certain. The lookup is recorded as a discovery under the hook; one that
 /// cannot run leaves the prompt with its runnable lookup alone.
@@ -317,14 +335,57 @@ fn prompt_answer(
     hook: &Operation,
 ) -> Option<Value> {
     let (ask, value) = answer::question(prompt)?;
+    evidence_answer(
+        root,
+        ask,
+        &value,
+        PROMPT_REFRESH_MS,
+        recorder,
+        hook,
+        |result, declarations| answer::answered(ask, &value, result, declarations),
+    )
+}
+
+/// The verified declaration and callers of the one name a search the model just ran looks
+/// for, or `None`: the model keeps its own search result either way.
+fn search_answer(
+    root: &Path,
+    pattern: Option<&str>,
+    command: Option<&str>,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Option<Value> {
+    let value = answer::searched(pattern, command)?;
+    evidence_answer(
+        root,
+        "callers",
+        &value,
+        SEARCH_REFRESH_MS,
+        recorder,
+        hook,
+        |result, declarations| answer::usages(&value, result, declarations?),
+    )
+}
+
+/// Ask Project Intelligence `ask` about `value` within one `refresh_ms` budget, then the
+/// declaration when callers can answer at all, and certify the pair with `certify`.
+fn evidence_answer(
+    root: &Path,
+    ask: &str,
+    value: &str,
+    refresh_ms: u64,
+    recorder: &mut Recorder,
+    hook: &Operation,
+    certify: impl FnOnce(&Value, Option<&Value>) -> Option<Value>,
+) -> Option<Value> {
     let operation = recorder.start("discovery.completed", Some(hook));
     let started = std::time::Instant::now();
     let lookup = |ask: &str, recorder: &mut Recorder| {
         let input = json!({"ask": ask, "value": value, "paths": [], "limit": answer::ROWS});
         let spent = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-        // A later lookup queries the index this prompt just refreshed, so it needs no budget of
-        // its own; one millisecond keeps the refresh bounded rather than unlimited.
-        let refresh = PROMPT_REFRESH_MS.saturating_sub(spent).max(1);
+        // A later lookup queries the index the first one just refreshed, so it needs no
+        // budget of its own; one millisecond keeps the refresh bounded rather than unlimited.
+        let refresh = refresh_ms.saturating_sub(spent).max(1);
         crate::question::answer(root, &input, refresh, |request| {
             let context = crate::discovery::Context {
                 root,
@@ -339,14 +400,14 @@ fn prompt_answer(
     };
     let result = lookup(ask, recorder);
     // A cold or partial index cannot answer callers, so the declaration lookup would only
-    // add latency to a prompt that gets no answer.
+    // add latency to an event that gets no answer.
     let declarations = match (ask, &result) {
         ("callers", Some(result)) if answer::answerable(result) => lookup("declaration", recorder),
         _ => None,
     };
     let answered = result
         .as_ref()
-        .and_then(|result| answer::answered(ask, &value, result, declarations.as_ref()));
+        .and_then(|result| certify(result, declarations.as_ref()));
     let rows = answered
         .as_ref()
         .and_then(|a| a["rows"].as_array())

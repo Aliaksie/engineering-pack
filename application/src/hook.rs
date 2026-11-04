@@ -230,6 +230,10 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     if let Some(file) = text(&input["file_path"]).or_else(|| text(&input["path"])) {
         event["file"] = json!(file);
     }
+    // A search tool's pattern (Claude `Grep`, Gemini `search_file_content`).
+    if let Some(pattern) = text(&input["pattern"]).filter(|p| js_length(p) <= 256) {
+        event["pattern"] = json!(pattern);
+    }
     event["prompt"] = json!(text(&payload["prompt"]).unwrap_or_default());
     if let Some(session) = first(payload, &["session_id", "sessionId", "conversation_id"])
         .and_then(Value::as_str)
@@ -240,8 +244,8 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     event
 }
 
-/// Facts for the native `host` handler; only shell-scoped hooks receive the command and
-/// only delivery the file and prompt.
+/// Facts for the native `host` handler; only shell-scoped hooks and delivery receive the
+/// command, and only delivery the file, prompt and search pattern.
 fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     let mut facts = json!({
         "handler": hook.handler, "host": hook.host, "package": hook.package, "lifecycle": hook.lifecycle,
@@ -254,6 +258,11 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     if hook.handler == "deliver" {
         facts["file"] = event["file"].clone();
         facts["prompt"] = event["prompt"].clone();
+        // A search the model ran, which the hook may answer from verified evidence.
+        facts["pattern"] = event["pattern"].clone();
+        if event["tool"] == "shell" {
+            facts["command"] = event["command"].clone();
+        }
     }
     facts
 }
@@ -275,6 +284,7 @@ fn render(context: &Value, host: &str) -> String {
             }
             format!("Routing hints (no authorization implied; reuse until scope/config changes): {hint}")
         }
+        Some("answer") => format!("Project Intelligence for the search just run (verified declaration and callers, complete coverage; no authorization implied): {}", context["data"]),
         Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing: {}", context["data"]),
         Some("services") => format!("Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {}", context["data"]),
         Some("preserve") => "Preserve task scope, original authorization, evidence and next step in the project checkpoint. Compaction hooks do not replace milestone checkpoints.".into(),

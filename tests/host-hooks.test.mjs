@@ -140,6 +140,39 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
   }
 });
 
+test('a search the model ran gets the verified declaration and callers in the same result', (t) => {
+  const dir = fixture(t);
+  const java = (name, body) => fs.writeFileSync(path.join(dir, `${name}.java`), `class ${name} {\n${body}\n}\n`);
+  java('Policy', '  long apply(long cents) { return cents; }');
+  java('Checkout', '  long finish(Policy p) {\n    return p.apply(10);\n  }');
+  java('Quote', '  long preview(Policy p) {\n    return p.apply(5);\n  }');
+  for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
+  const shell = { codex: 'Bash', cursor: 'Shell', gemini: 'run_shell_command' };
+  const context = (host, input) => {
+    const result = invoke(host, 'craft-delivery', 'milestone', { session_id: `search-${host}`, cwd: dir, ...input }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    return output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+  };
+  const answer = text => JSON.parse(text.slice(text.indexOf('{')));
+  const grep = context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } });
+  assert.match(grep, /^Project Intelligence for the search just run/);
+  assert.match(answer(grep).declaration, /^Policy\.java:2/);
+  assert.deepEqual(answer(grep).rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);']);
+  for (const [host, tool] of Object.entries(shell)) {
+    const text = context(host, { tool_name: tool, tool_input: { command: `cd ${JSON.stringify(dir)} && rg -n apply | head` } });
+    if (!HOSTS[host].events['after-tool'].context) { assert.equal(text, '', host); continue; }
+    assert.deepEqual(answer(text).rows, answer(grep).rows, host);
+  }
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'app.*' } }), '', 'a regex names no symbol');
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'finish' } }), '', 'a name nothing calls gets no answer');
+  const copilot = invoke('copilot', 'craft-delivery', 'milestone', { sessionId: 'search-copilot', cwd: dir, toolName: 'bash', toolArgs: { command: 'rg -n apply' } }, dir);
+  assert.equal(copilot.status, 0, copilot.stderr);
+  assert.ok(!copilot.stdout.includes('Project Intelligence'), 'copilot shows no after-tool context');
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, efficiency: { lookup: { enabled: false } } }));
+  assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } }), '', 'lookup disabled: no search answers');
+});
+
 test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {
   const dir = fixture(t);
   for (const host of native) {

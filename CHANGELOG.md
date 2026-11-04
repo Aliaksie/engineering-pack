@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
+  `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
+  to that tool result on Claude, Codex, Cursor and Gemini, so no extra lookup turn is needed.
+  It answers only with complete coverage of a name declared once; otherwise the search result
+  stays as it was. `efficiency.lookup.enabled: false` turns it off.
 - A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
   hint. Before, the hint named a `craft locate` command, and models that followed it spent one
   or two turns more than a plain search. Answered lookups still carry their rows and the command.
