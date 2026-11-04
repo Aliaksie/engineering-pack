@@ -23,6 +23,7 @@ pub const LANGUAGES: &[&Language] = &[
 pub static ACTIVE: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     let mut active: Vec<_> = LANGUAGES.iter().map(|l| l.provider).collect();
     active.push(crate::markdown::PROVIDER);
+    active.push(crate::config::PROVIDER);
     active
 });
 
@@ -37,6 +38,7 @@ fn language(path: &str) -> Option<&'static Language> {
 pub fn for_path(path: &str) -> Option<&'static str> {
     match Path::new(path).extension().and_then(|s| s.to_str()) {
         Some("md" | "markdown") => Some(crate::markdown::PROVIDER),
+        Some("json" | "jsonc" | "toml" | "yaml" | "yml") => Some(crate::config::PROVIDER),
         _ => language(path).map(|l| l.provider),
     }
 }
@@ -44,7 +46,10 @@ pub fn for_path(path: &str) -> Option<&'static str> {
 /// The evidence kinds a provider can extract.
 pub fn kinds(provider: &str) -> &'static [&'static str] {
     if provider == crate::markdown::PROVIDER {
-        return &["md:section"];
+        return crate::markdown::KINDS;
+    }
+    if provider == crate::config::PROVIDER {
+        return &[crate::config::KIND];
     }
     LANGUAGES
         .iter()
@@ -55,6 +60,7 @@ pub fn kinds(provider: &str) -> &'static [&'static str] {
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
     match for_path(path) {
         Some(crate::markdown::PROVIDER) => crate::markdown::extract(path, bytes),
+        Some(crate::config::PROVIDER) => crate::config::extract(path, bytes),
         Some(_) => language(path)
             .ok_or("unsupported source extension")?
             .extract(path, bytes),
@@ -78,7 +84,8 @@ mod tests {
                 "A.java",
                 "import a.B; import static a.C.d; class A { A() {} void f() { g(this::f); } }",
             ),
-            ("a.md", "# Title\n"),
+            ("a.md", "# Title\n[x](b.md) `c` "),
+            ("a.json", "{\"a\": {\"b\": 1}}"),
             (
                 "a.rs",
                 "use a::{b, c}; mod m; macro_rules! n { () => {} } const C: u8 = 1; struct S; fn f() { g(a::f); n!(h()); }",

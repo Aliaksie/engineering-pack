@@ -173,6 +173,39 @@ test('a search the model ran gets the verified declaration and callers in the sa
   assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } }), '', 'lookup disabled: no search answers');
 });
 
+test('a key, mention or decision-record prompt gets its verified answer on any route, and the switches turn hints and answers off', (t) => {
+  const dir = fixture(t);
+  fs.writeFileSync(path.join(dir, 'tsconfig.json'), '{\n  // compiler\n  "compilerOptions": {\n    "strict": true,\n  },\n}\n');
+  fs.mkdirSync(path.join(dir, 'docs/adr'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'docs/adr/0001-ids.md'), '# Use numbers as IDs\n\n- Status: superseded by [0002](0002-slugs.md)\n');
+  fs.writeFileSync(path.join(dir, 'docs/adr/0002-slugs.md'), '# Use slugs as IDs\n\nStatus: accepted\n\nReplaces `AdrNumber`; see [code](../../src/slug.ts).\n');
+  for (const args of [['init', '-q'], ['add', '-A']]) assert.equal(spawnSync('git', args, { cwd: dir }).status, 0);
+  const hint = (host, prompt, session = `noncode-${host}-${prompt.length}`) => {
+    const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: session, prompt }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+    return context && JSON.parse(context.slice(context.indexOf('{')));
+  };
+  const capable = native.filter(host => HOSTS[host].events['before-prompt'].context);
+  for (const host of capable) {
+    assert.deepEqual(hint(host, 'Where is `compilerOptions.strict` set?').answer.rows, ['tsconfig.json:4 in compilerOptions: compilerOptions.strict: "strict": true,'], host);
+    assert.deepEqual(hint(host, 'Which docs mention `AdrNumber`?').answer.rows, ['docs/adr/0002-slugs.md:5 in Use slugs as IDs: Replaces `AdrNumber`; see [code](../../src/slug.ts).'], host);
+    assert.deepEqual(hint(host, 'Which documents link to src/slug.ts?').answer.rows.length, 1, host);
+    assert.deepEqual(hint(host, 'Which ADR is the current decision on IDs?').answer.rows, [
+      'docs/adr/0001-ids.md:1: Use numbers as IDs [superseded by docs/adr/0002-slugs.md]',
+      'docs/adr/0002-slugs.md:1: Use slugs as IDs [accepted]',
+    ], host);
+  }
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, routing: { promptHints: false } }));
+  for (const host of capable) {
+    assert.equal(hint(host, 'review this change', `quiet-${host}`), '', `${host}: prompt hints off`);
+    assert.ok(hint(host, 'Where is `compilerOptions.strict` set?', `quiet-answer-${host}`).answer, `${host}: answers follow their own switch`);
+  }
+  fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, efficiency: { lookup: { enabled: false } } }));
+  for (const host of capable) assert.equal(hint(host, 'Where is `compilerOptions.strict` set?', `off-${host}`), '', `${host}: lookup disabled: no prompt answers`);
+});
+
 test('explicit verify prompts select testing-only context rather than feature implementation', (t) => {
   const dir = fixture(t);
   for (const host of native) {

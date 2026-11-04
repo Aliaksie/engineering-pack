@@ -834,6 +834,11 @@
       "additionalProperties": false,
       "required": [],
       "properties": {
+        "promptHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Routing hints on prompts. Set false to keep the request's intent as session state without showing a hint."
+        },
         "editHints": {
           "type": "boolean",
           "default": true
@@ -1049,7 +1054,7 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Route structural lookups (declarations, callers, imports, document sections) through Project Intelligence before literal search. Off by default."
+          "description": "Route structural lookups (declarations, callers, imports, document sections, links and mentions, decision records, configuration keys) through Project Intelligence before literal search. On unless set false."
         },
         "exclude": {
           "type": "array",

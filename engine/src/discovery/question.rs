@@ -12,6 +12,9 @@ pub enum Ask {
     Imports,
     Section,
     Outline,
+    Mentions,
+    Decisions,
+    Key,
 }
 
 pub const ASKS: &[(&str, Ask)] = &[
@@ -20,6 +23,9 @@ pub const ASKS: &[(&str, Ask)] = &[
     ("imports", Ask::Imports),
     ("section", Ask::Section),
     ("outline", Ask::Outline),
+    ("mentions", Ask::Mentions),
+    ("decisions", Ask::Decisions),
+    ("key", Ask::Key),
 ];
 
 /// Source code that could declare, call or import a name, whether or not a provider reads it.
@@ -30,6 +36,19 @@ const CODE: &[&str] = &[
 ];
 /// Documents with headings.
 const DOCUMENTS: &[&str] = &["adoc", "asciidoc", "markdown", "md", "org", "rst"];
+/// Configuration files with keys.
+const CONFIGURATION: &[&str] = &[
+    "cfg",
+    "conf",
+    "ini",
+    "json",
+    "json5",
+    "jsonc",
+    "properties",
+    "toml",
+    "yaml",
+    "yml",
+];
 
 impl Ask {
     pub fn name(self) -> &'static str {
@@ -56,6 +75,9 @@ impl Ask {
             }),
             Ask::Section => ("name", |kind| kind == "md:section"),
             Ask::Outline => ("path", |kind| kind == "md:section"),
+            Ask::Mentions => ("name", |kind| matches!(kind, "md:link" | "md:mention")),
+            Ask::Decisions => ("title", |kind| kind == "md:decision"),
+            Ask::Key => ("key", |kind| kind == "config:key"),
         }
     }
 
@@ -71,7 +93,10 @@ impl Ask {
             return false;
         };
         match self {
-            Ask::Section | Ask::Outline => DOCUMENTS.contains(&extension.as_str()),
+            Ask::Section | Ask::Outline | Ask::Mentions | Ask::Decisions => {
+                DOCUMENTS.contains(&extension.as_str())
+            }
+            Ask::Key => CONFIGURATION.contains(&extension.as_str()),
             _ => CODE.contains(&extension.as_str()),
         }
     }
@@ -101,7 +126,9 @@ pub fn question(input: &Value) -> Result<Question, String> {
         .as_str()
         .and_then(|name| ASKS.iter().find(|(n, _)| *n == name))
         .map(|(_, ask)| *ask)
-        .ok_or("question must be declaration, callers, imports, section or outline")?;
+        .ok_or(
+            "question must be declaration, callers, imports, section, outline, mentions, decisions or key",
+        )?;
     let value = input["value"]
         .as_str()
         .filter(|v| !v.is_empty() && js_length(v) <= 256 && !v.contains(['\r', '\n', '\0']))
@@ -152,6 +179,11 @@ pub fn question(input: &Value) -> Result<Question, String> {
     }
     let (name, qualifier) = match ask {
         Ask::Declaration | Ask::Callers => qualified(&value)?,
+        // A path is mentioned by its link's resolved, root-relative spelling.
+        Ask::Mentions => match value.strip_prefix("./") {
+            Some(path) if !path.is_empty() => (path.to_string(), None),
+            _ => (value.clone(), None),
+        },
         _ => (value.clone(), None),
     };
     Ok(Question {
@@ -326,6 +358,9 @@ pub fn route(question: &Question, coverage: &Coverage) -> Value {
 pub fn literal(question: &Question, paths: Option<&[String]>) -> Value {
     let term = match question.ask {
         Ask::Outline => "#",
+        // Every decision record has a title heading; a key is spelled by its last segment.
+        Ask::Decisions if question.name == "*" => "#",
+        Ask::Key => question.name.rsplit('.').next().unwrap_or(&question.name),
         _ => question.name.as_str(),
     };
     match paths {

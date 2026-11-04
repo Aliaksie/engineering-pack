@@ -20,6 +20,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -120,6 +121,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -218,6 +220,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -318,6 +321,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -415,6 +419,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -480,6 +485,7 @@
             }
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -557,6 +563,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -657,6 +664,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -764,6 +772,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -864,6 +873,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -995,6 +1005,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -1112,6 +1123,7 @@
             ]
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -1209,6 +1221,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -1309,6 +1322,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -1800,6 +1814,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -1900,6 +1915,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",
@@ -2073,6 +2089,7 @@
         "result": {
           "settings": {
             "routing": {
+              "promptHints": true,
               "editHints": true,
               "dedupeHints": true
             },
@@ -2173,6 +2190,7 @@
             "formatVersion": 1
           },
           "origins": {
+            "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
             "checkpoint.enabled": "bundled",

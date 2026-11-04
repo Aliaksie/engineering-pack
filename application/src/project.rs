@@ -152,5 +152,31 @@ pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failu
     let budget = workers::budget(&result["settings"], &facts, session, now_ms())?;
     result["state"] = state_location(root);
     result["workers"] = budget;
+    result["features"] = features(root);
     Ok(result)
+}
+
+/// Switches read outside the merged settings, with where each value came from: Project
+/// Intelligence from `.craft/project.json`, the background index warm-up from the host's
+/// environment, telemetry from `.craft/telemetry.json`.
+fn features(root: &Path) -> Value {
+    let configured = configuration(root).ok().and_then(|project| {
+        project
+            .get("evidence")
+            .and_then(|evidence| evidence.get("enabled"))
+            .and_then(Value::as_bool)
+    });
+    let evidence = configured.unwrap_or(true);
+    let warm_off = std::env::var_os("CRAFT_EVIDENCE_WARM").is_some_and(|value| value == "0");
+    json!({
+        "projectIntelligence": {
+            "enabled": evidence,
+            "origin": if configured.is_some() { "project" } else { "bundled" },
+        },
+        "backgroundWarm": {
+            "enabled": evidence && !warm_off && !cfg!(windows),
+            "origin": if warm_off { "environment" } else if cfg!(windows) { "platform" } else { "bundled" },
+        },
+        "telemetry": crate::telemetry::effective(root),
+    })
 }

@@ -67,9 +67,13 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     } else if edit {
         (Some("implement"), None)
     } else {
-        request.as_ref().map_or((None, None), |request| {
-            (Some(request.intent), request.artifact)
-        })
+        // Turning prompt hints off keeps the request's intent as session state, unshown.
+        request
+            .as_ref()
+            .filter(|_| settings["routing"]["promptHints"] != false)
+            .map_or((None, None), |request| {
+                (Some(request.intent), request.artifact)
+            })
     };
     let establish = match (&request, intent) {
         _ if !facts.session => None,
@@ -136,7 +140,7 @@ pub fn lookup(intent: &str, runtime: Option<&str>, root: &str) -> Option<Value> 
     let runtime = runtime.filter(|runtime| intent == "locate" && !runtime.is_empty())?;
     Some(json!({
         "run": [runtime, "locate", "--root", root],
-        "ask": "one of --callers <name>, --declaration <name>, --imports <target>, --section <heading>, --outline <document>, or --term <text> (repeatable); --path <dir> scopes it and is required outside Git",
+        "ask": "one of --callers <name>, --declaration <name>, --imports <target>, --section <heading>, --outline <document>, --mentions <name-or-path>, --decisions <title-word or *>, --key <dotted.key>, or --term <text> (repeatable); --path <dir> scopes it and is required outside Git",
     }))
 }
 

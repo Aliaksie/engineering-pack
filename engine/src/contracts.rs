@@ -293,8 +293,8 @@ pub fn validate_project(project: &Value) -> Result {
         }
     }
     if let Some(routing) = map.get("routing") {
-        let routing = object(routing, &["editHints", "dedupeHints"], "routing")?;
-        for field in ["editHints", "dedupeHints"] {
+        let routing = object(routing, &["promptHints", "editHints", "dedupeHints"], "routing")?;
+        for field in ["promptHints", "editHints", "dedupeHints"] {
             boolean(
                 routing.get(field),
                 &format!("routing {field} must be boolean"),
@@ -569,7 +569,7 @@ fn validate_execution(execution: &Map<String, Value>) -> Result {
 /// Bundled defaults. Preferences select behavior; authorization and host support stay separate facts.
 pub fn default_settings() -> Value {
     json!({
-        "routing": { "editHints": true, "dedupeHints": true },
+        "routing": { "promptHints": true, "editHints": true, "dedupeHints": true },
         "checkpoint": { "enabled": true },
         "workspace": {
             "enabled": true, "maxSessions": 20,
