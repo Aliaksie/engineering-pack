@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exported skills state the package's permission rule inline ("Craft guidance grants no
+  permission: the project's instructions and the user's scope decide") instead of telling the
+  agent to read the package `AGENTS.md` first. On Codex, which followed that link, a routed task
+  reads up to two fewer files. `AGENTS.md` still ships with each package, and `craft
+  context-report` no longer counts it as required guidance (Codex `implement`: 18,107 → 15,577 bytes).
 - When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
   `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
   to that tool result on Claude, Codex, Cursor and Gemini, so no extra lookup turn is needed.

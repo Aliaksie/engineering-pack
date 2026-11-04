@@ -22,8 +22,8 @@ test('context report hashes the selected files, deduplicates selections and repo
   const before = structuredClone(plan);
   const report = contextReport(root, plan, { budgetBytes: 1 });
   assert.equal(report.complete, true);
-  assert.equal(report.files.length, 3); // Testing workflow, discipline entry point and required package instructions.
-  assert.equal(report.totals.repeatedSelections, 1);
+  assert.equal(report.files.length, 2); // Testing workflow and discipline entry point; no package instructions.
+  assert.equal(report.totals.repeatedSelections, 0);
   assert.equal(report.budget.status, 'exceeded');
   assert.equal(report.sessionUsage.currentTokens, null);
   assert.deepEqual(plan, before);

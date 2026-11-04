@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { ADAPTERS, build, checkBuild } from '../tooling/build.mjs';
 import { files, frontmatter, json, loadCapabilities, validateCapability } from '../tooling/lib/capabilities.mjs';
 import { evaluateReport } from '../tooling/eval-report.mjs';
-import { copy } from '../tooling/export/export.mjs';
+import { copy, PERMISSION } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
 import { featureSupport } from '../hosts/capabilities.mjs';
 import { runHook } from './hook-command.mjs';
@@ -115,8 +115,9 @@ test('all adapters preserve resources, separate names, and report actual feature
         if (sourceSkill && fs.existsSync(path.join(root, 'packages', manifest.name, sourceSkill, 'references'))) {
           assert.ok(fs.existsSync(path.join(location, 'references')), `${target}: lost references for ${name}`);
         }
-        const instructions = /\[package instructions\]\(([^)]+)\)/.exec(info.body)?.[1];
-        assert.ok(instructions && fs.existsSync(path.resolve(location, instructions)), `${target}: missing instructions for ${name}`);
+        // The permission rule is inline: no skill sends the model to read package instructions first.
+        assert.ok(info.body.includes(PERMISSION), `${target}: ${name} lacks the inline permission rule`);
+        assert.ok(!info.body.includes('[package instructions]'), `${target}: ${name} still links package instructions`);
         // Workflows and skills alike must link to files the export actually ships.
         for (const [, href] of info.body.matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
           if (/^[a-z]+:/i.test(href)) continue;
