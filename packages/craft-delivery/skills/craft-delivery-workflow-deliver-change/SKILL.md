@@ -5,7 +5,7 @@ description: "Implement an authorized feature or product-code fix through scoped
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Carry evidence through delivery
 

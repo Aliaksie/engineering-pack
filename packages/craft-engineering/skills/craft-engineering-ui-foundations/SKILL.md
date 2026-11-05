@@ -5,7 +5,7 @@ description: "Frame user-interface behavior, interaction states and accessibilit
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Frame an interface change
 

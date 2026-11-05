@@ -12,7 +12,7 @@ is a test basis, not an instruction to implement it. A local request is sufficie
 is optional context and must identify the revision it contributes.
 
 - **Manual:** plan or perform authorized observations against the application. Source code
-  and a runner are optional. Use `craft-engineering-workflow-explore-testing` for exploratory
+  and a runner are optional. Use `craft-engineering:workflow-explore-testing` for exploratory
   work; criteria-based checks need not become an exhaustive exploration campaign. Test data,
   account changes and remote actions still require the existing scope.
 - **Existing automation:** inspect the actual configured checks and run only the relevant
@@ -28,7 +28,7 @@ Keep product-code fixes outside this testing-only scope. A discovered defect bec
 evidence-backed finding with reproduction and impact. If product changes are separately
 authorized, make that expanded boundary explicit before using the coding delivery flow.
 
-Use `craft-engineering-testing-engineering` for affected boundary, flakiness or debugging
+Use `craft-engineering:testing-engineering` for affected boundary, flakiness or debugging
 decisions. Retain one compact evidence record per acceptance claim: criterion, build/revision,
 environment, check or observation, observed result, artifact and coverage limit. A proposed
 check is `not-run`; unavailable execution is `not-available` (the task may be blocked). Evidence for another build

@@ -39,9 +39,16 @@ In the target project invoke `/craft-engineering:foundations`. Install `craft-de
 points use the `workflow-` prefix, for example `/craft-stories:workflow-prepare-stories`.
 Installation does not configure a task tracker.
 
+Claude Code refuses an action when a plugin hook cannot start or return an answer. Each package
+ships `bin/craft` with runtimes for Linux x64, macOS arm64 and Windows x64. On another
+platform, or with a damaged runtime, the launcher still answers: the package says once that it
+is inactive, and `craft-review` denies every shell command because its policy cannot be
+evaluated. Reinstall the package if `bin/craft` itself is missing.
+
 Sources: [plugins](https://code.claude.com/docs/en/plugins),
 [marketplaces](https://code.claude.com/docs/en/plugin-marketplaces),
-[project instructions](https://code.claude.com/docs/en/memory).
+[project instructions](https://code.claude.com/docs/en/memory),
+[changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) (2.1.299).
 
 ## Codex CLI
 
@@ -57,13 +64,18 @@ directory does not accept them. For guidance without plugins or hooks, merge the
 overlay into the project; Codex discovers `.agents/skills`.
 
 Plugin hooks need their own trust: open `/hooks`, inspect and trust the current definitions,
-and review again after they change. `/status` and `/statusline` show session usage; `craft`
+and review again after they change. Codex 0.164 and later binds that approval to the plugin's
+contents, so every Craft update asks again. Codex 0.150 and later loads no project `AGENTS.md`
+in an untrusted project, so the `agents` overlay's guidance is absent until you trust the
+project. `/status` and `/statusline` show session usage; `craft`
 receives no Codex token counts, so they stay unknown.
 
 Sources: [CLI commands](https://learn.chatgpt.com/docs/cli/reference),
 [plugin packaging](https://developers.openai.com/plugins/build/plugins),
 [skill discovery](https://learn.chatgpt.com/docs/build-skills),
 [hook discovery and trust](https://learn.chatgpt.com/docs/hooks),
+[0.164.0](https://github.com/openai/codex/releases/tag/rust-v0.164.0) and
+[0.150.0](https://github.com/openai/codex/releases/tag/rust-v0.150.0) release notes,
 [CLI hook browser and status controls](https://learn.chatgpt.com/docs/developer-commands?surface=cli).
 
 ## Gemini CLI
@@ -78,7 +90,12 @@ guidance and tools, with no automatically registered hooks or MCP connections. F
 the `gemini` project overlay instead ([local builds](#local-builds-and-project-overlays)); do
 not install both into the same project, since they expose the same skills.
 
-Source: [extension reference](https://geminicli.com/docs/extensions/reference/).
+Gemini CLI is for Gemini Code Assist enterprise users only. Free and Google AI Pro/Ultra
+users moved to Antigravity CLI on 2026-06-18. Craft has no Antigravity adapter, and importing
+Craft packages into Antigravity is untested.
+
+Sources: [extension reference](https://geminicli.com/docs/extensions/reference/),
+[Gemini CLI README](https://github.com/google-gemini/gemini-cli).
 
 ## JetBrains AI Assistant
 

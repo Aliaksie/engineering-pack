@@ -6,9 +6,9 @@ description: Produce locally reviewable stories from feature intent, grounded fa
 # Prepare stories without losing the source intent
 
 Start with the supplied feature and any existing evidence or drafts. Where implementation
-facts matter, use `craft-stories-ground-spec` on explicit sources. Pass its cited behavior,
-revision and access limits to `craft-stories-audit-specs` rather than restarting discovery.
-Use `craft-stories-write-stories` to turn the understood outcomes into implementable slices.
+facts matter, use `craft-stories:ground-spec` on explicit sources. Pass its cited behavior,
+revision and access limits to `craft-stories:audit-specs` rather than restarting discovery.
+Use `craft-stories:write-stories` to turn the understood outcomes into implementable slices.
 
 Carry one shared packet through grounding, audit and drafting. When a structured task
 contract exists, reuse its source/criterion/decision IDs and current evidence. The optional

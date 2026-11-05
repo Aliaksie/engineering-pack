@@ -59,9 +59,12 @@ not claim a defect exists.
 craft locate --root <project> --path src --term Handler --term configKey --max-matches 20
 ```
 
-One bounded scan for all literal terms. It respects Git ignores and skips symlinks, binary
-and oversized files. It reports limits and truncation, and returns path, line and snippet
-evidence. It neither classifies definitions nor proves absence. Session reuse is described
+One bounded scan for all literal terms. In a Git worktree, Git's own text search first names
+the files that contain a term, so file, byte and match bounds are spent only on those and the
+file set equals what `git grep` finds. It respects Git ignores and skips symlinks, binary and
+oversized files. It prints path, line and snippet evidence as text, lists the matching files
+whose lines no longer fit the match bound, and reports truncation and skips; `--json` prints the
+full receipt. It neither classifies definitions nor proves absence. Session reuse is described
 in [sessions](SESSION.md#lookup-reuse).
 
 ## Delegation and model advice
@@ -86,7 +89,8 @@ a chain, advice stops rather than inventing a stronger model.
 
 ## Hints and guidance size
 
-Prompt and edit hooks add compact routing hints (`routing.editHints`). A prompt hint names
+Prompt and edit hooks add compact routing hints (`routing.promptHints`, `routing.editHints`;
+with `promptHints: false` a request still establishes the session's intent, unshown). A prompt hint names
 the intent its request leads with ("Can you fix…", "Where is…", "Write tests for…"); a
 change request turns a lookup or a test request into `implement` ("write a failing test,
 then fix it" is a change, not testing-only work), and statements, chat or questions
@@ -94,11 +98,18 @@ about the conversation get no hint. Where a result goes ("write them to `ANSWER.
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
 no request does not decide one either. The words are English and matched deterministically;
-an unrecognized request simply gets none. A lookup hint also carries `lookup`: the
-`craft locate` command of the runtime that answered the hook, rooted at the project, and the
-questions it can ask, so the agent can run it without resolving the package path itself.
-Such a hint names no skill: the command and its output explain themselves, and a lookup
-should not cost reading the skill, package instructions and setup first.
+an unrecognized request simply gets none. A lookup prompt gets a hint only when the hook
+answers it (below): a hint that merely pointed at a command cost the model one or two turns
+more than its own search. An answered hint also carries `lookup`: the `craft locate` command
+of the runtime that answered the hook, rooted at the project, and the questions it can ask,
+for a search beyond the answered question. It names no skill: a lookup should not cost
+reading the skill, package instructions and setup first.
+
+A change request (`implement`) gets no prompt hint either, unless a task is bound, the route
+reports a missing input or the hook answers a lookup in it. Its skill names sent models to read
+every skill before a one-line fix, at 1.76 times the tokens of the same fix without Craft. The
+request still establishes the session's intent, so the first edit's hint names the skills and
+references for the edited scope where the change happens.
 
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
@@ -108,7 +119,24 @@ cited rows (`path:line in method: excerpt`) with the question and scope. It answ
 it is certain: coverage is complete, no gap file matched literally, the rows fit the hint,
 and for callers the name is declared exactly once in the project, in the source a qualifier
 names (`Policy` in `Policy.apply`, `module` in `module::fn`). Two questions, two names, a plain
-word or anything less certain add no answer; the runnable `lookup` remains either way.
+word or anything less certain add no answer, and then no hint.
+
+A search the model runs itself gets the same certainty without a turn. After a Grep-style
+search tool with a literal pattern, or a shell command whose one `rg`, `grep` or `git grep`
+looks for one literal identifier (word-bounded, optionally qualified or followed by `(`), the
+after-tool hook adds that name's declaration and callers to the tool result, under the same
+rules: declared exactly once, complete coverage, at most ten rows. It refreshes Project
+Intelligence for at most 200 ms, so it answers from the index the session warmed; a regex,
+several patterns, an inverted match or anything less certain adds nothing.
+
+A prompt also gets an answer, whatever intent it routes to (or with none), when it asks where a
+dotted configuration key is set (`` Where is `compilerOptions.strict` set? ``: `--key`), which
+documents mention one code name or file (`` Which docs mention `AdrSlug`? ``: `--mentions`),
+or about decision records ("Which ADR decides…", "architecture decision record"): the index of
+every record with its status, when there are at most 24. Records under a test or fixture
+directory (`test`, `tests`, `__tests__`, `spec`, `fixtures`, `testdata`, `e2e`, or a name
+ending in `-tests` or `-fixtures`) are test data: the answer leaves them out and says how
+many. Same rule as above: complete coverage or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

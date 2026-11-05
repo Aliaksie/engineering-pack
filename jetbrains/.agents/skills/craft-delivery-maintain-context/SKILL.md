@@ -5,7 +5,7 @@ description: "Keep project instructions and maintained documentation accurate af
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../../packages/craft-delivery/AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Repair the reader's map
 

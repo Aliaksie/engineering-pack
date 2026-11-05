@@ -27,8 +27,10 @@ any host.
 - Overlay hook commands resolve from the project root. Cursor's Windows hook shell is
   undocumented and unverified.
 - Non-Claude skill names carry the package prefix (`craft-engineering-foundations`).
-- Generated skills link their package instructions instead of relying on the host to load
-  them; links are rebased per layout, and `source-capability.json` keeps the canonical manifest.
+- Generated skills carry the package's permission rule inline ("Craft guidance grants no
+  permission: the project's instructions and the user's scope decide") instead of linking the
+  package instructions, so using a skill costs no second read. `AGENTS.md` still ships with each
+  package; links are rebased per layout, and `source-capability.json` keeps the canonical manifest.
 - No package ships a live MCP connection, and exports grant no tool or model permissions.
 - JetBrains and AGENTS depend on an explicit underlying agent; guidance alone executes nothing.
   For guidance-only use of an overlay, drop its hook configuration.
@@ -37,17 +39,30 @@ any host.
 
 | Target | Before-tool policy | Compaction / recovery |
 |---|---|---|
-| Claude Code | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact restores context |
-| Codex | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact restores context |
-| Cursor | preToolUse permission response | preCompact is observational; explicit recovery |
-| Copilot | preToolUse decision response | preCompact is a notification; explicit recovery |
-| Gemini CLI | BeforeTool denial | PreCompress is advisory; explicit recovery |
+| Claude Code | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact delivers the task resume |
+| Codex | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact delivers the task resume |
+| Cursor | preToolUse permission response | preCompact is observational; task resume at the next tool result |
+| Copilot | preToolUse denial; no output otherwise | preCompact is a notification; task resume at the next tool result |
+| Gemini CLI | BeforeTool denial | PreCompress is advisory; task resume at the next prompt |
 | AGENTS | Not installed | Explicit checkpoint CLI only |
 
 Checked against the [Claude](https://code.claude.com/docs/en/hooks),
 [Codex](https://learn.chatgpt.com/docs/hooks), [Cursor](https://cursor.com/docs/hooks),
 [Copilot](https://docs.github.com/en/copilot/reference/hooks-reference) and
-[Gemini](https://geminicli.com/docs/hooks/reference/) references on 2026-10-16.
+[Gemini](https://geminicli.com/docs/hooks/reference/) references on 2026-10-16; Cursor and
+Copilot again on 2026-11-05.
+
+Craft's before-tool hooks only deny. Where a call is not denied, Copilot, Claude, Codex and
+Gemini get no decision, so the user's own approvals apply. Cursor blocks a preToolUse answer
+without a `permission`, so Craft answers `allow` there. Cursor treats a hook's `allow` as
+advisory: it does not override Cursor's allowlist or approval prompts
+([forum](https://forum.cursor.com/t/support-authoritative-allow-deny-and-ask-verdicts-from-hooks/161342)).
+If Cursor makes it authoritative, this answer changes.
+
+Copilot CLI also runs hooks from `.claude/settings.json` and `.claude/settings.local.json`, and
+Cursor loads Claude Code hooks. No export writes Craft hooks there. Craft hooks added to those
+files, or the Claude plugin installed next to a Cursor or Copilot overlay, run twice per event:
+denials stay the same, but hints and answers are sent twice.
 
 Each hook runs `craft hook <host> <lifecycle>`: `craft` turns the payload into lifecycle facts,
 the engine decides, and `craft` writes the host's native response. Hooks make no model calls and
@@ -56,7 +71,7 @@ host accepts context (`adapter-report.json` lists it per event).
 
 Failure behavior:
 
-- Input over 64 KiB is rejected; malformed JSON gets the default allow.
+- Input over 64 KiB is rejected; malformed JSON is not denied.
 - A before-shell policy that cannot evaluate denies with a configuration error. PowerShell tool
   names are normalized, so the read-only review policy also covers them.
 - Context and observational handlers stay advisory and exit 0 on failure.

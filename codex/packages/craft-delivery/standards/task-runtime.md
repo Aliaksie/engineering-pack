@@ -1,6 +1,6 @@
 # Task runtime for multi-step delivery
 
-Use this page with `craft-delivery-workflow-deliver-change` when work is multi-step, spans
+Use this page with `craft-delivery:workflow-deliver-change` when work is multi-step, spans
 sessions, is delegated, involves several repositories or needs Craft scratch files, and the
 bundled local runtime is available. A tiny, understood correction needs none of it.
 
@@ -57,12 +57,17 @@ integration result.
 
 Carry the chosen evidence/execution approach and checkpoint boundary from planning. Reassess
 when risk, evidence or phase changes; do not poll model/session advice every turn. Use
-`craft-engineering-foundations` for bounded batching, worker returns and continuation detail.
+`craft-engineering:foundations` for bounded batching, worker returns and continuation detail.
 
 After correcting a recorded permission/tool/prerequisite blocker, use `task-step` with
 `--outcome prerequisite-resolved` against its original stage and target, citing the actual
 correction. This clears that blocker without claiming acceptance passed or granting new
 authority. Preserve quality failures and other unresolved targets, then resume the checks.
+
+When the user or you settle a choice that later work depends on, record it on the bound task
+with `task-decide`: what, why, rejected alternatives and `--by user|agent`. It is shown when
+the task resumes. To change it, record a new decision with `--supersedes <id>` instead of
+contradicting it. A recorded user decision is not an authorization.
 
 At a meaningful acceptance boundary, use `task-step` to supply the stage, acceptance target,
 approach, evidence identifier, observed outcome, brief result and next step. It records a

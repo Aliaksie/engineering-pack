@@ -5,7 +5,7 @@ description: "Assess a supplied specification for decisions and gaps that obstru
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Find what prevents an implementable interpretation
 

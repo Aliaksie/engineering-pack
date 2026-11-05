@@ -5,7 +5,7 @@ description: "Implement a supplied story while tracing its acceptance criteria t
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Carry a story into code
 

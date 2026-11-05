@@ -1,27 +1,37 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.3",
+  "packVersion": "0.0.4",
   "target": "aarch64-apple-darwin",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.1",
+  "binaryVersion": "0.0.4",
   "schemaVersion": 4,
-  "provider": "javascript-tree-sitter-0.25.0/v2",
+  "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
-    "javascript-tree-sitter-0.25.0/v2",
-    "java-tree-sitter-0.23.5/v2",
+    "javascript-tree-sitter-0.25.0/v4",
+    "java-tree-sitter-0.23.5/v3",
+    "rust-tree-sitter-0.24.2/v3",
+    "typescript-tree-sitter-0.23.2/v1",
+    "tsx-tree-sitter-0.23.2/v1",
+    "python-tree-sitter-0.25.0/v1",
+    "go-tree-sitter-0.25.0/v1",
+    "c-tree-sitter-0.24.2/v1",
+    "cpp-tree-sitter-0.23.4/v1",
+    "csharp-tree-sitter-0.23.5/tags-v1",
+    "php-tree-sitter-0.25.1/tags-v1",
+    "ruby-tree-sitter-0.23.1/tags-v2",
     "markdown-sections/v1",
-    "rust-tree-sitter-0.24.2/v2"
+    "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "59c90ded023df0f922f840136d5aa79aeb7f0dcf",
+  "sourceRevision": "2b5db5b34f696ca982423cfc988eb6f7084f0bb2",
   "sourceDirty": false,
-  "cargoLockSha256": "f394f801791da1332f4767a4ea84a1a740827666cd87ea44230953f07b16a1f2",
+  "cargoLockSha256": "df56ef0a08a7b29e4ed4dd13376ebae36a301277b0afc39797564f6022b0a1a9",
   "files": [
     {
       "path": "dependencies.json",
-      "bytes": 18853,
-      "sha256": "ca0a27f3ac07ce2a224a373a6f4681205980d8fc194bb9ae6a4903229dd2f890"
+      "bytes": 20910,
+      "sha256": "d7b4e70bfeeadb738ac9bb9dcb0ac1834b6fc8e7b9c73637bbba6cc529a59628"
     },
     {
       "path": "LICENSE",
@@ -30,13 +40,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 7710768,
-      "sha256": "f4b2c847a9c4ec0678d0614fc8ef1f8afe67ad5dc6b1652a69d4dfff87b3fcc7"
+      "bytes": 25184608,
+      "sha256": "c66d6f4e0eff069bd63320727d043c70f3fac28ec8928074c2351204dc981bc3"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "13e0bcfd117e590a2218eab30373a5ad61c9df51fdf126984ddb8afffeaa3079"
+      "sha256": "b1bacaada84d22318067615c37caf821b7ac3734075a6298a5a87e1fab3fb2ce"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -399,22 +409,22 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.41.0/LICENSE",
+      "path": "notices/rusqlite-0.41.1/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-APACHE",
+      "path": "notices/rustix-1.1.6/LICENSE-APACHE",
       "bytes": 10847,
       "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-Apache-2.0_WITH_LLVM-exception",
+      "path": "notices/rustix-1.1.6/LICENSE-Apache-2.0_WITH_LLVM-exception",
       "bytes": 12243,
       "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-MIT",
+      "path": "notices/rustix-1.1.6/LICENSE-MIT",
       "bytes": 1023,
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     },
@@ -579,6 +589,26 @@
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
     {
+      "path": "notices/tree-sitter-c-0.24.2/LICENSE",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "path": "notices/tree-sitter-c-sharp-0.23.5/LICENSE",
+      "bytes": 1133,
+      "sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3"
+    },
+    {
+      "path": "notices/tree-sitter-cpp-0.23.4/tree-sitter-cpp-0.23.4-LICENSE",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
+      "path": "notices/tree-sitter-go-0.25.0/LICENSE",
+      "bytes": 1080,
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+    },
+    {
       "path": "notices/tree-sitter-java-0.23.5/tree-sitter-java-0.23.5-LICENSE",
       "bytes": 1069,
       "sha256": "52ed137b039cd9c46409bc22e89938af911c95b157feae2d040b51e6084369a7"
@@ -594,9 +624,29 @@
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
     {
+      "path": "notices/tree-sitter-php-0.25.1/LICENSE",
+      "bytes": 1166,
+      "sha256": "664764fabf40c0b318e06324a5a12379092a2df25b8cbf2415f71bc0bb352346"
+    },
+    {
+      "path": "notices/tree-sitter-python-0.25.0/LICENSE",
+      "bytes": 1080,
+      "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f"
+    },
+    {
+      "path": "notices/tree-sitter-ruby-0.23.1/tree-sitter-ruby-0.23.1-LICENSE",
+      "bytes": 1075,
+      "sha256": "ee006f02a3d856df282e409be2a86e24a65bb573a98b9c28343771141351bb6b"
+    },
+    {
       "path": "notices/tree-sitter-rust-0.24.2/LICENSE",
       "bytes": 1080,
       "sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36"
+    },
+    {
+      "path": "notices/tree-sitter-typescript-0.23.2/tree-sitter-typescript-0.23.2-LICENSE",
+      "bytes": 1080,
+      "sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559"
     },
     {
       "path": "notices/typenum-1.20.1/LICENSE",

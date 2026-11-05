@@ -64,6 +64,11 @@ After correcting a recorded permission/tool/prerequisite blocker, use `task-step
 correction. This clears that blocker without claiming acceptance passed or granting new
 authority. Preserve quality failures and other unresolved targets, then resume the checks.
 
+When the user or you settle a choice that later work depends on, record it on the bound task
+with `task-decide`: what, why, rejected alternatives and `--by user|agent`. It is shown when
+the task resumes. To change it, record a new decision with `--supersedes <id>` instead of
+contradicting it. A recorded user decision is not an authorization.
+
 At a meaningful acceptance boundary, use `task-step` to supply the stage, acceptance target,
 approach, evidence identifier, observed outcome, brief result and next step. It records a
 semantic receipt, maintains one bounded continuation and returns session advice. A shell exit

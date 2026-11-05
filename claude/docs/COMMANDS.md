@@ -29,8 +29,9 @@ compacts a host session or posts to a code host.
 | Command | Purpose | Effects |
 |---|---|---|
 | `task-start` | Bind a task to the session, optionally with repositories and an acceptance contract; `--plan P --ready` claims the plan's next ready task | Writes task state; snapshots selected Git worktrees |
-| `task-adopt` | Continue an earlier session's unfinished task in this session | Copies its task state and checkpoint; the earlier session is unchanged |
+| `task-adopt` | Continue an earlier session's unfinished task in this session; the result includes its resume | Copies its task state and checkpoint; the earlier session is unchanged |
 | `task-step` | Record a milestone, evidence and continuation | Writes task state; advances the held plan task |
+| `task-decide` | Record a decision on the bound task (what, why, rejected alternatives, by user or agent), optionally superseding an earlier one | Writes task state; grants no authorization |
 | `plan`, `plan-create`, `plan-update` | Show, create or change a work plan whose tasks sessions claim with `task-start --plan` | Writes the local plan record and its Markdown view; never reads a tracker |
 | `plan-next` | A plan's next ready task and its held, stale, orphaned, waiting, retryable and exhausted tasks | Reads the plan; claims nothing |
 | `plan-release` | Return a held plan task to pending | Writes the plan record; removes this session's binding to the task |
@@ -98,7 +99,7 @@ See [observability and privacy](OBSERVABILITY.md).
 
 ## Project evidence
 
-`project-evidence version|refresh|status|query|backup|rebuild --enable` maintains the
+`project-evidence version|refresh|warm|status|query|backup|rebuild --enable` maintains the
 local index of declarations and imports. See [project evidence](PROJECT-EVIDENCE.md).
 
 ## Host entry points

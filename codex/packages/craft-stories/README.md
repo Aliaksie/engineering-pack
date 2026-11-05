@@ -18,4 +18,4 @@ and implementation guidance are optional. It never assumes a particular tracker 
 
 The canonical contract is [capability.json](source-capability.json); [AGENTS.md](AGENTS.md)
 gives shared instructions. Build platform exports with `npm run build` from the source checkout's
-root. See [adapter support](https://github.com/Aliaksie/engineering-pack/blob/distribution-next/codex/docs/ADAPTERS.md) and [package format](https://github.com/Aliaksie/engineering-pack/blob/distribution-next/codex/docs/PACKAGE-FORMAT.md).
+root. See [adapter support](https://github.com/Aliaksie/engineering-pack/blob/v0.0.4/docs/ADAPTERS.md) and [package format](https://github.com/Aliaksie/engineering-pack/blob/v0.0.4/docs/PACKAGE-FORMAT.md).

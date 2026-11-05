@@ -7,7 +7,8 @@ and local files work without a tracker; remote operations need explicit service 
 Exported packages run the bundled native `craft` through `bin/craft`. It produces
 routing/tool plans without executing work. Optional lifecycle hooks route each prompt by the request it
 makes, record the session's intent and any planning document it writes as planning evidence,
-answer a certain single-name lookup with cited rows, and save milestone checkpoint snapshots;
+answer a certain single-name lookup, in the prompt or after the agent's own search, with cited
+rows, and save milestone checkpoint snapshots;
 they do not force skills to load on every host.
 Edit hints and hint deduplication default to enabled and can be disabled. Service metadata
 and bounded lookup results can be reused across turns.

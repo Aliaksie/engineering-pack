@@ -8,7 +8,7 @@ references needed for its languages, layers and risks. Gather diff and caller ev
 bounded batches. Use an immutable committed snapshot when it represents the requested scope;
 inspect dirty-tree work directly when it does not.
 
-Reuse `craft-engineering-locate-code` for bounded discovery when installed. Check applicable
+Reuse `craft-engineering:locate-code` for bounded discovery when installed. Check applicable
 accepted decisions and, where supplied and accessible, linked task criteria, contracts, CI
 results for the reviewed head and unresolved prior findings. A missing tracker or companion
 skill does not stop direct review; disclose consequential gaps. Assess the raw change rather

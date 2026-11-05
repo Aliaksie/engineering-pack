@@ -5,7 +5,7 @@ description: "Compare agent behavior on matched tasks with retained outputs, acc
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../../packages/craft-engineering/AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Evaluate an agent change
 

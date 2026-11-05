@@ -5,7 +5,7 @@ description: "Produce locally reviewable stories from feature intent, grounded f
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
 
-Read the shared [package instructions](../../../packages/craft-stories/AGENTS.md) when using this capability.
+Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
 # Prepare stories without losing the source intent
 
