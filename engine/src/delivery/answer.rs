@@ -157,14 +157,44 @@ pub const ANSWER_BYTES: usize = 1600;
 /// record is current, so it may run longer than a symbol answer.
 const DECISION_ROWS: usize = 24;
 const DECISION_BYTES: usize = 3200;
+/// Records a decision lookup reads: fixtures are left out before the answer's bound applies.
+const DECISION_LOOKUP: usize = 200;
 
 /// Most rows a lookup for `ask` may return and still answer.
 pub fn rows(ask: &str) -> usize {
     if ask == "decisions" {
-        DECISION_ROWS
+        DECISION_LOOKUP
     } else {
         ROWS
     }
+}
+
+/// Directories that hold tests or their fixtures: a decision record there is test data, not a
+/// decision of the project.
+const TEST_DIRECTORIES: &[&str] = &[
+    "test",
+    "tests",
+    "__tests__",
+    "spec",
+    "specs",
+    "fixture",
+    "fixtures",
+    "__fixtures__",
+    "testdata",
+    "e2e",
+];
+
+/// Whether `path` lies under a test or fixture directory: one named in `TEST_DIRECTORIES`,
+/// or ending in `-tests`, `_tests`, `-fixtures` or `_fixtures` (`integration-tests`).
+fn under_tests(path: &str) -> bool {
+    let mut directories = path.split('/').rev().skip(1);
+    directories.any(|directory| {
+        let directory = directory.to_ascii_lowercase();
+        TEST_DIRECTORIES.contains(&directory.as_str())
+            || ["-tests", "_tests", "-fixtures", "_fixtures"]
+                .iter()
+                .any(|suffix| directory.ends_with(suffix))
+    })
 }
 const EXCERPT_CHARS: usize = 120;
 
@@ -378,7 +408,7 @@ pub fn answered(
     result: &Value,
     declarations: Option<&Value>,
 ) -> Option<Value> {
-    let rows = complete_within(result, rows(ask))?;
+    let found = complete_within(result, rows(ask))?;
     let qualifier = result["route"]["qualifier"].as_str();
     let owned = |row: &Value| {
         qualifier.is_none_or(|qualifier| {
@@ -389,24 +419,34 @@ pub fn answered(
     };
     let rows: Vec<&Value> = match ask {
         "callers" => match complete_rows(declarations?)? {
-            [declaration] if owned(declaration) => rows.iter().collect(),
+            [declaration] if owned(declaration) => found.iter().collect(),
             _ => return None,
         },
-        "declaration" => rows.iter().filter(|row| owned(row)).collect(),
-        "mentions" | "key" | "decisions" => rows.iter().collect(),
+        "declaration" => found.iter().filter(|row| owned(row)).collect(),
+        "mentions" | "key" => found.iter().collect(),
+        "decisions" => found
+            .iter()
+            .filter(|row| !row["path"].as_str().is_some_and(under_tests))
+            .collect(),
         _ => return None,
     };
-    if rows.is_empty() {
+    if rows.is_empty() || ask == "decisions" && rows.len() > DECISION_ROWS {
         return None;
     }
+    let left_out = found.len() - rows.len();
     let lines = rows.into_iter().map(line).collect::<Option<Vec<_>>>()?;
-    let answer = json!({
+    let mut answer = json!({
         "question": format!("{ask} {value}"),
         "scopes": result["route"]["scopes"],
         "complete": true,
         "rows": lines,
         "use": USE,
     });
+    if ask == "decisions" && left_out > 0 {
+        answer["leftOut"] = json!(format!(
+            "{left_out} records under test or fixture directories"
+        ));
+    }
     let bound = if ask == "decisions" {
         DECISION_BYTES
     } else {
@@ -699,6 +739,29 @@ mod tests {
             .cloned()
             .collect();
         assert!(answered("decisions", "*", &result(many, None), None).is_none());
+        // Records under test or fixture directories are test data: left out, and counted.
+        let fixtures: Vec<Value> = (0..DECISION_ROWS)
+            .map(|n| {
+                let directory = ["packages/core/integration-tests/p/docs/adr", "tests/fixtures/adr", "src/__tests__/adr"][n % 3];
+                json!({"path": format!("{directory}/{n}.md"), "line": 1, "kind": "md:decision", "name": format!("Fixture {n}"), "target": "accepted"})
+            })
+            .chain(decisions.iter().cloned())
+            .collect();
+        let answer = answered("decisions", "*", &result(fixtures, None), None).unwrap();
+        assert_eq!(answer["rows"].as_array().unwrap().len(), 12);
+        assert_eq!(
+            answer["leftOut"],
+            "24 records under test or fixture directories"
+        );
+        assert!(
+            answered("decisions", "*", &result(decisions.clone(), None), None)
+                .unwrap()
+                .get("leftOut")
+                .is_none()
+        );
+        assert!(!under_tests("docs/adr/testing-strategy.md"));
+        assert!(!under_tests("tests.md"));
+        assert!(under_tests("Tests/adr/x.md"));
         let key = json!({"path": "tsconfig.json", "line": 8, "kind": "config:key", "name": "compilerOptions.strict", "target": "true", "excerpt": "\"strict\": true,", "container": {"name": "compilerOptions"}});
         assert_eq!(
             answered("key", "strict", &result(vec![key], None), None).unwrap()["rows"][0],

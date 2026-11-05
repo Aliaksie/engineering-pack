@@ -400,9 +400,16 @@ impl Store {
             "title" => "(?1='*' OR instr(lower(e.name),lower(?1))>0)",
             // A dotted key path as asked, or ending in it at a segment boundary.
             "key" => "(e.name=?1 OR substr(e.name,-length(?1)-1)='.'||?1)",
+            // A name as asked, or a code-span mention qualified before it: `Evidence` matches
+            // `craft_engine::Evidence`, `Gson.toJson` and `Type#method` by their last segments.
+            "mention" => {
+                "(e.name=?1 OR e.kind='md:mention' AND (substr(e.name,-length(?1)-2)='::'||?1
+                    OR substr(e.name,-length(?1)-1) IN ('.'||?1,'#'||?1)))"
+            }
             _ => {
                 return Err(
-                    "query field must be id, name, path, target, import, title or key".into(),
+                    "query field must be id, name, path, target, import, title, key or mention"
+                        .into(),
                 );
             }
         };
@@ -871,6 +878,30 @@ mod tests {
         assert_eq!(found("Gson"), pairs(&[("g/C.java", "java:imports")]));
         assert_eq!(found("b"), pairs(&[("r/lib.rs", "rust:imports")]));
         assert!(found("uffer").is_empty());
+    }
+
+    #[test]
+    fn mentions_match_as_spelled_or_by_their_last_qualified_segment() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        let source = "# A\n`craft_engine::Evidence`, `Gson.toJson()`, `Type#run`, `Evidence`, `MyEvidence`, `a_Evidence`.\n[up](/src/x.Evidence)\n";
+        let extraction = crate::providers::extract("docs/a.md", source.as_bytes()).unwrap();
+        store.replace(&extraction, "1", epoch).unwrap();
+        let found = |value: &str| -> Vec<String> {
+            store.query(&Query::new("mention", value)).unwrap()["results"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| r["name"].as_str().unwrap().into())
+                .collect()
+        };
+        assert_eq!(found("Evidence"), ["craft_engine::Evidence", "Evidence"]);
+        assert_eq!(found("toJson"), ["Gson.toJson"]);
+        assert_eq!(found("run"), ["Type#run"]);
+        // A qualified value matches its own spelling only, and a link only its whole path.
+        assert_eq!(found("craft_engine::Evidence"), ["craft_engine::Evidence"]);
+        assert_eq!(found("src/x.Evidence"), ["src/x.Evidence"]);
+        assert!(found("engine::Evidence").is_empty());
     }
 
     #[test]

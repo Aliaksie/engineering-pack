@@ -78,7 +78,7 @@ craft locate --root . --outline docs/guide.md
 | `--imports <target>` | an imported name (`import { X } from`, `from m import X`), or a module by its whole trailing path or module segments: `utils/buffer` matches `../utils/buffer.js`, `Gson` matches `com.google.gson.Gson`, `b` matches `crate::a::b` (one full path per Rust `use` leaf) | full languages, C and C++ includes |
 | `--section <heading>` | heading text | Markdown |
 | `--outline <document>` | every section of one document | Markdown |
-| `--mentions <name-or-path>` | a code span spelled exactly as the value (`` `AdrSlug` ``, `` `craft_engine::Evidence` ``), or a local link whose destination resolves to the value as a root-relative path (`src/hono.ts`); each row names its section | Markdown |
+| `--mentions <name-or-path>` | a code span spelled as the value, or qualified before it: `Evidence` matches `` `Evidence` `` and `` `craft_engine::Evidence` `` (also `Type.member`, `Type#member`), while `craft_engine::Evidence` matches only that spelling; or a local link whose destination resolves to the value as a root-relative path (`src/hono.ts`). Each row names its section | Markdown |
 | `--decisions <title-word>` | decision records whose title contains the value, case-insensitively; `*` matches every record. Rows carry the status as written, links resolved (`superseded by docs/adr/0002-x.md`) | Markdown under an `adr`, `adrs`, `decisions`, `decision-records` or `architecture-decisions` directory, or named `adr-*` |
 | `--key <dotted.key>` | a configuration key by its dotted path from the document root, or ending in it at a segment (`strict` matches `compilerOptions.strict`); rows carry the scalar value | JSON (also with comments and trailing commas), TOML, YAML |
 

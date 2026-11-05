@@ -75,7 +75,7 @@ impl Ask {
             }),
             Ask::Section => ("name", |kind| kind == "md:section"),
             Ask::Outline => ("path", |kind| kind == "md:section"),
-            Ask::Mentions => ("name", |kind| matches!(kind, "md:link" | "md:mention")),
+            Ask::Mentions => ("mention", |kind| matches!(kind, "md:link" | "md:mention")),
             Ask::Decisions => ("title", |kind| kind == "md:decision"),
             Ask::Key => ("key", |kind| kind == "config:key"),
         }
