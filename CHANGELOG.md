@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A change request ("fix…", "implement…") no longer gets a prompt hint naming skills unless a
+  task is bound; the first edit's hint still names them. A one-line fix took 1.76 times the
+  tokens of the same fix without Craft because the model read every named skill first.
+- With `checkpoint.enabled: false`, the session identity line is no longer shown at session
+  start and after compaction, so a fully manual policy shows the model nothing.
 - INSTALL notes host changes that affect Craft: Claude Code refuses an action when a plugin
   hook cannot answer; Codex 0.164 and later asks to trust Craft's hooks again after every
   update, and Codex 0.150 and later loads no project `AGENTS.md` in an untrusted project;
