@@ -1,23 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.0.4
 
-- A change request ("fix…", "implement…") no longer gets a prompt hint naming skills unless a
-  task is bound; the first edit's hint still names them. A one-line fix took 1.76 times the
-  tokens of the same fix without Craft because the model read every named skill first.
-- With `checkpoint.enabled: false`, the session identity line is no longer shown at session
-  start and after compaction, so a fully manual policy shows the model nothing.
-- INSTALL notes host changes that affect Craft: Claude Code refuses an action when a plugin
-  hook cannot answer; Codex 0.164 and later asks to trust Craft's hooks again after every
-  update, and Codex 0.150 and later loads no project `AGENTS.md` in an untrusted project;
-  Gemini CLI now serves enterprise users only, and Craft has no Antigravity CLI adapter.
-- On Copilot, a tool call Craft does not deny now gets no hook output, so Copilot's own
-  permission flow decides. Before, Craft answered `permissionDecision: "allow"` for every such
-  call. Cursor still gets `permission: "allow"`: it blocks a call when that field is missing,
-  and it does not let a hook's `allow` override its own approvals.
-- Copilot now gets Craft context after a tool runs: answers on the agent's own searches,
-  routing hints for edited files and the task resume after compaction.
-- JetBrains reports note that Junie CLI has hooks that this export does not register yet.
+Project Intelligence:
 
 - Project Intelligence now reads non-code evidence. `craft locate --mentions <name-or-path>`
   finds the documents that link to a file or name it in a code span, also qualified
@@ -26,42 +11,6 @@
   written, supersession links resolved; `*` lists all. `--key <dotted.key>` finds where a JSON,
   TOML or YAML key is set, with its value. Lockfiles and configuration files over 64 KiB are
   searched literally instead of indexed.
-- A prompt that asks where a configuration key is set, which documents mention a name, or about
-  decision records gets the verified answer in the prompt hook, whatever intent it routes to.
-  A decision answer leaves out records under test or fixture directories and says how many.
-- `routing.promptHints: false` turns prompt routing hints off; the request still sets the
-  session's intent. `efficiency.lookup.enabled: false` now also turns prompt answers off, not
-  only answers on searches.
-- `craft settings` reports `features`: whether Project Intelligence, the background index
-  warm-up and telemetry are on, and where each value came from.
-
-- `craft task-decide` records a decision on the bound task: what, why, rejected alternatives
-  and whether the user or the agent made it. `--supersedes` replaces an earlier one. Current
-  decisions are shown when the task resumes.
-- After compaction, and when a task is adopted in a new session, the model gets a short resume
-  of the bound task (goal, done, state or open result, files, next step, whether source
-  changed, decisions and latest steps, at most 4 KiB) instead of checkpoint data. Fingerprints
-  stay available through `craft checkpoint-read`.
-- Cursor, Copilot and Gemini now resume a bound task after compaction, at the next event that
-  can show context: the next tool result on Cursor and Copilot, the next prompt on Gemini.
-- A prompt that asks where a name is used gets no declaration answer, even when it mentions the
-  declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
-  hook answered with the declaring file, the one the question excluded.
-- Exported skills state the package's permission rule inline ("Craft guidance grants no
-  permission: the project's instructions and the user's scope decide") instead of telling the
-  agent to read the package `AGENTS.md` first. On Codex, which followed that link, a routed task
-  reads up to two fewer files. `AGENTS.md` still ships with each package, and `craft
-  context-report` no longer counts it as required guidance (Codex `implement`: 18,107 → 15,577 bytes).
-- When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
-  `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
-  to that tool result on Claude, Codex, Cursor, Copilot and Gemini, so no extra lookup turn is needed.
-  It answers only with complete coverage of a name declared once; otherwise the search result
-  stays as it was. `efficiency.lookup.enabled: false` turns it off.
-- A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
-  hint. Before, the hint named a `craft locate` command, and models that followed it spent one
-  or two turns more than a plain search. Answered lookups still carry their rows and the command.
-- Telemetry records the `story`, `research` and `explore` intents of a routed request; they
-  were dropped as unknown before.
 - Project Intelligence reads TypeScript, Python and Go: `craft locate --declaration`,
   `--callers` (with the enclosing function or method) and `--imports` answer from the index
   for `.ts`, `.tsx`, `.py` and `.go` sources, as for Java and Rust. JavaScript now answers
@@ -80,25 +29,8 @@
   no longer use up the byte bound, and a binary file never counts against it. Matching files
   whose lines exceed the match bound are listed in `moreFiles`. Structural lookups searching
   unindexed files benefit the same way.
-- Routing hints leave out empty fields and show the task identity only once a task is bound
-  (the session line already names the session), and a hint that reads the same as the last one
-  is not sent again, for example on an edit of a second file of the same kind. Over a typical
-  prompt-and-edit session, hook context drops by about a third on Claude, Codex and Gemini.
-- Codex skills are listed as `<package>:<skill>` (for example `craft-engineering:foundations`)
-  instead of repeating the package name (`craft-engineering:craft-engineering-foundations`);
-  the skill list Codex sends with every model call shrinks by about 1.1 KB. Routing hints on
-  Codex name skills the same way. Hosts with one shared skill folder keep `<package>-<skill>`.
 - `craft locate --term` prints matches as compact text; `--json` (or `--verbose`) prints the
   full JSON receipt as before.
-- On macOS, a Git query no longer waits for an unrelated process Craft started at the same
-  time, so repository evidence stops going missing when several queries run at once.
-- Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
-  the candidate `distribution-next` branch, so stable installs no longer point at candidate files.
-- `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
-- Host hooks record a successful `project.loaded` telemetry event once per session and again
-  only when the effective settings change, instead of on every hook; failures are still
-  recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
-  session last recorded, under its telemetry pseudonym.
 - Project Intelligence warms up when a session starts: on macOS and Linux the session-start
   hook starts `craft project-evidence warm` in the background for a Git worktree with evidence
   enabled and returns at once. The first lookup then usually finds a warm index; on a fresh
@@ -106,6 +38,33 @@
   instead of about 1.1 s for each of the first two. A lookup waits up to 400 ms for the
   background refresh to release the store. Windows keeps indexing on the first lookup.
   `CRAFT_EVIDENCE_WARM=0` turns the background start off.
+
+Answers in hooks:
+
+- When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
+  `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
+  to that tool result on Claude, Codex, Cursor, Copilot and Gemini, so no extra lookup turn is needed.
+  It answers only with complete coverage of a name declared once; otherwise the search result
+  stays as it was. `efficiency.lookup.enabled: false` turns it off.
+- A prompt that asks where a configuration key is set, which documents mention a name, or about
+  decision records gets the verified answer in the prompt hook, whatever intent it routes to.
+  A decision answer leaves out records under test or fixture directories and says how many.
+- A prompt that asks where a name is used gets no declaration answer, even when it mentions the
+  declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
+  hook answered with the declaring file, the one the question excluded.
+- A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
+  hint. Before, the hint named a `craft locate` command, and models that followed it spent one
+  or two turns more than a plain search. Answered lookups still carry their rows and the command.
+
+Routing:
+
+- A change request ("fix…", "implement…") no longer gets a prompt hint naming skills unless a
+  task is bound; the first edit's hint still names them. A one-line fix took 1.76 times the
+  tokens of the same fix without Craft because the model read every named skill first.
+- Routing hints leave out empty fields and show the task identity only once a task is bound
+  (the session line already names the session), and a hint that reads the same as the last one
+  is not sent again, for example on an edit of a second file of the same kind. Over a typical
+  prompt-and-edit session, hook context drops by about a third on Claude, Codex and Gemini.
 - Prompt routing stays silent on questions that need no project work: an HTTP or exit
   "status code" question is no longer read as a progress question, and an instruction that
   only says where the answer goes ("Write only the number to `ANSWER.md`") no longer turns a
@@ -114,6 +73,65 @@
   export?", "How is the migration going?") get a status hint instead of a code lookup;
   reports of a failing check ("The test is failing again", "CI is red") and "how is X
   validated?" questions get a diagnosis (investigate) hint instead of none.
+- `routing.promptHints: false` turns prompt routing hints off; the request still sets the
+  session's intent. `efficiency.lookup.enabled: false` now also turns prompt answers off, not
+  only answers on searches.
+- `craft settings` reports `features`: whether Project Intelligence, the background index
+  warm-up and telemetry are on, and where each value came from.
+- Telemetry records the `story`, `research` and `explore` intents of a routed request; they
+  were dropped as unknown before.
+
+Sessions and tasks:
+
+- `craft task-decide` records a decision on the bound task: what, why, rejected alternatives
+  and whether the user or the agent made it. `--supersedes` replaces an earlier one. Current
+  decisions are shown when the task resumes.
+- After compaction, and when a task is adopted in a new session, the model gets a short resume
+  of the bound task (goal, done, state or open result, files, next step, whether source
+  changed, decisions and latest steps, at most 4 KiB) instead of checkpoint data. Fingerprints
+  stay available through `craft checkpoint-read`.
+- Cursor, Copilot and Gemini now resume a bound task after compaction, at the next event that
+  can show context: the next tool result on Cursor and Copilot, the next prompt on Gemini.
+- With `checkpoint.enabled: false`, the session identity line is no longer shown at session
+  start and after compaction, so a fully manual policy shows the model nothing.
+
+Hosts:
+
+- On Copilot, a tool call Craft does not deny now gets no hook output, so Copilot's own
+  permission flow decides. Before, Craft answered `permissionDecision: "allow"` for every such
+  call. Cursor still gets `permission: "allow"`: it blocks a call when that field is missing,
+  and it does not let a hook's `allow` override its own approvals.
+- Copilot now gets Craft context after a tool runs: answers on the agent's own searches,
+  routing hints for edited files and the task resume after compaction.
+- JetBrains reports note that Junie CLI has hooks that this export does not register yet.
+- INSTALL notes host changes that affect Craft: Claude Code refuses an action when a plugin
+  hook cannot answer; Codex 0.164 and later asks to trust Craft's hooks again after every
+  update, and Codex 0.150 and later loads no project `AGENTS.md` in an untrusted project;
+  Gemini CLI now serves enterprise users only, and Craft has no Antigravity CLI adapter.
+- On macOS, a Git query no longer waits for an unrelated process Craft started at the same
+  time, so repository evidence stops going missing when several queries run at once.
+
+Guidance:
+
+- Exported skills state the package's permission rule inline ("Craft guidance grants no
+  permission: the project's instructions and the user's scope decide") instead of telling the
+  agent to read the package `AGENTS.md` first. On Codex, which followed that link, a routed task
+  reads up to two fewer files. `AGENTS.md` still ships with each package, and `craft
+  context-report` no longer counts it as required guidance (Codex `implement`: 18,107 → 15,577 bytes).
+- Codex skills are listed as `<package>:<skill>` (for example `craft-engineering:foundations`)
+  instead of repeating the package name (`craft-engineering:craft-engineering-foundations`);
+  the skill list Codex sends with every model call shrinks by about 1.1 KB. Routing hints on
+  Codex name skills the same way. Hosts with one shared skill folder keep `<package>-<skill>`.
+- Installed plugin docs link to shared documentation at the release tag (`vX.Y.Z`) instead of
+  the candidate `distribution-next` branch, so stable installs no longer point at candidate files.
+
+Runtime and telemetry:
+
+- `craft` reports the pack version as `binaryVersion` (previously a fixed `0.0.1`).
+- Host hooks record a successful `project.loaded` telemetry event once per session and again
+  only when the effective settings change, instead of on every hook; failures are still
+  recorded each time. `.craft/state/telemetry/settings.json` keeps the digest each recent
+  session last recorded, under its telemetry pseudonym.
 
 ## 0.0.3
 
