@@ -874,7 +874,8 @@
       "liveVerification": "not-established-by-export-or-protocol-tests"
     },
     "limitations": [
-      "Native AI Chat project rules do not provide lifecycle/tool control; bind the actual underlying agent when available."
+      "Native AI Chat project rules do not provide lifecycle/tool control; bind the actual underlying agent when available.",
+      "Junie CLI has hooks, but this export registers none: Junie ignores a project hook configuration unless it is passed explicitly."
     ]
   }
 }

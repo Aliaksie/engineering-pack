@@ -371,15 +371,15 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             "before-tool" if denied => {
                 Some(json!({"permission": "deny", "user_message": reason, "agent_message": reason}))
             }
+            // Cursor blocks a preToolUse answer without `permission` and has no neutral value;
+            // it treats `allow` as advisory, so the user's allowlist and approvals still apply.
             "before-tool" => Some(json!({"permission": "allow"})),
             "before-prompt" => Some(json!({"continue": true})),
             _ => (!context.is_empty()).then(|| json!({"additional_context": context})),
         },
-        "copilot" if lifecycle == "before-tool" => Some(if denied {
-            json!({"permissionDecision": "deny", "permissionDecisionReason": reason})
-        } else {
-            json!({"permissionDecision": "allow"})
-        }),
+        // Empty output keeps Copilot's own permission flow; Craft grants nothing.
+        "copilot" if lifecycle == "before-tool" => denied
+            .then(|| json!({"permissionDecision": "deny", "permissionDecisionReason": reason})),
         "copilot" => (!context.is_empty()).then(|| json!({"additionalContext": context})),
         "gemini" if denied => Some(json!({"decision": "deny", "reason": reason})),
         "gemini" => (!context.is_empty()).then(

@@ -77,6 +77,26 @@ test('malformed payloads and unrelated tools produce valid nonblocking wire resp
   }
 });
 
+// Craft only denies. Where the host takes no answer as its default, a call Craft lets through
+// gets none, so the user's own approvals decide; Cursor requires a permission and treats
+// `allow` as advisory.
+test('a tool call Craft does not deny keeps the host permission flow', (t) => {
+  const dir = fixture(t, { review: { readOnly: true } });
+  for (const host of native) for (const [pkg, hook] of [['craft-review', 'read-only'], ['craft-delivery', 'routing'], ['craft-engineering', 'observe-before-tool']]) {
+    for (const tool of ['shell', 'edit']) {
+      const result = invoke(host, pkg, hook, payload(host, dir, 'git status --short', tool), dir);
+      assert.equal(result.status, 0, `${host} ${hook}: ${result.stderr}`);
+      // Observation hooks answer nothing on every host.
+      if (host === 'cursor' && !hook.startsWith('observe')) assert.deepEqual(JSON.parse(result.stdout), { permission: 'allow' }, `${hook} ${tool}`);
+      else {
+        const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+        const granted = [output.permission, output.permissionDecision, output.decision, output.hookSpecificOutput?.permissionDecision];
+        assert.ok(!granted.includes('allow'), `${host} ${hook} ${tool}: ${result.stdout}`);
+      }
+    }
+  }
+});
+
 test('prompt routing hints appear only where the native context schema supports them', (t) => {
   const dir = fixture(t);
   for (const host of native) {
@@ -168,7 +188,7 @@ test('a search the model ran gets the verified declaration and callers in the sa
   assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'finish' } }), '', 'a name nothing calls gets no answer');
   const copilot = invoke('copilot', 'craft-delivery', 'milestone', { sessionId: 'search-copilot', cwd: dir, toolName: 'bash', toolArgs: { command: 'rg -n apply' } }, dir);
   assert.equal(copilot.status, 0, copilot.stderr);
-  assert.ok(!copilot.stdout.includes('Project Intelligence'), 'copilot shows no after-tool context');
+  assert.deepEqual(answer(JSON.parse(copilot.stdout).additionalContext).rows, answer(grep).rows, 'copilot appends the answer to the tool result');
   fs.writeFileSync(path.join(dir, '.craft/project.json'), JSON.stringify({ formatVersion: 1, efficiency: { lookup: { enabled: false } } }));
   assert.equal(context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } }), '', 'lookup disabled: no search answers');
 });

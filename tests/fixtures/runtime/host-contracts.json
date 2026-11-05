@@ -1520,7 +1520,7 @@
         "context": "Context λ"
       },
       "response": {
-        "output": "{\"permissionDecision\":\"allow\"}\n",
+        "output": "",
         "error": "",
         "exitCode": 0
       }
@@ -1560,7 +1560,7 @@
         "context": "Context λ"
       },
       "response": {
-        "output": "",
+        "output": "{\"additionalContext\":\"Context λ\"}\n",
         "error": "",
         "exitCode": 0
       }
@@ -1580,7 +1580,7 @@
         "context": "Context λ"
       },
       "response": {
-        "output": "",
+        "output": "{\"additionalContext\":\"Context λ\"}\n",
         "error": "",
         "exitCode": 0
       }

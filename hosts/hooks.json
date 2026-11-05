@@ -161,7 +161,7 @@
       },
       "after-tool": {
         "name": "postToolUse",
-        "context": false,
+        "context": true,
         "deny": false
       },
       "before-prompt": {

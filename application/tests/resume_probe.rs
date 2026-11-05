@@ -172,25 +172,27 @@ fn compaction_resumes_the_task_once_with_its_decisions() {
 
 #[test]
 fn a_host_without_a_restore_event_resumes_at_the_next_event_that_can_show_it() {
-    let repo = Repo::new(
-        "resume-cursor",
-        &[("value.mjs", "export const value = 1;\n")],
-    );
-    worked(&repo, "S1");
-    hook(&repo, "cursor", "before-compact", "S1", json!({}));
-    // Cursor cannot show prompt context, so the resume waits for a tool result.
-    let prompt = hook(
-        &repo,
-        "cursor",
-        "before-prompt",
-        "S1",
-        json!({"prompt": "continue"}),
-    );
-    assert!(resumed(&prompt).is_none());
-    let tool = hook(&repo, "cursor", "after-tool", "S1", json!({}));
-    assert_resume(resumed(&tool).expect("resume at the first tool result"));
-    let again = hook(&repo, "cursor", "after-tool", "S1", json!({}));
-    assert!(resumed(&again).is_none(), "delivered once: {again}");
+    // Cursor and Copilot cannot show prompt context, so the resume waits for a tool result.
+    for host in ["cursor", "copilot"] {
+        let repo = Repo::new(
+            &format!("resume-{host}"),
+            &[("value.mjs", "export const value = 1;\n")],
+        );
+        worked(&repo, "S1");
+        hook(&repo, host, "before-compact", "S1", json!({}));
+        let prompt = hook(
+            &repo,
+            host,
+            "before-prompt",
+            "S1",
+            json!({"prompt": "continue"}),
+        );
+        assert!(resumed(&prompt).is_none(), "{host}");
+        let tool = hook(&repo, host, "after-tool", "S1", json!({}));
+        assert_resume(resumed(&tool).expect("resume at the first tool result"));
+        let again = hook(&repo, host, "after-tool", "S1", json!({}));
+        assert!(resumed(&again).is_none(), "{host} delivered once: {again}");
+    }
 }
 
 #[test]
