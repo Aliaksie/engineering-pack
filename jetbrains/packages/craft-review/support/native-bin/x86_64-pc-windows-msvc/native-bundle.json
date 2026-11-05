@@ -24,14 +24,14 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "c0cf807643987479acffa98dd0954c23c0bc9be4",
+  "sourceRevision": "d93e3e7e9cff9dbea963846972fc29504c299d54",
   "sourceDirty": false,
-  "cargoLockSha256": "91a277668469be0962c9b2d50585ab4dd1a389e9f879a14d8750a13786b73d08",
+  "cargoLockSha256": "54cb7e5c95327bdf35134af67fd1c33107218fb018a18de586ad31dfb99bf408",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 19254,
-      "sha256": "a574cbb1cb6e3b7d6eb5f291a48472404024e70dae131b1a57a30fc536aad355"
+      "sha256": "792a0199a39bd526bc5fce1b4563a09ed93d746c87d2539a4537fa5eca56b06a"
     },
     {
       "path": "LICENSE",
@@ -40,13 +40,13 @@
     },
     {
       "path": "native-bin/craft.exe",
-      "bytes": 25903616,
-      "sha256": "9f982bcf7c943b1165f08c90900c04ffdae3783fb594cd4308c06fa6e256b7fb"
+      "bytes": 25901056,
+      "sha256": "68cc9a15534fa5983ae3b7e610980c6b1580908667582ce2e48805204adfad52"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "625ef523b3e199906287ea1ffd6bca7e6c42f509194a69bb6182d3788de5fc05"
+      "sha256": "c732f9bfd14b747acb98aa7d3c6c92863906189410c75e3c3e93ba474c515b4c"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -369,7 +369,7 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.41.0/LICENSE",
+      "path": "notices/rusqlite-0.41.1/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },

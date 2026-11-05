@@ -24,14 +24,14 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "c0cf807643987479acffa98dd0954c23c0bc9be4",
+  "sourceRevision": "d93e3e7e9cff9dbea963846972fc29504c299d54",
   "sourceDirty": false,
-  "cargoLockSha256": "91a277668469be0962c9b2d50585ab4dd1a389e9f879a14d8750a13786b73d08",
+  "cargoLockSha256": "54cb7e5c95327bdf35134af67fd1c33107218fb018a18de586ad31dfb99bf408",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 20910,
-      "sha256": "5f1d6c52d0b1055998dda7768e44550b08f9cf7198796c35172509e79f994144"
+      "sha256": "d7b4e70bfeeadb738ac9bb9dcb0ac1834b6fc8e7b9c73637bbba6cc529a59628"
     },
     {
       "path": "LICENSE",
@@ -41,12 +41,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 25184608,
-      "sha256": "849d0ea8101a7b7498dad03695ce4e704c17e729dcfe4758f4b59a6de2c10232"
+      "sha256": "6efcf6e28786f82d28710cbb09dd08085e79ab05125c7f4329bc8a4ecd9cd0d8"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "08f99b745a7de30afa898f4fe8e0dfc01fc6c958632cf62a82de121ac43a5426"
+      "sha256": "0d1f4e38439bf5a38925e614730a617a8837120cfee6effbb45125b5d427b805"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -409,22 +409,22 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.41.0/LICENSE",
+      "path": "notices/rusqlite-0.41.1/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-APACHE",
+      "path": "notices/rustix-1.1.6/LICENSE-APACHE",
       "bytes": 10847,
       "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-Apache-2.0_WITH_LLVM-exception",
+      "path": "notices/rustix-1.1.6/LICENSE-Apache-2.0_WITH_LLVM-exception",
       "bytes": 12243,
       "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5"
     },
     {
-      "path": "notices/rustix-1.1.5/LICENSE-MIT",
+      "path": "notices/rustix-1.1.6/LICENSE-MIT",
       "bytes": 1023,
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     },

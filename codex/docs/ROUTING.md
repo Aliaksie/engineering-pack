@@ -121,8 +121,7 @@ looks for one literal identifier (word-bounded, optionally qualified or followed
 after-tool hook adds that name's declaration and callers to the tool result, under the same
 rules: declared exactly once, complete coverage, at most ten rows. It refreshes Project
 Intelligence for at most 200 ms, so it answers from the index the session warmed; a regex,
-several patterns, an inverted match or anything less certain adds nothing. Hosts that cannot
-show after-tool context (Copilot) keep the plain search result.
+several patterns, an inverted match or anything less certain adds nothing.
 
 A prompt also gets an answer, whatever intent it routes to (or with none), when it asks where a
 dotted configuration key is set (`` Where is `compilerOptions.strict` set? ``: `--key`), which
