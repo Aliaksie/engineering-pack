@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.3",
+  "packVersion": "0.0.4",
   "target": "x86_64-pc-windows-msvc",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.3",
+  "binaryVersion": "0.0.4",
   "schemaVersion": 4,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
@@ -24,9 +24,9 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "5a71e44cae16845c62b626cc9ff2e2c75ee69142",
+  "sourceRevision": "2b5db5b34f696ca982423cfc988eb6f7084f0bb2",
   "sourceDirty": false,
-  "cargoLockSha256": "54cb7e5c95327bdf35134af67fd1c33107218fb018a18de586ad31dfb99bf408",
+  "cargoLockSha256": "df56ef0a08a7b29e4ed4dd13376ebae36a301277b0afc39797564f6022b0a1a9",
   "files": [
     {
       "path": "dependencies.json",
@@ -41,12 +41,12 @@
     {
       "path": "native-bin/craft.exe",
       "bytes": 25903616,
-      "sha256": "603c0c849e0f9c05db7a9c93bbd543d31ff399e05fda3e796086bd2bc5ed67df"
+      "sha256": "b952c54098204b983015b530d3abd16cfb5e63396c73cf9bd051973082b5811f"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "c8c6c7ebe26e734435a10ea5278c72d0de4b6ea8b34dac28d6d4af4c904db424"
+      "sha256": "0ead4f1052f67072f9177fbd434a779b8f622455f00d854a84f5f96535366dac"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
