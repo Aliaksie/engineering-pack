@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- INSTALL notes host changes that affect Craft: Claude Code refuses an action when a plugin
+  hook cannot answer; Codex 0.164 and later asks to trust Craft's hooks again after every
+  update, and Codex 0.150 and later loads no project `AGENTS.md` in an untrusted project;
+  Gemini CLI now serves enterprise users only, and Craft has no Antigravity CLI adapter.
 - On Copilot, a tool call Craft does not deny now gets no hook output, so Copilot's own
   permission flow decides. Before, Craft answered `permissionDecision: "allow"` for every such
   call. Cursor still gets `permission: "allow"`: it blocks a call when that field is missing,
