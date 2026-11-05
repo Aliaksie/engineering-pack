@@ -385,3 +385,40 @@ fn a_catalog_without_artifact_workflows_may_omit_artifacts() {
     catalog.as_object_mut().unwrap().remove("artifacts");
     assert_eq!(catalog::validate(&catalog), Ok(()));
 }
+
+#[test]
+fn routes_and_their_hints_carry_the_standards_their_work_falls_under() {
+    let project = json!({
+        "formatVersion": 1,
+        "modules": [{"name": "api", "path": "src/api", "layers": ["backend"]}],
+        "standards": [
+            {"id": "api-style", "file": "docs/api.md", "summary": "Error envelope", "scope": {"layers": ["backend"]}},
+            {"id": "stories", "anchor": "connextra", "scope": {"paths": ["docs/stories"]}}
+        ]
+    });
+    let route = |intent: &str, file: Option<&str>| {
+        let mut options = json!({"intent": intent});
+        if let Some(file) = file {
+            options["file"] = json!([file]);
+        }
+        run_route(&json!({"project": project, "options": options})).unwrap()
+    };
+    let edit = route("implement", Some("src/api/handler.rs"));
+    assert_eq!(edit["standards"][0]["id"], "api-style");
+    assert_eq!(edit["standards"][0]["summary"], "Error envelope");
+    let hint = crate::delivery::shown(&json!({"kind": "routing", "data": edit}));
+    assert_eq!(
+        hint["data"]["standards"], edit["standards"],
+        "the model sees them"
+    );
+
+    let story = route("story", None);
+    assert_eq!(story["standards"][0]["id"], "stories");
+    assert_eq!(story["standards"][0]["level"], "check");
+
+    let plain = run_route(&json!({"project": {"formatVersion": 1}, "options": {"intent": "implement", "file": ["src/a.rs"]}})).unwrap();
+    assert!(
+        plain.get("standards").is_none(),
+        "no declarations, no field"
+    );
+}

@@ -19,7 +19,9 @@
     ".kt": "kotlin",
     ".kts": "kotlin",
     ".cs": "csharp",
-    ".go": "go"
+    ".go": "go",
+    ".rs": "rust",
+    ".rb": "ruby"
   },
   "runtimeImplications": {
     "java": "jvm",

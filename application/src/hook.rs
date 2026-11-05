@@ -311,6 +311,13 @@ fn session_line(session: &Value) -> String {
     line
 }
 
+/// Declared standards the file or commit just written does not meet.
+fn standards_line(found: &Value) -> String {
+    format!(
+        "Project standards not met by what was just written (deterministic anchor check; report only, fix or tell the user why not): {found}"
+    )
+}
+
 /// At most 12 000 UTF-16 units of context, cut at a character boundary.
 fn bounded(context: String) -> String {
     if js_length(&context) <= MAX_CONTEXT {
@@ -346,6 +353,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         let parts = [
             result.get("session").map(session_line),
             result.get("context").map(|c| render(c, host)),
+            result.get("standards").map(standards_line),
         ];
         bounded(
             parts

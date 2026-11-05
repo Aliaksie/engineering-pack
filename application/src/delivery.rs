@@ -7,7 +7,7 @@ use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::delivery::{self, answer};
-use craft_engine::{hash, identity, routing};
+use craft_engine::{hash, identity, routing, standards};
 use craft_platform::{state, telemetry::uuid};
 use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
@@ -299,6 +299,14 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
         decision["session"] = identity;
     }
+    // A file or commit just written in a declared standard's scope gets its anchor check in
+    // the same tool result. Findings are reported, never enforced; passing checks stay quiet.
+    if event.lifecycle == "after-tool" && event.context_supported {
+        let found = standard_findings(root, &settings, event, file.as_deref());
+        if !found.is_empty() {
+            decision["standards"] = json!(found);
+        }
+    }
     let eligible = decision["context"]["kind"] == "routing"
         && settings["routing"]["dedupeHints"] == true
         && event.context_supported
@@ -318,6 +326,57 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         decision["warning"] = json!(format!("Routing hint reuse unavailable: {message}"));
     }
     Ok(decision)
+}
+
+/// How large a written file an anchor check reads; larger files are left unchecked.
+const STANDARD_BYTES: u64 = 512 * 1024;
+/// How recent `HEAD` must be to be the commit the shell command just made.
+const COMMIT_FRESH_SECONDS: u64 = 120;
+
+/// Anchor check results for the file an edit wrote or the commit a shell command made.
+fn standard_findings(
+    root: &Path,
+    settings: &Value,
+    event: &Event,
+    file: Option<&str>,
+) -> Vec<Value> {
+    if event.edit {
+        let Some(file) = file.filter(|file| !file.is_empty()) else {
+            return Vec::new();
+        };
+        let checks = standards::file_checks(settings, file);
+        if checks.is_empty() {
+            return Vec::new();
+        }
+        let path = root.join(file);
+        let text = match std::fs::metadata(&path) {
+            Ok(meta) if meta.is_file() && meta.len() <= STANDARD_BYTES => std::fs::read(&path),
+            _ => return Vec::new(),
+        };
+        return text.map_or_else(
+            |_| Vec::new(),
+            |bytes| standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file)),
+        );
+    }
+    let checks = standards::commit_checks(settings);
+    if checks.is_empty() || !event.command.is_some_and(standards::commits) {
+        return Vec::new();
+    }
+    // A failed commit leaves an older HEAD; only a commit made just now is the one written.
+    let Ok(Some(output)) =
+        craft_platform::process::git(root, &["log", "-1", "--format=%ct%n%B"], 64 * 1024)
+    else {
+        return Vec::new();
+    };
+    let output = String::from_utf8_lossy(&output);
+    let (time, message) = output.split_once('\n').unwrap_or((&output, ""));
+    let now = now_ms() as u64 / 1000;
+    match time.trim().parse::<u64>() {
+        Ok(time) if now.saturating_sub(time) <= COMMIT_FRESH_SECONDS => {
+            standards::verdicts(&checks, message.trim_end(), None)
+        }
+        _ => Vec::new(),
+    }
 }
 
 /// Start indexing the project in the background, so the session's first lookup finds a warm

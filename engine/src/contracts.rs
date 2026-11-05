@@ -13,6 +13,8 @@ pub const LANGUAGES: &[&str] = &[
     "jvm",
     "csharp",
     "go",
+    "rust",
+    "ruby",
 ];
 pub const READ_OPERATIONS: &[&str] = &[
     "git.status",
@@ -161,6 +163,7 @@ pub fn validate_project(project: &Value) -> Result {
         "efficiency",
         "workspace",
         "evidence",
+        "standards",
     ];
     let map = object(project, &fields, "project")?;
     if let Some(workspace) = map.get("workspace") {
@@ -260,6 +263,16 @@ pub fn validate_project(project: &Value) -> Result {
             }
         }
     }
+    if let Some(standards) = map.get("standards") {
+        let catalog = crate::routing::catalog::catalog()?;
+        let intents: Vec<&str> = catalog["intents"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        crate::standards::validate(standards, &names, &intents)?;
+    }
     if let Some(services) = map.get("services") {
         for (service, binding) in object(services, &["git", "codehost", "tasks"], "services")? {
             validate_binding(service, binding)?;
@@ -295,10 +308,10 @@ pub fn validate_project(project: &Value) -> Result {
     if let Some(routing) = map.get("routing") {
         let routing = object(
             routing,
-            &["promptHints", "editHints", "dedupeHints"],
+            &["promptHints", "editHints", "dedupeHints", "standardChecks"],
             "routing",
         )?;
-        for field in ["promptHints", "editHints", "dedupeHints"] {
+        for field in ["promptHints", "editHints", "dedupeHints", "standardChecks"] {
             boolean(
                 routing.get(field),
                 &format!("routing {field} must be boolean"),
