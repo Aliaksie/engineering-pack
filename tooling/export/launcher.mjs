@@ -33,11 +33,12 @@ export function fallback(platform, definition, item) {
   if (definition.handler === 'observe' && !context) return { stdout: '', stderr: '', exitCode: 0 };
   if (platform === 'claude' && denied) return { stdout: '', stderr: `${reason}\n`, exitCode: 2 };
   let output;
-  // Cursor and Copilot get the explicit answers the runtime gives them.
+  // Cursor and Copilot get the answers the runtime gives them: Cursor requires a permission,
+  // Copilot keeps its own permission flow on empty output.
   if (platform === 'cursor') output = definition.event === 'before-tool' ? { permission: denied ? 'deny' : 'allow', ...(denied ? { user_message: reason, agent_message: reason } : {}) }
     : definition.event === 'before-prompt' ? { continue: true } : context ? { additional_context: context } : undefined;
-  else if (platform === 'copilot') output = definition.event === 'before-tool' ? { permissionDecision: denied ? 'deny' : 'allow', ...(denied ? { permissionDecisionReason: reason } : {}) }
-    : context ? { additionalContext: context } : undefined;
+  else if (platform === 'copilot') output = denied ? { permissionDecision: 'deny', permissionDecisionReason: reason }
+    : definition.event !== 'before-tool' && context ? { additionalContext: context } : undefined;
   else if (platform === 'gemini') output = denied ? { decision: 'deny', reason } : context ? { ...notice, hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;
   else output = denied ? { hookSpecificOutput: { hookEventName: mapping.name, permissionDecision: 'deny', permissionDecisionReason: reason } }
     : context ? { ...notice, hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;

@@ -130,6 +130,11 @@ test('without a bundled runtime, launchers answer as a failed runtime would', t 
     }
     const observed = run('craft-engineering', 'observe-before-tool', publish(project));
     assert.deepEqual([observed.status, observed.stdout, observed.stderr], [0, '', '']);
+    // A tool call the fallback does not deny gets no grant where the host takes none.
+    const routed = run('craft-delivery', 'routing', publish(project));
+    assert.equal(routed.status, 0, routed.stderr);
+    if (host === 'cursor') assert.deepEqual(JSON.parse(routed.stdout), { permission: 'allow' });
+    else assert.equal(routed.stdout, '', `${host}: ${routed.stdout}`);
     // Every package says once, when the session starts, that it is inactive; the person sees
     // it where the host shows a session-start notice, otherwise the model is asked to say so.
     const notice = HOSTS[host].events['session-start'].notice === true;

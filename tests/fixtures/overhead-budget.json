@@ -43,7 +43,7 @@
     },
     "copilot": {
       "always": 6941,
-      "hooks": 129,
+      "hooks": 534,
       "guidance": {
         "implement": 17892,
         "verify": 12489,

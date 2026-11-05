@@ -113,6 +113,22 @@ test('every source hook is registered exactly where its host table maps the even
   }
 });
 
+// Copilot CLI reads `.claude/settings.json` and `.claude/settings.local.json` and runs every
+// hook from every source; Cursor loads Claude hooks too. Craft hooks in those files would run
+// twice next to the overlay, so no export writes any there.
+test('no export registers hooks in the Claude settings files other hosts also load', () => {
+  const files = [];
+  const walk = folder => {
+    for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory() && entry.name !== 'native-bin') walk(file);
+      else if (/^settings(?:\.local)?\.json$/.test(entry.name) && path.basename(folder) === '.claude') files.push(file);
+    }
+  };
+  for (const host of [...native, 'agents', 'jetbrains']) walk(path.join(root, 'dist', host));
+  for (const file of files) assert.equal(read(file).hooks, undefined, path.relative(root, file));
+});
+
 test('the adapter report lists each source hook with its host support', () => {
   for (const host of native) {
     const report = read(path.join(root, 'dist', host, 'adapter-report.json'));

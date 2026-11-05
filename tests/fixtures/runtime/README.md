@@ -45,6 +45,10 @@ schemas, Unicode, string tool arguments, alias precedence, invalid arguments and
 session bounds. Optional undefined event fields compare as absent JSON fields.
 These fixtures protect the thin adapter boundary; they do not establish automatic
 hook dispatch, full application lifecycle, cancellation or native platform support.
+Two intentional corrections, also applied to the wire cases in `render-contracts.json`: a
+Copilot before-tool call Craft does not deny gets no output instead of
+`permissionDecision: "allow"`, so Copilot's own permission flow decides; and Copilot
+after-tool carries `additionalContext`, which its hooks reference documents.
 
 `state-contracts.json` fixes four JSON byte representations verified against the
 unchanged baseline state-file implementation. `cargo test -p craft-platform state::`

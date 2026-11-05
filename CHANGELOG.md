@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- On Copilot, a tool call Craft does not deny now gets no hook output, so Copilot's own
+  permission flow decides. Before, Craft answered `permissionDecision: "allow"` for every such
+  call. Cursor still gets `permission: "allow"`: it blocks a call when that field is missing,
+  and it does not let a hook's `allow` override its own approvals.
+- Copilot now gets Craft context after a tool runs: answers on the agent's own searches,
+  routing hints for edited files and the task resume after compaction.
+- JetBrains reports note that Junie CLI has hooks that this export does not register yet.
+
 - Project Intelligence now reads non-code evidence. `craft locate --mentions <name-or-path>`
   finds the documents that link to a file or name it in a code span. `--decisions <title-word>`
   lists decision records (Markdown under an `adr`/`decisions` directory) with their status as
@@ -23,9 +31,8 @@
   of the bound task (goal, done, state or open result, files, next step, whether source
   changed, decisions and latest steps, at most 4 KiB) instead of checkpoint data. Fingerprints
   stay available through `craft checkpoint-read`.
-- Cursor and Gemini now resume a bound task after compaction, at the next event that can show
-  context: the next tool result on Cursor, the next prompt on Gemini. Copilot has no event that
-  can show it after compaction.
+- Cursor, Copilot and Gemini now resume a bound task after compaction, at the next event that
+  can show context: the next tool result on Cursor and Copilot, the next prompt on Gemini.
 - A prompt that asks where a name is used gets no declaration answer, even when it mentions the
   declaration ("which files use `AdrSlug`, apart from the file that declares it?"). Before, the
   hook answered with the declaring file, the one the question excluded.
@@ -36,7 +43,7 @@
   context-report` no longer counts it as required guidance (Codex `implement`: 18,107 → 15,577 bytes).
 - When the agent searches for one literal name itself (Claude `Grep`, or `rg`, `grep` or
   `git grep` in a shell), the after-tool hook adds the name's verified declaration and callers
-  to that tool result on Claude, Codex, Cursor and Gemini, so no extra lookup turn is needed.
+  to that tool result on Claude, Codex, Cursor, Copilot and Gemini, so no extra lookup turn is needed.
   It answers only with complete coverage of a name declared once; otherwise the search result
   stays as it was. `efficiency.lookup.enabled: false` turns it off.
 - A lookup prompt that Project Intelligence cannot answer with verified rows gets no routing
