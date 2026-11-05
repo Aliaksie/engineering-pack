@@ -105,6 +105,12 @@ of the runtime that answered the hook, rooted at the project, and the questions 
 for a search beyond the answered question. It names no skill: a lookup should not cost
 reading the skill, package instructions and setup first.
 
+A change request (`implement`) gets no prompt hint either, unless a task is bound, the route
+reports a missing input or the hook answers a lookup in it. Its skill names sent models to read
+every skill before a one-line fix, at 1.76 times the tokens of the same fix without Craft. The
+request still establishes the session's intent, so the first edit's hint names the skills and
+references for the edited scope where the change happens.
+
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
 too, refreshing Project Intelligence for at most one second per prompt (the declaration check

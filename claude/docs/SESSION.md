@@ -576,4 +576,14 @@ A fully manual policy:
 }
 ```
 
+With this policy and `evidence.enabled: false` in `.craft/project.json`, hooks show the model
+nothing: no hints, answers, resume or session identity line (the line follows
+`checkpoint.enabled`, as the task commands that take it do). What stays on, and why:
+
+| Stays on | Why |
+|---|---|
+| Session intent, manifest and compaction record under `.craft/state` | Local, never shown to the model, removed by `state-clean` retention; a later enabled hint or status reads them |
+| Local telemetry | Off with `{"local": false}` in `.craft/telemetry.json` |
+| Skill listing and package instructions the host loads | Read by the host from the installed plugin; disable the plugin in the host to remove them |
+
 Explicit commands keep working under any policy.
