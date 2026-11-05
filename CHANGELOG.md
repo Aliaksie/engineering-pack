@@ -15,13 +15,15 @@
 - JetBrains reports note that Junie CLI has hooks that this export does not register yet.
 
 - Project Intelligence now reads non-code evidence. `craft locate --mentions <name-or-path>`
-  finds the documents that link to a file or name it in a code span. `--decisions <title-word>`
+  finds the documents that link to a file or name it in a code span, also qualified
+  (`craft_engine::Evidence` for `Evidence`). `--decisions <title-word>`
   lists decision records (Markdown under an `adr`/`decisions` directory) with their status as
   written, supersession links resolved; `*` lists all. `--key <dotted.key>` finds where a JSON,
   TOML or YAML key is set, with its value. Lockfiles and configuration files over 64 KiB are
   searched literally instead of indexed.
 - A prompt that asks where a configuration key is set, which documents mention a name, or about
   decision records gets the verified answer in the prompt hook, whatever intent it routes to.
+  A decision answer leaves out records under test or fixture directories and says how many.
 - `routing.promptHints: false` turns prompt routing hints off; the request still sets the
   session's intent. `efficiency.lookup.enabled: false` now also turns prompt answers off, not
   only answers on searches.

@@ -93,10 +93,23 @@ pub const PHP: Language = Language {
 
 pub const RUBY: Language = Language {
     name: "ruby",
-    provider: "ruby-tree-sitter-0.23.1/tags-v1",
+    provider: "ruby-tree-sitter-0.23.1/tags-v2",
     extensions: &["rb"],
     grammar: || tree_sitter_ruby::LANGUAGE.into(),
-    query: || tree_sitter_ruby::TAGS_QUERY.into(),
+    // The tags query also names every bare identifier a call and leaves local variables out
+    // through tree-sitter-tags' locals tracking, which this extractor does not run: parameters
+    // and locals would read as calls. Its definitions stay; calls are those with a method.
+    query: || {
+        let tags = tree_sitter_ruby::TAGS_QUERY;
+        let definitions = tags
+            .split_once("; Calls")
+            .map_or(tags, |(definitions, _)| definitions);
+        [
+            definitions,
+            "(call method: (identifier) @name) @reference.call",
+        ]
+        .join("\n")
+    },
     vocabulary: Vocabulary::Tags,
     kinds: &[
         "ruby:declares-class",
@@ -179,6 +192,22 @@ mod tests {
         assert!(
             ruby.contains(&row("ruby:invokes-syntax", "apply_discount", Some("total"))),
             "{ruby:?}"
+        );
+        // Parameters, locals and a method's own name are not calls.
+        let calls: Vec<_> = owners(
+            &RUBY,
+            "b.rb",
+            "def a(value)\n  x = value\n  x\nend\n\ndef b(value)\n  a(value) + cart.total\nend\n",
+        )
+        .into_iter()
+        .filter(|(kind, _, _)| kind == "ruby:invokes-syntax")
+        .collect();
+        assert_eq!(
+            calls,
+            [
+                row("ruby:invokes-syntax", "a", Some("b")),
+                row("ruby:invokes-syntax", "total", Some("b"))
+            ]
         );
     }
 }

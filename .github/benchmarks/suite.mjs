@@ -1,4 +1,5 @@
-// Measure an installed Claude export with Hyperfine: startup, hooks and Project Intelligence refresh.
+// Measure an installed Claude export with Hyperfine: startup, hooks, Project Intelligence refresh and,
+// per supported language, extraction and one structural lookup over a generated fixture.
 // Hooks run in three layers: the native binary, the package launcher, and the registered hook
 // command under the shell hosts use. Writes raw Hyperfine JSON, checked outputs and Bencher Metric Format results.
 import fs from 'node:fs';
@@ -9,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { bencherMetrics } from './bencher-metrics.mjs';
 import { consumer, directoryBytes, git, gitBash, measurer, quote, run, slash, version, windows } from './fixture.mjs';
+import { LANGUAGES, PROBE, languageFixture } from './languages.mjs';
 
 const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH]';
 const options = { runs: '30', 'cold-runs': '10', hyperfine: 'hyperfine' };
@@ -65,10 +67,16 @@ fs.mkdirSync(project);
 // A relative archive path: Git Bash's GNU tar reads `C:` in an absolute path as a remote host.
 run('tar', ['-xf', path.relative(project, archive)], { cwd: project });
 git(project, 'init', '-q'); git(project, 'add', '.'); git(project, 'commit', '-qm', 'fixture');
-const refreshOnce = () => JSON.parse(run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(project), '--json'], { env }));
-const firstRefresh = refreshOnce();
+const refreshAt = root => JSON.parse(run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(root), '--json'], { env }));
+const firstRefresh = refreshAt(project);
 // One untimed warm refresh, for where its time goes (Git inventory, file metadata, reading, store).
-const warmRefresh = refreshOnce();
+const warmRefresh = refreshAt(project);
+const languageRoot = language => path.join(workspace, 'languages', language);
+const languages = Object.fromEntries(Object.entries(LANGUAGES).map(([language, { level }]) => {
+  const refreshed = refreshAt(languageFixture(languageRoot(language), language));
+  return [language, { level, files: refreshed.files, failed: refreshed.failed, bytesScanned: refreshed.bytesScanned,
+    phasesMs: refreshed.phasesMs, wallTimeMs: refreshed.wallTimeMs }];
+}));
 
 const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--version']),
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
@@ -79,7 +87,7 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
   runtime: { target: targets[0], sourceRevision: manifest.sourceRevision ?? null,
     nativeSha256: createHash('sha256').update(fs.readFileSync(native)).digest('hex'), nativeBytes: fs.statSync(native).size, pluginBytes: directoryBytes(plugin) },
   projectIntelligence: { files: firstRefresh.files, failed: firstRefresh.failed, evidence: firstRefresh.coverage?.evidence, bytesScanned: firstRefresh.bytesScanned,
-    phasesMs: { cold: firstRefresh.phasesMs, warm: warmRefresh.phasesMs }, wallTimeMs: { cold: firstRefresh.wallTimeMs, warm: warmRefresh.wallTimeMs } },
+    phasesMs: { cold: firstRefresh.phasesMs, warm: warmRefresh.phasesMs }, wallTimeMs: { cold: firstRefresh.wallTimeMs, warm: warmRefresh.wallTimeMs }, languages },
   cells: [], checks: [], failures: [] };
 const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
 
@@ -118,6 +126,14 @@ measure('project-intelligence/refresh-warm/native', project, ['-N', '--warmup', 
 // cmd.exe /C strips the outer quotes of a prepare line that starts with one: leave the binary unquoted.
 measure('project-intelligence/refresh-cold/native', project, ['-N', '--runs', String(coldRuns),
   '--prepare', `${slash(native)} project-evidence rebuild --enable --root ${quote(project)} --json`, refresh]);
+// Per language: cold extraction of the generated fixture and one declaration lookup on the warm index.
+const declaration = root => `${quote(native)} locate --root ${quote(root)} --declaration ${PROBE.name} --json`;
+for (const language of Object.keys(LANGUAGES)) {
+  const root = languageRoot(language), refreshCommand = `${quote(native)} project-evidence refresh --enable --root ${quote(root)} --json`;
+  measure(`project-intelligence/language/${language}/refresh-cold/native`, root, ['-N', '--runs', String(coldRuns),
+    '--prepare', `${slash(native)} project-evidence rebuild --enable --root ${quote(root)} --json`, refreshCommand]);
+  measure(`project-intelligence/language/${language}/declaration/native`, root, ['-N', '--warmup', '2', '--runs', String(runs), declaration(root)]);
+}
 
 // Correctness, outside the timed runs: each hook exits 0 without stderr and answers with JSON or nothing.
 for (const { cell, event } of HOOKS) {
@@ -131,6 +147,17 @@ for (const { cell, event } of HOOKS) {
 const status = JSON.parse(run(native, ['project-evidence', 'status', '--enable', '--root', slash(project), '--json'], { env }));
 results.checks.push({ cell: 'project-intelligence/status', sources: status.sources, failedSources: status.failedSources, inventoryComplete: status.inventoryComplete });
 if (!(status.sources > 0) || status.failedSources !== 0 || status.inventoryComplete !== true) results.failures.push('project-intelligence: incomplete refresh');
+// Each language fixture is read without failure, and its index declares the probe and finds its one caller.
+for (const [language, { file }] of Object.entries(LANGUAGES)) {
+  const root = languageRoot(language), ask = (...args) => JSON.parse(run(native, ['locate', '--root', slash(root), ...args, '--json'], { env }));
+  const found = ask('--declaration', PROBE.name), callers = ask('--callers', PROBE.name);
+  const check = { cell: `project-intelligence/language/${language}`, failed: languages[language].failed,
+    declaredIn: found.results?.map(row => row.path), answeredBy: found.route?.answeredBy,
+    calledFrom: callers.results?.map(row => row.container?.name ?? null) };
+  results.checks.push(check);
+  if (check.failed !== 0 || check.answeredBy !== 'intelligence' || check.declaredIn?.join() !== file(PROBE.file)
+    || check.calledFrom?.join() !== PROBE.caller) results.failures.push(`project-intelligence/language/${language}: lookup check failed`);
+}
 save();
 
 const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
