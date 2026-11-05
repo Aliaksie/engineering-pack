@@ -175,7 +175,11 @@ test('a search the model ran gets the verified declaration and callers in the sa
     return output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
   };
   const answer = text => JSON.parse(text.slice(text.indexOf('{')));
-  const grep = context('claude', { tool_name: 'Grep', tool_input: { pattern: 'apply' } });
+  // A search answer may only refresh what changed since the index was warmed; warm it the way
+  // a session does, so a slow runner does not spend the search's budget on a cold index.
+  const warm = invoke('claude', 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: 'search-warm', prompt: 'Which methods call `Policy.apply`?' }, dir);
+  assert.equal(warm.status, 0, warm.stderr);
+  const grep = context('claude',{ tool_name: 'Grep', tool_input: { pattern: 'apply' } });
   assert.match(grep, /^Project Intelligence for the search just run/);
   assert.match(answer(grep).declaration, /^Policy\.java:2/);
   assert.deepEqual(answer(grep).rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);']);
