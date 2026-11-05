@@ -34,6 +34,8 @@ What each level does not do:
   values. C# and PHP declarations are those of the grammar's own tags query (classes,
   interfaces, methods, namespaces; PHP functions and fields), so C# structs, records and enums
   are not declared.
+- Ruby: a call is recorded when it has a receiver, parentheses or arguments (`cart.total`,
+  `apply(x)`). A bare `name` reads the same as a local variable, so it is not a call.
 - A grammar can reject valid source (tree-sitter-typescript 0.23.2 rejects overload call
   signatures, `export type *` and generic arrow functions in `.ts` files). Facts outside the
   syntax error are kept and the source is `partial`: it answers lookups and is also searched
@@ -209,4 +211,4 @@ Dependencies are pinned in `Cargo.lock`: [rusqlite](https://docs.rs/crate/rusqli
 [PHP](https://docs.rs/crate/tree-sitter-php/0.25.1) and
 [Ruby](https://docs.rs/crate/tree-sitter-ruby/0.23.1) grammars. Queries for each language are
 in `platform/queries/`; C#, PHP and Ruby use their grammar's tags query with a few added call
-patterns.
+patterns (Ruby without its bare-identifier rule, which needs local-variable tracking).
