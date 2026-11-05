@@ -89,7 +89,7 @@ jobs:
           retention-days: 90
       - name: Install Bencher
         if: env.TRACK == 'true'
-        uses: bencherdev/bencher@24c333d7030390d2f3e130569386f4f1f8577113 # v0.6.15
+        uses: bencherdev/bencher@7de3c69a85380826613050826b4bce062be2f07d # v0.6.16
       - name: Track with Bencher
         # Report only: alerts appear in the check and pull request comment without failing the job.
         if: env.TRACK == 'true'
