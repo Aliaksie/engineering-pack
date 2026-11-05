@@ -181,7 +181,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 plan["answer"] = answer;
             }
             // The route still establishes the session's intent below.
-            Some(plan).filter(delivery::speaks)
+            Some(plan).filter(|plan| delivery::speaks(plan, prompt.is_some()))
         }
         // A prompt no intent claims still gets the answer to the lookup it asks, alone.
         (None, Some(_)) if event.context_supported => prompt
@@ -274,7 +274,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         decision["context"] = json!({"kind": "answer", "data": answer});
     }
     // The session identity a started or restored session needs for task commands.
-    if let (true, Some(session)) = (facts.started || facts.context_restored, session) {
+    if let (true, Some(session)) = (plan.identify_session, session) {
         let mut identity = json!({"id": session, "task": task});
         if plan.offer_handoff && task.is_none() {
             match crate::handoff::offer(root, session) {

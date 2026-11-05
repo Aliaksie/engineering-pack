@@ -44,6 +44,9 @@ pub struct Plan {
     pub read_checkpoint: bool,
     /// Offer unfinished tasks of earlier sessions to a session without one.
     pub offer_handoff: bool,
+    /// Tell a started or restored session its identity, which task commands take. Part of
+    /// the task records feature: off with checkpoints, so a fully manual policy says nothing.
+    pub identify_session: bool,
     /// Remember that context is changing, so the task resumes at the next chance.
     pub mark_restore: bool,
 }
@@ -100,6 +103,7 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
                 || (facts.restore_pending && facts.context_supported)),
         read_checkpoint: checkpoint && facts.context_changing,
         offer_handoff: checkpoint && facts.started,
+        identify_session: checkpoint && (facts.started || facts.context_restored),
         mark_restore: checkpoint && facts.context_changing,
     }
 }
@@ -147,8 +151,23 @@ pub fn lookup(intent: &str, runtime: Option<&str>, root: &str) -> Option<Value> 
 /// Whether a route carries anything for the model to use. A lookup route without a verified
 /// answer only points at a command: models that followed it spent one or two turns more than
 /// a plain search, so it stays silent and the model searches as it would without Craft.
-pub fn speaks(route: &Value) -> bool {
-    route["intent"] != "locate" || route.get("answer").is_some_and(|answer| !answer.is_null())
+///
+/// A change request at the `prompt` names only skills to read: models opened every one
+/// before a one-line fix (1.76× vanilla tokens). It stays silent unless a task is bound or it
+/// reports a missing input; the session's intent still routes the first edit, whose hint
+/// carries the scope's guidance where the change happens.
+pub fn speaks(route: &Value, prompt: bool) -> bool {
+    if route.get("answer").is_some_and(|answer| !answer.is_null()) {
+        return true;
+    }
+    match route["intent"].as_str() {
+        Some("locate") => false,
+        Some("implement") if prompt => {
+            crate::values::truthy(&route["taskIdentity"]["task"])
+                || route["missing"].as_array().is_some_and(|m| !m.is_empty())
+        }
+        _ => true,
+    }
 }
 
 /// A hook that could not be evaluated: shell policy fails closed, other hooks continue

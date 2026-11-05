@@ -246,12 +246,34 @@ fn a_locate_route_names_the_lookup_command_it_can_run() {
 #[test]
 fn a_lookup_route_speaks_only_with_a_verified_answer() {
     let answered = json!({"intent": "locate", "answer": {"rows": ["a.rs:1"]}});
-    assert!(speaks(&answered));
+    assert!(speaks(&answered, true));
     assert!(!speaks(
-        &json!({"intent": "locate", "lookup": {"run": ["craft"]}})
+        &json!({"intent": "locate", "lookup": {"run": ["craft"]}}),
+        true
     ));
-    assert!(!speaks(&json!({"intent": "locate", "answer": null})));
-    assert!(speaks(&json!({"intent": "implement", "skills": ["x"]})));
+    assert!(!speaks(&json!({"intent": "locate", "answer": null}), true));
+    assert!(speaks(
+        &json!({"intent": "implement", "skills": ["x"]}),
+        false
+    ));
+}
+
+#[test]
+fn a_change_request_speaks_at_the_prompt_only_with_a_task_or_a_missing_input() {
+    let unbound = json!({"intent": "implement", "skills": ["x"], "missing": [],
+        "taskIdentity": {"session": "s", "task": null}});
+    assert!(!speaks(&unbound, true));
+    // The first edit's hint carries the same guidance where the change happens.
+    assert!(speaks(&unbound, false));
+    let bound = json!({"intent": "implement", "skills": ["x"],
+        "taskIdentity": {"session": "s", "task": "t1"}});
+    assert!(speaks(&bound, true));
+    let missing = json!({"intent": "implement", "missing": ["services.codehost"]});
+    assert!(speaks(&missing, true));
+    let answered = json!({"intent": "implement", "answer": {"rows": ["a.rs:1"]}});
+    assert!(speaks(&answered, true));
+    // Other workflow requests keep their skills.
+    assert!(speaks(&json!({"intent": "plan", "skills": ["x"]}), true));
 }
 
 #[test]
@@ -279,6 +301,34 @@ fn a_compacted_task_resumes_at_the_next_event_that_can_show_it() {
     assert!(!prompt(true, false));
     let off = json!({"checkpoint": {"enabled": false}});
     assert!(!plan(&changing, &off).mark_restore);
+}
+
+#[test]
+fn the_session_identity_follows_the_checkpoint_switch() {
+    let on = json!({"checkpoint": {"enabled": true}});
+    let off = json!({"checkpoint": {"enabled": false}});
+    for event in [
+        Facts {
+            session: true,
+            started: true,
+            ..Facts::default()
+        },
+        Facts {
+            session: true,
+            context_restored: true,
+            ..Facts::default()
+        },
+    ] {
+        assert!(plan(&event, &on).identify_session);
+        // A fully manual policy says nothing at session start or after compaction.
+        assert!(!plan(&event, &off).identify_session);
+    }
+    let prompt = Facts {
+        session: true,
+        prompt: Some("fix it"),
+        ..Facts::default()
+    };
+    assert!(!plan(&prompt, &on).identify_session);
 }
 
 #[test]
