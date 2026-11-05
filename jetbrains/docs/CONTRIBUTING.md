@@ -99,7 +99,9 @@ uploads one report per OS. See the [guard limits](SECURITY.md#read-only-review-g
 The **Performance** workflow runs on pull requests, pushes to `main` and manual dispatch on
 Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
 installed release `craft`: startup, the prompt, tool and stop hooks, and warm and cold Project
-Intelligence refresh. Each hook runs in three layers: the native binary (`native`), the package
+Intelligence refresh. Per supported language, a generated fixture of 100 files (`languages.mjs`)
+times a cold refresh and one `--declaration` lookup on the warm index, and is checked to declare
+and find the caller of one function. Each hook runs in three layers: the native binary (`native`), the package
 launcher (`launcher`) and the registered hook command under the shell hosts use (`host`). Every run records
 wall time (median, range and 95th percentile), user and system CPU, peak memory and, where the
 platform allows, instructions and cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the

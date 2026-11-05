@@ -19,12 +19,12 @@
     "cpp-tree-sitter-0.23.4/v1",
     "csharp-tree-sitter-0.23.5/tags-v1",
     "php-tree-sitter-0.25.1/tags-v1",
-    "ruby-tree-sitter-0.23.1/tags-v1",
+    "ruby-tree-sitter-0.23.1/tags-v2",
     "markdown-sections/v1",
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "1f29d6919717ff31fd749147819df8038a16eae3",
+  "sourceRevision": "2ab2c4d7bee133c1974379d1d002eb099293cd9a",
   "sourceDirty": false,
   "cargoLockSha256": "54cb7e5c95327bdf35134af67fd1c33107218fb018a18de586ad31dfb99bf408",
   "files": [
@@ -41,12 +41,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 25184608,
-      "sha256": "6efcf6e28786f82d28710cbb09dd08085e79ab05125c7f4329bc8a4ecd9cd0d8"
+      "sha256": "80425618276a7bc772e7a1bf4bfec3d5ae56075579e3bb18d9b9e64523a0f3f7"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "0d1f4e38439bf5a38925e614730a617a8837120cfee6effbb45125b5d427b805"
+      "sha256": "9ef6693fad6e5e093ddf681c011b32688bc7308a132f0452a082a4db858dbba4"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",

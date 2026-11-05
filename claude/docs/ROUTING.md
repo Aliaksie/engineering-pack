@@ -127,8 +127,10 @@ A prompt also gets an answer, whatever intent it routes to (or with none), when 
 dotted configuration key is set (`` Where is `compilerOptions.strict` set? ``: `--key`), which
 documents mention one code name or file (`` Which docs mention `AdrSlug`? ``: `--mentions`),
 or about decision records ("Which ADR decides…", "architecture decision record"): the index of
-every record with its status, when there are at most 24. Same rule as above: complete coverage
-or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
+every record with its status, when there are at most 24. Records under a test or fixture
+directory (`test`, `tests`, `__tests__`, `spec`, `fixtures`, `testdata`, `e2e`, or a name
+ending in `-tests` or `-fixtures`) are test data: the answer leaves them out and says how
+many. Same rule as above: complete coverage or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
