@@ -1030,6 +1030,16 @@
           "type": "boolean",
           "default": true,
           "description": "Deterministic anchor checks after an edit or commit in a declared standard's scope. Set false to keep standards in routes without checking."
+        },
+        "stopReview": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a turn ends after changing files, one summary of new findings (module dependencies, debt markers) and the declared review items of the changed scope; the host continues the turn once to address it. Set false to never hold a stop."
+        },
+        "debtMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report debt markers a change adds against HEAD in the stop summary: TODO/FIXME comments, lint or type-check suppressions, skipped tests, removed assertions."
         }
       }
     },

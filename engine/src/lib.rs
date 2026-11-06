@@ -8,6 +8,7 @@ pub mod checkpoint;
 pub mod context;
 pub mod contracts;
 pub mod control;
+pub mod debt;
 pub mod delivery;
 pub mod discovery;
 pub mod grounding;

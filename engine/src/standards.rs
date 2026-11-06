@@ -371,6 +371,46 @@ pub fn select(settings: &Value, work: &Work) -> Vec<Value> {
     selected
 }
 
+/// The declared `review` standards a change falls under, as a route shows them: what the
+/// stop summary asks to be checked before the work is reported done.
+pub fn reviewed(settings: &Value, intent: &str, scope: &crate::routing::Scope) -> Vec<Value> {
+    let work = Work {
+        intent,
+        files: &scope.files,
+        modules: &scope.modules,
+        languages: &scope.languages,
+        layers: &scope.layers,
+    };
+    declared(settings)
+        .iter()
+        .filter(|standard| level(settings, standard) == "review")
+        .filter(|standard| matches(settings, standard, &work))
+        .map(|standard| shown(settings, standard))
+        .collect()
+}
+
+/// Whether the stop summary is on: unless `routing.stopReview` is false.
+pub fn stop_review(settings: &Value) -> bool {
+    settings["routing"]["stopReview"] != false
+}
+
+/// Whether new debt markers are reported: only when `routing.debtMarkers` is true.
+pub fn debt_markers(settings: &Value) -> bool {
+    settings["routing"]["debtMarkers"] == true
+}
+
+/// Whether a stop has anything to review here: the summary is on and the project reports
+/// debt markers, declares a `review` standard or checks module dependencies. Otherwise a
+/// stop reads no Git state at all.
+pub fn stop_relevant(settings: &Value) -> bool {
+    stop_review(settings)
+        && (debt_markers(settings)
+            || declared(settings)
+                .iter()
+                .any(|standard| level(settings, standard) == "review")
+            || !checked(settings, Input::Imports).is_empty())
+}
+
 /// Craft's anchors for `intent`, advised and never checked. The project's own word wins: a
 /// declared standard for this kind of work replaces them all, and an anchor the project
 /// disables or already names is not added. A project catalog entry with the id supplies its

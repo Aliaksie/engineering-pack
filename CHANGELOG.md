@@ -38,6 +38,12 @@ Project standards:
   `--search` searches the catalog by id, title, category or role.
 - `craft standards` lists the declared standards, with each anchor's source, and runs the same checks on `--file` and
   `--commit-message`, exiting non-zero when a standard is not met.
+- When a turn ends after changing files, hosts that continue a turn from a stop hook
+  (Claude Code, Codex, Copilot CLI, Gemini CLI, Cursor) get one summary of what the changes
+  introduced: module dependency findings, the declared `review` items of the changed scope
+  and, with `routing.debtMarkers: true`, new TODO/FIXME comments, lint suppressions, skipped
+  tests and removed assertions against `HEAD`. Each item is said once per session; a stop is
+  never held twice in a row. `routing.stopReview: false` turns it off.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 
 ## 0.0.4

@@ -235,6 +235,12 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
         event["pattern"] = json!(pattern);
     }
     event["prompt"] = json!(text(&payload["prompt"]).unwrap_or_default());
+    // The host is already continuing a stop a hook held: Claude, Codex and Gemini say so,
+    // Cursor counts the follow-ups it submitted.
+    if payload["stop_hook_active"] == true || payload["loop_count"].as_u64().is_some_and(|n| n > 0)
+    {
+        event["stopActive"] = json!(true);
+    }
     if let Some(session) = first(payload, &["session_id", "sessionId", "conversation_id"])
         .and_then(Value::as_str)
         .filter(|s| js_length(s) <= 512)
@@ -262,6 +268,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
         facts["pattern"] = event["pattern"].clone();
         if event["tool"] == "shell" {
             facts["command"] = event["command"].clone();
+        }
+        if event["stopActive"] == true {
+            facts["stopActive"] = json!(true);
         }
     }
     facts
@@ -316,6 +325,18 @@ fn standards_line(found: &Value) -> String {
     format!(
         "Project standards not met by what was just written (deterministic anchor check; report only, fix or tell the user why not): {found}"
     )
+}
+
+/// The stop summary a held stop gives the model as the reason to continue.
+fn stop_line(summary: &Value) -> String {
+    format!(
+        "Craft stop review of the files this session changed (deterministic findings against HEAD and the project's review items; no authorization implied). Address each before reporting the work done: fix it, or tell the user why it stays: {summary}"
+    )
+}
+
+/// Whether `host` can hold a stop and continue the turn with a reason.
+pub(crate) fn continues_turn(host: &str) -> bool {
+    mapping(host, "turn-end").is_some_and(|m| m["continue"] == true)
 }
 
 /// At most 12 000 UTF-16 units of context, cut at a character boundary.
@@ -374,6 +395,21 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         };
     }
     let name = &mapping["name"];
+    if let Some(summary) = result
+        .get("stop")
+        .filter(|_| lifecycle == "turn-end" && mapping["continue"] == true)
+    {
+        let reason = bounded(stop_line(summary));
+        let output = match host {
+            "cursor" => json!({"followup_message": reason}),
+            "gemini" => json!({"decision": "deny", "reason": reason}),
+            _ => json!({"decision": "block", "reason": reason}),
+        };
+        return Wire {
+            stdout: format!("{output}\n"),
+            ..empty
+        };
+    }
     let output = match host {
         "cursor" => match lifecycle {
             "before-tool" if denied => {
@@ -560,6 +596,48 @@ mod tests {
         let cut = bounded(context);
         assert!(cut.starts_with(&format!("{}\n[truncated;", "x".repeat(MAX_CONTEXT - 1))));
         assert_eq!(bounded("y".repeat(MAX_CONTEXT)), "y".repeat(MAX_CONTEXT));
+    }
+
+    /// A stop summary holds the stop in each host's own words, only where it can continue.
+    #[test]
+    fn a_stop_summary_holds_the_stop_where_the_host_continues() {
+        let result = json!({"decision": "allow", "stop": {"findings": [{"rule": "todo-marker"}]}});
+        let reason = |output: &Value, field: &str| {
+            output[field]
+                .as_str()
+                .unwrap()
+                .starts_with("Craft stop review")
+        };
+        for host in ["claude", "codex", "copilot"] {
+            let wire = serialize(&result, host, "turn-end");
+            let output: Value = serde_json::from_str(&wire.stdout).unwrap();
+            assert_eq!(output["decision"], "block", "{host}");
+            assert!(reason(&output, "reason"), "{host}");
+        }
+        let gemini: Value =
+            serde_json::from_str(&serialize(&result, "gemini", "turn-end").stdout).unwrap();
+        assert_eq!(gemini["decision"], "deny");
+        assert!(reason(&gemini, "reason"));
+        let cursor: Value =
+            serde_json::from_str(&serialize(&result, "cursor", "turn-end").stdout).unwrap();
+        assert!(reason(&cursor, "followup_message"));
+        // No stop event, or another event: nothing to hold.
+        assert_eq!(serialize(&result, "jetbrains", "turn-end").stdout, "");
+        assert_eq!(serialize(&result, "claude", "after-tool").stdout, "");
+        assert_eq!(
+            serialize(&json!({"decision": "allow"}), "claude", "turn-end").stdout,
+            ""
+        );
+    }
+
+    #[test]
+    fn a_continued_stop_is_marked_active() {
+        let active =
+            |payload: Value| normalize(&payload, "claude", "turn-end")["stopActive"] == true;
+        assert!(active(json!({"stop_hook_active": true})));
+        assert!(active(json!({"loop_count": 1})));
+        assert!(!active(json!({"stop_hook_active": false, "loop_count": 0})));
+        assert!(!active(json!({})));
     }
 
     #[test]

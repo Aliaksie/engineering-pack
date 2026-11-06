@@ -643,3 +643,114 @@ fn an_edit_that_adds_an_undeclared_module_import_is_reported_and_old_debt_is_not
     assert_eq!(findings[0]["line"], 2);
     assert_eq!(findings[0]["rule"], "undeclared-dependency");
 }
+
+fn lifecycle(root: &Path, lifecycle: &str, extra: Value) -> Value {
+    let mut input = facts(
+        root,
+        "deliver",
+        json!({"package": "craft-delivery", "lifecycle": lifecycle, "scope": "any", "tool": "other"}),
+    );
+    for (key, value) in extra.as_object().unwrap() {
+        input[key] = value.clone();
+    }
+    hook(input)
+}
+
+#[test]
+fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
+    let fixture = project(
+        "stop-review",
+        Some(
+            r#"{"formatVersion":1,"routing":{"debtMarkers":true},"modules":[
+              {"name":"domain","path":"src/domain","dependsOn":[]},
+              {"name":"web","path":"src/web","dependsOn":["domain"]}],
+            "standards":[{"id":"rings","anchor":"hexagonal-architecture"},
+              {"id":"api-review","checklist":["Errors map to status codes"],"scope":{"paths":["src/web"]}}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    fs::create_dir_all(root.join("src/domain")).unwrap();
+    fs::create_dir_all(root.join("src/web")).unwrap();
+    let order = root.join("src/domain/order.ts");
+    fs::write(&order, "export class Order {}\n").unwrap();
+    // Uncommitted work from before the session: a TODO the session did not write.
+    fs::write(root.join("src/web/old.ts"), "// TODO: before\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "src/domain"]);
+    git(&["commit", "-qm", "init"]);
+    lifecycle(root, "session-start", json!({}));
+    assert!(
+        lifecycle(root, "turn-end", json!({})).get("stop").is_none(),
+        "nothing changed this session"
+    );
+
+    fs::write(
+        &order,
+        "import { http } from '../web/http'\n// TODO: money\nexport class Order {}\n",
+    )
+    .unwrap();
+    fs::write(root.join("src/web/http.ts"), "export const http = 1\n").unwrap();
+    // While the host continues a held stop, nothing is said.
+    assert!(
+        lifecycle(root, "turn-end", json!({"stopActive": true}))
+            .get("stop")
+            .is_none()
+    );
+    let decision = lifecycle(root, "turn-end", json!({}));
+    let stop = &decision["stop"];
+    let rules: Vec<(&str, &str)> = stop["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| (f["file"].as_str().unwrap(), f["rule"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        rules,
+        vec![
+            ("src/domain/order.ts", "undeclared-dependency"),
+            ("src/domain/order.ts", "todo-marker")
+        ],
+        "{stop}"
+    );
+    assert_eq!(stop["findings"][1]["line"], 2);
+    assert_eq!(stop["review"][0]["id"], "api-review");
+    assert_eq!(decision["decision"], "allow");
+
+    // The same findings never hold a stop again, even after another edit.
+    fs::write(
+        &order,
+        "import { http } from '../web/http'\n// TODO: money\nexport class Order { id = 1 }\n",
+    )
+    .unwrap();
+    assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
+
+    // Off when the project says so.
+    let config = fs::read_to_string(root.join(".craft/project.json")).unwrap();
+    fs::write(
+        root.join(".craft/project.json"),
+        config.replace(
+            r#""debtMarkers":true"#,
+            r#""debtMarkers":true,"stopReview":false"#,
+        ),
+    )
+    .unwrap();
+    fs::write(&order, "// FIXME: new\n").unwrap();
+    assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
+}

@@ -33,6 +33,8 @@ pub struct Event<'a> {
     pub pattern: Option<&'a str>,
     pub command: Option<&'a str>,
     pub context_supported: bool,
+    /// The host is continuing a stop a hook already held.
+    pub stop_active: bool,
 }
 
 /// The project-relative form of a tool path, resolved against the hook's working
@@ -95,6 +97,11 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     }
     if event.lifecycle == "session-start" {
         warm_evidence(root);
+        if let Some(session) = session
+            && crate::stop_review::baseline(root, session, &settings).is_err()
+        {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
     }
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
     // An edit outside the project has no project route; it is not a delivery failure.
@@ -305,6 +312,19 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         let found = standard_findings(root, &settings, event, file.as_deref());
         if !found.is_empty() {
             decision["standards"] = json!(found);
+        }
+    }
+    // A turn that changed files ends with one summary of what is new, where the host can
+    // hold the stop and continue with it.
+    if let (true, Some(session)) = (
+        event.lifecycle == "turn-end" && crate::hook::continues_turn(event.host),
+        session,
+    ) {
+        let intent = record["intent"].as_str();
+        match crate::stop_review::stop(root, session, &settings, intent, event.stop_active) {
+            Ok(Some(summary)) => decision["stop"] = summary,
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
     }
     let eligible = decision["context"]["kind"] == "routing"
