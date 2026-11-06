@@ -27,6 +27,13 @@ Project standards:
   `kiss-principle` for review, `conventional-commits` and `kiss-principle` for
   implementation. A declared standard for the kind of work replaces them; `anchors.disables`
   drops single anchors. Defaults are off unless a project turns them on.
+- `hexagonal-architecture` (alias `ports-and-adapters`) and `clean-architecture` are checked
+  against the declared modules. When a source file is written, each import the change adds
+  that points into a declared module outside the file's module's `dependsOn` is reported.
+  Imports already present at `HEAD`, modules without `dependsOn`, and imports Craft cannot
+  place in the project are not reported. Rust, Go, Java, TypeScript/JavaScript and Python
+  imports are placed. A project anchor with `"check": "module-dependencies"` applies the rule
+  under its own name.
 - `craft anchors` lists the anchors a project can name with the source each resolves to;
   `--search` searches the catalog by id, title, category or role.
 - `craft standards` lists the declared standards, with each anchor's source, and runs the same checks on `--file` and

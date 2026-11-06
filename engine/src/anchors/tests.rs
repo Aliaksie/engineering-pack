@@ -131,8 +131,11 @@ fn a_malformed_overlay_entry_is_rejected_with_its_name() {
         parse_overlay(&overlay(vec![entry])).unwrap_err()
     };
     assert!(broken("check", json!("lint")).contains("no check named lint"));
-    assert!(broken("check", Value::Null).contains("name a check"));
-    assert!(broken("tier", json!("vocabulary")).contains("name a check"));
+    assert!(broken("check", Value::Null).contains("a text check"));
+    assert!(broken("tier", json!("vocabulary")).contains("others none"));
+    // A facts anchor reads project facts; a text check is the wrong kind, and vice versa.
+    assert!(broken("tier", json!("facts")).contains("a facts check"));
+    assert!(broken("check", json!("module-dependencies")).contains("a text check"));
     assert!(broken("tier", json!("strict")).contains("unknown tier"));
     assert!(broken("summary", json!("two\nlines")).contains("one line"));
     assert!(broken("summary", Value::Null).contains("need a summary"));

@@ -460,23 +460,34 @@ fn standards(
             .collect();
         return Ok(json!({"standards": listed, "checks": standards::checks_enabled(&settings)}));
     }
+    let bytes = |path: &Path| -> Result<Vec<u8>, Failure> {
+        std::fs::read(path)
+            .map_err(|error| Failure::from(format!("cannot read {}: {error}", path.display())))
+    };
     let read = |path: &Path| -> Result<String, Failure> {
-        let bytes = std::fs::read(path)
-            .map_err(|error| Failure::from(format!("cannot read {}: {error}", path.display())))?;
-        Ok(String::from_utf8_lossy(&bytes).into_owned())
+        Ok(String::from_utf8_lossy(&bytes(path)?).into_owned())
     };
     let mut checked = Vec::new();
     let mut unmet = Vec::new();
     for file in files(options) {
         let file = craft_engine::contracts::relative_file(file)?;
         let checks = standards::file_checks(&settings, &file);
-        if checks.is_empty() {
+        let imports = standards::import_checks(&settings, &file);
+        if checks.is_empty() && imports.is_empty() {
             continue;
         }
-        checked.push(
-            json!({"file": file, "standards": checks.iter().map(|check| check.standard).collect::<Vec<_>>()}),
-        );
-        for mut verdict in standards::verdicts(&checks, &read(&root.join(&file))?, Some(&file)) {
+        let names = checks.iter().chain(&imports).map(|check| check.standard);
+        checked.push(json!({"file": file, "standards": names.collect::<Vec<_>>()}));
+        let source = bytes(&root.join(&file))?;
+        let mut verdicts = if checks.is_empty() {
+            Vec::new()
+        } else {
+            standards::verdicts(&checks, &String::from_utf8_lossy(&source), Some(&file))
+        };
+        verdicts.extend(crate::dependencies::verdicts(
+            &root, &settings, &file, &source,
+        ));
+        for mut verdict in verdicts {
             verdict["file"] = json!(file);
             unmet.push(verdict);
         }

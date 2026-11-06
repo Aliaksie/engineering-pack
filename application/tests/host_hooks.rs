@@ -580,3 +580,66 @@ fn a_commit_just_made_is_checked_against_the_declared_commit_standard() {
         "only a commit command"
     );
 }
+
+#[test]
+fn an_edit_that_adds_an_undeclared_module_import_is_reported_and_old_debt_is_not() {
+    let fixture = project(
+        "standards-modules",
+        Some(
+            r#"{"formatVersion":1,"modules":[
+              {"name":"domain","path":"src/domain","dependsOn":[]},
+              {"name":"web","path":"src/web","dependsOn":["domain"]},
+              {"name":"store","path":"src/store","dependsOn":["domain"]}],
+            "standards":[{"id":"rings","anchor":"hexagonal-architecture"}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let status = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(status.status.success(), "{status:?}");
+    };
+    fs::create_dir_all(root.join("src/domain")).unwrap();
+    let order = root.join("src/domain/order.ts");
+    // Existing debt in HEAD: the domain already imports the web module.
+    fs::write(
+        &order,
+        "import { http } from '../web/http'\nexport class Order {}\n",
+    )
+    .unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "init"]);
+    let edit = json!({"tool": "edit", "file": order.to_string_lossy()});
+    assert!(
+        written(root, edit.clone()).get("standards").is_none(),
+        "unchanged imports are not this change's debt"
+    );
+
+    fs::write(
+        &order,
+        "import { http } from '../web/http'\nimport { Db } from '../store/db'\nimport { Money } from './money'\nexport class Order {}\n",
+    )
+    .unwrap();
+    let decision = written(root, edit);
+    assert_eq!(decision["decision"], "allow", "a finding never blocks");
+    let found = &decision["standards"][0];
+    assert_eq!(found["standard"], "rings");
+    assert_eq!(found["anchor"], "hexagonal-architecture");
+    let findings = found["findings"].as_array().unwrap();
+    assert_eq!(findings.len(), 1, "{findings:?}");
+    assert_eq!(findings[0]["line"], 2);
+    assert_eq!(findings[0]["rule"], "undeclared-dependency");
+}

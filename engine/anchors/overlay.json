@@ -125,6 +125,25 @@
       "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
     },
     {
+      "id": "hexagonal-architecture",
+      "aliases": ["ports-and-adapters"],
+      "tier": "facts",
+      "check": "module-dependencies",
+      "intents": [],
+      "targets": [],
+      "summary": "The domain core depends on nothing outside it; adapters depend inward through ports. Declare each ring as a module; its dependsOn lists the rings it may import.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna (2026-11-06); imports resolve to declared modules for Rust, Go and Java, relative TS/JS and Python (2026-11-06)."
+    },
+    {
+      "id": "clean-architecture",
+      "tier": "facts",
+      "check": "module-dependencies",
+      "intents": [],
+      "targets": [],
+      "summary": "Source dependencies point inward only: entities, then use cases, then interface adapters, then frameworks. Declare each layer as a module; its dependsOn lists the inner layers.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna (2026-11-06); imports resolve to declared modules for Rust, Go and Java, relative TS/JS and Python (2026-11-06)."
+    },
+    {
       "id": "clean-code",
       "tier": "refused",
       "evidence": "Claude and Codex listed different rule sets for the name alone, with nothing structural in common (2026-11-05)."
