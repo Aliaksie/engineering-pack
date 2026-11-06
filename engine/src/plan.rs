@@ -870,7 +870,7 @@ mod tests {
         assert!(shown.get("tasks").is_none() && shown.to_string().len() <= ENVELOPE_BYTES);
         let parent = envelope(&plan, "p", Value::Null).unwrap();
         assert_eq!(parent["children"].as_array().unwrap().len(), 2);
-        let brief = brief(&shown).unwrap();
+        let brief = brief(&shown, &[]).unwrap();
         crate::workers::lifecycle::input(&json!({
             "id": "w1", "offer": "0".repeat(64), "scope": "task", "brief": brief,
         }))
@@ -884,7 +884,7 @@ mod tests {
             ])
         );
         assert!(
-            self::brief(&envelope(&plan, "p", Value::Null).unwrap())
+            self::brief(&envelope(&plan, "p", Value::Null).unwrap(), &[])
                 .unwrap_err()
                 .contains("acceptance")
         );

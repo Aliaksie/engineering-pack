@@ -456,8 +456,14 @@ fn parent_checkpoint(root: &Path, parent: &Value) -> Value {
     }
 }
 
-/// `plan-envelope`: the small context for one task, or with `brief` the worker brief.
-pub fn envelope(root: &Path, id: &str, task: &str, brief: bool) -> Result<Value, Failure> {
+/// `plan-envelope`: the small context for one task, or with `brief` (the project settings)
+/// the worker brief.
+pub fn envelope(
+    root: &Path,
+    id: &str,
+    task: &str,
+    brief: Option<&Value>,
+) -> Result<Value, Failure> {
     let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
     let parent = saved["tasks"]
         .as_array()
@@ -468,8 +474,10 @@ pub fn envelope(root: &Path, id: &str, task: &str, brief: bool) -> Result<Value,
         .and_then(|p| saved["tasks"].as_array()?.iter().find(|t| t["id"] == *p));
     let checkpoint = parent.map_or(Value::Null, |p| parent_checkpoint(root, p));
     let shown = plan::envelope(&saved, task, checkpoint)?;
-    if brief {
-        return Ok(plan::brief(&shown)?);
+    // With the project settings, the worker brief and the standards of the task's scope.
+    if let Some(settings) = brief {
+        let standards = craft_engine::standards::for_task(settings, &shown["task"]);
+        return Ok(plan::brief(&shown, &standards)?);
     }
     Ok(shown)
 }

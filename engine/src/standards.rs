@@ -389,6 +389,49 @@ pub fn reviewed(settings: &Value, intent: &str, scope: &crate::routing::Scope) -
         .collect()
 }
 
+/// The standards a delegated task's owned scope falls under, for its worker brief: the task's
+/// files and owned paths (each up to its first wildcard segment) as the files of `implement`
+/// work, so the worker hears the same names a route there shows.
+pub fn for_task(settings: &Value, task: &Value) -> Vec<Value> {
+    let owned = task["scope"]["paths"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(|path| {
+            path.split('/')
+                .take_while(|segment| !segment.contains('*'))
+                .collect::<Vec<_>>()
+                .join("/")
+        });
+    let files: Vec<Value> = task["files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_owned)
+        .chain(owned)
+        .filter(|file| !file.is_empty())
+        .map(Value::from)
+        .collect();
+    if files.is_empty() {
+        return Vec::new();
+    }
+    let Ok(scope) = crate::routing::scope(settings, &files) else {
+        return Vec::new();
+    };
+    select(
+        settings,
+        &Work {
+            intent: "implement",
+            files: &scope.files,
+            modules: &scope.modules,
+            languages: &scope.languages,
+            layers: &scope.layers,
+        },
+    )
+}
+
 /// Whether the stop summary is on: unless `routing.stopReview` is false.
 pub fn stop_review(settings: &Value) -> bool {
     settings["routing"]["stopReview"] != false

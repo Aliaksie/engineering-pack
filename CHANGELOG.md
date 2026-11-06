@@ -44,6 +44,8 @@ Project standards:
   and, with `routing.debtMarkers: true`, new TODO/FIXME comments, lint suppressions, skipped
   tests and removed assertions against `HEAD`. Each item is said once per session; a stop is
   never held twice in a row. `routing.stopReview: false` turns it off.
+- Worker briefs from `plan-assign` and `plan-envelope --brief` carry the project standards of
+  the task's files and owned paths in `standards`, as a route there shows them.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 
 ## 0.0.4

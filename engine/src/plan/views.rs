@@ -102,7 +102,7 @@ pub fn envelope(plan: &Value, task: &str, checkpoint: Value) -> Result<Value> {
 
 /// An envelope as the worker `brief`: sources are the plan references and what the
 /// dependencies returned, restrictions the owned paths and worktree.
-pub fn brief(envelope: &Value) -> Result<Value> {
+pub fn brief(envelope: &Value, standards: &[Value]) -> Result<Value> {
     let task = &envelope["task"];
     let acceptance = task["acceptance"].as_array().cloned().unwrap_or_default();
     if acceptance.is_empty() {
@@ -155,13 +155,18 @@ pub fn brief(envelope: &Value) -> Result<Value> {
     let returns = task["returns"]
         .as_str()
         .unwrap_or("What changed and how it was verified");
-    Ok(json!({
+    let mut brief = json!({
         "goal": task["goal"],
         "sources": sources,
         "acceptance": acceptance,
         "restrictions": restrictions,
         "returnShape": returns,
-    }))
+    });
+    // The project's standards for the owned scope travel with the work, as a route shows them.
+    if !standards.is_empty() {
+        brief["standards"] = json!(standards);
+    }
+    Ok(brief)
 }
 
 /// The plan as shown: each task with its derived readiness, and task counts by state.

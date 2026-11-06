@@ -470,3 +470,25 @@ fn module_dependency_checks_follow_scope_and_project_anchors() {
     );
     assert_eq!(import_checks(&project, "src/app/a.rs").len(), 1);
 }
+
+#[test]
+fn a_task_brief_carries_the_standards_of_its_owned_scope() {
+    let project = settings(json!([
+        {"id": "orders-api", "checklist": ["Errors map to status codes"], "scope": {"modules": ["orders"]}},
+        {"id": "ui-copy", "file": "docs/copy.md", "scope": {"paths": ["ui"]}},
+        {"id": "stories", "file": "docs/stories.md", "scope": {"intents": ["story"]}},
+        {"id": "everywhere", "file": "docs/style.md"}
+    ]));
+    let task = |scope: Value| json!({"id": "t", "files": [], "scope": scope});
+    let owned = for_task(
+        &project,
+        &task(json!({"paths": ["services/orders/**/*.rs"]})),
+    );
+    assert_eq!(ids(&owned), vec!["orders-api", "everywhere"]);
+    assert_eq!(owned[0]["checklist"], json!(["Errors map to status codes"]));
+    let files = for_task(&project, &json!({"files": ["ui/app.tsx"]}));
+    assert_eq!(ids(&files), vec!["ui-copy", "everywhere"]);
+    // No owned scope: nothing to narrow by, so the brief stays as it was.
+    assert!(for_task(&project, &task(json!({}))).is_empty());
+    assert!(for_task(&project, &task(json!({"paths": ["**"]}))).is_empty());
+}

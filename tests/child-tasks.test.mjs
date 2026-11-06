@@ -80,6 +80,14 @@ test('a parent works its children in turn within owned paths and their returned 
   const brief = run(['plan-envelope', '--root', root, '--plan', 'children', '--task', 'c2', '--brief']);
   assert.deepEqual(brief, { goal: 'Use the API', sources: ['tracker:PROJ-5', 'c1 returned: export function api()'],
     acceptance: ['Uses the API'], restrictions: ['Change only files matching src/b/*.mjs'], returnShape: 'What changed and how it was verified' });
+  // A standard the project declares for the owned paths travels with the brief.
+  fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1,
+    standards: [{ id: 'b-review', checklist: ['Uses only the exported API'], scope: { paths: ['src/b'] } },
+      { id: 'a-only', checklist: ['Keeps a stable'], scope: { paths: ['src/a'] } }] }));
+  const standards = run(['plan-envelope', '--root', root, '--plan', 'children', '--task', 'c2', '--brief']).standards;
+  assert.deepEqual(standards, [{ id: 'b-review', level: 'review', checklist: ['Uses only the exported API'] }]);
+  fs.rmSync(path.join(root, '.craft/project.json'));
 
   // A change outside the owned paths refuses completion until the scope is widened.
   edit(root, 'src/b/use.mjs');

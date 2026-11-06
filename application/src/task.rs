@@ -176,7 +176,7 @@ pub fn start(
     if !claimed.is_null() {
         if let Some(planned) = &planned {
             // The task's context in the plan; a plan too large to summarize never blocks work.
-            claimed["envelope"] = crate::plan::envelope(root, planned.id, task, false)
+            claimed["envelope"] = crate::plan::envelope(root, planned.id, task, None)
                 .unwrap_or_else(
                     |failure| json!({"status": "unavailable", "reason": failure.message}),
                 );
