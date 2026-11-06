@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Task continuation guidance requires an ownership handoff or explicit reassignment before
+  taking over another session's work; stale receipts do not imply its tools have stopped.
+
+- Debugging guidance keeps diagnosis separate from authorization to repair. Existing guidance
+  adds risk-based test-case selection, frontend performance investigation and transition limits,
+  reliability-measure boundaries, and evidence-based story priorities and success measures.
+
+- Review guidance loads pull-request follow-up details only when needed through a linked reference.
+
+- Testing guidance describes investigation of unexpected behavior as well as failing checks.
+  Specification audits and story drafting include examples of conflicting rules, optional
+  clarification and useful outcome slices with unresolved decisions.
+
 Project standards:
 
 - `.craft/project.json` declares the project's own standards in `standards`: a file, a folder
