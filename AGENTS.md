@@ -13,6 +13,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run build` | Export Claude, Codex, Cursor, Copilot, Gemini, JetBrains and AGENTS bundles into dist |
 | `npm run build:native` | Build the native `craft` bundle for the current platform |
 | `npm run build:distribution` | Assemble `dist/distribution` with the published branch layout |
+| `npm run check:fast` | The CI fast gate locally: sources, exports, architecture, Rust format and clippy; no tests |
 | `npm run check` | Validate source, craft blocks, exports, script syntax and tests |
 | `npm test` | Build exports, then run Node tests |
 | `npm run validate` | Validate capability manifests and referenced source files |
@@ -28,6 +29,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run overhead` | Bytes each export adds per session: skill listing, hook context, routed guidance |
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
+| `npm run standards -- ...` | List declared project standards or run their anchor checks on files and commit messages |
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
 | `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |

@@ -92,6 +92,7 @@ const OPTIONS: &[&str] = &[
     "by",
     "rejected",
     "supersedes",
+    "commit-message",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -181,6 +182,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
         .filter(|_| action != "task-decide")
     {
         return Err(format!("--{name} is supported by task-decide").into());
+    }
+    if present("commit-message") && action != "standards" {
+        return Err("--commit-message is supported by standards".into());
     }
     if present("contract") && !["task-start", "acceptance-view"].contains(&action) {
         return Err("--contract is supported by task-start and acceptance-view".into());

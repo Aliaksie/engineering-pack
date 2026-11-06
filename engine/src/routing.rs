@@ -411,6 +411,16 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
             }
         }
     }
+    let standards = crate::standards::select(
+        settings,
+        &crate::standards::Work {
+            intent,
+            files: &changed,
+            modules: &modules,
+            languages: &languages,
+            layers: &layers,
+        },
+    );
     let mut plan = json!({
         "intent": intent,
         "capability": capability(intent, request.risks),
@@ -452,6 +462,10 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
     map.insert("modules".into(), Value::Array(summaries));
     map.insert("affectedDependents".into(), json!(impacted[selected..]));
     map.insert("checks".into(), Value::Array(checks));
+    // Only projects that declare standards see the field; others keep the route they had.
+    if !standards.is_empty() {
+        map.insert("standards".into(), Value::Array(standards));
+    }
     map.insert("operations".into(), Value::Array(operations));
     map.insert("missing".into(), Value::Array(missing));
     map.insert("reasons".into(), Value::Array(reasons));

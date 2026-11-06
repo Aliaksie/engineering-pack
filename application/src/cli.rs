@@ -121,6 +121,7 @@ const COMMANDS: &[Command] = &[
     Command::run("plan-integrate", plan_integrate).receipt(|_, value| integrate_receipt(value)),
     Command::run("settings", settings),
     Command::run("route", route),
+    Command::run("standards", standards),
     Command::run("context-report", context_report).bundled(),
     Command::run("session", session_status)
         .bundled()
@@ -424,6 +425,75 @@ fn count_activity(
     {
         result["activityDiagnostic"] = json!(warning);
     }
+}
+
+/// The project's declared standards, or the anchor checks for written files and a commit
+/// message: the same checks the hooks run, for a Git hook or CI. Unmet standards fail.
+fn standards(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    use craft_engine::standards;
+    let settings = loaded(options, recorder, parent)?;
+    let root = root(options);
+    let message = options.get("commit-message");
+    if files(options).is_empty() && message.is_none() {
+        let declared = settings["standards"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        let listed: Vec<Value> = declared
+            .iter()
+            .map(|standard| {
+                let mut entry = standard.clone();
+                entry["level"] = json!(standards::level(standard));
+                entry
+            })
+            .collect();
+        return Ok(json!({"standards": listed, "checks": standards::checks_enabled(&settings)}));
+    }
+    let read = |path: &Path| -> Result<String, Failure> {
+        let bytes = std::fs::read(path)
+            .map_err(|error| Failure::from(format!("cannot read {}: {error}", path.display())))?;
+        Ok(String::from_utf8_lossy(&bytes).into_owned())
+    };
+    let mut checked = Vec::new();
+    let mut unmet = Vec::new();
+    for file in files(options) {
+        let file = craft_engine::contracts::relative_file(file)?;
+        let checks = standards::file_checks(&settings, &file);
+        if checks.is_empty() {
+            continue;
+        }
+        checked.push(
+            json!({"file": file, "standards": checks.iter().map(|(id, _)| id).collect::<Vec<_>>()}),
+        );
+        for mut verdict in standards::verdicts(&checks, &read(&root.join(&file))?, Some(&file)) {
+            verdict["file"] = json!(file);
+            unmet.push(verdict);
+        }
+    }
+    if let Some(message) = message {
+        let checks = standards::commit_checks(&settings);
+        if !checks.is_empty() {
+            // Git passes the message file with comment lines; they are not part of the message.
+            let text: Vec<String> = read(&absolute(message))?
+                .lines()
+                .filter(|line| !line.starts_with('#'))
+                .map(str::to_string)
+                .collect();
+            checked.push(json!({"commitMessage": message, "standards": checks.iter().map(|(id, _)| id).collect::<Vec<_>>()}));
+            for mut verdict in standards::verdicts(&checks, text.join("\n").trim(), None) {
+                verdict["commitMessage"] = json!(message);
+                unmet.push(verdict);
+            }
+        }
+    }
+    if !unmet.is_empty() {
+        return Err(format!("standards not met: {}", Value::Array(unmet)).into());
+    }
+    Ok(json!({"checked": checked, "unmet": []}))
 }
 
 fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
@@ -1416,6 +1486,10 @@ fn help(action: &str) -> Value {
             "usage":"locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]",
             "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",
             "mode":"bounded literal scan; optional local reuse receipts"
+        }),
+        "standards" => json!({
+            "usage": "standards [--root project] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
+            "mode": "Without files, list declared standards. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
         }),
         "grounded-context" => {
             json!({"usage":"grounded-context --root project --data input.json", "mode":"Read-only citation composition; no task-state changes or command execution."})

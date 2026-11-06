@@ -33,6 +33,11 @@ tree-sitter-ruby = "=0.23.1"
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
+# Debug builds keep file and line numbers for backtraces, not full debug info: test binaries
+# link faster and the build directory stays a fraction of the size.
+[profile.dev]
+debug = "line-tables-only"
+
 # One executable ships in every package for every target: size over build time. Nothing
 # catches an unwinding panic, and a hook command treats any crash exit as a crash.
 [profile.release]

@@ -44,6 +44,7 @@
           "plan-integrate",
           "settings",
           "route",
+          "standards",
           "context-report",
           "session",
           "session-advice",
@@ -283,7 +284,9 @@
           "src/α.rs",
           "src/β.rs"
         ],
-        "languages": [],
+        "languages": [
+          "rust"
+        ],
         "layers": [],
         "references": [],
         "loading": {
@@ -400,6 +403,22 @@
               ],
               "source": "request",
               "inferred": false
+            },
+            {
+              "dimension": "languages",
+              "values": [
+                "rust"
+              ],
+              "source": "src/α.rs",
+              "inferred": true
+            },
+            {
+              "dimension": "languages",
+              "values": [
+                "rust"
+              ],
+              "source": "src/β.rs",
+              "inferred": true
             }
           ],
           "missingContext": [],
@@ -507,7 +526,9 @@
         "files": [
           "src/main.rs"
         ],
-        "languages": [],
+        "languages": [
+          "rust"
+        ],
         "layers": [],
         "references": [],
         "loading": {
@@ -625,6 +646,14 @@
               "values": [],
               "source": "request",
               "inferred": false
+            },
+            {
+              "dimension": "languages",
+              "values": [
+                "rust"
+              ],
+              "source": "src/main.rs",
+              "inferred": true
             }
           ],
           "missingContext": [],

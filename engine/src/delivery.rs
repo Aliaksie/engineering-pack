@@ -221,6 +221,7 @@ pub fn shown(context: &Value) -> Value {
         "lookup",
         "references",
         "modules",
+        "standards",
         "missing",
         "taskBoundary",
     ] {

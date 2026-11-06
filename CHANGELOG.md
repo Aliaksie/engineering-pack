@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Project standards:
+
+- `.craft/project.json` declares the project's own standards in `standards`: a file, a folder
+  or an established standard by name, scoped by module, language, layer, path or kind of
+  work (`story`, `plan`, `verify`, …), at level `advise`, `check` or `review`. Routes and edit
+  hints name the standards that apply, with a one-line summary instead of their content.
+- Eight standards can be named and are checked without a model: `conventional-commits`,
+  `keep-a-changelog`, `semver`, `nygard-adr`, `madr`, `gherkin`, `ears` and `connextra`.
+  After a file in a checked standard's scope is written, or a shell command makes a Git
+  commit, unmet required elements are reported in the same tool result; the tool is never
+  blocked. `routing.standardChecks: false` turns the checks off.
+- `craft standards` lists the declared standards and runs the same checks on `--file` and
+  `--commit-message`, exiting non-zero when a standard is not met.
+- `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
+
 ## 0.0.4
 
 Project Intelligence:

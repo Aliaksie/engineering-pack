@@ -438,3 +438,107 @@ fn a_failed_policy_outside_shell_enforcement_continues_with_unavailable_context(
     assert!(result["context"]["data"].is_string());
     assert_eq!(result.get("reason"), None);
 }
+
+const STANDARDS: &str = r#"{"formatVersion":1,"standards":[
+  {"id":"changelog","anchor":"keep-a-changelog"},
+  {"id":"commits","anchor":"conventional-commits"}
+]}"#;
+
+fn written(root: &Path, extra: Value) -> Value {
+    hook(facts(
+        root,
+        "deliver",
+        json!({"package": "craft-delivery", "lifecycle": "after-tool", "scope": "any"})
+            .as_object()
+            .unwrap()
+            .iter()
+            .chain(extra.as_object().unwrap())
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<serde_json::Map<_, _>>()
+            .into(),
+    ))
+}
+
+#[test]
+fn a_written_file_that_misses_a_declared_standard_is_reported_in_the_tool_result() {
+    let fixture = project("standards-file", Some(STANDARDS));
+    let root = &fixture.0;
+    let edit = json!({"tool": "edit", "file": root.join("CHANGELOG.md").to_string_lossy()});
+    fs::write(
+        root.join("CHANGELOG.md"),
+        "# Changelog\n\n## Next\n\n### Misc\n- x\n",
+    )
+    .unwrap();
+    let decision = written(root, edit.clone());
+    assert_eq!(
+        decision["decision"], "allow",
+        "a check reports, it never blocks"
+    );
+    let found = decision["standards"]
+        .as_array()
+        .expect("unmet standard reported");
+    assert_eq!(found[0]["standard"], "changelog");
+    assert!(
+        found[0]["findings"]
+            .as_array()
+            .is_some_and(|f| !f.is_empty())
+    );
+
+    fs::write(
+        root.join("CHANGELOG.md"),
+        "# Changelog\n\n## [Unreleased]\n\n### Fixed\n- Keep quoted keys.\n",
+    )
+    .unwrap();
+    assert!(
+        written(root, edit).get("standards").is_none(),
+        "a passing check is quiet"
+    );
+
+    let other = json!({"tool": "edit", "file": root.join("notes.md").to_string_lossy()});
+    fs::write(root.join("notes.md"), "## Next\n").unwrap();
+    assert!(
+        written(root, other).get("standards").is_none(),
+        "outside the standard's scope"
+    );
+}
+
+#[test]
+fn a_commit_just_made_is_checked_against_the_declared_commit_standard() {
+    let fixture = project("standards-commit", Some(STANDARDS));
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let status = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(status.status.success(), "{status:?}");
+    };
+    git(&["init", "-q"]);
+    fs::write(root.join("a.txt"), "a").unwrap();
+    git(&["add", "a.txt"]);
+    git(&["commit", "-qm", "Updated stuff"]);
+    let shell =
+        json!({"tool": "shell", "command": "git add a.txt && git commit -m 'Updated stuff'"});
+    let found = written(root, shell);
+    assert_eq!(found["standards"][0]["standard"], "commits");
+
+    fs::write(root.join("a.txt"), "b").unwrap();
+    git(&["commit", "-qam", "fix(a): keep b"]);
+    let shell = json!({"tool": "shell", "command": "git commit -am 'fix(a): keep b'"});
+    assert!(written(root, shell).get("standards").is_none());
+    let unrelated = json!({"tool": "shell", "command": "git log -1"});
+    assert!(
+        written(root, unrelated).get("standards").is_none(),
+        "only a commit command"
+    );
+}
