@@ -81,6 +81,39 @@ pub fn level<'a>(settings: &Value, standard: &'a Value) -> &'a str {
     }
 }
 
+/// Validate a declaration's `scope` against the declared modules and routing intents;
+/// `label` names the declaration in errors.
+pub(crate) fn validate_scope(
+    scope: &Value,
+    label: &str,
+    modules: &[&str],
+    intents: &[&str],
+) -> Result {
+    let kind = label.split(' ').next().unwrap_or("declaration");
+    let scope = object(scope, &SCOPE, &format!("{kind} scope"))?;
+    for module in names(scope.get("modules"), "scope.modules")? {
+        if !modules.contains(&module) {
+            return Err(format!("{label}: unknown module {module}"));
+        }
+    }
+    for (field, allowed) in [
+        ("languages", LANGUAGES),
+        ("layers", LAYERS),
+        ("intents", intents),
+    ] {
+        for value in names(scope.get(field), &format!("scope.{field}"))? {
+            if !allowed.contains(&value) {
+                return Err(format!("{label}: unknown {field} value {value}"));
+            }
+        }
+    }
+    for path in names(scope.get("paths"), "scope.paths")? {
+        relative_file(&json!(path.strip_suffix('/').unwrap_or(path)))
+            .map_err(|error| format!("{label}: {error}"))?;
+    }
+    Ok(())
+}
+
 /// Validate `standards` against the declared module names and the routing intents.
 pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result {
     let list = standards
@@ -151,27 +184,7 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
             ),
         };
         if let Some(scope) = standard.get("scope") {
-            let scope = object(scope, &SCOPE, "standard scope")?;
-            for module in names(scope.get("modules"), "scope.modules")? {
-                if !modules.contains(&module) {
-                    return Err(format!("standard {id}: unknown module {module}"));
-                }
-            }
-            for (field, allowed) in [
-                ("languages", LANGUAGES),
-                ("layers", LAYERS),
-                ("intents", intents),
-            ] {
-                for value in names(scope.get(field), &format!("scope.{field}"))? {
-                    if !allowed.contains(&value) {
-                        return Err(format!("standard {id}: unknown {field} value {value}"));
-                    }
-                }
-            }
-            for path in names(scope.get("paths"), "scope.paths")? {
-                relative_file(&json!(path.strip_suffix('/').unwrap_or(path)))
-                    .map_err(|error| format!("standard {id}: {error}"))?;
-            }
+            validate_scope(scope, &format!("standard {id}"), modules, intents)?;
         }
         if let Some(run) = standard.get("run") {
             let run = object(run, &["command", "args", "cwd"], "standard run")?;
@@ -289,7 +302,8 @@ pub struct Work<'a> {
     pub layers: &'a [Value],
 }
 
-fn matches(settings: &Value, standard: &Value, work: &Work) -> bool {
+/// Whether a declaration's `scope` (and its anchor's intents) covers `work`.
+pub(crate) fn matches(settings: &Value, standard: &Value, work: &Work) -> bool {
     let intents = intents(settings, standard);
     if !intents.is_empty() && !intents.iter().any(|intent| intent == work.intent) {
         return false;

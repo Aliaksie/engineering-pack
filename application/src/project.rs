@@ -101,11 +101,20 @@ fn resolve(root: &Path, preferences: Option<&Path>, overrides: &Value) -> Result
             Ok((path, document))
         })
         .collect::<Result<Vec<_>, Failure>>()?;
+    // Only the front matter of declared skills: the host lists and loads the skill itself.
+    let skills = craft_engine::skills::declared_files(&project)
+        .into_iter()
+        .map(|path| {
+            let header = documents::skill_header(root, &path, craft_engine::skills::MAX_HEADER);
+            (path, header)
+        })
+        .collect();
+    let documents = contracts::Documents { catalogs, skills };
     Ok(contracts::effective_settings_with(
         &project,
         &preferences,
         overrides,
-        &catalogs,
+        &documents,
     )?)
 }
 

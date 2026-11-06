@@ -411,16 +411,17 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
             }
         }
     }
-    let standards = crate::standards::select(
-        settings,
-        &crate::standards::Work {
-            intent,
-            files: &changed,
-            modules: &modules,
-            languages: &languages,
-            layers: &layers,
-        },
-    );
+    let work = crate::standards::Work {
+        intent,
+        files: &changed,
+        modules: &modules,
+        languages: &languages,
+        layers: &layers,
+    };
+    let standards = crate::standards::select(settings, &work);
+    let (skill_sources, unavailable) =
+        crate::skills::apply(settings, request.host, &work, &mut skills);
+    missing.extend(unavailable);
     let mut plan = json!({
         "intent": intent,
         "capability": capability(intent, request.risks),
@@ -465,6 +466,10 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
     // Only projects that declare standards see the field; others keep the route they had.
     if !standards.is_empty() {
         map.insert("standards".into(), Value::Array(standards));
+    }
+    // Likewise, only a route that a skill declaration changed says where its skills came from.
+    if !skill_sources.is_empty() {
+        map.insert("skillSources".into(), Value::Array(skill_sources));
     }
     map.insert("operations".into(), Value::Array(operations));
     map.insert("missing".into(), Value::Array(missing));

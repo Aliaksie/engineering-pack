@@ -5,6 +5,9 @@
       "names": "plugin",
       "paths": false,
       "instructions": [],
+      "projectSkills": [
+        ".claude/skills"
+      ],
       "evidence": "observed"
     },
     "events": {
@@ -54,6 +57,9 @@
       "names": "plugin",
       "paths": true,
       "instructions": [],
+      "projectSkills": [
+        ".agents/skills"
+      ],
       "evidence": "observed"
     },
     "events": {
@@ -105,6 +111,12 @@
       "instructions": [
         "AGENTS.md"
       ],
+      "projectSkills": [
+        ".agents/skills",
+        ".cursor/skills",
+        ".claude/skills",
+        ".codex/skills"
+      ],
       "evidence": "assumed"
     },
     "config": ".cursor/hooks.json",
@@ -150,6 +162,11 @@
         "AGENTS.md",
         ".github/copilot-instructions.md"
       ],
+      "projectSkills": [
+        ".github/skills",
+        ".agents/skills",
+        ".claude/skills"
+      ],
       "evidence": "assumed"
     },
     "config": ".github/hooks/craft-capabilities.json",
@@ -193,6 +210,10 @@
       "paths": true,
       "instructions": [
         "GEMINI.md"
+      ],
+      "projectSkills": [
+        ".agents/skills",
+        ".gemini/skills"
       ],
       "evidence": "assumed"
     },
@@ -239,6 +260,10 @@
       "instructions": [
         "GEMINI.md"
       ],
+      "projectSkills": [
+        ".agents/skills",
+        ".gemini/skills"
+      ],
       "evidence": "assumed"
     },
     "events": {}
@@ -252,6 +277,10 @@
         "AGENTS.md",
         ".aiassistant/rules/engineering-pack.md"
       ],
+      "projectSkills": [
+        ".junie/skills",
+        ".agents/skills"
+      ],
       "evidence": "assumed"
     },
     "events": {}
@@ -263,6 +292,9 @@
       "paths": true,
       "instructions": [
         "AGENTS.md"
+      ],
+      "projectSkills": [
+        ".agents/skills"
       ],
       "evidence": "assumed"
     },

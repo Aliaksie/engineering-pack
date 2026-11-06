@@ -38,7 +38,8 @@ pub fn requests(plan: &Value) -> Result<Vec<Request>> {
             });
         }
     }
-    for target in strings(&plan["skills"]) {
+    // Consumer skills live in the project, not in a bundle; the host loads them.
+    for target in strings(&plan["skills"]).filter(|skill| !crate::skills::consumer(skill)) {
         if !requests.iter().any(|request| request.target == target) {
             requests.push(Request {
                 target: target.into(),
