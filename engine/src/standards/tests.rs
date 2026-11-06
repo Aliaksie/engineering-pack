@@ -38,24 +38,10 @@ fn declarations_are_validated_before_anything_routes_them() {
         {"id": "stories", "anchor": "connextra", "scope": {"paths": ["docs/stories"], "intents": ["story"]}}
     ]);
     assert_eq!(validate(&ok, &modules, INTENTS), Ok(()));
-    let refused = validate(
-        &json!([{"id": "x", "anchor": "clean-code"}]),
-        &modules,
-        INTENTS,
-    )
-    .unwrap_err();
-    assert!(
-        refused.starts_with("standard x: anchor clean-code is not offered: "),
-        "a refused name says why: {refused}"
-    );
     for (bad, why) in [
         (
-            json!([{"id": "x", "anchor": "arc42"}]),
-            "unknown anchor is refused, not guessed",
-        ),
-        (
-            json!([{"id": "x", "anchor": "adr-according-to-nygard"}]),
-            "a catalog id is not an offered name",
+            json!([{"id": "x", "anchor": "Arc 42"}]),
+            "kebab anchor names",
         ),
         (
             json!([{"id": "x", "file": "a.md", "anchor": "semver"}]),
@@ -94,14 +80,101 @@ fn declarations_are_validated_before_anything_routes_them() {
 }
 
 #[test]
-fn levels_follow_the_form_of_the_declaration() {
-    assert_eq!(level(&json!({"anchor": "semver"})), "check");
-    assert_eq!(level(&json!({"file": "a.md"})), "advise");
-    assert_eq!(level(&json!({"run": {"command": "x"}})), "check");
-    assert_eq!(level(&json!({"checklist": ["a"]})), "review");
+fn anchors_resolve_against_the_project_catalogs_when_settings_load() {
+    let with = |standards: Value, loaded: Value| {
+        let mut settings = settings(standards);
+        settings["anchors"]["loaded"] = loaded;
+        validate_anchors(&settings)
+    };
+    let standard = |anchor: &str| json!([{"id": "x", "anchor": anchor}]);
+    let refused = with(standard("clean-code"), json!([])).unwrap_err();
+    assert!(
+        refused.starts_with("standard x: anchor clean-code is not offered: "),
+        "a refused name says why: {refused}"
+    );
     assert_eq!(
-        level(&json!({"anchor": "semver", "level": "advise"})),
+        with(standard("no-such-anchor"), json!([])).unwrap_err(),
+        "standard x: unknown anchor no-such-anchor",
+        "an unknown name is refused, not guessed"
+    );
+    for name in ["arc42", "adr-according-to-nygard", "nygard-adr", "semver"] {
+        assert_eq!(with(standard(name), json!([])), Ok(()), "{name}");
+    }
+    assert!(
+        with(
+            json!([{"id": "x", "anchor": "arc42", "level": "check"}]),
+            json!([])
+        )
+        .unwrap_err()
+        .contains("has no check"),
+        "a catalog name has nothing to check"
+    );
+    let own = json!([{"id": "clean-code", "summary": "Ours", "source": "a.json"}]);
+    assert_eq!(
+        with(standard("clean-code"), own),
+        Ok(()),
+        "a project may define a name Craft refuses"
+    );
+    let mut disabled = settings(json!([]));
+    disabled["anchors"]["disables"] = json!(["testing-pyramid", "nope"]);
+    assert_eq!(
+        validate_anchors(&disabled).unwrap_err(),
+        "anchors.disables: unknown anchor nope"
+    );
+}
+
+#[test]
+fn levels_follow_the_form_of_the_declaration() {
+    let mut project = settings(json!([]));
+    project["anchors"]["loaded"] = json!([
+        {"id": "our-adr", "summary": "Owner named", "checklist": ["Owner"], "source": "a.json"}
+    ]);
+    let level = |standard: Value| level(&project, &standard).to_owned();
+    assert_eq!(level(json!({"anchor": "semver"})), "check");
+    assert_eq!(level(json!({"anchor": "arc42"})), "advise");
+    assert_eq!(level(json!({"anchor": "our-adr"})), "review");
+    assert_eq!(level(json!({"file": "a.md"})), "advise");
+    assert_eq!(level(json!({"run": {"command": "x"}})), "check");
+    assert_eq!(level(json!({"checklist": ["a"]})), "review");
+    assert_eq!(
+        level(json!({"anchor": "semver", "level": "advise"})),
         "advise"
+    );
+}
+
+#[test]
+fn a_project_entry_replaces_the_built_in_one_with_its_id() {
+    let mut project = settings(json!([
+        {"id": "changelog", "anchor": "keep-a-changelog"},
+        {"id": "versions", "anchor": "semver"},
+        {"id": "ddd", "anchor": "domain-driven-design"}
+    ]));
+    project["anchors"]["loaded"] = json!([
+        {"id": "keep-a-changelog", "summary": "Our variant", "check": "keep-a-changelog", "source": "a.json"},
+        {"id": "semantic-versioning", "summary": "Calendar versions", "source": "a.json"}
+    ]);
+    let shown = select(&project, &work("implement", &[], &[]));
+    assert_eq!(shown[0]["summary"], "Our variant");
+    assert_eq!(
+        shown[1]["summary"], "Calendar versions",
+        "an alias resolves to the project entry"
+    );
+    assert_eq!(
+        shown[1]["level"], "advise",
+        "the whole entry is replaced, check included"
+    );
+    assert_eq!(
+        shown[2]["summary"],
+        "Domain-Driven Design according to Evans"
+    );
+    let checks = file_checks(&project, "CHANGELOG.md");
+    assert_eq!(
+        checks
+            .iter()
+            .map(|c| (c.standard, c.check.as_str()))
+            .collect::<Vec<_>>(),
+        [("changelog", "keep-a-changelog")],
+        "a reused check brings its files; the replaced semver no longer checks"
     );
 }
 
@@ -157,17 +230,24 @@ fn anchor_checks_read_the_files_their_standard_names() {
         {"id": "commits", "anchor": "conventional-commits"},
         {"id": "advice-only", "anchor": "gherkin", "level": "advise"}
     ]));
+    let pairs = |checks: Vec<Check>| {
+        checks
+            .into_iter()
+            .map(|check| (check.standard.to_owned(), check.check))
+            .collect::<Vec<_>>()
+    };
+    let pair = |standard: &str, check: &str| vec![(standard.to_owned(), check.to_owned())];
     assert_eq!(
-        file_checks(&settings, "CHANGELOG.md"),
-        [("changelog", "keep-a-changelog")]
+        pairs(file_checks(&settings, "CHANGELOG.md")),
+        pair("changelog", "keep-a-changelog")
     );
     assert_eq!(
-        file_checks(&settings, "packages/x/CHANGELOG.md"),
-        [("changelog", "keep-a-changelog")]
+        pairs(file_checks(&settings, "packages/x/CHANGELOG.md")),
+        pair("changelog", "keep-a-changelog")
     );
     assert_eq!(
-        file_checks(&settings, "docs/adr/0001-store.md"),
-        [("adr", "nygard-adr")]
+        pairs(file_checks(&settings, "docs/adr/0001-store.md")),
+        pair("adr", "nygard-adr")
     );
     assert!(
         file_checks(&settings, "docs/adr-notes.md").is_empty(),
@@ -182,8 +262,8 @@ fn anchor_checks_read_the_files_their_standard_names() {
         "advise is not checked"
     );
     assert_eq!(
-        commit_checks(&settings),
-        [("commits", "conventional-commits")]
+        pairs(commit_checks(&settings)),
+        pair("commits", "conventional-commits")
     );
 
     let off = json!({"routing": {"standardChecks": false}, "standards": settings["standards"]});
@@ -193,7 +273,11 @@ fn anchor_checks_read_the_files_their_standard_names() {
 
 #[test]
 fn only_failing_standards_are_reported() {
-    let checks = [("commits", "conventional-commits")];
+    let checks = [Check {
+        standard: "commits",
+        anchor: "conventional-commits",
+        check: "conventional-commits".into(),
+    }];
     assert!(verdicts(&checks, "fix(parser): keep quoted keys", None).is_empty());
     let found = verdicts(&checks, "Fixed the parser", None);
     assert_eq!(found.len(), 1);

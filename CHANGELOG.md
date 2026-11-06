@@ -8,15 +8,22 @@ Project standards:
   or an established standard by name, scoped by module, language, layer, path or kind of
   work (`story`, `plan`, `verify`, …), at level `advise`, `check` or `review`. Routes and edit
   hints name the standards that apply, with a one-line summary instead of their content.
-- Eight standards can be named and are checked without a model: `conventional-commits`,
-  `keep-a-changelog`, `semver`, `nygard-adr`, `madr`, `gherkin`, `ears` and `connextra`.
-  After a file in a checked standard's scope is written, or a shell command makes a Git
-  commit, unmet required elements are reported in the same tool result; the tool is never
-  blocked. `routing.standardChecks: false` turns the checks off.
-- Naming `clean-code` as an anchor is rejected with the reason: models do not agree on what
-  it requires. Anchor names map to the Apache-2.0 Semantic Anchors catalog, embedded from a
-  pinned commit; the native bundle carries its licence and notice.
-- `craft standards` lists the declared standards and runs the same checks on `--file` and
+- Eight standards are checked without a model: `conventional-commits`, `keep-a-changelog`,
+  `semantic-versioning`, `adr-according-to-nygard`, `madr`, `gherkin`, `ears-requirements` and
+  `connextra-user-story` (aliases `semver`, `nygard-adr`, `ears`, `connextra`). After a file
+  in a checked standard's scope is written, or a shell command makes a Git commit, unmet
+  required elements are reported in the same tool result; the tool is never blocked.
+  `routing.standardChecks: false` turns the checks off.
+- Any id of the Apache-2.0 Semantic Anchors catalog, embedded from a pinned commit, can be
+  named as an anchor at `advise` or `review`; routes show its title. The native bundle
+  carries the catalog's licence and notice. Naming `clean-code` is rejected with the reason:
+  models do not agree on what it requires.
+- `anchors.catalogs` in `.craft/project.json` lists the project's own anchor catalog files.
+  Their entries add names, or replace a Craft or catalog entry with the same id, and may reuse
+  one of Craft's checks. `anchors.disables` and `anchors.defaults` are accepted.
+- `craft anchors` lists the anchors a project can name with the source each resolves to;
+  `--search` searches the catalog by id, title, category or role.
+- `craft standards` lists the declared standards, with each anchor's source, and runs the same checks on `--file` and
   `--commit-message`, exiting non-zero when a standard is not met.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 

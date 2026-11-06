@@ -122,6 +122,7 @@ const COMMANDS: &[Command] = &[
     Command::run("settings", settings),
     Command::run("route", route),
     Command::run("standards", standards),
+    Command::run("anchors", anchors),
     Command::run("context-report", context_report).bundled(),
     Command::run("session", session_status)
         .bundled()
@@ -447,7 +448,13 @@ fn standards(
             .iter()
             .map(|standard| {
                 let mut entry = standard.clone();
-                entry["level"] = json!(standards::level(standard));
+                entry["level"] = json!(standards::level(&settings, standard));
+                if let Some(anchor) = standard["anchor"]
+                    .as_str()
+                    .and_then(|name| craft_engine::anchors::resolve(&settings, name))
+                {
+                    entry["anchorSource"] = json!(anchor.source.label());
+                }
                 entry
             })
             .collect();
@@ -467,7 +474,7 @@ fn standards(
             continue;
         }
         checked.push(
-            json!({"file": file, "standards": checks.iter().map(|(id, _)| id).collect::<Vec<_>>()}),
+            json!({"file": file, "standards": checks.iter().map(|check| check.standard).collect::<Vec<_>>()}),
         );
         for mut verdict in standards::verdicts(&checks, &read(&root.join(&file))?, Some(&file)) {
             verdict["file"] = json!(file);
@@ -483,7 +490,7 @@ fn standards(
                 .filter(|line| !line.starts_with('#'))
                 .map(str::to_string)
                 .collect();
-            checked.push(json!({"commitMessage": message, "standards": checks.iter().map(|(id, _)| id).collect::<Vec<_>>()}));
+            checked.push(json!({"commitMessage": message, "standards": checks.iter().map(|check| check.standard).collect::<Vec<_>>()}));
             for mut verdict in standards::verdicts(&checks, text.join("\n").trim(), None) {
                 verdict["commitMessage"] = json!(message);
                 unmet.push(verdict);
@@ -494,6 +501,19 @@ fn standards(
         return Err(format!("standards not met: {}", Value::Array(unmet)).into());
     }
     Ok(json!({"checked": checked, "unmet": []}))
+}
+
+/// The anchors the project can name, or a search over every source.
+fn anchors(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    Ok(craft_engine::anchors::list(
+        &settings,
+        options.get("search"),
+    ))
 }
 
 fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
@@ -1490,6 +1510,10 @@ fn help(action: &str) -> Value {
         "standards" => json!({
             "usage": "standards [--root project] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
             "mode": "Without files, list declared standards. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
+        }),
+        "anchors" => json!({
+            "usage": "anchors [--root project] [--search text]",
+            "mode": "Without --search, list the project's and Craft's anchors; with it, search the embedded catalog too by id, title, category or role. Each name shows the source it resolves to."
         }),
         "grounded-context" => {
             json!({"usage":"grounded-context --root project --data input.json", "mode":"Read-only citation composition; no task-state changes or command execution."})

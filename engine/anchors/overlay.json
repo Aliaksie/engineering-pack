@@ -7,95 +7,83 @@
   },
   "anchors": [
     {
-      "name": "conventional-commits",
-      "catalog": "conventional-commits",
+      "id": "conventional-commits",
       "tier": "structure",
       "check": "conventional-commits",
-      "input": "commit-message",
       "intents": [],
       "targets": [],
       "summary": "Commit messages follow Conventional Commits 1.0.0: `type(scope)!: description`, a blank line before the body, hyphenated footer tokens except `BREAKING CHANGE`.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "keep-a-changelog",
-      "catalog": "keep-a-changelog",
+      "id": "keep-a-changelog",
       "tier": "structure",
       "check": "keep-a-changelog",
-      "input": "file",
       "intents": [],
       "targets": ["CHANGELOG.md"],
       "summary": "CHANGELOG.md follows Keep a Changelog 1.1.0: `## [Unreleased]` first, then `## [X.Y.Z] - YYYY-MM-DD` newest first, grouped under Added/Changed/Deprecated/Removed/Fixed/Security.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "semver",
-      "catalog": "semantic-versioning",
+      "id": "semantic-versioning",
+      "aliases": ["semver"],
       "tier": "structure",
       "check": "semver",
-      "input": "file",
       "intents": [],
       "targets": ["CHANGELOG.md", "package.json", "Cargo.toml", "pyproject.toml"],
       "summary": "Versions follow Semantic Versioning 2.0.0: MAJOR.MINOR.PATCH without leading zeros; breaking change bumps major, feature minor, fix patch.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "nygard-adr",
-      "catalog": "adr-according-to-nygard",
+      "id": "adr-according-to-nygard",
+      "aliases": ["nygard-adr"],
       "tier": "structure",
       "check": "nygard-adr",
-      "input": "file",
       "intents": ["plan"],
       "targets": [],
       "summary": "ADRs follow Michael Nygard's format: numbered title; Context, Decision, Status (proposed/accepted/deprecated/superseded) and Consequences sections.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "madr",
-      "catalog": "madr",
+      "id": "madr",
       "tier": "structure",
       "check": "madr",
-      "input": "file",
       "intents": ["plan"],
       "targets": [],
       "summary": "ADRs follow MADR in `NNNN-title-with-dashes.md`: title, Context and Problem Statement, Considered Options, Decision Outcome.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "gherkin",
-      "catalog": "gherkin",
+      "id": "gherkin",
       "tier": "structure",
       "check": "gherkin",
-      "input": "file",
       "intents": ["story", "verify"],
       "targets": [".feature"],
       "summary": "Specifications are Gherkin: one Feature per file, scenarios with Given/When/Then steps, Scenario Outlines with Examples naming every <placeholder>.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "ears",
-      "catalog": "ears-requirements",
+      "id": "ears-requirements",
+      "aliases": ["ears"],
       "tier": "structure",
       "check": "ears",
-      "input": "file",
       "intents": ["story"],
       "targets": [],
       "summary": "Requirements use EARS: [Where <feature>,] [While <state>,] [When <event>, | If <condition>, then] the <system> shall <response>.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "connextra",
-      "catalog": "connextra-user-story",
+      "id": "connextra-user-story",
+      "aliases": ["connextra"],
       "tier": "structure",
       "check": "connextra",
-      "input": "file",
       "intents": ["story"],
       "targets": [],
       "summary": "User stories use the Connextra form: As a <role>, I want <goal>, so that <benefit>.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
     },
     {
-      "name": "clean-code",
+      "id": "clean-code",
       "tier": "refused",
       "evidence": "Claude and Codex listed different rule sets for the name alone, with nothing structural in common (2026-11-05)."
     }

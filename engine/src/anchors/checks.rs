@@ -18,6 +18,15 @@ pub const CHECKS: &[&str] = &[
     "connextra",
 ];
 
+/// What the check named `name` reads: the commit message for commit checks, else a file.
+pub fn input(name: &str) -> super::Input {
+    if name == "conventional-commits" {
+        super::Input::CommitMessage
+    } else {
+        super::Input::File
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Finding {
     pub rule: &'static str,

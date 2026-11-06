@@ -92,10 +92,20 @@ fn resolve(root: &Path, preferences: Option<&Path>, overrides: &Value) -> Result
             .map_or_else(preference_file, Path::to_path_buf)
             .as_path(),
     ))?;
-    Ok(contracts::effective_settings(
+    // The catalog files are read only once the project names them validly.
+    contracts::validate_project(&project)?;
+    let catalogs = contracts::anchor_catalogs(&project)
+        .into_iter()
+        .map(|path| {
+            let document = document(documents::anchor_catalog(root, &path))?;
+            Ok((path, document))
+        })
+        .collect::<Result<Vec<_>, Failure>>()?;
+    Ok(contracts::effective_settings_with(
         &project,
         &preferences,
         overrides,
+        &catalogs,
     )?)
 }
 

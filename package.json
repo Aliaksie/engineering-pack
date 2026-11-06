@@ -34,6 +34,7 @@
     "overhead": "node tooling/overhead.mjs",
     "route": "node tooling/craft.mjs route",
     "standards": "node tooling/craft.mjs standards",
+    "anchors": "node tooling/craft.mjs anchors",
     "operation": "node tooling/craft.mjs operation",
     "checkpoint:save": "node tooling/craft.mjs checkpoint-save",
     "checkpoint:read": "node tooling/craft.mjs checkpoint-read",

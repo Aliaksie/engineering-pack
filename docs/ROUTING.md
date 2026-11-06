@@ -53,8 +53,9 @@ level, source and a one-line `summary`; the content stays in the project.
 "standards": [
   { "id": "commits", "anchor": "conventional-commits" },
   { "id": "changelog", "anchor": "keep-a-changelog" },
-  { "id": "adr", "anchor": "nygard-adr", "scope": { "paths": ["docs/adr"] } },
-  { "id": "stories", "anchor": "connextra", "scope": { "paths": ["docs/stories"] } },
+  { "id": "adr", "anchor": "adr-according-to-nygard", "scope": { "paths": ["docs/adr"] } },
+  { "id": "stories", "anchor": "connextra-user-story", "scope": { "paths": ["docs/stories"] } },
+  { "id": "domain", "anchor": "domain-driven-design" },
   { "id": "api", "file": "docs/api-style.md", "summary": "REST naming and error envelope",
     "scope": { "layers": ["backend"] } },
   { "id": "migrations", "checklist": ["Backward compatible with the previous release"],
@@ -70,22 +71,54 @@ level, source and a one-line `summary`; the content stays in the project.
   architecture work before any file exists.
 - `level` is `advise` (named when work reaches the scope), `check` (an anchor's check, or a
   `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
-  It defaults from the declaration: anchors and `run` check, checklists review, files advise.
-- Anchors are `conventional-commits`, `keep-a-changelog`, `semver`, `nygard-adr`, `madr`,
-  `gherkin`, `ears` and `connextra`. An unknown name is a configuration error, and so is a
-  name Craft declines because models do not agree on what it requires (`clean-code`); the
-  error says why. Each name stands for an entry of the Apache-2.0 Semantic Anchors catalog,
-  embedded from a pinned commit with its notice. Story and requirement anchors apply to
-  `story` work, ADR anchors to `plan` work, unless `intents` says otherwise.
+  It defaults from the declaration: `run` checks, checklists review, files advise; an anchor
+  is checked when it has a check, reviewed when it has a checklist, advised otherwise.
+- Anchors Craft checks are `conventional-commits`, `keep-a-changelog`, `semantic-versioning`,
+  `adr-according-to-nygard`, `madr`, `gherkin`, `ears-requirements` and `connextra-user-story`;
+  `semver`, `nygard-adr`, `ears` and `connextra` are aliases. Any other id of the Apache-2.0
+  Semantic Anchors catalog, embedded from a pinned commit with its notice, can be named at
+  `advise` or `review`: routes show its title, never its text. An unknown name is a
+  configuration error, and so is a name Craft declines because models do not agree on what it
+  requires (`clean-code`); the error says why. Story and requirement anchors apply to `story`
+  work, ADR anchors to `plan` work, unless `intents` says otherwise.
 - After a hook sees a file written in an anchor standard's scope, or a `git commit` made by a
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
   `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
   manifests; the others read the files under `scope.paths`. Checks cover structure, not
   whether the content is right, and an ADR's sections are checked in any order.
-- `craft standards` lists the declarations; `craft standards --file <path>` and
+- `craft anchors` lists the project's and Craft's anchors with the source each name resolves
+  to; `craft anchors --search <text>` searches the catalog too, by id, title, category or role.
+- `craft standards` lists the declarations with the source of each anchor; `craft standards --file <path>` and
   `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
   Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
+
+## Project anchors
+
+`anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:
+
+```json
+"anchors": { "catalogs": [".craft/anchors.json"], "disables": ["testing-pyramid"] }
+```
+
+```json
+{ "anchors": [
+  { "id": "acme-adr", "title": "ACME decision record", "check": "nygard-adr",
+    "checklist": ["Owner named"], "intents": ["plan"] },
+  { "id": "keep-a-changelog", "summary": "Our changelog: releases by date", "check": "keep-a-changelog" }
+] }
+```
+
+- `catalogs` lists up to eight project-relative files, read in order. Each entry has an `id`
+  and a `summary` or `title`; optional `checklist`, `check`, `intents` and `targets`. A
+  missing or invalid file is a configuration error; hooks then run no checks.
+- An entry with the id of a Craft or catalog anchor, or of an alias, replaces that entry
+  whole: a project may give `clean-code` its own meaning, and an entry without `check` is no
+  longer checked. A later file replaces an earlier entry with the same id.
+- `check` names one of Craft's checks or an anchor that has one, so a project's own name can
+  reuse it. Without `targets` a check reads the files Craft's anchor for it reads.
+- `defaults` (boolean) and `disables` (anchor names) control anchors Craft adds by kind of
+  work. Craft currently adds none; a name in `disables` must still resolve.
 
 ## Intents with special scope
 

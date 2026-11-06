@@ -7,7 +7,7 @@ const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'ut
 const catalogText = read('engine/anchors/catalog.json');
 const catalog = JSON.parse(catalogText);
 const overlay = JSON.parse(read('engine/anchors/overlay.json'));
-const offered = overlay.anchors.filter(anchor => anchor.tier !== 'refused').map(anchor => anchor.name);
+const offered = overlay.anchors.filter(anchor => anchor.tier !== 'refused');
 
 const adoc = (title, attributes, body = 'Body text with :colon: lines that are not attributes.') =>
   `= ${title}\n${Object.entries(attributes).map(([key, value]) => `:${key}: ${value}`).join('\n')}\n\n${body}\n`;
@@ -45,17 +45,13 @@ test('the committed catalog is unedited importer output', () => {
   for (const anchor of catalog.anchors) for (const id of anchor.related) assert.ok(ids.includes(id), `${anchor.id} → ${id}`);
 });
 
-test('schema and docs name exactly the anchors the overlay offers', () => {
+test('docs name exactly the anchors and aliases the overlay checks', () => {
   const schema = JSON.parse(read('schemas/project.schema.json'));
-  const standard = JSON.stringify(schema);
-  const enumMatch = [...standard.matchAll(/"anchor":\{"enum":(\[[^\]]*\])/g)].map(match => JSON.parse(match[1]));
-  assert.equal(enumMatch.length, 1, 'one anchor enum in the project schema');
-  assert.deepEqual(enumMatch[0], offered);
+  assert.ok(!JSON.stringify(schema).includes('"anchor":{"enum"'), 'any catalog id is declarable; no closed enum');
   const routing = read('docs/ROUTING.md');
-  const listed = /- Anchors are (.*?)\. An unknown name/s.exec(routing)?.[1];
-  assert.ok(listed, 'docs/ROUTING.md lists the anchors');
-  assert.deepEqual([...listed.matchAll(/`([a-z0-9-]+)`/g)].map(match => match[1]), offered);
-  for (const anchor of overlay.anchors.filter(entry => entry.catalog)) {
-    assert.ok(catalog.anchors.some(entry => entry.id === anchor.catalog), `${anchor.name}: catalog id ${anchor.catalog}`);
-  }
+  const listed = /- Anchors Craft checks are (.*?) are aliases\./s.exec(routing)?.[1];
+  assert.ok(listed, 'docs/ROUTING.md lists the checked anchors');
+  const names = [...listed.matchAll(/`([a-z0-9-]+)`/g)].map(match => match[1]);
+  assert.deepEqual(names, [...offered.map(anchor => anchor.id), ...offered.flatMap(anchor => anchor.aliases ?? [])]);
+  for (const anchor of offered) assert.ok(catalog.anchors.some(entry => entry.id === anchor.id), `${anchor.id}: catalog id`);
 });

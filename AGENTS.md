@@ -31,6 +31,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run standards -- ...` | List declared project standards or run their anchor checks on files and commit messages |
+| `npm run anchors -- ...` | List the anchors a project can name with their source; `--search` reaches the embedded catalog |
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
 | `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |
