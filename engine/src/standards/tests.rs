@@ -38,10 +38,24 @@ fn declarations_are_validated_before_anything_routes_them() {
         {"id": "stories", "anchor": "connextra", "scope": {"paths": ["docs/stories"], "intents": ["story"]}}
     ]);
     assert_eq!(validate(&ok, &modules, INTENTS), Ok(()));
+    let refused = validate(
+        &json!([{"id": "x", "anchor": "clean-code"}]),
+        &modules,
+        INTENTS,
+    )
+    .unwrap_err();
+    assert!(
+        refused.starts_with("standard x: anchor clean-code is not offered: "),
+        "a refused name says why: {refused}"
+    );
     for (bad, why) in [
         (
-            json!([{"id": "x", "anchor": "clean-code"}]),
+            json!([{"id": "x", "anchor": "arc42"}]),
             "unknown anchor is refused, not guessed",
+        ),
+        (
+            json!([{"id": "x", "anchor": "adr-according-to-nygard"}]),
+            "a catalog id is not an offered name",
         ),
         (
             json!([{"id": "x", "file": "a.md", "anchor": "semver"}]),

@@ -72,9 +72,11 @@ level, source and a one-line `summary`; the content stays in the project.
   `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
   It defaults from the declaration: anchors and `run` check, checklists review, files advise.
 - Anchors are `conventional-commits`, `keep-a-changelog`, `semver`, `nygard-adr`, `madr`,
-  `gherkin`, `ears` and `connextra`. An unknown name is a configuration error. Story and
-  requirement anchors apply to `story` work, ADR anchors to `plan` work, unless `intents` says
-  otherwise.
+  `gherkin`, `ears` and `connextra`. An unknown name is a configuration error, and so is a
+  name Craft declines because models do not agree on what it requires (`clean-code`); the
+  error says why. Each name stands for an entry of the Apache-2.0 Semantic Anchors catalog,
+  embedded from a pinned commit with its notice. Story and requirement anchors apply to
+  `story` work, ADR anchors to `plan` work, unless `intents` says otherwise.
 - After a hook sees a file written in an anchor standard's scope, or a `git commit` made by a
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads

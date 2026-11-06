@@ -15,6 +15,7 @@
     "test:workflows": "node --test tooling/workflow-lint.test.mjs",
     "test": "node tooling/run-tests.mjs",
     "sync:craft-bar": "node tooling/sync-craft-bar.mjs",
+    "anchors:import": "node tooling/anchors-import.mjs",
     "check": "npm run validate && npm run check:craft-bar && npm run build && npm run build:distribution && npm run architecture && npm run validate:exports && npm run lint:scripts && npm run test:unit",
     "check:fast": "npm run validate && npm run check:craft-bar && npm run lint:scripts && npm run build && npm run build:distribution && npm run architecture && npm run validate:exports && cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings",
     "check:craft-bar": "node tooling/sync-craft-bar.mjs --check",

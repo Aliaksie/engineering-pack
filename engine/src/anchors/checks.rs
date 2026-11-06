@@ -1,4 +1,4 @@
-//! Deterministic checks for named public standards ("anchors"). The model is shown a one-line
+//! Deterministic checks for structure-tier anchors. The model is shown a one-line
 //! summary instead of the standard's text, so each check holds only the elements both models
 //! listed as required when asked for the name alone; informational and divergent elements
 //! (ADR section order, changelog title, bump level without a declared change kind) stay out.
@@ -6,95 +6,17 @@
 use serde_json::Value;
 use std::cmp::Ordering;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Input {
-    CommitMessage,
-    Changelog,
-    Version,
-    Adr,
-    Feature,
-    Requirements,
-    Stories,
-}
-
-pub struct Anchor {
-    pub name: &'static str,
-    pub input: Input,
-    /// Route intents the standard applies to when the consumer declares no scope.intents; empty = any.
-    pub intents: &'static [&'static str],
-    /// Files the check reads when the consumer declares no scope.paths: a file name ("CHANGELOG.md") or an extension (".feature"); empty = consumer must declare paths (commit messages need none).
-    pub targets: &'static [&'static str],
-    /// One line the model is shown instead of the standard's text.
-    pub summary: &'static str,
-}
-
-pub const ANCHORS: &[Anchor] = &[
-    Anchor {
-        name: "conventional-commits",
-        input: Input::CommitMessage,
-        intents: &[],
-        targets: &[],
-        summary: "Commit messages follow Conventional Commits 1.0.0: `type(scope)!: description`, a blank line before the body, hyphenated footer tokens except `BREAKING CHANGE`.",
-    },
-    Anchor {
-        name: "keep-a-changelog",
-        input: Input::Changelog,
-        intents: &[],
-        targets: &["CHANGELOG.md"],
-        summary: "CHANGELOG.md follows Keep a Changelog 1.1.0: `## [Unreleased]` first, then `## [X.Y.Z] - YYYY-MM-DD` newest first, grouped under Added/Changed/Deprecated/Removed/Fixed/Security.",
-    },
-    Anchor {
-        name: "semver",
-        input: Input::Version,
-        intents: &[],
-        targets: &[
-            "CHANGELOG.md",
-            "package.json",
-            "Cargo.toml",
-            "pyproject.toml",
-        ],
-        summary: "Versions follow Semantic Versioning 2.0.0: MAJOR.MINOR.PATCH without leading zeros; breaking change bumps major, feature minor, fix patch.",
-    },
-    Anchor {
-        name: "nygard-adr",
-        input: Input::Adr,
-        intents: &["plan"],
-        targets: &[],
-        summary: "ADRs follow Michael Nygard's format: numbered title; Context, Decision, Status (proposed/accepted/deprecated/superseded) and Consequences sections.",
-    },
-    Anchor {
-        name: "madr",
-        input: Input::Adr,
-        intents: &["plan"],
-        targets: &[],
-        summary: "ADRs follow MADR in `NNNN-title-with-dashes.md`: title, Context and Problem Statement, Considered Options, Decision Outcome.",
-    },
-    Anchor {
-        name: "gherkin",
-        input: Input::Feature,
-        intents: &["story", "verify"],
-        targets: &[".feature"],
-        summary: "Specifications are Gherkin: one Feature per file, scenarios with Given/When/Then steps, Scenario Outlines with Examples naming every <placeholder>.",
-    },
-    Anchor {
-        name: "ears",
-        input: Input::Requirements,
-        intents: &["story"],
-        targets: &[],
-        summary: "Requirements use EARS: [Where <feature>,] [While <state>,] [When <event>, | If <condition>, then] the <system> shall <response>.",
-    },
-    Anchor {
-        name: "connextra",
-        input: Input::Stories,
-        intents: &["story"],
-        targets: &[],
-        summary: "User stories use the Connextra form: As a <role>, I want <goal>, so that <benefit>.",
-    },
+/// The checks an overlay entry may name in `check`.
+pub const CHECKS: &[&str] = &[
+    "conventional-commits",
+    "keep-a-changelog",
+    "semver",
+    "nygard-adr",
+    "madr",
+    "gherkin",
+    "ears",
+    "connextra",
 ];
-
-pub fn find(name: &str) -> Option<&'static Anchor> {
-    ANCHORS.iter().find(|anchor| anchor.name == name)
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Finding {
@@ -104,7 +26,11 @@ pub struct Finding {
     pub message: String,
 }
 
-fn finding(rule: &'static str, line: Option<usize>, message: impl Into<String>) -> Finding {
+pub(super) fn finding(
+    rule: &'static str,
+    line: Option<usize>,
+    message: impl Into<String>,
+) -> Finding {
     Finding {
         rule,
         line,
@@ -112,7 +38,7 @@ fn finding(rule: &'static str, line: Option<usize>, message: impl Into<String>) 
     }
 }
 
-/// Findings for `text` under anchor `name`; empty means it passes. `path` is the project-relative file (None for a commit message); used by madr (file name) and semver (which manifest).
+/// Findings for `text` under the check named `name`; empty means it passes. `path` is the project-relative file (None for a commit message); used by madr (file name) and semver (which manifest).
 pub fn check(name: &str, text: &str, path: Option<&str>) -> Vec<Finding> {
     match name {
         "conventional-commits" => conventional_commit(text),

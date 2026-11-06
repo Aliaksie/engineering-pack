@@ -13,6 +13,9 @@ Project standards:
   After a file in a checked standard's scope is written, or a shell command makes a Git
   commit, unmet required elements are reported in the same tool result; the tool is never
   blocked. `routing.standardChecks: false` turns the checks off.
+- Naming `clean-code` as an anchor is rejected with the reason: models do not agree on what
+  it requires. Anchor names map to the Apache-2.0 Semantic Anchors catalog, embedded from a
+  pinned commit; the native bundle carries its licence and notice.
 - `craft standards` lists the declared standards and runs the same checks on `--file` and
   `--commit-message`, exiting non-zero when a standard is not met.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.

@@ -2,12 +2,11 @@
 //! is kept. A declaration names a file, a folder or a known anchor; routing selects those
 //! whose scope matches the work, and anchors with a deterministic check are verified without
 //! a model. Declarations are the consumer's; nothing here reads or runs their content.
+use crate::anchors::{self, Tier};
 use crate::contracts::{LANGUAGES, LAYERS, kebab, relative_file};
 use crate::routing::member;
 use crate::values::object;
 use serde_json::{Map, Value, json};
-
-pub mod anchors;
 
 type Result<T = ()> = std::result::Result<T, String>;
 
@@ -118,8 +117,16 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
         match source(standard) {
             Some(("anchor", name)) => {
                 let name = name.as_str().unwrap_or_default();
-                if anchors::find(name).is_none() {
-                    return Err(format!("standard {id}: unknown anchor {name}"));
+                anchors::anchors().map_err(|error| format!("anchor catalog: {error}"))?;
+                match anchors::find(name) {
+                    None => return Err(format!("standard {id}: unknown anchor {name}")),
+                    Some(anchor) if anchor.tier == Tier::Refused => {
+                        return Err(format!(
+                            "standard {id}: anchor {name} is not offered: {}",
+                            anchor.evidence
+                        ));
+                    }
+                    Some(_) => {}
                 }
             }
             Some((_, path)) => {
@@ -231,7 +238,7 @@ fn intents(standard: &Value) -> Vec<&str> {
     standard["anchor"]
         .as_str()
         .and_then(anchors::find)
-        .map(|anchor| anchor.intents.to_vec())
+        .map(|anchor| anchor.intents.iter().map(String::as_str).collect())
         .unwrap_or_default()
 }
 
@@ -296,7 +303,7 @@ fn shown(standard: &Value) -> Value {
         standard["anchor"]
             .as_str()
             .and_then(anchors::find)
-            .map(|anchor| anchor.summary)
+            .and_then(|anchor| anchor.summary.as_deref())
     });
     if let Some(summary) = summary {
         entry["summary"] = json!(summary);
@@ -328,9 +335,9 @@ fn default_target(anchor: &anchors::Anchor, file: &str) -> bool {
     let name = file.rsplit('/').next().unwrap_or(file);
     anchor.targets.iter().any(|target| {
         if target.starts_with('.') {
-            name.ends_with(target)
+            name.ends_with(target.as_str())
         } else {
-            name == *target
+            name == target
         }
     })
 }
@@ -347,7 +354,7 @@ pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<(&'a str, &'a str
         .filter(|standard| level(standard) == "check")
         .filter_map(|standard| {
             let name = standard["anchor"].as_str()?;
-            let anchor = anchors::find(name)?;
+            let anchor = anchors::find(name).filter(|anchor| anchor.check.is_some())?;
             if anchor.input == anchors::Input::CommitMessage {
                 return None;
             }
@@ -372,7 +379,8 @@ pub fn commit_checks(settings: &Value) -> Vec<(&str, &str)> {
         .filter(|standard| level(standard) == "check")
         .filter_map(|standard| {
             let name = standard["anchor"].as_str()?;
-            (anchors::find(name)?.input == anchors::Input::CommitMessage)
+            let anchor = anchors::find(name).filter(|anchor| anchor.check.is_some())?;
+            (anchor.input == anchors::Input::CommitMessage)
                 .then(|| (standard["id"].as_str().unwrap_or_default(), name))
         })
         .collect()
