@@ -15,6 +15,12 @@ tasks. State the actor and desired result, then the observable acceptance condit
 boundary, dependency or verification note only when it prevents a consequential misunderstanding.
 Avoid repeating the same requirement under several headings.
 
+When ordering slices, use supplied user value, risk and real dependencies; label an inferred
+priority as a proposal. Separate acceptance of a slice from evidence that it achieves the
+intended product benefit. If a success measure is requested, identify its observation and
+baseline where known; do not invent adoption percentages or treat a shipped feature as proof
+of improved outcomes.
+
 For example, “manage appointments” may include viewing a booking, rescheduling it and
 cancelling it. If those outcomes are in the supplied scope and useful separately, draft
 separate slices with observable criteria rather than UI, API and database stories. For a

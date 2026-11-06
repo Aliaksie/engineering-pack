@@ -22,3 +22,14 @@ Separate diagnostic telemetry from required audit records. A dropped diagnostic 
 acceptable; an action requiring durable audit evidence may need to fail or defer when recording
 fails. Verify that chosen behavior, including exporter failure, queue pressure and restart.
 Telemetry should describe the operation without accidentally changing its success contract.
+
+For reliability decisions, define the user-visible success event, eligible population,
+measurement window and data source before choosing a service-level indicator (SLI) or target
+(SLO). Distinguish absent observations from a healthy service. A write-success counter measures
+acceptance of writes; it cannot establish that stored data survives loss or remains readable.
+Request-based error budgets count failed eligible requests, not downtime minutes unless the
+chosen measurement actually uses time. Follow the consumer's agreed target and response policy;
+do not invent a release freeze or a universal availability percentage.
+
+See [Google SRE's SLO guidance](https://sre.google/workbook/implementing-slos/) for choosing
+measures and agreeing how they inform decisions.
