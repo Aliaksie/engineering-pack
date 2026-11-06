@@ -74,8 +74,9 @@ level, source and a one-line `summary`; the content stays in the project.
   It defaults from the declaration: `run` checks, checklists review, files advise; an anchor
   is checked when it has a check, reviewed when it has a checklist, advised otherwise.
 - Anchors Craft checks are `conventional-commits`, `keep-a-changelog`, `semantic-versioning`,
-  `adr-according-to-nygard`, `madr`, `gherkin`, `ears-requirements` and `connextra-user-story`;
-  `semver`, `nygard-adr`, `ears` and `connextra` are aliases. Any other id of the Apache-2.0
+  `adr-according-to-nygard`, `madr`, `gherkin`, `ears-requirements`, `connextra-user-story`,
+  `hexagonal-architecture` and `clean-architecture`; `semver`, `nygard-adr`, `ears`,
+  `connextra` and `ports-and-adapters` are aliases. Any other id of the Apache-2.0
   Semantic Anchors catalog, embedded from a pinned commit with its notice, can be named at
   `advise` or `review`: routes show its title, never its text. An unknown name is a
   configuration error, and so is a name Craft declines because models do not agree on what it
@@ -89,6 +90,17 @@ level, source and a one-line `summary`; the content stays in the project.
   `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
   manifests; the others read the files under `scope.paths`. Checks cover structure, not
   whether the content is right, and an ADR's sections are checked in any order.
+- `hexagonal-architecture` and `clean-architecture` check module dependencies instead of
+  text. Declare each ring or layer as a module with the `dependsOn` it may import. When a source
+  file in such a module is written, Craft reports each import that the change adds (compared with
+  the file at `HEAD`) and that points into a declared module the file's module does not list.
+  Imports that were already in `HEAD`, modules without a `dependsOn` field and imports Craft
+  cannot place in the project are never reported. Imports are placed for Rust (crate names
+  from the modules' `Cargo.toml`), Go (`go.mod` module path), Java (package path), TypeScript
+  and JavaScript (relative paths and the modules' `package.json` names) and Python (relative
+  imports, and absolute ones that name a directory in a module). Other languages are not
+  checked. A project anchor with `"check": "module-dependencies"` applies the same rule
+  without an architecture name.
 - `craft anchors` lists the project's and Craft's anchors with the source each name resolves
   to; `craft anchors --search <text>` searches the catalog too, by id, title, category or role.
 - `craft standards` lists the declarations with the source of each anchor; `craft standards --file <path>` and
