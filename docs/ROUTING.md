@@ -42,6 +42,49 @@ what is declared: TypeScript does not imply Node, Java does not imply Spring.
 Risk tags (`--risk timeout`, `concurrency`, `flaky-test`, …) select deeper guidance; they do
 not claim a defect exists.
 
+## Project standards
+
+`standards` in `.craft/project.json` declares what the project's own standards are and where
+they apply. Each entry has an `id` and one source: a `file`, a `folder` of documents, or an
+`anchor`, the name of an established standard. Routes show the matching standards by id,
+level, source and a one-line `summary`; the content stays in the project.
+
+```json
+"standards": [
+  { "id": "commits", "anchor": "conventional-commits" },
+  { "id": "changelog", "anchor": "keep-a-changelog" },
+  { "id": "adr", "anchor": "nygard-adr", "scope": { "paths": ["docs/adr"] } },
+  { "id": "stories", "anchor": "connextra", "scope": { "paths": ["docs/stories"] } },
+  { "id": "api", "file": "docs/api-style.md", "summary": "REST naming and error envelope",
+    "scope": { "layers": ["backend"] } },
+  { "id": "migrations", "checklist": ["Backward compatible with the previous release"],
+    "scope": { "paths": ["db/migrations"] } }
+]
+```
+
+- `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
+  `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,
+  …). Every key given must match; any value within a key matches. Without `scope` a
+  standard applies to the whole project. Without files, a standard scoped by place appears
+  only for the kind of work it names, so story and decision standards reach product and
+  architecture work before any file exists.
+- `level` is `advise` (named when work reaches the scope), `check` (an anchor's check, or a
+  `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
+  It defaults from the declaration: anchors and `run` check, checklists review, files advise.
+- Anchors are `conventional-commits`, `keep-a-changelog`, `semver`, `nygard-adr`, `madr`,
+  `gherkin`, `ears` and `connextra`. An unknown name is a configuration error. Story and
+  requirement anchors apply to `story` work, ADR anchors to `plan` work, unless `intents` says
+  otherwise.
+- After a hook sees a file written in an anchor standard's scope, or a `git commit` made by a
+  shell command, Craft checks the anchor's required elements without a model and reports
+  unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
+  `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
+  manifests; the others read the files under `scope.paths`. Checks cover structure, not
+  whether the content is right, and an ADR's sections are checked in any order.
+- `craft standards` lists the declarations; `craft standards --file <path>` and
+  `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
+  Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
+
 ## Intents with special scope
 
 - `verify` selects testing-only work. `--verification-mode manual|automation|test-code`
