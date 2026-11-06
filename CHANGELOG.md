@@ -48,6 +48,15 @@ Project standards:
   the task's files and owned paths in `standards`, as a route there shows them.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 
+Project skills:
+
+- `skills.declared` in `.craft/project.json` routes the project's own skills: a skill in
+  `.claude/skills`, `.agents/skills` or another host skill folder `replaces` package skills or
+  joins routes in its `scope`. Hints show it by its bare name. Where the current host does not
+  read the skill's folder, or its `SKILL.md` is missing, the route keeps the package skill and
+  says why. `skills.disables` removes package skills from routes. Two declarations replacing
+  one package skill are rejected as a conflict.
+
 ## 0.0.4
 
 Project Intelligence:

@@ -2,7 +2,7 @@
 //! and command input.
 use crate::files::{ReadError, read_bounded};
 use serde_json::{Value, json};
-use std::{fmt, fs, io, path::Path};
+use std::{fmt, fs, io, io::Read, path::Path};
 
 pub const PROJECT_BYTES: usize = 1024 * 1024;
 pub const PREFERENCE_BYTES: usize = 65_536;
@@ -92,6 +92,24 @@ pub fn anchor_catalog(root: &Path, relative: &str) -> Result<Value, DocumentErro
             "anchor catalog {relative} not found"
         ))),
     }
+}
+
+/// The first `max_bytes` of a declared SKILL.md at `relative`, a validated project-relative
+/// path, or `None` when it is missing, not a regular file or resolves outside `root`.
+/// Symlinked skill folders inside the project are followed, as hosts follow them.
+pub fn skill_header(root: &Path, relative: &str, max_bytes: usize) -> Option<String> {
+    let base = fs::canonicalize(root).ok()?;
+    let file = fs::canonicalize(root.join(relative)).ok()?;
+    if !file.starts_with(&base) || !fs::metadata(&file).ok()?.is_file() {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    fs::File::open(&file)
+        .ok()?
+        .take(max_bytes as u64)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// Private preferences, or `{}` when absent. On POSIX the file and its folder must be
@@ -295,5 +313,51 @@ mod tests {
         assert!(
             matches!(super::project(&project), Err(DocumentError::Invalid(m)) if m.contains("symlink"))
         );
+    }
+
+    #[test]
+    fn a_skill_header_is_read_bounded_from_inside_the_project_only() {
+        let fixture = Fixture::new();
+        let project = fixture.0.join("repo");
+        fs::create_dir_all(project.join(".agents/skills/a")).unwrap();
+        fs::write(
+            project.join(".agents/skills/a/SKILL.md"),
+            "---\nname: a\n---\nlong body",
+        )
+        .unwrap();
+        assert_eq!(
+            skill_header(&project, ".agents/skills/a/SKILL.md", 15).as_deref(),
+            Some("---\nname: a\n---")
+        );
+        assert_eq!(
+            skill_header(&project, ".agents/skills/b/SKILL.md", 64),
+            None
+        );
+        fs::create_dir_all(project.join(".claude/skills/a/SKILL.md")).unwrap();
+        assert_eq!(
+            skill_header(&project, ".claude/skills/a/SKILL.md", 64),
+            None
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            // A mirrored skill folder inside the project is followed, as hosts follow it.
+            fs::create_dir_all(project.join(".github/skills")).unwrap();
+            symlink(
+                project.join(".agents/skills/a"),
+                project.join(".github/skills/a"),
+            )
+            .unwrap();
+            assert!(skill_header(&project, ".github/skills/a/SKILL.md", 64).is_some());
+            // One that leaves the project is not.
+            fs::create_dir_all(fixture.0.join("outside")).unwrap();
+            fs::write(fixture.0.join("outside/SKILL.md"), "---\nname: o\n---\n").unwrap();
+            fs::create_dir_all(project.join(".cursor/skills")).unwrap();
+            symlink(fixture.0.join("outside"), project.join(".cursor/skills/o")).unwrap();
+            assert_eq!(
+                skill_header(&project, ".cursor/skills/o/SKILL.md", 64),
+                None
+            );
+        }
     }
 }

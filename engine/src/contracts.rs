@@ -165,6 +165,7 @@ pub fn validate_project(project: &Value) -> Result {
         "evidence",
         "standards",
         "anchors",
+        "skills",
     ];
     let map = object(project, &fields, "project")?;
     if let Some(workspace) = map.get("workspace") {
@@ -264,15 +265,19 @@ pub fn validate_project(project: &Value) -> Result {
             }
         }
     }
+    let catalog = crate::routing::catalog::catalog()?;
+    let intents: Vec<&str> = catalog["intents"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
     if let Some(standards) = map.get("standards") {
-        let catalog = crate::routing::catalog::catalog()?;
-        let intents: Vec<&str> = catalog["intents"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .collect();
         crate::standards::validate(standards, &names, &intents)?;
+    }
+    if let Some(skills) = map.get("skills") {
+        let known = crate::routing::catalog::skills(catalog);
+        crate::skills::validate(skills, &known, &names, &intents)?;
     }
     if let Some(anchors) = map.get("anchors") {
         validate_anchor_settings(anchors)?;
@@ -790,18 +795,38 @@ pub fn effective_settings(
     preferences: &Value,
     overrides: &Value,
 ) -> Result<Value> {
-    effective_settings_with(project, preferences, overrides, &[])
+    effective_settings_with(project, preferences, overrides, &Documents::default())
 }
 
-/// Effective settings with the project's anchor catalogs: each `(path, document)` that
-/// `anchor_catalogs` named, read by the caller. Their entries become `anchors.loaded`.
+/// Project files the caller read for the settings: each `(path, document)` that
+/// `anchor_catalogs` named, and each `(path, text if readable)` of the SKILL.md files
+/// `skills::declared_files` named.
+#[derive(Default)]
+pub struct Documents {
+    pub catalogs: Vec<(String, Value)>,
+    pub skills: Vec<(String, Option<String>)>,
+}
+
+/// Effective settings with the project's documents: catalog entries become
+/// `anchors.loaded`, declared skill facts `skills.found`.
 pub fn effective_settings_with(
     project: &Value,
     preferences: &Value,
     overrides: &Value,
-    catalogs: &[(String, Value)],
+    documents: &Documents,
 ) -> Result<Value> {
+    let catalogs = &documents.catalogs;
     validate_project(project)?;
+    let files = crate::skills::declared_files(project);
+    if documents.skills.len() != files.len()
+        || documents
+            .skills
+            .iter()
+            .zip(&files)
+            .any(|((path, _), file)| path != file)
+    {
+        return Err("skill files do not match skills.declared".into());
+    }
     let declared = anchor_catalogs(project);
     if catalogs.len() != declared.len()
         || catalogs
@@ -861,6 +886,9 @@ pub fn effective_settings_with(
             .filter_map(Value::as_str)
             .collect();
         settings["anchors"]["loaded"] = crate::anchors::load(catalogs, &intents)?;
+    }
+    if !files.is_empty() {
+        settings["skills"]["found"] = crate::skills::found(&documents.skills);
     }
     crate::standards::validate_anchors(&settings)?;
     Ok(json!({

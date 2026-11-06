@@ -22,6 +22,7 @@ pub mod routing;
 pub mod scratch;
 pub mod services;
 pub mod session;
+pub mod skills;
 pub mod standards;
 pub mod telemetry;
 pub mod timestamp;

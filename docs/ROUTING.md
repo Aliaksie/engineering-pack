@@ -168,6 +168,44 @@ checks module dependencies; `routing.stopReview: false` turns it off.
 | `verify` | `bdd-given-when-then`, `testing-pyramid` |
 | `review` | `testing-pyramid`, `kiss-principle` |
 
+## Project skills
+
+`skills` in `.craft/project.json` tells routes which of the project's own skills to
+recommend. Hosts already list every skill in their project folders; Craft does not load,
+inject or hide them, it only decides what a route names.
+
+```json
+"skills": {
+  "declared": [
+    { "name": "team-review", "path": ".claude/skills/team-review",
+      "replaces": ["craft-review:review-change"] },
+    { "name": "release-notes", "path": ".agents/skills/release-notes",
+      "scope": { "intents": ["implement"], "paths": ["CHANGELOG.md"] } }
+  ],
+  "disables": ["craft-engineering:react-engineering"]
+}
+```
+
+- `path` is a skill folder at the project root in one of the folders hosts read:
+  `.claude/skills` (Claude Code, Copilot CLI, Cursor), `.agents/skills` (Codex, Copilot CLI,
+  Cursor, Gemini CLI, Junie), `.github/skills` (Copilot), `.cursor/skills`, `.codex/skills`
+  (Cursor), `.gemini/skills` (Gemini CLI), `.junie/skills` (Junie). Craft reads only the
+  front matter of the declared `SKILL.md`; its `name` must equal `name`.
+- `replaces` puts the skill where a route would name those package skills; `scope` (as for
+  standards) narrows that, or on its own adds the skill to matching routes. A declaration
+  needs one of them. Routes name the skill `project:<name>`; hosts are shown the bare name.
+- When the current host does not read the folder, or the `SKILL.md` is missing or names
+  another skill, the route keeps the package skill and says why in `missing`, for example
+  `project:team-review unavailable: claude does not read .agents/skills; mirror the skill to
+  .claude/skills; routed craft-review:review-change instead`.
+- `disables` removes package skills from routes. A host may still list them: Craft never
+  edits host configuration.
+- Conflicts are configuration errors, never merged: two declarations replacing one package
+  skill, or a package skill both replaced and disabled.
+- A route that a declaration changed carries `skillSources`: each project skill with its
+  path and what it replaces, each unavailable one with the reason, and each disabled
+  package skill. Telemetry records package skill names only.
+
 ## Intents with special scope
 
 - `verify` selects testing-only work. `--verification-mode manual|automation|test-code`

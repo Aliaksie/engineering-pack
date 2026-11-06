@@ -109,6 +109,27 @@ test('prompt routing hints appear only where the native context schema supports 
   }
 });
 
+// One declared replacement in `.agents/skills`: hosts that read the folder are sent to the
+// consumer skill by its bare name; Claude Code does not read it, so keeps the package skill.
+test('a declared consumer skill replaces the package skill on every host that can load it', (t) => {
+  const dir = fixture(t, { skills: { declared: [{ name: 'team-review', path: '.agents/skills/team-review', replaces: ['craft-review:review-change'] }] } });
+  fs.mkdirSync(path.join(dir, '.agents/skills/team-review'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.agents/skills/team-review/SKILL.md'), '---\nname: team-review\ndescription: Our review.\n---\n');
+  for (const host of native) {
+    if (!HOSTS[host].events['before-prompt'].context) continue;
+    const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: `skills-${host}`, prompt: 'review this change' }, dir);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+    const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
+    const line = context.split('\n').find(text => text.startsWith('Routing hints')) ?? '';
+    const hint = JSON.parse(line.slice(line.indexOf('{')));
+    const reads = HOSTS[host].listing.projectSkills.includes('.agents/skills');
+    assert.equal(hint.skills.includes('team-review'), reads, `${host}: ${context}`);
+    assert.equal(hint.skills.some(skill => skill.includes('review-change')), !reads, `${host}: ${context}`);
+    assert.equal((hint.missing ?? []).some(line => line.includes('project:team-review unavailable')), !reads, `${host}: ${context}`);
+  }
+});
+
 test('a lookup prompt without a verified answer gets no hint', (t) => {
   const dir = fixture(t);
   fs.writeFileSync(path.join(dir, 'orders.py'), 'RATE = LEGACY_TAX_RATE\n');
@@ -375,4 +396,13 @@ test('PowerShell shell tools cannot bypass read-only review normalization', (t) 
     assert.equal(decision('copilot', native), 'deny');
     assert.equal(decision('copilot', result), 'allow', 'unrelated edit payload stays out of shell policy');
   }
+});
+
+test('the project schema accepts exactly the skill folders some host reads', () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(root, 'schemas/project.schema.json'), 'utf8'));
+  const pattern = new RegExp(schema.properties.skills.properties.declared.items.properties.path.pattern);
+  const folders = new Set(Object.values(HOSTS).flatMap(host => host.listing.projectSkills));
+  for (const folder of folders) assert.ok(pattern.test(`${folder}/x`), folder);
+  const named = /\((.*)\)/.exec(pattern.source)[1].split('|').map(name => `.${name}/skills`);
+  assert.deepEqual(named.sort(), [...folders].sort());
 });
