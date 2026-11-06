@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Review guidance loads pull-request follow-up details only when needed through a linked reference.
+
+- Testing guidance describes investigation of unexpected behavior as well as failing checks.
+  Specification audits and story drafting include examples of conflicting rules, optional
+  clarification and useful outcome slices with unresolved decisions.
+
 Project standards:
 
 - `.craft/project.json` declares the project's own standards in `standards`: a file, a folder

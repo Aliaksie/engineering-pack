@@ -1,6 +1,6 @@
 ---
 name: testing-engineering
-description: Choose meaningful verification or diagnose a failing check from observable behavior.
+description: Choose verification or investigate failures and unexpected behavior from evidence.
 ---
 
 # Testing Engineering
