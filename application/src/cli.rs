@@ -1032,18 +1032,18 @@ fn plan_create(
 /// The small context of one plan task, or with `--brief` the worker brief.
 fn plan_envelope(
     options: &Options,
-    _recorder: &mut Recorder,
-    _parent: &Operation,
+    recorder: &mut Recorder,
+    parent: &Operation,
 ) -> Result<Value, Failure> {
     let (Some(plan), Some(task)) = (options.get("plan"), options.get("task")) else {
         return Err("plan-envelope requires --plan and --task".into());
     };
-    crate::plan::envelope(
-        &root(options),
-        plan,
-        task,
-        options.values.contains_key("brief"),
-    )
+    let settings = if options.values.contains_key("brief") {
+        Some(loaded(options, recorder, parent)?)
+    } else {
+        None
+    };
+    crate::plan::envelope(&root(options), plan, task, settings.as_ref())
 }
 
 /// Apply `--data` changes to a plan still at `--expected-revision`.

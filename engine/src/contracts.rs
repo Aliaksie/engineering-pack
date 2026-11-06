@@ -312,10 +312,24 @@ pub fn validate_project(project: &Value) -> Result {
     if let Some(routing) = map.get("routing") {
         let routing = object(
             routing,
-            &["promptHints", "editHints", "dedupeHints", "standardChecks"],
+            &[
+                "promptHints",
+                "editHints",
+                "dedupeHints",
+                "standardChecks",
+                "stopReview",
+                "debtMarkers",
+            ],
             "routing",
         )?;
-        for field in ["promptHints", "editHints", "dedupeHints", "standardChecks"] {
+        for field in [
+            "promptHints",
+            "editHints",
+            "dedupeHints",
+            "standardChecks",
+            "stopReview",
+            "debtMarkers",
+        ] {
             boolean(
                 routing.get(field),
                 &format!("routing {field} must be boolean"),

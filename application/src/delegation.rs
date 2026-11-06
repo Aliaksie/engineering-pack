@@ -274,8 +274,9 @@ pub fn assign(request: Assign) -> Result<Value, Failure> {
             return Err(failure);
         }
     };
-    let envelope = crate::plan::envelope(root, id, task, false)?;
-    let brief = plan::brief(&envelope)
+    let envelope = crate::plan::envelope(root, id, task, None)?;
+    let standards = craft_engine::standards::for_task(settings, &envelope["task"]);
+    let brief = plan::brief(&envelope, &standards)
         .unwrap_or_else(|reason| json!({"status": "unavailable", "reason": reason}));
     let quoted = worker.replace('\'', "'\\''");
     let start = format!(

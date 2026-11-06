@@ -67,9 +67,18 @@ pub fn input(v: &Value) -> Result<Value> {
             "acceptance",
             "restrictions",
             "returnShape",
+            "standards",
         ],
         "worker brief",
     )?;
+    // The project standards of the task's scope, as a route shows them.
+    if brief.get("standards").is_some_and(|standards| {
+        standards
+            .as_array()
+            .is_none_or(|a| a.len() > 64 || a.iter().any(|v| !v["id"].is_string()))
+    }) {
+        return Err("invalid worker brief standards".into());
+    }
     if !text(&brief["goal"]) || !text(&brief["returnShape"]) {
         return Err("worker goal and return shape are required".into());
     }

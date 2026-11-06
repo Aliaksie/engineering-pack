@@ -30,6 +30,7 @@ mod session;
 mod setup;
 mod status;
 pub mod statusline;
+mod stop_review;
 mod task;
 mod telemetry;
 mod workers;

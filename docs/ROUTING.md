@@ -107,6 +107,28 @@ level, source and a one-line `summary`; the content stays in the project.
   `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
   Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
 
+## Stop review
+
+When a turn ends after the session changed files, Craft reviews those files once and, where
+the host can continue a turn from a stop hook (Claude Code, Codex, Copilot CLI, Gemini CLI,
+Cursor), holds the stop with one summary the agent addresses before reporting done:
+
+- module dependency findings (above) for imports the changes add;
+- debt markers the changes add against `HEAD`, when `routing.debtMarkers` is true: a
+  TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
+  `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
+  (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
+  than the change removed. Commented-out code is not detected;
+- the declared `review` standards whose scope the changed files fall under, with their
+  checklist.
+
+Only files whose content changed since the session started, or since the previous stop, are
+reviewed; uncommitted work from before the session and committed work are not. A finding or
+review item is said once per session, and a stop is never held while the host is already
+continuing a held one. Nothing is enforced: the agent fixes or tells the user why not.
+The review runs only when the project reports debt markers, declares a `review` standard or
+checks module dependencies; `routing.stopReview: false` turns it off.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:

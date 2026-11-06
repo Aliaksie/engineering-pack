@@ -208,39 +208,20 @@ pub struct Request<'a> {
     pub artifact: Option<&'a str>,
 }
 
-/// The routing plan for one request: guidance to load, execution, checks and operations.
-pub fn route(settings: &Value, request: &Request) -> Result<Value> {
+/// What a set of changed files touches: the project-relative files (private paths dropped),
+/// the declared modules that own them, and their languages and application layers. Without
+/// files, the project's declared languages and layers.
+pub struct Scope {
+    pub files: Vec<String>,
+    pub modules: Vec<Value>,
+    pub languages: Vec<Value>,
+    pub layers: Vec<Value>,
+}
+
+pub fn scope(settings: &Value, files: &[Value]) -> Result<Scope> {
     let catalog = catalog::catalog()?;
-    let intent = request
-        .intent
-        .filter(|intent| catalog::lists(catalog, "intents", intent))
-        .ok_or_else(|| format!("unknown intent: {}", request.intent.unwrap_or("undefined")))?;
-    if let Some(mode) = request.verification_mode
-        && (intent != "verify" || !VERIFICATION_MODES.contains(&mode))
-    {
-        return Err(
-            "verificationMode requires verify intent and manual, automation or test-code".into(),
-        );
-    }
-    if let Some(artifact) = request.artifact {
-        if !catalog::lists(catalog, "artifacts", artifact) {
-            return Err(format!("unknown artifact: {artifact}"));
-        }
-        let selects = |entry: &Value, dimension: &str, value: &str| {
-            entry["when"][dimension]
-                .as_array()
-                .is_some_and(|values| values.iter().any(|v| v == value))
-        };
-        if !catalog::entries(catalog)
-            .any(|entry| selects(entry, "intents", intent) && selects(entry, "artifacts", artifact))
-        {
-            return Err(format!(
-                "artifact {artifact} does not apply to intent {intent}"
-            ));
-        }
-    }
     let mut changed: Vec<String> = Vec::new();
-    for file in request.files {
+    for file in files {
         let file = relative_file(file)?;
         if !changed.contains(&file) {
             changed.push(file);
@@ -291,6 +272,51 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
             add(&mut layers, layer);
         }
     }
+    Ok(Scope {
+        files: changed,
+        modules,
+        languages,
+        layers,
+    })
+}
+
+/// The routing plan for one request: guidance to load, execution, checks and operations.
+pub fn route(settings: &Value, request: &Request) -> Result<Value> {
+    let catalog = catalog::catalog()?;
+    let intent = request
+        .intent
+        .filter(|intent| catalog::lists(catalog, "intents", intent))
+        .ok_or_else(|| format!("unknown intent: {}", request.intent.unwrap_or("undefined")))?;
+    if let Some(mode) = request.verification_mode
+        && (intent != "verify" || !VERIFICATION_MODES.contains(&mode))
+    {
+        return Err(
+            "verificationMode requires verify intent and manual, automation or test-code".into(),
+        );
+    }
+    if let Some(artifact) = request.artifact {
+        if !catalog::lists(catalog, "artifacts", artifact) {
+            return Err(format!("unknown artifact: {artifact}"));
+        }
+        let selects = |entry: &Value, dimension: &str, value: &str| {
+            entry["when"][dimension]
+                .as_array()
+                .is_some_and(|values| values.iter().any(|v| v == value))
+        };
+        if !catalog::entries(catalog)
+            .any(|entry| selects(entry, "intents", intent) && selects(entry, "artifacts", artifact))
+        {
+            return Err(format!(
+                "artifact {artifact} does not apply to intent {intent}"
+            ));
+        }
+    }
+    let Scope {
+        files: changed,
+        modules,
+        languages,
+        layers,
+    } = scope(settings, request.files)?;
     let loading = loading::plan(
         &loading::Request {
             intent,

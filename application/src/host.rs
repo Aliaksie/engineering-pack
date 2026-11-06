@@ -48,6 +48,8 @@ struct Facts<'a> {
     file: Option<&'a str>,
     prompt: Option<&'a str>,
     pattern: Option<&'a str>,
+    /// The host is continuing a stop a hook already held.
+    stop_active: bool,
 }
 
 fn one_of<'a>(input: &'a Value, name: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -85,6 +87,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         file: optional("file")?,
         prompt: optional("prompt")?,
         pattern: optional("pattern")?,
+        stop_active: input["stopActive"] == true,
     })
 }
 
@@ -214,6 +217,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     pattern: facts.pattern,
                     command: facts.command.as_str(),
                     context_supported: facts.context_supported,
+                    stop_active: facts.stop_active,
                 };
                 delivery::run(&event, &mut recorder, &hook)
             }

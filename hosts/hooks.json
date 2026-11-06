@@ -44,7 +44,8 @@
       "turn-end": {
         "name": "Stop",
         "context": false,
-        "deny": false
+        "deny": false,
+        "continue": true
       }
     }
   },
@@ -93,7 +94,8 @@
       "turn-end": {
         "name": "Stop",
         "context": false,
-        "deny": false
+        "deny": false,
+        "continue": true
       }
     }
   },
@@ -137,7 +139,8 @@
       "turn-end": {
         "name": "stop",
         "context": false,
-        "deny": false
+        "deny": false,
+        "continue": true
       }
     }
   },
@@ -182,7 +185,8 @@
       "turn-end": {
         "name": "agentStop",
         "context": false,
-        "deny": false
+        "deny": false,
+        "continue": true
       }
     }
   },
@@ -227,7 +231,8 @@
       "turn-end": {
         "name": "AfterAgent",
         "context": false,
-        "deny": false
+        "deny": false,
+        "continue": true
       }
     }
   },
