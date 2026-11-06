@@ -53,7 +53,8 @@ name the platform or the executable fails to start; native tools use the launche
 import authoring tooling or a sibling package at runtime. Hook tools are `shell` or `any`;
 normalized events are `session-start`, `before-prompt`, `before-tool`, `after-tool`,
 `before-compact`, `after-compact` and `turn-end`. A denial is mapped only where the host
-supports blocking, and context is injected only where its wire schema supports it. `craft
+supports blocking, context is injected only where its wire schema supports it, and a
+`turn-end` answer holds the stop only where the host continues a turn from it (`continue`). `craft
 hook` owns payload normalization, event/tool mapping and output; the build owns registration.
 A plain AGENTS bundle has no lifecycle runtime and therefore installs no hooks.
 

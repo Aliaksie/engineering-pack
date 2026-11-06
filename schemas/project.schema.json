@@ -332,6 +332,117 @@
         }
       }
     },
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The project's own skills in routes. Hosts list project skills themselves; a declaration tells Craft which one a route recommends. Routes name them project:<name>; hosts are shown the bare name.",
+      "properties": {
+        "declared": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "path"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "maxLength": 64,
+                "description": "The name in the skill's SKILL.md front matter."
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^\\.(claude|agents|github|cursor|codex|gemini|junie)/skills/[^/]+$",
+                "description": "The skill folder at the project root. A host that does not read this folder keeps the package skill and the route reports why."
+              },
+              "replaces": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "description": "Package skills this skill takes the place of wherever a route selects them; one declaration per package skill."
+              },
+              "scope": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "modules": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "languages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "enum": [
+                        "javascript",
+                        "typescript",
+                        "python",
+                        "jvm",
+                        "csharp",
+                        "go",
+                        "java",
+                        "kotlin",
+                        "rust",
+                        "ruby"
+                      ]
+                    }
+                  },
+                  "layers": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "enum": [
+                        "ui",
+                        "backend",
+                        "agent"
+                      ]
+                    }
+                  },
+                  "paths": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "intents": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents."
+                  }
+                },
+                "description": "Where the skill applies, as for standards: with replaces it narrows the replacement, alone it adds the skill to matching routes."
+              }
+            }
+          }
+        },
+        "disables": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "description": "Package skills routes no longer recommend. Hosts may still list them; Craft never edits host configuration."
+        }
+      }
+    },
     "services": {
       "type": "object",
       "properties": {
@@ -1030,6 +1141,16 @@
           "type": "boolean",
           "default": true,
           "description": "Deterministic anchor checks after an edit or commit in a declared standard's scope. Set false to keep standards in routes without checking."
+        },
+        "stopReview": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a turn ends after changing files, one summary of new findings (module dependencies, debt markers) and the declared review items of the changed scope; the host continues the turn once to address it. Set false to never hold a stop."
+        },
+        "debtMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report debt markers a change adds against HEAD in the stop summary: TODO/FIXME comments, lint or type-check suppressions, skipped tests, removed assertions."
         }
       }
     },

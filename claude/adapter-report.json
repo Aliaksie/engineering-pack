@@ -88,6 +88,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "deliver"
@@ -372,6 +373,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -641,6 +643,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -902,6 +905,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"

@@ -107,6 +107,28 @@ level, source and a one-line `summary`; the content stays in the project.
   `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
   Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
 
+## Stop review
+
+When a turn ends after the session changed files, Craft reviews those files once and, where
+the host can continue a turn from a stop hook (Claude Code, Codex, Copilot CLI, Gemini CLI,
+Cursor), holds the stop with one summary the agent addresses before reporting done:
+
+- module dependency findings (above) for imports the changes add;
+- debt markers the changes add against `HEAD`, when `routing.debtMarkers` is true: a
+  TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
+  `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
+  (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
+  than the change removed. Commented-out code is not detected;
+- the declared `review` standards whose scope the changed files fall under, with their
+  checklist.
+
+Only files whose content changed since the session started, or since the previous stop, are
+reviewed; uncommitted work from before the session and committed work are not. A finding or
+review item is said once per session, and a stop is never held while the host is already
+continuing a held one. Nothing is enforced: the agent fixes or tells the user why not.
+The review runs only when the project reports debt markers, declares a `review` standard or
+checks module dependencies; `routing.stopReview: false` turns it off.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:
@@ -145,6 +167,44 @@ level, source and a one-line `summary`; the content stays in the project.
 | `story` | `invest`, `moscow` |
 | `verify` | `bdd-given-when-then`, `testing-pyramid` |
 | `review` | `testing-pyramid`, `kiss-principle` |
+
+## Project skills
+
+`skills` in `.craft/project.json` tells routes which of the project's own skills to
+recommend. Hosts already list every skill in their project folders; Craft does not load,
+inject or hide them, it only decides what a route names.
+
+```json
+"skills": {
+  "declared": [
+    { "name": "team-review", "path": ".claude/skills/team-review",
+      "replaces": ["craft-review:review-change"] },
+    { "name": "release-notes", "path": ".agents/skills/release-notes",
+      "scope": { "intents": ["implement"], "paths": ["CHANGELOG.md"] } }
+  ],
+  "disables": ["craft-engineering:react-engineering"]
+}
+```
+
+- `path` is a skill folder at the project root in one of the folders hosts read:
+  `.claude/skills` (Claude Code, Copilot CLI, Cursor), `.agents/skills` (Codex, Copilot CLI,
+  Cursor, Gemini CLI, Junie), `.github/skills` (Copilot), `.cursor/skills`, `.codex/skills`
+  (Cursor), `.gemini/skills` (Gemini CLI), `.junie/skills` (Junie). Craft reads only the
+  front matter of the declared `SKILL.md`; its `name` must equal `name`.
+- `replaces` puts the skill where a route would name those package skills; `scope` (as for
+  standards) narrows that, or on its own adds the skill to matching routes. A declaration
+  needs one of them. Routes name the skill `project:<name>`; hosts are shown the bare name.
+- When the current host does not read the folder, or the `SKILL.md` is missing or names
+  another skill, the route keeps the package skill and says why in `missing`, for example
+  `project:team-review unavailable: claude does not read .agents/skills; mirror the skill to
+  .claude/skills; routed craft-review:review-change instead`.
+- `disables` removes package skills from routes. A host may still list them: Craft never
+  edits host configuration.
+- Conflicts are configuration errors, never merged: two declarations replacing one package
+  skill, or a package skill both replaced and disabled.
+- A route that a declaration changed carries `skillSources`: each project skill with its
+  path and what it replaces, each unavailable one with the reason, and each disabled
+  package skill. Telemetry records package skill names only.
 
 ## Intents with special scope
 
