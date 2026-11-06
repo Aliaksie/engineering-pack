@@ -80,7 +80,9 @@ level, source and a one-line `summary`; the content stays in the project.
   `advise` or `review`: routes show its title, never its text. An unknown name is a
   configuration error, and so is a name Craft declines because models do not agree on what it
   requires (`clean-code`); the error says why. Story and requirement anchors apply to `story`
-  work, ADR anchors to `plan` work, unless `intents` says otherwise.
+  work, ADR anchors to `plan` work, unless `intents` says otherwise. The catalog anchors Craft
+  adds by default (see Project anchors) show Craft's one-line summary and apply to the kinds
+  of work they are added for.
 - After a hook sees a file written in an anchor standard's scope, or a `git commit` made by a
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
@@ -117,8 +119,20 @@ level, source and a one-line `summary`; the content stays in the project.
   longer checked. A later file replaces an earlier entry with the same id.
 - `check` names one of Craft's checks or an anchor that has one, so a project's own name can
   reuse it. Without `targets` a check reads the files Craft's anchor for it reads.
-- `defaults` (boolean) and `disables` (anchor names) control anchors Craft adds by kind of
-  work. Craft currently adds none; a name in `disables` must still resolve.
+- `defaults: true` turns on the anchors Craft adds by kind of work; they are off unless a
+  project turns them on. A default is advised, with Craft's one-line summary, and never
+  checked. Any declared standard for the kind of work (through `scope.intents` or its
+  anchor) replaces all defaults for it, so a project that declares `madr` for `plan` is not
+  told about Nygard. An anchor the project already names, or lists in `disables`, is not
+  added. A name in `disables` must resolve.
+
+| Kind of work | Craft adds |
+|---|---|
+| `implement` | `conventional-commits`, `kiss-principle` |
+| `plan` | `adr-according-to-nygard` |
+| `story` | `invest`, `moscow` |
+| `verify` | `bdd-given-when-then`, `testing-pyramid` |
+| `review` | `testing-pyramid`, `kiss-principle` |
 
 ## Intents with special scope
 

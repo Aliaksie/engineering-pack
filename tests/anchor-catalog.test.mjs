@@ -8,6 +8,7 @@ const catalogText = read('engine/anchors/catalog.json');
 const catalog = JSON.parse(catalogText);
 const overlay = JSON.parse(read('engine/anchors/overlay.json'));
 const offered = overlay.anchors.filter(anchor => anchor.tier !== 'refused');
+const checked = offered.filter(anchor => anchor.check);
 
 const adoc = (title, attributes, body = 'Body text with :colon: lines that are not attributes.') =>
   `= ${title}\n${Object.entries(attributes).map(([key, value]) => `:${key}: ${value}`).join('\n')}\n\n${body}\n`;
@@ -45,13 +46,22 @@ test('the committed catalog is unedited importer output', () => {
   for (const anchor of catalog.anchors) for (const id of anchor.related) assert.ok(ids.includes(id), `${anchor.id} → ${id}`);
 });
 
-test('docs name exactly the anchors and aliases the overlay checks', () => {
+test('docs name exactly the anchors the overlay checks and adds by default', () => {
   const schema = JSON.parse(read('schemas/project.schema.json'));
   assert.ok(!JSON.stringify(schema).includes('"anchor":{"enum"'), 'any catalog id is declarable; no closed enum');
   const routing = read('docs/ROUTING.md');
   const listed = /- Anchors Craft checks are (.*?) are aliases\./s.exec(routing)?.[1];
   assert.ok(listed, 'docs/ROUTING.md lists the checked anchors');
   const names = [...listed.matchAll(/`([a-z0-9-]+)`/g)].map(match => match[1]);
-  assert.deepEqual(names, [...offered.map(anchor => anchor.id), ...offered.flatMap(anchor => anchor.aliases ?? [])]);
+  assert.deepEqual(names, [...checked.map(anchor => anchor.id), ...checked.flatMap(anchor => anchor.aliases ?? [])]);
+  const defaults = /\| Kind of work \| Craft adds \|\n\|[-| ]+\|\n((?:\|.*\|\n)+)/.exec(routing)?.[1];
+  assert.ok(defaults, 'docs/ROUTING.md tabulates the defaults');
+  const documented = Object.fromEntries(defaults.trim().split('\n').map(row => {
+    const [intent, anchors] = row.split('|').slice(1, 3);
+    return [intent.trim().replaceAll('`', ''), [...anchors.matchAll(/`([a-z0-9-]+)`/g)].map(match => match[1])];
+  }));
+  const declared = {};
+  for (const anchor of offered) for (const intent of anchor.defaults ?? []) (declared[intent] ??= []).push(anchor.id);
+  assert.deepEqual(documented, declared);
   for (const anchor of offered) assert.ok(catalog.anchors.some(entry => entry.id === anchor.id), `${anchor.id}: catalog id`);
 });

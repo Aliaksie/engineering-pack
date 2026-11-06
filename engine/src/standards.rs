@@ -357,12 +357,59 @@ fn shown(settings: &Value, standard: &Value) -> Value {
     entry
 }
 
-/// The declared standards a route's work falls under, in declaration order.
+/// The declared standards a route's work falls under, in declaration order, then Craft's
+/// defaults for the kind of work when the project turns them on.
 pub fn select(settings: &Value, work: &Work) -> Vec<Value> {
-    declared(settings)
+    let mut selected: Vec<Value> = declared(settings)
         .iter()
         .filter(|standard| matches(settings, standard, work))
         .map(|standard| shown(settings, standard))
+        .collect();
+    if settings["anchors"]["defaults"] == true {
+        selected.extend(defaults(settings, work.intent));
+    }
+    selected
+}
+
+/// Craft's anchors for `intent`, advised and never checked. The project's own word wins: a
+/// declared standard for this kind of work replaces them all, and an anchor the project
+/// disables or already names is not added. A project catalog entry with the id supplies its
+/// summary.
+fn defaults(settings: &Value, intent: &str) -> Vec<Value> {
+    let declared = declared(settings);
+    if declared
+        .iter()
+        .any(|standard| intents(settings, standard).iter().any(|i| i == intent))
+    {
+        return Vec::new();
+    }
+    let excluded: Vec<&str> = settings["anchors"]["disables"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .chain(declared.iter().map(|standard| &standard["anchor"]))
+        .filter_map(Value::as_str)
+        .map(anchors::canonical)
+        .collect();
+    anchors::anchors()
+        .unwrap_or_default()
+        .iter()
+        .filter(|anchor| anchor.defaults.iter().any(|i| i == intent))
+        .filter(|anchor| !excluded.contains(&anchor.id.as_str()))
+        .filter_map(|anchor| anchors::resolve(settings, &anchor.id))
+        .filter(|anchor| anchor.tier != Tier::Refused)
+        .map(|anchor| {
+            let mut entry = json!({
+                "id": anchor.id,
+                "level": "advise",
+                "anchor": anchor.id,
+                "default": true,
+            });
+            if let Some(summary) = anchor.summary {
+                entry["summary"] = json!(summary);
+            }
+            entry
+        })
         .collect()
 }
 

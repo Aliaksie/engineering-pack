@@ -320,7 +320,7 @@
         },
         "defaults": {
           "type": "boolean",
-          "description": "Whether Craft's anchor defaults for the kind of work apply."
+          "description": "Whether Craft adds its anchors for the kind of work to routes, advised and never checked; off unless true. A declared standard for the kind of work replaces them."
         },
         "disables": {
           "type": "array",

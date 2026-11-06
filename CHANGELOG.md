@@ -20,7 +20,13 @@ Project standards:
   models do not agree on what it requires.
 - `anchors.catalogs` in `.craft/project.json` lists the project's own anchor catalog files.
   Their entries add names, or replace a Craft or catalog entry with the same id, and may reuse
-  one of Craft's checks. `anchors.disables` and `anchors.defaults` are accepted.
+  one of Craft's checks.
+- `anchors.defaults: true` adds Craft's anchors for the kind of work to routes, advised and
+  never checked: `invest` and `moscow` for stories, `adr-according-to-nygard` for plans,
+  `testing-pyramid` and `bdd-given-when-then` for verification, `testing-pyramid` and
+  `kiss-principle` for review, `conventional-commits` and `kiss-principle` for
+  implementation. A declared standard for the kind of work replaces them; `anchors.disables`
+  drops single anchors. Defaults are off unless a project turns them on.
 - `craft anchors` lists the anchors a project can name with the source each resolves to;
   `--search` searches the catalog by id, title, category or role.
 - `craft standards` lists the declared standards, with each anchor's source, and runs the same checks on `--file` and

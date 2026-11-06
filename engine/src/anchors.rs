@@ -105,6 +105,9 @@ pub struct Anchor {
     pub check: Option<String>,
     /// Route intents the standard applies to when the consumer declares no scope.intents; empty = any.
     pub intents: Vec<String>,
+    /// Route intents Craft adds this anchor for, at `advise`, when the project turns
+    /// `anchors.defaults` on; Craft's own entries only.
+    pub defaults: Vec<String>,
     /// Files the check reads when the consumer declares no scope.paths: a file name ("CHANGELOG.md") or an extension (".feature"); empty = consumer must declare paths (commit messages need none).
     pub targets: Vec<String>,
     /// One line the model is shown instead of the standard's text; refused names have none.
@@ -167,7 +170,8 @@ fn parse_overlay_entry(value: &Value) -> Result<Anchor> {
     let entry = object(
         value,
         &[
-            "id", "aliases", "tier", "check", "intents", "targets", "summary", "evidence",
+            "id", "aliases", "tier", "check", "intents", "defaults", "targets", "summary",
+            "evidence",
         ],
         "anchor",
     )?;
@@ -189,6 +193,12 @@ fn parse_overlay_entry(value: &Value) -> Result<Anchor> {
     if let Some(intent) = intents.iter().find(|intent| !kebab(intent)) {
         return Err(format!("anchor {id}: intent {intent} must be kebab-case"));
     }
+    let defaults = strings(entry, "defaults", &id)?;
+    if let Some(intent) = defaults.iter().find(|intent| !kebab(intent)) {
+        return Err(format!(
+            "anchor {id}: default intent {intent} must be kebab-case"
+        ));
+    }
     let aliases = strings(entry, "aliases", &id)?;
     if let Some(alias) = aliases.iter().find(|alias| !kebab(alias)) {
         return Err(format!("anchor {id}: alias {alias} must be kebab-case"));
@@ -202,6 +212,7 @@ fn parse_overlay_entry(value: &Value) -> Result<Anchor> {
         tier,
         check,
         intents,
+        defaults,
         checklist: Vec::new(),
         evidence: Some(evidence),
     };
@@ -221,6 +232,7 @@ fn parse_overlay_entry(value: &Value) -> Result<Anchor> {
     if !offered
         && (anchor.summary.is_some()
             || !anchor.intents.is_empty()
+            || !anchor.defaults.is_empty()
             || !anchor.targets.is_empty()
             || !anchor.aliases.is_empty())
     {
@@ -333,6 +345,7 @@ fn from_catalog(entry: &Value) -> Option<Anchor> {
         tier: Tier::Vocabulary,
         check: None,
         intents: Vec::new(),
+        defaults: Vec::new(),
         targets: Vec::new(),
         summary: entry["title"].as_str().map(str::to_owned),
         checklist: Vec::new(),
@@ -420,6 +433,7 @@ fn parse_project_entry(
         },
         check,
         intents: declared,
+        defaults: Vec::new(),
         targets,
         summary,
         checklist,
@@ -519,6 +533,9 @@ fn shown(anchor: &Anchor) -> Value {
     }
     if !anchor.checklist.is_empty() {
         item["checklist"] = json!(anchor.checklist);
+    }
+    if !anchor.defaults.is_empty() {
+        item["defaults"] = json!(anchor.defaults);
     }
     item
 }

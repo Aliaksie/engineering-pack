@@ -11,6 +11,7 @@
       "tier": "structure",
       "check": "conventional-commits",
       "intents": [],
+      "defaults": ["implement"],
       "targets": [],
       "summary": "Commit messages follow Conventional Commits 1.0.0: `type(scope)!: description`, a blank line before the body, hyphenated footer tokens except `BREAKING CHANGE`.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
@@ -40,6 +41,7 @@
       "tier": "structure",
       "check": "nygard-adr",
       "intents": ["plan"],
+      "defaults": ["plan"],
       "targets": [],
       "summary": "ADRs follow Michael Nygard's format: numbered title; Context, Decision, Status (proposed/accepted/deprecated/superseded) and Consequences sections.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
@@ -81,6 +83,46 @@
       "targets": [],
       "summary": "User stories use the Connextra form: As a <role>, I want <goal>, so that <benefit>.",
       "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "invest",
+      "tier": "vocabulary",
+      "intents": ["story"],
+      "defaults": ["story"],
+      "summary": "Stories are Independent, Negotiable, Valuable, Estimable, Small and Testable.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "moscow",
+      "tier": "vocabulary",
+      "intents": ["story"],
+      "defaults": ["story"],
+      "summary": "Requirements are prioritised as Must have, Should have, Could have and Won't have this time.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "bdd-given-when-then",
+      "tier": "vocabulary",
+      "intents": ["verify"],
+      "defaults": ["verify"],
+      "summary": "Behaviour is specified as examples: Given a context, When an event happens, Then an observable outcome.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "testing-pyramid",
+      "tier": "vocabulary",
+      "intents": ["verify", "review"],
+      "defaults": ["verify", "review"],
+      "summary": "Many fast unit tests, fewer integration tests, few end-to-end tests; each behaviour tested at the lowest level that shows it.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "kiss-principle",
+      "tier": "vocabulary",
+      "intents": ["implement", "review"],
+      "defaults": ["implement", "review"],
+      "summary": "Prefer the simplest design that meets the requirement; add complexity only for a present need.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
     },
     {
       "id": "clean-code",

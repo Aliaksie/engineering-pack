@@ -200,6 +200,75 @@ fn a_route_shows_only_the_standards_its_work_falls_under() {
 }
 
 #[test]
+fn craft_defaults_are_opt_in_advised_and_yield_to_the_project() {
+    let mut project = settings(json!([]));
+    assert!(
+        select(&project, &work("story", &[], &[])).is_empty(),
+        "no defaults unless the project turns them on"
+    );
+    project["anchors"]["defaults"] = json!(true);
+    let story = select(&project, &work("story", &[], &[]));
+    assert_eq!(ids(&story), ["invest", "moscow"]);
+    assert!(
+        story
+            .iter()
+            .all(|s| s["level"] == "advise" && s["default"] == true)
+    );
+    assert!(
+        story
+            .iter()
+            .all(|s| s["summary"].as_str().is_some_and(|s| !s.is_empty()))
+    );
+    assert_eq!(
+        ids(&select(&project, &work("plan", &[], &[]))),
+        ["adr-according-to-nygard"]
+    );
+    assert_eq!(
+        ids(&select(&project, &work("review", &[], &[]))),
+        ["testing-pyramid", "kiss-principle"]
+    );
+    assert!(select(&project, &work("explore", &[], &[])).is_empty());
+
+    project["anchors"]["disables"] = json!(["moscow", "nygard-adr"]);
+    assert_eq!(ids(&select(&project, &work("story", &[], &[]))), ["invest"]);
+    assert!(
+        select(&project, &work("plan", &[], &[])).is_empty(),
+        "an alias disables its canonical id"
+    );
+
+    project["standards"] =
+        json!([{"id": "decisions", "anchor": "madr", "scope": {"paths": ["docs/decisions"]}}]);
+    project["anchors"]["disables"] = json!([]);
+    assert_eq!(
+        ids(&select(&project, &work("plan", &[], &[]))),
+        ["decisions"],
+        "a declared standard for the kind of work replaces the defaults: no Nygard in a MADR repo"
+    );
+    project["standards"] =
+        json!([{"id": "pyramid", "anchor": "testing-pyramid", "scope": {"intents": ["verify"]}}]);
+    assert_eq!(
+        ids(&select(&project, &work("review", &[], &[]))),
+        ["kiss-principle"],
+        "an anchor the project already names is not added again"
+    );
+    project["standards"] = json!([]);
+    project["anchors"]["loaded"] =
+        json!([{"id": "invest", "summary": "Our story rules", "source": "a.json"}]);
+    assert_eq!(
+        select(&project, &work("story", &[], &[]))[0]["summary"],
+        "Our story rules"
+    );
+
+    project["anchors"]["loaded"] = json!([]);
+    project["routing"]["standardChecks"] = json!(true);
+    assert!(
+        commit_checks(&project).is_empty()
+            && file_checks(&project, "docs/adr/0001-x.md").is_empty(),
+        "a default is never checked"
+    );
+}
+
+#[test]
 fn product_and_architecture_work_reach_their_standards_without_files() {
     let settings = settings(json!([
         {"id": "ui-only", "file": "docs/ui.md", "scope": {"modules": ["console"]}},
