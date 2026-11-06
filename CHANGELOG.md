@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Task continuation guidance requires an ownership handoff or explicit reassignment before
+  taking over another session's work; stale receipts do not imply its tools have stopped.
+
 - Debugging guidance keeps diagnosis separate from authorization to repair. Existing guidance
   adds risk-based test-case selection, frontend performance investigation and transition limits,
   reliability-measure boundaries, and evidence-based story priorities and success measures.
