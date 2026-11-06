@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Debugging guidance keeps diagnosis separate from authorization to repair. Existing guidance
+  adds risk-based test-case selection, frontend performance investigation and transition limits,
+  reliability-measure boundaries, and evidence-based story priorities and success measures.
+
 - Review guidance loads pull-request follow-up details only when needed through a linked reference.
 
 - Testing guidance describes investigation of unexpected behavior as well as failing checks.
