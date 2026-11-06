@@ -480,6 +480,98 @@ pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
         .collect()
 }
 
+/// The module-dependency checks for a source file just written: standards whose anchor
+/// reads imports, narrowed by a declared `scope.paths`. Whether the file's module is checked
+/// at all is decided with the imports, in `dependency_verdicts`.
+pub fn import_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
+    checked(settings, Input::Imports)
+        .into_iter()
+        .filter(|(standard, _)| {
+            let paths = listed(standard, "paths");
+            paths.is_empty() || paths.iter().any(|path| member(file, &prefix(path)))
+        })
+        .map(|(standard, anchor)| planned(standard, anchor))
+        .collect()
+}
+
+/// One import a written source file adds, as the application resolved it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Import {
+    /// 1-based.
+    pub line: usize,
+    /// The import as written.
+    pub target: String,
+    /// The project-relative file or directory it names; `None` when it is not resolvable
+    /// (a third-party package, an alias, an unsupported language), which is never a finding.
+    pub resolved: Option<String>,
+}
+
+/// The one declared module that owns `path`, or `None` when none or several (equally long
+/// paths) do.
+fn owner(settings: &Value, path: &str) -> Option<Value> {
+    let mut owners = crate::routing::matching_modules(settings, &[path.to_owned()]);
+    (owners.len() == 1).then(|| owners.remove(0))
+}
+
+/// Whether `file` lies in exactly one declared module that declares `dependsOn`, so the
+/// imports it adds are worth resolving.
+pub fn guards_dependencies(settings: &Value, file: &str) -> bool {
+    owner(settings, file).is_some_and(|module| module["dependsOn"].is_array())
+}
+
+/// Results of `checks` over the imports `file` adds: an import whose resolved path lies in
+/// another declared module that the file's module does not list in `dependsOn`. A module
+/// without an explicit `dependsOn` is not checked, so partial declarations stay quiet.
+pub fn dependency_verdicts(
+    settings: &Value,
+    checks: &[Check],
+    file: &str,
+    imports: &[Import],
+) -> Vec<Value> {
+    let Some(module) = owner(settings, file) else {
+        return Vec::new();
+    };
+    let Some(allowed) = module.get("dependsOn").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    let name = module["name"].as_str().unwrap_or_default();
+    let mut findings = Vec::new();
+    for import in imports {
+        let Some(target) = import
+            .resolved
+            .as_deref()
+            .and_then(|path| owner(settings, path))
+        else {
+            continue;
+        };
+        let other = target["name"].as_str().unwrap_or_default();
+        if other == name || allowed.iter().any(|item| item == other) {
+            continue;
+        }
+        findings.push(json!({
+            "rule": "undeclared-dependency",
+            "line": import.line,
+            "message": format!(
+                "imports {} from module {other}; module {name} does not declare dependsOn {other}",
+                import.target
+            ),
+        }));
+    }
+    if findings.is_empty() {
+        return Vec::new();
+    }
+    checks
+        .iter()
+        .map(|planned| {
+            json!({
+                "standard": planned.standard,
+                "anchor": planned.anchor,
+                "findings": findings,
+            })
+        })
+        .collect()
+}
+
 /// The anchor checks for a commit message.
 pub fn commit_checks(settings: &Value) -> Vec<Check<'_>> {
     checked(settings, Input::CommitMessage)

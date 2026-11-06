@@ -65,11 +65,13 @@ impl Tier {
     }
 }
 
-/// What a check reads: a commit message, or a file written in the standard's scope.
+/// What a check reads: a commit message, a file written in the standard's scope, or the
+/// imports a written source file adds, resolved to declared modules.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Input {
     CommitMessage,
     File,
+    Imports,
 }
 
 /// Where an anchor's definition came from.
@@ -101,7 +103,8 @@ pub struct Anchor {
     pub aliases: Vec<String>,
     pub source: Source,
     pub tier: Tier,
-    /// The deterministic check, for structure anchors.
+    /// The deterministic check: over text for structure anchors, over project facts for facts
+    /// anchors.
     pub check: Option<String>,
     /// Route intents the standard applies to when the consumer declares no scope.intents; empty = any.
     pub intents: Vec<String>,
@@ -223,9 +226,15 @@ fn parse_overlay_entry(value: &Value) -> Result<Anchor> {
             anchor.id
         ));
     }
-    if (anchor.tier == Tier::Structure) != anchor.check.is_some() {
+    let expected = match anchor.tier {
+        Tier::Structure => Some(false),
+        Tier::Facts => Some(true),
+        Tier::Vocabulary | Tier::Refused => None,
+    };
+    let reads_facts = anchor.input().map(|input| input == Input::Imports);
+    if expected != reads_facts {
         return Err(format!(
-            "anchor {}: structure anchors, and only they, name a check",
+            "anchor {}: structure anchors name a text check, facts anchors a facts check, others none",
             anchor.id
         ));
     }
@@ -426,10 +435,10 @@ fn parse_project_entry(
         id,
         aliases: Vec::new(),
         source: Source::Project(source.to_owned()),
-        tier: if check.is_some() {
-            Tier::Structure
-        } else {
-            Tier::Vocabulary
+        tier: match check.as_deref().map(checks::input) {
+            Some(Input::Imports) => Tier::Facts,
+            Some(_) => Tier::Structure,
+            None => Tier::Vocabulary,
         },
         check,
         intents: declared,

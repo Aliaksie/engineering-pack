@@ -1,4 +1,4 @@
-//! Deterministic checks for structure-tier anchors. The model is shown a one-line
+//! Deterministic checks for structure-tier anchors (and the id of the facts-tier module check, which reads resolved imports in `standards`). The model is shown a one-line
 //! summary instead of the standard's text, so each check holds only the elements both models
 //! listed as required when asked for the name alone; informational and divergent elements
 //! (ADR section order, changelog title, bump level without a declared change kind) stay out.
@@ -16,14 +16,16 @@ pub const CHECKS: &[&str] = &[
     "gherkin",
     "ears",
     "connextra",
+    "module-dependencies",
 ];
 
-/// What the check named `name` reads: the commit message for commit checks, else a file.
+/// What the check named `name` reads: the commit message for commit checks, the imports a
+/// source file adds for the module check, else a file.
 pub fn input(name: &str) -> super::Input {
-    if name == "conventional-commits" {
-        super::Input::CommitMessage
-    } else {
-        super::Input::File
+    match name {
+        "conventional-commits" => super::Input::CommitMessage,
+        "module-dependencies" => super::Input::Imports,
+        _ => super::Input::File,
     }
 }
 
@@ -58,6 +60,11 @@ pub fn check(name: &str, text: &str, path: Option<&str>) -> Vec<Finding> {
         "gherkin" => gherkin(text),
         "ears" => ears(text),
         "connextra" => connextra(text),
+        "module-dependencies" => vec![finding(
+            "needs-facts",
+            None,
+            "module-dependencies reads resolved imports, not text",
+        )],
         _ => vec![finding(
             "unknown-anchor",
             None,

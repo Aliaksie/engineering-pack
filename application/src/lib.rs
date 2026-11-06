@@ -8,6 +8,7 @@ pub mod cli;
 mod control;
 mod delegation;
 mod delivery;
+mod dependencies;
 mod discovery;
 mod evidence;
 mod failure;

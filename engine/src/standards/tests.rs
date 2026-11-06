@@ -377,3 +377,96 @@ fn shell_commands_that_commit_are_recognized() {
         assert!(!commits(command), "{command}");
     }
 }
+
+fn rings(standards: Value) -> Value {
+    json!({
+        "modules": [
+            {"name": "domain", "path": "src/domain", "dependsOn": []},
+            {"name": "app", "path": "src/app", "dependsOn": ["domain"]},
+            {"name": "web", "path": "src/web", "dependsOn": ["app", "domain"]},
+            {"name": "tools", "path": "tools"}
+        ],
+        "standards": standards,
+    })
+}
+
+fn import(line: usize, target: &str, resolved: Option<&str>) -> Import {
+    Import {
+        line,
+        target: target.into(),
+        resolved: resolved.map(str::to_owned),
+    }
+}
+
+#[test]
+fn module_dependency_checks_report_only_undeclared_edges() {
+    let project = rings(json!([{"id": "rings", "anchor": "hexagonal-architecture"}]));
+    assert_eq!(
+        anchors::resolve(&project, "ports-and-adapters").map(|a| a.tier),
+        Some(Tier::Facts)
+    );
+    assert_eq!(level(&project, &project["standards"][0]), "check");
+    let checks = import_checks(&project, "src/domain/order.ts");
+    assert_eq!(
+        checks
+            .iter()
+            .map(|c| (c.standard, c.check.as_str()))
+            .collect::<Vec<_>>(),
+        [("rings", "module-dependencies")]
+    );
+    assert!(file_checks(&project, "src/domain/order.ts").is_empty());
+    let imports = [
+        import(1, "./money", Some("src/domain/money")),
+        import(2, "../web/http", Some("src/web/http")),
+        import(3, "lodash", None),
+        import(4, "../../tools/gen", Some("tools/gen")),
+    ];
+    let found = dependency_verdicts(&project, &checks, "src/domain/order.ts", &imports);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0]["standard"], "rings");
+    let findings = found[0]["findings"].as_array().unwrap();
+    assert_eq!(
+        findings
+            .iter()
+            .map(|f| (f["line"].as_u64().unwrap(), f["rule"].as_str().unwrap()))
+            .collect::<Vec<_>>(),
+        [(2, "undeclared-dependency"), (4, "undeclared-dependency")]
+    );
+    assert!(
+        findings[0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("module web")
+    );
+    // Inward edges are declared; a module without dependsOn is not checked at all.
+    let inward = [import(1, "../domain/order", Some("src/domain/order"))];
+    assert!(dependency_verdicts(&project, &checks, "src/web/routes.ts", &inward).is_empty());
+    let outward = [import(1, "../src/web/http", Some("src/web/http"))];
+    assert!(!guards_dependencies(&project, "tools/gen.ts"));
+    assert!(dependency_verdicts(&project, &checks, "tools/gen.ts", &outward).is_empty());
+    assert!(!guards_dependencies(&project, "README.md"));
+}
+
+#[test]
+fn module_dependency_checks_follow_scope_and_project_anchors() {
+    let scoped = rings(json!([
+        {"id": "rings", "anchor": "clean-architecture", "scope": {"paths": ["src/domain/"]}}
+    ]));
+    assert_eq!(import_checks(&scoped, "src/domain/a.rs").len(), 1);
+    assert!(import_checks(&scoped, "src/web/a.rs").is_empty());
+    let advised = rings(json!([
+        {"id": "rings", "anchor": "hexagonal-architecture", "level": "advise"}
+    ]));
+    assert!(import_checks(&advised, "src/domain/a.rs").is_empty());
+    // A project anchor reuses the check by naming it: the boundary rule without an
+    // architecture name.
+    let mut project = rings(json!([{"id": "boundaries", "anchor": "module-boundaries"}]));
+    project["anchors"]["loaded"] = json!([
+        {"id": "module-boundaries", "summary": "Modules import only what dependsOn lists.", "check": "module-dependencies", "source": "a.json"}
+    ]);
+    assert_eq!(
+        anchors::resolve(&project, "module-boundaries").map(|a| a.tier),
+        Some(Tier::Facts)
+    );
+    assert_eq!(import_checks(&project, "src/app/a.rs").len(), 1);
+}

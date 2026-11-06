@@ -345,18 +345,24 @@ fn standard_findings(
             return Vec::new();
         };
         let checks = standards::file_checks(settings, file);
-        if checks.is_empty() {
+        if checks.is_empty() && standards::import_checks(settings, file).is_empty() {
             return Vec::new();
         }
         let path = root.join(file);
-        let text = match std::fs::metadata(&path) {
+        let bytes = match std::fs::metadata(&path) {
             Ok(meta) if meta.is_file() && meta.len() <= STANDARD_BYTES => std::fs::read(&path),
             _ => return Vec::new(),
         };
-        return text.map_or_else(
-            |_| Vec::new(),
-            |bytes| standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file)),
-        );
+        let Ok(bytes) = bytes else {
+            return Vec::new();
+        };
+        let mut found = if checks.is_empty() {
+            Vec::new()
+        } else {
+            standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file))
+        };
+        found.extend(crate::dependencies::verdicts(root, settings, file, &bytes));
+        return found;
     }
     let checks = standards::commit_checks(settings);
     if checks.is_empty() || !event.command.is_some_and(standards::commits) {
