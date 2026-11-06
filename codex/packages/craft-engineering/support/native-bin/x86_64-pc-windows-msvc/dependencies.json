@@ -1,5 +1,5 @@
 {
-  "scope": "current-target resolved graph including build dependencies",
+  "scope": "current-target resolved graph including build dependencies, and data the executable embeds",
   "packages": [
     {
       "name": "aho-corasick",
@@ -664,6 +664,17 @@
       "repository": "https://github.com/dtolnay/zmij",
       "notices": [
         "notices/zmij-1.0.23/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "semantic-anchors",
+      "version": "1fd328552aae6d70141cfbbf156c903e29987b3d",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/LLM-Coding/Semantic-Anchors",
+      "kind": "data",
+      "notices": [
+        "notices/semantic-anchors/LICENSE",
+        "notices/semantic-anchors/NOTICE"
       ]
     }
   ]

@@ -185,17 +185,9 @@
             "description": "Project-relative folder of standard documents."
           },
           "anchor": {
-            "enum": [
-              "conventional-commits",
-              "keep-a-changelog",
-              "semver",
-              "nygard-adr",
-              "madr",
-              "gherkin",
-              "ears",
-              "connextra"
-            ],
-            "description": "An established standard by name; Craft checks its required elements deterministically."
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "An established standard by name: a Semantic Anchors catalog id, a Craft alias such as semver, or an id from the project's anchor catalogs. Names with a Craft check are checked deterministically; others are advised or reviewed."
           },
           "summary": {
             "type": "string",
@@ -311,6 +303,34 @@
         }
       },
       "description": "Project standards: consumer-owned declarations routed by scope and, for anchors, checked without a model."
+    },
+    "anchors": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the project's own anchors come from and which Craft defaults apply. A project entry replaces the built-in entry with the same id.",
+      "properties": {
+        "catalogs": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Project-relative anchor catalog files, read in order; a later file wins on the same id. Each holds {\"anchors\": [{id, title?, summary?, checklist?, check?, intents?, targets?}]}."
+        },
+        "defaults": {
+          "type": "boolean",
+          "description": "Whether Craft adds its anchors for the kind of work to routes, advised and never checked; off unless true. A declared standard for the kind of work replaces them."
+        },
+        "disables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "description": "Anchors Craft must not add as defaults."
+        }
+      }
     },
     "services": {
       "type": "object",

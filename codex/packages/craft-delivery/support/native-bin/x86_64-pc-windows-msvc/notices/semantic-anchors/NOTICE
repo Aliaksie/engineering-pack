@@ -1,0 +1,10 @@
+Craft embeds anchor catalog data derived from Semantic Anchors
+https://github.com/LLM-Coding/Semantic-Anchors
+Copyright the Semantic Anchors project and its contributors.
+Licensed under the Apache License, Version 2.0; see LICENSE in this directory.
+
+Source commit: 1fd328552aae6d70141cfbbf156c903e29987b3d
+Changes: catalog.json holds the header attributes (title, definition, categories, roles,
+related, proponents, tier, advisory) of the English files in docs/anchors, converted to JSON;
+related names outside the catalog are dropped. Anchor bodies, translations and upstream code
+are not included. overlay.json is Craft's own work and not part of the upstream catalog.

@@ -24,14 +24,14 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "06f396cd43c11933f7c480279bbf254fa195f9e6",
+  "sourceRevision": "09b7060283e374c70bfbb8f9fe43945e716fb3f0",
   "sourceDirty": false,
   "cargoLockSha256": "df56ef0a08a7b29e4ed4dd13376ebae36a301277b0afc39797564f6022b0a1a9",
   "files": [
     {
       "path": "dependencies.json",
-      "bytes": 20910,
-      "sha256": "d7b4e70bfeeadb738ac9bb9dcb0ac1834b6fc8e7b9c73637bbba6cc529a59628"
+      "bytes": 21286,
+      "sha256": "3cd375fa5fb7302a54dacf52a285ea19295f48f95a4bf6bcd092c9ff2c556a6f"
     },
     {
       "path": "LICENSE",
@@ -40,13 +40,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 25267328,
-      "sha256": "e0db1077d5587b4b00079eefe01905dca52ef2a4988abb95e54109184620ec40"
+      "bytes": 25515056,
+      "sha256": "06dcfe53e3d41dbbe11c0c0b7356d6e448e920d395783a4c9fd4aae662d4b36b"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "4211761dc56fb44d49c1bcf7dd2d2459097ca37b50f8e7eb1794daeef3a535a4"
+      "sha256": "7c916f4375cecd6444b2c417866d3a9343767930ca845cbf3a152aa3c7479adf"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -487,6 +487,16 @@
       "path": "notices/security-framework-sys-2.17.0/LICENSE-MIT",
       "bytes": 1081,
       "sha256": "91e934255ba3b2f21103d68c5581c23ef34aa95c4628e4405b8c901935e11c69"
+    },
+    {
+      "path": "notices/semantic-anchors/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "notices/semantic-anchors/NOTICE",
+      "bytes": 672,
+      "sha256": "6c60cd14e6d088e1eec6c5f103370c981a075fb2ca798ad76b72573055d0ad52"
     },
     {
       "path": "notices/serde_core-1.0.229/LICENSE-APACHE",
