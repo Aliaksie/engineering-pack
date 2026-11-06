@@ -7,6 +7,7 @@ use std::{fmt, fs, io, path::Path};
 pub const PROJECT_BYTES: usize = 1024 * 1024;
 pub const PREFERENCE_BYTES: usize = 65_536;
 pub const INPUT_BYTES: usize = 65_536;
+pub const ANCHOR_CATALOG_BYTES: usize = 512 * 1024;
 
 #[derive(Debug)]
 pub enum DocumentError {
@@ -66,6 +67,31 @@ pub fn project(root: &Path) -> Result<Value, DocumentError> {
         PROJECT_BYTES,
         "project configuration must be a bounded JSON file",
     )
+}
+
+/// A project anchor catalog at `relative`, a validated project-relative path. Unlike the
+/// project file it must exist, and it may not be a symlink.
+pub fn anchor_catalog(root: &Path, relative: &str) -> Result<Value, DocumentError> {
+    let file = root.join(relative);
+    match fs::symlink_metadata(&file) {
+        Ok(meta) if meta.file_type().is_symlink() => Err(DocumentError::Invalid(format!(
+            "anchor catalog {relative} may not be a symlink"
+        ))),
+        Ok(_) => bounded(
+            &file,
+            ANCHOR_CATALOG_BYTES,
+            "anchor catalog must be a bounded JSON file",
+        )
+        .map_err(|error| match error {
+            DocumentError::Invalid(message) => {
+                DocumentError::Invalid(format!("anchor catalog {relative}: {message}"))
+            }
+            other => other,
+        }),
+        Err(_) => Err(DocumentError::Invalid(format!(
+            "anchor catalog {relative} not found"
+        ))),
+    }
 }
 
 /// Private preferences, or `{}` when absent. On POSIX the file and its folder must be

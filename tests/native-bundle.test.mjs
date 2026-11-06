@@ -33,6 +33,10 @@ test('native bundle works after relocation with checked notices and no Node runt
     assert.ok(dependency?.notices.length);
     for (const notice of dependency.notices) assert.ok(fs.readFileSync(path.join(bundle, notice), 'utf8').length > 100);
   }
+  const anchors = dependencies.packages.find(pkg => pkg.name === 'semantic-anchors');
+  assert.equal(anchors?.license, 'Apache-2.0');
+  assert.match(fs.readFileSync(path.join(bundle, 'notices/semantic-anchors/NOTICE'), 'utf8'), new RegExp(anchors.version));
+  assert.match(fs.readFileSync(path.join(bundle, 'notices/semantic-anchors/LICENSE'), 'utf8'), /Apache License/);
   const sqlite = dependencies.packages.find(pkg => pkg.name === 'libsqlite3-sys');
   const sqliteNotice = sqlite.notices.find(notice => path.posix.basename(notice) === 'SQLite-NOTICE');
   assert.ok(sqliteNotice, 'bundled SQLite source notice is declared');

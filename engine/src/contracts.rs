@@ -164,6 +164,7 @@ pub fn validate_project(project: &Value) -> Result {
         "workspace",
         "evidence",
         "standards",
+        "anchors",
     ];
     let map = object(project, &fields, "project")?;
     if let Some(workspace) = map.get("workspace") {
@@ -272,6 +273,9 @@ pub fn validate_project(project: &Value) -> Result {
             .filter_map(Value::as_str)
             .collect();
         crate::standards::validate(standards, &names, &intents)?;
+    }
+    if let Some(anchors) = map.get("anchors") {
+        validate_anchor_settings(anchors)?;
     }
     if let Some(services) = map.get("services") {
         for (service, binding) in object(services, &["git", "codehost", "tasks"], "services")? {
@@ -728,12 +732,71 @@ fn merge(
 }
 
 /// Settings and value origins: bundled < user preferences < project < task overrides.
+/// `anchors` in the project: catalog files, whether Craft's defaults apply and which are off.
+fn validate_anchor_settings(anchors: &Value) -> Result {
+    let anchors = object(anchors, &["catalogs", "defaults", "disables"], "anchors")?;
+    if let Some(catalogs) = anchors.get("catalogs") {
+        let files = catalogs
+            .as_array()
+            .filter(|files| files.len() <= crate::anchors::MAX_CATALOGS)
+            .ok_or_else(|| {
+                format!(
+                    "anchors.catalogs must be an array of at most {} files",
+                    crate::anchors::MAX_CATALOGS
+                )
+            })?;
+        for file in files {
+            relative_file(file).map_err(|error| format!("anchors.catalogs: {error}"))?;
+        }
+    }
+    boolean(anchors.get("defaults"), "anchors.defaults must be boolean")?;
+    if let Some(disables) = anchors.get("disables") {
+        let names = disables
+            .as_array()
+            .ok_or("anchors.disables must be an array of anchor names")?;
+        if names.iter().any(|name| !name.as_str().is_some_and(kebab)) {
+            return Err("anchors.disables entries must be kebab-case anchor names".into());
+        }
+    }
+    Ok(())
+}
+
+/// The project catalog files `anchors.catalogs` lists, in order, for the application to read.
+pub fn anchor_catalogs(project: &Value) -> Vec<String> {
+    project["anchors"]["catalogs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|file| relative_file(file).ok())
+        .collect()
+}
+
 pub fn effective_settings(
     project: &Value,
     preferences: &Value,
     overrides: &Value,
 ) -> Result<Value> {
+    effective_settings_with(project, preferences, overrides, &[])
+}
+
+/// Effective settings with the project's anchor catalogs: each `(path, document)` that
+/// `anchor_catalogs` named, read by the caller. Their entries become `anchors.loaded`.
+pub fn effective_settings_with(
+    project: &Value,
+    preferences: &Value,
+    overrides: &Value,
+    catalogs: &[(String, Value)],
+) -> Result<Value> {
     validate_project(project)?;
+    let declared = anchor_catalogs(project);
+    if catalogs.len() != declared.len()
+        || catalogs
+            .iter()
+            .zip(&declared)
+            .any(|((path, _), file)| path != file)
+    {
+        return Err("anchor catalogs do not match anchors.catalogs".into());
+    }
     let defaults = default_settings();
     validate_settings(preferences, &defaults, "preferences")?;
     validate_settings(overrides, &defaults, "overrides")?;
@@ -774,6 +837,18 @@ pub fn effective_settings(
     {
         return Err("context thresholds must satisfy elevatedAt < compactAt < restartAt".into());
     }
+    let mut settings = Value::Object(settings);
+    if !catalogs.is_empty() {
+        let routing = crate::routing::catalog::catalog()?;
+        let intents: Vec<&str> = routing["intents"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        settings["anchors"]["loaded"] = crate::anchors::load(catalogs, &intents)?;
+    }
+    crate::standards::validate_anchors(&settings)?;
     Ok(json!({
         "settings": settings,
         "origins": origins,

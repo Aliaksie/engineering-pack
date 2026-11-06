@@ -460,6 +460,44 @@ fn written(root: &Path, extra: Value) -> Value {
 }
 
 #[test]
+fn a_project_catalog_anchor_reuses_a_craft_check_on_its_own_files() {
+    let fixture = project(
+        "standards-catalog",
+        Some(
+            r#"{"formatVersion":1,"anchors":{"catalogs":[".craft/anchors.json"]},
+            "standards":[{"id":"decisions","anchor":"acme-adr","scope":{"paths":["decisions"]}}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    fs::write(
+        root.join(".craft/anchors.json"),
+        r#"{"anchors":[{"id":"acme-adr","title":"ACME decision record","check":"nygard-adr"}]}"#,
+    )
+    .unwrap();
+    fs::create_dir_all(root.join("decisions")).unwrap();
+    fs::write(
+        root.join("decisions/0001-store.md"),
+        "# 1. Store\n\nWe chose X.\n",
+    )
+    .unwrap();
+    let edit =
+        json!({"tool": "edit", "file": root.join("decisions/0001-store.md").to_string_lossy()});
+    let found = written(root, edit);
+    assert_eq!(found["standards"][0]["standard"], "decisions");
+    assert_eq!(found["standards"][0]["anchor"], "acme-adr");
+
+    fs::remove_file(root.join(".craft/anchors.json")).unwrap();
+    let edit =
+        json!({"tool": "edit", "file": root.join("decisions/0001-store.md").to_string_lossy()});
+    let missing = written(root, edit);
+    assert_eq!(
+        missing["decision"], "allow",
+        "a broken catalog never blocks the tool"
+    );
+    assert!(missing.get("standards").is_none());
+}
+
+#[test]
 fn a_written_file_that_misses_a_declared_standard_is_reported_in_the_tool_result() {
     let fixture = project("standards-file", Some(STANDARDS));
     let root = &fixture.0;

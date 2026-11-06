@@ -1,0 +1,133 @@
+{
+  "tiers": {
+    "structure": "Required elements are checkable from the text; Craft checks them without a model.",
+    "facts": "Checkable from facts Craft already holds about the project.",
+    "vocabulary": "Shared meaning that no structure shows; named in scope, never reported as verified.",
+    "refused": "Not offered as a built-in: models do not agree on what the name requires."
+  },
+  "anchors": [
+    {
+      "id": "conventional-commits",
+      "tier": "structure",
+      "check": "conventional-commits",
+      "intents": [],
+      "defaults": ["implement"],
+      "targets": [],
+      "summary": "Commit messages follow Conventional Commits 1.0.0: `type(scope)!: description`, a blank line before the body, hyphenated footer tokens except `BREAKING CHANGE`.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "keep-a-changelog",
+      "tier": "structure",
+      "check": "keep-a-changelog",
+      "intents": [],
+      "targets": ["CHANGELOG.md"],
+      "summary": "CHANGELOG.md follows Keep a Changelog 1.1.0: `## [Unreleased]` first, then `## [X.Y.Z] - YYYY-MM-DD` newest first, grouped under Added/Changed/Deprecated/Removed/Fixed/Security.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "semantic-versioning",
+      "aliases": ["semver"],
+      "tier": "structure",
+      "check": "semver",
+      "intents": [],
+      "targets": ["CHANGELOG.md", "package.json", "Cargo.toml", "pyproject.toml"],
+      "summary": "Versions follow Semantic Versioning 2.0.0: MAJOR.MINOR.PATCH without leading zeros; breaking change bumps major, feature minor, fix patch.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "adr-according-to-nygard",
+      "aliases": ["nygard-adr"],
+      "tier": "structure",
+      "check": "nygard-adr",
+      "intents": ["plan"],
+      "defaults": ["plan"],
+      "targets": [],
+      "summary": "ADRs follow Michael Nygard's format: numbered title; Context, Decision, Status (proposed/accepted/deprecated/superseded) and Consequences sections.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "madr",
+      "tier": "structure",
+      "check": "madr",
+      "intents": ["plan"],
+      "targets": [],
+      "summary": "ADRs follow MADR in `NNNN-title-with-dashes.md`: title, Context and Problem Statement, Considered Options, Decision Outcome.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "gherkin",
+      "tier": "structure",
+      "check": "gherkin",
+      "intents": ["story", "verify"],
+      "targets": [".feature"],
+      "summary": "Specifications are Gherkin: one Feature per file, scenarios with Given/When/Then steps, Scenario Outlines with Examples naming every <placeholder>.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "ears-requirements",
+      "aliases": ["ears"],
+      "tier": "structure",
+      "check": "ears",
+      "intents": ["story"],
+      "targets": [],
+      "summary": "Requirements use EARS: [Where <feature>,] [While <state>,] [When <event>, | If <condition>, then] the <system> shall <response>.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "connextra-user-story",
+      "aliases": ["connextra"],
+      "tier": "structure",
+      "check": "connextra",
+      "intents": ["story"],
+      "targets": [],
+      "summary": "User stories use the Connextra form: As a <role>, I want <goal>, so that <benefit>.",
+      "evidence": "Claude and Codex listed the same required elements for the name alone (2026-11-05)."
+    },
+    {
+      "id": "invest",
+      "tier": "vocabulary",
+      "intents": ["story"],
+      "defaults": ["story"],
+      "summary": "Stories are Independent, Negotiable, Valuable, Estimable, Small and Testable.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "moscow",
+      "tier": "vocabulary",
+      "intents": ["story"],
+      "defaults": ["story"],
+      "summary": "Requirements are prioritised as Must have, Should have, Could have and Won't have this time.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "bdd-given-when-then",
+      "tier": "vocabulary",
+      "intents": ["verify"],
+      "defaults": ["verify"],
+      "summary": "Behaviour is specified as examples: Given a context, When an event happens, Then an observable outcome.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "testing-pyramid",
+      "tier": "vocabulary",
+      "intents": ["verify", "review"],
+      "defaults": ["verify", "review"],
+      "summary": "Many fast unit tests, fewer integration tests, few end-to-end tests; each behaviour tested at the lowest level that shows it.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "kiss-principle",
+      "tier": "vocabulary",
+      "intents": ["implement", "review"],
+      "defaults": ["implement", "review"],
+      "summary": "Prefer the simplest design that meets the requirement; add complexity only for a present need.",
+      "evidence": "Recognised by name on Claude Opus 5.5, Claude Haiku 5.5, gpt-6.1-sol and gpt-6-luna in upstream L1/L2 evaluations (2026-11-06)."
+    },
+    {
+      "id": "clean-code",
+      "tier": "refused",
+      "evidence": "Claude and Codex listed different rule sets for the name alone, with nothing structural in common (2026-11-05)."
+    }
+  ]
+}

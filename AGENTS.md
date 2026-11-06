@@ -21,6 +21,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run architecture` | Check the declared module map, dependency rules and JavaScript placement |
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
+| `npm run anchors:import -- <checkout> [--check]` | Regenerate the embedded anchor catalog from a Semantic Anchors checkout, or check it |
 | `npm run version:sync -- <x.y.z>` | Set the pack version and its projections; `version:check` rejects drift |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |
 | `npm run eval:audit -- <transcript.jsonl>` | Engagement card for one real Claude Code or Codex session |
@@ -30,6 +31,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run standards -- ...` | List declared project standards or run their anchor checks on files and commit messages |
+| `npm run anchors -- ...` | List the anchors a project can name with their source; `--search` reaches the embedded catalog |
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
 | `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |

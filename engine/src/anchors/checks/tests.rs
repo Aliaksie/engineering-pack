@@ -128,53 +128,6 @@ surrounding whitespace when parsing durations.
 "#;
 
 #[test]
-fn the_catalog_holds_the_eight_crisp_names_with_their_defaults() {
-    let names: Vec<&str> = ANCHORS.iter().map(|anchor| anchor.name).collect();
-    assert_eq!(
-        names,
-        [
-            "conventional-commits",
-            "keep-a-changelog",
-            "semver",
-            "nygard-adr",
-            "madr",
-            "gherkin",
-            "ears",
-            "connextra"
-        ]
-    );
-    for anchor in ANCHORS {
-        assert!(!anchor.summary.is_empty() && !anchor.summary.contains('\n'));
-    }
-    let intents = |name| find(name).unwrap().intents;
-    let targets = |name| find(name).unwrap().targets;
-    assert_eq!(intents("connextra"), ["story"]);
-    assert_eq!(intents("ears"), ["story"]);
-    assert_eq!(intents("gherkin"), ["story", "verify"]);
-    assert_eq!(intents("nygard-adr"), ["plan"]);
-    assert_eq!(intents("madr"), ["plan"]);
-    assert!(intents("conventional-commits").is_empty());
-    assert_eq!(targets("keep-a-changelog"), ["CHANGELOG.md"]);
-    assert_eq!(targets("gherkin"), [".feature"]);
-    assert_eq!(
-        targets("semver"),
-        [
-            "CHANGELOG.md",
-            "package.json",
-            "Cargo.toml",
-            "pyproject.toml"
-        ]
-    );
-    assert!(targets("nygard-adr").is_empty() && targets("ears").is_empty());
-    assert_eq!(find("madr").unwrap().input, Input::Adr);
-    assert_eq!(
-        find("conventional-commits").unwrap().input,
-        Input::CommitMessage
-    );
-    assert!(find("arc42").is_none());
-}
-
-#[test]
 fn an_unknown_name_is_a_finding_not_a_panic() {
     assert_eq!(rules("clean-code", "anything", None), ["unknown-anchor"]);
 }

@@ -2,12 +2,11 @@
 //! is kept. A declaration names a file, a folder or a known anchor; routing selects those
 //! whose scope matches the work, and anchors with a deterministic check are verified without
 //! a model. Declarations are the consumer's; nothing here reads or runs their content.
+use crate::anchors::{self, Anchor, Input, Tier};
 use crate::contracts::{LANGUAGES, LAYERS, kebab, relative_file};
 use crate::routing::member;
 use crate::values::object;
 use serde_json::{Map, Value, json};
-
-pub mod anchors;
 
 type Result<T = ()> = std::result::Result<T, String>;
 
@@ -58,19 +57,27 @@ fn source(standard: &Map<String, Value>) -> Option<(&'static str, &Value)> {
         .find_map(|kind| standard.get(*kind).map(|value| (*kind, value)))
 }
 
-/// The level a declaration is kept at: as declared, else what its form implies.
-pub fn level(standard: &Value) -> &str {
+/// The anchor a declaration names, as it resolves for the project.
+fn anchor(settings: &Value, standard: &Value) -> Option<Anchor> {
+    anchors::resolve(settings, standard["anchor"].as_str()?)
+}
+
+/// The level a declaration is kept at: as declared, else what its form implies. An anchor
+/// with a check is checked, one with a checklist reviewed, any other advised.
+pub fn level<'a>(settings: &Value, standard: &'a Value) -> &'a str {
     if let Some(level) = standard["level"].as_str() {
         return level;
     }
     if standard.get("run").is_some() {
-        "check"
-    } else if standard.get("checklist").is_some() {
-        "review"
-    } else if standard.get("anchor").is_some() {
-        "check"
-    } else {
-        "advise"
+        return "check";
+    }
+    if standard.get("checklist").is_some() {
+        return "review";
+    }
+    match anchor(settings, standard) {
+        Some(anchor) if anchor.check.is_some() => "check",
+        Some(anchor) if !anchor.checklist.is_empty() => "review",
+        _ => "advise",
     }
 }
 
@@ -117,9 +124,8 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
         }
         match source(standard) {
             Some(("anchor", name)) => {
-                let name = name.as_str().unwrap_or_default();
-                if anchors::find(name).is_none() {
-                    return Err(format!("standard {id}: unknown anchor {name}"));
+                if !name.as_str().is_some_and(kebab) {
+                    return Err(format!("standard {id}: anchor must be a kebab-case name"));
                 }
             }
             Some((_, path)) => {
@@ -134,11 +140,15 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
         }
         text(standard.get("summary"), &format!("standard {id} summary"))?;
         let level = match standard.get("level") {
-            None => level(entry),
-            Some(level) => level
-                .as_str()
-                .filter(|level| LEVELS.contains(level))
-                .ok_or_else(|| format!("standard {id} level must be advise, check or review"))?,
+            None => None,
+            Some(level) => Some(
+                level
+                    .as_str()
+                    .filter(|level| LEVELS.contains(level))
+                    .ok_or_else(|| {
+                        format!("standard {id} level must be advise, check or review")
+                    })?,
+            ),
         };
         if let Some(scope) = standard.get("scope") {
             let scope = object(scope, &SCOPE, "standard scope")?;
@@ -191,18 +201,55 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
             }
         }
         match level {
-            "check" if !standard.contains_key("run") && !standard.contains_key("anchor") => {
+            Some("check") if !standard.contains_key("run") && !standard.contains_key("anchor") => {
                 return Err(format!(
                     "standard {id}: check needs an anchor or a run command"
                 ));
             }
-            "review" if !standard.contains_key("checklist") && source(standard).is_none() => {
+            Some("review") if !standard.contains_key("checklist") && source(standard).is_none() => {
                 return Err(format!(
                     "standard {id}: review needs a checklist or a source"
                 ));
             }
             _ => {}
         }
+    }
+    Ok(())
+}
+
+/// Validate what needs the project's anchors: every named anchor resolves and is offered,
+/// a declared `check` level has a check to run, and `anchors.disables` names known anchors.
+pub fn validate_anchors(settings: &Value) -> Result {
+    anchors::anchors().map_err(|error| format!("anchor overlay: {error}"))?;
+    let offered = |name: &str, what: &str| -> Result<Anchor> {
+        match anchors::resolve(settings, name) {
+            None => Err(format!("{what}: unknown anchor {name}")),
+            Some(anchor) if anchor.tier == Tier::Refused => Err(format!(
+                "{what}: anchor {name} is not offered: {}",
+                anchor.evidence.as_deref().unwrap_or_default()
+            )),
+            Some(anchor) => Ok(anchor),
+        }
+    };
+    for standard in declared(settings) {
+        let Some(name) = standard["anchor"].as_str() else {
+            continue;
+        };
+        let id = standard["id"].as_str().unwrap_or_default();
+        let anchor = offered(name, &format!("standard {id}"))?;
+        if standard["level"] == "check" && anchor.check.is_none() && standard.get("run").is_none() {
+            return Err(format!(
+                "standard {id}: anchor {name} has no check; use advise or review"
+            ));
+        }
+    }
+    for name in settings["anchors"]["disables"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        offered(name, "anchors.disables")?;
     }
     Ok(())
 }
@@ -223,15 +270,13 @@ fn prefix(path: &str) -> String {
 }
 
 /// The intents a declaration applies to: declared, else its anchor's; empty is any.
-fn intents(standard: &Value) -> Vec<&str> {
+fn intents(settings: &Value, standard: &Value) -> Vec<String> {
     let declared = listed(standard, "intents");
     if !declared.is_empty() {
-        return declared;
+        return declared.into_iter().map(str::to_owned).collect();
     }
-    standard["anchor"]
-        .as_str()
-        .and_then(anchors::find)
-        .map(|anchor| anchor.intents.to_vec())
+    anchor(settings, standard)
+        .map(|anchor| anchor.intents)
         .unwrap_or_default()
 }
 
@@ -244,9 +289,9 @@ pub struct Work<'a> {
     pub layers: &'a [Value],
 }
 
-fn matches(standard: &Value, work: &Work) -> bool {
-    let intents = intents(standard);
-    if !intents.is_empty() && !intents.contains(&work.intent) {
+fn matches(settings: &Value, standard: &Value, work: &Work) -> bool {
+    let intents = intents(settings, standard);
+    if !intents.is_empty() && !intents.iter().any(|intent| intent == work.intent) {
         return false;
     }
     let overlap = |field: &str, values: &[Value]| {
@@ -285,19 +330,17 @@ fn matches(standard: &Value, work: &Work) -> bool {
 
 /// What a route shows for a standard: its handle, level and source, a one-line summary in
 /// place of content, and content only where it is the thing to keep (a checklist, a command).
-fn shown(standard: &Value) -> Value {
-    let mut entry = json!({"id": standard["id"], "level": level(standard)});
+fn shown(settings: &Value, standard: &Value) -> Value {
+    let mut entry = json!({"id": standard["id"], "level": level(settings, standard)});
     for kind in SOURCES {
         if let Some(value) = standard.get(kind) {
             entry[kind] = value.clone();
         }
     }
-    let summary = standard["summary"].as_str().or_else(|| {
-        standard["anchor"]
-            .as_str()
-            .and_then(anchors::find)
-            .map(|anchor| anchor.summary)
-    });
+    let anchor = anchor(settings, standard);
+    let summary = standard["summary"]
+        .as_str()
+        .or_else(|| anchor.as_ref().and_then(|anchor| anchor.summary.as_deref()));
     if let Some(summary) = summary {
         entry["summary"] = json!(summary);
     }
@@ -306,15 +349,67 @@ fn shown(standard: &Value) -> Value {
             entry[field] = value.clone();
         }
     }
+    if let Some(anchor) = anchor.filter(|anchor| !anchor.checklist.is_empty())
+        && standard.get("checklist").is_none()
+    {
+        entry["checklist"] = json!(anchor.checklist);
+    }
     entry
 }
 
-/// The declared standards a route's work falls under, in declaration order.
+/// The declared standards a route's work falls under, in declaration order, then Craft's
+/// defaults for the kind of work when the project turns them on.
 pub fn select(settings: &Value, work: &Work) -> Vec<Value> {
-    declared(settings)
+    let mut selected: Vec<Value> = declared(settings)
         .iter()
-        .filter(|standard| matches(standard, work))
-        .map(shown)
+        .filter(|standard| matches(settings, standard, work))
+        .map(|standard| shown(settings, standard))
+        .collect();
+    if settings["anchors"]["defaults"] == true {
+        selected.extend(defaults(settings, work.intent));
+    }
+    selected
+}
+
+/// Craft's anchors for `intent`, advised and never checked. The project's own word wins: a
+/// declared standard for this kind of work replaces them all, and an anchor the project
+/// disables or already names is not added. A project catalog entry with the id supplies its
+/// summary.
+fn defaults(settings: &Value, intent: &str) -> Vec<Value> {
+    let declared = declared(settings);
+    if declared
+        .iter()
+        .any(|standard| intents(settings, standard).iter().any(|i| i == intent))
+    {
+        return Vec::new();
+    }
+    let excluded: Vec<&str> = settings["anchors"]["disables"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .chain(declared.iter().map(|standard| &standard["anchor"]))
+        .filter_map(Value::as_str)
+        .map(anchors::canonical)
+        .collect();
+    anchors::anchors()
+        .unwrap_or_default()
+        .iter()
+        .filter(|anchor| anchor.defaults.iter().any(|i| i == intent))
+        .filter(|anchor| !excluded.contains(&anchor.id.as_str()))
+        .filter_map(|anchor| anchors::resolve(settings, &anchor.id))
+        .filter(|anchor| anchor.tier != Tier::Refused)
+        .map(|anchor| {
+            let mut entry = json!({
+                "id": anchor.id,
+                "level": "advise",
+                "anchor": anchor.id,
+                "default": true,
+            });
+            if let Some(summary) = anchor.summary {
+                entry["summary"] = json!(summary);
+            }
+            entry
+        })
         .collect()
 }
 
@@ -324,57 +419,72 @@ pub fn checks_enabled(settings: &Value) -> bool {
 }
 
 /// Whether `file` is one an anchor reads by default: a named file anywhere, or an extension.
-fn default_target(anchor: &anchors::Anchor, file: &str) -> bool {
+fn default_target(anchor: &Anchor, file: &str) -> bool {
     let name = file.rsplit('/').next().unwrap_or(file);
     anchor.targets.iter().any(|target| {
         if target.starts_with('.') {
-            name.ends_with(target)
+            name.ends_with(target.as_str())
         } else {
-            name == *target
+            name == target
         }
     })
 }
 
-/// The anchor checks that read `file` after it is written: `(standard id, anchor name)`.
-/// A declared `scope.paths` replaces the anchor's default targets; commit-message anchors read
-/// no files.
-pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<(&'a str, &'a str)> {
+/// One anchor check a standard asks for.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Check<'a> {
+    pub standard: &'a str,
+    /// The anchor as declared.
+    pub anchor: &'a str,
+    /// The deterministic check it runs.
+    pub check: String,
+}
+
+/// The checked standards whose anchor has a check reading `input`, with the anchor.
+fn checked(settings: &Value, input: Input) -> Vec<(&Value, Anchor)> {
     if !checks_enabled(settings) {
         return Vec::new();
     }
     declared(settings)
         .iter()
-        .filter(|standard| level(standard) == "check")
+        .filter(|standard| level(settings, standard) == "check")
         .filter_map(|standard| {
-            let name = standard["anchor"].as_str()?;
-            let anchor = anchors::find(name)?;
-            if anchor.input == anchors::Input::CommitMessage {
-                return None;
-            }
-            let paths = listed(standard, "paths");
-            let applies = if paths.is_empty() {
-                default_target(anchor, file)
-            } else {
-                paths.iter().any(|path| member(file, &prefix(path)))
-            };
-            applies.then(|| (standard["id"].as_str().unwrap_or_default(), name))
+            let anchor = anchor(settings, standard)?;
+            (anchor.input() == Some(input)).then_some((standard, anchor))
         })
         .collect()
 }
 
-/// The anchor checks for a commit message: `(standard id, anchor name)`.
-pub fn commit_checks(settings: &Value) -> Vec<(&str, &str)> {
-    if !checks_enabled(settings) {
-        return Vec::new();
+fn planned<'a>(standard: &'a Value, anchor: Anchor) -> Check<'a> {
+    Check {
+        standard: standard["id"].as_str().unwrap_or_default(),
+        anchor: standard["anchor"].as_str().unwrap_or_default(),
+        check: anchor.check.unwrap_or_default(),
     }
-    declared(settings)
-        .iter()
-        .filter(|standard| level(standard) == "check")
-        .filter_map(|standard| {
-            let name = standard["anchor"].as_str()?;
-            (anchors::find(name)?.input == anchors::Input::CommitMessage)
-                .then(|| (standard["id"].as_str().unwrap_or_default(), name))
+}
+
+/// The anchor checks that read `file` after it is written. A declared `scope.paths`
+/// replaces the anchor's default targets.
+pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
+    checked(settings, Input::File)
+        .into_iter()
+        .filter(|(standard, anchor)| {
+            let paths = listed(standard, "paths");
+            if paths.is_empty() {
+                default_target(anchor, file)
+            } else {
+                paths.iter().any(|path| member(file, &prefix(path)))
+            }
         })
+        .map(|(standard, anchor)| planned(standard, anchor))
+        .collect()
+}
+
+/// The anchor checks for a commit message.
+pub fn commit_checks(settings: &Value) -> Vec<Check<'_>> {
+    checked(settings, Input::CommitMessage)
+        .into_iter()
+        .map(|(standard, anchor)| planned(standard, anchor))
         .collect()
 }
 
@@ -407,15 +517,15 @@ pub fn commits(command: &str) -> bool {
 }
 
 /// The result of running `checks` over `text`: only failing standards, each with findings.
-pub fn verdicts(checks: &[(&str, &str)], text: &str, path: Option<&str>) -> Vec<Value> {
+pub fn verdicts(checks: &[Check], text: &str, path: Option<&str>) -> Vec<Value> {
     checks
         .iter()
-        .filter_map(|(id, anchor)| {
-            let findings = anchors::check(anchor, text, path);
+        .filter_map(|planned| {
+            let findings = anchors::checks::check(&planned.check, text, path);
             (!findings.is_empty()).then(|| {
                 json!({
-                    "standard": id,
-                    "anchor": anchor,
+                    "standard": planned.standard,
+                    "anchor": planned.anchor,
                     "findings": findings.iter().map(|f| {
                         let mut finding = json!({"rule": f.rule, "message": f.message});
                         if let Some(line) = f.line {
