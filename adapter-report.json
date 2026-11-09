@@ -61,6 +61,11 @@
           "supported": false
         },
         {
+          "id": "delegation",
+          "normalizedEvent": "agent-start",
+          "supported": false
+        },
+        {
           "id": "compact-restore",
           "normalizedEvent": "after-compact",
           "supported": false

@@ -94,6 +94,16 @@
           "handler": "deliver"
         },
         {
+          "id": "delegation",
+          "normalizedEvent": "agent-start",
+          "name": "SubagentStart",
+          "context": true,
+          "deny": false,
+          "event": "agent-start",
+          "tool": "any",
+          "handler": "deliver"
+        },
+        {
           "id": "compact-restore",
           "normalizedEvent": "after-compact",
           "name": "SessionStart",
