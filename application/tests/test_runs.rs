@@ -387,3 +387,23 @@ fn a_declared_pass_is_refused_when_the_latest_run_on_the_tree_failed() {
     repo.write("value.mjs", "export const value = 2;\n");
     assert!(verify(&repo).is_ok());
 }
+
+#[test]
+fn a_result_without_output_or_exit_code_records_nothing() {
+    let repo = Repo::new("test-runs-empty", &[("src/lib.rs", "pub fn f() {}\n")]);
+    hook(
+        "codex",
+        "after-tool",
+        shell(&repo, "cargo test", json!({"tool_response": CARGO_PASS})),
+    );
+    // Codex while the command still runs: no output, no exit code.
+    hook(
+        "codex",
+        "after-tool",
+        shell(&repo, "cargo test", json!({"tool_response": null})),
+    );
+    hook("codex", "after-tool", shell(&repo, "cargo test", json!({})));
+    let runs = runs(&repo);
+    assert_eq!(runs.len(), 1);
+    assert_eq!(runs[0]["result"], "passed");
+}

@@ -246,12 +246,6 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     {
         event["stopActive"] = json!(true);
     }
-    if event["tool"] == "shell"
-        && let Some(command) = event["command"].as_str()
-        && let Some(verdict) = test_run(payload, host, lifecycle, command)
-    {
-        event["testRun"] = verdict;
-    }
     if let Some(session) = first(payload, &["session_id", "sessionId", "conversation_id"])
         .and_then(Value::as_str)
         .filter(|s| js_length(s) <= 512)
@@ -315,6 +309,11 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
             }
             None => output = error.to_owned(),
         }
+    }
+    // A host that reported neither output nor an exit code (a command still running) says
+    // nothing about the run.
+    if output.trim().is_empty() && exit.is_none() && outcome.as_deref() != Some("failure") {
+        return None;
     }
     let mut verdict = test_runs::classify(exit, &output);
     if outcome.as_deref() == Some("failure") && verdict["result"] != "failed" {
@@ -556,12 +555,17 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
     let (payload, status, input_error) = read_payload(input);
     let observational = hook.handler == "observe";
     let enforcement = hook.shell && hook.lifecycle == "before-tool";
-    let mut result = host::run(&facts(
-        &hook,
-        &normalize(&payload, &hook.host, &hook.lifecycle),
-        status,
-    ))
-    .unwrap_or_else(|message| {
+    let mut event = normalize(&payload, &hook.host, &hook.lifecycle);
+    // Only delivery records test runs; other packages' hooks do not read the result.
+    if hook.handler == "deliver"
+        && event["tool"] == "shell"
+        && let Some(verdict) = event["command"]
+            .as_str()
+            .and_then(|command| test_run(&payload, &hook.host, &hook.lifecycle, command))
+    {
+        event["testRun"] = verdict;
+    }
+    let mut result = host::run(&facts(&hook, &event, status)).unwrap_or_else(|message| {
         // Without a runtime decision, shell enforcement still fails closed and delivery says why.
         if enforcement {
             craft_engine::delivery::failure(true, &message)
