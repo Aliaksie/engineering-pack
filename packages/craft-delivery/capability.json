@@ -86,6 +86,12 @@
       "event": "after-compact",
       "tool": "any",
       "handler": "deliver"
+    },
+    {
+      "name": "test-failure",
+      "event": "after-tool-failure",
+      "tool": "shell",
+      "handler": "deliver"
     }
   ],
   "mcp": [],

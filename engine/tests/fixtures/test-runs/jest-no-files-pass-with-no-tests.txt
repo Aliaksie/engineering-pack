@@ -1,8 +1,0 @@
-# CAPTURED (real run, not reconstructed)
-# runner-case: jest-no-files-pass-with-no-tests
-# command: npx --no-install jest --passWithNoTests nothing_matches_xyz
-# cwd: scratchpad/r4/jest
-# date: 2026-11-05T20:00:43Z
-# exit-code: 0
-# --- combined stdout+stderr below ---
-No tests found, exiting with code 0

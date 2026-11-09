@@ -62,6 +62,12 @@ Project standards:
 - Subagents that Claude Code, Codex or Copilot CLI start themselves receive the project
   standards of the delegating session's work and bound task as context. Nothing is added
   when the session has no established work or the project declares no standards.
+- Test commands the agent runs are observed from the host's tool result: the runner's summary
+  decides (`cargo`, `node --test`, pytest, unittest, vitest, jest, Maven), a run in which no
+  test executed is failed, and output Craft does not recognize is `unknown`, never passed. A
+  clean exit that ran no test is reported in the tool result; a resumed task names whether its
+  last run still matches the tree. Claude Code failure events (`PostToolUseFailure`), Cursor
+  and Copilot CLI `postToolUseFailure` are registered for this.
 - After compaction or on resume, a bound task's resume also names the `check` and `review`
   standards of its scope (the session's established work and the task's files), so hard
   rules return with the task. `advise` standards come back with routing as before.

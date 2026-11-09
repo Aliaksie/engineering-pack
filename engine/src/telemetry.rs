@@ -256,6 +256,7 @@ const ENUMS: &[(&str, &[&str])] = &[
             "after-compact",
             "turn-end",
             "agent-start",
+            "after-tool-failure",
         ],
     ),
 ];

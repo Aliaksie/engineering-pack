@@ -3,12 +3,17 @@
 //! mapping table is the data the build uses to register hooks.
 use crate::host;
 use crate::telemetry::Recorder;
+use craft_engine::session::test_runs;
 use craft_engine::values::js_length;
+use craft_platform::files;
 use serde_json::{Value, json};
 use std::io::{Read, Write};
+use std::path::Path;
 
 const MAX_INPUT: usize = 65_536;
 const MAX_CONTEXT: usize = 12_000;
+/// How much of a long test output's end is read for the runner's summary.
+const RUN_TAIL_BYTES: usize = 65_536;
 const HOSTS: &str = include_str!("../../hosts/hooks.json");
 
 pub struct Wire {
@@ -241,6 +246,12 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     {
         event["stopActive"] = json!(true);
     }
+    if event["tool"] == "shell"
+        && let Some(command) = event["command"].as_str()
+        && let Some(verdict) = test_run(payload, host, lifecycle, command)
+    {
+        event["testRun"] = verdict;
+    }
     if let Some(session) = first(payload, &["session_id", "sessionId", "conversation_id"])
         .and_then(Value::as_str)
         .filter(|s| js_length(s) <= 512)
@@ -248,6 +259,69 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
         event["session"] = json!(session);
     }
     event
+}
+
+/// The runner's verdict on a test command the host just ran, from the tool result it reports.
+/// Hosts differ: Claude reports success and failure as separate events (the failure's
+/// `error` starts with `Exit code N`) and keeps a long output in a file whose end holds the
+/// summary; Codex passes the output text without an exit code. A host event declared as a
+/// failure fails the run whatever its output says.
+fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Option<Value> {
+    if !matches!(lifecycle, "after-tool" | "after-tool-failure")
+        || !test_runs::is_test_command(command)
+    {
+        return None;
+    }
+    let outcome = mapping(host, lifecycle).and_then(|m| m["outcome"].as_str().map(str::to_owned));
+    let mut exit = (outcome.as_deref() == Some("success")).then_some(0);
+    let mut output = String::new();
+    match first(
+        payload,
+        &["tool_response", "tool_output", "toolResult", "tool_result"],
+    ) {
+        Some(Value::String(text)) => output.clone_from(text),
+        Some(Value::Object(response)) => {
+            if let Some(path) = response.get("persistedOutputPath").and_then(Value::as_str)
+                && let Ok(tail) = files::read_tail(Path::new(path), RUN_TAIL_BYTES)
+            {
+                output = String::from_utf8_lossy(&tail).into_owned();
+            }
+            if output.is_empty() {
+                for key in ["stdout", "output", "textResultForLlm", "stderr"] {
+                    if let Some(text) = response.get(key).and_then(Value::as_str) {
+                        output.push_str(text);
+                        output.push('\n');
+                    }
+                }
+            }
+            if let Some(code) = ["exit_code", "exitCode"]
+                .iter()
+                .find_map(|key| response.get(*key).and_then(Value::as_i64))
+            {
+                exit = Some(code);
+            }
+        }
+        _ => {}
+    }
+    if let Some(error) = payload["error"].as_str() {
+        let (head, rest) = error.split_once('\n').unwrap_or((error, ""));
+        match head
+            .strip_prefix("Exit code ")
+            .and_then(|code| code.trim().parse().ok())
+        {
+            Some(code) => {
+                exit = Some(code);
+                output = rest.to_owned();
+            }
+            None => output = error.to_owned(),
+        }
+    }
+    let mut verdict = test_runs::classify(exit, &output);
+    if outcome.as_deref() == Some("failure") && verdict["result"] != "failed" {
+        verdict["result"] = json!("failed");
+        verdict["reason"] = json!("tool-failed");
+    }
+    Some(verdict)
 }
 
 /// Facts for the native `host` handler; only shell-scoped hooks and delivery receive the
@@ -268,6 +342,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
         facts["pattern"] = event["pattern"].clone();
         if event["tool"] == "shell" {
             facts["command"] = event["command"].clone();
+        }
+        if let Some(run) = event.get("testRun") {
+            facts["testRun"] = run.clone();
         }
         if event["stopActive"] == true {
             facts["stopActive"] = json!(true);
@@ -323,6 +400,17 @@ fn session_line(session: &Value) -> String {
 fn standards_line(found: &Value) -> String {
     format!(
         "Project standards not met by what was just written (deterministic anchor check; report only, fix or tell the user why not): {found}"
+    )
+}
+
+/// A test run that exited cleanly without running a test.
+fn tests_line(run: &Value) -> String {
+    let summary = json!({
+        "runner": run["runner"], "reason": run["reason"], "executed": run["executed"],
+        "skipped": run["skipped"], "command": run["command"],
+    });
+    format!(
+        "Craft test evidence: the test command just run executed no test, so it verifies nothing (a filter or skip matched everything). Run tests that exercise the change before reporting them as passing: {summary}"
     )
 }
 
@@ -382,6 +470,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             result.get("context").map(|c| render(c, host)),
             result.get("standards").map(standards_line),
             result.get("delegation").map(delegation_line),
+            result.get("tests").map(tests_line),
         ];
         bounded(
             parts

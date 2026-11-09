@@ -1,6 +1,7 @@
 //! Real runner outputs (captured, scratch paths replaced) and the verdict each must get:
 //! zero tests, everything skipped and unknown output are never a pass.
 use craft_engine::session::test_runs::classify;
+use serde_json::Value;
 use std::path::Path;
 
 /// `(capture, result, reason, executed)`; `None` where the summary has no counts.
@@ -78,28 +79,32 @@ const EXPECTED: &[(&str, &str, &str, Option<u64>)] = &[
     ),
 ];
 
-/// The capture's exit code and output (everything after the header).
+fn captures() -> Vec<Value> {
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures/test-runs.json");
+    let text = std::fs::read_to_string(file).unwrap();
+    let doc: Value = serde_json::from_str(&text).unwrap();
+    doc["captures"].as_array().unwrap().clone()
+}
+
+/// The capture's exit code and combined output.
 fn capture(name: &str) -> (i64, String) {
-    let file =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/fixtures/test-runs/{name}.txt"));
-    let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{name}: {e}"));
-    let exit = text
-        .lines()
-        .find_map(|l| l.strip_prefix("# exit-code: "))
-        .and_then(|c| c.trim().parse().ok())
-        .unwrap_or_else(|| panic!("{name}: no exit code"));
-    let output = text
-        .split_once("# --- combined stdout+stderr below ---\n")
-        .map(|(_, output)| output.to_owned())
-        .unwrap_or_else(|| panic!("{name}: no output marker"));
-    (exit, output)
+    let found = captures()
+        .into_iter()
+        .find(|c| c["case"] == name)
+        .unwrap_or_else(|| panic!("{name}: not captured"));
+    (
+        found["exitCode"].as_i64().unwrap(),
+        found["output"].as_str().unwrap().to_owned(),
+    )
 }
 
 #[test]
 fn every_captured_runner_output_gets_its_verdict() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test-runs");
-    let captured = std::fs::read_dir(dir).unwrap().count();
-    assert_eq!(captured, EXPECTED.len(), "every capture has an expectation");
+    assert_eq!(
+        captures().len(),
+        EXPECTED.len(),
+        "every capture has an expectation"
+    );
     let mut wrong = Vec::new();
     for (name, result, reason, executed) in EXPECTED {
         let (exit, output) = capture(name);

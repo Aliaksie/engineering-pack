@@ -132,6 +132,27 @@ continuing a held one. Nothing is enforced: the agent fixes or tells the user wh
 The review runs only when the project reports debt markers, declares a `review` standard or
 checks module dependencies; `routing.stopReview: false` turns it off.
 
+## Test runs
+
+When the agent runs a test command through the host's shell tool (`cargo test`, `node --test`,
+`pytest`, `python -m unittest`, `vitest`, `jest`, Maven, and wrappers such as `npm test` or
+`npx`), Craft reads the runner's summary line from the tool result the host reports and keeps
+the verdict for the session with the source digest of the tree it ran on:
+
+- `failed` when the exit code says so, when the summary counts failures, or when no test
+  executed (`zero-tests`: a filter matched nothing; `all-skipped`). Most runners exit 0 in
+  these cases;
+- `unknown` when the output carries no summary Craft recognizes (another runner, output cut
+  before the summary, `cargo test --no-run`); never `passed`;
+- `passed` only with at least one executed test and no failures.
+
+A run that exited cleanly without executing a test is reported in the same tool result where
+the host shows tool context. A resumed task names the test status of the current tree:
+the latest run on it, or `not-run` when the tree changed since. Claude Code reports a failing
+command as `PostToolUseFailure` and keeps a long output in a file whose end Craft reads for the
+summary; Codex passes the output without an exit code, so its summary alone decides. Hosts
+that report neither output nor exit code record nothing.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:

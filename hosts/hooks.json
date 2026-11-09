@@ -19,7 +19,8 @@
       "after-tool": {
         "name": "PostToolUse",
         "context": true,
-        "deny": false
+        "deny": false,
+        "outcome": "success"
       },
       "before-prompt": {
         "name": "UserPromptSubmit",
@@ -54,6 +55,12 @@
         "name": "SubagentStart",
         "context": true,
         "deny": false
+      },
+      "after-tool-failure": {
+        "name": "PostToolUseFailure",
+        "context": false,
+        "deny": false,
+        "outcome": "failure"
       }
     }
   },
@@ -163,6 +170,12 @@
         "context": false,
         "deny": false,
         "continue": true
+      },
+      "after-tool-failure": {
+        "name": "postToolUseFailure",
+        "context": false,
+        "deny": false,
+        "outcome": "failure"
       }
     }
   },
@@ -219,6 +232,12 @@
         "name": "subagentStart",
         "context": true,
         "deny": false
+      },
+      "after-tool-failure": {
+        "name": "postToolUseFailure",
+        "context": false,
+        "deny": false,
+        "outcome": "failure"
       }
     }
   },

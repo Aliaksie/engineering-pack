@@ -1,0 +1,363 @@
+{
+ "description": "Real test-runner outputs captured 2026-11-05 (cargo 1.99.1, node 24.1.0, pytest 9.2.0, Python 3.14.6 unittest, vitest 5.1.0, jest 30.5.2, Maven 3.9.15 + surefire 3.2.5); scratch paths replaced with <scratch>. Combined stdout and stderr.",
+ "captures": [
+  {
+   "case": "cargo-empty-suite",
+   "command": "cargo test",
+   "date": "2026-11-05T19:58:44Z",
+   "exitCode": 0,
+   "output": "   Compiling r4empty v0.1.0 (<scratch>/cargo-empty)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.91s\n     Running unittests src/lib.rs (target/debug/deps/r4empty-8f3126952735b9f6)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests r4empty\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+  },
+  {
+   "case": "cargo-exact-zero",
+   "command": "cargo test -- --exact adds_nothing",
+   "date": "2026-11-05T19:58:31Z",
+   "exitCode": 0,
+   "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s\n     Running unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s\n\n   Doc-tests r4demo\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+  },
+  {
+   "case": "cargo-fail",
+   "command": "cargo test",
+   "date": "2026-11-05T19:58:30Z",
+   "exitCode": 101,
+   "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n\nrunning 3 tests\ntest tests::adds ... ok\ntest tests::adds_negative ... ok\ntest tests::fails_when_flagged ... FAILED\n\nfailures:\n\n---- tests::fails_when_flagged stdout ----\n\nthread 'tests::fails_when_flagged' (5783351) panicked at src/lib.rs:8:47:\nassertion `left == right` failed\n  left: 4\n right: 5\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::fails_when_flagged\n\ntest result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `--lib`\n"
+  },
+  {
+   "case": "cargo-filtered",
+   "command": "cargo test adds_negative",
+   "date": "2026-11-05T19:58:31Z",
+   "exitCode": 0,
+   "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s\n     Running unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n\nrunning 1 test\ntest tests::adds_negative ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s\n\n"
+  },
+  {
+   "case": "cargo-no-run",
+   "command": "cargo test --no-run",
+   "date": "2026-11-05T19:58:44Z",
+   "exitCode": 0,
+   "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s\n  Executable unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n"
+  },
+  {
+   "case": "cargo-pass",
+   "command": "cargo test",
+   "date": "2026-11-05T19:58:30Z",
+   "exitCode": 0,
+   "output": "   Compiling r4demo v0.1.0 (<scratch>/cargo)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s\n     Running unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n\nrunning 3 tests\ntest tests::adds ... ok\ntest tests::fails_when_flagged ... ok\ntest tests::adds_negative ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests r4demo\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+  },
+  {
+   "case": "cargo-zero",
+   "command": "cargo test nomatch_xyz",
+   "date": "2026-11-05T19:58:30Z",
+   "exitCode": 0,
+   "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s\n\n"
+  },
+  {
+   "case": "jest-empty-file",
+   "command": "npx --no-install jest empty/none.test.js",
+   "date": "2026-11-05T20:00:42Z",
+   "exitCode": 1,
+   "output": "FAIL empty/none.test.js\n  ● Test suite failed to run\n\n    Your test suite must contain at least one test.\n\n      at onResult (node_modules/@jest/core/build/index.js:1054:18)\n          at Array.map (<anonymous>)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.247 s\nRan all test suites matching empty/none.test.js.\n"
+  },
+  {
+   "case": "jest-fail",
+   "command": "npx --no-install jest math.test.js",
+   "date": "2026-11-05T20:00:40Z",
+   "exitCode": 1,
+   "output": "FAIL ./math.test.js\n  ● fails when flagged\n\n    expect(received).toBe(expected) // Object.is equality\n\n    Expected: 5\n    Received: 4\n\n      1 | test('adds', () => expect(1 + 2).toBe(3));\n      2 | test('adds negative', () => expect(-1 + -2).toBe(-3));\n    > 3 | test('fails when flagged', () => { if (process.env.R4_FAIL) expect(2 + 2).toBe(5); });\n        |                                                                           ^\n      4 |\n\n      at Object.toBe (math.test.js:3:75)\n\nTest Suites: 1 failed, 1 total\nTests:       1 failed, 2 passed, 3 total\nSnapshots:   0 total\nTime:        0.176 s, estimated 1 s\nRan all test suites matching math.test.js.\n"
+  },
+  {
+   "case": "jest-filtered",
+   "command": "npx --no-install jest -t negative math.test.js",
+   "date": "2026-11-05T20:00:41Z",
+   "exitCode": 0,
+   "output": "Test Suites: 1 passed, 1 total\nTests:       2 skipped, 1 passed, 3 total\nSnapshots:   0 total\nTime:        0.153 s, estimated 1 s\nRan all test suites matching math.test.js with tests matching \"negative\".\n"
+  },
+  {
+   "case": "jest-no-files-pass-with-no-tests",
+   "command": "npx --no-install jest --passWithNoTests nothing_matches_xyz",
+   "date": "2026-11-05T20:00:43Z",
+   "exitCode": 0,
+   "output": "No tests found, exiting with code 0\n"
+  },
+  {
+   "case": "jest-no-files",
+   "command": "npx --no-install jest nothing_matches_xyz",
+   "date": "2026-11-05T20:00:43Z",
+   "exitCode": 1,
+   "output": "No tests found, exiting with code 1\nRun with `--passWithNoTests` to exit with code 0\nIn <scratch>/jest\n  4 files checked.\n  testMatch: **/__tests__/**/*.?([mc])[jt]s?(x), **/?(*.)+(spec|test).?([mc])[jt]s?(x) - 2 matches\n  testPathIgnorePatterns: /node_modules/ - 4 matches\n  testRegex:  - 0 matches\nPattern: nothing_matches_xyz - 0 matches\n"
+  },
+  {
+   "case": "jest-pass",
+   "command": "npx --no-install jest math.test.js",
+   "date": "2026-11-05T20:00:39Z",
+   "exitCode": 0,
+   "output": "Test Suites: 1 passed, 1 total\nTests:       3 passed, 3 total\nSnapshots:   0 total\nTime:        0.308 s\nRan all test suites matching math.test.js.\n"
+  },
+  {
+   "case": "jest-zero-filter",
+   "command": "npx --no-install jest -t nomatch_xyz math.test.js",
+   "date": "2026-11-05T20:00:41Z",
+   "exitCode": 0,
+   "output": "Test Suites: 1 skipped, 0 of 1 total\nTests:       3 skipped, 3 total\nSnapshots:   0 total\nTime:        0.155 s, estimated 1 s\nRan all test suites matching math.test.js with tests matching \"nomatch_xyz\".\n"
+  },
+  {
+   "case": "maven-fail",
+   "command": "mvn -o -B test",
+   "date": "2026-11-05T20:01:13Z",
+   "exitCode": 1,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running r4.MathOpsTest\n[ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.041 s <<< FAILURE! -- in r4.MathOpsTest\n[ERROR] r4.MathOpsTest.failsWhenFlagged -- Time elapsed: 0.023 s <<< FAILURE!\norg.opentest4j.AssertionFailedError: expected: <5> but was: <4>\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:150)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:145)\n\tat org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:531)\n\tat r4.MathOpsTest.failsWhenFlagged(MathOpsTest.java:7)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:565)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n\n[INFO] \n[INFO] Results:\n[INFO] \n[ERROR] Failures: \n[ERROR]   MathOpsTest.failsWhenFlagged:7 expected: <5> but was: <4>\n[INFO] \n[ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  1.068 s\n[INFO] Finished at: 2026-11-05T21:01:13+01:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project r4demo: There are test failures.\n[ERROR] \n[ERROR] Please refer to <scratch>/maven/target/surefire-reports for the individual test results.\n[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n"
+  },
+  {
+   "case": "maven-filtered",
+   "command": "mvn -o -B test -Dtest=MathOpsTest#addsNegative",
+   "date": "2026-11-05T20:01:21Z",
+   "exitCode": 0,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running r4.MathOpsTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.049 s -- in r4.MathOpsTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  1.095 s\n[INFO] Finished at: 2026-11-05T21:01:21+01:00\n[INFO] ------------------------------------------------------------------------\n"
+  },
+  {
+   "case": "maven-pass",
+   "command": "mvn -o -B test",
+   "date": "2026-11-05T20:01:05Z",
+   "exitCode": 0,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running r4.MathOpsTest\n[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in r4.MathOpsTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  1.145 s\n[INFO] Finished at: 2026-11-05T21:01:05+01:00\n[INFO] ------------------------------------------------------------------------\n"
+  },
+  {
+   "case": "maven-skip-tests",
+   "command": "mvn -o -B test -DskipTests",
+   "date": "2026-11-05T20:01:22Z",
+   "exitCode": 0,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] Tests are skipped.\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  0.464 s\n[INFO] Finished at: 2026-11-05T21:01:22+01:00\n[INFO] ------------------------------------------------------------------------\n"
+  },
+  {
+   "case": "maven-zero-filter-allowed",
+   "command": "mvn -o -B test -Dtest=NoMatchXyz -Dsurefire.failIfNoSpecifiedTests=false",
+   "date": "2026-11-05T20:01:17Z",
+   "exitCode": 0,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  0.483 s\n[INFO] Finished at: 2026-11-05T21:01:17+01:00\n[INFO] ------------------------------------------------------------------------\n"
+  },
+  {
+   "case": "maven-zero-filter",
+   "command": "mvn -o -B test -Dtest=NoMatchXyz",
+   "date": "2026-11-05T20:01:15Z",
+   "exitCode": 1,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  0.498 s\n[INFO] Finished at: 2026-11-05T21:01:15+01:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project r4demo: No tests matching pattern \"NoMatchXyz\" were executed! (Set -Dsurefire.failIfNoSpecifiedTests=false to ignore this error.) -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n"
+  },
+  {
+   "case": "maven-zero-method-filter",
+   "command": "mvn -o -B test -Dtest=MathOpsTest#noMatchXyz",
+   "date": "2026-11-05T20:01:19Z",
+   "exitCode": 0,
+   "output": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -----------------------------< r4:r4demo >------------------------------\n[INFO] Building r4demo 0.1.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.3.1:resources (default-resources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/main/resources\n[INFO] \n[INFO] --- compiler:3.13.0:compile (default-compile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.3.1:testResources (default-testResources) @ r4demo ---\n[INFO] skip non existing resourceDirectory <scratch>/maven/src/test/resources\n[INFO] \n[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ r4demo ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.2.5:test (default-test) @ r4demo ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  0.896 s\n[INFO] Finished at: 2026-11-05T21:01:19+01:00\n[INFO] ------------------------------------------------------------------------\n"
+  },
+  {
+   "case": "node-empty-file",
+   "command": "node --test empty/none.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 0,
+   "output": "✔ empty/none.test.mjs (48.193708ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 53.691875\n"
+  },
+  {
+   "case": "node-fail",
+   "command": "node --test math.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 1,
+   "output": "✔ adds (0.54725ms)\n✔ adds negative (0.074167ms)\n✖ fails when flagged (0.87525ms)\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 65.093125\n\n✖ failing tests:\n\ntest at math.test.mjs:5:1\n✖ fails when flagged (0.87525ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  4 !== 5\n  \n      at TestContext.<anonymous> (file://<scratch>/node/math.test.mjs:5:68)\n      at Test.runInAsyncScope (node:async_hooks:214:14)\n      at Test.run (node:internal/test_runner/test:1062:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:752:18)\n      at Test.postRun (node:internal/test_runner/test:1191:19)\n      at Test.run (node:internal/test_runner/test:1119:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:752:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 4,\n    expected: 5,\n    operator: 'strictEqual'\n  }\n"
+  },
+  {
+   "case": "node-filtered",
+   "command": "node --test --test-name-pattern=negative math.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 0,
+   "output": "✔ adds negative (0.577458ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 66.898041\n"
+  },
+  {
+   "case": "node-no-files",
+   "command": "node --test nothing/*.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 0,
+   "output": "ℹ tests 0\nℹ suites 0\nℹ pass 0\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 4.225042\n"
+  },
+  {
+   "case": "node-pass",
+   "command": "node --test math.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 0,
+   "output": "✔ adds (0.506208ms)\n✔ adds negative (0.125333ms)\n✔ fails when flagged (0.083375ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 70.604708\n"
+  },
+  {
+   "case": "node-zero-filter-direct",
+   "command": "node --test-name-pattern=nomatch_xyz math.test.mjs",
+   "date": "2026-11-05T19:59:03Z",
+   "exitCode": 0,
+   "output": "ℹ tests 0\nℹ suites 0\nℹ pass 0\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 4.386458\n"
+  },
+  {
+   "case": "node-zero-filter-isolation-none",
+   "command": "node --test --test-isolation=none --test-name-pattern=nomatch_xyz math.test.mjs",
+   "date": "2026-11-05T19:59:03Z",
+   "exitCode": 0,
+   "output": "ℹ tests 0\nℹ suites 0\nℹ pass 0\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 10.708709\n"
+  },
+  {
+   "case": "node-zero-filter-junit",
+   "command": "node --test --test-reporter=junit --test-name-pattern=nomatch_xyz math.test.mjs",
+   "date": "2026-11-05T19:59:03Z",
+   "exitCode": 0,
+   "output": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<testsuites>\n\t<testcase name=\"math.test.mjs\" time=\"0.057352\" classname=\"test\"/>\n\t<!-- tests 1 -->\n\t<!-- suites 0 -->\n\t<!-- pass 1 -->\n\t<!-- fail 0 -->\n\t<!-- cancelled 0 -->\n\t<!-- skipped 0 -->\n\t<!-- todo 0 -->\n\t<!-- duration_ms 62.824666 -->\n</testsuites>\n"
+  },
+  {
+   "case": "node-zero-filter-tap",
+   "command": "node --test --test-reporter=tap --test-name-pattern=nomatch_xyz math.test.mjs",
+   "date": "2026-11-05T19:59:03Z",
+   "exitCode": 0,
+   "output": "TAP version 13\n1..0\n# Subtest: math.test.mjs\nok 1 - math.test.mjs\n  ---\n  duration_ms: 71.322042\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 77.326667\n"
+  },
+  {
+   "case": "node-zero-filter",
+   "command": "node --test --test-name-pattern=nomatch_xyz math.test.mjs",
+   "date": "2026-11-05T19:58:51Z",
+   "exitCode": 0,
+   "output": "✔ math.test.mjs (61.627666ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 67.2115\n"
+  },
+  {
+   "case": "pytest-all-skipped",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider test_skip.py",
+   "date": "2026-11-05T19:59:53Z",
+   "exitCode": 0,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest-skip\ncollected 2 items\n\ntest_skip.py ss                                                          [100%]\n\n============================== 2 skipped in 0.01s ==============================\n"
+  },
+  {
+   "case": "pytest-empty-dir",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider",
+   "date": "2026-11-05T19:59:46Z",
+   "exitCode": 5,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest/emptydir\ncollected 0 items\n\n============================ no tests ran in 0.01s =============================\n"
+  },
+  {
+   "case": "pytest-fail",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider test_math.py",
+   "date": "2026-11-05T19:59:45Z",
+   "exitCode": 1,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest\ncollected 3 items\n\ntest_math.py ..F                                                         [100%]\n\n=================================== FAILURES ===================================\n___________________________ test_fails_when_flagged ____________________________\n\n    def test_fails_when_flagged():\n        if os.environ.get(\"R4_FAIL\"):\n>           assert 2 + 2 == 5\nE           assert (2 + 2) == 5\n\ntest_math.py:11: AssertionError\n=========================== short test summary info ============================\nFAILED test_math.py::test_fails_when_flagged - assert (2 + 2) == 5\n========================= 1 failed, 2 passed in 0.03s ==========================\n"
+  },
+  {
+   "case": "pytest-filtered",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider -k negative test_math.py",
+   "date": "2026-11-05T19:59:46Z",
+   "exitCode": 0,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest\ncollected 3 items / 2 deselected / 1 selected\n\ntest_math.py .                                                           [100%]\n\n======================= 1 passed, 2 deselected in 0.01s ========================\n"
+  },
+  {
+   "case": "pytest-pass",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider test_math.py",
+   "date": "2026-11-05T19:59:45Z",
+   "exitCode": 0,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest\ncollected 3 items\n\ntest_math.py ...                                                         [100%]\n\n============================== 3 passed in 0.02s ===============================\n"
+  },
+  {
+   "case": "pytest-quiet-pass",
+   "command": "<scratch>/venv/bin/pytest -q -p no:cacheprovider test_math.py",
+   "date": "2026-11-05T19:59:46Z",
+   "exitCode": 0,
+   "output": "...                                                                      [100%]\n3 passed in 0.00s\n"
+  },
+  {
+   "case": "pytest-zero-filter",
+   "command": "<scratch>/venv/bin/pytest -p no:cacheprovider -k nomatch_xyz test_math.py",
+   "date": "2026-11-05T19:59:46Z",
+   "exitCode": 5,
+   "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0\nrootdir: <scratch>/pytest\ncollected 3 items / 3 deselected / 0 selected\n\n============================ 3 deselected in 0.01s =============================\n"
+  },
+  {
+   "case": "unittest-empty-discover",
+   "command": "python3 -I -m unittest discover",
+   "date": "2026-11-05T19:59:15Z",
+   "exitCode": 5,
+   "output": "\n----------------------------------------------------------------------\nRan 0 tests in 0.000s\n\nNO TESTS RAN\n"
+  },
+  {
+   "case": "unittest-fail",
+   "command": "python3 -m unittest -v test_math",
+   "date": "2026-11-05T19:59:21Z",
+   "exitCode": 1,
+   "output": "test_adds (test_math.MathTest.test_adds) ... ok\ntest_adds_negative (test_math.MathTest.test_adds_negative) ... ok\ntest_fails_when_flagged (test_math.MathTest.test_fails_when_flagged) ... FAIL\n\n======================================================================\nFAIL: test_fails_when_flagged (test_math.MathTest.test_fails_when_flagged)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"<scratch>/py/test_math.py\", line 13, in test_fails_when_flagged\n    self.assertEqual(2 + 2, 5)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^\nAssertionError: 4 != 5\n\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "case": "unittest-filtered",
+   "command": "python3 -m unittest -v -k negative test_math",
+   "date": "2026-11-05T19:59:22Z",
+   "exitCode": 0,
+   "output": "test_adds_negative (test_math.MathTest.test_adds_negative) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n"
+  },
+  {
+   "case": "unittest-import-error",
+   "command": "python3 -I -m unittest -v test_math",
+   "date": "2026-11-05T19:59:14Z",
+   "exitCode": 1,
+   "output": "test_math (unittest.loader._FailedTest.test_math) ... ERROR\n\n======================================================================\nERROR: test_math (unittest.loader._FailedTest.test_math)\n----------------------------------------------------------------------\nImportError: Failed to import test module: test_math\nTraceback (most recent call last):\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/loader.py\", line 137, in loadTestsFromName\n    module = __import__(module_name)\nModuleNotFoundError: No module named 'test_math'\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (errors=1)\n",
+   "note": "captured under the name unittest-pass; python -I left cwd off sys.path, so the module failed to import"
+  },
+  {
+   "case": "unittest-pass",
+   "command": "python3 -m unittest -v test_math",
+   "date": "2026-11-05T19:59:21Z",
+   "exitCode": 0,
+   "output": "test_adds (test_math.MathTest.test_adds) ... ok\ntest_adds_negative (test_math.MathTest.test_adds_negative) ... ok\ntest_fails_when_flagged (test_math.MathTest.test_fails_when_flagged) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n"
+  },
+  {
+   "case": "unittest-zero-filter",
+   "command": "python3 -m unittest -v -k nomatch_xyz test_math",
+   "date": "2026-11-05T19:59:22Z",
+   "exitCode": 5,
+   "output": "\n----------------------------------------------------------------------\nRan 0 tests in 0.000s\n\nNO TESTS RAN\n"
+  },
+  {
+   "case": "vitest-empty-file",
+   "command": "npx --no-install vitest run empty/none.test.js",
+   "date": "2026-11-05T20:00:15Z",
+   "exitCode": 1,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\n ❯ empty/none.test.js (0 test)\n\n⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  empty/none.test.js [ empty/none.test.js ]\nError: No test suite found in file <scratch>/vitest/empty/none.test.js\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n\n Test Files  1 failed (1)\n      Tests  no tests\n   Start at  21:00:15\n   Duration  124ms (transform 56%, import 27%, worker 16%, environment 1%)\n\n"
+  },
+  {
+   "case": "vitest-fail",
+   "command": "npx --no-install vitest run math.test.js",
+   "date": "2026-11-05T20:00:13Z",
+   "exitCode": 1,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\n ❯ math.test.js (3 tests | 1 failed) 6ms\n   × fails when flagged 4ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  math.test.js > fails when flagged\nAssertionError: expected 4 to be 5 // Object.is equality\n\n- Expected\n+ Received\n\n- 5\n+ 4\n\n ❯ math.test.js:4:75\n      2| test('adds', () => expect(1 + 2).toBe(3));\n      3| test('adds negative', () => expect(-1 + -2).toBe(-3));\n      4| test('fails when flagged', () => { if (process.env.R4_FAIL) expect(2 +…\n       |                                                                           ^\n      5|\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n\n Test Files  1 failed (1)\n      Tests  1 failed | 2 passed (3)\n   Start at  21:00:13\n   Duration  126ms (import 37%, tests 30%, transform 17%, worker 15%, environment 1%)\n\n"
+  },
+  {
+   "case": "vitest-filtered",
+   "command": "npx --no-install vitest run -t negative math.test.js",
+   "date": "2026-11-05T20:00:14Z",
+   "exitCode": 0,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\n\n Test Files  1 passed (1)\n      Tests  1 passed | 2 skipped (3)\n   Start at  21:00:14\n   Duration  118ms (import 46%, transform 23%, worker 17%, tests 13%, environment 1%)\n\n"
+  },
+  {
+   "case": "vitest-no-files-pass-with-no-tests",
+   "command": "npx --no-install vitest run --passWithNoTests nothing_matches_xyz",
+   "date": "2026-11-05T20:00:16Z",
+   "exitCode": 0,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\nNo test files found, exiting with code 0\n\nfilter: nothing_matches_xyz\ninclude: **/*.{test,spec}.?(c|m)[jt]s?(x)\nexclude:  **/node_modules/**, **/.git/**\n\n"
+  },
+  {
+   "case": "vitest-no-files",
+   "command": "npx --no-install vitest run nothing_matches_xyz",
+   "date": "2026-11-05T20:00:16Z",
+   "exitCode": 1,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\nNo test files found, exiting with code 1\n\nfilter: nothing_matches_xyz\ninclude: **/*.{test,spec}.?(c|m)[jt]s?(x)\nexclude:  **/node_modules/**, **/.git/**\n\n"
+  },
+  {
+   "case": "vitest-pass",
+   "command": "npx --no-install vitest run math.test.js",
+   "date": "2026-11-05T20:00:13Z",
+   "exitCode": 0,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\n\n Test Files  1 passed (1)\n      Tests  3 passed (3)\n   Start at  21:00:12\n   Duration  138ms (transform 49%, import 31%, worker 12%, tests 8%)\n\n"
+  },
+  {
+   "case": "vitest-zero-filter",
+   "command": "npx --no-install vitest run -t nomatch_xyz math.test.js",
+   "date": "2026-11-05T20:00:14Z",
+   "exitCode": 0,
+   "output": "\n RUN  v5.1.0 <scratch>/vitest\n\n\n Test Files  1 skipped (1)\n      Tests  3 skipped (3)\n   Start at  21:00:14\n   Duration  115ms (import 54%, worker 23%, transform 22%, environment 1%)\n\n"
+  }
+ ]
+}

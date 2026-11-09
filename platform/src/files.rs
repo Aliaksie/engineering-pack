@@ -66,6 +66,28 @@ pub fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError>
     Ok(bytes)
 }
 
+/// The last `max_bytes` of a regular file, for output whose summary comes last. Refuses
+/// special files like [`read_bounded`]; a cut first line is kept as is.
+pub fn read_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {
+    use std::io::{Seek, SeekFrom};
+    let before = fs::symlink_metadata(path).map_err(ReadError::Io)?;
+    if !before.is_file() {
+        return Err(ReadError::Bounds);
+    }
+    let mut file = File::open(path).map_err(ReadError::Io)?;
+    let opened = file.metadata().map_err(ReadError::Io)?;
+    if !opened.is_file() {
+        return Err(ReadError::Bounds);
+    }
+    let start = opened.len().saturating_sub(max_bytes as u64);
+    file.seek(SeekFrom::Start(start)).map_err(ReadError::Io)?;
+    let mut bytes = Vec::new();
+    file.take(max_bytes as u64)
+        .read_to_end(&mut bytes)
+        .map_err(ReadError::Io)?;
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,5 +145,15 @@ mod tests {
         );
         // The old reader blocks on this FIFO.
         assert!(matches!(read_bounded(&fifo, 100), Err(ReadError::Bounds)));
+    }
+
+    #[test]
+    fn a_tail_read_keeps_the_end_of_a_large_file() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("out.txt");
+        fs::write(&path, format!("{}summary line\n", "x".repeat(10_000))).unwrap();
+        assert_eq!(read_tail(&path, 13).unwrap(), b"summary line\n");
+        assert_eq!(read_tail(&path, 1 << 20).unwrap().len(), 10_013);
+        assert!(matches!(read_tail(&fixture.0, 10), Err(ReadError::Bounds)));
     }
 }

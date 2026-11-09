@@ -10,7 +10,7 @@ use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const LIFECYCLES: [&str; 8] = [
+const LIFECYCLES: [&str; 9] = [
     "session-start",
     "before-prompt",
     "before-tool",
@@ -19,6 +19,7 @@ const LIFECYCLES: [&str; 8] = [
     "after-compact",
     "turn-end",
     "agent-start",
+    "after-tool-failure",
 ];
 const INPUT_STATUSES: [&str; 4] = ["complete", "invalid", "oversized", "read-failure"];
 const TOOLS: [&str; 4] = ["shell", "edit", "read", "other"];
@@ -51,6 +52,8 @@ struct Facts<'a> {
     pattern: Option<&'a str>,
     /// The host is continuing a stop a hook already held.
     stop_active: bool,
+    /// The runner's verdict on a test command the host just ran.
+    test_run: Option<&'a Value>,
 }
 
 fn one_of<'a>(input: &'a Value, name: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -89,6 +92,11 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         prompt: optional("prompt")?,
         pattern: optional("pattern")?,
         stop_active: input["stopActive"] == true,
+        test_run: match &input["testRun"] {
+            Value::Null => None,
+            run @ Value::Object(_) => Some(run),
+            _ => return Err("invalid hook testRun".into()),
+        },
     })
 }
 
@@ -219,6 +227,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     command: facts.command.as_str(),
                     context_supported: facts.context_supported,
                     stop_active: facts.stop_active,
+                    test_run: facts.test_run,
                 };
                 delivery::run(&event, &mut recorder, &hook)
             }

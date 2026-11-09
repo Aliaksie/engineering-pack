@@ -147,7 +147,8 @@
               "before-compact",
               "after-compact",
               "turn-end",
-              "agent-start"
+              "agent-start",
+              "after-tool-failure"
             ]
           },
           "tool": {

@@ -374,6 +374,57 @@ fn file_entry(line: &str) -> bool {
             .any(|ext| name.ends_with(ext))
 }
 
+/// How many observed runs a session keeps, newest last.
+pub const KEPT_RUNS: usize = 20;
+/// How much of a command an observation keeps.
+const COMMAND_CHARS: usize = 256;
+
+/// One observed run: the verdict, the command (cut to its first characters), when, on which
+/// host, and the source digest the run saw (`null` when the tree could not be fingerprinted).
+pub fn observation(verdict: &Value, command: &str, host: &str, at: &str, source: &Value) -> Value {
+    let mut run = verdict.clone();
+    run["command"] = json!(command.chars().take(COMMAND_CHARS).collect::<String>());
+    run["host"] = json!(host);
+    run["at"] = json!(at);
+    run["source"] = source.clone();
+    run
+}
+
+/// The session's run history with `run` added, oldest runs dropped beyond [`KEPT_RUNS`].
+pub fn observed(history: &Value, run: Value) -> Value {
+    let mut runs: Vec<Value> = history["runs"].as_array().cloned().unwrap_or_default();
+    runs.push(run);
+    let excess = runs.len().saturating_sub(KEPT_RUNS);
+    runs.drain(..excess);
+    json!({"formatVersion": 1, "runs": runs})
+}
+
+/// The latest run observed at `source`, the current tree: what the tests say about the code
+/// as it is. A run on an earlier tree, or on a tree that could not be fingerprinted, says
+/// nothing about it.
+pub fn current<'a>(history: &'a Value, source: &Value) -> Option<&'a Value> {
+    if source.is_null() {
+        return None;
+    }
+    history["runs"]
+        .as_array()?
+        .iter()
+        .rev()
+        .find(|run| &run["source"] == source)
+}
+
+/// The test status of the current tree: `passed`, `failed` or `unknown` by the latest run
+/// observed on it; `not-run` when none was.
+pub fn status(history: &Value, source: &Value) -> Value {
+    match current(history, source) {
+        Some(run) => json!({
+            "status": run["result"], "reason": run["reason"], "runner": run["runner"],
+            "executed": run["executed"], "at": run["at"], "command": run["command"],
+        }),
+        None => json!({"status": "not-run"}),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,5 +481,60 @@ mod tests {
     fn output_cut_before_the_summary_is_unknown() {
         let verdict = classify(Some(0), "running 3 tests\ntest a ... ok\n");
         assert_eq!(verdict["result"], "unknown");
+    }
+
+    #[test]
+    fn only_a_run_on_the_current_tree_speaks_for_it() {
+        let pass = classify(
+            Some(0),
+            "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n",
+        );
+        let zero = classify(
+            Some(0),
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s\n",
+        );
+        let mut history = Value::Null;
+        history = observed(
+            &history,
+            observation(&pass, "cargo test", "claude", "t1", &json!("A")),
+        );
+        history = observed(
+            &history,
+            observation(&zero, "cargo test nomatch", "claude", "t2", &json!("B")),
+        );
+        assert_eq!(status(&history, &json!("A"))["status"], "passed");
+        assert_eq!(status(&history, &json!("B"))["status"], "failed");
+        assert_eq!(status(&history, &json!("B"))["reason"], "zero-tests");
+        // An edit since the run: the tree has no run yet.
+        assert_eq!(status(&history, &json!("C"))["status"], "not-run");
+        // An unfingerprinted tree is never matched.
+        let blind = observed(
+            &Value::Null,
+            observation(&pass, "cargo test", "codex", "t3", &Value::Null),
+        );
+        assert_eq!(status(&blind, &Value::Null)["status"], "not-run");
+    }
+
+    #[test]
+    fn the_history_keeps_the_latest_runs_and_short_commands() {
+        let pass = classify(Some(0), "Ran 1 test in 0.0s\n\nOK\n");
+        let mut history = Value::Null;
+        for n in 0..KEPT_RUNS + 5 {
+            let run = observation(
+                &pass,
+                &format!("pytest {n} {}", "x".repeat(400)),
+                "codex",
+                "t",
+                &json!(n),
+            );
+            history = observed(&history, run);
+        }
+        let runs = history["runs"].as_array().unwrap();
+        assert_eq!(runs.len(), KEPT_RUNS);
+        assert_eq!(runs[0]["source"], 5);
+        assert_eq!(
+            runs[0]["command"].as_str().unwrap().chars().count(),
+            COMMAND_CHARS
+        );
     }
 }

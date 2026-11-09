@@ -33,6 +33,7 @@ pub mod statusline;
 mod stop_review;
 mod task;
 mod telemetry;
+mod test_runs;
 mod workers;
 mod workspace;
 
