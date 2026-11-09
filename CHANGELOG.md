@@ -134,6 +134,10 @@ Hooks:
 - A Project Intelligence refresh that finds no source changed, added or removed writes
   nothing: `project.sqlite` is left untouched and the store `generation` stays the same. A
   refresh stopped before its first change leaves the last complete inventory standing.
+- A refresh reuses a source without reading it when the file's metadata matches what it was
+  last read with and the file has not changed in the last two seconds; `reusedUnread` counts
+  them. The index store is schema 5: an earlier store is discarded and rebuilt by the next
+  refresh.
 
 ## 0.0.4
 

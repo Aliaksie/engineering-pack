@@ -19,6 +19,70 @@ impl std::fmt::Display for ReadError {
     }
 }
 
+/// How long a file must have been left alone before its metadata stands for its content.
+/// Timestamps are as coarse as two seconds on some filesystems, so a write in the same tick
+/// as a read could leave the metadata unchanged; a file changed this recently is read.
+const SETTLED: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// A file's size and, once it has settled, a stamp of the metadata any write changes: the
+/// size, modification and status-change times, device and inode on Unix; the size, last
+/// write and creation times on Windows. `None` when the file does not exist.
+pub fn stamp(path: &Path) -> io::Result<Option<(u64, Option<String>)>> {
+    stamp_settled(path, SETTLED)
+}
+
+fn stamp_settled(
+    path: &Path,
+    settled: std::time::Duration,
+) -> io::Result<Option<(u64, Option<String>)>> {
+    let metadata = match fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let size = metadata.len();
+    #[cfg(unix)]
+    let (changed, stamp) = {
+        use std::os::unix::fs::MetadataExt;
+        let (seconds, nanos) = (metadata.ctime(), metadata.ctime_nsec())
+            .max((metadata.mtime(), metadata.mtime_nsec()));
+        let changed = std::time::UNIX_EPOCH
+            + std::time::Duration::new(seconds.max(0) as u64, nanos.clamp(0, 999_999_999) as u32);
+        let stamp = format!(
+            "{size}:{}.{}:{}.{}:{}:{}",
+            metadata.mtime(),
+            metadata.mtime_nsec(),
+            metadata.ctime(),
+            metadata.ctime_nsec(),
+            metadata.dev(),
+            metadata.ino()
+        );
+        (Some(changed), stamp)
+    };
+    #[cfg(windows)]
+    let (changed, stamp) = {
+        use std::os::windows::fs::MetadataExt;
+        let stamp = format!(
+            "{size}:{}:{}",
+            metadata.last_write_time(),
+            metadata.creation_time()
+        );
+        (metadata.modified().ok(), stamp)
+    };
+    #[cfg(not(any(unix, windows)))]
+    let (changed, stamp) = {
+        let modified = metadata.modified().ok();
+        let nanos = modified
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |since| since.as_nanos());
+        (modified, format!("{size}:{nanos}"))
+    };
+    let settled = changed
+        .and_then(|time| std::time::SystemTime::now().duration_since(time).ok())
+        .is_some_and(|age| age >= settled);
+    Ok(Some((size, settled.then_some(stamp))))
+}
+
 /// Create one directory readable only by its owner where the platform supports modes. An
 /// existing entry is accepted; callers verify what the path resolves to.
 pub fn create_private_directory(path: &Path) -> io::Result<()> {
@@ -90,6 +154,50 @@ pub fn read_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_stamp_waits_for_the_file_to_settle_and_follows_every_write() {
+        let directory = std::env::temp_dir().join(format!("craft-stamp-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir(&directory).unwrap();
+        let file = directory.join("a.js");
+        assert!(
+            stamp(&file).unwrap().is_none(),
+            "a missing file has no stamp"
+        );
+        fs::write(&file, "const a = 1;").unwrap();
+        assert_eq!(
+            stamp(&file).unwrap(),
+            Some((12, None)),
+            "just written: read it"
+        );
+        let hour = std::time::Duration::from_secs(3600);
+        assert_eq!(stamp_settled(&file, hour).unwrap(), Some((12, None)));
+        let zero = std::time::Duration::ZERO;
+        let (_, first) = stamp_settled(&file, zero).unwrap().unwrap();
+        let first = first.unwrap();
+        assert_eq!(
+            stamp_settled(&file, zero).unwrap().unwrap().1.as_deref(),
+            Some(first.as_str())
+        );
+        // Same size, modification time put back: the status-change time still moves on Unix.
+        let modified = fs::metadata(&file).unwrap().modified().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(&file, "const b = 1;").unwrap();
+        File::options()
+            .write(true)
+            .open(&file)
+            .unwrap()
+            .set_modified(modified)
+            .unwrap();
+        let (size, second) = stamp_settled(&file, zero).unwrap().unwrap();
+        assert_eq!(size, 12);
+        #[cfg(unix)]
+        assert_ne!(second.unwrap(), first);
+        #[cfg(not(unix))]
+        drop(second);
+        fs::remove_dir_all(&directory).unwrap();
+    }
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);

@@ -30,7 +30,7 @@ pub mod timestamp;
 pub mod values;
 pub mod workers;
 
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 pub const PROTOCOL_VERSION: u32 = 1;
 
 pub fn hash(bytes: &[u8]) -> String {
