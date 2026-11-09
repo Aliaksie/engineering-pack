@@ -3,12 +3,17 @@
 //! mapping table is the data the build uses to register hooks.
 use crate::host;
 use crate::telemetry::Recorder;
+use craft_engine::session::test_runs;
 use craft_engine::values::js_length;
+use craft_platform::files;
 use serde_json::{Value, json};
 use std::io::{Read, Write};
+use std::path::Path;
 
 const MAX_INPUT: usize = 65_536;
 const MAX_CONTEXT: usize = 12_000;
+/// How much of a long test output's end is read for the runner's summary.
+const RUN_TAIL_BYTES: usize = 65_536;
 const HOSTS: &str = include_str!("../../hosts/hooks.json");
 
 pub struct Wire {
@@ -250,6 +255,94 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     event
 }
 
+/// The runner's verdict on a test command the host just ran, from the tool result it reports.
+/// Hosts differ: Claude reports success and failure as separate events (the failure's
+/// `error` starts with `Exit code N`) and keeps a long output in a file whose end holds the
+/// summary; Codex passes the output text without an exit code. A host event declared as a
+/// failure never passes; one without an exit code or a summary (a rejected or timed-out call)
+/// stays `unknown`. An interrupted call, or one the host moved to the background, has not
+/// finished and says nothing about the run.
+fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Option<Value> {
+    if !matches!(lifecycle, "after-tool" | "after-tool-failure")
+        || !test_runs::is_test_command(command)
+    {
+        return None;
+    }
+    let response = first(
+        payload,
+        &["tool_response", "tool_output", "toolResult", "tool_result"],
+    );
+    let unfinished = payload["is_interrupt"] == true
+        || payload["tool_input"]["run_in_background"] == true
+        || response.is_some_and(|r| {
+            r["interrupted"] == true || r.get("backgroundTaskId").is_some_and(|id| !id.is_null())
+        });
+    if unfinished {
+        return None;
+    }
+    let outcome = mapping(host, lifecycle).and_then(|m| m["outcome"].as_str().map(str::to_owned));
+    let mut exit = (outcome.as_deref() == Some("success")).then_some(0);
+    let mut output = String::new();
+    match response {
+        Some(Value::String(text)) => output.clone_from(text),
+        Some(Value::Object(response)) => {
+            if let Some(path) = response.get("persistedOutputPath").and_then(Value::as_str)
+                && let Ok(tail) = files::read_tail(Path::new(path), RUN_TAIL_BYTES)
+            {
+                output = String::from_utf8_lossy(&tail).into_owned();
+            }
+            if output.is_empty() {
+                for key in [
+                    "stdout",
+                    "output",
+                    "textResultForLlm",
+                    "llmContent",
+                    "stderr",
+                ] {
+                    if let Some(text) = response.get(key).and_then(Value::as_str) {
+                        output.push_str(text);
+                        output.push('\n');
+                    }
+                }
+            }
+            if let Some(code) = ["exit_code", "exitCode"]
+                .iter()
+                .find_map(|key| response.get(*key).and_then(Value::as_i64))
+            {
+                exit = Some(code);
+            }
+        }
+        _ => {}
+    }
+    if let Some(error) = payload["error"].as_str() {
+        let (head, rest) = error.split_once('\n').unwrap_or((error, ""));
+        match head
+            .strip_prefix("Exit code ")
+            .and_then(|code| code.trim().parse().ok())
+        {
+            Some(code) => {
+                exit = Some(code);
+                output = rest.to_owned();
+            }
+            None => output = error.to_owned(),
+        }
+    }
+    // A result with no output and no failing exit code (a command still running, or a host
+    // that reports success without output) says nothing about the run.
+    if output.trim().is_empty() && exit.is_none_or(|code| code == 0) {
+        return None;
+    }
+    let mut verdict = test_runs::classify(exit, &output);
+    if outcome.as_deref() == Some("failure") && verdict["result"] != "failed" {
+        // A failed call never passes; without a summary or exit code it may not have run.
+        if verdict["result"] == "passed" {
+            verdict["result"] = json!("failed");
+        }
+        verdict["reason"] = json!("tool-failed");
+    }
+    Some(verdict)
+}
+
 /// Facts for the native `host` handler; only shell-scoped hooks and delivery receive the
 /// command, and only delivery the file, prompt and search pattern.
 fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
@@ -268,6 +361,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
         facts["pattern"] = event["pattern"].clone();
         if event["tool"] == "shell" {
             facts["command"] = event["command"].clone();
+        }
+        if let Some(run) = event.get("testRun") {
+            facts["testRun"] = run.clone();
         }
         if event["stopActive"] == true {
             facts["stopActive"] = json!(true);
@@ -293,7 +389,7 @@ fn render(context: &Value, host: &str) -> String {
             format!("Routing hints (no authorization implied; reuse until scope/config changes): {hint}")
         }
         Some("answer") => format!("Project Intelligence for the search just run (verified declaration and callers, complete coverage; no authorization implied): {}", context["data"]),
-        Some("resume") => format!("Craft task records to resume from (saved by this or an earlier session; no authorization implied, recheck evidence when source changed): {}", context["data"]),
+        Some("resume") => format!("Craft task records to resume from (saved by this or an earlier session; no authorization implied, recheck evidence when source changed{}): {}", if context["data"].get("standards").is_some() { "; `standards` are the project standards of this scope, still in force" } else { "" }, context["data"]),
         Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing: {}", context["data"]),
         Some("services") => format!("Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {}", context["data"]),
         Some("preserve") => "Preserve task scope, original authorization, evidence and next step in the project checkpoint. Compaction hooks do not replace milestone checkpoints.".into(),
@@ -323,6 +419,17 @@ fn session_line(session: &Value) -> String {
 fn standards_line(found: &Value) -> String {
     format!(
         "Project standards not met by what was just written (deterministic anchor check; report only, fix or tell the user why not): {found}"
+    )
+}
+
+/// A test run that exited cleanly without running a test.
+fn tests_line(run: &Value) -> String {
+    let summary = json!({
+        "runner": run["runner"], "reason": run["reason"], "executed": run["executed"],
+        "skipped": run["skipped"], "command": run["command"],
+    });
+    format!(
+        "Craft test evidence: the test command just run executed no test, so it verifies nothing (a filter or skip matched everything). Run tests that exercise the change before reporting them as passing: {summary}"
     )
 }
 
@@ -382,6 +489,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             result.get("context").map(|c| render(c, host)),
             result.get("standards").map(standards_line),
             result.get("delegation").map(delegation_line),
+            result.get("tests").map(tests_line),
         ];
         bounded(
             parts
@@ -467,12 +575,17 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
     let (payload, status, input_error) = read_payload(input);
     let observational = hook.handler == "observe";
     let enforcement = hook.shell && hook.lifecycle == "before-tool";
-    let mut result = host::run(&facts(
-        &hook,
-        &normalize(&payload, &hook.host, &hook.lifecycle),
-        status,
-    ))
-    .unwrap_or_else(|message| {
+    let mut event = normalize(&payload, &hook.host, &hook.lifecycle);
+    // Only delivery records test runs; other packages' hooks do not read the result.
+    if hook.handler == "deliver"
+        && event["tool"] == "shell"
+        && let Some(verdict) = event["command"]
+            .as_str()
+            .and_then(|command| test_run(&payload, &hook.host, &hook.lifecycle, command))
+    {
+        event["testRun"] = verdict;
+    }
+    let mut result = host::run(&facts(&hook, &event, status)).unwrap_or_else(|message| {
         // Without a runtime decision, shell enforcement still fails closed and delivery says why.
         if enforcement {
             craft_engine::delivery::failure(true, &message)

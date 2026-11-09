@@ -523,3 +523,25 @@ fn a_spawned_worker_hears_the_standards_of_the_delegating_scope() {
     // Nothing established and no task: nothing to carry, no guess.
     assert!(delegated(&project, None, &[], None).is_empty());
 }
+
+#[test]
+fn a_resumed_task_keeps_only_the_checked_and_reviewed_standards_of_its_scope() {
+    let project = settings(json!([
+        {"id": "orders-api", "scope": {"modules": ["orders"]}},
+        {"id": "commits", "anchor": "conventional-commits"},
+        {"id": "review-orders", "file": "docs/review.md", "level": "review", "scope": {"modules": ["orders"]}},
+        {"id": "ui-check", "run": {"command": "npm"}, "scope": {"paths": ["ui"]}}
+    ]));
+    let routed = [json!("services/orders/src/api.rs")];
+    assert_eq!(
+        ids(&pinned(&project, Some("implement"), &routed, None)),
+        vec!["commits", "review-orders"]
+    );
+    // The bound task's scope pins its own checks, without the session having routed there.
+    let task = json!({"id": "t", "files": ["ui/app.tsx"], "scope": {}});
+    assert_eq!(
+        ids(&pinned(&project, None, &[], Some(&task))),
+        vec!["commits", "ui-check"]
+    );
+    assert!(pinned(&project, None, &[], None).is_empty());
+}

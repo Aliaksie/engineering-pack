@@ -51,6 +51,8 @@ struct Command {
     /// Accounts the installed package's guidance; the launcher names its root.
     bundled: bool,
     render: Render,
+    /// A result that still prints but exits 1: a fact the caller must act on.
+    fails: Option<fn(&Value) -> bool>,
 }
 
 impl Command {
@@ -60,6 +62,7 @@ impl Command {
             handler,
             bundled: false,
             render: Render::Json,
+            fails: None,
         }
     }
     const fn run(name: &'static str, run: Run) -> Self {
@@ -71,6 +74,10 @@ impl Command {
     }
     const fn receipt(mut self, receipt: fn(&str, &Value) -> String) -> Self {
         self.render = Render::Receipt(receipt);
+        self
+    }
+    const fn fails_when(mut self, fails: fn(&Value) -> bool) -> Self {
+        self.fails = Some(fails);
         self
     }
 }
@@ -123,6 +130,9 @@ const COMMANDS: &[Command] = &[
     Command::run("route", route),
     Command::run("standards", standards),
     Command::run("anchors", anchors),
+    Command::run("doctor", |options, _, _| crate::doctor::run(&root(options)))
+        .receipt(|_, value| crate::doctor::text(value))
+        .fails_when(|value| value["blocking"] == true),
     Command::run("context-report", context_report).bundled(),
     Command::run("session", session_status)
         .bundled()
@@ -1522,6 +1532,10 @@ fn help(action: &str) -> Value {
             "usage": "standards [--root project] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
             "mode": "Without files, list declared standards. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
         }),
+        "doctor" => json!({
+            "usage": "doctor [--root project] [--json]",
+            "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
+        }),
         "anchors" => json!({
             "usage": "anchors [--root project] [--search text]",
             "mode": "Without --search, list the project's and Craft's anchors; with it, search the embedded catalog too by id, title, category or role. Each name shows the source it resolves to."
@@ -1774,7 +1788,8 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
                 Render::Line => format!("{value}\n"),
                 _ => render(value),
             };
-            (0, text, String::new())
+            let failed = command.fails.is_some_and(|fails| fails(value));
+            (i32::from(failed), text, String::new())
         }
         Err(failure) => {
             recorder.complete(operation, Map::new(), Some(failure.code("INVALID_INPUT")));

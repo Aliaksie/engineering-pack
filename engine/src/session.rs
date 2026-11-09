@@ -15,6 +15,7 @@ pub mod host_context;
 pub mod resume;
 pub mod status;
 pub mod step;
+pub mod test_runs;
 pub mod views;
 
 type Result<T = ()> = std::result::Result<T, String>;

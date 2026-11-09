@@ -337,3 +337,100 @@ fn legacy_lifecycle_and_checkpoints_keep_declared_completion_without_inferred_co
     checkpoint_contract["engineeringContract"] = fixture("contract");
     checkpoint::validate(&checkpoint_contract).unwrap();
 }
+
+fn coverage_v2(contract: &Value, records: &[Value]) -> Value {
+    let evidence = json!({"formatVersion": 2, "records": records});
+    cover(Some(contract), Some(&evidence), &current(), false).unwrap()
+}
+
+fn ran(executed: u64, failed: u64, runner: Value) -> Value {
+    json!({"runner": runner, "executed": executed, "failed": failed, "skipped": 0, "source": "observed"})
+}
+
+#[test]
+fn a_v2_run_that_executed_no_test_or_counted_failures_fails_its_criterion() {
+    let contract = fixture("contract");
+    let both = |tests: Value| {
+        record(
+            &contract,
+            json!({"criterionIds": ["value", "error"], "tests": tests}),
+        )
+    };
+    let passing = coverage_v2(&contract, &[both(ran(3, 0, json!("cargo")))]);
+    assert_eq!(statuses(&passing), ["verified", "verified"]);
+    assert_eq!(passing["complete"], true);
+
+    let zero = coverage_v2(&contract, &[both(ran(0, 0, json!("cargo")))]);
+    assert_eq!(statuses(&zero), ["failed", "failed"]);
+    assert_eq!(zero["criteria"][0]["reason"], "zero-tests");
+    assert_eq!(zero["complete"], false);
+
+    // A failure exit with no summary reports no counts: it failed, but nothing says no test ran.
+    let uncounted = record(
+        &contract,
+        json!({"criterionIds": ["value", "error"], "execution": "failed",
+            "tests": {"runner": null, "source": "observed"}}),
+    );
+    let failed = coverage_v2(&contract, &[uncounted]);
+    assert_eq!(statuses(&failed), ["failed", "failed"]);
+    assert!(failed["criteria"][0].get("reason").is_none(), "{failed}");
+
+    let counted = coverage_v2(&contract, &[both(ran(3, 1, json!("jest")))]);
+    assert_eq!(statuses(&counted), ["failed", "failed"]);
+    assert!(counted["criteria"][0].get("reason").is_none());
+
+    // A runner Craft did not recognize leaves the pass undecided, never verified.
+    let unknown = coverage_v2(&contract, &[both(ran(3, 0, Value::Null))]);
+    assert_eq!(statuses(&unknown), ["unknown", "unknown"]);
+    assert_eq!(unknown["complete"], false);
+}
+
+#[test]
+fn v2_keeps_undecided_evidence_apart_from_missing_evidence() {
+    let contract = fixture("contract");
+    let not_run = record(&contract, json!({"execution": "not-run"}));
+    // `value` has current evidence that does not decide; `error` has none.
+    assert_eq!(
+        statuses(&coverage_v2(&contract, std::slice::from_ref(&not_run))),
+        ["unknown", "gap"]
+    );
+    // v1 reads as before: both are gaps.
+    assert_eq!(statuses(&coverage(&contract, &[not_run])), ["gap", "gap"]);
+    // Stale evidence is not current evidence: a gap, not unknown.
+    let stale = record(
+        &contract,
+        json!({"binding": {"kind": "repository", "identity": "snapshot-b"}}),
+    );
+    assert_eq!(statuses(&coverage_v2(&contract, &[stale])), ["gap", "gap"]);
+}
+
+#[test]
+fn test_counts_are_a_v2_field_with_bounded_values() {
+    let contract = fixture("contract");
+    let with = |tests: Value| record(&contract, json!({"tests": tests}));
+    assert!(
+        validate_evidence(
+            &json!({"formatVersion": 1, "records": [with(ran(1, 0, json!("cargo")))]})
+        )
+        .is_err()
+    );
+    assert!(
+        validate_evidence(
+            &json!({"formatVersion": 2, "records": [with(ran(1, 0, json!("cargo")))]})
+        )
+        .is_ok()
+    );
+    for bad in [
+        json!({"runner": "cargo", "executed": -1, "failed": 0, "skipped": 0, "source": "observed"}),
+        json!({"runner": "cargo", "executed": 1, "failed": 0, "skipped": 0, "source": "guessed"}),
+        json!({"runner": "cargo", "executed": 1, "failed": 0, "skipped": 0, "source": "observed", "extra": 1}),
+        json!({"executed": 1, "failed": 0, "skipped": 0, "source": "observed"}),
+    ] {
+        assert!(
+            validate_evidence(&json!({"formatVersion": 2, "records": [with(bad.clone())]}))
+                .is_err(),
+            "{bad}"
+        );
+    }
+    assert!(validate_evidence(&json!({"formatVersion": 3, "records": []})).is_err());
+}

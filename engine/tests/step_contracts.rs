@@ -2,6 +2,9 @@
 //! from the JS engine: the `task-step` receipt and the action offer decisions. Results,
 //! including the updated state, compare as serialized JSON, so key order is part of the
 //! contract; error messages reach stderr and compare exactly.
+//!
+//! Edited in the corpus itself: `step:evidence-invalid` probes an unsupported ledger version
+//! and names version 3 since ledger format 2 (test counts per record) became valid.
 use craft_engine::actions::{self, Context};
 use craft_engine::{session, values};
 use serde_json::{Value, json};

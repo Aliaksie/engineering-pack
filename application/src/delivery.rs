@@ -35,6 +35,8 @@ pub struct Event<'a> {
     pub context_supported: bool,
     /// The host is continuing a stop a hook already held.
     pub stop_active: bool,
+    /// The runner's verdict on a test command the host just ran.
+    pub test_run: Option<&'a Value>,
 }
 
 /// The project-relative form of a tool path, resolved against the hook's working
@@ -69,6 +71,16 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         return Ok(delegation(root, &settings, event, recorder, hook));
     }
     let session = event.session.filter(|s| !s.is_empty());
+    // A test command the host just ran: its verdict, kept with the tree it ran on.
+    let observed = match (event.test_run, session) {
+        (Some(verdict), Some(session)) => observe_run(root, session, event, verdict)
+            .map_err(|_| recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook))
+            .ok(),
+        _ => None,
+    };
+    if event.lifecycle == "after-tool-failure" {
+        return Ok(json!({"decision": "allow"}));
+    }
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         None
@@ -272,6 +284,26 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
+    // A resumed task restates the checked and reviewed standards of its scope: rules a
+    // compaction dropped from context come back with the task they govern.
+    if let (Some("resume"), Some(session)) = (decision["context"]["kind"].as_str(), session) {
+        let (record, task) = session_scope(root, session, recorder, hook);
+        let files = record["files"].as_array().cloned().unwrap_or_default();
+        let pinned = standards::pinned(&settings, record["intent"].as_str(), &files, task.as_ref());
+        if !pinned.is_empty() {
+            decision["context"]["data"]["standards"] = json!(pinned);
+        }
+        // Whether the tests the session ran still speak for the tree it resumes on.
+        let repositories = crate::session::active_binding(root, session)
+            .ok()
+            .flatten()
+            .and_then(|binding| binding.get("repositories").cloned());
+        match crate::test_runs::status(root, session, repositories.as_ref()) {
+            Ok(Some(tests)) => decision["context"]["data"]["tests"] = tests,
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+        }
+    }
     // A search the model just ran gets its verified answer in the same tool result: no turn.
     let searching = event.lifecycle == "after-tool"
         && event.context_supported
@@ -308,6 +340,13 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             }
         }
         decision["session"] = identity;
+    }
+    // A run that exited cleanly but ran no test verifies nothing; the model hears it at once.
+    if let Some(run) = observed.filter(|run| {
+        event.context_supported
+            && matches!(run["reason"].as_str(), Some("zero-tests" | "all-skipped"))
+    }) {
+        decision["tests"] = run;
     }
     // A file or commit just written in a declared standard's scope gets its anchor check in
     // the same tool result. Findings are reported, never enforced; passing checks stay quiet.
@@ -368,6 +407,24 @@ fn delegation(
     else {
         return decision;
     };
+    let (record, task) = session_scope(root, session, recorder, hook);
+    let files = record["files"].as_array().cloned().unwrap_or_default();
+    let intent = record["intent"].as_str();
+    let found = standards::delegated(settings, intent, &files, task.as_ref());
+    if !found.is_empty() {
+        decision["delegation"] = json!({"intent": intent, "standards": found});
+    }
+    decision
+}
+
+/// What a session established (its intent record) and the scope of the task bound to it.
+/// Unreadable state reads as nothing established and is reported.
+fn session_scope(
+    root: &Path,
+    session: &str,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> (Value, Option<Value>) {
     let record = intent_file(root, session, false)
         .and_then(|file| read_intent(&file))
         .unwrap_or_else(|_| {
@@ -381,13 +438,26 @@ fn delegation(
             None
         }
     };
-    let files = record["files"].as_array().cloned().unwrap_or_default();
-    let intent = record["intent"].as_str();
-    let found = standards::delegated(settings, intent, &files, task.as_ref());
-    if !found.is_empty() {
-        decision["delegation"] = json!({"intent": intent, "standards": found});
-    }
-    decision
+    (record, task)
+}
+
+/// Record a test run the session's host just ran, over the bound task's repositories.
+fn observe_run(
+    root: &Path,
+    session: &str,
+    event: &Event,
+    verdict: &Value,
+) -> Result<Value, Failure> {
+    let repositories = crate::session::active_binding(root, session)?
+        .and_then(|binding| binding.get("repositories").cloned());
+    crate::test_runs::record(
+        root,
+        session,
+        event.host,
+        event.command.unwrap_or_default(),
+        verdict,
+        repositories.as_ref(),
+    )
 }
 
 /// The scope of the task bound to a session: the files its task record names and, for a

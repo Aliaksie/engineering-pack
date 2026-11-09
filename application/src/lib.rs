@@ -10,6 +10,7 @@ mod delegation;
 mod delivery;
 mod dependencies;
 mod discovery;
+mod doctor;
 mod evidence;
 mod failure;
 mod grounding;
@@ -33,6 +34,7 @@ pub mod statusline;
 mod stop_review;
 mod task;
 mod telemetry;
+mod test_runs;
 mod workers;
 mod workspace;
 

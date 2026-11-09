@@ -1,5 +1,8 @@
 //! Replay of the frozen corpus (`tests/fixtures/runtime/checkpoint-contracts.json`)
 //! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons are.
+//!
+//! Edited in the corpus itself: `acceptance-evidence-validate:formatVersion=two` is accepted
+//! since ledger format 2 (test counts per record) was introduced.
 mod support;
 
 use serde_json::{Map, Value};

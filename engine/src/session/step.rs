@@ -67,6 +67,14 @@ fn given(value: Option<&Value>) -> Option<&Value> {
     value.filter(|v| !v.is_null())
 }
 
+/// Whether `input` would record a passed verification for the saved task: a passed outcome
+/// at the verify stage, given or carried over from the task's current stage.
+pub fn records_passed_verification(state: &Value, input: &Map<String, Value>) -> bool {
+    let carried = state["taskRecord"].get("stage");
+    input.get("outcome") == Some(&json!("passed"))
+        && given(input.get("stage")).or(carried) == Some(&json!("verify"))
+}
+
 /// Record one step against the saved task. `id` and `at` identify the attempt receipt.
 pub fn step(
     state: &mut Value,

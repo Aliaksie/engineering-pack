@@ -7,6 +7,7 @@ pub mod files;
 pub mod go;
 pub mod grounding;
 pub mod guidance;
+pub mod host_install;
 pub mod host_settings;
 pub mod http;
 pub mod java;

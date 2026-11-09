@@ -259,3 +259,35 @@ fn decisions_need_a_bound_task_and_refuse_options_elsewhere() {
     let elsewhere = repo.cli(&["route", "--why", "because"]);
     assert!(elsewhere.unwrap_err().contains("task-decide"));
 }
+
+#[test]
+fn compaction_restates_the_checked_and_reviewed_standards_of_the_task_scope() {
+    let repo = Repo::new(
+        "resume-standards",
+        &[
+            (
+                ".craft/project.json",
+                r#"{"formatVersion":1,"standards":[
+                  {"id":"value-check","run":{"command":"node","args":["--test"]},"scope":{"paths":["value.mjs"]}},
+                  {"id":"value-review","file":"docs/review.md","level":"review","scope":{"paths":["value.mjs"]}},
+                  {"id":"value-style","file":"docs/style.md","scope":{"paths":["value.mjs"]}},
+                  {"id":"ui-check","run":{"command":"npm","args":["run","lint:ui"]},"scope":{"paths":["ui"]}}
+                ]}"#,
+            ),
+            ("value.mjs", "export const value = 1;\n"),
+        ],
+    );
+    worked(&repo, "S1");
+    hook(&repo, "claude", "before-compact", "S1", json!({}));
+    let restored = hook(&repo, "claude", "after-compact", "S1", json!({}));
+    let resume = resumed(&restored).expect("resume after compaction");
+    let ids: Vec<&str> = resume["standards"]
+        .as_array()
+        .expect("standards pinned")
+        .iter()
+        .filter_map(|s| s["id"].as_str())
+        .collect();
+    // Advised standards come back with routing; other scopes are not this task's.
+    assert_eq!(ids, ["value-check", "value-review"]);
+    assert_eq!(resume["standards"][0]["run"]["command"], "node");
+}

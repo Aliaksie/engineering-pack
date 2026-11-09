@@ -11,6 +11,7 @@ pub mod control;
 pub mod debt;
 pub mod delivery;
 pub mod discovery;
+pub mod doctor;
 pub mod grounding;
 pub mod models;
 pub mod otlp;
