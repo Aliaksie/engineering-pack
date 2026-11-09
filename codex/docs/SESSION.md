@@ -102,9 +102,12 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
 - When a session starts, the session line lists up to three open plans, newest first, with
   ready tasks and held tasks (`here` when this session holds one, and minutes since its last
   step). To continue a task held in another session, repeat `task-start` with `--take-over`:
-  that session may still be working, so take over only when the user's request continues
-  the work here. Its task record and checkpoint are copied into this session; the earlier
-  session's records are not changed and no authorization is renewed.
+  continue the same work only after verifying that its owner stopped or handed it off,
+  or when the user explicitly requests reassignment. A similar task or stale timestamp
+  alone is insufficient. Taking over the record does not stop earlier tools or writers;
+  coordinate overlapping work before editing. Its task record and checkpoint are copied
+  into this session; the earlier session's records are not changed and no authorization
+  is renewed.
 - References are opaque labels; reading a tracker issue is a separate, authorized
   [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
   plans that link it.

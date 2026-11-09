@@ -1,6 +1,6 @@
 ---
 name: craft-engineering-testing-engineering
-description: "Choose meaningful verification or diagnose a failing check from observable behavior."
+description: "Choose verification or investigate failures and unexpected behavior from evidence."
 ---
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
