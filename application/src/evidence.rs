@@ -2,6 +2,7 @@ use crate::failure::Failure;
 use crate::telemetry::Recorder;
 use craft_engine::hash;
 use craft_platform::{
+    files,
     providers::{self, ACTIVE, extract, for_path},
     repository::{Inventory, database_guard, database_guard_within, eligible, now, read_source},
     state,
@@ -154,6 +155,7 @@ pub(crate) fn refresh(
     phases.time(Phase::Store, || store.begin_batch())?;
     let (mut files, mut reused, mut changed, mut failed, mut bytes, mut deferred) =
         (0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+    let mut unread = 0u64;
     let mut excluded = 0u64;
     while let Some(path) = phases.time(Phase::Inventory, || inventory.next_path())? {
         let skipped = craft_engine::contracts::excluded(&path, &exclusions);
@@ -168,7 +170,9 @@ pub(crate) fn refresh(
             continue;
         }
         // Git's tracked inventory includes deleted files; completion retires them.
-        let Some(size) = phases.time(Phase::Metadata, || size(&root.join(&path)))? else {
+        let Some((size, stamp)) =
+            phases.time(Phase::Metadata, || files::stamp(&root.join(&path)))?
+        else {
             continue;
         };
         if providers::data(&path, size) {
@@ -177,18 +181,36 @@ pub(crate) fn refresh(
         }
         let provider = for_path(&path).ok_or("eligible source has no provider")?;
         files += 1;
+        if let Some(stamp) = &stamp
+            && phases.time(Phase::Store, || store.reuse_stamped(&path, provider, stamp))?
+        {
+            reused += 1;
+            unread += 1;
+            continue;
+        }
+        let stamp = stamp.as_deref();
         let observed_at = now();
         let content = match phases.time(Phase::Read, || read_source(root, &path)) {
             Ok(content) => content,
             Err(error) => {
-                store.fail(&path, provider, "", &error.to_string(), &observed_at, epoch)?;
+                store.fail(
+                    &path,
+                    provider,
+                    "",
+                    &error.to_string(),
+                    &observed_at,
+                    epoch,
+                    None,
+                )?;
                 failed += 1;
                 continue;
             }
         };
         bytes += content.len() as u64;
         let digest = phases.time(Phase::Read, || hash(&content));
-        if phases.time(Phase::Store, || store.reuse(&path, provider, &digest))? {
+        if phases.time(Phase::Store, || {
+            store.reuse(&path, provider, &digest, stamp)
+        })? {
             reused += 1;
             continue;
         }
@@ -207,12 +229,12 @@ pub(crate) fn refresh(
                     continue;
                 }
                 phases.time(Phase::Store, || {
-                    store.replace(&extraction, &observed_at, epoch)
+                    store.replace(&extraction, &observed_at, epoch, stamp)
                 })?;
                 changed += 1;
             }
             Err(error) => {
-                store.fail(&path, provider, &digest, &error, &observed_at, epoch)?;
+                store.fail(&path, provider, &digest, &error, &observed_at, epoch, stamp)?;
                 failed += 1;
             }
         }
@@ -222,7 +244,7 @@ pub(crate) fn refresh(
         store.finish_inventory(epoch, &inventory.describe(), &exclusions, excluded)
     })?;
     Ok(
-        json!({"coverage":store.status()?,"files":files,"reused":reused,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
+        json!({"coverage":store.status()?,"files":files,"reused":reused,"reusedUnread":unread,"changed":changed,"failed":failed,"removed":removed,"excluded":excluded,
             "deferred":deferred,"deferredByLimit":reasons,"extractionAttempts":budget.attempted,
             "extractionBytes":budget.bytes,"outputBytes":budget.output_bytes,
             "retiredSources":retired,"bytesScanned":bytes,"wallTimeMs":started.elapsed().as_millis(),
@@ -230,20 +252,11 @@ pub(crate) fn refresh(
     )
 }
 
-/// A source's size, or `None` when it no longer exists.
-fn size(path: &Path) -> std::io::Result<Option<u64>> {
-    match std::fs::metadata(path) {
-        Ok(metadata) => Ok(Some(metadata.len())),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
-    }
-}
-
 #[derive(Clone, Copy)]
 enum Phase {
     /// Listing sources: Git's tracked and untracked files, or a directory walk.
     Inventory,
-    /// Whether an inventoried source still exists.
+    /// Whether an inventoried source still exists, and its metadata stamp.
     Metadata,
     /// Reading and hashing source content.
     Read,

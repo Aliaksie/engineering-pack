@@ -143,7 +143,13 @@ the gap search.
   listed once under `sources`. `--verify` rehashes the cited sources and marks each verified
   or stale; a verified row that spans several lines (a declaration, a section) gains its
   `endLine`. `--excerpt` also verifies and adds the row's trimmed first line.
-- **Refresh** reuses unchanged extractions and retires deleted sources. Optional
+- **Refresh** reuses unchanged extractions and retires deleted sources. A file whose
+  metadata (size and modification time; on Unix also its status-change time and inode; on
+  Windows its creation time) matches what it was last read with is reused without being
+  read (`reusedUnread`); one changed in the last two seconds, or with other metadata, is
+  read and its content hash decides. On Windows a same-size rewrite that restores the
+  modification time goes unnoticed until the file changes again; `--verify` still rehashes
+  every cited source. A refresh that finds nothing changed writes nothing. Optional
   `--max-files`, `--max-bytes`, `--max-output-bytes` and `--max-duration-ms` limit one run;
   deferred sources stay pending (and hidden) until a later refresh. Writes commit in batches,
   so an interrupted refresh keeps every committed batch and the next refresh continues from

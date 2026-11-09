@@ -91,6 +91,8 @@ impl Store {
                 return Err("unversioned nonempty evidence database".into());
             }
             connection.execute_batch(&format!("BEGIN IMMEDIATE;
+                -- A source's `stamp` is the file metadata its hash was read with, once the file
+                -- had settled; an equal stamp reuses the source without reading it.
                 -- `exclusions` is the JSON prefix list the last complete inventory applied and
                 -- `inventory` the JSON description of how it found sources.
                 CREATE TABLE metadata (key TEXT PRIMARY KEY, value NOT NULL);
@@ -98,7 +100,7 @@ impl Store {
                     ('exclusions','[]'),('excluded_sources',0),('inventory','null');
                 CREATE TABLE sources (sid INTEGER PRIMARY KEY, path TEXT NOT NULL, provider TEXT NOT NULL,
                     hash TEXT NOT NULL, outcome TEXT NOT NULL, diagnostic TEXT, observed_at TEXT NOT NULL,
-                    epoch INTEGER NOT NULL DEFAULT 0, records INTEGER NOT NULL DEFAULT 0, UNIQUE(path,provider));
+                    epoch INTEGER NOT NULL DEFAULT 0, records INTEGER NOT NULL DEFAULT 0, stamp TEXT, UNIQUE(path,provider));
                 -- IDs are SHA-256 digests stored as 32-byte blobs; byte order equals hex order.
                 CREATE TABLE evidence (id BLOB PRIMARY KEY,
                     sid INTEGER NOT NULL REFERENCES sources(sid) ON DELETE CASCADE,
@@ -124,15 +126,16 @@ impl Store {
         extraction: &Extraction,
         observed_at: &str,
         epoch: i64,
+        stamp: Option<&str>,
     ) -> Result<(), Error> {
         extraction.validate()?;
         self.before_write()?;
         let tx = self.connection.savepoint()?;
-        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records) VALUES (?1,?2,?3,?7,?4,?5,?6)
-            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome=excluded.outcome,diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records
+        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records,stamp) VALUES (?1,?2,?3,?7,?4,?5,?6,?8)
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome=excluded.outcome,diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records,stamp=excluded.stamp
             RETURNING sid",
             params![extraction.path, extraction.provider, extraction.hash, observed_at, epoch, extraction.evidence.len() as i64,
-                if extraction.partial { "partial" } else { "ok" }], |r| r.get(0))?;
+                if extraction.partial { "partial" } else { "ok" }, stamp], |r| r.get(0))?;
         tx.execute("DELETE FROM evidence WHERE sid=?1", [sid])?;
         let mut insert = tx.prepare_cached(
             "INSERT INTO evidence VALUES (unhex(?1),?2,?3,?4,?5,?6,?7,?8,?9,unhex(?10))",
@@ -161,6 +164,7 @@ impl Store {
         self.written()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn fail(
         &mut self,
         path: &str,
@@ -169,6 +173,7 @@ impl Store {
         diagnostic: &str,
         observed_at: &str,
         epoch: i64,
+        stamp: Option<&str>,
     ) -> Result<(), Error> {
         if !valid_path(path) {
             return Err("invalid source path".into());
@@ -177,10 +182,10 @@ impl Store {
         let tx = self.connection.savepoint()?;
         // Failed content is cached so repeated bounded refreshes can advance.
         // Retire old facts rather than bind them to the failed content hash.
-        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,diagnostic,observed_at,epoch) VALUES (?1,?2,?3,'failed',?4,?5,?6)
-            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch,records=0
+        let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,diagnostic,observed_at,epoch,stamp) VALUES (?1,?2,?3,'failed',?4,?5,?6,?7)
+            ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome='failed',diagnostic=excluded.diagnostic,observed_at=excluded.observed_at,epoch=excluded.epoch,records=0,stamp=excluded.stamp
             RETURNING sid",
-            params![path,provider,hash,diagnostic,observed_at,epoch], |r| r.get(0))?;
+            params![path,provider,hash,diagnostic,observed_at,epoch,stamp], |r| r.get(0))?;
         tx.execute("DELETE FROM evidence WHERE sid=?1", [sid])?;
         tx.execute(
             "UPDATE metadata SET value=value+1 WHERE key='generation'",
@@ -197,7 +202,7 @@ impl Store {
         }
         self.before_write()?;
         let sid: i64 = self.connection.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,'','pending','',?3)
-            ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch
+            ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch,stamp=NULL
             RETURNING sid",
             params![path,provider,epoch], |r| r.get(0))?;
         self.saw(sid);
@@ -248,15 +253,46 @@ impl Store {
         Ok(epoch + 1)
     }
 
-    /// Whether the source still holds evidence for this content; a read, so a refresh over
-    /// unchanged sources writes nothing until it finishes.
-    pub fn reuse(&mut self, path: &str, provider: &str, hash: &str) -> Result<bool, Error> {
-        let sid: Option<i64> = self.connection.prepare_cached("SELECT sid FROM sources WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed','partial')")?
-            .query_row(params![path,provider,hash], |r| r.get(0)).optional()?;
+    /// Whether the source was stored from a file with this settled stamp; a read, so the
+    /// file need not be read or hashed.
+    pub fn reuse_stamped(
+        &mut self,
+        path: &str,
+        provider: &str,
+        stamp: &str,
+    ) -> Result<bool, Error> {
+        let sid: Option<i64> = self.connection.prepare_cached("SELECT sid FROM sources WHERE path=?1 AND provider=?2 AND stamp=?3 AND outcome IN ('ok','failed','partial')")?
+            .query_row(params![path,provider,stamp], |r| r.get(0)).optional()?;
         if let Some(sid) = sid {
             self.saw(sid);
         }
         Ok(sid.is_some())
+    }
+
+    /// Whether the source still holds evidence for this content; a read, so a refresh over
+    /// unchanged sources writes nothing until it finishes. A settled stamp the source does
+    /// not hold yet is recorded, so the next refresh need not read the file.
+    pub fn reuse(
+        &mut self,
+        path: &str,
+        provider: &str,
+        hash: &str,
+        stamp: Option<&str>,
+    ) -> Result<bool, Error> {
+        let found: Option<(i64, Option<String>)> = self.connection.prepare_cached("SELECT sid,stamp FROM sources WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed','partial')")?
+            .query_row(params![path,provider,hash], |r| Ok((r.get(0)?, r.get(1)?))).optional()?;
+        let Some((sid, stored)) = found else {
+            return Ok(false);
+        };
+        if stamp.is_some() && stamp != stored.as_deref() {
+            self.before_write()?;
+            self.connection
+                .prepare_cached("UPDATE sources SET stamp=?2 WHERE sid=?1")?
+                .execute(params![sid, stamp])?;
+            self.written()?;
+        }
+        self.saw(sid);
+        Ok(true)
     }
 
     pub fn begin_batch(&mut self) -> Result<(), Error> {
@@ -723,7 +759,12 @@ mod tests {
         let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
         let epoch = store.begin_inventory().unwrap();
         store
-            .replace(&extract("a.js", b"const before = 1;").unwrap(), "1", epoch)
+            .replace(
+                &extract("a.js", b"const before = 1;").unwrap(),
+                "1",
+                epoch,
+                None,
+            )
             .unwrap();
         let generation = store.status().unwrap()["generation"].clone();
         store
@@ -732,7 +773,12 @@ mod tests {
             .unwrap();
         assert!(
             store
-                .replace(&extract("a.js", b"const after = 1;").unwrap(), "2", epoch)
+                .replace(
+                    &extract("a.js", b"const after = 1;").unwrap(),
+                    "2",
+                    epoch,
+                    None
+                )
                 .is_err()
         );
         assert_eq!(store.status().unwrap()["generation"], generation);
@@ -758,6 +804,7 @@ mod tests {
                 &extract("a.js", b"const previous = 1;").unwrap(),
                 "1",
                 epoch,
+                None,
             )
             .unwrap();
         store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
@@ -780,10 +827,14 @@ mod tests {
         let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
         let epoch = store.begin_inventory().unwrap();
         let extraction = extract("a.js", b"const retained = 1;").unwrap();
-        store.replace(&extraction, "1", epoch).unwrap();
+        store.replace(&extraction, "1", epoch, None).unwrap();
         assert_eq!(store.status().unwrap()["inventoryComplete"], false);
         let restarted = store.begin_inventory().unwrap();
-        assert!(store.reuse("a.js", PROVIDER, &extraction.hash).unwrap());
+        assert!(
+            store
+                .reuse("a.js", PROVIDER, &extraction.hash, None)
+                .unwrap()
+        );
         assert_eq!(
             store
                 .finish_inventory(restarted, &Value::Null, &[], 0)
@@ -802,8 +853,8 @@ mod tests {
         );
         let epoch = store.begin_inventory().unwrap();
         store.begin_batch().unwrap();
-        store.replace(&a, "1", epoch).unwrap();
-        store.replace(&b, "1", epoch).unwrap();
+        store.replace(&a, "1", epoch, None).unwrap();
+        store.replace(&b, "1", epoch, None).unwrap();
         store.commit_batch().unwrap();
         let excluded = ["vendor/".to_string()];
         store
@@ -814,8 +865,8 @@ mod tests {
 
         let epoch = store.begin_inventory().unwrap();
         store.begin_batch().unwrap();
-        assert!(store.reuse("a.js", PROVIDER, &a.hash).unwrap());
-        assert!(store.reuse("b.js", PROVIDER, &b.hash).unwrap());
+        assert!(store.reuse("a.js", PROVIDER, &a.hash, None).unwrap());
+        assert!(store.reuse("b.js", PROVIDER, &b.hash, None).unwrap());
         assert!(store.connection.is_autocommit(), "no write lock taken");
         store.commit_batch().unwrap();
         let removed = store
@@ -827,13 +878,13 @@ mod tests {
 
         // A pass interrupted before its first change leaves the complete inventory standing.
         store.begin_inventory().unwrap();
-        assert!(store.reuse("a.js", PROVIDER, &a.hash).unwrap());
+        assert!(store.reuse("a.js", PROVIDER, &a.hash, None).unwrap());
         assert_eq!(store.status().unwrap()["inventoryComplete"], true);
 
         // Changed exclusions alone are recorded; an unseen source alone is retired.
         let epoch = store.begin_inventory().unwrap();
-        store.reuse("a.js", PROVIDER, &a.hash).unwrap();
-        store.reuse("b.js", PROVIDER, &b.hash).unwrap();
+        store.reuse("a.js", PROVIDER, &a.hash, None).unwrap();
+        store.reuse("b.js", PROVIDER, &b.hash, None).unwrap();
         store
             .finish_inventory(epoch, &json!({"kind": "git"}), &[], 0)
             .unwrap();
@@ -847,7 +898,7 @@ mod tests {
             before["generation"].as_i64().unwrap() + 1
         );
         let epoch = store.begin_inventory().unwrap();
-        store.reuse("a.js", PROVIDER, &a.hash).unwrap();
+        store.reuse("a.js", PROVIDER, &a.hash, None).unwrap();
         assert_eq!(
             store
                 .finish_inventory(epoch, &json!({"kind": "git"}), &[], 0)
@@ -863,11 +914,65 @@ mod tests {
     }
 
     #[test]
+    fn a_settled_stamp_reuses_a_source_without_its_content() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let a = extract("a.js", b"const a = 1;").unwrap();
+        let epoch = store.begin_inventory().unwrap();
+        store.replace(&a, "1", epoch, None).unwrap();
+        store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
+
+        // A source stored without a stamp is read; its settled stamp is then recorded.
+        let epoch = store.begin_inventory().unwrap();
+        assert!(!store.reuse_stamped("a.js", PROVIDER, "s1").unwrap());
+        assert!(store.reuse("a.js", PROVIDER, &a.hash, Some("s1")).unwrap());
+        store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
+        let changes = store.connection.total_changes();
+        let epoch = store.begin_inventory().unwrap();
+        assert!(store.reuse_stamped("a.js", PROVIDER, "s1").unwrap());
+        assert_eq!(
+            store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap(),
+            0
+        );
+        assert_eq!(store.connection.total_changes(), changes, "nothing written");
+
+        // Another stamp is not this content; a replacement carries its own stamp.
+        let epoch = store.begin_inventory().unwrap();
+        assert!(!store.reuse_stamped("a.js", PROVIDER, "s2").unwrap());
+        let b = extract("a.js", b"const b = 1;").unwrap();
+        store.replace(&b, "2", epoch, Some("s2")).unwrap();
+        assert!(!store.reuse_stamped("a.js", PROVIDER, "s1").unwrap());
+        assert!(store.reuse_stamped("a.js", PROVIDER, "s2").unwrap());
+        // Deferred work has no evidence for any stamp.
+        store.defer("a.js", PROVIDER, epoch).unwrap();
+        assert!(!store.reuse_stamped("a.js", PROVIDER, "s2").unwrap());
+        store
+            .fail(
+                "a.js",
+                PROVIDER,
+                &b.hash,
+                "syntax error",
+                "3",
+                epoch,
+                Some("s3"),
+            )
+            .unwrap();
+        assert!(
+            store.reuse_stamped("a.js", PROVIDER, "s3").unwrap(),
+            "failed content is not retried"
+        );
+    }
+
+    #[test]
     fn replacement_failure_empty_success_and_deletion_are_distinct() {
         let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
         let epoch = store.begin_inventory().unwrap();
         store
-            .replace(&extract("a.js", b"const before = 1;").unwrap(), "1", epoch)
+            .replace(
+                &extract("a.js", b"const before = 1;").unwrap(),
+                "1",
+                epoch,
+                None,
+            )
             .unwrap();
         assert_eq!(
             store.query(&Query::new("name", "before")).unwrap()["results"]
@@ -877,7 +982,7 @@ mod tests {
             1
         );
         store
-            .fail("a.js", PROVIDER, "", "syntax error", "2", epoch)
+            .fail("a.js", PROVIDER, "", "syntax error", "2", epoch, None)
             .unwrap();
         assert!(
             store.query(&Query::new("name", "before")).unwrap()["results"]
@@ -887,7 +992,7 @@ mod tests {
         );
         assert_eq!(store.status().unwrap()["failedSources"], 1);
         store
-            .replace(&extract("a.js", b"// empty").unwrap(), "3", epoch)
+            .replace(&extract("a.js", b"// empty").unwrap(), "3", epoch, None)
             .unwrap();
         assert_eq!(store.status().unwrap()["evidence"], 0);
         store.finish_inventory(epoch, &Value::Null, &[], 0).unwrap();
@@ -918,6 +1023,7 @@ mod tests {
                     &extract(&format!("s{index}.js"), source.as_bytes()).unwrap(),
                     "1",
                     epoch,
+                    None,
                 )
                 .unwrap();
         }
@@ -950,10 +1056,11 @@ mod tests {
                 &extract("a.js", b"const a = 1, b = 2;").unwrap(),
                 "1",
                 epoch,
+                None,
             )
             .unwrap();
         store
-            .replace(&extract("c.js", b"const c = 1;").unwrap(), "1", epoch)
+            .replace(&extract("c.js", b"const c = 1;").unwrap(), "1", epoch, None)
             .unwrap();
         store.defer("c.js", PROVIDER, epoch).unwrap();
         let status = store.status().unwrap();
@@ -992,7 +1099,7 @@ mod tests {
             crate::java::extract("A.java", b"class A { void go() { ping(); } void broken( }")
                 .unwrap();
         assert!(extraction.partial);
-        store.replace(&extraction, "1", epoch).unwrap();
+        store.replace(&extraction, "1", epoch, None).unwrap();
         let rows = store.query(&Query::new("name", "ping")).unwrap();
         assert_eq!(rows["results"][0]["container"]["name"], "go");
         assert_eq!(
@@ -1010,7 +1117,7 @@ mod tests {
         );
         assert!(
             store
-                .reuse("A.java", crate::java::PROVIDER, &extraction.hash)
+                .reuse("A.java", crate::java::PROVIDER, &extraction.hash, None)
                 .unwrap()
         );
     }
@@ -1036,7 +1143,7 @@ mod tests {
             ("r/lib.rs", "use crate::a::b;\nuse crate::ab;\n"),
         ] {
             let extraction = crate::providers::extract(path, source.as_bytes()).unwrap();
-            store.replace(&extraction, "1", epoch).unwrap();
+            store.replace(&extraction, "1", epoch, None).unwrap();
         }
         let found = |value: &str| -> Vec<(String, String)> {
             store.query(&Query::new("import", value)).unwrap()["results"]
@@ -1081,7 +1188,7 @@ mod tests {
         let epoch = store.begin_inventory().unwrap();
         let source = "# A\n`craft_engine::Evidence`, `Gson.toJson()`, `Type#run`, `Evidence`, `MyEvidence`, `a_Evidence`.\n[up](/src/x.Evidence)\n";
         let extraction = crate::providers::extract("docs/a.md", source.as_bytes()).unwrap();
-        store.replace(&extraction, "1", epoch).unwrap();
+        store.replace(&extraction, "1", epoch, None).unwrap();
         let found = |value: &str| -> Vec<String> {
             store.query(&Query::new("mention", value)).unwrap()["results"]
                 .as_array()
@@ -1116,7 +1223,7 @@ mod tests {
             ("ab/w.java", "class W { void go() { ping(); } }"),
         ] {
             let extraction = crate::java::extract(path, source.as_bytes()).unwrap();
-            store.replace(&extraction, "1", epoch).unwrap();
+            store.replace(&extraction, "1", epoch, None).unwrap();
         }
         let page = |query: Query| store.query(&query).unwrap();
         let first = page(Query {
@@ -1213,7 +1320,7 @@ mod tests {
         }
         let continuation = first["continuation"].as_str().unwrap().to_string();
         let replaced = crate::java::extract("a/x.java", b"class X {}").unwrap();
-        store.replace(&replaced, "2", epoch).unwrap();
+        store.replace(&replaced, "2", epoch, None).unwrap();
         let stale = store.query(&Query {
             after: &continuation,
             ..Query::new("name", "ping")
