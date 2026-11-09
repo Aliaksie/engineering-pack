@@ -105,6 +105,14 @@ by the called name, not by the resolved receiver, so rows are every match of tha
 `route.name` and `route.qualifier` say the qualifier was not resolved. A qualified value that does
 not end in a name is refused.
 
+Every row states its `basis`. `parsed`: the parse itself establishes the row (a declaration,
+an import statement, a Markdown section, link or decision record, a configuration key). `name`:
+the row only spells the asked name (a call or reference token, a code-span mention), so it may
+mean another declaration of that name. Text output marks name rows `[by name]`. A hook answer
+states the `basis` of its rows (`parsed`, `name` or `mixed`, with each name row then marked)
+and, when any row rests on its name, says so in its `use` line. The basis follows from the row's
+kind, so stored evidence needs no new field.
+
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
 verified evidence. In-scope sources the index cannot answer for are its gaps: pending, failed
 or partial extraction, a source changed since it was cited, or a candidate in a language the
@@ -178,8 +186,13 @@ comments are not.
 
 The database is `.craft/state/intelligence/project.sqlite`, guarded by an
 OS lock; `backup` writes `project.sqlite.backup` beside it. On POSIX all three are created
-owner-readable only. Evidence is derived, so a store written by another schema version is
-discarded and the next `refresh` rebuilds it. Corrupt stores refuse writes; preserve them for
+owner-readable only. Writes go through a write-ahead log (`project.sqlite-wal`, with its
+`-shm` index, same mode) that is synced at checkpoints rather than at every commit: a power
+failure may lose the last commits, which the next `refresh` extracts again. A filesystem
+that refuses the log (some network shares and mounts) keeps the rollback journal with full
+syncs. Evidence is
+derived, so a store written by another schema version is discarded and the next `refresh`
+rebuilds it. Corrupt stores refuse writes; preserve them for
 diagnosis rather than rebuilding blindly. Per source: 2 MiB, 20,000 records and a two-second
 extraction deadline. Generated state, build output and dependency directories are always excluded.
 Occurrence IDs are stable across relocation and repeated extraction.

@@ -96,8 +96,8 @@ uploads one report per OS. See the [guard limits](SECURITY.md#read-only-review-g
 
 ### Performance
 
-The **Performance** workflow runs on pull requests, pushes to `main` and manual dispatch on
-Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
+The **Performance** workflow runs after merge, on pushes to `main`, and by manual dispatch for
+any branch, on Linux, macOS and Windows; it gates neither pull requests nor releases. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
 installed release `craft`: startup, the prompt, tool and stop hooks, warm and cold Project
 Intelligence refresh, and the background warm-up a session start launches. A second fixture with
 declared standards, a started session, a warm index and an uncommitted edit times the hooks a
@@ -111,8 +111,8 @@ wall time (median, range and 95th percentile), user and system CPU, peak memory 
 platform allows, instructions and cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
 timed runs, and only failed commands or checks fail the job.
 
-[Bencher](https://bencher.dev) keeps the history and compares a pull request with `main`,
-reporting through a check and a pull request comment; timings never fail the job. Raw Hyperfine
+[Bencher](https://bencher.dev) keeps the history, alerts on a `main` regression and compares a
+dispatched branch with `main`, reporting through a check; timings never fail the job. Raw Hyperfine
 JSON stays in the run artifacts for 90 days. Locally, with Hyperfine installed:
 
 ```sh
