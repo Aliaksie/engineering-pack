@@ -17,8 +17,7 @@ and lose after compaction. "Tests pass" is often a claim, not an observed run. W
 plugin, hooks and skills for each host to fix that is infrastructure most teams should not
 have to maintain.
 
-Craft takes the approach Spring Boot takes for applications: working conventions by default,
-customization where your project differs.
+Craft ships working conventions by default and lets your project customize where it differs.
 
 - **Defaults.** Engineering guidance and workflows for planning, implementation, testing,
   review, stories and shipping. Each task gets only the guidance its declared stack and kind
