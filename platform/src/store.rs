@@ -33,7 +33,9 @@ impl Store {
         let version: u32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
         if version != 0 && version != SCHEMA_VERSION {
             drop(connection);
-            for file in [path.to_path_buf(), path.with_extension("sqlite-journal")] {
+            let sidecars = ["sqlite-journal", "sqlite-wal", "sqlite-shm"];
+            let files = sidecars.map(|extension| path.with_extension(extension));
+            for file in std::iter::once(path.to_path_buf()).chain(files) {
                 match std::fs::remove_file(&file) {
                     Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
                         return Err(error.into());
@@ -58,6 +60,13 @@ impl Store {
 
     fn initialize(connection: Connection) -> Result<Self, Error> {
         connection.busy_timeout(Duration::from_secs(2))?;
+        // A write-ahead log appends each commit to one file and syncs only at checkpoints:
+        // no journal file created and deleted with a full sync per commit, which made Windows
+        // store writes twenty times slower than Linux on the same CPU. The evidence is derived,
+        // so a commit lost to a power failure is only re-extracted by the next refresh.
+        connection
+            .pragma_update_and_check(None, "journal_mode", "WAL", |r| r.get::<_, String>(0))?;
+        connection.pragma_update(None, "synchronous", "NORMAL")?;
         let version: u32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
         if version != 0 && version != SCHEMA_VERSION {
             return Err("unsupported evidence schema; rebuild with a compatible binary".into());
