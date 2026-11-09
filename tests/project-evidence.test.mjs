@@ -449,7 +449,7 @@ test('source-scoped queries filter before pagination and preserve exact member-r
   const text = execFileSync(binary, ['project-evidence', 'query', '--enable', '--root', root, '--field', 'target',
     '--value', 'ping', '--kind', 'java:invokes-syntax', '--under', 'main/', '--excerpt'], { encoding: 'utf8' });
   assert.equal(text, '1 result(s) of kind java:invokes-syntax; stored-snapshot; inventory complete\nmain/Caller.java [verified-selected-source]\n'
-    + '  3:5 ping in java:declares-method go:2\n    | ping();\n');
+    + '  3:5 ping in java:declares-method go:2 [by name]\n    | ping();\n');
   const commands = readTelemetry(root).filter(event => event.name === 'cli.command');
   assert.deepEqual(commands.map(event => [event.attributes.command, event.outcome]), [['project-evidence', 'success'], ['project-evidence', 'success']]);
 });
