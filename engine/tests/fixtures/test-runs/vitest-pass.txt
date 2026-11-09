@@ -1,0 +1,16 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: vitest-pass
+# command: npx --no-install vitest run math.test.js
+# cwd: scratchpad/r4/vitest
+# date: 2026-11-05T20:00:13Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+
+ RUN  v5.1.0 <scratch>/vitest
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  21:00:12
+   Duration  138ms (transform 49%, import 31%, worker 12%, tests 8%)
+

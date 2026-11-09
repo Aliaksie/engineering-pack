@@ -1,0 +1,16 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: node-filtered
+# command: node --test --test-name-pattern=negative math.test.mjs
+# cwd: scratchpad/r4/node
+# date: 2026-11-05T19:58:51Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+✔ adds negative (0.577458ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.898041

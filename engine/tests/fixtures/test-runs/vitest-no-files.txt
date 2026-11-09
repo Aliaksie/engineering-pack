@@ -1,0 +1,16 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: vitest-no-files
+# command: npx --no-install vitest run nothing_matches_xyz
+# cwd: scratchpad/r4/vitest
+# date: 2026-11-05T20:00:16Z
+# exit-code: 1
+# --- combined stdout+stderr below ---
+
+ RUN  v5.1.0 <scratch>/vitest
+
+No test files found, exiting with code 1
+
+filter: nothing_matches_xyz
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/.git/**
+

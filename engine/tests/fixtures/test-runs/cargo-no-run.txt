@@ -1,0 +1,9 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: cargo-no-run
+# command: cargo test --no-run
+# cwd: scratchpad/r4/cargo
+# date: 2026-11-05T19:58:44Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+  Executable unittests src/lib.rs (target/debug/deps/r4demo-96984daf7c821c48)

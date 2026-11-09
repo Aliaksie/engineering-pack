@@ -1,0 +1,15 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: pytest-filtered
+# command: <scratch>/venv/bin/pytest -p no:cacheprovider -k negative test_math.py
+# cwd: scratchpad/r4/pytest
+# date: 2026-11-05T19:59:46Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
+rootdir: <scratch>/pytest
+collected 3 items / 2 deselected / 1 selected
+
+test_math.py .                                                           [100%]
+
+======================= 1 passed, 2 deselected in 0.01s ========================

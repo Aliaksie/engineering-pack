@@ -1,0 +1,15 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: node-no-files
+# command: node --test nothing/*.test.mjs
+# cwd: scratchpad/r4/node
+# date: 2026-11-05T19:58:51Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+ℹ tests 0
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.225042

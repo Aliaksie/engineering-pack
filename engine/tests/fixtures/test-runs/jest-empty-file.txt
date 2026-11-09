@@ -1,0 +1,20 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: jest-empty-file
+# command: npx --no-install jest empty/none.test.js
+# cwd: scratchpad/r4/jest
+# date: 2026-11-05T20:00:42Z
+# exit-code: 1
+# --- combined stdout+stderr below ---
+FAIL empty/none.test.js
+  ● Test suite failed to run
+
+    Your test suite must contain at least one test.
+
+      at onResult (node_modules/@jest/core/build/index.js:1054:18)
+          at Array.map (<anonymous>)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.247 s
+Ran all test suites matching empty/none.test.js.

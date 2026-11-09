@@ -1,0 +1,21 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: cargo-empty-suite
+# command: cargo test
+# cwd: scratchpad/r4/cargo-empty
+# date: 2026-11-05T19:58:44Z
+# exit-code: 0
+# --- combined stdout+stderr below ---
+   Compiling r4empty v0.1.0 (<scratch>/cargo-empty)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.91s
+     Running unittests src/lib.rs (target/debug/deps/r4empty-8f3126952735b9f6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests r4empty
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

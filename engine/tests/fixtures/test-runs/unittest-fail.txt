@@ -1,0 +1,24 @@
+# CAPTURED (real run, not reconstructed)
+# runner-case: unittest-fail
+# command: python3 -m unittest -v test_math
+# cwd: scratchpad/r4/py
+# date: 2026-11-05T19:59:21Z
+# exit-code: 1
+# --- combined stdout+stderr below ---
+test_adds (test_math.MathTest.test_adds) ... ok
+test_adds_negative (test_math.MathTest.test_adds_negative) ... ok
+test_fails_when_flagged (test_math.MathTest.test_fails_when_flagged) ... FAIL
+
+======================================================================
+FAIL: test_fails_when_flagged (test_math.MathTest.test_fails_when_flagged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<scratch>/py/test_math.py", line 13, in test_fails_when_flagged
+    self.assertEqual(2 + 2, 5)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^
+AssertionError: 4 != 5
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
