@@ -5574,7 +5574,13 @@
             "routing": {
               "promptHints": true,
               "editHints": false,
-              "dedupeHints": false
+              "dedupeHints": false,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -5676,6 +5682,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "project",
             "routing.dedupeHints": "user",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",

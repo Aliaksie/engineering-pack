@@ -18,7 +18,9 @@ dispatcher left `undefined`, the routing catalog as a request input (the catalog
 now; the route and session corpora replay those decisions) and the services decision before
 built-in mappings (`services-contracts.json` replays it with them). The acceptance-view and
 feature-outcome cases were removed as copies of `view-contracts.json` and
-`feature-contracts.json`.
+`feature-contracts.json`. Correction: `settings:precedence` lists every routing switch in the
+bundled defaults (`standardChecks` through `sessionRecords`), each with its `bundled` origin,
+as `settings-contracts.json` does.
 
 The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,
 continuation, blocked attempts, checkpoint binding, context selection and budgets,
