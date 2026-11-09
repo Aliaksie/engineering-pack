@@ -1,22 +1,39 @@
 # Craft Capabilities
 
-A portable engineering standards and evidence layer for AI coding agents, installed into
-Claude Code, Codex, Gemini, Cursor, Copilot, JetBrains AI Assistant or any Agent Skills host
-from one source.
+Engineering practices and workflows for AI coding agents, together with your project's own
+rules and skills, installed into Claude Code, Codex, Gemini, Cursor, Copilot, JetBrains AI
+Assistant or any Agent Skills host from one source.
 
-Craft brings your project's declared standards to the agent when the work reaches them,
-reports what can be checked without a model, keeps observed evidence apart from what the
-agent claims, and carries decisions and rules across compaction and handoffs. It adds nothing
-where it has nothing to say. It complements the host: reasoning, search, orchestration, model
-choice and permissions stay with the host and with you.
+Agents and hosts change; your engineering standards should not. Craft ships useful defaults,
+lets the project declare what "good" means for it, brings the right part to the agent while
+it works, and checks what can be checked without a model.
 
-## The problem, in one example
+## Why it exists
 
-A project keeps its domain free of infrastructure. The rule is in an architecture document
-the agent may not read, or reads once and loses after compaction. Asked to add discount
-codes, the agent imports the database adapter straight into the domain.
+An agent starts every session from general knowledge. Your commit format, architecture
+rules, ADR template and review checklist live in documents it may not read, or reads once
+and loses after compaction. "Tests pass" is often a claim, not an observed run. Your CI
+linters catch some of this, but only after the agent has finished and handed the work back.
+Writing plugins, hooks and skills for each host to fix that is infrastructure most teams
+should not have to maintain.
 
-With Craft, the project declares its modules and what each may depend on:
+Craft ships working conventions by default and lets your project customize where it differs:
+
+- **Defaults.** Engineering guidance and workflows for planning, implementation, testing,
+  review, stories and shipping. Each task gets only the guidance its stack and kind of work
+  need, not everything at once.
+- **Your rules and skills.** `.craft/project.json` declares your modules, your standards (a
+  file, a folder or an established name such as `conventional-commits`), where they apply and
+  how strictly, and your own skills. On conflict, yours win, and `craft standards` shows which
+  source supplied each piece.
+- **Feedback while the agent works.** Checks that need no model run on what the agent has
+  just written, so it corrects course in the same turn, not after review.
+- **Evidence instead of claims.** Test results are read from the runner's own output. What
+  was not run is reported as not run, and what Craft cannot read as unknown, never as passed.
+
+## One task, with and without Craft
+
+A project declares its modules and three standards:
 
 ```json
 {
@@ -25,88 +42,68 @@ With Craft, the project declares its modules and what each may depend on:
     { "name": "domain", "path": "src/domain", "dependsOn": [] },
     { "name": "adapters", "path": "src/adapters", "dependsOn": ["domain"] }
   ],
-  "standards": [{ "id": "rings", "anchor": "hexagonal-architecture" }]
+  "standards": [
+    { "id": "commits", "anchor": "conventional-commits" },
+    { "id": "rings", "anchor": "hexagonal-architecture" },
+    { "id": "migrations", "checklist": ["Backward compatible with the previous release"],
+      "scope": { "paths": ["db/migrations"] } }
+  ]
 }
 ```
 
-When the agent writes `src/domain/order.ts` with a new `import { db } from "../adapters/db"`,
-the result of that edit tells it (Claude Code, verbatim):
+Then asks the agent to add discount codes to orders.
 
-```text
-Project standards not met by what was just written (deterministic anchor check; report only,
-fix or tell the user why not): [{"standard":"rings","anchor":"hexagonal-architecture",
-"findings":[{"rule":"undeclared-dependency","line":1,"message":"imports ../adapters/db from
-module adapters; module domain does not declare dependsOn adapters"}]}]
-```
+**Without Craft**, the agent works from what it already knows. It may import the database
+adapter straight into the domain, write `fixed discounts` as the commit message, run a test
+filter that matches nothing and report that the tests pass.
 
-The edit is reported, not blocked: the agent fixes it or tells you why not. Only imports the
-change adds are reported, compared with the file at `HEAD`. The same check runs outside the
-agent, for CI or a Git hook: `craft standards --root . --file src/domain/order.ts` prints the
-finding and exits 2.
+**With Craft**, on the same host:
+
+- The route for the change names the standards in its scope, one line each; their content
+  stays in your project.
+- When the agent writes `src/domain/order.ts` with `import { db } from "../adapters/db"`, the
+  result of that edit tells it (Claude Code, verbatim):
+
+  ```text
+  Project standards not met by what was just written (deterministic anchor check; report only,
+  fix or tell the user why not): [{"standard":"rings","anchor":"hexagonal-architecture",
+  "findings":[{"rule":"undeclared-dependency","line":1,"message":"imports ../adapters/db from
+  module adapters; module domain does not declare dependsOn adapters"}]}]
+  ```
+
+- The commit message is checked against Conventional Commits in the commit's result.
+- A test command that executed no test is recorded as failed, not passed.
+- When the turn ends, the agent gets one summary of the changed files: the migration
+  checklist if a migration changed, and any dependency findings still open. It addresses them
+  before reporting done.
+- After compaction, the session gets those standards back with its work.
+
+Nothing is blocked; the agent fixes the finding or tells you why not. The same checks run
+outside the agent: `craft standards --root . --file src/domain/order.ts` prints the finding
+and exits 2, for CI or a Git hook.
 
 ## What else it does
 
-- **Your standards, in scope.** `standards` names a file, a folder or an established
-  standard (`conventional-commits`, `madr`, `gherkin`, …) and where it applies. Routes name
-  the standards in scope, one line each; the content stays in your project. Ten anchors have
-  structural checks without a model, such as the commit message after a `git commit`.
-- **Your declarations decide.** A project anchor with Craft's name replaces Craft's entry, a
-  standard you declare for a kind of work replaces Craft's default anchors for it, and your
-  own skills can replace or disable package skills in routes. `craft standards` and the routes
-  show which source supplied each piece. Craft does not merge or rewrite guidance text.
-- **Observed test runs, not claims.** Craft reads the runner's summary from the shell result
-  the host reports; it runs no tests itself. See [evidence and claims](#evidence-and-claims).
-- **One review when a turn ends.** On hosts that can continue a turn, the changed files get
-  one summary: dependency findings, the checklists of `review` standards in scope and, when
-  `routing.debtMarkers` is on, new TODOs, lint suppressions, skipped tests or removed
-  assertions. The agent continues once to address it.
-- **Continuity.** After compaction, a session gets back the checked and reviewed standards
-  of its scope and, for a task, its goal, decisions, open result and test status. Subagents
-  started by Claude Code, Codex or Copilot CLI receive the same standards.
-- **Fewer turns.** When a prompt or a literal search asks who calls a name, where it is
-  declared, where a configuration key is set or which ADR decides something, the hook
-  answers from a local index ([Project Intelligence](docs/PROJECT-EVIDENCE.md)), but only when
-  the answer is complete; otherwise it adds nothing. A change request gets no prompt hint
-  unless a task is bound or an input is missing; the first edit names the guidance for its
-  scope.
+- **Workflows for whole tasks.** Deliver a change, review a local diff or a GitHub/GitLab
+  review, write code-grounded stories, ship a release: each a named workflow that loads the
+  guidance it needs and reports what it verified.
+- **Continuity.** After compaction, a task gets back its goal, decisions, open result and test
+  status. Subagents started by Claude Code, Codex or Copilot CLI receive the same standards.
+- **Fewer turns.** When the agent asks who calls a name, where it is declared or which ADR
+  decides something, a hook can answer from a local index
+  ([Project Intelligence](docs/PROJECT-EVIDENCE.md)), but only when the answer is complete.
+- **Trustworthy completion.** In a Craft task, a step that claims tests passed is refused while
+  the latest run on the current files failed. An opt-in
+  [acceptance contract](docs/ACCEPTANCE.md) refuses completion while a required criterion
+  lacks current passing evidence. See [test runs](docs/ROUTING.md#test-runs).
 - **Not only code.** Story, specification, decision-record and exploratory-testing work get
   the same standards and evidence, with [reader views](docs/ACCEPTANCE.md#reader-views) for
   QA, product and architecture.
 
-Every hook output has a switch; see [routing](docs/ROUTING.md#project-standards).
-
-## Evidence and claims
-
-| What Craft has | What it records |
-|---|---|
-| A test command ran and its summary shows executed tests with no failures | `passed`, observed |
-| The exit code or summary shows a failure, or no test executed (filter matched nothing, all skipped) | `failed`, observed |
-| A test command ran but the output has no summary Craft recognizes | `unknown`, never `passed` |
-| No test run was observed on the current files | `not-run` |
-| The agent says verification passed | the agent's statement, as stated |
-
-Checks during editing only report. Two places can refuse an unsupported success claim:
-
-- In a Craft task, a verification step that says "passed" is refused while the latest
-  deciding run on the current files failed. With no run observed, or only `unknown` ones,
-  the step is recorded as the agent states it: Craft has nothing to contradict it with.
-- With an opt-in [acceptance contract](docs/ACCEPTANCE.md), completion is refused while a
-  required criterion lacks current passing evidence. Asking for the observed run is refused
-  when none was observed on the current files. Other evidence stays as the reporter
-  assessed it: Craft checks its currency and consistency, not its truth.
-
-## Without and with configuration
-
-**Without configuration**, Craft supplies workflows and engineering guidance chosen by the
-kind of work and the files involved, observes test runs, answers certain lookups and resumes
-tasks after compaction. It does not know your architecture: nothing is checked against
-modules or standards you have not declared, and Craft's default anchors stay off.
-
-**A configured project** declares in `.craft/project.json` its modules and dependencies,
-standards with scope and level, its own skills and anchors, and opt-ins such as
-`anchors.defaults` and `routing.debtMarkers`. [Project configuration](docs/PROJECT-CONFIG.md)
-lists every field with its default; [routing](docs/ROUTING.md) and
-[integrations](docs/INTEGRATIONS.md) explain them.
+Without configuration, Craft supplies the defaults, observes test runs, answers lookups and
+resumes tasks; it checks nothing against an architecture you have not declared.
+[Project configuration](docs/PROJECT-CONFIG.md) lists every field with its default, and every
+hook output has a switch ([routing](docs/ROUTING.md#project-standards)).
 
 ## Install
 
@@ -200,29 +197,25 @@ what each host supports.
 
 ## What is shown and what is not yet
 
-- **Shown by tests on every change:** each check, routing decision and hook response has
-  deterministic fixtures, and the scenario above covers declared standards and anchors,
-  routing, checks, test evidence, resume after compaction and `doctor`.
-- **Measured:** the runtime cost of `craft` on Linux, macOS and Windows (see Performance).
-  In short model probes on Codex, answers were equally correct with and without Craft. Craft was
-  cheaper where a hook answered a lookup directly and cost extra turns where the model read
-  guidance first; those reads have been cut since, and cost is watched as a guardrail.
+- **Shown by tests on every change:** each check, routing decision and hook response, and an
+  end-to-end scenario covering standards, anchors, routing, test evidence, resume after
+  compaction and `doctor`.
+- **Measured:** the runtime cost of `craft` on Linux, macOS and Windows (see Performance), and
+  turns and tokens in short model probes on Codex, where cost is watched as a guardrail.
 - **Not yet shown:** that agents keep declared standards more often, or leave less debt, with
-  Craft than without it. That is the goal and a hypothesis; the checks verify what they
-  check, not that outcomes improve. Results will be published when measured, losses
+  Craft than without it. That is the goal; results will be published when measured, losses
   included ([evaluation](docs/EVALUATION.md)).
 
 ## What it does not do
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
-to a code host. Standards checks report; they do not block tools. A held stop asks the agent
-to continue once. The one hook that denies is craft-review's shell guard: with
-`review.readOnly: true` it denies common publishing commands, and while the project
-configuration is invalid it denies every shell command
-([read-only sessions](docs/REVIEW.md#read-only-sessions)). Plans and recommendations are
-advice; your host's permissions and your authorization still decide what happens. Nothing is
-sent remotely unless you configure an OpenTelemetry endpoint; bounded local usage metadata is
-on by default and can be disabled ([observability and privacy](docs/OBSERVABILITY.md)).
+to a code host. Standards checks report; they do not block tools. The one hook that denies is
+craft-review's shell guard: with `review.readOnly: true` it denies common publishing
+commands, and while the project configuration is invalid it denies every shell command
+([read-only sessions](docs/REVIEW.md#read-only-sessions)). Your host's permissions and your
+authorization still decide what happens. Nothing is sent remotely unless you configure an
+OpenTelemetry endpoint; bounded local usage metadata is on by default and can be disabled
+([observability and privacy](docs/OBSERVABILITY.md)).
 
 ## Direction
 
@@ -246,6 +239,7 @@ See the [dashboard](https://bencher.dev/perf/aliaksie-s-craft-capabilities) and
 ## Learn more
 
 - [Documentation index](docs/README.md)
+- [Project configuration](docs/PROJECT-CONFIG.md)
 - [Project standards, anchors and skills](docs/ROUTING.md#project-standards)
 - [Sessions, tasks and continuity](docs/SESSION.md)
 - [Acceptance contracts](docs/ACCEPTANCE.md)
