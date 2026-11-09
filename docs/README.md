@@ -1,6 +1,7 @@
 # Documentation
 
-New here? Start with [installation](INSTALL.md), then [commands](COMMANDS.md). To configure a
+New here? Start with [installation](INSTALL.md), then [commands](COMMANDS.md). To declare your
+project's own standards, read [project standards](ROUTING.md#project-standards). To configure a
 project, read [routing](ROUTING.md) and [integrations](INTEGRATIONS.md). Contributors start
 with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 
@@ -9,7 +10,12 @@ with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 | Document | Purpose |
 |---|---|
 | [Installation](INSTALL.md) | Channels, per-host installation, first use, updates and local builds |
+| [Checking an installation](INSTALL.md#checking-an-installation) | `craft doctor`: whether each host would run Craft for the project |
 | [Commands](COMMANDS.md) | Every `craft` command, its purpose and effects |
+| [Project standards](ROUTING.md#project-standards) | Declaring the project's standards, their scope and level, and the checks that need no model |
+| [Anchors](ROUTING.md#project-anchors) | Established standards by name, the embedded catalog and the project's own catalog |
+| [Project skills](ROUTING.md#project-skills) | Routing the project's own skills, replacing or disabling package skills |
+| [Test runs](ROUTING.md#test-runs) | How test commands are read, and why a run of no tests fails |
 | [Routing](ROUTING.md) | Module and guidance selection, lookup, execution roles and model advice |
 | [Sessions](SESSION.md) | Task lifecycle, checkpoints, state storage, reuse and session advice |
 | [Acceptance contracts](ACCEPTANCE.md) | Criteria, evidence, coverage and reader views |
