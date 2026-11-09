@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "adapter": "claude",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -78,6 +78,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "deliver"
@@ -88,7 +89,18 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
+          "tool": "any",
+          "handler": "deliver"
+        },
+        {
+          "id": "delegation",
+          "normalizedEvent": "agent-start",
+          "name": "SubagentStart",
+          "context": true,
+          "deny": false,
+          "event": "agent-start",
           "tool": "any",
           "handler": "deliver"
         },
@@ -101,6 +113,17 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
+          "handler": "deliver"
+        },
+        {
+          "id": "test-failure",
+          "normalizedEvent": "after-tool-failure",
+          "name": "PostToolUseFailure",
+          "context": false,
+          "deny": false,
+          "outcome": "failure",
+          "event": "after-tool-failure",
+          "tool": "shell",
           "handler": "deliver"
         }
       ],
@@ -274,7 +297,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -341,6 +364,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"
@@ -372,6 +396,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -547,7 +572,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -610,6 +635,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"
@@ -641,6 +667,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -816,7 +843,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -871,6 +898,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"
@@ -902,6 +930,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"

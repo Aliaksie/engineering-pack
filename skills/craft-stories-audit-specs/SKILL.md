@@ -25,6 +25,13 @@ consequence. Separate a blocking product decision from a useful clarification. O
 candidate wording when the intended correction is clear, while labeling new choices as proposals.
 An unavailable implementation check is a limit of the audit, not a confirmed product defect.
 
+For example, rule A allows customers to cancel until 24 hours before an appointment; rule B
+allows only staff to cancel confirmed appointments. For a confirmed appointment more than
+24 hours away, the rules imply different permissions. Report both sources and ask which rule
+applies; do not choose the policy. By contrast, missing confirmation-message wording is a
+clarification if the required confirmation behavior is already clear and wording has no
+specified consequence. Its importance follows the actual requirements, not a fixed checklist.
+
 Return the report or requested report file without changing the source specification. Preserve
 competing claims and name the decision owner when known. Do not resolve a product disagreement
 by silently promoting whichever source was read last.

@@ -1,6 +1,6 @@
 {
   "name": "engineering-pack",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Portable engineering practices and workflows.",
   "contextFileName": "GEMINI.md"
 }

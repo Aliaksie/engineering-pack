@@ -1,6 +1,6 @@
 ---
 name: testing-engineering
-description: "Choose meaningful verification or diagnose a failing check from observable behavior."
+description: "Choose verification or investigate failures and unexpected behavior from evidence."
 ---
 
 <!-- Generated from packages/; edit the portable source and rebuild. -->
@@ -44,6 +44,8 @@ availability and check adequacy before declaring verified support. Failed execut
 not-run, not-available and unknown support stay distinct; changed sources make earlier
 results stale. Current evidence for one criterion does not certify another. The optional
 runtime computes applicability from these assessments; it does not judge semantic truth.
+A run that executed no test (a filter or skip matched everything) is not passing evidence. Where
+the runtime observed the run, a format 2 ledger record can take it with `"tests": "observed"`.
 Without runtime access, report the same distinctions manually in the existing task record.
 
 Return a proportionate decision or focused change, the evidence that supports it and any unresolved limitation. Opening this skill grants no authority to change external systems.

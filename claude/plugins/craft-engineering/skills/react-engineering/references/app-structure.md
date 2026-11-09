@@ -16,3 +16,18 @@ useful boundary. Check package exports and public component contracts before res
 Example: a shipment-status page can own routing and query selection while a status timeline
 renders already interpreted events. Test the mapping separately from keyboard interaction.
 Verify loading, denied access and navigation changes through the actual routing/data boundary.
+
+## Locate the performance constraint
+
+For a slow interaction, distinguish network waiting, JavaScript transfer/parse cost and React
+render work before changing structure. Use a network trace, bundle report or
+[React Profiler](https://react.dev/reference/react/Profiler) for the affected boundary.
+Start independent reads together when permissions, resource limits and failure handling allow;
+retain ordering where one result authorizes or supplies another operation. Bound fan-out over
+large collections rather than starting every request at once.
+
+Defer expensive optional UI with the project's supported loading mechanism when it improves
+the measured interaction. Preserve loading/error behavior and avoid introducing a new request
+waterfall. Use documented package exports and check the actual bundle before replacing imports;
+a shorter import path does not prove a smaller bundle. Next.js-specific loaders, caches and
+server APIs require that framework and a supported version; React alone does not supply them.

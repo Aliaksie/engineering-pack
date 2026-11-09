@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "name": "craft-delivery",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Project-grounded planning, implementation, review and repository context.",
   "instructions": "AGENTS.md",
   "skills": [
@@ -76,9 +76,21 @@
       "handler": "deliver"
     },
     {
+      "name": "delegation",
+      "event": "agent-start",
+      "tool": "any",
+      "handler": "deliver"
+    },
+    {
       "name": "compact-restore",
       "event": "after-compact",
       "tool": "any",
+      "handler": "deliver"
+    },
+    {
+      "name": "test-failure",
+      "event": "after-tool-failure",
+      "tool": "shell",
       "handler": "deliver"
     }
   ],

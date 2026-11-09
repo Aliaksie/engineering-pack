@@ -80,3 +80,8 @@ data or a head mismatch leaves it undecided and exits 1. Nothing is stored betwe
 With `review.readOnly: true`, a shell hook blocks common `gh`/`glab` mutations and `git
 push`. It is a heuristic ([limits](SECURITY.md#read-only-review-guard)), not a replacement
 for read-only credentials.
+
+The hook is installed with craft-review and runs before every shell command, whatever
+`review.readOnly` says. It fails closed: while `.craft/project.json` is invalid, it denies
+every shell command with `Policy could not be evaluated:` and the reason. Fix the configuration (`craft settings --root <project>` names the error) to
+run commands again.

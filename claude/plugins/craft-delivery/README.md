@@ -18,12 +18,12 @@ ordinary discovery/status calls reuse the session binding without per-feature ta
 Use the bundled CLI's `session` command for context occupancy, selected-guidance estimates,
 pack activity and next-step advice; `session-attempt` records explicit acceptance outcomes.
 Missing host telemetry stays unknown. Neither command compacts a session or switches models.
-See [session status](https://github.com/Aliaksie/engineering-pack/blob/v0.0.4/docs/SESSION.md) for receipts, bounded continuation and reuse.
+See [session status](https://github.com/Aliaksie/engineering-pack/blob/v0.0.5/docs/SESSION.md) for receipts, bounded continuation and reuse.
 
 Implementation requests go through `workflow-deliver-change`, which uses `implement-story`
 for a supplied story. Code review routes to `craft-review` when available. Implementation
 uses the relevant parts of `craft-engineering`. The target project still owns architecture and permissions.
-See [integrations](https://github.com/Aliaksie/engineering-pack/blob/v0.0.4/docs/INTEGRATIONS.md) and [adapters](https://github.com/Aliaksie/engineering-pack/blob/v0.0.4/docs/ADAPTERS.md).
+See [integrations](https://github.com/Aliaksie/engineering-pack/blob/v0.0.5/docs/INTEGRATIONS.md) and [adapters](https://github.com/Aliaksie/engineering-pack/blob/v0.0.5/docs/ADAPTERS.md).
 
 `configure-service` sets up and checks a real authorized CLI/MCP read. `ship-change` covers
 independently usable commit, push, installation, deployment, publication and license phases.

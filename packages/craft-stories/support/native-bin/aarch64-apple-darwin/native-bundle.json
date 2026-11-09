@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.4",
+  "packVersion": "0.0.5",
   "target": "aarch64-apple-darwin",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.4",
-  "schemaVersion": 4,
+  "binaryVersion": "0.0.5",
+  "schemaVersion": 5,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
     "javascript-tree-sitter-0.25.0/v4",
@@ -24,14 +24,14 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "2b5db5b34f696ca982423cfc988eb6f7084f0bb2",
+  "sourceRevision": "006df9d6d5de7a413ddf9bc93006c178a8373ec3",
   "sourceDirty": false,
-  "cargoLockSha256": "df56ef0a08a7b29e4ed4dd13376ebae36a301277b0afc39797564f6022b0a1a9",
+  "cargoLockSha256": "06a6c6d6902e01946e1947983ec23cc66563d8f02c2f76ce81ae31f0e99973b3",
   "files": [
     {
       "path": "dependencies.json",
-      "bytes": 20910,
-      "sha256": "d7b4e70bfeeadb738ac9bb9dcb0ac1834b6fc8e7b9c73637bbba6cc529a59628"
+      "bytes": 21286,
+      "sha256": "3cd375fa5fb7302a54dacf52a285ea19295f48f95a4bf6bcd092c9ff2c556a6f"
     },
     {
       "path": "LICENSE",
@@ -40,13 +40,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 25184608,
-      "sha256": "c66d6f4e0eff069bd63320727d043c70f3fac28ec8928074c2351204dc981bc3"
+      "bytes": 25779680,
+      "sha256": "5858432b0748856b766a8cb8fa29f62f44508a2e813bd37f3d595adf59a67a4b"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "b1bacaada84d22318067615c37caf821b7ac3734075a6298a5a87e1fab3fb2ce"
+      "sha256": "6c4b0e48a22abe82fdd99b325a5753799744defc8a6b2f7296580959278668eb"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -487,6 +487,16 @@
       "path": "notices/security-framework-sys-2.17.0/LICENSE-MIT",
       "bytes": 1081,
       "sha256": "91e934255ba3b2f21103d68c5581c23ef34aa95c4628e4405b8c901935e11c69"
+    },
+    {
+      "path": "notices/semantic-anchors/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "notices/semantic-anchors/NOTICE",
+      "bytes": 672,
+      "sha256": "6c60cd14e6d088e1eec6c5f103370c981a075fb2ca798ad76b72573055d0ad52"
     },
     {
       "path": "notices/serde_core-1.0.229/LICENSE-APACHE",

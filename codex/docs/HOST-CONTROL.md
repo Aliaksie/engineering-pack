@@ -33,7 +33,8 @@ automatic retry and no time-based release.
 | `status` | — | `{tree, requests, limits}` (same as `craft worker-status`) |
 
 An assignment is `{id, offer, scope, parent?, reuseWorker?, brief}`, where `brief` has
-`goal`, `sources`, `acceptance`, `restrictions` and `returnShape`. Its offer needs a current
+`goal`, `sources`, `acceptance`, `restrictions` and `returnShape`, and `standards` when the
+project declares standards for the task's scope (`plan-assign` adds them). Its offer needs a current
 recorded decision with matching source, policy, scope and task contract, plus a configured
 host/model mapping.
 

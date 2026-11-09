@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "adapter": "codex",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -88,7 +88,18 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
+          "tool": "any",
+          "handler": "deliver"
+        },
+        {
+          "id": "delegation",
+          "normalizedEvent": "agent-start",
+          "name": "SubagentStart",
+          "context": true,
+          "deny": false,
+          "event": "agent-start",
           "tool": "any",
           "handler": "deliver"
         },
@@ -102,6 +113,11 @@
           "event": "after-compact",
           "tool": "any",
           "handler": "deliver"
+        },
+        {
+          "id": "test-failure",
+          "normalizedEvent": "after-tool-failure",
+          "supported": false
         }
       ],
       "runtime": "bin/craft",
@@ -264,7 +280,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -362,6 +378,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -527,7 +544,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -621,6 +638,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -786,7 +804,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "adapter": "codex",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -872,6 +890,7 @@
           "name": "Stop",
           "context": false,
           "deny": false,
+          "continue": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"

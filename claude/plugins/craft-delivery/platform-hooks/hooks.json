@@ -69,6 +69,27 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"${CLAUDE_PLUGIN_ROOT}\"; case \"$OSTYPE:${HOSTTYPE:-$CPUTYPE}\" in linux*:x86_64) b=\"$r/support/native-bin/x86_64-unknown-linux-gnu/native-bin/craft\" ;; darwin*:arm64) b=\"$r/support/native-bin/aarch64-apple-darwin/native-bin/craft\" ;; msys:x86_64|cygwin:x86_64) b=\"$r/support/native-bin/x86_64-pc-windows-msvc/native-bin/craft.exe\" ;; *) b= ;; esac; [ -n \"$CRAFT_NATIVE_BINARY\" ] && b=$CRAFT_NATIVE_BINARY; if [ -x \"$b\" ]; then CRAFT_PACKAGE_ROOT=\"$r\" \"$b\" hook claude agent-start --package craft-delivery --handler deliver --scope any; s=$?; [ \"$s\" -le 2 ] && exit \"$s\"; CRAFT_NATIVE_FAILED=1; export CRAFT_NATIVE_FAILED; fi; exec \"$r/bin/craft\" hook claude agent-start --package craft-delivery --handler deliver --scope any"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"${CLAUDE_PLUGIN_ROOT}\"; case \"$OSTYPE:${HOSTTYPE:-$CPUTYPE}\" in linux*:x86_64) b=\"$r/support/native-bin/x86_64-unknown-linux-gnu/native-bin/craft\" ;; darwin*:arm64) b=\"$r/support/native-bin/aarch64-apple-darwin/native-bin/craft\" ;; msys:x86_64|cygwin:x86_64) b=\"$r/support/native-bin/x86_64-pc-windows-msvc/native-bin/craft.exe\" ;; *) b= ;; esac; [ -n \"$CRAFT_NATIVE_BINARY\" ] && b=$CRAFT_NATIVE_BINARY; if [ -x \"$b\" ]; then CRAFT_PACKAGE_ROOT=\"$r\" \"$b\" hook claude after-tool-failure --package craft-delivery --handler deliver --scope shell; s=$?; [ \"$s\" -le 2 ] && exit \"$s\"; CRAFT_NATIVE_FAILED=1; export CRAFT_NATIVE_FAILED; fi; exec \"$r/bin/craft\" hook claude after-tool-failure --package craft-delivery --handler deliver --scope shell"
+          }
+        ]
+      }
     ]
   }
 }

@@ -15,8 +15,9 @@ Observe the receive boundary and decision timestamp for one correlation token.
 Changing the expiry threshold before observing arrival would not distinguish the causes.
 ```
 
-Once evidence identifies a cause, fix the responsible contract or state transition. Check the
-original trigger and an affected neighboring case. Preserve a regression test when it protects
+Once evidence identifies a cause, report the responsible contract or state transition. Fix it
+only when product changes are in scope; investigation or verification alone does not authorize
+a repair. For an authorized fix, check the original trigger and an affected neighboring case. Preserve a regression test when it protects
 meaningful behavior; remove temporary instrumentation that no longer serves the consumer.
 
 Time-box experiments and avoid unrelated changes. If reproduction is unavailable, report the

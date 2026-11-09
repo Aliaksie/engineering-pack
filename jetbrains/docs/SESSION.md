@@ -102,9 +102,12 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
 - When a session starts, the session line lists up to three open plans, newest first, with
   ready tasks and held tasks (`here` when this session holds one, and minutes since its last
   step). To continue a task held in another session, repeat `task-start` with `--take-over`:
-  that session may still be working, so take over only when the user's request continues
-  the work here. Its task record and checkpoint are copied into this session; the earlier
-  session's records are not changed and no authorization is renewed.
+  continue the same work only after verifying that its owner stopped or handed it off,
+  or when the user explicitly requests reassignment. A similar task or stale timestamp
+  alone is insufficient. Taking over the record does not stop earlier tools or writers;
+  coordinate overlapping work before editing. Its task record and checkpoint are copied
+  into this session; the earlier session's records are not changed and no authorization
+  is renewed.
 - References are opaque labels; reading a tracker issue is a separate, authorized
   [service operation](COMMANDS.md#services). `plan --reference tracker:PROJ-123` finds the
   plans that link it.
@@ -550,7 +553,8 @@ than the setting or runtime state of a particular session.
 ## Settings
 
 `craft settings --root <project>` shows the effective policy, where each value came from
-and the private state directory. `features` adds the switches read outside that merge, each
+and the private state directory; every `routing` switch over what a hook shows or records is
+listed, with its bundled default where the project sets none. `features` adds the switches read outside that merge, each
 with its origin: Project Intelligence (`evidence.enabled` in `.craft/project.json`), the
 background index warm-up (`CRAFT_EVIDENCE_WARM=0` in the host environment; not started on
 Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, personal preferences
@@ -562,7 +566,10 @@ A fully manual policy:
 
 ```json
 {
-  "routing": { "promptHints": false, "editHints": false, "dedupeHints": false },
+  "routing": {
+    "promptHints": false, "editHints": false, "dedupeHints": false, "standardChecks": false,
+    "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false
+  },
   "checkpoint": { "enabled": false },
   "efficiency": {
     "lookup": { "enabled": false, "reuse": false },
@@ -577,13 +584,18 @@ A fully manual policy:
 ```
 
 With this policy and `evidence.enabled: false` in `.craft/project.json`, hooks show the model
-nothing: no hints, answers, resume or session identity line (the line follows
-`checkpoint.enabled`, as the task commands that take it do). What stays on, and why:
+nothing: no hints, answers, standard checks, stop review, test notices, subagent standards,
+resume or session identity line (the line follows `checkpoint.enabled`, as the task commands
+that take it do), and keep no session records under `.craft/state`: `sessionRecords: false`
+stops the established intent, its routed files, planning evidence and the pending-resume mark,
+and `testRuns: false` the test-run history. Features that read those records then see no
+established work, and a declared verification pass is not checked against an observed run.
+What stays on, and why:
 
 | Stays on | Why |
 |---|---|
-| Session intent, manifest and compaction record under `.craft/state` | Local, never shown to the model, removed by `state-clean` retention; a later enabled hint or status reads them |
 | Local telemetry | Off with `{"local": false}` in `.craft/telemetry.json` |
+| A compaction in a host context the status line or `craft host-observe` keeps | Retires the occupancy measured before the compaction; without that record a compaction writes nothing |
 | Skill listing and package instructions the host loads | Read by the host from the installed plugin; disable the plugin in the host to remove them |
 
 Explicit commands keep working under any policy.

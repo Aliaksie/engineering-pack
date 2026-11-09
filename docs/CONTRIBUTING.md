@@ -96,10 +96,14 @@ uploads one report per OS. See the [guard limits](SECURITY.md#read-only-review-g
 
 ### Performance
 
-The **Performance** workflow runs on pull requests, pushes to `main` and manual dispatch on
-Linux, macOS and Windows. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
-installed release `craft`: startup, the prompt, tool and stop hooks, and warm and cold Project
-Intelligence refresh. Per supported language, a generated fixture of 100 files (`languages.mjs`)
+The **Performance** workflow runs after merge, on pushes to `main`, and by manual dispatch for
+any branch, on Linux, macOS and Windows; it gates neither pull requests nor releases. [Hyperfine](https://github.com/sharkdp/hyperfine) measures the
+installed release `craft`: startup, the prompt, tool and stop hooks, warm and cold Project
+Intelligence refresh, and the background warm-up a session start launches. A second fixture with
+declared standards, a started session, a warm index and an uncommitted edit times the hooks a
+session at work fires: session start, after a read, after a search (the answer), after a test
+run (the recorded run), subagent start and a stop with changed files (the stop review). Each of
+these is also checked to deliver its feature, so a hook that stays silent fails the job. Per supported language, a generated fixture of 100 files (`languages.mjs`)
 times a cold refresh and one `--declaration` lookup on the warm index, and is checked to declare
 and find the caller of one function. Each hook runs in three layers: the native binary (`native`), the package
 launcher (`launcher`) and the registered hook command under the shell hosts use (`host`). Every run records
@@ -107,8 +111,8 @@ wall time (median, range and 95th percentile), user and system CPU, peak memory 
 platform allows, instructions and cycles; installed binary and plugin sizes are tracked too. Hook outputs are checked outside the
 timed runs, and only failed commands or checks fail the job.
 
-[Bencher](https://bencher.dev) keeps the history and compares a pull request with `main`,
-reporting through a check and a pull request comment; timings never fail the job. Raw Hyperfine
+[Bencher](https://bencher.dev) keeps the history, alerts on a `main` regression and compares a
+dispatched branch with `main`, reporting through a check; timings never fail the job. Raw Hyperfine
 JSON stays in the run artifacts for 90 days. Locally, with Hyperfine installed:
 
 ```sh
@@ -118,8 +122,12 @@ node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output <new
 ```
 
 `--runs 3 --cold-runs 2` gives a quick integration run. Stock Hyperfine reports no peak memory
-on Windows, and its hardware counters cover only directly started processes, so counters are
-tracked for `native` rows only.
+on Windows, so `peak-memory.mjs` measures, through PowerShell 7, the peak working set of each `native`
+cell there, from the same prepared state. Windows charges CPU time in 15.6 ms scheduler ticks,
+so its CPU measures are the mean over the runs rather than the median. Hardware counters cover
+only directly started processes and are tracked for `native` rows only. One runner label is
+served by several CPU models, so the Bencher testbed is the label plus the CPU model
+(`windows-latest-amd-epyc-7763`): history and thresholds compare like hardware.
 
 ### Overhead budget
 

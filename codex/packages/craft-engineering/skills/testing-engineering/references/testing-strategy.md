@@ -23,3 +23,19 @@ A mocked "save called once" assertion alone misses a crash between save and ackn
 Run affected checks and required project gates. Confirm test discovery and report skipped,
 quarantined or unavailable coverage. Introduce TDD when it helps investigate or specify the
 change; reversible prose edits and mechanical low-risk changes do not automatically need tests.
+
+## Select cases from the rule
+
+Choose a technique for the uncertainty, not a fixed number of tests. Group inputs expected to
+behave alike (equivalence partitioning), then check ordered limits and their neighbors
+(boundary value analysis). For interacting conditions, map feasible combinations to outcomes
+in a decision table; for lifecycle rules, exercise permitted and rejected state transitions.
+These techniques also work for manual checks without source access. Prioritize cases by the
+consequence and likelihood of failure; keep omitted combinations visible.
+
+For example, if whole-number quantities 1 through 5 are accepted, check 0, 1, 5 and 6,
+plus invalid types if that boundary receives them. If cancellation depends on both actor and
+booking state, varying only quantity cannot cover that policy. Derive expected outcomes from
+the supplied rules; an unresolved combination is a product question, not a guessed assertion.
+
+Technique definitions: [ISTQB Foundation syllabus, section 4.2](https://istqb.org/wp-content/uploads/2024/11/ISTQB_CTFL_Syllabus_v4.0.1.pdf).
