@@ -99,7 +99,8 @@ x86-64. See [adapters](docs/ADAPTERS.md) for what each host supports.
 ## Performance
 
 Every push to `main` measures the installed release `craft` on Linux, macOS and Windows:
-startup, hooks and Project Intelligence refresh. Pull requests are compared with `main`.
+startup, hooks and Project Intelligence refresh. Any branch can be measured against `main` by
+manual dispatch.
 See the [dashboard](https://bencher.dev/perf/aliaksie-s-craft-capabilities) and
 [contributing](docs/CONTRIBUTING.md#performance) for what is measured.
 

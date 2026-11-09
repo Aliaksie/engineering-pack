@@ -84,6 +84,7 @@ the workflow refuses the existing tag.
 
 ## Benchmarking a native candidate
 
-The **Performance** workflow measures every pull request and `main` on all three platforms and
-tracks results in Bencher; see [CONTRIBUTING](CONTRIBUTING.md#performance). To measure a
-candidate export locally, run `.github/benchmarks/suite.mjs` against it.
+The **Performance** workflow measures `main` after merge on all three platforms and tracks
+results in Bencher; see [CONTRIBUTING](CONTRIBUTING.md#performance). It does not gate a
+release: check the dashboard for open alerts before dispatching one. To measure a candidate
+export locally, run `.github/benchmarks/suite.mjs` against it.
