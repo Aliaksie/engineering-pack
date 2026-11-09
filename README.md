@@ -221,12 +221,17 @@ OpenTelemetry endpoint; bounded local usage metadata is on by default and can be
 
 - **Verified standards:** more of the project's own standards checked without a model,
   including the project's own check commands.
-- **The consumer decides:** organization and user layers above the project, with precedence
+- **One baseline for every project:** organization and user layers above the project, so
+  several projects share one setup and each overrides only what differs, with precedence
   that stays inspectable.
+- **Safety you can enforce:** opt-in rules for destructive or unauthorized commands, applied
+  through the same hooks and never weaker than the host's own permissions.
+- **Service recipes:** ready GitHub, GitLab and Jira setups instead of a mapping per project.
 - **Trust and less debt, cost as a guardrail:** Craft should earn its place through standards
   kept and debt avoided, without costing more where it adds nothing.
-- **Project Intelligence and continuity:** more structural answers without exploration, and
-  task state that survives compaction and handoffs ([sessions](docs/SESSION.md)).
+- **Project Intelligence and continuity:** keep what works and extend it only where it
+  measurably saves work; task state that survives compaction and handoffs
+  ([sessions](docs/SESSION.md)).
 
 ## Performance
 

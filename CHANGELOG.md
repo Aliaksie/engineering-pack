@@ -1,23 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.0.5
 
-- `.craft/project.json` may carry a `$schema` link for editor completion; `craft` ignores it.
-  Every field of the project schema has a description and its default, and
-  `docs/PROJECT-CONFIG.md` lists them all.
-
-- Task continuation guidance requires an ownership handoff or explicit reassignment before
-  taking over another session's work; stale receipts do not imply its tools have stopped.
-
-- Debugging guidance keeps diagnosis separate from authorization to repair. Existing guidance
-  adds risk-based test-case selection, frontend performance investigation and transition limits,
-  reliability-measure boundaries, and evidence-based story priorities and success measures.
-
-- Review guidance loads pull-request follow-up details only when needed through a linked reference.
-
-- Testing guidance describes investigation of unexpected behavior as well as failing checks.
-  Specification audits and story drafting include examples of conflicting rules, optional
-  clarification and useful outcome slices with unresolved decisions.
+This release lets a project declare its own standards and skills, checks what can be checked
+without a model while the agent works, and records the test runs the agent actually made.
+Each check, routing decision and hook response is covered by fixtures, and one scenario runs
+every standards and evidence feature through Claude Code's and Codex's own hook payloads.
+That agents keep declared standards more often, or leave less debt, with Craft than without
+it is the goal and has not been measured.
 
 Project standards:
 
@@ -126,6 +116,9 @@ Hooks:
   compaction only updates a host context the status line or `craft host-observe` already keeps.
   `craft settings` lists every routing switch with its origin, including `standardChecks`,
   `stopReview` and `debtMarkers`.
+
+Project Intelligence:
+
 - Project Intelligence rows say what they rest on: `basis` `parsed` (a declaration, import,
   section, link or key read from the parse) or `name` (a call, reference or code-span mention
   that only spells the name and may mean another declaration of it). `craft locate` marks name
@@ -142,6 +135,39 @@ Hooks:
   last read with and the file has not changed in the last two seconds; `reusedUnread` counts
   them. The index store is schema 5: an earlier store is discarded and rebuilt by the next
   refresh.
+
+Configuration:
+
+- `.craft/project.json` may carry a `$schema` link for editor completion; `craft` ignores it.
+  Every field of the project schema has a description and its default, and
+  `docs/PROJECT-CONFIG.md` lists them all.
+
+Guidance:
+
+- Task continuation guidance requires an ownership handoff or explicit reassignment before
+  taking over another session's work; stale receipts do not imply its tools have stopped.
+- Debugging guidance keeps diagnosis separate from authorization to repair. Existing guidance
+  adds risk-based test-case selection, frontend performance investigation and transition limits,
+  reliability-measure boundaries, and evidence-based story priorities and success measures.
+- Review guidance loads pull-request follow-up details only when needed through a linked reference.
+- Testing guidance describes investigation of unexpected behavior as well as failing checks.
+  Specification audits and story drafting include examples of conflicting rules, optional
+  clarification and useful outcome slices with unresolved decisions.
+
+Upgrading:
+
+- Codex 0.164 and later asks to approve Craft's hooks again after the update (`/hooks`), as
+  for every release.
+- The Project Intelligence index is rebuilt once on first use (store schema 5).
+
+Known limits:
+
+- A test run is read from the runner's summary in the tool result; output cut before the
+  summary, for example by `| tail` or `| grep`, is recorded as `unknown`.
+- Restoring standards and test status after compaction is exercised live on Claude Code; on
+  Codex it is covered by the hook-payload scenario only.
+- Copilot CLI skips repository hooks in an untrusted folder, so the overlay's checks run only
+  in a trusted project.
 
 ## 0.0.4
 
