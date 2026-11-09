@@ -188,9 +188,7 @@ pub(crate) fn refresh(
         };
         bytes += content.len() as u64;
         let digest = phases.time(Phase::Read, || hash(&content));
-        if phases.time(Phase::Store, || {
-            store.reuse(&path, provider, &digest, epoch)
-        })? {
+        if phases.time(Phase::Store, || store.reuse(&path, provider, &digest))? {
             reused += 1;
             continue;
         }

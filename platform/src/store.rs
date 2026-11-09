@@ -1,22 +1,37 @@
 //! SQLite owns atomic source/provider replacement; failed observations hide old facts.
 use crate::Error;
 use craft_engine::{Extraction, SCHEMA_VERSION, valid_path, values::lower_hex};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use std::{
+    collections::HashSet,
     path::Path,
     time::{Duration, Instant},
 };
 
 /// Refresh writes share one transaction per batch so a large refresh syncs per batch, not
 /// per source, and a 64 MiB page cache keeps random-ID index inserts from rereading pages.
-/// Closing the store with a batch open rolls back only that batch.
+/// Closing the store with a batch open rolls back only that batch. A batch opens at the first
+/// write, so a refresh that changes nothing takes no write lock and commits nothing.
 const BATCH_SOURCES: usize = 512;
 const BATCH_TIME: Duration = Duration::from_secs(1);
 
 pub struct Store {
     connection: Connection,
+    /// Whether writes share batch transactions; `batch` is the one open now.
+    batching: bool,
     batch: Option<Batch>,
+    inventory: Option<Pass>,
+}
+
+/// An inventory in progress. It is recorded in the store (incomplete, next epoch, new
+/// generation) with its first change; until then the store still holds the last complete
+/// inventory. `seen` holds every source the pass found, so finishing retires the others
+/// without rewriting the unchanged ones.
+struct Pass {
+    epoch: i64,
+    recorded: bool,
+    seen: HashSet<i64>,
 }
 
 struct Batch {
@@ -98,7 +113,9 @@ impl Store {
         }
         Ok(Self {
             connection,
+            batching: false,
             batch: None,
+            inventory: None,
         })
     }
 
@@ -109,6 +126,7 @@ impl Store {
         epoch: i64,
     ) -> Result<(), Error> {
         extraction.validate()?;
+        self.before_write()?;
         let tx = self.connection.savepoint()?;
         let sid: i64 = tx.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch,records) VALUES (?1,?2,?3,?7,?4,?5,?6)
             ON CONFLICT(path,provider) DO UPDATE SET hash=excluded.hash,outcome=excluded.outcome,diagnostic=NULL,observed_at=excluded.observed_at,epoch=excluded.epoch,records=excluded.records
@@ -139,6 +157,7 @@ impl Store {
             [],
         )?;
         tx.commit()?;
+        self.saw(sid);
         self.written()
     }
 
@@ -154,6 +173,7 @@ impl Store {
         if !valid_path(path) {
             return Err("invalid source path".into());
         }
+        self.before_write()?;
         let tx = self.connection.savepoint()?;
         // Failed content is cached so repeated bounded refreshes can advance.
         // Retire old facts rather than bind them to the failed content hash.
@@ -167,6 +187,7 @@ impl Store {
             [],
         )?;
         tx.commit()?;
+        self.saw(sid);
         self.written()
     }
 
@@ -174,9 +195,12 @@ impl Store {
         if !valid_path(path) {
             return Err("invalid source path".into());
         }
-        self.connection.execute("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,'','pending','',?3)
-            ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch",
-            params![path,provider,epoch])?;
+        self.before_write()?;
+        let sid: i64 = self.connection.query_row("INSERT INTO sources(path,provider,hash,outcome,observed_at,epoch) VALUES (?1,?2,'','pending','',?3)
+            ON CONFLICT(path,provider) DO UPDATE SET outcome='pending',diagnostic=NULL,epoch=excluded.epoch
+            RETURNING sid",
+            params![path,provider,epoch], |r| r.get(0))?;
+        self.saw(sid);
         self.written()
     }
 
@@ -209,53 +233,74 @@ impl Store {
         Ok(removed)
     }
 
+    /// Start an inventory without writing; the store records it with the first change.
     pub fn begin_inventory(&mut self) -> Result<i64, Error> {
-        let tx = self.connection.transaction()?;
-        tx.execute(
-            "UPDATE metadata SET value=0 WHERE key='inventory_complete'",
-            [],
-        )?;
-        tx.execute(
-            "UPDATE metadata SET value=value+1 WHERE key IN ('inventory_epoch','generation')",
-            [],
-        )?;
-        let epoch = tx.query_row(
+        let epoch: i64 = self.connection.query_row(
             "SELECT value FROM metadata WHERE key='inventory_epoch'",
             [],
             |r| r.get(0),
         )?;
-        tx.commit()?;
-        Ok(epoch)
+        self.inventory = Some(Pass {
+            epoch: epoch + 1,
+            recorded: false,
+            seen: HashSet::new(),
+        });
+        Ok(epoch + 1)
     }
 
-    pub fn reuse(
-        &mut self,
-        path: &str,
-        provider: &str,
-        hash: &str,
-        epoch: i64,
-    ) -> Result<bool, Error> {
-        let count = self.connection.prepare_cached("UPDATE sources SET epoch=?4 WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed','partial')")?
-            .execute(params![path,provider,hash,epoch])?;
-        self.written()?;
-        Ok(count != 0)
+    /// Whether the source still holds evidence for this content; a read, so a refresh over
+    /// unchanged sources writes nothing until it finishes.
+    pub fn reuse(&mut self, path: &str, provider: &str, hash: &str) -> Result<bool, Error> {
+        let sid: Option<i64> = self.connection.prepare_cached("SELECT sid FROM sources WHERE path=?1 AND provider=?2 AND hash=?3 AND outcome IN ('ok','failed','partial')")?
+            .query_row(params![path,provider,hash], |r| r.get(0)).optional()?;
+        if let Some(sid) = sid {
+            self.saw(sid);
+        }
+        Ok(sid.is_some())
     }
 
     pub fn begin_batch(&mut self) -> Result<(), Error> {
-        self.connection
-            .execute_batch("PRAGMA cache_size=-65536; BEGIN IMMEDIATE")?;
-        self.batch = Some(Batch {
-            started: Instant::now(),
-            sources: 0,
-        });
+        self.connection.execute_batch("PRAGMA cache_size=-65536")?;
+        self.batching = true;
         Ok(())
     }
 
     pub fn commit_batch(&mut self) -> Result<(), Error> {
+        self.batching = false;
+        self.close_batch()
+    }
+
+    fn close_batch(&mut self) -> Result<(), Error> {
         if self.batch.take().is_some() {
             self.connection.execute_batch("COMMIT")?;
         }
         Ok(())
+    }
+
+    /// Open the batch and record the inventory before its first change.
+    fn before_write(&mut self) -> Result<(), Error> {
+        if self.batching && self.batch.is_none() {
+            self.connection.execute_batch("BEGIN IMMEDIATE")?;
+            self.batch = Some(Batch {
+                started: Instant::now(),
+                sources: 0,
+            });
+        }
+        if let Some(pass) = self.inventory.as_mut().filter(|pass| !pass.recorded) {
+            self.connection.execute(
+                "UPDATE metadata SET value=CASE key WHEN 'inventory_epoch' THEN ?1 WHEN 'inventory_complete' THEN 0 ELSE value+1 END
+                    WHERE key IN ('inventory_epoch','inventory_complete','generation')",
+                [pass.epoch],
+            )?;
+            pass.recorded = true;
+        }
+        Ok(())
+    }
+
+    fn saw(&mut self, sid: i64) {
+        if let Some(pass) = &mut self.inventory {
+            pass.seen.insert(sid);
+        }
     }
 
     fn written(&mut self) -> Result<(), Error> {
@@ -264,15 +309,15 @@ impl Store {
         };
         batch.sources += 1;
         if batch.sources >= BATCH_SOURCES || batch.started.elapsed() >= BATCH_TIME {
-            self.commit_batch()?;
-            self.begin_batch()?;
+            self.close_batch()?;
         }
         Ok(())
     }
 
     /// Retire sources this inventory did not see, including newly excluded ones, and record
     /// how it found sources and the exclusions it applied with the number of eligible
-    /// sources they left out.
+    /// sources they left out. An inventory that changed, retired and newly recorded nothing
+    /// writes nothing: the store, its generation and its files stay as they were.
     pub fn finish_inventory(
         &mut self,
         epoch: i64,
@@ -280,15 +325,53 @@ impl Store {
         exclusions: &[String],
         excluded: u64,
     ) -> Result<usize, Error> {
+        let pass = self
+            .inventory
+            .take()
+            .filter(|pass| pass.epoch == epoch)
+            .ok_or("no inventory in progress for this epoch")?;
+        let inventory = inventory.to_string();
+        let exclusions = serde_json::to_string(exclusions).expect("strings serialize");
         let tx = self.connection.transaction()?;
-        let removed = tx.execute("DELETE FROM sources WHERE epoch<>?1", params![epoch])?;
+        let sources: i64 = tx.query_row("SELECT count(*) FROM sources", [], |r| r.get(0))?;
+        let mut removed = 0;
+        // Every seen source is stored, so equal counts leave nothing unseen.
+        if sources as usize != pass.seen.len() {
+            let unseen = {
+                let mut statement = tx.prepare("SELECT sid FROM sources")?;
+                statement
+                    .query_map([], |r| r.get::<_, i64>(0))?
+                    .filter(|sid| sid.as_ref().map_or(true, |sid| !pass.seen.contains(sid)))
+                    .collect::<Result<Vec<_>, _>>()?
+            };
+            let mut delete = tx.prepare_cached("DELETE FROM sources WHERE sid=?1")?;
+            for sid in unseen {
+                removed += delete.execute([sid])?;
+            }
+        }
+        if !pass.recorded && removed == 0 {
+            let same: i64 = tx.query_row(
+                "SELECT count(*) FROM metadata WHERE (key='inventory' AND value=?1) OR (key='exclusions' AND value=?2)
+                    OR (key='excluded_sources' AND value=?3) OR (key='inventory_complete' AND value=1)",
+                params![inventory, exclusions, excluded as i64],
+                |r| r.get(0),
+            )?;
+            if same == 4 {
+                tx.commit()?;
+                return Ok(0);
+            }
+        }
+        tx.execute(
+            "UPDATE metadata SET value=?1 WHERE key='inventory_epoch'",
+            [epoch],
+        )?;
         tx.execute(
             "UPDATE metadata SET value=?1 WHERE key='inventory'",
-            [inventory.to_string()],
+            [inventory],
         )?;
         tx.execute(
             "UPDATE metadata SET value=?1 WHERE key='exclusions'",
-            [serde_json::to_string(exclusions).expect("strings serialize")],
+            [exclusions],
         )?;
         tx.execute(
             "UPDATE metadata SET value=?1 WHERE key='excluded_sources'",
@@ -700,11 +783,7 @@ mod tests {
         store.replace(&extraction, "1", epoch).unwrap();
         assert_eq!(store.status().unwrap()["inventoryComplete"], false);
         let restarted = store.begin_inventory().unwrap();
-        assert!(
-            store
-                .reuse("a.js", PROVIDER, &extraction.hash, restarted)
-                .unwrap()
-        );
+        assert!(store.reuse("a.js", PROVIDER, &extraction.hash).unwrap());
         assert_eq!(
             store
                 .finish_inventory(restarted, &Value::Null, &[], 0)
@@ -712,6 +791,75 @@ mod tests {
             0
         );
         assert_eq!(store.status().unwrap()["evidence"], 1);
+    }
+
+    #[test]
+    fn an_inventory_that_changes_nothing_writes_nothing() {
+        let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
+        let (a, b) = (
+            extract("a.js", b"const a = 1;").unwrap(),
+            extract("b.js", b"const b = 1;").unwrap(),
+        );
+        let epoch = store.begin_inventory().unwrap();
+        store.begin_batch().unwrap();
+        store.replace(&a, "1", epoch).unwrap();
+        store.replace(&b, "1", epoch).unwrap();
+        store.commit_batch().unwrap();
+        let excluded = ["vendor/".to_string()];
+        store
+            .finish_inventory(epoch, &json!({"kind": "git"}), &excluded, 2)
+            .unwrap();
+        let before = store.status().unwrap();
+        let changes = store.connection.total_changes();
+
+        let epoch = store.begin_inventory().unwrap();
+        store.begin_batch().unwrap();
+        assert!(store.reuse("a.js", PROVIDER, &a.hash).unwrap());
+        assert!(store.reuse("b.js", PROVIDER, &b.hash).unwrap());
+        assert!(store.connection.is_autocommit(), "no write lock taken");
+        store.commit_batch().unwrap();
+        let removed = store
+            .finish_inventory(epoch, &json!({"kind": "git"}), &excluded, 2)
+            .unwrap();
+        assert_eq!(removed, 0);
+        assert_eq!(store.connection.total_changes(), changes);
+        assert_eq!(store.status().unwrap(), before);
+
+        // A pass interrupted before its first change leaves the complete inventory standing.
+        store.begin_inventory().unwrap();
+        assert!(store.reuse("a.js", PROVIDER, &a.hash).unwrap());
+        assert_eq!(store.status().unwrap()["inventoryComplete"], true);
+
+        // Changed exclusions alone are recorded; an unseen source alone is retired.
+        let epoch = store.begin_inventory().unwrap();
+        store.reuse("a.js", PROVIDER, &a.hash).unwrap();
+        store.reuse("b.js", PROVIDER, &b.hash).unwrap();
+        store
+            .finish_inventory(epoch, &json!({"kind": "git"}), &[], 0)
+            .unwrap();
+        let status = store.status().unwrap();
+        assert_eq!(
+            (&status["exclusions"], &status["excludedSources"]),
+            (&json!([]), &json!(0))
+        );
+        assert_eq!(
+            status["generation"],
+            before["generation"].as_i64().unwrap() + 1
+        );
+        let epoch = store.begin_inventory().unwrap();
+        store.reuse("a.js", PROVIDER, &a.hash).unwrap();
+        assert_eq!(
+            store
+                .finish_inventory(epoch, &json!({"kind": "git"}), &[], 0)
+                .unwrap(),
+            1
+        );
+        let status = store.status().unwrap();
+        assert_eq!(
+            (&status["sources"], &status["inventoryComplete"]),
+            (&json!(1), &json!(true))
+        );
+        assert!(store.query(&Query::new("name", "b")).unwrap()["results"] == json!([]));
     }
 
     #[test]
@@ -862,7 +1010,7 @@ mod tests {
         );
         assert!(
             store
-                .reuse("A.java", crate::java::PROVIDER, &extraction.hash, epoch)
+                .reuse("A.java", crate::java::PROVIDER, &extraction.hash)
                 .unwrap()
         );
     }

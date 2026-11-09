@@ -131,6 +131,9 @@ Hooks:
   `project.sqlite-shm` sit next to `project.sqlite`, and refreshes no longer sync the disk on
   every commit. A power failure can lose the last commits, which the next refresh extracts
   again. A filesystem that refuses the log keeps the previous journal and full syncs.
+- A Project Intelligence refresh that finds no source changed, added or removed writes
+  nothing: `project.sqlite` is left untouched and the store `generation` stays the same. A
+  refresh stopped before its first change leaves the last complete inventory standing.
 
 ## 0.0.4
 
