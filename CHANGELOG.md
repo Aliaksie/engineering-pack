@@ -60,7 +60,7 @@ Project standards:
 - Worker briefs from `plan-assign` and `plan-envelope --brief` carry the project standards of
   the task's files and owned paths in `standards`, as a route there shows them.
 - Subagents that Claude Code, Codex or Copilot CLI start themselves receive the project
-  standards of the delegating session's work and bound plan task as context. Nothing is added
+  standards of the delegating session's work and bound task as context. Nothing is added
   when the session has no established work or the project declares no standards.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 

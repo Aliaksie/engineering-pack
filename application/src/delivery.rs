@@ -65,14 +65,14 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let root = event.root;
     let settings = project::hook_loaded(recorder, hook, root)?;
+    if event.lifecycle == "agent-start" {
+        return Ok(delegation(root, &settings, event, recorder, hook));
+    }
     let session = event.session.filter(|s| !s.is_empty());
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         None
     });
-    if event.lifecycle == "agent-start" {
-        return Ok(delegation(root, &settings, event, recorder, hook));
-    }
     let source = if task.is_some() {
         "session-binding"
     } else {
@@ -374,12 +374,13 @@ fn delegation(
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
             Value::Null
         });
-    let task = crate::session::active_binding(root, session)
-        .map(|binding| binding.and_then(|binding| bound_task(root, &binding)))
-        .unwrap_or_else(|_| {
+    let task = match crate::session::active_binding(root, session) {
+        Ok(binding) => binding.map(|binding| bound_task(root, session, &binding, recorder, hook)),
+        Err(_) => {
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
             None
-        });
+        }
+    };
     let files = record["files"].as_array().cloned().unwrap_or_default();
     let intent = record["intent"].as_str();
     let found = standards::delegated(settings, intent, &files, task.as_ref());
@@ -389,14 +390,42 @@ fn delegation(
     decision
 }
 
-/// The plan task a session binding names, when it has one.
-fn bound_task(root: &Path, binding: &Value) -> Option<Value> {
-    let saved = crate::plan::read(root, binding["plan"].as_str()?).ok()??;
-    saved["tasks"]
-        .as_array()?
+/// The scope of the task bound to a session: the files its task record names and, for a
+/// plan task, the plan's owned paths, in the shape [`standards::for_task`] reads.
+fn bound_task(
+    root: &Path,
+    session: &str,
+    binding: &Value,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Value {
+    let mut files: Vec<Value> = binding["task"]
+        .as_str()
+        .and_then(|task| crate::session::read_state(root, session, task, recorder, hook).ok())
+        .and_then(|state| state["taskRecord"]["files"].as_array().cloned())
+        .unwrap_or_default();
+    let planned = binding["plan"]
+        .as_str()
+        .and_then(|plan| crate::plan::read(root, plan).ok().flatten())
+        .and_then(|saved| {
+            saved["tasks"]
+                .as_array()?
+                .iter()
+                .find(|task| task["id"] == binding["task"])
+                .cloned()
+        });
+    let scope = planned
+        .as_ref()
+        .map_or(Value::Null, |task| task["scope"].clone());
+    for file in planned
         .iter()
-        .find(|task| task["id"] == binding["task"])
-        .cloned()
+        .flat_map(|task| task["files"].as_array().cloned().unwrap_or_default())
+    {
+        if !files.contains(&file) {
+            files.push(file);
+        }
+    }
+    json!({"files": files, "scope": scope})
 }
 
 /// How large a written file an anchor check reads; larger files are left unchecked.

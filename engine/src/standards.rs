@@ -448,7 +448,7 @@ pub fn for_task(settings: &Value, task: &Value) -> Vec<Value> {
 
 /// The standards a worker the host spawns hears: those of the delegating session's scope.
 /// That is the work the session established (`intent` over the files it was routed to), then
-/// the owned scope of the plan task bound to the session, once each by id. Hosts do not pass
+/// the files and owned scope of the task bound to the session, once each by id. Hosts do not pass
 /// the delegated prompt, so the worker gets the names its parent was shown, nothing guessed.
 pub fn delegated(
     settings: &Value,

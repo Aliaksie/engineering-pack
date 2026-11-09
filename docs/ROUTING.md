@@ -243,7 +243,7 @@ and integrated checks. `efficiency.delegation.maxWorkers: 0` disables worker pla
 When the host starts a subagent itself (Claude Code and Codex `SubagentStart`, Copilot CLI
 `subagentStart`), the subagent receives the project standards of the delegating session's
 work as context: the kind of work the session established with the files it was routed to,
-and the owned scope of the plan task bound to the session. Hosts do not pass the delegated
+and the files and owned paths of the task bound to the session. Hosts do not pass the delegated
 prompt, so nothing is guessed from it; a session with no established work and no bound task
 adds nothing, and so does a project without standards. The delegating instructions still
 define the subagent's task. Cursor's subagent hook cannot add context, and Gemini CLI and
