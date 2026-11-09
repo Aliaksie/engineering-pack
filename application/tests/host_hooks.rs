@@ -754,3 +754,51 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
     fs::write(&order, "// FIXME: new\n").unwrap();
     assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
 }
+
+#[test]
+fn a_subagent_the_host_starts_hears_the_standards_of_the_delegating_work() {
+    let fixture = project(
+        "delegation",
+        Some(
+            r#"{"formatVersion":1,"standards":[
+            {"id":"stories","anchor":"connextra-user-story","scope":{"paths":["docs/stories"]}},
+            {"id":"api","file":"docs/api.md","scope":{"intents":["implement"]}}
+        ]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    let deliver = |lifecycle: &str, extra: Value| {
+        let mut input = facts(
+            root,
+            "deliver",
+            json!({"package": "craft-delivery", "lifecycle": lifecycle, "scope": "any", "tool": "other"}),
+        );
+        for (key, value) in extra.as_object().unwrap() {
+            input[key] = value.clone();
+        }
+        hook(input)
+    };
+    // Nothing established yet: the subagent gets nothing, no guess.
+    let quiet = deliver("agent-start", json!({}));
+    assert_eq!(quiet["decision"], "allow");
+    assert!(quiet.get("delegation").is_none());
+
+    deliver(
+        "before-prompt",
+        json!({"prompt": "Write user stories for the checkout flow"}),
+    );
+    let started = deliver("agent-start", json!({}));
+    assert_eq!(started["decision"], "allow");
+    assert_eq!(started["delegation"]["intent"], "story");
+    let ids: Vec<&str> = started["delegation"]["standards"]
+        .as_array()
+        .expect("standards carried")
+        .iter()
+        .filter_map(|s| s["id"].as_str())
+        .collect();
+    assert_eq!(ids, vec!["stories"]);
+
+    // A host that cannot take context at this event is not answered with any.
+    let blind = deliver("agent-start", json!({"contextSupported": false}));
+    assert!(blind.get("delegation").is_none());
+}

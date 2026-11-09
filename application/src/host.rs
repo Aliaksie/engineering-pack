@@ -10,7 +10,7 @@ use craft_platform::state;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const LIFECYCLES: [&str; 7] = [
+const LIFECYCLES: [&str; 8] = [
     "session-start",
     "before-prompt",
     "before-tool",
@@ -18,6 +18,7 @@ const LIFECYCLES: [&str; 7] = [
     "before-compact",
     "after-compact",
     "turn-end",
+    "agent-start",
 ];
 const INPUT_STATUSES: [&str; 4] = ["complete", "invalid", "oversized", "read-failure"];
 const TOOLS: [&str; 4] = ["shell", "edit", "read", "other"];

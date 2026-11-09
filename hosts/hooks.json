@@ -49,6 +49,11 @@
         "context": false,
         "deny": false,
         "continue": true
+      },
+      "agent-start": {
+        "name": "SubagentStart",
+        "context": true,
+        "deny": false
       }
     }
   },
@@ -102,6 +107,11 @@
         "context": false,
         "deny": false,
         "continue": true
+      },
+      "agent-start": {
+        "name": "SubagentStart",
+        "context": true,
+        "deny": false
       }
     }
   },
@@ -204,6 +214,11 @@
         "context": false,
         "deny": false,
         "continue": true
+      },
+      "agent-start": {
+        "name": "subagentStart",
+        "context": true,
+        "deny": false
       }
     }
   },

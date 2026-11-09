@@ -76,6 +76,12 @@
       "handler": "deliver"
     },
     {
+      "name": "delegation",
+      "event": "agent-start",
+      "tool": "any",
+      "handler": "deliver"
+    },
+    {
       "name": "compact-restore",
       "event": "after-compact",
       "tool": "any",
