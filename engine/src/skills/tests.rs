@@ -9,13 +9,35 @@ fn project(skills: Value) -> Value {
     json!({"formatVersion": 1, "modules": [{"name": "api", "path": "src/api"}], "skills": skills})
 }
 
-/// Settings with every declared SKILL.md given `text` (None = not readable).
+/// Settings with every declared SKILL.md given `text` (None = not readable); no mirrors.
 fn settings(skills: Value, text: Option<&str>) -> std::result::Result<Value, String> {
+    let declared: Vec<String> = skills["declared"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|skill| skill["path"].as_str().map(|p| format!("{p}/SKILL.md")))
+        .collect();
+    with_files(skills, |file| {
+        declared
+            .contains(&file.to_string())
+            .then(|| text.map(str::to_string))
+            .flatten()
+    })
+}
+
+/// Settings where each SKILL.md Craft asks for reads as `read(path)`.
+fn with_files(
+    skills: Value,
+    read: impl Fn(&str) -> Option<String>,
+) -> std::result::Result<Value, String> {
     let project = project(skills);
     let documents = Documents {
         skills: declared_files(&project)
             .into_iter()
-            .map(|path| (path, text.map(str::to_string)))
+            .map(|path| {
+                let text = read(&path);
+                (path, text)
+            })
             .collect(),
         ..Documents::default()
     };
@@ -58,6 +80,43 @@ fn a_declared_replacement_takes_the_package_skills_place_and_says_so() {
     // Other work keeps its route: nothing replaced there, nothing attributed.
     let plan = routed(&settings, "implement", &[], "claude");
     assert!(plan.get("skillSources").is_none());
+}
+
+#[test]
+fn a_mirror_in_a_folder_the_host_reads_serves_that_host() {
+    // One declaration for Codex (`.agents/skills`) and its copy for Claude (`.claude/skills`).
+    let mirrored = |name: &'static str| {
+        move |file: &str| match file {
+            ".agents/skills/team-review/SKILL.md" => Some(SKILL.to_string()),
+            ".claude/skills/team-review/SKILL.md" => Some(name.to_string()),
+            _ => None,
+        }
+    };
+    let settings = with_files(replacing(".agents/skills/team-review"), mirrored(SKILL)).unwrap();
+    for host in ["claude", "codex"] {
+        let plan = routed(&settings, "review", &[], host);
+        assert_eq!(plan["skills"][0], "project:team-review", "{host}: {plan}");
+        assert_eq!(plan["missing"], json!([]), "{host}");
+        // The source names the copy this host reads.
+        let read = if host == "claude" {
+            ".claude"
+        } else {
+            ".agents"
+        };
+        assert_eq!(
+            plan["skillSources"][0]["path"],
+            format!("{read}/skills/team-review")
+        );
+    }
+    // A copy under another name is not the declared skill.
+    let other = "---\nname: other\n---\n";
+    let settings = with_files(replacing(".agents/skills/team-review"), mirrored(other)).unwrap();
+    let plan = routed(&settings, "review", &[], "claude");
+    let missing = plan["missing"][0].as_str().unwrap();
+    assert!(
+        missing.contains("mirror the skill to .claude/skills/team-review"),
+        "the advice names the exact folder: {missing}"
+    );
 }
 
 #[test]

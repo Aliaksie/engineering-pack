@@ -58,15 +58,34 @@ fn folder(path: &str) -> Option<&'static str> {
     })
 }
 
-/// The SKILL.md files the project declares, for the application to read.
+/// The same skill folder under another host's project skill folder: `.agents/skills/x` is
+/// mirrored at `.claude/skills/x`.
+fn mirror(path: &str, folder: &str) -> Option<String> {
+    let own = self::folder(path)?;
+    let dir = &path[own.len() + 1..];
+    Some(format!("{folder}/{dir}"))
+}
+
+/// The SKILL.md files the project declares, for the application to read: each declared one,
+/// then its mirrors in the other project skill folders hosts read.
 pub fn declared_files(project: &Value) -> Vec<String> {
-    project["skills"]["declared"]
+    let declared: Vec<String> = project["skills"]["declared"]
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(|skill| relative_file(&skill["path"]).ok())
-        .map(|path| format!("{path}/SKILL.md"))
-        .collect()
+        .collect();
+    let mut files: Vec<String> = declared.iter().map(|p| format!("{p}/SKILL.md")).collect();
+    for path in &declared {
+        for folder in known_folders() {
+            if let Some(file) = mirror(path, folder).map(|m| format!("{m}/SKILL.md"))
+                && !files.contains(&file)
+            {
+                files.push(file);
+            }
+        }
+    }
+    files
 }
 
 /// The `name` in a SKILL.md front matter, the identity hosts list the skill by.
@@ -195,34 +214,45 @@ pub fn validate(skills: &Value, known: &[&str], modules: &[&str], intents: &[&st
     Ok(())
 }
 
-/// Why `skill` cannot be recommended on `host`, if it cannot.
-fn unavailable(settings: &Value, skill: &Value, host: &str) -> Option<String> {
+/// The folder `host` reads `skill` from: the declared one, or a copy under the same name in
+/// a folder the host reads; otherwise why the skill cannot be recommended there.
+fn served(settings: &Value, skill: &Value, host: &str) -> std::result::Result<String, String> {
     let name = skill["name"].as_str().unwrap_or_default();
     let path = skill["path"].as_str().unwrap_or_default();
     let file = format!("{path}/SKILL.md");
     let found = &settings["skills"]["found"][&file];
     if !found.is_string() {
-        return Some(if settings["skills"]["found"].get(&file).is_some() {
+        return Err(if settings["skills"]["found"].get(&file).is_some() {
             format!("{file} has no front matter name")
         } else {
             format!("{file} not found")
         });
     }
     if found != name {
-        return Some(format!(
+        return Err(format!(
             "{file} names the skill {}, not {name}",
             found.as_str().unwrap_or_default()
         ));
     }
     let folder = folder(path).unwrap_or_default();
     let readable = folders(host);
-    if !readable.contains(&folder) {
-        return Some(format!(
-            "{host} does not read {folder}; mirror the skill to {}",
-            readable.first().copied().unwrap_or("a folder it reads")
-        ));
+    if readable.contains(&folder) {
+        return Ok(path.to_string());
     }
-    None
+    if let Some(copy) = readable
+        .iter()
+        .filter_map(|other| mirror(path, other))
+        .find(|copy| settings["skills"]["found"][format!("{copy}/SKILL.md")] == name)
+    {
+        return Ok(copy);
+    }
+    Err(format!(
+        "{host} does not read {folder}; mirror the skill to {}",
+        readable
+            .first()
+            .and_then(|other| mirror(path, other))
+            .unwrap_or_else(|| "a folder it reads".into())
+    ))
 }
 
 /// Apply the project's skill declarations to the package skills a route selected: declared
@@ -253,16 +283,19 @@ pub fn apply(
             continue;
         }
         let id = format!("{SOURCE}:{}", skill["name"].as_str().unwrap_or_default());
-        if let Some(reason) = unavailable(settings, skill, host) {
-            let kept = if selected.is_empty() {
-                String::new()
-            } else {
-                format!("; routed {} instead", selected.join(", "))
-            };
-            missing.push(json!(format!("{id} unavailable: {reason}{kept}")));
-            sources.push(json!({"skill": id, "source": SOURCE, "path": skill["path"], "status": "unavailable", "reason": reason}));
-            continue;
-        }
+        let path = match served(settings, skill, host) {
+            Ok(path) => path,
+            Err(reason) => {
+                let kept = if selected.is_empty() {
+                    String::new()
+                } else {
+                    format!("; routed {} instead", selected.join(", "))
+                };
+                missing.push(json!(format!("{id} unavailable: {reason}{kept}")));
+                sources.push(json!({"skill": id, "source": SOURCE, "path": skill["path"], "status": "unavailable", "reason": reason}));
+                continue;
+            }
+        };
         let position = skills.iter().position(|s| selected.iter().any(|t| s == t));
         skills.retain(|s| !selected.iter().any(|t| s == t));
         let entry = json!(id);
@@ -272,7 +305,7 @@ pub fn apply(
                 None => skills.push(entry),
             }
         }
-        let mut source = json!({"skill": id, "source": SOURCE, "path": skill["path"]});
+        let mut source = json!({"skill": id, "source": SOURCE, "path": path});
         if !selected.is_empty() {
             source["replaces"] = json!(selected);
         }

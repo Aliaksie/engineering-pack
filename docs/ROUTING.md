@@ -224,10 +224,13 @@ inject or hide them, it only decides what a route names.
 - `replaces` puts the skill where a route would name those package skills; `scope` (as for
   standards) narrows that, or on its own adds the skill to matching routes. A declaration
   needs one of them. Routes name the skill `project:<name>`; hosts are shown the bare name.
-- When the current host does not read the folder, or the `SKILL.md` is missing or names
-  another skill, the route keeps the package skill and says why in `missing`, for example
+- A host that does not read the declared folder uses a copy of the skill in a folder it does
+  read, with the same folder name and front matter `name` (`.agents/skills/team-review` for
+  Codex, `.claude/skills/team-review` for Claude Code); `skillSources` names the copy used.
+- When the current host reads neither, or the `SKILL.md` is missing or names another skill,
+  the route keeps the package skill and says why in `missing`, for example
   `project:team-review unavailable: claude does not read .agents/skills; mirror the skill to
-  .claude/skills; routed craft-review:review-change instead`.
+  .claude/skills/team-review; routed craft-review:review-change instead`.
 - `disables` removes package skills from routes. A host may still list them: Craft never
   edits host configuration.
 - Conflicts are configuration errors, never merged: two declarations replacing one package

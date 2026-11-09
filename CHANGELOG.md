@@ -96,6 +96,10 @@ Project skills:
   read the skill's folder, or its `SKILL.md` is missing, the route keeps the package skill and
   says why. `skills.disables` removes package skills from routes. Two declarations replacing
   one package skill are rejected as a conflict.
+- A host that does not read the declared skill folder uses a copy with the same folder name
+  and skill name in a folder it reads, so one declaration serves Claude Code
+  (`.claude/skills/<name>`) and Codex (`.agents/skills/<name>`). `skillSources` names the copy
+  the host reads, and the "mirror the skill to" advice names the exact folder.
 
 Hooks:
 
