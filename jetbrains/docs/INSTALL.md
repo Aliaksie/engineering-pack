@@ -250,5 +250,8 @@ Before merging an overlay into a project:
 4. Check `adapter-report.json` ([adapters](ADAPTERS.md)), then try one workflow in a
    disposable project before adopting hooks in a real one.
 
+Copilot CLI skips repository hooks in a folder it does not trust; Craft's overlay hooks run
+only once the project is trusted.
+
 Optional project configuration lives in `.craft/project.json`; see [routing](ROUTING.md) and
 [integrations](INTEGRATIONS.md).
