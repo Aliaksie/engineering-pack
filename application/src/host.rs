@@ -48,6 +48,8 @@ struct Facts<'a> {
     package: Option<&'a str>,
     command: &'a Value,
     file: Option<&'a str>,
+    /// Every file an edit writes, when one edit writes several (a patch).
+    files: Vec<&'a str>,
     prompt: Option<&'a str>,
     pattern: Option<&'a str>,
     /// The host is continuing a stop a hook already held.
@@ -89,6 +91,14 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         package: optional("package")?,
         command: &input["command"],
         file: optional("file")?,
+        files: match &input["files"] {
+            Value::Null => Vec::new(),
+            Value::Array(files) => files
+                .iter()
+                .map(|file| file.as_str().ok_or("invalid hook files"))
+                .collect::<Result<_, _>>()?,
+            _ => return Err("invalid hook files".into()),
+        },
         prompt: optional("prompt")?,
         pattern: optional("pattern")?,
         stop_active: input["stopActive"] == true,
@@ -222,6 +232,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     edit: facts.tool == "edit",
                     edit_context: crate::hook::delivers_edit_context(facts.host, facts.lifecycle),
                     file: facts.file,
+                    files: &facts.files,
                     prompt: facts.prompt,
                     pattern: facts.pattern,
                     command: facts.command.as_str(),

@@ -97,6 +97,17 @@ Project skills:
   says why. `skills.disables` removes package skills from routes. Two declarations replacing
   one package skill are rejected as a conflict.
 
+Hooks:
+
+- Codex edits are seen: an `apply_patch` call names its files only inside the patch, so Codex
+  edits got no edit hint, no standard or module check, and did not count toward the session's
+  scope. Every file a patch adds, updates, deletes or moves to is now routed and checked; with
+  several files, each finding names its file.
+- A `grep` or `rg` that reads another command's output through a pipe without a file operand
+  (`copilot --help | grep model`) no longer gets a code-search answer.
+- A prompt that mentions a test run, its results or logs ("what with test run?") no longer
+  routes to testing-only verification work.
+
 ## 0.0.4
 
 Project Intelligence:
