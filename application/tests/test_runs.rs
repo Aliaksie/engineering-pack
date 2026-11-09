@@ -471,6 +471,34 @@ fn a_pass_carried_over_at_the_verify_stage_is_refused_like_a_named_one() {
 }
 
 #[test]
+fn without_test_runs_a_failed_run_is_not_kept_and_cannot_refute_a_declared_pass() {
+    let repo = start("test-runs-switched-off");
+    repo.write(
+        ".craft/project.json",
+        r#"{"formatVersion":1,"routing":{"testRuns":false}}"#,
+    );
+    hook(
+        "claude",
+        "after-tool-failure",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"error": format!("Exit code 101\n{CARGO_FAIL}")}),
+        ),
+    );
+    let file = state::file(
+        std::path::Path::new(repo.path()),
+        "test-runs.json",
+        false,
+        Some("S1"),
+    )
+    .unwrap();
+    assert!(!file.exists(), "a run was kept with testRuns off");
+    // The documented trade-off: with nothing observed, the declared pass stands.
+    step(&repo, Some("verify"), "passed").unwrap();
+}
+
+#[test]
 fn a_run_that_checked_nothing_does_not_hide_a_pass_on_the_same_tree() {
     let repo = start("test-runs-pass-then-nothing");
     hook(

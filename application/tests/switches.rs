@@ -92,6 +92,12 @@ fn session(repo: &Repo) -> Vec<(&'static str, String)> {
                 "tool_response": {"stdout": "", "stderr": ""}})),
         ),
     ));
+    for (event, lifecycle) in [
+        ("compact", "before-compact"),
+        ("compacted", "after-compact"),
+    ] {
+        said.push((event, hook(lifecycle, at(json!({"trigger": "auto"})))));
+    }
     // Debt the turn adds after the commit, for the stop to review.
     repo.write("src/more.rs", "// TODO: later\n");
     said.push(("stop", hook("turn-end", at(json!({})))));
@@ -137,7 +143,25 @@ fn the_same_session_on_bundled_defaults_records_and_speaks() {
     let directory = craft_platform::state::location(Path::new(repo.path()), Some("S1"))
         .unwrap()
         .directory;
-    for record in ["intent.json", "test-runs.json"] {
+    for record in ["intent.json", "test-runs.json", "host-context.json"] {
         assert!(directory.join(record).is_file(), "{record} not kept");
     }
+}
+
+#[test]
+fn without_session_records_a_compaction_still_retires_the_occupancy_the_status_line_kept() {
+    let repo = configured("switches-host-context", MANUAL);
+    let root = Path::new(repo.path());
+    // What an explicit integration (the status line) keeps for the session.
+    let file = craft_platform::state::file(root, "host-context.json", true, Some("S1")).unwrap();
+    let kept = json!({"formatVersion": 1, "host": "claude", "sessionId": "S1",
+        "observedAt": "2026-11-09T10:00:00.000Z",
+        "usage": {"inputTokens": 150000, "contextWindow": 200000,
+            "observedAt": "2026-11-09T10:00:00.000Z"}});
+    std::fs::write(&file, kept.to_string()).unwrap();
+    let payload = json!({"session_id": "S1", "cwd": repo.path(), "trigger": "auto"});
+    assert_eq!(hook("before-compact", payload), "");
+    let saved: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    assert_eq!(saved["compaction"]["status"], "started", "{saved}");
+    assert!(saved.get("usage").is_none(), "{saved}");
 }

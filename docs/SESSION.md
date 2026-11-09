@@ -589,11 +589,13 @@ resume or session identity line (the line follows `checkpoint.enabled`, as the t
 that take it do), and keep no session records under `.craft/state`: `sessionRecords: false`
 stops the established intent, its routed files, planning evidence and the pending-resume mark,
 and `testRuns: false` the test-run history. Features that read those records then see no
-established work. What stays on, and why:
+established work, and a declared verification pass is not checked against an observed run.
+What stays on, and why:
 
 | Stays on | Why |
 |---|---|
 | Local telemetry | Off with `{"local": false}` in `.craft/telemetry.json` |
+| A compaction in a host context the status line or `craft host-observe` keeps | Retires the occupancy measured before the compaction; without that record a compaction writes nothing |
 | Skill listing and package instructions the host loads | Read by the host from the installed plugin; disable the plugin in the host to remove them |
 
 Explicit commands keep working under any policy.

@@ -159,7 +159,9 @@ long output in a file whose end Craft reads for the summary; Codex passes the ou
 an exit code, so its summary alone decides; Gemini CLI's shell result text is read the same
 way. A result with neither output nor a failing exit code, an interrupted call and a call
 moved to the background record nothing. `routing.testRuns: false` records no run, reports no
-run that executed nothing and leaves test status out of a resume.
+run that executed nothing and leaves test status out of a resume. With no run observed, an
+acceptance record is not filled from one and a declared pass is not checked against one: a
+`task-step` that says verification passed is recorded as the agent states it.
 
 ## Project anchors
 

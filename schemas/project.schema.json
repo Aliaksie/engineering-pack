@@ -1155,7 +1155,7 @@
         "testRuns": {
           "type": "boolean",
           "default": true,
-          "description": "Record each test command the host runs with its verdict and the tree it ran on, tell the model at once when a run executed no test, and restate the runs on resume. Set false to record and show none."
+          "description": "Record each test command the host runs with its verdict and the tree it ran on, tell the model at once when a run executed no test, and restate the runs on resume. Set false to record and show none; a declared verification pass is then not checked against an observed run."
         },
         "workerStandards": {
           "type": "boolean",

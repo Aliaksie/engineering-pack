@@ -188,7 +188,9 @@ The database is `.craft/state/intelligence/project.sqlite`, guarded by an
 OS lock; `backup` writes `project.sqlite.backup` beside it. On POSIX all three are created
 owner-readable only. Writes go through a write-ahead log (`project.sqlite-wal`, with its
 `-shm` index, same mode) that is synced at checkpoints rather than at every commit: a power
-failure may lose the last commits, which the next `refresh` extracts again. Evidence is
+failure may lose the last commits, which the next `refresh` extracts again. A filesystem
+that refuses the log (some network shares and mounts) keeps the rollback journal with full
+syncs. Evidence is
 derived, so a store written by another schema version is discarded and the next `refresh`
 rebuilds it. Corrupt stores refuse writes; preserve them for
 diagnosis rather than rebuilding blindly. Per source: 2 MiB, 20,000 records and a two-second

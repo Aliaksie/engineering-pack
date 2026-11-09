@@ -114,10 +114,12 @@ Hooks:
 - A prompt that mentions a test run, its results or logs ("what with test run?") no longer
   routes to testing-only verification work.
 - Every hook output now has a switch in `.craft/project.json`: `routing.testRuns: false` stops
-  recording test commands (and the zero-tests notice and resume test status),
+  recording test commands (and the zero-tests notice and resume test status; a declared
+  verification pass is then not checked against a run),
   `routing.workerStandards: false` starts host subagents without the delegating standards,
   and `routing.sessionRecords: false` keeps no intent, planning or resume records under
-  `.craft/state`. The fully manual policy now shows nothing and keeps no session records.
+  `.craft/state`. The fully manual policy now shows nothing and keeps no session records; a
+  compaction only updates a host context the status line or `craft host-observe` already keeps.
   `craft settings` lists every routing switch with its origin, including `standardChecks`,
   `stopReview` and `debtMarkers`.
 - Project Intelligence rows say what they rest on: `basis` `parsed` (a declaration, import,
@@ -125,6 +127,10 @@ Hooks:
   that only spells the name and may mean another declaration of it). `craft locate` marks name
   rows `[by name]`; a hook answer states the basis of its rows and, for callers, that they are
   not resolved targets.
+- The Project Intelligence store writes through a write-ahead log: `project.sqlite-wal` and
+  `project.sqlite-shm` sit next to `project.sqlite`, and refreshes no longer sync the disk on
+  every commit. A power failure can lose the last commits, which the next refresh extracts
+  again. A filesystem that refuses the log keeps the previous journal and full syncs.
 
 ## 0.0.4
 

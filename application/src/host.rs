@@ -126,6 +126,17 @@ pub(crate) fn project_root(cwd: &Path) -> PathBuf {
     cwd.to_path_buf()
 }
 
+/// Whether a compaction is kept in the session's host context. Without session records it
+/// only updates a host context an explicit integration (the status line, `host-observe`)
+/// already keeps, so occupancy from before the compaction is not read after it; it creates
+/// none. Settings that fail to load leave the record on, as before the switch.
+fn compaction_recorded(root: &Path, session: &str) -> bool {
+    project::settings(root, None).map_or(true, |settings| {
+        craft_engine::delivery::session_records(&settings)
+    }) || state::file(root, "host-context.json", false, Some(session))
+        .is_ok_and(|file| file.is_file())
+}
+
 fn attributes(pairs: &[(&str, Value)]) -> Map<String, Value> {
     pairs
         .iter()
@@ -146,6 +157,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
     if facts.input_status == "complete"
         && matches!(facts.lifecycle, "before-compact" | "after-compact")
         && let Some(session) = facts.session
+        && compaction_recorded(&root, session)
     {
         let event = craft_engine::session::host_context::lifecycle(
             facts.host,
