@@ -33,7 +33,9 @@ impl Store {
         let version: u32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
         if version != 0 && version != SCHEMA_VERSION {
             drop(connection);
-            for file in [path.to_path_buf(), path.with_extension("sqlite-journal")] {
+            let sidecars = ["sqlite-journal", "sqlite-wal", "sqlite-shm"];
+            let files = sidecars.map(|extension| path.with_extension(extension));
+            for file in std::iter::once(path.to_path_buf()).chain(files) {
                 match std::fs::remove_file(&file) {
                     Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
                         return Err(error.into());
@@ -58,6 +60,7 @@ impl Store {
 
     fn initialize(connection: Connection) -> Result<Self, Error> {
         connection.busy_timeout(Duration::from_secs(2))?;
+        write_ahead(&connection)?;
         let version: u32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
         if version != 0 && version != SCHEMA_VERSION {
             return Err("unsupported evidence schema; rebuild with a compatible binary".into());
@@ -488,8 +491,9 @@ impl Store {
                         "observedAt":r.get::<_, String>(11)?}),
                 );
             }
-            let mut row = json!({"id":r.get::<_, String>(0)?,"path":path,"kind":r.get::<_, String>(1)?,
-                "name":r.get::<_, String>(2)?,"line":r.get::<_, i64>(3)?,"column":r.get::<_, i64>(4)?,
+            let kind: String = r.get(1)?;
+            let mut row = json!({"id":r.get::<_, String>(0)?,"path":path,"basis":craft_engine::basis(&kind),
+                "kind":kind,"name":r.get::<_, String>(2)?,"line":r.get::<_, i64>(3)?,"column":r.get::<_, i64>(4)?,
                 "startByte":r.get::<_, i64>(5)?,"endByte":r.get::<_, i64>(6)?});
             if let Some(target) = r.get::<_, Option<String>>(7)? {
                 row["target"] = json!(target);
@@ -584,10 +588,53 @@ impl<'a> Query<'a> {
     }
 }
 
+/// Whether the store writes through a write-ahead log. A log appends each commit to one file
+/// and syncs only at checkpoints: no journal file created and deleted with a full sync per
+/// commit, which made Windows store writes twenty times slower than Linux on the same CPU.
+/// The evidence is derived, so a commit lost to a power failure is only re-extracted by the
+/// next refresh. A filesystem that cannot keep the log's shared memory (some network shares
+/// and mounts) refuses the switch; the store then keeps the rollback journal with full syncs.
+fn write_ahead(connection: &Connection) -> Result<bool, Error> {
+    let mode = connection
+        .pragma_update_and_check(None, "journal_mode", "WAL", |r| r.get::<_, String>(0))
+        .unwrap_or_default();
+    let logged = mode.eq_ignore_ascii_case("wal");
+    if logged {
+        connection.pragma_update(None, "synchronous", "NORMAL")?;
+    }
+    Ok(logged)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::javascript::{PROVIDER, extract};
+
+    #[test]
+    fn a_refused_write_ahead_log_keeps_the_rollback_journal() {
+        let database =
+            std::env::temp_dir().join(format!("craft-store-journal-{}.sqlite", std::process::id()));
+        let _ = std::fs::remove_file(&database);
+        let connection = Connection::open(&database).unwrap();
+        // SQLite refuses the switch inside a transaction, as a filesystem without shared
+        // memory does on open; the store stays usable on its default journal.
+        connection.execute_batch("BEGIN IMMEDIATE;").unwrap();
+        assert!(!write_ahead(&connection).unwrap());
+        connection.execute_batch("COMMIT;").unwrap();
+        let mode: String = connection
+            .pragma_query_value(None, "journal_mode", |r| r.get(0))
+            .unwrap();
+        assert_eq!(mode, "delete");
+        let synchronous: i64 = connection
+            .pragma_query_value(None, "synchronous", |r| r.get(0))
+            .unwrap();
+        assert_eq!(synchronous, 2, "a rollback journal keeps full syncs");
+        assert!(write_ahead(&connection).unwrap());
+        drop(connection);
+        for suffix in ["", "-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{}{suffix}", database.display()));
+        }
+    }
     #[test]
     fn refused_write_preserves_previous_generation_and_facts() {
         let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();

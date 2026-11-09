@@ -502,6 +502,12 @@ pub fn stop_review(settings: &Value) -> bool {
     settings["routing"]["stopReview"] != false
 }
 
+/// Whether a worker the host starts gets the delegating scope's standards: unless
+/// `routing.workerStandards` is false.
+pub fn worker_standards(settings: &Value) -> bool {
+    settings["routing"]["workerStandards"] != false
+}
+
 /// Whether new debt markers are reported: only when `routing.debtMarkers` is true.
 pub fn debt_markers(settings: &Value) -> bool {
     settings["routing"]["debtMarkers"] == true

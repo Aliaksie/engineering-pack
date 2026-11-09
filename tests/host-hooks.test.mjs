@@ -170,6 +170,7 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
     assert.equal(answered.skills, undefined, `${host}: a ready lookup names no skill`);
     assert.deepEqual(answered.answer.rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);'], host);
     assert.equal(answered.answer.complete, true);
+    assert.equal(answered.answer.basis, 'name', `${host}: callers match the called name only`);
     // The answered hint's lookup runs as given, for a search beyond the answered question.
     const [program, ...args] = answered.lookup.run;
     const lookup = spawnSync(program, [...args, '--callers', 'apply'], { cwd: dir, encoding: 'utf8' });
@@ -234,7 +235,8 @@ test('a key, mention or decision-record prompt gets its verified answer on any r
   };
   const capable = native.filter(host => HOSTS[host].events['before-prompt'].context);
   for (const host of capable) {
-    assert.deepEqual(hint(host, 'Where is `compilerOptions.strict` set?').answer.rows, ['tsconfig.json:4 in compilerOptions: compilerOptions.strict: "strict": true,'], host);
+    const key = hint(host, 'Where is `compilerOptions.strict` set?').answer;
+    assert.deepEqual([key.rows, key.basis], [['tsconfig.json:4 in compilerOptions: compilerOptions.strict: "strict": true,'], 'parsed'], host);
     assert.deepEqual(hint(host, 'Which docs mention `AdrNumber`?').answer.rows, ['docs/adr/0002-slugs.md:5 in Use slugs as IDs: Replaces `AdrNumber`; see [code](../../src/slug.ts).'], host);
     assert.deepEqual(hint(host, 'Which documents link to src/slug.ts?').answer.rows.length, 1, host);
     assert.deepEqual(hint(host, 'Which ADR is the current decision on IDs?').answer.rows, [

@@ -54,6 +54,17 @@ pub struct Plan {
 /// What a lifecycle fact asks for under the effective `settings`. Checkpoints are saved at
 /// turn completion and before context changes, never after each tool call.
 ///
+/// Whether hooks record the test commands the host runs: unless `routing.testRuns` is false.
+pub fn test_runs(settings: &Value) -> bool {
+    settings["routing"]["testRuns"] != false
+}
+
+/// Whether hooks keep the session's intent record and its pending-resume mark: unless
+/// `routing.sessionRecords` is false.
+pub fn session_records(settings: &Value) -> bool {
+    settings["routing"]["sessionRecords"] != false
+}
+
 /// A prompt's request establishes the session's intent even where the host cannot show its
 /// hint. An edit is a side effect of that intent: it routes `implement` only when no request
 /// established another intent, and only for a file not yet routed under it.

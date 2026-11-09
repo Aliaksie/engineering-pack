@@ -22,7 +22,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -124,6 +130,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -222,7 +234,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -324,6 +342,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "project",
@@ -421,7 +445,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -488,6 +518,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -565,7 +601,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -667,6 +709,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -774,7 +822,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -876,6 +930,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1007,7 +1067,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -1126,6 +1192,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1223,7 +1295,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -1325,6 +1403,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1816,7 +1900,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -1918,6 +2008,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -2091,7 +2187,13 @@
             "routing": {
               "promptHints": true,
               "editHints": true,
-              "dedupeHints": true
+              "dedupeHints": true,
+              "standardChecks": true,
+              "stopReview": true,
+              "debtMarkers": false,
+              "testRuns": true,
+              "workerStandards": true,
+              "sessionRecords": true
             },
             "checkpoint": {
               "enabled": true
@@ -2193,6 +2295,12 @@
             "routing.promptHints": "bundled",
             "routing.editHints": "bundled",
             "routing.dedupeHints": "bundled",
+            "routing.standardChecks": "bundled",
+            "routing.stopReview": "bundled",
+            "routing.debtMarkers": "bundled",
+            "routing.testRuns": "bundled",
+            "routing.workerStandards": "bundled",
+            "routing.sessionRecords": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",

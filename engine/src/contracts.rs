@@ -324,6 +324,9 @@ pub fn validate_project(project: &Value) -> Result {
                 "standardChecks",
                 "stopReview",
                 "debtMarkers",
+                "testRuns",
+                "workerStandards",
+                "sessionRecords",
             ],
             "routing",
         )?;
@@ -334,6 +337,9 @@ pub fn validate_project(project: &Value) -> Result {
             "standardChecks",
             "stopReview",
             "debtMarkers",
+            "testRuns",
+            "workerStandards",
+            "sessionRecords",
         ] {
             boolean(
                 routing.get(field),
@@ -609,7 +615,13 @@ fn validate_execution(execution: &Map<String, Value>) -> Result {
 /// Bundled defaults. Preferences select behavior; authorization and host support stay separate facts.
 pub fn default_settings() -> Value {
     json!({
-        "routing": { "promptHints": true, "editHints": true, "dedupeHints": true },
+        // Every switch over what a hook shows or records, so `craft settings` lists each with
+        // its origin.
+        "routing": {
+            "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
+            "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
+            "sessionRecords": true
+        },
         "checkpoint": { "enabled": true },
         "workspace": {
             "enabled": true, "maxSessions": 20,

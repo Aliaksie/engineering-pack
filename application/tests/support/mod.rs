@@ -68,7 +68,7 @@ impl Repo {
         fs::write(path, text).unwrap();
     }
 
-    fn git(&self, args: &[&str]) {
+    pub fn git(&self, args: &[&str]) {
         let output = Command::new("git")
             .arg("-C")
             .arg(&self.root)
