@@ -113,6 +113,11 @@
           "event": "after-compact",
           "tool": "any",
           "handler": "deliver"
+        },
+        {
+          "id": "test-failure",
+          "normalizedEvent": "after-tool-failure",
+          "supported": false
         }
       ],
       "runtime": "bin/craft",

@@ -69,6 +69,11 @@
           "id": "compact-restore",
           "normalizedEvent": "after-compact",
           "supported": false
+        },
+        {
+          "id": "test-failure",
+          "normalizedEvent": "after-tool-failure",
+          "supported": false
         }
       ],
       "runtime": "bin/craft",

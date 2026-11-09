@@ -52,8 +52,8 @@ to the generated `bin/craft` launcher (`bin/craft.cmd` on Windows) when the shel
 name the platform or the executable fails to start; native tools use the launcher. Installed packages remain self-contained; do not
 import authoring tooling or a sibling package at runtime. Hook tools are `shell` or `any`;
 normalized events are `session-start`, `before-prompt`, `before-tool`, `after-tool`,
-`before-compact`, `after-compact`, `turn-end` and `agent-start` (the host starts a
-subagent). A denial is mapped only where the host
+`before-compact`, `after-compact`, `turn-end`, `agent-start` (the host starts a
+subagent) and `after-tool-failure` (a tool call failed, where the host reports it apart). A denial is mapped only where the host
 supports blocking, context is injected only where its wire schema supports it, and a
 `turn-end` answer holds the stop only where the host continues a turn from it (`continue`). `craft
 hook` owns payload normalization, event/tool mapping and output; the build owns registration.

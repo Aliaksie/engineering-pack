@@ -10,7 +10,8 @@ Examples: `tests/fixtures/acceptance/contract.json` (contract),
 
 ## Shapes
 
-All payloads carry `formatVersion: 1`; unknown fields fail and nothing is silently truncated.
+Contexts and contracts carry `formatVersion: 1`; an evidence ledger carries 1 or 2. Unknown
+fields fail and nothing is silently truncated.
 
 - **Context**: relative `scope` paths, `sources` (reference, content identity, observation
   time, provenance `declared|observed|inferred`, status
@@ -21,7 +22,13 @@ All payloads carry `formatVersion: 1`; unknown fields fail and nothing is silent
 - **Evidence ledger**: `records`, each naming criteria, scope, contract digest,
   `binding: {kind: repository|environment, identity}`, check or probe, artifact reference,
   reporter, support `verified|observed|inferred|unknown` and execution
-  `passed|failed|not-run|not-available`.
+  `passed|failed|not-run|not-available`. A format 2 record may add `tests: {runner, executed,
+  failed, skipped, source: observed|declared}` (a count the runner did not report is left
+  out), or `"tests": "observed"` to take the test run Craft observed on the current tree in
+  this session (see [ROUTING.md](ROUTING.md#test-runs)): its counts, execution, `binding` and
+  time replace what the record declared, and the request is refused when no run on the
+  current tree was observed or its output had no recognized summary. `source: observed` is
+  accepted only as Craft filled it, from a run it observed or the ledger already saved.
 
 Contexts and contracts are limited to 32 KiB and 32 entries per collection; ledgers to 64
 records. Errors use code `INVALID_INPUT` with an `acceptance:` reason.
@@ -33,6 +40,12 @@ kind and all its scopes, with `verified` support and `passed` execution. Evidenc
 different contract digest or source identity is stale; a missing identity is unknown. Any
 current failure stays visible: a later pass never hides it. Completion also needs no open
 required conflicts, blocking decisions or attempt blockers.
+
+In a format 2 ledger, a record whose `tests` report no executed test (`reason: zero-tests`) or
+counted failures fails its criteria whatever its execution says, a pass needs a named
+`runner`, and a criterion with current evidence that decides nothing (not run, unverified,
+unknown runner) is `unknown` instead of `gap`; `gap` means no current evidence. Format 1
+ledgers read as before.
 
 Coverage is `assurance: attributed`: it follows the reporter's assessments and does not
 check artifacts or truth itself. Reporters establish artifact availability before claiming
@@ -54,6 +67,9 @@ reload and reconcile rather than retry. Contract, scope, risk, repository or che
 clear coverage; source edits make evidence stale. `--complete` is refused while a required
 gap, failure, conflict or blocker remains, and a refused completion persists nothing.
 Non-Git roots have no repository identity and cannot reach verified completion this way.
+A passed step at the verify stage, named with `--stage verify` or carried over from the task,
+with or without a contract, is refused while the test run that decides the current tree
+failed (see [ROUTING.md](ROUTING.md#test-runs)).
 
 Opting in upgrades that session's state to format 2; current readers accept 1 and 2. Stop
 older writers before upgrading. `checkpoint-read` and session-start recovery return the

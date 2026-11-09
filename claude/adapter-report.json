@@ -78,6 +78,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "deliver"
@@ -112,6 +113,17 @@
           "matcher": "compact",
           "event": "after-compact",
           "tool": "any",
+          "handler": "deliver"
+        },
+        {
+          "id": "test-failure",
+          "normalizedEvent": "after-tool-failure",
+          "name": "PostToolUseFailure",
+          "context": false,
+          "deny": false,
+          "outcome": "failure",
+          "event": "after-tool-failure",
+          "tool": "shell",
           "handler": "deliver"
         }
       ],
@@ -352,6 +364,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"
@@ -622,6 +635,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"
@@ -884,6 +898,7 @@
           "name": "PostToolUse",
           "context": true,
           "deny": false,
+          "outcome": "success",
           "event": "after-tool",
           "tool": "any",
           "handler": "observe"

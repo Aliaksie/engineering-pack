@@ -106,6 +106,9 @@ level, source and a one-line `summary`; the content stays in the project.
 - `craft standards` lists the declarations with the source of each anchor; `craft standards --file <path>` and
   `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
   Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
+- A bound task resumed after compaction, or in a new session, carries the `check` and
+  `review` standards of its scope in the resume's `standards`: the session's established
+  work and the task's files and owned paths, selected as for a delegated worker.
 
 ## Stop review
 
@@ -128,6 +131,33 @@ review item is said once per session, and a stop is never held while the host is
 continuing a held one. Nothing is enforced: the agent fixes or tells the user why not.
 The review runs only when the project reports debt markers, declares a `review` standard or
 checks module dependencies; `routing.stopReview: false` turns it off.
+
+## Test runs
+
+When the agent runs a test command through the host's shell tool (`cargo test`, `node --test`,
+`pytest`, `python -m unittest`, `vitest`, `jest`, Maven, and wrappers such as `npm test` or
+`npx`, also as Windows `.cmd`, `.bat` or `.exe` and `py -m`), Craft reads the runner's summary
+line from the tool result the host reports and keeps the verdict for the session with the
+source digest of the tree it ran on:
+
+- `failed` when the exit code says so, when the summary counts failures, or when no test
+  executed (`zero-tests`: a filter matched nothing, tests were skipped by a flag;
+  `all-skipped`), whatever the exit code;
+- `unknown` when the output carries no summary Craft recognizes (another runner, output cut
+  before the summary, `cargo test --no-run`), or the host reports a failed call with neither
+  summary nor exit code (`tool-failed`); never `passed`;
+- `passed` only with at least one executed test and no failures.
+
+A run that checked nothing (no executed test, or `unknown`) neither confirms nor contradicts
+an earlier run: the test status of a tree is its latest decisive run (passed, or failed with
+failures or a failing exit), and only the latest run when none decided. A run that exited
+cleanly without executing a test is reported in the same tool result where the host shows
+tool context. A resumed task names the test status of the current tree, or `not-run` when the
+tree changed since. Claude Code reports a failing command as `PostToolUseFailure` and keeps a
+long output in a file whose end Craft reads for the summary; Codex passes the output without
+an exit code, so its summary alone decides; Gemini CLI's shell result text is read the same
+way. A result with neither output nor a failing exit code, an interrupted call and a call
+moved to the background record nothing.
 
 ## Project anchors
 
