@@ -24,7 +24,7 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "17e895fa9cfbf49a1ca4f23e50a52032dcf4e780",
+  "sourceRevision": "ff619ef3045fc98c71aad306171bceaf3e47f98a",
   "sourceDirty": false,
   "cargoLockSha256": "df56ef0a08a7b29e4ed4dd13376ebae36a301277b0afc39797564f6022b0a1a9",
   "files": [
