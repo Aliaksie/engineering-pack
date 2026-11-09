@@ -17,3 +17,9 @@ Timeline: select parcel A -> request A starts -> select parcel B -> request B co
 Keep credentials and tenant-sensitive cached data inside the consumer's approved security model.
 A global store must not accidentally share server-rendered request data between users. Verify
 navigation, rapid input changes, retries and unmounting, rather than only the first successful load.
+
+A rendering transition is not a network cancellation or request-ordering guarantee. Keep
+request ownership checks when using transitions, and keep controlled input updates responsive.
+Follow the installed version's [useTransition contract](https://react.dev/reference/react/useTransition),
+including how updates after an await are marked; do not replace every loading state with a
+transition merely to remove a boolean.
