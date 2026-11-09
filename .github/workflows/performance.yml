@@ -1,10 +1,12 @@
 name: Performance
 
-# Only changes that can move the runtime, packaging or the benchmark itself are measured.
+# Measured after merge, never as a pull request or release gate: a full run takes about half an
+# hour on Windows. Only changes that can move the runtime, packaging or the benchmark are measured;
+# manual dispatch measures any branch against main.
 on:
   push:
     branches: [main]
-    paths: &runtime
+    paths:
       - engine/**
       - platform/**
       - application/**
@@ -16,8 +18,6 @@ on:
       - package.json
       - .github/benchmarks/**
       - .github/workflows/performance.yml
-  pull_request:
-    paths: *runtime
   workflow_dispatch:
 
 permissions:
@@ -35,7 +35,6 @@ jobs:
     permissions:
       contents: read
       checks: write
-      pull-requests: write
     env:
       RUSTUP_TOOLCHAIN: '1.99.1'
       HYPERFINE_VERSION: '2.0.0'
@@ -99,16 +98,11 @@ jobs:
         env:
           BENCHER_API_KEY: ${{ secrets.BENCHER_CRAFT_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT: ${{ github.event_name }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           # The suite names the testbed by runner label and CPU model (see bencher-metrics.mjs).
           TESTBED="$(cat performance-results/testbed.txt)"
-          if [[ "$EVENT" == pull_request ]]; then
-            branch=(--branch "$GITHUB_HEAD_REF" --start-point "$GITHUB_BASE_REF" --start-point-hash "$BASE_SHA"
-              --start-point-clone-thresholds --start-point-reset)
-          elif [[ "$GITHUB_REF_NAME" == main ]]; then
+          if [[ "$GITHUB_REF_NAME" == main ]]; then
             branch=(--branch main --threshold-measure latency --threshold-test t_test
               --threshold-max-sample-size 64 --threshold-upper-boundary 0.99 --thresholds-reset)
           else
