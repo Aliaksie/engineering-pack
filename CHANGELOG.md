@@ -62,6 +62,11 @@ Project standards:
 - Subagents that Claude Code, Codex or Copilot CLI start themselves receive the project
   standards of the delegating session's work and bound task as context. Nothing is added
   when the session has no established work or the project declares no standards.
+- `craft doctor` reports, from files only, whether Claude Code and Codex would run each
+  installed Craft package for the project (enabled, bundled runtime digest, Codex trust and
+  hook approvals, duplicate registrations, last hook event and its version) and checks the
+  runtime behind Cursor, Copilot CLI and Gemini CLI overlays. It exits 1 only when an
+  enabled package cannot run.
 - Test commands the agent runs are observed from the host's tool result: the runner's summary
   decides (`cargo`, `node --test`, pytest, unittest, vitest, jest, Maven), a run in which no
   test executed is failed, and output Craft does not recognize is `unknown`, never passed. A

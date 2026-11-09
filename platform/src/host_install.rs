@@ -1,0 +1,435 @@
+//! Read-only observations of how hosts installed Craft: their install records, settings and
+//! configuration files, and each installed bundle's launcher and native runtime. Nothing is
+//! written, started or fetched; values that could hold secrets are never returned, only paths,
+//! identifiers, booleans, versions and counts.
+use crate::{config, documents, files};
+use serde_json::{Map, Value, json};
+use std::{
+    fs,
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
+
+/// How large a host record or configuration file is read.
+const RECORD_BYTES: usize = 4 * 1024 * 1024;
+/// How large a bundled native runtime is hashed.
+const BINARY_BYTES: usize = 256 * 1024 * 1024;
+
+fn home() -> Option<PathBuf> {
+    std::env::home_dir()
+}
+
+fn variable(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+/// A JSON file: `Ok(None)` when absent, an error text when unreadable or not JSON.
+fn json_file(path: &Path) -> Result<Option<Value>, String> {
+    match files::read_bounded(path, RECORD_BYTES) {
+        Ok(bytes) => serde_json::from_slice(&bytes)
+            .map(Some)
+            .map_err(|_| format!("{} is not valid JSON", path.display())),
+        Err(files::ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(format!("{} could not be read", path.display())),
+    }
+}
+
+/// `{path, present, error?}` for a file that was looked at.
+fn looked(path: &Path, present: bool, error: Option<String>) -> Value {
+    let mut entry = json!({"path": path.to_string_lossy(), "present": present});
+    if let Some(error) = error {
+        entry["error"] = json!(error);
+    }
+    entry
+}
+
+/// The runtime artifact name this executable runs as: `darwin`/`linux`/`win32` and
+/// `arm64`/`x64`, as bundles name them.
+pub fn platform() -> (&'static str, &'static str) {
+    let os = match std::env::consts::OS {
+        "macos" => "darwin",
+        "windows" => "win32",
+        other => other,
+    };
+    let arch = match std::env::consts::ARCH {
+        "aarch64" => "arm64",
+        "x86_64" => "x64",
+        other => other,
+    };
+    (os, arch)
+}
+
+/// Whether `path` holds an installed Craft bundle: it ships a native runtime manifest.
+pub fn is_bundle(path: &Path) -> bool {
+    path.join("support/native-bin/runtime.json").is_file()
+}
+
+/// The launcher and native runtime of a bundle for this platform: `{launcher, packVersion,
+/// target, executable, sha256}` with `executable` and `sha256` as `ok|missing|mismatch|…`.
+pub fn bundle(path: &Path) -> Value {
+    let launcher = if cfg!(windows) {
+        "bin/craft.cmd"
+    } else {
+        "bin/craft"
+    };
+    let mut found =
+        json!({"path": path.to_string_lossy(), "launcher": path.join(launcher).is_file()});
+    let runtime = match json_file(&path.join("support/native-bin/runtime.json")) {
+        Ok(Some(runtime)) => runtime,
+        Ok(None) => {
+            found["runtime"] = json!("missing");
+            return found;
+        }
+        Err(error) => {
+            found["runtime"] = json!("unreadable");
+            found["error"] = json!(error);
+            return found;
+        }
+    };
+    found["runtime"] = json!("present");
+    found["packVersion"] = runtime["packVersion"].clone();
+    let (os, arch) = platform();
+    let artifact = runtime["artifacts"].as_array().and_then(|artifacts| {
+        artifacts
+            .iter()
+            .find(|a| a["platform"] == os && a["arch"] == arch)
+    });
+    let Some(artifact) = artifact else {
+        found["executable"] = json!("unsupported-platform");
+        return found;
+    };
+    found["target"] = artifact["target"].clone();
+    found["binaryVersion"] = artifact["binaryVersion"].clone();
+    let Some(relative) = artifact["executable"]
+        .as_str()
+        .filter(|r| craft_engine::valid_path(r))
+    else {
+        found["executable"] = json!("invalid-manifest");
+        return found;
+    };
+    let binary = path.join("support/native-bin").join(relative);
+    match files::read_bounded(&binary, BINARY_BYTES) {
+        Ok(bytes) => {
+            found["executable"] = json!(if runnable(&binary) {
+                "ok"
+            } else {
+                "not-executable"
+            });
+            found["sha256"] = json!(if Some(craft_engine::hash(&bytes).as_str())
+                == artifact["sha256"].as_str()
+            {
+                "ok"
+            } else {
+                "mismatch"
+            });
+        }
+        Err(files::ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => {
+            found["executable"] = json!("missing");
+        }
+        Err(_) => found["executable"] = json!("unreadable"),
+    }
+    found
+}
+
+#[cfg(unix)]
+fn runnable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    // The launcher sets the executable bit itself when it can; an owner-writable file passes.
+    fs::metadata(path)
+        .is_ok_and(|m| m.permissions().mode() & 0o100 != 0 || m.permissions().mode() & 0o200 != 0)
+}
+
+#[cfg(not(unix))]
+fn runnable(_: &Path) -> bool {
+    true
+}
+
+/// Shell hook commands in a Claude-shaped settings object: `hooks.<Event>[].hooks[].command`.
+fn settings_commands(settings: &Value) -> Vec<String> {
+    settings["hooks"]
+        .as_object()
+        .into_iter()
+        .flat_map(|events| events.values())
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(|group| group["hooks"].as_array())
+        .flatten()
+        .filter_map(|hook| hook["command"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// Claude Code: the configuration directory, Craft bundles in the install record that apply
+/// to `root` (user scope, or project/local scope for this project), and the settings layers
+/// in precedence order (user, project, local) with their `enabledPlugins` and hook commands.
+pub fn claude(root: &Path) -> Value {
+    let Some(config) = variable("CLAUDE_CONFIG_DIR").or_else(|| home().map(|h| h.join(".claude")))
+    else {
+        return json!({"host": "claude", "installed": false, "reason": "no home directory"});
+    };
+    let plugins =
+        variable("CLAUDE_CODE_PLUGIN_CACHE_DIR").unwrap_or_else(|| config.join("plugins"));
+    let record = plugins.join("installed_plugins.json");
+    let mut sources = Vec::new();
+    let mut packages = Vec::new();
+    match json_file(&record) {
+        Ok(Some(installed)) => {
+            sources.push(looked(&record, true, None));
+            let root_text = root.to_string_lossy();
+            for (id, entries) in installed["plugins"].as_object().into_iter().flatten() {
+                for entry in entries.as_array().into_iter().flatten() {
+                    let scope = entry["scope"].as_str().unwrap_or_default();
+                    let applies = scope == "user"
+                        || entry["projectPath"]
+                            .as_str()
+                            .is_some_and(|p| p == root_text);
+                    let Some(path) = entry["installPath"].as_str().map(PathBuf::from) else {
+                        continue;
+                    };
+                    if !applies || !is_bundle(&path) {
+                        continue;
+                    }
+                    packages.push(json!({
+                        "id": id, "scope": scope, "version": entry["version"],
+                        "installedAt": entry["installedAt"].as_str().or(entry["lastUpdated"].as_str()),
+                        "bundle": bundle(&path),
+                    }));
+                }
+            }
+        }
+        Ok(None) => sources.push(looked(&record, false, None)),
+        Err(error) => sources.push(looked(&record, true, Some(error))),
+    }
+    let mut layers = Vec::new();
+    for (layer, path) in [
+        ("user", config.join("settings.json")),
+        ("project", root.join(".claude/settings.json")),
+        ("local", root.join(".claude/settings.local.json")),
+    ] {
+        match documents::input(&path).map_err(|e| e.to_string()) {
+            Ok(settings) => {
+                sources.push(looked(&path, true, None));
+                layers.push(json!({
+                    "layer": layer, "path": path.to_string_lossy(),
+                    "enabledPlugins": settings.get("enabledPlugins").cloned().unwrap_or(json!({})),
+                    "commands": settings_commands(&settings),
+                }));
+            }
+            Err(_) if !path.exists() => sources.push(looked(&path, false, None)),
+            Err(error) => sources.push(looked(&path, true, Some(error))),
+        }
+    }
+    json!({
+        "host": "claude", "installed": config.is_dir(), "config": config.to_string_lossy(),
+        "packages": packages, "settings": layers, "sources": sources,
+    })
+}
+
+/// `PreToolUse` → `pre_tool_use`, as Codex keys hook approvals.
+fn snake(event: &str) -> String {
+    let mut out = String::new();
+    for (index, ch) in event.char_indices() {
+        if ch.is_ascii_uppercase() {
+            if index > 0 {
+                out.push('_');
+            }
+            out.push(ch.to_ascii_lowercase());
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+/// The approval keys a Codex plugin's hooks file declares: `<event>:<group>:<hook>`.
+fn declared_hooks(hooks: &Value) -> Vec<String> {
+    let mut keys = Vec::new();
+    for (event, groups) in hooks["hooks"].as_object().into_iter().flatten() {
+        for (group, entry) in groups.as_array().into_iter().flatten().enumerate() {
+            for index in 0..entry["hooks"].as_array().map_or(0, Vec::len) {
+                keys.push(format!("{}:{group}:{index}", snake(event)));
+            }
+        }
+    }
+    keys
+}
+
+/// Codex: configured Craft plugins and whether each is enabled, the project's trust level,
+/// the hooks feature switch, recorded hook approvals against the hooks each installed bundle
+/// declares, and other hook files holding commands.
+pub fn codex(root: &Path) -> Value {
+    let Some(home) = variable("CODEX_HOME").or_else(|| home().map(|h| h.join(".codex"))) else {
+        return json!({"host": "codex", "installed": false, "reason": "no home directory"});
+    };
+    let config_file = home.join("config.toml");
+    let mut sources = Vec::new();
+    let mut keys: Map<String, Value> = Map::new();
+    match files::read_bounded(&config_file, config::CONFIGURATION_BYTES) {
+        Ok(bytes) => match config::extract("config.toml", &bytes) {
+            Ok(extraction) if !extraction.partial => {
+                sources.push(looked(&config_file, true, None));
+                for evidence in extraction.evidence {
+                    keys.insert(evidence.name, json!(evidence.target));
+                }
+            }
+            _ => sources.push(looked(
+                &config_file,
+                true,
+                Some("config.toml could not be read in full".into()),
+            )),
+        },
+        Err(files::ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => {
+            sources.push(looked(&config_file, false, None));
+        }
+        Err(_) => sources.push(looked(
+            &config_file,
+            true,
+            Some("config.toml could not be read in full".into()),
+        )),
+    }
+    let root_text = root.to_string_lossy();
+    let trust = keys
+        .get(&format!("projects.{root_text}.trust_level"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let hooks_feature = keys
+        .get("features.hooks")
+        .or_else(|| keys.get("features.codex_hooks"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let approved: Vec<&str> = keys
+        .keys()
+        .filter_map(|key| {
+            key.strip_prefix("hooks.state.")?
+                .strip_suffix(".trusted_hash")
+        })
+        .collect();
+    let mut packages = Vec::new();
+    let cache = home.join("plugins/cache");
+    for marketplace in fs::read_dir(&cache).into_iter().flatten().flatten() {
+        for package in fs::read_dir(marketplace.path())
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            for version in fs::read_dir(package.path()).into_iter().flatten().flatten() {
+                let path = version.path();
+                if !is_bundle(&path) {
+                    continue;
+                }
+                let id = format!(
+                    "{}@{}",
+                    package.file_name().to_string_lossy(),
+                    marketplace.file_name().to_string_lossy()
+                );
+                let declared = json_file(&path.join("platform-hooks/hooks.json"))
+                    .ok()
+                    .flatten()
+                    .map(|hooks| declared_hooks(&hooks))
+                    .unwrap_or_default();
+                let prefix = format!("{id}:platform-hooks/hooks.json:");
+                let unapproved = declared
+                    .iter()
+                    .filter(|key| !approved.contains(&format!("{prefix}{key}").as_str()))
+                    .count();
+                packages.push(json!({
+                    "id": id, "version": version.file_name().to_string_lossy(),
+                    "enabled": keys.get(&format!("plugins.{id}.enabled")).cloned().unwrap_or(Value::Null),
+                    "hooks": declared.len(), "unapproved": unapproved,
+                    "bundle": bundle(&path),
+                }));
+            }
+        }
+    }
+    let mut commands = Vec::new();
+    for path in [home.join("hooks.json"), root.join(".codex/hooks.json")] {
+        match json_file(&path) {
+            Ok(Some(hooks)) => {
+                sources.push(looked(&path, true, None));
+                commands.extend(
+                    settings_commands(&hooks)
+                        .into_iter()
+                        .map(|c| json!({"path": path.to_string_lossy(), "command": c})),
+                );
+            }
+            Ok(None) => sources.push(looked(&path, false, None)),
+            Err(error) => sources.push(looked(&path, true, Some(error))),
+        }
+    }
+    json!({
+        "host": "codex", "installed": home.is_dir(), "config": home.to_string_lossy(),
+        "trust": trust, "hooksFeature": hooks_feature, "packages": packages,
+        "commands": commands, "sources": sources,
+    })
+}
+
+/// A project overlay a host loads from the repository, with the bundle each of its commands
+/// starts from (commands run from the project root): `{host, path, present, commands, bundles}`.
+pub fn overlay(host: &str, root: &Path, relative: &str) -> Value {
+    let path = &root.join(relative);
+    match json_file(path) {
+        Ok(Some(found)) => {
+            // Cursor and Copilot overlays list commands per event without a `hooks` group.
+            let mut commands = settings_commands(&found);
+            for events in found["hooks"].as_object().into_iter() {
+                for entry in events.values().filter_map(Value::as_array).flatten() {
+                    for key in ["command", "bash"] {
+                        if let Some(command) = entry[key].as_str() {
+                            commands.push(command.to_owned());
+                        }
+                    }
+                }
+            }
+            // Each command starts from its package root: `r="./packages/<name>"`.
+            let mut roots: Vec<String> = commands
+                .iter()
+                .filter_map(|c| {
+                    c.strip_prefix("r=\"")?
+                        .split_once('"')
+                        .map(|(r, _)| r.to_owned())
+                })
+                .filter(|r| !r.contains('$'))
+                .collect();
+            roots.sort();
+            roots.dedup();
+            let bundles: Vec<Value> = roots.iter().map(|r| bundle(&root.join(r))).collect();
+            json!({"host": host, "path": path.to_string_lossy(), "present": true, "commands": commands, "bundles": bundles})
+        }
+        Ok(None) => {
+            json!({"host": host, "path": path.to_string_lossy(), "present": false, "commands": []})
+        }
+        Err(error) => {
+            json!({"host": host, "path": path.to_string_lossy(), "present": true, "error": error, "commands": []})
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn codex_approval_keys_follow_event_group_and_hook_order() {
+        let hooks = json!({"hooks": {
+            "PreToolUse": [{"hooks": [{"command": "a"}]}],
+            "SessionStart": [{"hooks": [{"command": "b"}]}, {"hooks": [{"command": "c"}, {"command": "d"}]}]
+        }});
+        assert_eq!(
+            declared_hooks(&hooks),
+            [
+                "pre_tool_use:0:0",
+                "session_start:0:0",
+                "session_start:1:0",
+                "session_start:1:1"
+            ]
+        );
+    }
+
+    #[test]
+    fn hook_commands_are_read_from_claude_shaped_settings() {
+        let settings = json!({"hooks": {"PostToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "x hook claude after-tool"}]}]}});
+        assert_eq!(settings_commands(&settings), ["x hook claude after-tool"]);
+        assert!(settings_commands(&json!({})).is_empty());
+    }
+}

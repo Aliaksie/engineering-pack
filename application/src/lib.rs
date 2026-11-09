@@ -10,6 +10,7 @@ mod delegation;
 mod delivery;
 mod dependencies;
 mod discovery;
+mod doctor;
 mod evidence;
 mod failure;
 mod grounding;

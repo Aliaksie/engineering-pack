@@ -182,6 +182,27 @@ Verify the skills in a fresh session. Rolling updates can keep the same version;
 skips it, reinstall the plugin. Rebuilding a local Codex marketplace does not refresh cached
 installations; refresh each package and review hook trust again. See [releasing](RELEASING.md).
 
+## Checking an installation
+
+`bin/craft doctor` (from any installed package, or `craft doctor --root <project>`) reports
+for the project whether each host would run Craft, from files only:
+
+- Claude Code: Craft packages in the install record that apply to the project, whether
+  user, project or local settings enable them, a bundled runtime for this platform matching
+  its manifest digest, and Craft hook commands also registered in settings files;
+- Codex: configured and enabled packages, project trust, the hooks feature switch, a
+  recorded approval for each hook a package declares, the bundled runtime, and Craft
+  commands in other hook files;
+- Cursor, Copilot CLI and Gemini CLI project overlays: the bundled runtime each command
+  starts;
+- per host and package, the last hook event Craft recorded in this project and the version
+  it ran, so a session that predates an update is named.
+
+It writes nothing to host configuration or task state and starts no host. Whether a running
+session loaded the current install, Codex approval content hashes, and managed or
+command-line settings stay unknown. It exits 1 only when an enabled package cannot run here
+(missing, unrunnable or altered bundled runtime); `--json` returns the full report.
+
 ## Local builds and project overlays
 
 From a source checkout (see [contributing](CONTRIBUTING.md) for prerequisites):
