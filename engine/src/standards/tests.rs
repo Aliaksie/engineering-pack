@@ -492,3 +492,34 @@ fn a_task_brief_carries_the_standards_of_its_owned_scope() {
     assert!(for_task(&project, &task(json!({}))).is_empty());
     assert!(for_task(&project, &task(json!({"paths": ["**"]}))).is_empty());
 }
+
+#[test]
+fn a_spawned_worker_hears_the_standards_of_the_delegating_scope() {
+    let project = settings(json!([
+        {"id": "orders-api", "scope": {"modules": ["orders"]}},
+        {"id": "ui-copy", "file": "docs/copy.md", "scope": {"paths": ["ui"]}},
+        {"id": "stories", "file": "docs/stories.md", "scope": {"intents": ["story"]}},
+        {"id": "everywhere", "file": "docs/style.md"}
+    ]));
+    let routed = [json!("services/orders/src/api.rs")];
+    let work = delegated(&project, Some("implement"), &routed, None);
+    assert_eq!(ids(&work), vec!["orders-api", "everywhere"]);
+    // Story work without files hears what story work names, as a route there shows.
+    assert_eq!(
+        ids(&delegated(&project, Some("story"), &[], None)),
+        vec!["stories", "everywhere"]
+    );
+    // The bound task's owned scope adds its own standards, each id once.
+    let task = json!({"id": "t", "files": ["ui/app.tsx"], "scope": {}});
+    assert_eq!(
+        ids(&delegated(
+            &project,
+            Some("implement"),
+            &routed,
+            Some(&task)
+        )),
+        vec!["orders-api", "everywhere", "ui-copy"]
+    );
+    // Nothing established and no task: nothing to carry, no guess.
+    assert!(delegated(&project, None, &[], None).is_empty());
+}

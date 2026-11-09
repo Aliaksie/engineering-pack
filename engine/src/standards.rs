@@ -446,6 +446,42 @@ pub fn for_task(settings: &Value, task: &Value) -> Vec<Value> {
     )
 }
 
+/// The standards a worker the host spawns hears: those of the delegating session's scope.
+/// That is the work the session established (`intent` over the files it was routed to), then
+/// the files and owned scope of the task bound to the session, once each by id. Hosts do not pass
+/// the delegated prompt, so the worker gets the names its parent was shown, nothing guessed.
+pub fn delegated(
+    settings: &Value,
+    intent: Option<&str>,
+    files: &[Value],
+    task: Option<&Value>,
+) -> Vec<Value> {
+    let mut selected = Vec::new();
+    if let Some(intent) = intent
+        && let Ok(scope) = crate::routing::scope(settings, files)
+    {
+        selected = select(
+            settings,
+            &Work {
+                intent,
+                files: &scope.files,
+                modules: &scope.modules,
+                languages: &scope.languages,
+                layers: &scope.layers,
+            },
+        );
+    }
+    for standard in task
+        .map(|task| for_task(settings, task))
+        .unwrap_or_default()
+    {
+        if !selected.iter().any(|shown| shown["id"] == standard["id"]) {
+            selected.push(standard);
+        }
+    }
+    selected
+}
+
 /// Whether the stop summary is on: unless `routing.stopReview` is false.
 pub fn stop_review(settings: &Value) -> bool {
     settings["routing"]["stopReview"] != false

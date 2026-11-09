@@ -326,6 +326,13 @@ fn standards_line(found: &Value) -> String {
     )
 }
 
+/// The standards a worker the host started inherits from the session that delegated to it.
+fn delegation_line(delegation: &Value) -> String {
+    format!(
+        "Project standards of the work this task was delegated from (named by the project; no authorization implied; the delegating instructions define your task and scope): {delegation}"
+    )
+}
+
 /// The stop summary a held stop gives the model as the reason to continue.
 fn stop_line(summary: &Value) -> String {
     format!(
@@ -374,6 +381,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             result.get("session").map(session_line),
             result.get("context").map(|c| render(c, host)),
             result.get("standards").map(standards_line),
+            result.get("delegation").map(delegation_line),
         ];
         bounded(
             parts
@@ -595,6 +603,33 @@ mod tests {
         let cut = bounded(context);
         assert!(cut.starts_with(&format!("{}\n[truncated;", "x".repeat(MAX_CONTEXT - 1))));
         assert_eq!(bounded("y".repeat(MAX_CONTEXT)), "y".repeat(MAX_CONTEXT));
+    }
+
+    /// Delegated standards reach a host-started subagent only where its start event takes
+    /// context; the answer never blocks the start.
+    #[test]
+    fn delegated_standards_answer_the_subagent_start_in_each_host_wire() {
+        let result = json!({"decision": "allow", "delegation": {"intent": "story", "standards": [{"id": "stories"}]}});
+        let output = |host: &str| -> Value {
+            let wire = serialize(&result, host, "agent-start");
+            serde_json::from_str(&wire.stdout).unwrap_or(Value::Null)
+        };
+        for host in ["claude", "codex"] {
+            let answer = &output(host)["hookSpecificOutput"];
+            assert_eq!(answer["hookEventName"], "SubagentStart");
+            let context = answer["additionalContext"].as_str().unwrap();
+            assert!(context.contains("\"stories\"") && context.contains("delegated from"));
+            assert!(answer.get("permissionDecision").is_none());
+        }
+        assert!(
+            output("copilot")["additionalContext"]
+                .as_str()
+                .unwrap()
+                .contains("\"stories\"")
+        );
+        for host in ["cursor", "gemini", "jetbrains"] {
+            assert_eq!(serialize(&result, host, "agent-start").stdout, "");
+        }
     }
 
     /// A stop summary holds the stop in each host's own words, only where it can continue.

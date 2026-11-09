@@ -17,7 +17,7 @@ const packages = fs.readdirSync(path.join(root, 'packages')).filter(name =>
 const sources = packages.flatMap(pkg =>
   (JSON.parse(fs.readFileSync(path.join(root, 'packages', pkg, 'capability.json'), 'utf8')).hooks ?? [])
     .map(hook => ({ ...hook, package: pkg })));
-const order = ['session-start', 'before-prompt', 'before-tool', 'after-tool', 'before-compact', 'after-compact', 'turn-end'];
+const order = ['session-start', 'before-prompt', 'before-tool', 'after-tool', 'before-compact', 'after-compact', 'turn-end', 'agent-start'];
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const configs = {

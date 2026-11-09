@@ -65,6 +65,9 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let root = event.root;
     let settings = project::hook_loaded(recorder, hook, root)?;
+    if event.lifecycle == "agent-start" {
+        return Ok(delegation(root, &settings, event, recorder, hook));
+    }
     let session = event.session.filter(|s| !s.is_empty());
     let task = active_task(root, session).unwrap_or_else(|_| {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
@@ -346,6 +349,83 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         decision["warning"] = json!(format!("Routing hint reuse unavailable: {message}"));
     }
     Ok(decision)
+}
+
+/// The decision when the host starts a worker of its own: the standards of the delegating
+/// session's scope as the worker's context. The host passes no delegated prompt, so the scope
+/// is what the session established and its bound plan task owns. Nothing to carry stays quiet.
+fn delegation(
+    root: &Path,
+    settings: &Value,
+    event: &Event,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Value {
+    let mut decision = json!({"decision": "allow"});
+    let Some(session) = event
+        .session
+        .filter(|s| !s.is_empty() && event.context_supported)
+    else {
+        return decision;
+    };
+    let record = intent_file(root, session, false)
+        .and_then(|file| read_intent(&file))
+        .unwrap_or_else(|_| {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            Value::Null
+        });
+    let task = match crate::session::active_binding(root, session) {
+        Ok(binding) => binding.map(|binding| bound_task(root, session, &binding, recorder, hook)),
+        Err(_) => {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            None
+        }
+    };
+    let files = record["files"].as_array().cloned().unwrap_or_default();
+    let intent = record["intent"].as_str();
+    let found = standards::delegated(settings, intent, &files, task.as_ref());
+    if !found.is_empty() {
+        decision["delegation"] = json!({"intent": intent, "standards": found});
+    }
+    decision
+}
+
+/// The scope of the task bound to a session: the files its task record names and, for a
+/// plan task, the plan's owned paths, in the shape [`standards::for_task`] reads.
+fn bound_task(
+    root: &Path,
+    session: &str,
+    binding: &Value,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Value {
+    let mut files: Vec<Value> = binding["task"]
+        .as_str()
+        .and_then(|task| crate::session::read_state(root, session, task, recorder, hook).ok())
+        .and_then(|state| state["taskRecord"]["files"].as_array().cloned())
+        .unwrap_or_default();
+    let planned = binding["plan"]
+        .as_str()
+        .and_then(|plan| crate::plan::read(root, plan).ok().flatten())
+        .and_then(|saved| {
+            saved["tasks"]
+                .as_array()?
+                .iter()
+                .find(|task| task["id"] == binding["task"])
+                .cloned()
+        });
+    let scope = planned
+        .as_ref()
+        .map_or(Value::Null, |task| task["scope"].clone());
+    for file in planned
+        .iter()
+        .flat_map(|task| task["files"].as_array().cloned().unwrap_or_default())
+    {
+        if !files.contains(&file) {
+            files.push(file);
+        }
+    }
+    json!({"files": files, "scope": scope})
 }
 
 /// How large a written file an anchor check reads; larger files are left unchecked.
