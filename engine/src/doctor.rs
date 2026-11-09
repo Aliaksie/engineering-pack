@@ -127,6 +127,41 @@ fn host_status(checks: &[Value]) -> &'static str {
     }
 }
 
+/// Dotted version numbers compared as numbers: `0.0.10` is newer than `0.0.9`. A segment
+/// that is not a number compares as text after every number.
+fn version_order(a: &str, b: &str) -> std::cmp::Ordering {
+    let key = |v: &str| -> Vec<(u64, String)> {
+        v.split(['.', '-', '+'])
+            .map(|part| {
+                part.parse()
+                    .map_or((u64::MAX, part.to_owned()), |n| (n, String::new()))
+            })
+            .collect()
+    };
+    key(a).cmp(&key(b))
+}
+
+/// Each cached package once, at its newest version, with the older versions the cache keeps:
+/// a version Codex no longer loads cannot block a package that runs.
+fn newest(found: &[Value]) -> Vec<(&Value, Vec<&str>)> {
+    let mut kept: Vec<(&Value, Vec<&str>)> = Vec::new();
+    for entry in found {
+        let version = |e: &Value| e["version"].as_str().unwrap_or_default().to_owned();
+        match kept.iter_mut().find(|(k, _)| k["id"] == entry["id"]) {
+            Some((current, older)) => {
+                if version_order(&version(entry), &version(current)).is_gt() {
+                    older.push(current["version"].as_str().unwrap_or_default());
+                    *current = entry;
+                } else {
+                    older.push(entry["version"].as_str().unwrap_or_default());
+                }
+            }
+            None => kept.push((entry, Vec::new())),
+        }
+    }
+    kept
+}
+
 struct Report {
     blocking: bool,
     next: Vec<String>,
@@ -138,7 +173,7 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
     }
     let layers = facts["settings"].as_array().cloned().unwrap_or_default();
     let mut packages = Vec::new();
-    let mut enabled_names: Vec<&str> = Vec::new();
+    let mut enabled_ids: Vec<&str> = Vec::new();
     for found in facts["packages"].as_array().into_iter().flatten() {
         let id = found["id"].as_str().unwrap_or_default();
         // Settings merge key by key; the last layer naming the plugin decides.
@@ -171,7 +206,7 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
             }
         };
         if enabled {
-            enabled_names.push(package(id));
+            enabled_ids.push(id);
             let (runtime, blocks) = runtime(&found["bundle"]);
             if blocks {
                 report.blocking = true;
@@ -221,10 +256,14 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
             ),
         ));
     }
-    let mut names = enabled_names.clone();
+    // One package id enabled at several scopes is one plugin; only distinct ids that name the
+    // same package come from two marketplaces.
+    enabled_ids.sort_unstable();
+    enabled_ids.dedup();
+    let mut names: Vec<&str> = enabled_ids.iter().map(|id| package(id)).collect();
     names.sort_unstable();
     names.dedup();
-    if names.len() < enabled_names.len() {
+    if names.len() < enabled_ids.len() {
         checks.push(check(
             "duplicates",
             "problem",
@@ -267,7 +306,7 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
             .push("Remove `hooks = false` from [features] in the Codex config".into());
     }
     let mut packages = Vec::new();
-    for found in facts["packages"].as_array().into_iter().flatten() {
+    for (found, older) in newest(facts["packages"].as_array().map_or(&[][..], Vec::as_slice)) {
         let id = found["id"].as_str().unwrap_or_default();
         let mut pchecks = Vec::new();
         let enabled = match found["enabled"].as_str() {
@@ -316,7 +355,11 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
             pchecks.push(firing);
             report.next.extend(next);
         }
-        packages.push(json!({"id": id, "version": found["version"], "status": host_status(&pchecks), "checks": pchecks}));
+        let mut entry = json!({"id": id, "version": found["version"], "status": host_status(&pchecks), "checks": pchecks});
+        if !older.is_empty() {
+            entry["olderCachedVersions"] = json!(older);
+        }
+        packages.push(entry);
     }
     let duplicated: Vec<&str> = facts["commands"]
         .as_array()

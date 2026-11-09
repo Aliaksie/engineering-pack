@@ -352,8 +352,12 @@ fn tests(value: &Value) -> Result {
         &["runner", "executed", "failed", "skipped", "source"],
     )?;
     nullable(value, "runner")?;
+    // A count the runner did not report is left out: unknown, never zero.
     for count in ["executed", "failed", "skipped"] {
-        if value[count].as_u64().is_none_or(|n| n > 1_000_000_000) {
+        if value
+            .get(count)
+            .is_some_and(|n| n.as_u64().is_none_or(|n| n > 1_000_000_000))
+        {
             return fail("invalid-value");
         }
     }
@@ -513,7 +517,8 @@ pub fn coverage(
                 "status": status,
                 "evidenceIds": applicable.iter().map(|e| e["id"].clone()).collect::<Vec<_>>(),
             });
-            // Every failing run executed no test: nothing was checked, rather than a check failing.
+            // Every failing run reported that it executed no test: nothing was checked, rather
+            // than a check failing. A run without counts says nothing about how many ran.
             let failing: Vec<&&Value> = applicable
                 .iter()
                 .filter(|e| e["execution"] == "failed" || refuted(e))

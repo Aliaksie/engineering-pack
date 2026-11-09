@@ -265,11 +265,12 @@ pub fn step(
     };
     let mut input = input;
     if let Some(ledger) = input.get_mut("acceptanceEvidence") {
-        crate::test_runs::fill_evidence(root, name, repositories, ledger)?;
+        let kept = &saved["taskRecord"]["acceptanceEvidence"];
+        crate::test_runs::fill_evidence(root, name, repositories, kept, ledger)?;
     }
-    // A declared pass the latest observed run on this tree contradicts is refused.
-    if input.get("stage") == Some(&json!("verify"))
-        && input.get("outcome") == Some(&json!("passed"))
+    // A declared pass the latest observed run on this tree contradicts is refused, whether
+    // the step names the verify stage or carries it over from the task.
+    if session::step::records_passed_verification(&saved, &input)
         && let Some(status) = crate::test_runs::status(root, name, repositories)?
         && let Some(refusal) = session::test_runs::refutes_pass(&status)
     {

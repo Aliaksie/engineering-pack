@@ -1,13 +1,13 @@
 //! Replay of the frozen corpus (`tests/fixtures/runtime/checkpoint-contracts.json`)
 //! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons are.
+//!
+//! Edited in the corpus itself: `acceptance-evidence-validate:formatVersion=two` is accepted
+//! since ledger format 2 (test counts per record) was introduced.
 mod support;
 
 use serde_json::{Map, Value};
 use support::run;
 
-/// `acceptance-evidence-validate:formatVersion=two` was updated in the corpus itself: ledger
-/// format 2 (test counts per record) is accepted since that format was introduced.
-///
 /// Intentional corrections over the captured JavaScript, by case ID; each now fails.
 /// `Date.parse` rolled impossible calendar dates over, so `2026-02-30` was accepted.
 const CORRECTIONS: &[&str] = &[

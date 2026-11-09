@@ -1,13 +1,13 @@
 //! Replay of the frozen acceptance-view corpus (`tests/fixtures/runtime/view-contracts.json`)
 //! captured from the JS engine. Results compare as serialized JSON, so key order is part of
 //! the contract; the `qa:`, `product:` and `acceptance:` reasons compare exactly.
+//!
+//! Edited in the corpus itself: `qa:evidence-invalid` probes an unsupported ledger version
+//! and names version 3 since ledger format 2 (test counts per record) became valid.
 use craft_engine::session::views::{self, Reader};
 use craft_engine::values::normalize_numbers;
 use serde_json::Value;
 
-/// `qa:evidence-invalid` probes an unsupported ledger version; it names version 3 since
-/// ledger format 2 (test counts per record) became valid.
-///
 /// Intentional corrections over the captured JavaScript, by case ID, with the new reason.
 /// A QA view without a contract was reported as invalid probes; it names the contract now.
 const CORRECTIONS: &[(&str, &str)] = &[

@@ -190,9 +190,10 @@ for the project whether each host would run Craft, from files only:
 - Claude Code: Craft packages in the install record that apply to the project, whether
   user, project or local settings enable them, a bundled runtime for this platform matching
   its manifest digest, and Craft hook commands also registered in settings files;
-- Codex: configured and enabled packages, project trust, the hooks feature switch, a
-  recorded approval for each hook a package declares, the bundled runtime, and Craft
-  commands in other hook files;
+- Codex: configured and enabled packages at the newest cached version (older cached
+  versions are listed, not judged), project trust, the hooks feature switch, a recorded
+  approval for each hook a package declares, the bundled runtime, and Craft commands in
+  other hook files;
 - Cursor, Copilot CLI and Gemini CLI project overlays: the bundled runtime each command
   starts;
 - per host and package, the last hook event Craft recorded in this project and the version

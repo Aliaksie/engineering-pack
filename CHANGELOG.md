@@ -64,21 +64,25 @@ Project standards:
   when the session has no established work or the project declares no standards.
 - `craft doctor` reports, from files only, whether Claude Code and Codex would run each
   installed Craft package for the project (enabled, bundled runtime digest, Codex trust and
-  hook approvals, duplicate registrations, last hook event and its version) and checks the
+  hook approvals at the newest cached version, duplicate registrations, last hook event and
+  its version) and checks the
   runtime behind Cursor, Copilot CLI and Gemini CLI overlays. It exits 1 only when an
   enabled package cannot run.
 - Test commands the agent runs are observed from the host's tool result: the runner's summary
   decides (`cargo`, `node --test`, pytest, unittest, vitest, jest, Maven), a run in which no
   test executed is failed, and output Craft does not recognize is `unknown`, never passed. A
+  run that checked nothing does not override an earlier pass or failure on the same tree. A
   clean exit that ran no test is reported in the tool result; a resumed task names whether its
   last run still matches the tree. Claude Code failure events (`PostToolUseFailure`), Cursor
-  and Copilot CLI `postToolUseFailure` are registered for this.
+  and Copilot CLI `postToolUseFailure` are registered for this; interrupted and background
+  calls record nothing.
 - Acceptance ledgers accept `formatVersion: 2`: a record may carry its run's test counts, or
-  `"tests": "observed"` to take the run Craft observed on the current tree. A run that
-  executed no test fails its criteria, and undecided current evidence reads `unknown`, apart
-  from `gap`. Format 1 ledgers are unchanged.
-- `task-step --stage verify --outcome passed` is refused while the latest test run observed
-  on the current tree failed.
+  `"tests": "observed"` to take the run Craft observed on the current tree; only Craft fills
+  `source: observed`. A run that executed no test fails its criteria, and undecided current
+  evidence reads `unknown`, apart from `gap`; resume lists `unknown` criteria. Format 1
+  ledgers are unchanged.
+- A passed `task-step` at the verify stage, named or carried over from the task, is refused
+  while the test run that decides the current tree failed.
 - After compaction or on resume, a bound task's resume also names the `check` and `review`
   standards of its scope (the session's established work and the task's files), so hard
   rules return with the task. `advise` standards come back with routing as before.

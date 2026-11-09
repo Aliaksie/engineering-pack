@@ -42,16 +42,18 @@ fn runs_tests(words: Vec<&str>) -> bool {
         .into_iter()
         .skip_while(|w| w.contains('=') && !w.starts_with('-'))
         .collect();
-    // Wrappers that run another command: `npx jest`, `uv run pytest`, `python -m pytest`.
+    // Wrappers that run another command: `npx jest`, `uv run pytest`, `python -m pytest`,
+    // `py -3 -m pytest`.
     loop {
-        let skip = match words.as_slice() {
-            ["npx" | "bunx" | "env" | "time" | "nice" | "exec", ..] => 1,
-            [
-                "pnpm" | "yarn" | "uv" | "poetry" | "pdm" | "hatch",
-                "exec" | "run",
-                ..,
-            ] => 2,
-            [python, "-m", ..] if python.starts_with("python") => 2,
+        let head = words.first().map_or_else(String::new, |word| program(word));
+        let skip = match (head.as_str(), words.get(1).copied()) {
+            ("npx" | "bunx" | "env" | "time" | "nice" | "exec", _) => 1,
+            ("pnpm" | "yarn" | "uv" | "poetry" | "pdm" | "hatch", Some("exec" | "run")) => 2,
+            (python, Some("-m")) if python.starts_with("python") => 2,
+            ("py", _) => match words.iter().position(|w| *w == "-m") {
+                Some(at) if words[1..at].iter().all(|w| w.starts_with('-')) => at + 1,
+                _ => 0,
+            },
             _ => 0,
         };
         if skip == 0 || words.len() <= skip {
@@ -62,13 +64,13 @@ fn runs_tests(words: Vec<&str>) -> bool {
             words.remove(0);
         }
     }
-    let Some((program, args)) = words.split_first() else {
+    let Some((first, args)) = words.split_first() else {
         return false;
     };
-    let program = program.rsplit('/').next().unwrap_or(program);
+    let program = program(first);
     let has = |arg: &str| args.contains(&arg);
     let script = |arg: &&str| *arg == "test" || arg.starts_with("test:");
-    match program {
+    match program.as_str() {
         "cargo" => has("test") || has("nextest"),
         "go" | "dotnet" | "bun" | "deno" => args.first() == Some(&"test"),
         "node" => args
@@ -88,6 +90,17 @@ fn runs_tests(words: Vec<&str>) -> bool {
     }
 }
 
+/// A command word as the program it names: its file name without a Windows executable
+/// extension, so `./gradlew`, `.\gradlew.bat` and `C:\bin\cargo.exe` name `gradlew` and `cargo`.
+fn program(word: &str) -> String {
+    let base = word.rsplit(['/', '\\']).next().unwrap_or(word);
+    let lower = base.to_ascii_lowercase();
+    [".exe", ".cmd", ".bat"]
+        .iter()
+        .find_map(|ext| lower.strip_suffix(ext))
+        .map_or_else(|| base.to_string(), str::to_string)
+}
+
 /// The runner's verdict on a test command's output: `{result, runner, executed, failed,
 /// skipped, reason, exitCode}`. `exit` is the shell exit code when the host reports one.
 pub fn classify(exit: Option<i64>, output: &str) -> Value {
@@ -98,15 +111,23 @@ pub fn classify(exit: Option<i64>, output: &str) -> Value {
         Some((_, Summary::NoTests)) => Some(Counts::default()),
         None => None,
     };
-    let (result, reason) = match (exit, counts) {
-        (Some(code), _) if code != 0 => ("failed", "exit-code"),
-        (_, None) => ("unknown", "unrecognized-output"),
-        (_, Some(counts)) if counts.failed > 0 => ("failed", "failures"),
-        (_, Some(counts)) if counts.executed == 0 && counts.skipped > 0 => {
-            ("failed", "all-skipped")
-        }
-        (_, Some(counts)) if counts.executed == 0 => ("failed", "zero-tests"),
-        (_, Some(_)) => ("passed", "summary"),
+    // A summary of no executed and no failed test: the runner checked nothing, whether it
+    // then exited 0 or, as some do for an empty selection, non-zero.
+    let empty = counts
+        .filter(|counts| counts.executed == 0 && counts.failed == 0)
+        .map(|counts| {
+            if counts.skipped > 0 {
+                "all-skipped"
+            } else {
+                "zero-tests"
+            }
+        });
+    let (result, reason) = match (exit, counts, empty) {
+        (_, _, Some(empty)) => ("failed", empty),
+        (Some(code), _, _) if code != 0 => ("failed", "exit-code"),
+        (_, None, _) => ("unknown", "unrecognized-output"),
+        (_, Some(counts), _) if counts.failed > 0 => ("failed", "failures"),
+        (_, Some(_), _) => ("passed", "summary"),
     };
     let mut verdict =
         json!({"result": result, "reason": reason, "runner": runner, "exitCode": exit});
@@ -399,22 +420,35 @@ pub fn observed(history: &Value, run: Value) -> Value {
     json!({"formatVersion": 1, "runs": runs})
 }
 
-/// The latest run observed at `source`, the current tree: what the tests say about the code
-/// as it is. A run on an earlier tree, or on a tree that could not be fingerprinted, says
-/// nothing about it.
+/// Whether a run decides anything about the code: it passed, or tests failed or the runner
+/// exited with a failure. A run that executed no test, or whose output Craft could not read,
+/// checked nothing that could confirm or contradict an earlier run.
+fn decisive(run: &Value) -> bool {
+    match run["result"].as_str() {
+        Some("passed") => true,
+        Some("failed") => !matches!(run["reason"].as_str(), Some("zero-tests" | "all-skipped")),
+        _ => false,
+    }
+}
+
+/// What the tests say about `source`, the current tree: the latest decisive run observed on
+/// it, or when none was decisive the latest run at all. A run on an earlier tree, or on a
+/// tree that could not be fingerprinted, says nothing about it.
 pub fn current<'a>(history: &'a Value, source: &Value) -> Option<&'a Value> {
     if source.is_null() {
         return None;
     }
-    history["runs"]
+    let mut on_tree = history["runs"]
         .as_array()?
         .iter()
         .rev()
-        .find(|run| &run["source"] == source)
+        .filter(|run| &run["source"] == source);
+    let latest = on_tree.clone().next()?;
+    Some(on_tree.find(|run| decisive(run)).unwrap_or(latest))
 }
 
 /// A ledger record that asks for the observed run (`"tests": "observed"`), completed from
-/// `run`, the latest run Craft observed on the current tree: its counts, verdict, tree and
+/// `run`, the run [`current`] picks on the current tree: its counts, verdict, tree and
 /// time replace whatever the record declared about them.
 pub fn evidence(record: &Value, run: &Value) -> Result<Value, String> {
     let execution = match run["result"].as_str() {
@@ -425,11 +459,7 @@ pub fn evidence(record: &Value, run: &Value) -> Result<Value, String> {
         }
     };
     let mut record = record.clone();
-    record["tests"] = json!({
-        "runner": run["runner"], "executed": run["executed"].as_u64().unwrap_or(0),
-        "failed": run["failed"].as_u64().unwrap_or(0), "skipped": run["skipped"].as_u64().unwrap_or(0),
-        "source": "observed",
-    });
+    record["tests"] = observed_tests(run);
     record["execution"] = json!(execution);
     record["support"] = json!("verified");
     record["binding"] = json!({"kind": "repository", "identity": run["source"]});
@@ -448,12 +478,44 @@ pub fn evidence(record: &Value, run: &Value) -> Result<Value, String> {
     Ok(record)
 }
 
-/// Why a declared passing verification is refused: the latest run Craft observed on the
-/// current tree failed. A tree with no observed run leaves the declaration as it was.
+/// The `tests` an observed run gives a ledger record. Counts the runner's summary did not
+/// report (a failure exit with no recognized summary) stay out: unknown, not zero.
+fn observed_tests(run: &Value) -> Value {
+    let mut tests = json!({"runner": run["runner"], "source": "observed"});
+    for count in ["executed", "failed", "skipped"] {
+        if let Some(n) = run[count].as_u64() {
+            tests[count] = json!(n);
+        }
+    }
+    tests
+}
+
+/// Whether a submitted record's `tests` may say `source: observed`: Craft gave it, either now
+/// from a run in `history` (same tree, time and counts) or in the ledger already `saved`.
+/// A record that declares its own counts says `declared`.
+pub fn vouched(record: &Value, history: &Value, saved: &Value) -> bool {
+    if record["tests"]["source"] != "observed" {
+        return true;
+    }
+    let kept = saved["records"]
+        .as_array()
+        .is_some_and(|records| records.contains(record));
+    kept || history["runs"].as_array().is_some_and(|runs| {
+        runs.iter().any(|run| {
+            !run["source"].is_null()
+                && record["binding"]["identity"] == run["source"]
+                && record["observedAt"] == run["at"]
+                && record["tests"] == observed_tests(run)
+        })
+    })
+}
+
+/// Why a declared passing verification is refused: the run [`current`] picks on the current
+/// tree failed. A tree with no observed run leaves the declaration as it was.
 pub fn refutes_pass(status: &Value) -> Option<String> {
     (status["status"] == "failed").then(|| {
         format!(
-            "verification passed contradicts the latest test run on the current tree ({} {}, `{}`); rerun the tests or record a quality-failure",
+            "verification passed contradicts the test run that decides the current tree ({} {}, `{}`); rerun the tests or record a quality-failure",
             status["runner"].as_str().unwrap_or("unknown runner"),
             status["reason"].as_str().unwrap_or("failed"),
             status["command"].as_str().unwrap_or_default(),
@@ -461,8 +523,8 @@ pub fn refutes_pass(status: &Value) -> Option<String> {
     })
 }
 
-/// The test status of the current tree: `passed`, `failed` or `unknown` by the latest run
-/// observed on it; `not-run` when none was.
+/// The test status of the current tree: `passed`, `failed` or `unknown` by the run
+/// [`current`] picks on it; `not-run` when none was observed.
 pub fn status(history: &Value, source: &Value) -> Value {
     match current(history, source) {
         Some(run) => json!({
@@ -492,6 +554,13 @@ mod tests {
             "./mvnw -B verify",
             "./gradlew test",
             "go test ./...",
+            ".\\gradlew.bat test",
+            "gradlew test",
+            "mvnw.cmd -B verify",
+            "npm.cmd test",
+            "C:\\Users\\dev\\.cargo\\bin\\cargo.exe test",
+            "py -m pytest",
+            "py -3.12 -m pytest -q",
         ] {
             assert!(is_test_command(command), "{command}");
         }
@@ -502,6 +571,8 @@ mod tests {
             "npm install",
             "node scripts/build.mjs",
             "ls tests",
+            "py -c test",
+            "cargo.exe build",
         ] {
             assert!(!is_test_command(command), "{command}");
         }
@@ -561,6 +632,82 @@ mod tests {
             observation(&pass, "cargo test", "codex", "t3", &Value::Null),
         );
         assert_eq!(status(&blind, &Value::Null)["status"], "not-run");
+    }
+
+    #[test]
+    fn a_run_that_checked_nothing_leaves_an_earlier_verdict_on_the_tree_standing() {
+        let pass = classify(
+            Some(0),
+            "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n",
+        );
+        let fail = classify(
+            Some(101),
+            "test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n",
+        );
+        let zero = classify(Some(0), "[INFO] Tests are skipped.\n");
+        let unread = classify(Some(0), "");
+        let empty_exit = classify(Some(1), "No tests found, exiting with code 1\n");
+        assert_eq!(empty_exit["reason"], "zero-tests");
+        let at = |history: &Value, verdict: &Value, command: &str| {
+            observed(
+                history,
+                observation(verdict, command, "claude", "t", &json!("A")),
+            )
+        };
+        let mut history = at(&Value::Null, &pass, "cargo test");
+        for (verdict, command) in [
+            (&zero, "mvn -DskipTests install"),
+            (&unread, "cargo test --no-run"),
+            (&empty_exit, "npx jest nomatch"),
+        ] {
+            history = at(&history, verdict, command);
+            assert_eq!(
+                status(&history, &json!("A"))["status"],
+                "passed",
+                "{command}"
+            );
+            assert_eq!(refutes_pass(&status(&history, &json!("A"))), None);
+        }
+        // A failure is decisive and stands over the pass before it, whatever follows it.
+        history = at(&history, &fail, "cargo test");
+        history = at(&history, &zero, "cargo test nomatch");
+        assert_eq!(status(&history, &json!("A"))["reason"], "exit-code");
+        assert!(refutes_pass(&status(&history, &json!("A"))).is_some());
+        // With no decisive run, the latest run is what the tree has.
+        let alone = at(&Value::Null, &zero, "cargo test nomatch");
+        assert_eq!(status(&alone, &json!("A"))["reason"], "zero-tests");
+    }
+
+    #[test]
+    fn observed_counts_are_vouched_for_only_by_a_run_or_the_saved_ledger() {
+        let fail = classify(Some(2), "boom\n");
+        let pass = classify(Some(0), "Ran 2 tests in 0.0s\n\nOK\n");
+        let mut history = Value::Null;
+        for (verdict, at) in [(&fail, "t1"), (&pass, "t2")] {
+            history = observed(
+                &history,
+                observation(verdict, "pytest", "codex", at, &json!("A")),
+            );
+        }
+        let asked = json!({"id": "r", "tests": "observed"});
+        let filled = evidence(&asked, current(&history, &json!("A")).unwrap()).unwrap();
+        assert_eq!(filled["tests"]["executed"], 2);
+        assert!(vouched(&filled, &history, &Value::Null));
+        // A failure without a summary has no counts: unknown, not zero.
+        let failed = evidence(&asked, &history["runs"][0]).unwrap();
+        assert_eq!(
+            failed["tests"],
+            json!({"runner": null, "source": "observed"})
+        );
+        // Counts changed by hand, or a run Craft never saw, are not vouched for...
+        let mut forged = filled.clone();
+        forged["tests"]["executed"] = json!(9);
+        assert!(!vouched(&forged, &history, &Value::Null));
+        // ...unless the saved ledger already holds the record as it is.
+        let saved = json!({"formatVersion": 2, "records": [forged.clone()]});
+        assert!(vouched(&forged, &Value::Null, &saved));
+        let declared = json!({"tests": {"source": "declared", "runner": "x", "executed": 1}});
+        assert!(vouched(&declared, &Value::Null, &Value::Null));
     }
 
     #[test]

@@ -134,7 +134,7 @@ fn acceptance(acceptance: &Value) -> Value {
         return Value::Null;
     }
     let mut view = Map::from_iter([("complete".to_string(), acceptance["complete"].clone())]);
-    for status in ["failed", "gap", "verified"] {
+    for status in ["failed", "gap", "unknown", "verified"] {
         let ids: Vec<&Value> = criteria
             .iter()
             .filter(|c| c["status"] == status)
@@ -355,13 +355,14 @@ mod tests {
         let state = task();
         let context = json!({"task": state["taskRecord"].clone(), "stale": false, "acceptance": {
             "complete": false,
-            "criteria": [{"id": "a", "status": "verified"}, {"id": "b", "status": "gap"}],
+            "criteria": [{"id": "a", "status": "verified"}, {"id": "b", "status": "gap"},
+                {"id": "c", "status": "unknown"}],
             "records": [{"freshness": "stale"}, {"freshness": "current"}],
             "conflicts": [], "decisions": ["q1"]}});
         let view = view(&state, &context, Source::Unchanged);
         assert_eq!(
             view["acceptance"],
-            json!({"complete": false, "gap": ["b"],
+            json!({"complete": false, "gap": ["b"], "unknown": ["c"],
             "verified": ["a"], "staleEvidence": 1, "openDecisions": ["q1"]})
         );
         let plain = json!({"task": state["taskRecord"].clone(), "acceptance": {"criteria": []}});

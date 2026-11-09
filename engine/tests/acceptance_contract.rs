@@ -365,6 +365,16 @@ fn a_v2_run_that_executed_no_test_or_counted_failures_fails_its_criterion() {
     assert_eq!(zero["criteria"][0]["reason"], "zero-tests");
     assert_eq!(zero["complete"], false);
 
+    // A failure exit with no summary reports no counts: it failed, but nothing says no test ran.
+    let uncounted = record(
+        &contract,
+        json!({"criterionIds": ["value", "error"], "execution": "failed",
+            "tests": {"runner": null, "source": "observed"}}),
+    );
+    let failed = coverage_v2(&contract, &[uncounted]);
+    assert_eq!(statuses(&failed), ["failed", "failed"]);
+    assert!(failed["criteria"][0].get("reason").is_none(), "{failed}");
+
     let counted = coverage_v2(&contract, &[both(ran(3, 1, json!("jest")))]);
     assert_eq!(statuses(&counted), ["failed", "failed"]);
     assert!(counted["criteria"][0].get("reason").is_none());

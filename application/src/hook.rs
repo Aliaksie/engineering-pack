@@ -259,20 +259,31 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
 /// Hosts differ: Claude reports success and failure as separate events (the failure's
 /// `error` starts with `Exit code N`) and keeps a long output in a file whose end holds the
 /// summary; Codex passes the output text without an exit code. A host event declared as a
-/// failure fails the run whatever its output says.
+/// failure never passes; one without an exit code or a summary (a rejected or timed-out call)
+/// stays `unknown`. An interrupted call, or one the host moved to the background, has not
+/// finished and says nothing about the run.
 fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Option<Value> {
     if !matches!(lifecycle, "after-tool" | "after-tool-failure")
         || !test_runs::is_test_command(command)
     {
         return None;
     }
+    let response = first(
+        payload,
+        &["tool_response", "tool_output", "toolResult", "tool_result"],
+    );
+    let unfinished = payload["is_interrupt"] == true
+        || payload["tool_input"]["run_in_background"] == true
+        || response.is_some_and(|r| {
+            r["interrupted"] == true || r.get("backgroundTaskId").is_some_and(|id| !id.is_null())
+        });
+    if unfinished {
+        return None;
+    }
     let outcome = mapping(host, lifecycle).and_then(|m| m["outcome"].as_str().map(str::to_owned));
     let mut exit = (outcome.as_deref() == Some("success")).then_some(0);
     let mut output = String::new();
-    match first(
-        payload,
-        &["tool_response", "tool_output", "toolResult", "tool_result"],
-    ) {
+    match response {
         Some(Value::String(text)) => output.clone_from(text),
         Some(Value::Object(response)) => {
             if let Some(path) = response.get("persistedOutputPath").and_then(Value::as_str)
@@ -281,7 +292,13 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
                 output = String::from_utf8_lossy(&tail).into_owned();
             }
             if output.is_empty() {
-                for key in ["stdout", "output", "textResultForLlm", "stderr"] {
+                for key in [
+                    "stdout",
+                    "output",
+                    "textResultForLlm",
+                    "llmContent",
+                    "stderr",
+                ] {
                     if let Some(text) = response.get(key).and_then(Value::as_str) {
                         output.push_str(text);
                         output.push('\n');
@@ -310,14 +327,17 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
             None => output = error.to_owned(),
         }
     }
-    // A host that reported neither output nor an exit code (a command still running) says
-    // nothing about the run.
-    if output.trim().is_empty() && exit.is_none() && outcome.as_deref() != Some("failure") {
+    // A result with no output and no failing exit code (a command still running, or a host
+    // that reports success without output) says nothing about the run.
+    if output.trim().is_empty() && exit.is_none_or(|code| code == 0) {
         return None;
     }
     let mut verdict = test_runs::classify(exit, &output);
     if outcome.as_deref() == Some("failure") && verdict["result"] != "failed" {
-        verdict["result"] = json!("failed");
+        // A failed call never passes; without a summary or exit code it may not have run.
+        if verdict["result"] == "passed" {
+            verdict["result"] = json!("failed");
+        }
         verdict["reason"] = json!("tool-failed");
     }
     Some(verdict)

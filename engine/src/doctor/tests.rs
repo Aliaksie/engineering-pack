@@ -144,3 +144,54 @@ fn an_overlay_whose_package_has_no_runtime_blocks() {
     assert_eq!(report["blocking"], true);
     assert_eq!(host(&report, "cursor")["status"], "problem");
 }
+
+#[test]
+fn one_claude_package_at_two_scopes_is_not_two_marketplaces() {
+    let mut facts = facts();
+    let mut user = facts["claude"]["packages"][0].clone();
+    user["scope"] = json!("user");
+    facts["claude"]["packages"]
+        .as_array_mut()
+        .unwrap()
+        .push(user);
+    facts["claude"]["settings"][0]["enabledPlugins"]["craft-delivery@craft-capabilities"] =
+        json!(true);
+    let claude = host(&report(&facts), "claude").to_string();
+    assert!(!claude.contains("two marketplaces"), "{claude}");
+}
+
+#[test]
+fn codex_judges_the_newest_cached_version_and_names_older_ones() {
+    let mut facts = facts();
+    let mut old = facts["codex"]["packages"][0].clone();
+    old["version"] = json!("0.0.10");
+    old["bundle"]["executable"] = json!("unsupported-platform");
+    let mut older = old.clone();
+    older["version"] = json!("0.0.9");
+    let packages = facts["codex"]["packages"].as_array_mut().unwrap();
+    packages.insert(0, older);
+    packages.push(old);
+    // 0.0.10 is newest and cannot run: it blocks.
+    let report = report(&facts);
+    assert_eq!(report["blocking"], true);
+    let codex = host(&report, "codex");
+    assert_eq!(codex["packages"].as_array().unwrap().len(), 1);
+    assert_eq!(codex["packages"][0]["version"], "0.0.10");
+    // An older version that cannot run does not block the newest that can.
+    let mut facts = super::tests::facts();
+    let mut stale = facts["codex"]["packages"][0].clone();
+    stale["version"] = json!("0.0.4");
+    stale["bundle"]["executable"] = json!("unsupported-platform");
+    facts["codex"]["packages"]
+        .as_array_mut()
+        .unwrap()
+        .push(stale);
+    let report = super::report(&facts);
+    assert_eq!(report["blocking"], false);
+    let codex = host(&report, "codex");
+    assert_eq!(codex["packages"][0]["version"], "0.0.5");
+    assert_eq!(
+        codex["packages"][0]["olderCachedVersions"],
+        json!(["0.0.4"])
+    );
+}

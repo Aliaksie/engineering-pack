@@ -298,7 +298,7 @@ fn a_ledger_record_takes_the_run_craft_observed_and_a_run_of_no_tests_cannot_com
     // Declaring the work passed and complete over that run is refused.
     let refused = submit(&repo, 2, json!([observed_record(&digest)]), "passed", true).unwrap_err();
     assert!(
-        refused.contains("contradicts the latest test run"),
+        refused.contains("contradicts the test run that decides"),
         "{refused}"
     );
 
@@ -379,7 +379,7 @@ fn a_declared_pass_is_refused_when_the_latest_run_on_the_tree_failed() {
     );
     let refused = verify(&repo).unwrap_err();
     assert!(
-        refused.contains("contradicts the latest test run"),
+        refused.contains("contradicts the test run that decides"),
         "{refused}"
     );
     assert!(refused.contains("zero-tests"), "{refused}");
@@ -406,4 +406,217 @@ fn a_result_without_output_or_exit_code_records_nothing() {
     let runs = runs(&repo);
     assert_eq!(runs.len(), 1);
     assert_eq!(runs[0]["result"], "passed");
+}
+
+/// A task-step with `stage` (or none, carrying the task's stage over) and `outcome`.
+fn step(repo: &Repo, stage: Option<&str>, outcome: &str) -> Result<Value, String> {
+    let bundle = support::bundle();
+    let mut args = vec!["task-step", "--session", "S1", "--bundle", &bundle];
+    if let Some(stage) = stage {
+        args.extend(["--stage", stage]);
+    }
+    args.extend([
+        "--target",
+        "acceptance:value",
+        "--approach",
+        "unit-test",
+        "--evidence",
+        "tests",
+        "--outcome",
+        outcome,
+        "--result",
+        "Ran the tests",
+        "--next",
+        "Finish",
+    ]);
+    repo.cli(&args)
+}
+
+fn start(name: &str) -> Repo {
+    let repo = Repo::new(name, &[("value.mjs", "export const value = 1;\n")]);
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix it",
+        "--file",
+        "value.mjs",
+    ])
+    .unwrap();
+    repo
+}
+
+#[test]
+fn a_pass_carried_over_at_the_verify_stage_is_refused_like_a_named_one() {
+    let repo = start("test-runs-carried-stage");
+    hook(
+        "claude",
+        "after-tool-failure",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"error": format!("Exit code 101\n{CARGO_FAIL}")}),
+        ),
+    );
+    step(&repo, Some("verify"), "quality-failure").unwrap();
+    // No `--stage`: the task is still at verify, so the step would record a passed check.
+    let refused = step(&repo, None, "passed").unwrap_err();
+    assert!(
+        refused.contains("contradicts the test run that decides"),
+        "{refused}"
+    );
+}
+
+#[test]
+fn a_run_that_checked_nothing_does_not_hide_a_pass_on_the_same_tree() {
+    let repo = start("test-runs-pass-then-nothing");
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"tool_response": {"stdout": CARGO_PASS}}),
+        ),
+    );
+    for (command, response) in [
+        ("cargo test nomatch", json!({"stdout": CARGO_ZERO})),
+        (
+            "mvn -DskipTests install",
+            json!({"stdout": "[INFO] Tests are skipped.\n"}),
+        ),
+        (
+            "cargo test --no-run",
+            json!({"stdout": "Finished `test` profile\n"}),
+        ),
+    ] {
+        hook(
+            "claude",
+            "after-tool",
+            shell(&repo, command, json!({ "tool_response": response })),
+        );
+    }
+    assert_eq!(runs(&repo).len(), 4);
+    assert!(step(&repo, Some("verify"), "passed").is_ok());
+}
+
+#[test]
+fn interrupted_and_background_calls_record_no_run() {
+    let repo = start("test-runs-unfinished");
+    // Claude: a call moved to the background returns at once with a task id.
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"tool_input": {"command": "cargo test", "run_in_background": true},
+                "tool_response": {"stdout": "", "stderr": "", "backgroundTaskId": "b1"}}),
+        ),
+    );
+    // Claude: the user interrupted the call.
+    hook(
+        "claude",
+        "after-tool-failure",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"error": "Interrupted by user", "is_interrupt": true}),
+        ),
+    );
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"tool_response": {"stdout": "running 3 tests\n", "interrupted": true}}),
+        ),
+    );
+    // A clean result with no output says nothing, whatever the host's success flag.
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"tool_response": {"stdout": "", "stderr": ""}}),
+        ),
+    );
+    let file = state::file(
+        std::path::Path::new(repo.path()),
+        "test-runs.json",
+        false,
+        Some("S1"),
+    )
+    .unwrap();
+    assert!(!file.exists(), "no run was recorded");
+}
+
+#[test]
+fn a_failed_call_without_exit_code_or_summary_is_unknown_and_refutes_nothing() {
+    let repo = start("test-runs-tool-failed");
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test",
+            json!({"tool_response": {"stdout": CARGO_PASS}}),
+        ),
+    );
+    // Cursor's failure event for a call that may never have run (rejected, timed out).
+    hook(
+        "cursor",
+        "after-tool-failure",
+        json!({"conversation_id": "S1", "cwd": repo.path(), "tool_name": "Shell",
+            "tool_input": {"command": "cargo test"}, "error": "Command rejected by user"}),
+    );
+    let runs = runs(&repo);
+    assert_eq!(runs.len(), 2, "{runs:?}");
+    assert_eq!(runs[1]["result"], "unknown");
+    assert_eq!(runs[1]["reason"], "tool-failed");
+    assert!(step(&repo, Some("verify"), "passed").is_ok());
+}
+
+#[test]
+fn observed_counts_come_only_from_craft_and_the_format_is_checked_first() {
+    let repo = Repo::new(
+        "test-runs-forged",
+        &[("src/value.mjs", "export const value = 1;\n")],
+    );
+    let contract = repo.input(
+        "contract.json",
+        &serde_json::from_str::<Value>(CONTRACT).unwrap(),
+    );
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix it",
+        "--file",
+        "src",
+        "--contract",
+        &contract,
+    ])
+    .unwrap();
+    let digest = craft_engine::session::acceptance::contract_digest(
+        &serde_json::from_str(CONTRACT).unwrap(),
+    )
+    .unwrap();
+    // No run observed and a format 1 ledger: the format is what is wrong.
+    let old = submit(&repo, 1, json!([observed_record(&digest)]), "passed", false).unwrap_err();
+    assert!(old.contains("formatVersion 2"), "{old}");
+    // Counts written by hand as observed are refused.
+    let mut forged = observed_record(&digest);
+    forged["tests"] =
+        json!({"runner": "cargo", "executed": 5, "failed": 0, "skipped": 0, "source": "observed"});
+    let refused = submit(&repo, 2, json!([forged]), "passed", false).unwrap_err();
+    assert!(refused.contains("did not observe"), "{refused}");
 }
