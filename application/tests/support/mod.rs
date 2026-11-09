@@ -197,3 +197,85 @@ pub fn assert_err(result: Result<Value, String>, pattern: &[&str]) {
         ),
     }
 }
+
+/// A Craft bundle for this platform at `dir`: launcher, manifest and runtime bytes.
+pub fn installed_bundle(dir: &Path, version: &str) {
+    let (os, arch) = craft_platform::host_install::platform();
+    let target = "test-target";
+    let runtime = b"#!/bin/sh\nexit 0\n";
+    let executable = format!("{target}/native-bin/craft");
+    fs::create_dir_all(dir.join("bin")).unwrap();
+    fs::write(dir.join("bin/craft"), "#!/bin/sh\n").unwrap();
+    fs::write(dir.join("bin/craft.cmd"), "@echo off\n").unwrap();
+    let native = dir.join("support/native-bin");
+    fs::create_dir_all(native.join(format!("{target}/native-bin"))).unwrap();
+    fs::write(native.join(&executable), runtime).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(native.join(&executable), fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let manifest = json!({"formatVersion": 1, "packVersion": version, "artifacts": [
+        {"target": target, "platform": os, "arch": arch, "executable": executable,
+         "sha256": craft_engine::hash(runtime), "binaryVersion": version}
+    ]});
+    fs::write(native.join("runtime.json"), manifest.to_string()).unwrap();
+    fs::create_dir_all(dir.join("platform-hooks")).unwrap();
+    let hooks = json!({"hooks": {"PreToolUse": [{"hooks": [{"type": "command", "command": "x"}]}],
+        "SessionStart": [{"hooks": [{"type": "command", "command": "y"}]}]}});
+    fs::write(dir.join("platform-hooks/hooks.json"), hooks.to_string()).unwrap();
+}
+
+pub struct Homes {
+    pub claude: PathBuf,
+    pub codex: PathBuf,
+}
+
+/// Claude Code and Codex homes with Craft installed for `repo`: the Claude package enabled
+/// locally for it, the Codex plugin enabled, the project trusted and one hook approved.
+pub fn homes(repo: &Repo) -> Homes {
+    let base = PathBuf::from(repo.path()).with_extension("homes");
+    let _ = fs::remove_dir_all(&base);
+    let claude = base.join("claude");
+    let codex = base.join("codex");
+    let installed = claude.join("plugins/cache/mp/craft-delivery/0.0.5");
+    installed_bundle(&installed, "0.0.5");
+    fs::write(
+        claude.join("plugins/installed_plugins.json"),
+        json!({"version": 2, "plugins": {"craft-delivery@mp": [
+            {"scope": "local", "projectPath": repo.path(), "installPath": installed, "version": "0.0.5",
+             "installedAt": "2026-11-08T00:00:00.000Z"},
+            {"scope": "local", "projectPath": "/elsewhere", "installPath": installed, "version": "0.0.5"}
+        ]}})
+        .to_string(),
+    )
+    .unwrap();
+    fs::write(claude.join("settings.json"), "{}").unwrap();
+    installed_bundle(
+        &codex.join("plugins/cache/pack/craft-delivery/0.0.5"),
+        "0.0.5",
+    );
+    fs::write(
+        codex.join("config.toml"),
+        format!(
+            "[projects.'{}']\ntrust_level = \"trusted\"\n\n[plugins.\"craft-delivery@pack\"]\nenabled = true\n\n[hooks.state.\"craft-delivery@pack:platform-hooks/hooks.json:pre_tool_use:0:0\"]\ntrusted_hash = \"sha256:aa\"\n",
+            repo.path()
+        ),
+    )
+    .unwrap();
+    Homes { claude, codex }
+}
+
+/// `craft doctor --json` over `homes`: its exit code and report.
+pub fn doctor(repo: &Repo, homes: &Homes) -> (i32, Value) {
+    let output = Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args(["doctor", "--root", repo.path(), "--json"])
+        .env("CLAUDE_CONFIG_DIR", &homes.claude)
+        .env_remove("CLAUDE_CODE_PLUGIN_CACHE_DIR")
+        .env("CODEX_HOME", &homes.codex)
+        .output()
+        .unwrap();
+    let report = serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&output.stderr)));
+    (output.status.code().unwrap(), report)
+}
