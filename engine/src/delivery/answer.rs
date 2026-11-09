@@ -549,17 +549,34 @@ const GREP_VALUED: &[&str] = &[
     "--colour",
 ];
 
+/// Shell segments, each with whether a single `|` feeds it another command's output.
+fn segments(words: &[String]) -> Vec<(bool, &[String])> {
+    let separator = |word: &String| matches!(word.as_str(), "|" | ";" | "&");
+    let mut segments = Vec::new();
+    let mut start = 0;
+    for end in (0..=words.len()).filter(|&i| i == words.len() || separator(&words[i])) {
+        let piped = start >= 1 && words[start - 1] == "|" && (start < 2 || words[start - 2] != "|");
+        if end > start {
+            segments.push((piped, &words[start..end]));
+        }
+        start = end + 1;
+    }
+    segments
+}
+
 fn shell_search(command: &str) -> Option<String> {
     let words = words(command)?;
-    let mut searches = words
-        .split(|word| matches!(word.as_str(), "|" | ";" | "&"))
-        .filter_map(|segment| match segment {
-            [program, rest @ ..] if program == "rg" => Some((RG_VALUED, rest)),
-            [program, rest @ ..] if program == "grep" => Some((GREP_VALUED, rest)),
-            [git, grep, rest @ ..] if git == "git" && grep == "grep" => Some((GREP_VALUED, rest)),
+    let mut searches = segments(&words)
+        .into_iter()
+        .filter_map(|(piped, segment)| match segment {
+            [program, rest @ ..] if program == "rg" => Some((piped, RG_VALUED, rest)),
+            [program, rest @ ..] if program == "grep" => Some((piped, GREP_VALUED, rest)),
+            [git, grep, rest @ ..] if git == "git" && grep == "grep" => {
+                Some((false, GREP_VALUED, rest))
+            }
             _ => None,
         });
-    let (valued, arguments) = searches.next()?;
+    let (piped, valued, arguments) = searches.next()?;
     if searches.next().is_some() {
         return None;
     }
@@ -584,11 +601,16 @@ fn shell_search(command: &str) -> Option<String> {
             _ => positional.push(word),
         }
     }
-    let pattern = match (patterns.as_slice(), positional.first()) {
-        ([pattern], _) => pattern,
-        ([], Some(pattern)) => pattern,
+    let (pattern, operands) = match (patterns.as_slice(), positional.split_first()) {
+        ([pattern], _) => (*pattern, positional.len()),
+        ([], Some((pattern, files))) => (*pattern, files.len()),
         _ => return None,
     };
+    // A piped search without a file operand reads the other command's output, not the
+    // repository.
+    if piped && operands == 0 {
+        return None;
+    }
     literal_name(pattern)
 }
 
@@ -960,9 +982,22 @@ mod tests {
             "cat a.txt",
             "rg 'unterminated",
             "ls | wc -l",
+            "copilot --help | grep -iA3 \"model\"",
+            "cargo tree | rg serde_json",
+            "git log --oneline | grep -e applyDiscount",
         ] {
             assert_eq!(shell(none), None, "{none}");
         }
+        assert_eq!(
+            shell("git ls-files | rg applyDiscount src"),
+            Some("applyDiscount".into()),
+            "a piped search with a file operand still reads the repository"
+        );
+        assert_eq!(
+            shell("false || rg applyDiscount"),
+            Some("applyDiscount".into()),
+            "`||` does not feed output"
+        );
         assert_eq!(
             searched(Some(""), Some("rg -n applyDiscount")),
             Some("applyDiscount".into())
