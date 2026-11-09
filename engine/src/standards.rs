@@ -482,6 +482,21 @@ pub fn delegated(
     selected
 }
 
+/// The standards a resumed task keeps after compaction: the `check` and `review` standards
+/// of the session's scope, as [`delegated`] selects them. Adherence to rules decays after
+/// compaction and returns when they are restated; advised standards return with routing.
+pub fn pinned(
+    settings: &Value,
+    intent: Option<&str>,
+    files: &[Value],
+    task: Option<&Value>,
+) -> Vec<Value> {
+    delegated(settings, intent, files, task)
+        .into_iter()
+        .filter(|standard| matches!(standard["level"].as_str(), Some("check" | "review")))
+        .collect()
+}
+
 /// Whether the stop summary is on: unless `routing.stopReview` is false.
 pub fn stop_review(settings: &Value) -> bool {
     settings["routing"]["stopReview"] != false

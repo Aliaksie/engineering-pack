@@ -272,6 +272,16 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
+    // A resumed task restates the checked and reviewed standards of its scope: rules a
+    // compaction dropped from context come back with the task they govern.
+    if let (Some("resume"), Some(session)) = (decision["context"]["kind"].as_str(), session) {
+        let (record, task) = session_scope(root, session, recorder, hook);
+        let files = record["files"].as_array().cloned().unwrap_or_default();
+        let pinned = standards::pinned(&settings, record["intent"].as_str(), &files, task.as_ref());
+        if !pinned.is_empty() {
+            decision["context"]["data"]["standards"] = json!(pinned);
+        }
+    }
     // A search the model just ran gets its verified answer in the same tool result: no turn.
     let searching = event.lifecycle == "after-tool"
         && event.context_supported
@@ -368,6 +378,24 @@ fn delegation(
     else {
         return decision;
     };
+    let (record, task) = session_scope(root, session, recorder, hook);
+    let files = record["files"].as_array().cloned().unwrap_or_default();
+    let intent = record["intent"].as_str();
+    let found = standards::delegated(settings, intent, &files, task.as_ref());
+    if !found.is_empty() {
+        decision["delegation"] = json!({"intent": intent, "standards": found});
+    }
+    decision
+}
+
+/// What a session established (its intent record) and the scope of the task bound to it.
+/// Unreadable state reads as nothing established and is reported.
+fn session_scope(
+    root: &Path,
+    session: &str,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> (Value, Option<Value>) {
     let record = intent_file(root, session, false)
         .and_then(|file| read_intent(&file))
         .unwrap_or_else(|_| {
@@ -381,13 +409,7 @@ fn delegation(
             None
         }
     };
-    let files = record["files"].as_array().cloned().unwrap_or_default();
-    let intent = record["intent"].as_str();
-    let found = standards::delegated(settings, intent, &files, task.as_ref());
-    if !found.is_empty() {
-        decision["delegation"] = json!({"intent": intent, "standards": found});
-    }
-    decision
+    (record, task)
 }
 
 /// The scope of the task bound to a session: the files its task record names and, for a

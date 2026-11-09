@@ -62,6 +62,9 @@ Project standards:
 - Subagents that Claude Code, Codex or Copilot CLI start themselves receive the project
   standards of the delegating session's work and bound task as context. Nothing is added
   when the session has no established work or the project declares no standards.
+- After compaction or on resume, a bound task's resume also names the `check` and `review`
+  standards of its scope (the session's established work and the task's files), so hard
+  rules return with the task. `advise` standards come back with routing as before.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 
 Project skills:
