@@ -147,6 +147,7 @@ fn boolean(value: Option<&Value>, message: &str) -> Result {
 
 pub fn validate_project(project: &Value) -> Result {
     let fields = [
+        "$schema",
         "formatVersion",
         "languages",
         "layers",
@@ -168,6 +169,10 @@ pub fn validate_project(project: &Value) -> Result {
         "skills",
     ];
     let map = object(project, &fields, "project")?;
+    // An editor's schema link; read by editors only.
+    if map.get("$schema").is_some_and(|link| !link.is_string()) {
+        return Err("$schema must be a string".into());
+    }
     if let Some(workspace) = map.get("workspace") {
         validate_settings(workspace, &default_settings()["workspace"], "workspace")?;
     }
@@ -868,9 +873,14 @@ pub fn effective_settings_with(
             "",
         );
     }
+    let mut project = project.clone();
+    project
+        .as_object_mut()
+        .expect("validated object")
+        .remove("$schema");
     for (source, origin) in [
         (preferences, "user"),
-        (project, "project"),
+        (&project, "project"),
         (overrides, "task"),
     ] {
         merge(

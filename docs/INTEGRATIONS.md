@@ -11,7 +11,7 @@ review need no MCP connector.
 ## Configuration
 
 `<project>/.craft/project.json` is trusted configuration; see
-`examples/project/.craft/project.json` and the [project schema](../schemas/project.schema.json).
+`examples/project/.craft/project.json` and [project configuration](PROJECT-CONFIG.md#service-bindings).
 Bots load bindings and permissions from trusted job or base configuration, never from an
 untrusted PR head.
 

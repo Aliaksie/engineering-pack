@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `.craft/project.json` may carry a `$schema` link for editor completion; `craft` ignores it.
+  Every field of the project schema has a description and its default, and
+  `docs/PROJECT-CONFIG.md` lists them all.
+
 - Task continuation guidance requires an ownership handoff or explicit reassignment before
   taking over another session's work; stale receipts do not imply its tools have stopped.
 
