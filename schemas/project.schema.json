@@ -1,13 +1,177 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Consumer project configuration v1",
+  "description": "Craft project configuration in `.craft/project.json`. Every field except `formatVersion` is optional; an absent field takes the default shown.",
   "type": "object",
+  "required": [
+    "formatVersion"
+  ],
+  "$defs": {
+    "service": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "provider",
+            "transport",
+            "command"
+          ],
+          "description": "CLI binding.",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations."
+            },
+            "transport": {
+              "const": "cli",
+              "description": "How the operation is invoked."
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "description": "CLI executable, such as `gh`, `glab` or `team-task-cli`."
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Code host name, such as `gitlab.example.com`. Nothing infers it from remotes."
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repository path on the host, such as `team/project`."
+            },
+            "operations": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "git.status",
+                  "git.diff",
+                  "change.read",
+                  "change.diff",
+                  "task.read",
+                  "task.search",
+                  "git.commit",
+                  "git.push",
+                  "change.publish",
+                  "task.transition",
+                  "task.comment"
+                ]
+              },
+              "description": "Exact mappings by operation name. They take precedence over built-in mappings.",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "args"
+                ],
+                "description": "One CLI operation.",
+                "properties": {
+                  "args": {
+                    "type": "array",
+                    "description": "CLI arguments. `{name}` placeholders are filled from the operation parameters; the plan runs without a shell.",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "provider",
+            "transport"
+          ],
+          "description": "MCP binding.",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations."
+            },
+            "transport": {
+              "const": "mcp",
+              "description": "How the operation is invoked."
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Not used by MCP bindings; accepted for symmetry."
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Code host name, such as `gitlab.example.com`. Nothing infers it from remotes."
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repository path on the host, such as `team/project`."
+            },
+            "operations": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "git.status",
+                  "git.diff",
+                  "change.read",
+                  "change.diff",
+                  "task.read",
+                  "task.search",
+                  "git.commit",
+                  "git.push",
+                  "change.publish",
+                  "task.transition",
+                  "task.comment"
+                ]
+              },
+              "description": "Exact mappings by operation name. They take precedence over built-in mappings.",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "tool",
+                  "arguments"
+                ],
+                "description": "One MCP operation.",
+                "properties": {
+                  "tool": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Exact MCP tool name the host exposes."
+                  },
+                  "arguments": {
+                    "type": "object",
+                    "description": "Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "One service binding: a CLI (`transport: \"cli\"`) or an MCP server (`transport: \"mcp\"`)."
+    }
+  },
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional link to this schema for editor completion and hover help. Craft ignores the value."
+    },
     "formatVersion": {
-      "const": 1
+      "const": 1,
+      "description": "Configuration format. Always 1."
     },
     "languages": {
       "type": "array",
+      "description": "Languages the code is written in. Selects language guidance; nothing else is inferred from it. Default for modules that declare none.",
       "items": {
         "enum": [
           "javascript",
@@ -25,6 +189,7 @@
     },
     "layers": {
       "type": "array",
+      "description": "Application layers: `ui`, `backend` or `agent`. Selects layer guidance. Default for modules that declare none.",
       "items": {
         "enum": [
           "ui",
@@ -35,6 +200,7 @@
     },
     "frameworks": {
       "type": "array",
+      "description": "Frameworks in use, such as `react`. Selects framework guidance when Craft has it. Default for modules that declare none.",
       "items": {
         "type": "string",
         "minLength": 1
@@ -42,6 +208,7 @@
     },
     "providers": {
       "type": "array",
+      "description": "Model or cloud providers in use, such as `foundry`. Selects provider guidance when Craft has it. Default for modules that declare none.",
       "items": {
         "type": "string",
         "minLength": 1
@@ -49,24 +216,34 @@
     },
     "modules": {
       "type": "array",
+      "description": "Parts of the repository with an owner, stack and checks. Routes name the modules a change touches, their dependents and their checks. Without modules the project is one unit.",
       "items": {
         "type": "object",
+        "required": [
+          "name",
+          "path"
+        ],
+        "description": "One module.",
         "properties": {
           "name": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^[a-z0-9-]+$"
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique lowercase name (letters, digits, hyphens) used in `dependsOn`, scopes and routes."
           },
           "path": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Project-relative folder the module owns. The most specific path owns a file."
           },
           "owner": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Team or person shown as the owner in routes."
           },
           "languages": {
             "type": "array",
+            "description": "Languages the code is written in. Selects language guidance; nothing else is inferred from it. Overrides the project value; an empty array clears it.",
             "items": {
               "enum": [
                 "javascript",
@@ -84,6 +261,7 @@
           },
           "layers": {
             "type": "array",
+            "description": "Application layers: `ui`, `backend` or `agent`. Selects layer guidance. Overrides the project value; an empty array clears it.",
             "items": {
               "enum": [
                 "ui",
@@ -94,6 +272,7 @@
           },
           "skills": {
             "type": "array",
+            "description": "Logical skills (`package:skill`) added to routes for `implement`, `plan`, `investigate` and `review` work in this module.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -101,6 +280,7 @@
           },
           "dependsOn": {
             "type": "array",
+            "description": "Modules this module may import. With `hexagonal-architecture`, `clean-architecture` or a `module-dependencies` check, an added import into any other declared module is reported. Absent: imports are not checked.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -108,6 +288,7 @@
           },
           "providers": {
             "type": "array",
+            "description": "Model or cloud providers in use, such as `foundry`. Selects provider guidance when Craft has it. Overrides the project value; an empty array clears it.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -115,6 +296,7 @@
           },
           "frameworks": {
             "type": "array",
+            "description": "Frameworks in use, such as `react`. Selects framework guidance when Craft has it. Overrides the project value; an empty array clears it.",
             "items": {
               "type": "string",
               "minLength": 1
@@ -122,51 +304,53 @@
           },
           "checks": {
             "type": "array",
+            "description": "Commands that verify this module. Routes list them as argv to run; Craft never runs them or assumes they pass.",
             "items": {
               "type": "object",
+              "required": [
+                "command"
+              ],
+              "description": "One check command.",
               "properties": {
                 "command": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Executable, such as `./gradlew` or `npm`."
                 },
                 "args": {
                   "type": "array",
+                  "description": "Arguments passed to the command.",
                   "items": {
                     "type": "string",
                     "minLength": 1
                   }
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "command"
-              ]
+              "additionalProperties": false
             }
           },
           "runtimes": {
             "type": "array",
+            "description": "Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Overrides the project value; an empty array clears it.",
             "items": {
               "type": "string",
               "minLength": 1
             }
           }
         },
-        "additionalProperties": false,
-        "required": [
-          "name",
-          "path"
-        ]
+        "additionalProperties": false
       }
     },
     "standards": {
       "type": "array",
       "maxItems": 64,
+      "description": "Project standards: consumer-owned declarations routed by scope and, for anchors, checked without a model.",
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id"
         ],
+        "description": "One standard: an `id` and one source (`file`, `folder`, `anchor`, `checklist` or `run`).",
         "properties": {
           "id": {
             "type": "string",
@@ -205,11 +389,12 @@
           },
           "scope": {
             "type": "object",
-            "additionalProperties": false,
+            "description": "Where the standard applies; all keys must match, any value within a key. Absent: the whole project.",
             "properties": {
               "modules": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Module names from `modules`.",
                 "items": {
                   "type": "string",
                   "minLength": 1
@@ -218,6 +403,7 @@
               "languages": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Languages of the affected files.",
                 "items": {
                   "enum": [
                     "javascript",
@@ -236,6 +422,7 @@
               "layers": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Layers of the affected modules.",
                 "items": {
                   "enum": [
                     "ui",
@@ -247,6 +434,7 @@
               "paths": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Project-relative path prefixes of the affected files.",
                 "items": {
                   "type": "string",
                   "minLength": 1
@@ -255,29 +443,31 @@
               "intents": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents.",
                 "items": {
                   "type": "string",
                   "minLength": 1
-                },
-                "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents."
+                }
               }
             },
-            "description": "Where the standard applies; all keys must match, any value within a key. Absent: the whole project."
+            "additionalProperties": false
           },
           "run": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "command"
             ],
+            "description": "A consumer command the agent is told to run to check the standard.",
             "properties": {
               "command": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Executable the agent runs to check the standard."
               },
               "args": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Arguments passed to the command.",
                 "items": {
                   "type": "string",
                   "minLength": 1
@@ -285,68 +475,76 @@
               },
               "cwd": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Project-relative working directory. Default: the project root."
               }
             },
-            "description": "A consumer command the agent is told to run to check the standard."
+            "additionalProperties": false
           },
           "checklist": {
             "type": "array",
             "minItems": 1,
             "maxItems": 16,
+            "description": "Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`.",
             "items": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "description": "One item, one line."
             }
           }
-        }
-      },
-      "description": "Project standards: consumer-owned declarations routed by scope and, for anchors, checked without a model."
+        },
+        "additionalProperties": false
+      }
     },
     "anchors": {
       "type": "object",
-      "additionalProperties": false,
       "description": "Where the project's own anchors come from and which Craft defaults apply. A project entry replaces the built-in entry with the same id.",
       "properties": {
         "catalogs": {
           "type": "array",
           "maxItems": 8,
+          "default": [],
+          "description": "Project-relative anchor catalog files, read in order; a later file wins on the same id. Each holds {\"anchors\": [{id, title?, summary?, checklist?, check?, intents?, targets?}]}.",
           "items": {
             "type": "string",
-            "minLength": 1
-          },
-          "description": "Project-relative anchor catalog files, read in order; a later file wins on the same id. Each holds {\"anchors\": [{id, title?, summary?, checklist?, check?, intents?, targets?}]}."
+            "minLength": 1,
+            "description": "Project-relative path of one catalog file."
+          }
         },
         "defaults": {
           "type": "boolean",
+          "default": false,
           "description": "Whether Craft adds its anchors for the kind of work to routes, advised and never checked; off unless true. A declared standard for the kind of work replaces them."
         },
         "disables": {
           "type": "array",
+          "default": [],
+          "description": "Anchors Craft must not add as defaults.",
           "items": {
             "type": "string",
-            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-          },
-          "description": "Anchors Craft must not add as defaults."
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Anchor id or alias; it must resolve."
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "skills": {
       "type": "object",
-      "additionalProperties": false,
       "description": "The project's own skills in routes. Hosts list project skills themselves; a declaration tells Craft which one a route recommends. Routes name them project:<name>; hosts are shown the bare name.",
       "properties": {
         "declared": {
           "type": "array",
           "maxItems": 32,
+          "description": "Project skills to name in routes.",
           "items": {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "name",
               "path"
             ],
+            "description": "One project skill. Needs `replaces`, `scope` or both.",
             "properties": {
               "name": {
                 "type": "string",
@@ -362,19 +560,21 @@
               "replaces": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Package skills this skill takes the place of wherever a route selects them; one declaration per package skill.",
                 "items": {
                   "type": "string",
-                  "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$"
-                },
-                "description": "Package skills this skill takes the place of wherever a route selects them; one declaration per package skill."
+                  "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$",
+                  "description": "Logical package skill name, `package:skill`."
+                }
               },
               "scope": {
                 "type": "object",
-                "additionalProperties": false,
+                "description": "Where the skill applies, as for standards: with replaces it narrows the replacement, alone it adds the skill to matching routes.",
                 "properties": {
                   "modules": {
                     "type": "array",
                     "minItems": 1,
+                    "description": "Module names from `modules`.",
                     "items": {
                       "type": "string",
                       "minLength": 1
@@ -383,6 +583,7 @@
                   "languages": {
                     "type": "array",
                     "minItems": 1,
+                    "description": "Languages of the affected files.",
                     "items": {
                       "enum": [
                         "javascript",
@@ -401,6 +602,7 @@
                   "layers": {
                     "type": "array",
                     "minItems": 1,
+                    "description": "Layers of the affected modules.",
                     "items": {
                       "enum": [
                         "ui",
@@ -412,6 +614,7 @@
                   "paths": {
                     "type": "array",
                     "minItems": 1,
+                    "description": "Project-relative path prefixes of the affected files.",
                     "items": {
                       "type": "string",
                       "minLength": 1
@@ -420,437 +623,62 @@
                   "intents": {
                     "type": "array",
                     "minItems": 1,
+                    "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents.",
                     "items": {
                       "type": "string",
                       "minLength": 1
-                    },
-                    "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents."
+                    }
                   }
                 },
-                "description": "Where the skill applies, as for standards: with replaces it narrows the replacement, alone it adds the skill to matching routes."
+                "additionalProperties": false
               }
-            }
+            },
+            "additionalProperties": false
           }
         },
         "disables": {
           "type": "array",
           "minItems": 1,
+          "default": [],
+          "description": "Package skills routes no longer recommend. Hosts may still list them; Craft never edits host configuration.",
           "items": {
             "type": "string",
-            "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$"
-          },
-          "description": "Package skills routes no longer recommend. Hosts may still list them; Craft never edits host configuration."
+            "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Logical package skill name, `package:skill`."
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "services": {
       "type": "object",
+      "required": [],
+      "description": "Git, code host and tracker bindings that `craft operation` turns into CLI or MCP invocation plans. Nothing here runs a command or opens a connection; authentication stays with the host.",
       "properties": {
         "git": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "cli"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "args": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "args"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport",
-                "command"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "mcp"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "tool": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "arguments": {
-                        "type": "object"
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport"
-              ]
-            }
-          ]
+          "$ref": "#/$defs/service",
+          "description": "Local Git. Default: the `git` CLI. See Service bindings."
         },
         "codehost": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "cli"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "args": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "args"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport",
-                "command"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "mcp"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "tool": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "arguments": {
-                        "type": "object"
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport"
-              ]
-            }
-          ]
+          "$ref": "#/$defs/service",
+          "description": "Pull or merge requests: `gh` for GitHub, `glab` for GitLab, or exact operation mappings. See Service bindings."
         },
         "tasks": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "cli"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "args": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "args"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport",
-                "command"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "provider": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "transport": {
-                  "const": "mcp"
-                },
-                "command": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "host": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "repository": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "operations": {
-                  "type": "object",
-                  "propertyNames": {
-                    "enum": [
-                      "git.status",
-                      "git.diff",
-                      "change.read",
-                      "change.diff",
-                      "task.read",
-                      "task.search",
-                      "git.commit",
-                      "git.push",
-                      "change.publish",
-                      "task.transition",
-                      "task.comment"
-                    ]
-                  },
-                  "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                      "tool": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "arguments": {
-                        "type": "object"
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "tool",
-                      "arguments"
-                    ]
-                  }
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "provider",
-                "transport"
-              ]
-            }
-          ]
+          "$ref": "#/$defs/service",
+          "description": "Task tracker. Always needs explicit operation mappings. See Service bindings."
         }
       },
-      "additionalProperties": false,
-      "required": []
+      "additionalProperties": false
     },
     "permissions": {
       "type": "object",
+      "required": [],
+      "description": "Which mutating service operations may be planned at all. Each still needs separate authorization when it runs.",
       "properties": {
         "writeOperations": {
           "type": "array",
+          "default": [],
+          "description": "Write operations `craft operation` may plan. Default: none, so every mutation is refused.",
           "items": {
             "enum": [
               "git.commit",
@@ -862,152 +690,178 @@
           }
         }
       },
-      "additionalProperties": false,
-      "required": []
+      "additionalProperties": false
     },
     "execution": {
       "type": "object",
+      "required": [],
+      "description": "Worker roles, model profiles and host support. Logical names only; nothing vendor-specific is built in, and nothing here starts a worker or switches a model.",
       "properties": {
         "roles": {
           "type": "object",
+          "required": [],
+          "description": "How each kind of work runs. Defaults: `locator` uses a tool with the `economical` profile, `reviewer` runs in the main session with `strong`, the others in the main session with `standard`.",
           "properties": {
             "locator": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `locator` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             },
             "researcher": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `researcher` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             },
             "implementer": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `implementer` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             },
             "reviewer": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `reviewer` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             },
             "planner": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `planner` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             },
             "verifier": {
               "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `verifier` work runs.",
               "properties": {
                 "mode": {
                   "enum": [
                     "main",
                     "delegate",
                     "tool"
-                  ]
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
                 },
                 "profile": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
                 }
               },
-              "additionalProperties": false,
-              "required": [
-                "mode"
-              ]
+              "additionalProperties": false
             }
           },
-          "additionalProperties": false,
-          "required": []
+          "additionalProperties": false
         },
         "hosts": {
           "type": "object",
+          "description": "What each host supports, keyed by host name (`claude`, `codex`, ...).",
           "additionalProperties": {
             "type": "object",
+            "required": [],
+            "description": "One host.",
             "properties": {
               "delegation": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "The host can start workers. Delegated roles are planned only when both the role and the host allow it."
               },
               "models": {
                 "type": "object",
+                "description": "Exact host model name for each profile name.",
                 "additionalProperties": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Exact model name the host accepts."
                 }
               },
               "mainModelSwitch": {
@@ -1017,29 +871,31 @@
               "contextLimits": {
                 "type": "object",
                 "maxProperties": 16,
-                "description": "Context limits by exact host model name, over the bundled host table. windowTokens applies only when the host reports no window; budgetTokens is an optional working budget past which advice suggests resuming from the checkpoint in a new session.",
                 "propertyNames": {
                   "minLength": 1
                 },
+                "description": "Context limits by exact host model name, over the bundled host table. windowTokens applies only when the host reports no window; budgetTokens is an optional working budget past which advice suggests resuming from the checkpoint in a new session.",
                 "additionalProperties": {
                   "type": "object",
                   "minProperties": 1,
-                  "additionalProperties": false,
+                  "description": "Limits for one model.",
                   "properties": {
                     "windowTokens": {
                       "type": "integer",
-                      "minimum": 1
+                      "minimum": 1,
+                      "description": "Context window in tokens."
                     },
                     "budgetTokens": {
                       "type": "integer",
-                      "minimum": 1
+                      "minimum": 1,
+                      "description": "Working budget in tokens."
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 }
               }
             },
-            "additionalProperties": false,
-            "required": []
+            "additionalProperties": false
           }
         },
         "profiles": {
@@ -1048,16 +904,18 @@
           "propertyNames": {
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
           },
+          "description": "Named model profiles that roles refer to. Defaults: `economical` escalates to `standard`, `standard` to `strong`.",
           "additionalProperties": {
             "type": "object",
             "required": [
               "capabilities"
             ],
-            "additionalProperties": false,
+            "description": "One profile.",
             "properties": {
               "capabilities": {
                 "type": "array",
                 "maxItems": 32,
+                "description": "Capability tags the profile offers, used when advice asks for one.",
                 "items": {
                   "type": "string",
                   "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -1066,53 +924,63 @@
               "maxAttempts": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 5
+                "maximum": 5,
+                "default": 3,
+                "description": "Failed attempts on the same task and revision before advice escalates. Default: 3."
               },
               "escalateTo": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "Profile to recommend after `maxAttempts`. Absent: advice stops instead of inventing a stronger model."
               },
               "class": {
                 "enum": [
                   "economical",
                   "standard",
                   "strong"
-                ]
+                ],
+                "description": "Logical class: `economical` (lookups, formatting, deterministic checks), `standard` (routine work) or `strong` (hard review and design)."
               }
-            }
+            },
+            "additionalProperties": false
           }
         }
       },
-      "additionalProperties": false,
-      "required": []
+      "additionalProperties": false
     },
     "checkpoint": {
       "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "description": "Automatic task snapshots.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Save a snapshot at turn end and context transitions, and show the session identity and resume lines."
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "enabled"
-      ]
+      "additionalProperties": false
     },
     "review": {
       "type": "object",
-      "properties": {
-        "readOnly": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false,
       "required": [
         "readOnly"
-      ]
+      ],
+      "description": "Review session safety.",
+      "properties": {
+        "readOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Deny common `gh`/`glab` publishing commands and `git push` from the shell in this project. A heuristic, not a replacement for read-only credentials."
+        }
+      },
+      "additionalProperties": false
     },
     "runtimes": {
       "type": "array",
+      "description": "Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Default for modules that declare none.",
       "items": {
         "type": "string",
         "minLength": 1
@@ -1120,8 +988,8 @@
     },
     "routing": {
       "type": "object",
-      "additionalProperties": false,
       "required": [],
+      "description": "Switches for what hooks show the agent or record. Each also takes personal preferences and task overrides; `craft settings` shows where each value came from.",
       "properties": {
         "promptHints": {
           "type": "boolean",
@@ -1130,7 +998,8 @@
         },
         "editHints": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Routing hints when the agent edits a file: the skills and references for the edited scope."
         },
         "dedupeHints": {
           "type": "boolean",
@@ -1167,81 +1036,95 @@
           "default": true,
           "description": "Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "efficiency": {
       "type": "object",
-      "additionalProperties": false,
+      "description": "Session advice: lookups, attempts, review, context and delegation. Recommendations only; Craft never acts on them itself.",
       "properties": {
         "lookup": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Hook answers for lookup questions.",
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Answer certain lookups (callers, declarations, configuration keys, mentions, decision records) in the hook, without a model turn."
             },
             "reuse": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Reuse earlier `craft locate` results in a task while revision, files and configuration are unchanged."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "batching": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Accepted for policy files. Batching independent tool calls is a workflow instruction; `craft` does not act on these values.",
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Recorded only."
             },
             "maxConcurrency": {
               "type": "integer",
               "minimum": 1,
               "maximum": 64,
-              "default": 3
+              "default": 3,
+              "description": "Recorded only."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "attempts": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Acceptance attempt budget.",
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Recorded only; the budget below always applies to recorded attempts."
             },
             "maxAttempts": {
               "type": "integer",
               "minimum": 1,
               "maximum": 5,
-              "default": 3
+              "default": 3,
+              "description": "Same failure on unchanged source this many times: return control or escalate."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "advice": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Next-step advice in session status.",
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Give advice. False removes the next-step suggestion."
             },
             "at": {
               "enum": [
                 "meaningful-boundaries"
               ],
-              "default": "meaningful-boundaries"
+              "default": "meaningful-boundaries",
+              "description": "When advice is given. Only `meaningful-boundaries` exists."
             },
             "nextStep": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Include a next-step suggestion."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "review": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Review offers.",
           "properties": {
             "mode": {
               "enum": [
@@ -1249,31 +1132,36 @@
                 "recommend",
                 "execute-when-authorized"
               ],
-              "default": "recommend"
+              "default": "recommend",
+              "description": "`manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "context": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window.",
           "properties": {
             "elevatedAt": {
               "type": "number",
               "exclusiveMinimum": 0,
               "maximum": 1,
-              "default": 0.6
+              "default": 0.6,
+              "description": "Occupancy at which pressure is elevated."
             },
             "compactAt": {
               "type": "number",
               "exclusiveMinimum": 0,
               "maximum": 1,
-              "default": 0.75
+              "default": 0.75,
+              "description": "Occupancy at which advice is \"checkpoint, then compact\"."
             },
             "restartAt": {
               "type": "number",
               "exclusiveMinimum": 0,
               "maximum": 1,
-              "default": 0.85
+              "default": 0.85,
+              "description": "Occupancy at which advice is \"checkpoint, then new session\"."
             },
             "action": {
               "enum": [
@@ -1281,13 +1169,15 @@
                 "recommend",
                 "execute-when-authorized"
               ],
-              "default": "recommend"
+              "default": "recommend",
+              "description": "`manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "delegation": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Worker plans.",
           "properties": {
             "mode": {
               "enum": [
@@ -1295,100 +1185,125 @@
                 "recommend",
                 "execute-when-authorized"
               ],
-              "default": "recommend"
+              "default": "recommend",
+              "description": "`manual`: no worker plans. `recommend`: plan workers where a role and host allow it. `execute-when-authorized`: may proceed once the user approves."
             },
             "maxWorkers": {
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991,
-              "default": 3
+              "default": 3,
+              "description": "Most running workers per session. 0 disables worker plans."
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "workspace": {
       "type": "object",
-      "additionalProperties": false,
+      "description": "Private scratch directories and promoted evidence under the state directory. `craft settings` shows the limits.",
       "properties": {
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": true,
+          "description": "Allow task scratch workspaces."
         },
         "maxSessions": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 64
+          "maximum": 64,
+          "default": 20,
+          "description": "Most workspaces kept; at capacity the oldest inactive one is evicted first."
         },
         "scratch": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Scratch directory limits.",
           "properties": {
             "staleAfterHours": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 8760
+              "maximum": 8760,
+              "default": 24,
+              "description": "Hours without a write before `workspace-clean` treats a workspace as stale."
             },
             "maxBytes": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 67108864
+              "maximum": 67108864,
+              "default": 8388608,
+              "description": "Most bytes in one scratch directory."
             },
             "maxFiles": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 1024
+              "maximum": 1024,
+              "default": 64,
+              "description": "Most files in one scratch directory."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "evidence": {
           "type": "object",
-          "additionalProperties": false,
+          "description": "Files promoted from scratch as evidence.",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "default": true,
+              "description": "Allow promoting scratch files as evidence."
             },
             "retentionDays": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 365
+              "maximum": 365,
+              "default": 7,
+              "description": "Days promoted evidence is kept."
             },
             "maxArtifacts": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 64
+              "maximum": 64,
+              "default": 16,
+              "description": "Most promoted files per workspace."
             },
             "maxBytes": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 67108864
+              "maximum": 67108864,
+              "default": 1048576,
+              "description": "Most bytes of promoted evidence per workspace."
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "evidence": {
       "type": "object",
-      "additionalProperties": false,
       "description": "Project Intelligence enablement and inventory scope.",
       "properties": {
         "enabled": {
           "type": "boolean",
+          "default": true,
           "description": "Route structural lookups (declarations, callers, imports, document sections, links and mentions, decision records, configuration keys) through Project Intelligence before literal search. On unless set false."
         },
         "exclude": {
           "type": "array",
           "maxItems": 64,
+          "default": [],
           "description": "Project-relative path prefixes left out of the evidence inventory, such as generated samples or vendored bundles. Whole path components; a trailing / is accepted.",
           "items": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Project-relative path prefix, matched by whole path components."
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "formatVersion"
-  ]
+  "additionalProperties": false
 }

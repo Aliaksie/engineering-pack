@@ -32,7 +32,7 @@ module inventory or the most specific owner of each path.
 
 ## Project configuration
 
-`.craft/project.json` (schema: [project.schema.json](../schemas/project.schema.json),
+`.craft/project.json` (every field: [project configuration](PROJECT-CONFIG.md),
 example: `examples/project/`) declares modules with paths,
 owners, `dependsOn`, checks and stack evidence (`languages`, `runtimes`, `frameworks`,
 `layers`, `providers`). Module fields override project defaults; an empty array clears
@@ -161,7 +161,10 @@ way. A result with neither output nor a failing exit code, an interrupted call a
 moved to the background record nothing. `routing.testRuns: false` records no run, reports no
 run that executed nothing and leaves test status out of a resume. With no run observed, an
 acceptance record is not filled from one and a declared pass is not checked against one: a
-`task-step` that says verification passed is recorded as the agent states it.
+`task-step` that says verification passed is recorded as the agent states it. With runs
+observed, that step is refused while the test status of the current tree is `failed`, which
+includes a tree whose latest run executed no test and no run decided; when that status is
+`unknown`, the pass is recorded as stated.
 
 ## Project anchors
 
