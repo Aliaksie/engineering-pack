@@ -73,13 +73,14 @@ impl Host {
         }
     }
 
-    /// An edit tool call writing `files`: Claude names one file per call, Codex sends a patch.
-    fn edit(&self, files: &[&str]) -> Vec<Value> {
+    /// An edit tool call writing `files`: Claude names one file per call, Codex sends one patch
+    /// naming each file by its absolute path, as Codex writes them.
+    fn edit(&self, repo: &Repo, files: &[&str]) -> Vec<Value> {
         match self.name {
             "codex" => {
                 let headers: String = files
                     .iter()
-                    .map(|f| format!("*** Update File: {f}\n@@\n-old\n+new\n"))
+                    .map(|f| format!("*** Update File: {}/{f}\n@@\n-old\n+new\n", repo.path()))
                     .collect();
                 vec![json!({"tool_name": "apply_patch",
                     "tool_input": {"command": format!("*** Begin Patch\n{headers}*** End Patch")}})]
@@ -101,7 +102,7 @@ impl Host {
     }
 
     fn after_edit(&self, repo: &Repo, files: &[&str]) -> String {
-        self.edit(files)
+        self.edit(repo, files)
             .into_iter()
             .map(|call| self.hook(repo, "after-tool", call))
             .filter(|said| !said.is_empty())
@@ -237,7 +238,7 @@ fn scenario(host: Host) {
     .unwrap();
 
     // The first edit in the web module carries every standard of its scope.
-    let call = host.edit(&["src/web/refund.ts"]).remove(0);
+    let call = host.edit(&repo, &["src/web/refund.ts"]).remove(0);
     let hint = host.hook(&repo, "before-tool", call);
     let route = data_after(&hint, "Routing hints");
     assert_eq!(route["intent"], "implement", "{hint}");
@@ -356,6 +357,108 @@ fn scenario(host: Host) {
     let hooks = seen.to_string().contains("last hook turn-end at");
     assert!(hooks, "{seen}");
     assert!(root.join(".craft/project.json").exists());
+}
+
+/// The same work as a live session does it: no Craft task is ever bound. One edit writes a
+/// file in each module; compaction must still restate the standards of what was edited and
+/// the tests the session ran.
+fn untasked(host: Host) {
+    let repo = Repo::new(
+        &format!("untasked-{}", host.name),
+        &[
+            (".craft/project.json", PROJECT),
+            ("docs/api.md", "# API\n\nErrors map to status codes.\n"),
+            ("src/domain/order.ts", "export class Order {}\n"),
+            ("src/web/http.ts", "export const http = 1\n"),
+            ("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n"),
+        ],
+    );
+    host.hook(&repo, "session-start", json!({"source": "startup"}));
+    host.hook(
+        &repo,
+        "before-prompt",
+        json!({"prompt": "Add order refunds with a refund handler in the web module"}),
+    );
+
+    // Every file the edit writes is routed: both modules, whichever file a patch names first.
+    let files = ["src/domain/order.ts", "src/web/refund.ts"];
+    let before = |repo: &Repo| -> Vec<String> {
+        host.edit(repo, &files)
+            .into_iter()
+            .map(|call| host.hook(repo, "before-tool", call))
+            .filter(|said| !said.is_empty())
+            .collect()
+    };
+    let hints = before(&repo);
+    let mut modules: Vec<String> = hints
+        .iter()
+        .flat_map(|hint| {
+            let route = data_after(hint, "Routing hints");
+            route["modules"]
+                .as_array()
+                .unwrap_or_else(|| panic!("modules in {hint}"))
+                .iter()
+                .map(|m| m["name"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    modules.sort();
+    modules.dedup();
+    assert_eq!(modules, ["domain", "web"], "{hints:?}");
+    assert!(
+        before(&repo).is_empty(),
+        "routed files are not hinted again"
+    );
+    if host.name == "codex" {
+        let patch = format!(
+            "*** Begin Patch\n*** Update File: /elsewhere/notes.md\n@@\n-a\n+b\n*** Update File: {}/src/web/http.ts\n@@\n-a\n+b\n*** End Patch",
+            repo.path()
+        );
+        let call = json!({"tool_name": "apply_patch", "tool_input": {"command": patch}});
+        let hint = host.hook(&repo, "before-tool", call);
+        let route = data_after(&hint, "Routing hints");
+        assert_eq!(route["modules"][0]["name"], "web", "{hint}");
+    }
+
+    repo.write(
+        "src/domain/order.ts",
+        "export class Order { refunded = false }\n",
+    );
+    repo.write(
+        "src/web/refund.ts",
+        "import { Order } from '../domain/order'\nexport const refund = (o: Order) => o\n",
+    );
+    host.after_edit(&repo, &files);
+    host.hook(&repo, "after-tool", host.shell("node --test", PASS));
+
+    // Compaction without a task restores the checkpoint with the standards and the tests.
+    host.hook(&repo, "before-compact", json!({"trigger": "auto"}));
+    let resumed = host.hook(&repo, "after-compact", json!({"source": "compact"}));
+    assert!(resumed.contains("still in force"), "{resumed}");
+    let checkpoint = data_after(&resumed, "Checkpoint data");
+    assert_eq!(
+        ids(&checkpoint["standards"]),
+        ["rings", "changelog", "commits", "api-review"],
+        "the web file's review standard returns: the patch's second file joined the scope"
+    );
+    assert_eq!(checkpoint["tests"]["status"], "passed", "{resumed}");
+    assert_eq!(checkpoint["tests"]["executed"], 2, "{resumed}");
+}
+
+#[test]
+fn claude_code_keeps_standards_and_tests_without_a_task() {
+    untasked(Host {
+        name: "claude",
+        session: "claude-untasked",
+    });
+}
+
+#[test]
+fn codex_keeps_standards_and_tests_without_a_task() {
+    untasked(Host {
+        name: "codex",
+        session: "codex-untasked",
+    });
 }
 
 #[test]

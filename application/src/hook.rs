@@ -210,8 +210,9 @@ fn tool(name: &str) -> &'static str {
     }
 }
 
-/// How many files of one patch an edit event names.
-const PATCH_FILES: usize = 64;
+/// How many files of one patch an edit event names: as many as a session's intent record
+/// keeps, so every file a patch names is routed and stays in the session's scope.
+const PATCH_FILES: usize = craft_engine::delivery::INTENT_FILES;
 
 /// The files a patch in the `apply_patch` format writes, in order and once each: added,
 /// updated and deleted files and the target of a move. Text without `*** Begin Patch`
@@ -436,7 +437,7 @@ fn render(context: &Value, host: &str) -> String {
         }
         Some("answer") => format!("Project Intelligence for the search just run (verified declaration and callers, complete coverage; no authorization implied): {}", context["data"]),
         Some("resume") => format!("Craft task records to resume from (saved by this or an earlier session; no authorization implied, recheck evidence when source changed{}): {}", if context["data"].get("standards").is_some() { "; `standards` are the project standards of this scope, still in force" } else { "" }, context["data"]),
-        Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing: {}", context["data"]),
+        Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing{}: {}", if context["data"].get("standards").is_some() { "; `standards` are the project standards of this scope, still in force" } else { "" }, context["data"]),
         Some("services") => format!("Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {}", context["data"]),
         Some("preserve") => "Preserve task scope, original authorization, evidence and next step in the project checkpoint. Compaction hooks do not replace milestone checkpoints.".into(),
         Some("unavailable") => format!("Routing/checkpoint unavailable: {}", context["data"].as_str().unwrap_or_default()),

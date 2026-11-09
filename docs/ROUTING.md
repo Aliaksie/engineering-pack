@@ -106,9 +106,10 @@ level, source and a one-line `summary`; the content stays in the project.
 - `craft standards` lists the declarations with the source of each anchor; `craft standards --file <path>` and
   `--commit-message <file>` run the same checks and exit non-zero when one is not met, for a
   Git `commit-msg` hook or CI. `routing.standardChecks: false` turns the hook checks off.
-- A bound task resumed after compaction, or in a new session, carries the `check` and
-  `review` standards of its scope in the resume's `standards`: the session's established
-  work and the task's files and owned paths, selected as for a delegated worker.
+- A session restored after compaction carries the `check` and `review` standards of its scope
+  in `standards`: the session's established work and, for a bound task, the task's files and
+  owned paths, selected as for a delegated worker. A bound task's resume carries them too
+  when it is adopted in a new session.
 
 ## Stop review
 

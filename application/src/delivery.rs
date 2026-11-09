@@ -121,8 +121,6 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
-    // An edit outside the project has no project route; it is not a delivery failure.
-    let file = project_file(root, event.cwd, event.file);
     // Every project file the edit writes: one, or each file of a patch.
     let mut edited: Vec<String> = Vec::new();
     if event.edit {
@@ -133,6 +131,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             }
         }
     }
+    // An edit outside the project has no project route; it is not a delivery failure. A
+    // patch is routed when any file it writes is the project's, not only its first.
+    let file = match edited.first() {
+        Some(first) => Some(first.clone()),
+        None => project_file(root, event.cwd, event.file),
+    };
     let intent_file = match session {
         Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
             Some(intent_file(root, session, true)?)
@@ -311,9 +315,15 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
-    // A resumed task restates the checked and reviewed standards of its scope: rules a
-    // compaction dropped from context come back with the task they govern.
-    if let (Some("resume"), Some(session)) = (decision["context"]["kind"].as_str(), session) {
+    // A resumed session restates the checked and reviewed standards of its scope: rules a
+    // compaction dropped from context come back with the work they govern, whether or not
+    // a task was bound to it.
+    let resuming = match decision["context"]["kind"].as_str() {
+        Some("resume") => true,
+        Some("checkpoint") => plan.recover_checkpoint,
+        _ => false,
+    };
+    if let (true, Some(session)) = (resuming, session) {
         let (record, task) = session_scope(root, session, recorder, hook);
         let files = record["files"].as_array().cloned().unwrap_or_default();
         let pinned = standards::pinned(&settings, record["intent"].as_str(), &files, task.as_ref());

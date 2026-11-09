@@ -72,8 +72,8 @@ Project standards:
   decides (`cargo`, `node --test`, pytest, unittest, vitest, jest, Maven), a run in which no
   test executed is failed, and output Craft does not recognize is `unknown`, never passed. A
   run that checked nothing does not override an earlier pass or failure on the same tree. A
-  clean exit that ran no test is reported in the tool result; a resumed task names whether its
-  last run still matches the tree. Claude Code failure events (`PostToolUseFailure`), Cursor
+  clean exit that ran no test is reported in the tool result; a resumed session names whether
+  its last run still matches the tree. Claude Code failure events (`PostToolUseFailure`), Cursor
   and Copilot CLI `postToolUseFailure` are registered for this; interrupted and background
   calls record nothing.
 - Acceptance ledgers accept `formatVersion: 2`: a record may carry its run's test counts, or
@@ -83,9 +83,10 @@ Project standards:
   ledgers are unchanged.
 - A passed `task-step` at the verify stage, named or carried over from the task, is refused
   while the test run that decides the current tree failed.
-- After compaction or on resume, a bound task's resume also names the `check` and `review`
-  standards of its scope (the session's established work and the task's files), so hard
-  rules return with the task. `advise` standards come back with routing as before.
+- After compaction or on resume, the restored context also names the `check` and `review`
+  standards of the session's scope (its established work and, for a bound task, the task's
+  files), so hard rules return with the work, with or without a Craft task. `advise`
+  standards come back with routing as before.
 - `languages` accepts `rust` and `ruby`; `.rs` and `.rb` files route with those languages.
 
 Project skills:
@@ -105,8 +106,9 @@ Hooks:
 
 - Codex edits are seen: an `apply_patch` call names its files only inside the patch, so Codex
   edits got no edit hint, no standard or module check, and did not count toward the session's
-  scope. Every file a patch adds, updates, deletes or moves to is now routed and checked; with
-  several files, each finding names its file.
+  scope. Every file a patch adds, updates, deletes or moves to (up to 32 per patch, as many as
+  the session keeps) is now routed and checked, even when the first is outside the project;
+  with several files, each finding names its file.
 - A `grep` or `rg` that reads another command's output through a pipe without a file operand
   (`copilot --help | grep model`) no longer gets a code-search answer.
 - A prompt that mentions a test run, its results or logs ("what with test run?") no longer
