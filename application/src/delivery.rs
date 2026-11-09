@@ -74,7 +74,10 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     }
     let session = event.session.filter(|s| !s.is_empty());
     // A test command the host just ran: its verdict, kept with the tree it ran on.
-    let observed = match (event.test_run, session) {
+    let observed = match (
+        event.test_run.filter(|_| delivery::test_runs(&settings)),
+        session,
+    ) {
         (Some(verdict), Some(session)) => observe_run(root, session, event, verdict)
             .map_err(|_| recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook))
             .ok(),
@@ -137,9 +140,11 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         Some(first) => Some(first.clone()),
         None => project_file(root, event.cwd, event.file),
     };
+    // Without session records an existing record is still read, never created or changed.
+    let records = delivery::session_records(&settings);
     let intent_file = match session {
         Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
-            Some(intent_file(root, session, true)?)
+            Some(intent_file(root, session, records)?)
         }
         _ => None,
     };
@@ -234,6 +239,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     // A request establishes its intent; an edit only once it is routed.
     let routed_edit = event.edit && routing.is_some();
     if let (Some(intent), Some(target)) = (plan.establish, intent_file.as_deref())
+        && records
         && (prompt.is_some() || routed_edit)
     {
         let now = now_ms() as u64;
@@ -258,7 +264,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     }
     // A file written while the session plans is its planning evidence, by content hash.
     if let (true, "after-tool", Some(target)) = (
-        event.edit && record["intent"] == "plan",
+        records && event.edit && record["intent"] == "plan",
         event.lifecycle,
         intent_file.as_deref(),
     ) {
@@ -282,7 +288,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         // Whatever tool wrote it (an edit, a shell redirect, a script), a file the turn
         // changed after the plan was requested is the session's planning evidence.
         if let (true, Some(target), Some(since)) = (
-            event.lifecycle == "turn-end" && record["intent"] == "plan",
+            records && event.lifecycle == "turn-end" && record["intent"] == "plan",
             intent_file.as_deref(),
             record["since"].as_u64(),
         ) && planning_written(root, target, &checkpoint["state"]["status"], since).is_err()
@@ -290,7 +296,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         }
     }
-    if let (true, Some(session), Some(_)) = (plan.mark_restore, session, &task)
+    if let (true, Some(session), Some(_)) = (plan.mark_restore && records, session, &task)
         && mark_restore(root, session, true).is_err()
     {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
@@ -335,7 +341,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             .ok()
             .flatten()
             .and_then(|binding| binding.get("repositories").cloned());
-        match crate::test_runs::status(root, session, repositories.as_ref()) {
+        let status = if delivery::test_runs(&settings) {
+            crate::test_runs::status(root, session, repositories.as_ref())
+        } else {
+            Ok(None)
+        };
+        match status {
             Ok(Some(tests)) => decision["context"]["data"]["tests"] = tests,
             Ok(None) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
@@ -438,10 +449,9 @@ fn delegation(
     hook: &Operation,
 ) -> Value {
     let mut decision = json!({"decision": "allow"});
-    let Some(session) = event
-        .session
-        .filter(|s| !s.is_empty() && event.context_supported)
-    else {
+    let Some(session) = event.session.filter(|s| {
+        !s.is_empty() && event.context_supported && standards::worker_standards(settings)
+    }) else {
         return decision;
     };
     let (record, task) = session_scope(root, session, recorder, hook);

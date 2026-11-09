@@ -113,6 +113,13 @@ Hooks:
   (`copilot --help | grep model`) no longer gets a code-search answer.
 - A prompt that mentions a test run, its results or logs ("what with test run?") no longer
   routes to testing-only verification work.
+- Every hook output now has a switch in `.craft/project.json`: `routing.testRuns: false` stops
+  recording test commands (and the zero-tests notice and resume test status),
+  `routing.workerStandards: false` starts host subagents without the delegating standards,
+  and `routing.sessionRecords: false` keeps no intent, planning or resume records under
+  `.craft/state`. The fully manual policy now shows nothing and keeps no session records.
+  `craft settings` lists every routing switch with its origin, including `standardChecks`,
+  `stopReview` and `debtMarkers`.
 - Project Intelligence rows say what they rest on: `basis` `parsed` (a declaration, import,
   section, link or key read from the parse) or `name` (a call, reference or code-span mention
   that only spells the name and may mean another declaration of it). `craft locate` marks name
