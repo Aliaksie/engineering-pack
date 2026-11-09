@@ -210,6 +210,41 @@ fn tool(name: &str) -> &'static str {
     }
 }
 
+/// How many files of one patch an edit event names: as many as a session's intent record
+/// keeps, so every file a patch names is routed and stays in the session's scope.
+const PATCH_FILES: usize = craft_engine::delivery::INTENT_FILES;
+
+/// The files a patch in the `apply_patch` format writes, in order and once each: added,
+/// updated and deleted files and the target of a move. Text without `*** Begin Patch`
+/// names none.
+fn patch_files(patch: &str) -> Vec<String> {
+    if !patch.trim_start().starts_with("*** Begin Patch") {
+        return Vec::new();
+    }
+    let mut files: Vec<String> = Vec::new();
+    for line in patch.lines() {
+        let path = [
+            "*** Add File: ",
+            "*** Update File: ",
+            "*** Delete File: ",
+            "*** Move to: ",
+        ]
+        .iter()
+        .find_map(|header| line.strip_prefix(header))
+        .map(str::trim)
+        .filter(|path| !path.is_empty());
+        if let Some(path) = path
+            && !files.iter().any(|f| f == path)
+        {
+            files.push(path.to_string());
+            if files.len() == PATCH_FILES {
+                break;
+            }
+        }
+    }
+    files
+}
+
 /// The host-neutral event in a host payload: `{event, host, tool, contextSupported, cwd,
 /// command, file?, prompt, session?}`.
 fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
@@ -234,6 +269,15 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     });
     if let Some(file) = text(&input["file_path"]).or_else(|| text(&input["path"])) {
         event["file"] = json!(file);
+    } else if event["tool"] == "edit"
+        && let Some(files) = input["command"]
+            .as_str()
+            .map(patch_files)
+            .filter(|files| !files.is_empty())
+    {
+        // Codex `apply_patch` passes the patch, not a path: the files are in its headers.
+        event["file"] = json!(files[0]);
+        event["files"] = json!(files);
     }
     // A search tool's pattern (Claude `Grep`, Gemini `search_file_content`).
     if let Some(pattern) = text(&input["pattern"]).filter(|p| js_length(p) <= 256) {
@@ -356,6 +400,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     }
     if hook.handler == "deliver" {
         facts["file"] = event["file"].clone();
+        if let Some(files) = event.get("files") {
+            facts["files"] = files.clone();
+        }
         facts["prompt"] = event["prompt"].clone();
         // A search the model ran, which the hook may answer from verified evidence.
         facts["pattern"] = event["pattern"].clone();
@@ -390,7 +437,7 @@ fn render(context: &Value, host: &str) -> String {
         }
         Some("answer") => format!("Project Intelligence for the search just run (verified declaration and callers, complete coverage; no authorization implied): {}", context["data"]),
         Some("resume") => format!("Craft task records to resume from (saved by this or an earlier session; no authorization implied, recheck evidence when source changed{}): {}", if context["data"].get("standards").is_some() { "; `standards` are the project standards of this scope, still in force" } else { "" }, context["data"]),
-        Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing: {}", context["data"]),
+        Some("checkpoint") => format!("Checkpoint data; verify against the current tree before continuing{}: {}", if context["data"].get("standards").is_some() { "; `standards` are the project standards of this scope, still in force" } else { "" }, context["data"]),
         Some("services") => format!("Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {}", context["data"]),
         Some("preserve") => "Preserve task scope, original authorization, evidence and next step in the project checkpoint. Compaction hooks do not replace milestone checkpoints.".into(),
         Some("unavailable") => format!("Routing/checkpoint unavailable: {}", context["data"].as_str().unwrap_or_default()),
@@ -640,6 +687,74 @@ pub fn main(args: &[String]) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Codex `apply_patch` passes the patch text (openai/codex
+    /// `core/src/tools/handlers/apply_patch.rs`); the files come from its headers.
+    #[test]
+    fn a_patch_edit_names_every_file_it_writes() {
+        let patch = "*** Begin Patch\n*** Update File: src/a.rs\n@@\n-x\n+y\n*** Add File: docs/b.md\n+b\n*** Delete File: old.rs\n*** Update File: src/c.rs\n*** Move to: src/d.rs\n@@\n-x\n+y\n*** Update File: src/a.rs\n*** End Patch";
+        let payload = json!({"session_id": "S", "cwd": "/r", "tool_name": "apply_patch",
+            "tool_input": {"command": patch}});
+        let event = normalize(&payload, "codex", "after-tool");
+        assert_eq!(event["tool"], "edit");
+        assert_eq!(event["file"], "src/a.rs");
+        assert_eq!(
+            event["files"],
+            json!(["src/a.rs", "docs/b.md", "old.rs", "src/c.rs", "src/d.rs"])
+        );
+        // A path-carrying edit keeps its one file; text that is not a patch names none.
+        let path =
+            json!({"tool_name": "Edit", "tool_input": {"file_path": "x.rs", "command": patch}});
+        let event = normalize(&path, "claude", "after-tool");
+        assert_eq!(
+            (event["file"].as_str(), event.get("files")),
+            (Some("x.rs"), None)
+        );
+        let prose =
+            json!({"tool_name": "apply_patch", "tool_input": {"command": "*** Update File: a.rs"}});
+        assert!(
+            normalize(&prose, "codex", "after-tool")
+                .get("file")
+                .is_none()
+        );
+        let many: String = (0..100)
+            .map(|i| format!("*** Add File: f{i}.rs\n"))
+            .collect();
+        let many = json!({"tool_name": "apply_patch", "tool_input": {"command": format!("*** Begin Patch\n{many}")}});
+        assert_eq!(
+            normalize(&many, "codex", "after-tool")["files"]
+                .as_array()
+                .unwrap()
+                .len(),
+            PATCH_FILES
+        );
+    }
+
+    /// Payloads a released Codex sent to Craft's hooks, recorded live: the tool calls a code
+    /// mode `exec` script makes reach hooks as `apply_patch` and `Bash`, with absolute paths.
+    #[test]
+    fn observed_codex_payloads_name_their_tool_and_files() {
+        let observed: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/hosts/codex-observed.json"
+        ))
+        .unwrap();
+        for case in observed["cases"].as_array().unwrap() {
+            let lifecycle = case["lifecycle"].as_str().unwrap();
+            let event = normalize(&case["payload"], "codex", lifecycle);
+            let expect = &case["expect"];
+            assert_eq!(event["tool"], expect["tool"], "{}", case["id"]);
+            for key in ["file", "files"] {
+                if let Some(value) = expect.get(key) {
+                    assert_eq!(&event[key], value, "{} {key}", case["id"]);
+                }
+            }
+            assert_eq!(
+                event["session"], case["payload"]["session_id"],
+                "{}",
+                case["id"]
+            );
+        }
+    }
 
     /// The frozen host corpus: payload normalization and wire serialization per host.
     #[test]

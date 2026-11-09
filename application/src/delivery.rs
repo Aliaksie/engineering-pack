@@ -28,6 +28,8 @@ pub struct Event<'a> {
     /// This tool hook delivers an edit's context on the host.
     pub edit_context: bool,
     pub file: Option<&'a str>,
+    /// Every file the edit writes, when it writes several (a patch); includes `file`.
+    pub files: &'a [&'a str],
     pub prompt: Option<&'a str>,
     /// A search tool's pattern and a shell tool's command, for a search the model ran.
     pub pattern: Option<&'a str>,
@@ -119,8 +121,22 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     let prompt = (event.lifecycle == "before-prompt").then(|| event.prompt.unwrap_or(""));
-    // An edit outside the project has no project route; it is not a delivery failure.
-    let file = project_file(root, event.cwd, event.file);
+    // Every project file the edit writes: one, or each file of a patch.
+    let mut edited: Vec<String> = Vec::new();
+    if event.edit {
+        let named = event.file.into_iter().chain(event.files.iter().copied());
+        for path in named.filter_map(|f| project_file(root, event.cwd, Some(f))) {
+            if !path.is_empty() && !edited.contains(&path) {
+                edited.push(path);
+            }
+        }
+    }
+    // An edit outside the project has no project route; it is not a delivery failure. A
+    // patch is routed when any file it writes is the project's, not only its first.
+    let file = match edited.first() {
+        Some(first) => Some(first.clone()),
+        None => project_file(root, event.cwd, event.file),
+    };
     let intent_file = match session {
         Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
             Some(intent_file(root, session, true)?)
@@ -138,9 +154,10 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         context_supported: event.context_supported,
         edit: event.edit && event.edit_context,
         established: record["intent"].as_str(),
-        file_routed: file
-            .as_deref()
-            .is_some_and(|file| delivery::file_routed(&record, file)),
+        file_routed: !edited.is_empty()
+            && edited
+                .iter()
+                .all(|file| delivery::file_routed(&record, file)),
         prompt,
         started: event.lifecycle == "session-start",
         context_changing: event.lifecycle == "before-compact",
@@ -166,7 +183,9 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let answers = settings["efficiency"]["lookup"]["enabled"] == true;
     let routing = match (plan.intent, file.as_deref()) {
         (Some(intent), Some(file)) => {
-            let files = if file.is_empty() {
+            let files: Vec<Value> = if event.edit {
+                edited.iter().map(|f| json!(f)).collect()
+            } else if file.is_empty() {
                 vec![]
             } else {
                 vec![json!(file)]
@@ -217,9 +236,20 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if let (Some(intent), Some(target)) = (plan.establish, intent_file.as_deref())
         && (prompt.is_some() || routed_edit)
     {
-        let edited = file.as_deref().filter(|_| routed_edit);
+        let now = now_ms() as u64;
         if write_intent(target, |record| {
-            delivery::established(record, intent, edited, now_ms() as u64)
+            if !routed_edit || edited.is_empty() {
+                return delivery::established(record, intent, None, now);
+            }
+            // Each written file joins the record; unchanged when all were there.
+            let mut next: Option<Value> = None;
+            for file in &edited {
+                let current = next.as_ref().unwrap_or(record);
+                if let Some(updated) = delivery::established(current, intent, Some(file), now) {
+                    next = Some(updated);
+                }
+            }
+            next
         })
         .is_err()
         {
@@ -227,20 +257,21 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     // A file written while the session plans is its planning evidence, by content hash.
-    if let (true, "after-tool", Some(target), Some(path)) = (
+    if let (true, "after-tool", Some(target)) = (
         event.edit && record["intent"] == "plan",
         event.lifecycle,
         intent_file.as_deref(),
-        file.as_deref().filter(|f| !f.is_empty()),
     ) {
-        let recorded = content_hash(&root.join(path)).and_then(|hash| match hash {
-            Some(hash) => write_intent(target, |record| {
-                delivery::planning_recorded(record, path, &hash)
-            }),
-            None => Ok(()),
-        });
-        if recorded.is_err() {
-            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        for path in &edited {
+            let recorded = content_hash(&root.join(path)).and_then(|hash| match hash {
+                Some(hash) => write_intent(target, |record| {
+                    delivery::planning_recorded(record, path, &hash)
+                }),
+                None => Ok(()),
+            });
+            if recorded.is_err() {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            }
         }
     }
     let mut saved = None;
@@ -284,9 +315,15 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
-    // A resumed task restates the checked and reviewed standards of its scope: rules a
-    // compaction dropped from context come back with the task they govern.
-    if let (Some("resume"), Some(session)) = (decision["context"]["kind"].as_str(), session) {
+    // A resumed session restates the checked and reviewed standards of its scope: rules a
+    // compaction dropped from context come back with the work they govern, whether or not
+    // a task was bound to it.
+    let resuming = match decision["context"]["kind"].as_str() {
+        Some("resume") => true,
+        Some("checkpoint") => plan.recover_checkpoint,
+        _ => false,
+    };
+    if let (true, Some(session)) = (resuming, session) {
         let (record, task) = session_scope(root, session, recorder, hook);
         let files = record["files"].as_array().cloned().unwrap_or_default();
         let pinned = standards::pinned(&settings, record["intent"].as_str(), &files, task.as_ref());
@@ -351,7 +388,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     // A file or commit just written in a declared standard's scope gets its anchor check in
     // the same tool result. Findings are reported, never enforced; passing checks stay quiet.
     if event.lifecycle == "after-tool" && event.context_supported {
-        let found = standard_findings(root, &settings, event, file.as_deref());
+        let found = standard_findings(root, &settings, event, &edited);
         if !found.is_empty() {
             decision["standards"] = json!(found);
         }
@@ -503,36 +540,29 @@ const STANDARD_BYTES: u64 = 512 * 1024;
 /// How recent `HEAD` must be to be the commit the shell command just made.
 const COMMIT_FRESH_SECONDS: u64 = 120;
 
-/// Anchor check results for the file an edit wrote or the commit a shell command made.
+/// Anchor check results for the files an edit wrote or the commit a shell command made.
 fn standard_findings(
     root: &Path,
     settings: &Value,
     event: &Event,
-    file: Option<&str>,
+    edited: &[String],
 ) -> Vec<Value> {
     if event.edit {
-        let Some(file) = file.filter(|file| !file.is_empty()) else {
-            return Vec::new();
-        };
-        let checks = standards::file_checks(settings, file);
-        if checks.is_empty() && standards::import_checks(settings, file).is_empty() {
-            return Vec::new();
-        }
-        let path = root.join(file);
-        let bytes = match std::fs::metadata(&path) {
-            Ok(meta) if meta.is_file() && meta.len() <= STANDARD_BYTES => std::fs::read(&path),
-            _ => return Vec::new(),
-        };
-        let Ok(bytes) = bytes else {
-            return Vec::new();
-        };
-        let mut found = if checks.is_empty() {
-            Vec::new()
-        } else {
-            standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file))
-        };
-        found.extend(crate::dependencies::verdicts(root, settings, file, &bytes));
-        return found;
+        // A patch writes several files: each finding then names the one it is about.
+        let several = edited.len() > 1;
+        return edited
+            .iter()
+            .flat_map(|file| {
+                file_findings(root, settings, file)
+                    .into_iter()
+                    .map(move |mut found| {
+                        if several {
+                            found["file"] = json!(file);
+                        }
+                        found
+                    })
+            })
+            .collect();
     }
     let checks = standards::commit_checks(settings);
     if checks.is_empty() || !event.command.is_some_and(standards::commits) {
@@ -553,6 +583,29 @@ fn standard_findings(
         }
         _ => Vec::new(),
     }
+}
+
+/// Anchor and module dependency check results for one written project file.
+fn file_findings(root: &Path, settings: &Value, file: &str) -> Vec<Value> {
+    let checks = standards::file_checks(settings, file);
+    if checks.is_empty() && standards::import_checks(settings, file).is_empty() {
+        return Vec::new();
+    }
+    let path = root.join(file);
+    let bytes = match std::fs::metadata(&path) {
+        Ok(meta) if meta.is_file() && meta.len() <= STANDARD_BYTES => std::fs::read(&path),
+        _ => return Vec::new(),
+    };
+    let Ok(bytes) = bytes else {
+        return Vec::new();
+    };
+    let mut found = if checks.is_empty() {
+        Vec::new()
+    } else {
+        standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file))
+    };
+    found.extend(crate::dependencies::verdicts(root, settings, file, &bytes));
+    found
 }
 
 /// Start indexing the project in the background, so the session's first lookup finds a warm

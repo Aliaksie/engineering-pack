@@ -349,11 +349,24 @@ const SUBJECTS: &[(Subject, &[&str])] = &[
     ),
 ];
 
+/// What a test produces: "the test run", "test results" talk about a run, not about tests.
+const RUN_NOUNS: &[&str] = &[
+    "run", "runs", "result", "results", "output", "outputs", "log", "logs",
+];
+
 fn subject(words: &[String]) -> Subject {
-    SUBJECTS
+    let found = SUBJECTS
         .iter()
         .find(|(_, names)| words.iter().any(|w| names.contains(&w.as_str())))
-        .map_or(Subject::Code, |(subject, _)| *subject)
+        .map_or(Subject::Code, |(subject, _)| *subject);
+    let about_run = words.windows(2).any(|pair| {
+        matches!(pair[0].as_str(), "test" | "tests") && RUN_NOUNS.contains(&pair[1].as_str())
+    });
+    if found == Subject::Tests && about_run {
+        Subject::Report
+    } else {
+        found
+    }
 }
 
 /// Verbs that produce or change an artifact; the subject names the intent: "add a test" is
@@ -987,6 +1000,25 @@ mod tests {
         assert_eq!(intent("Add a test for the refund rounding"), Some("verify"));
         assert_eq!(
             intent("Write tests for the refund flow, don't change product code"),
+            Some("verify")
+        );
+    }
+
+    #[test]
+    fn a_test_run_is_talked_about_not_tested() {
+        for prompt in [
+            "okey add it all in plan ... what with test run ?",
+            "what with the test run?",
+            "what about the test results from CI?",
+            "are the test logs uploaded?",
+        ] {
+            assert_ne!(intent(prompt), Some("verify"), "{prompt}");
+        }
+        assert_eq!(intent("what tests cover the refund flow?"), Some("verify"));
+        assert_eq!(intent("Add a test for the refund rounding"), Some("verify"));
+        assert_eq!(intent("Run the tests"), Some("run-check"));
+        assert_eq!(
+            intent("check whether the test run passes after the fix"),
             Some("verify")
         );
     }
