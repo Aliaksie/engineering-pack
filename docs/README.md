@@ -1,7 +1,7 @@
 # Documentation
 
 New here? Start with [installation](INSTALL.md), then [commands](COMMANDS.md). To configure a
-project, read [routing](ROUTING.md) and [integrations](INTEGRATIONS.md). Contributors start
+project, read [project configuration](PROJECT-CONFIG.md), [routing](ROUTING.md) and [integrations](INTEGRATIONS.md). Contributors start
 with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 
 ## Using it
@@ -10,6 +10,7 @@ with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 |---|---|
 | [Installation](INSTALL.md) | Channels, per-host installation, first use, updates and local builds |
 | [Commands](COMMANDS.md) | Every `craft` command, its purpose and effects |
+| [Project configuration](PROJECT-CONFIG.md) | Every `.craft/project.json` field with its type, default and meaning |
 | [Routing](ROUTING.md) | Module and guidance selection, lookup, execution roles and model advice |
 | [Sessions](SESSION.md) | Task lifecycle, checkpoints, state storage, reuse and session advice |
 | [Acceptance contracts](ACCEPTANCE.md) | Criteria, evidence, coverage and reader views |

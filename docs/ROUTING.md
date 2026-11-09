@@ -32,7 +32,7 @@ module inventory or the most specific owner of each path.
 
 ## Project configuration
 
-`.craft/project.json` (schema: [project.schema.json](../schemas/project.schema.json),
+`.craft/project.json` (every field: [project configuration](PROJECT-CONFIG.md),
 example: `examples/project/`) declares modules with paths,
 owners, `dependsOn`, checks and stack evidence (`languages`, `runtimes`, `frameworks`,
 `layers`, `providers`). Module fields override project defaults; an empty array clears
