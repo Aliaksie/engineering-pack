@@ -78,6 +78,8 @@ jobs:
           node tooling/native-install.mjs dist/project-evidence dist/claude --current-target
       - name: Measure
         shell: bash
+        env:
+          TESTBED: ${{ matrix.os }}
         run: node .github/benchmarks/suite.mjs --export dist/claude --fixture . --output performance-results --hyperfine "$RUNNER_TEMP/hyperfine/bin/hyperfine"
       - name: Upload results
         if: always()
@@ -100,8 +102,9 @@ jobs:
           EVENT: ${{ github.event_name }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          TESTBED: ${{ matrix.os }}
         run: |
+          # The suite names the testbed by runner label and CPU model (see bencher-metrics.mjs).
+          TESTBED="$(cat performance-results/testbed.txt)"
           if [[ "$EVENT" == pull_request ]]; then
             branch=(--branch "$GITHUB_HEAD_REF" --start-point "$GITHUB_BASE_REF" --start-point-hash "$BASE_SHA"
               --start-point-clone-thresholds --start-point-reset)
