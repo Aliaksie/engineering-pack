@@ -183,3 +183,207 @@ fn a_resumed_task_hears_whether_its_last_test_run_still_holds() {
     repo.write("value.mjs", "export const value = 2;\n");
     assert_eq!(resume(&repo)["status"], "not-run");
 }
+
+const CONTRACT: &str = include_str!("../../tests/fixtures/acceptance/contract.json");
+
+/// A verify step that replaces the ledger with `records` (format `version`).
+fn submit(
+    repo: &Repo,
+    version: u64,
+    records: Value,
+    outcome: &str,
+    complete: bool,
+) -> Result<Value, String> {
+    let bundle = support::bundle();
+    let expected = repo
+        .cli(&["session", "--session", "S1", "--bundle", &bundle])
+        .unwrap();
+    let ledger = repo.input(
+        "ledger.json",
+        &json!({"formatVersion": version, "records": records}),
+    );
+    let mut args = vec![
+        "task-step",
+        "--session",
+        "S1",
+        "--stage",
+        "verify",
+        "--target",
+        "acceptance:value",
+        "--approach",
+        "unit-test",
+        "--evidence",
+        "observed run",
+        "--outcome",
+        outcome,
+        "--result",
+        "Checked",
+        "--next",
+        "Finish",
+        "--acceptance-evidence",
+        &ledger,
+        "--expected-task-contract",
+        expected["taskContract"].as_str().unwrap(),
+        "--expected-evidence-digest",
+        expected["evidenceDigest"].as_str().unwrap(),
+    ];
+    args.extend(["--bundle", &bundle]);
+    if complete {
+        args.push("--complete");
+    }
+    repo.cli(&args)
+}
+
+fn observed_record(contract_digest: &str) -> Value {
+    json!({"id": "run", "criterionIds": ["value", "error"], "scope": ["src"], "contract": contract_digest,
+        "checkId": "value-check", "kind": "check", "tests": "observed"})
+}
+
+#[test]
+fn a_ledger_record_takes_the_run_craft_observed_and_a_run_of_no_tests_cannot_complete() {
+    let repo = Repo::new(
+        "test-runs-ledger",
+        &[("src/value.mjs", "export const value = 1;\n")],
+    );
+    let contract = repo.input(
+        "contract.json",
+        &serde_json::from_str::<Value>(CONTRACT).unwrap(),
+    );
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix it",
+        "--file",
+        "src",
+        "--contract",
+        &contract,
+    ])
+    .unwrap();
+    let digest = craft_engine::session::acceptance::contract_digest(
+        &serde_json::from_str(CONTRACT).unwrap(),
+    )
+    .unwrap();
+
+    // Nothing observed yet: the request is refused, not filled with a guess.
+    let none = submit(&repo, 2, json!([observed_record(&digest)]), "passed", false).unwrap_err();
+    assert!(none.contains("no test run observed"), "{none}");
+
+    // A filter that matched nothing exits 0; the criterion fails and completion is refused.
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "node --test --test-name-pattern=nomatch",
+            json!({"tool_response": {"stdout": "✔ value.test.mjs (5ms)\nℹ tests 1\nℹ pass 1\nℹ fail 0\n"}}),
+        ),
+    );
+    let zero = submit(
+        &repo,
+        2,
+        json!([observed_record(&digest)]),
+        "quality-failure",
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        zero["acceptance"]["criteria"][0]["status"], "failed",
+        "{zero}"
+    );
+    assert_eq!(zero["acceptance"]["criteria"][0]["reason"], "zero-tests");
+    // Declaring the work passed and complete over that run is refused.
+    let refused = submit(&repo, 2, json!([observed_record(&digest)]), "passed", true).unwrap_err();
+    assert!(
+        refused.contains("contradicts the latest test run"),
+        "{refused}"
+    );
+
+    // A run with executed tests on this tree verifies both criteria, bound by Craft.
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "node --test",
+            json!({"tool_response": {"stdout": "✔ returns value (1ms)\n✔ keeps error (1ms)\nℹ tests 2\nℹ pass 2\nℹ fail 0\n"}}),
+        ),
+    );
+    let done = submit(&repo, 2, json!([observed_record(&digest)]), "passed", true).unwrap();
+    assert_eq!(done["complete"], true, "{done}");
+    let saved = &done["acceptance"]["records"][0];
+    assert_eq!(
+        saved["tests"],
+        json!({"runner": "node", "executed": 2, "failed": 0, "skipped": 0, "source": "observed"})
+    );
+    assert_eq!(saved["freshness"], "current");
+
+    // An observed record needs the format that carries test counts.
+    let old = submit(&repo, 1, json!([observed_record(&digest)]), "passed", false).unwrap_err();
+    assert!(old.contains("formatVersion 2"), "{old}");
+}
+
+#[test]
+fn a_declared_pass_is_refused_when_the_latest_run_on_the_tree_failed() {
+    let repo = Repo::new(
+        "test-runs-verify",
+        &[("value.mjs", "export const value = 1;\n")],
+    );
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix it",
+        "--file",
+        "value.mjs",
+    ])
+    .unwrap();
+    let bundle = support::bundle();
+    let verify = |repo: &Repo| {
+        repo.cli(&[
+            "task-step",
+            "--session",
+            "S1",
+            "--bundle",
+            &bundle,
+            "--stage",
+            "verify",
+            "--target",
+            "acceptance:value",
+            "--approach",
+            "unit-test",
+            "--evidence",
+            "tests",
+            "--outcome",
+            "passed",
+            "--result",
+            "Passed",
+            "--next",
+            "Finish",
+        ])
+    };
+    hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            "cargo test nomatch",
+            json!({"tool_response": {"stdout": CARGO_ZERO}}),
+        ),
+    );
+    let refused = verify(&repo).unwrap_err();
+    assert!(
+        refused.contains("contradicts the latest test run"),
+        "{refused}"
+    );
+    assert!(refused.contains("zero-tests"), "{refused}");
+    // The tree changed since: no run speaks for it, and the declaration stands as before.
+    repo.write("value.mjs", "export const value = 2;\n");
+    assert!(verify(&repo).is_ok());
+}

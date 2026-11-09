@@ -263,6 +263,18 @@ pub fn step(
         }
         _ => Value::Null,
     };
+    let mut input = input;
+    if let Some(ledger) = input.get_mut("acceptanceEvidence") {
+        crate::test_runs::fill_evidence(root, name, repositories, ledger)?;
+    }
+    // A declared pass the latest observed run on this tree contradicts is refused.
+    if input.get("stage") == Some(&json!("verify"))
+        && input.get("outcome") == Some(&json!("passed"))
+        && let Some(status) = crate::test_runs::status(root, name, repositories)?
+        && let Some(refusal) = session::test_runs::refutes_pass(&status)
+    {
+        return Err(refusal.into());
+    }
     // The source the agent verified; a worktree completion is recorded against it, before
     // craft commits it.
     let repository = snapshot::workspace(root, repositories, false)?;

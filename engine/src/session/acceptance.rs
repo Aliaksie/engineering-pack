@@ -335,14 +335,46 @@ fn binding(value: &Value) -> Result {
     nullable(value, "identity")
 }
 
+/// The ledger format: 1, or 2 where a record may carry the test counts of its run.
+fn evidence_version(value: &Value) -> Result<u8> {
+    match value["formatVersion"].as_f64() {
+        Some(1.0) => Ok(1),
+        Some(2.0) => Ok(2),
+        _ => fail("unsupported-version"),
+    }
+}
+
+/// A v2 record's tests: what the runner executed, failed and skipped, the runner when known,
+/// and whether Craft observed the run or the reporter declared the counts.
+fn tests(value: &Value) -> Result {
+    object(
+        value,
+        &["runner", "executed", "failed", "skipped", "source"],
+    )?;
+    nullable(value, "runner")?;
+    for count in ["executed", "failed", "skipped"] {
+        if value[count].as_u64().is_none_or(|n| n > 1_000_000_000) {
+            return fail("invalid-value");
+        }
+    }
+    choice(&value["source"], &["observed", "declared"])
+}
+
 pub fn validate_evidence(value: &Value) -> Result {
     object(value, &["formatVersion", "records"])?;
-    version(value)?;
+    let format = evidence_version(value)?;
     size(value)?;
     list(&value["records"], 64, |entry| {
+        if let Some(found) = entry.get("tests") {
+            if format < 2 {
+                return fail("invalid-fields");
+            }
+            tests(found)?;
+        }
         object(
             entry,
             &[
+                "tests",
                 "id",
                 "criterionIds",
                 "scope",
@@ -399,6 +431,7 @@ pub fn coverage(
     let evidence = evidence.unwrap_or(&Value::Null);
     validate_contract(contract)?;
     validate_evidence(evidence)?;
+    let format = evidence_version(evidence)?;
     binding(current)?;
     let fingerprint = contract_digest(contract)?;
     let records: Vec<Value> = items(&evidence["records"])
@@ -446,17 +479,49 @@ pub fn coverage(
                             .all(|scope| items(&entry["scope"]).contains(scope))
                 })
                 .collect();
-            let failed = applicable.iter().any(|e| e["execution"] == "failed");
+            let ran = |e: &&&Value| e["execution"] == "passed" || e["execution"] == "failed";
+            // A run that executed no test, or counted failures, failed whatever it declares.
+            let refuted = |e: &&&Value| {
+                ran(e)
+                    && e.get("tests").is_some_and(|t| {
+                        t["executed"] == 0 || t["failed"].as_u64().is_some_and(|n| n > 0)
+                    })
+            };
+            let failed = applicable
+                .iter()
+                .any(|e| e["execution"] == "failed" || refuted(&e));
+            // A v2 run passes only with a runner that reported executed tests.
             let verified = !failed
-                && applicable
-                    .iter()
-                    .any(|e| e["support"] == "verified" && e["execution"] == "passed");
-            json!({
+                && applicable.iter().any(|e| {
+                    e["support"] == "verified"
+                        && e["execution"] == "passed"
+                        && (format < 2 || e.get("tests").is_none_or(|t| !t["runner"].is_null()))
+                });
+            let status = if failed {
+                "failed"
+            } else if verified {
+                "verified"
+            } else if format >= 2 && !applicable.is_empty() {
+                // Current evidence that does not decide: unverified, not run, unknown runner.
+                "unknown"
+            } else {
+                "gap"
+            };
+            let mut entry = json!({
                 "id": criterion["id"],
                 "required": criterion["required"],
-                "status": if failed { "failed" } else if verified { "verified" } else { "gap" },
+                "status": status,
                 "evidenceIds": applicable.iter().map(|e| e["id"].clone()).collect::<Vec<_>>(),
-            })
+            });
+            // Every failing run executed no test: nothing was checked, rather than a check failing.
+            let failing: Vec<&&Value> = applicable
+                .iter()
+                .filter(|e| e["execution"] == "failed" || refuted(e))
+                .collect();
+            if !failing.is_empty() && failing.iter().all(|e| e["tests"]["executed"] == 0) {
+                entry["reason"] = json!("zero-tests");
+            }
+            entry
         })
         .collect();
     let conflicts: Vec<Value> = items(&contract["context"]["constraints"])

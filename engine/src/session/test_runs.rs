@@ -413,6 +413,54 @@ pub fn current<'a>(history: &'a Value, source: &Value) -> Option<&'a Value> {
         .find(|run| &run["source"] == source)
 }
 
+/// A ledger record that asks for the observed run (`"tests": "observed"`), completed from
+/// `run`, the latest run Craft observed on the current tree: its counts, verdict, tree and
+/// time replace whatever the record declared about them.
+pub fn evidence(record: &Value, run: &Value) -> Result<Value, String> {
+    let execution = match run["result"].as_str() {
+        Some("passed") => "passed",
+        Some("failed") => "failed",
+        _ => {
+            return Err("the latest test run observed on the current tree has no summary Craft recognizes; record it as declared evidence".into());
+        }
+    };
+    let mut record = record.clone();
+    record["tests"] = json!({
+        "runner": run["runner"], "executed": run["executed"].as_u64().unwrap_or(0),
+        "failed": run["failed"].as_u64().unwrap_or(0), "skipped": run["skipped"].as_u64().unwrap_or(0),
+        "source": "observed",
+    });
+    record["execution"] = json!(execution);
+    record["support"] = json!("verified");
+    record["binding"] = json!({"kind": "repository", "identity": run["source"]});
+    record["observedAt"] = run["at"].clone();
+    for (field, value) in [("artifact", &run["command"]), ("basis", &run["command"])] {
+        if record.get(field).is_none() {
+            record[field] = value.clone();
+        }
+    }
+    if record.get("reporter").is_none() {
+        record["reporter"] = json!(format!(
+            "craft observed on {}",
+            run["host"].as_str().unwrap_or("host")
+        ));
+    }
+    Ok(record)
+}
+
+/// Why a declared passing verification is refused: the latest run Craft observed on the
+/// current tree failed. A tree with no observed run leaves the declaration as it was.
+pub fn refutes_pass(status: &Value) -> Option<String> {
+    (status["status"] == "failed").then(|| {
+        format!(
+            "verification passed contradicts the latest test run on the current tree ({} {}, `{}`); rerun the tests or record a quality-failure",
+            status["runner"].as_str().unwrap_or("unknown runner"),
+            status["reason"].as_str().unwrap_or("failed"),
+            status["command"].as_str().unwrap_or_default(),
+        )
+    })
+}
+
 /// The test status of the current tree: `passed`, `failed` or `unknown` by the latest run
 /// observed on it; `not-run` when none was.
 pub fn status(history: &Value, source: &Value) -> Value {

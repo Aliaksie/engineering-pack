@@ -43,6 +43,49 @@ pub fn record(
     Ok(run)
 }
 
+/// The latest run in `session` on the tree as it is now, if any.
+pub fn current(
+    root: &Path,
+    session: &str,
+    repositories: Option<&Value>,
+) -> Result<Option<Value>, Failure> {
+    let history = read_record(&file(root, session, false)?, RUNS_BYTES)?;
+    if history.is_null() {
+        return Ok(None);
+    }
+    let source = source(root, repositories)?;
+    Ok(test_runs::current(&history, &source).cloned())
+}
+
+/// Ledger records that ask for the observed run get it; a ledger asking for one needs
+/// format 2, and a tree with no observed run refuses the request.
+pub fn fill_evidence(
+    root: &Path,
+    session: &str,
+    repositories: Option<&Value>,
+    ledger: &mut Value,
+) -> Result<(), Failure> {
+    let asks = |record: &Value| record["tests"] == "observed";
+    let Some(records) = ledger["records"].as_array_mut() else {
+        return Ok(());
+    };
+    if !records.iter().any(asks) {
+        return Ok(());
+    }
+    let run = current(root, session, repositories)?.ok_or(
+        "no test run observed on the current tree in this session; run the tests through the host's shell tool first",
+    )?;
+    for record in records.iter_mut().filter(|record| asks(record)) {
+        *record = test_runs::evidence(record, &run)?;
+    }
+    if ledger["formatVersion"] != 2 {
+        return Err(
+            "observed test evidence needs an acceptance ledger with formatVersion 2".into(),
+        );
+    }
+    Ok(())
+}
+
 /// The test status of the current tree in `session`: `{status, …}` by the latest run on it,
 /// or `None` when the session observed no test run at all.
 pub fn status(

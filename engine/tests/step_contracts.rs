@@ -6,6 +6,9 @@ use craft_engine::actions::{self, Context};
 use craft_engine::{session, values};
 use serde_json::{Value, json};
 
+/// `step:evidence-invalid` probes an unsupported ledger version; it names version 3 since
+/// ledger format 2 (test counts per record) became valid.
+///
 /// Intentional message corrections over the captured JavaScript, by case ID.
 const CORRECTIONS: &[(&str, &str)] = &[];
 

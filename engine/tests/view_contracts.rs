@@ -5,6 +5,9 @@ use craft_engine::session::views::{self, Reader};
 use craft_engine::values::normalize_numbers;
 use serde_json::Value;
 
+/// `qa:evidence-invalid` probes an unsupported ledger version; it names version 3 since
+/// ledger format 2 (test counts per record) became valid.
+///
 /// Intentional corrections over the captured JavaScript, by case ID, with the new reason.
 /// A QA view without a contract was reported as invalid probes; it names the contract now.
 const CORRECTIONS: &[(&str, &str)] = &[
