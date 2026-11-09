@@ -105,6 +105,14 @@ by the called name, not by the resolved receiver, so rows are every match of tha
 `route.name` and `route.qualifier` say the qualifier was not resolved. A qualified value that does
 not end in a name is refused.
 
+Every row states its `basis`. `parsed`: the parse itself establishes the row (a declaration,
+an import statement, a Markdown section, link or decision record, a configuration key). `name`:
+the row only spells the asked name (a call or reference token, a code-span mention), so it may
+mean another declaration of that name. Text output marks name rows `[by name]`. A hook answer
+states the `basis` of its rows (`parsed`, `name` or `mixed`, with each name row then marked)
+and, when any row rests on its name, says so in its `use` line. The basis follows from the row's
+kind, so stored evidence needs no new field.
+
 Each lookup first refreshes the index for up to two seconds of extraction, then answers from
 verified evidence. In-scope sources the index cannot answer for are its gaps: pending, failed
 or partial extraction, a source changed since it was cited, or a candidate in a language the

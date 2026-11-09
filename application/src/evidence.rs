@@ -483,8 +483,8 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     Ok((json, Some((operation, Value::Object(input)))))
 }
 
-/// Text view: one header per source, one line per row with its enclosing declaration, and
-/// match counts to narrow a truncated query.
+/// Text view: one header per source, one line per row with its enclosing declaration and a
+/// mark on rows matched by name only, and match counts to narrow a truncated query.
 pub(crate) fn render(result: &Value, json: bool) -> String {
     let Some(rows) = result["results"].as_array().filter(|_| !json) else {
         return if json {
@@ -577,6 +577,10 @@ pub(crate) fn render(result: &Value, json: bool) -> String {
                 shown(&container["name"]),
                 shown(&container["line"])
             ));
+        }
+        // A row that only spells the name may mean another declaration of it.
+        if row["basis"] == "name" {
+            text.push_str(" [by name]");
         }
         text.push('\n');
         if let Some(excerpt) = row["excerpt"].as_str() {
@@ -676,7 +680,7 @@ mod command_tests {
     fn query_results_render_grouped_by_source_with_containers() {
         let result = json!({"results": [
                 {"path": "a.java", "line": 2, "column": 8, "kind": "java:declares-method", "name": "go", "endLine": 4},
-                {"path": "a.java", "line": 3, "column": 5, "kind": "java:invokes-syntax", "name": "ping", "target": "ping",
+                {"path": "a.java", "line": 3, "column": 5, "basis": "name", "kind": "java:invokes-syntax", "name": "ping", "target": "ping",
                     "container": {"kind": "java:declares-method", "name": "go", "line": 2}, "excerpt": "ping();"},
                 {"path": "b.js", "line": 1, "column": 1, "kind": "js:imports", "name": "x", "target": "./x.js"}],
             "sources": {"a.java": {"verification": "verified-selected-source"}, "b.js": {}},
@@ -689,7 +693,7 @@ by kind: java:invokes-syntax 8, js:imports 1
 under .: a.java 8, b.js 1
 a.java [verified-selected-source]
   2:8 java:declares-method go (lines 2-4)
-  3:5 java:invokes-syntax ping in java:declares-method go:2
+  3:5 java:invokes-syntax ping in java:declares-method go:2 [by name]
     | ping();
 b.js [stored-snapshot]
   1:1 js:imports x -> ./x.js

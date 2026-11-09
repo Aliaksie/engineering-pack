@@ -128,6 +128,19 @@ impl Language {
         kinds
     }
 
+    /// Each kind the query produces with whether its capture names a call or reference token.
+    #[cfg(test)]
+    pub(crate) fn kind_roles(&self) -> Vec<(String, bool)> {
+        self.compiled()
+            .capture_names()
+            .iter()
+            .filter_map(|capture| match self.meaning(capture) {
+                Meaning::Fact(role, kind) => Some((kind, role == Role::Invokes)),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn extract(&self, path: &str, bytes: &[u8]) -> Result<Extraction, String> {
         if !valid_path(path) || bytes.len() > MAX_SOURCE_BYTES {
             return Err("source exceeds path/byte bounds".into());

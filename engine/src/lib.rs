@@ -135,6 +135,18 @@ pub fn directory_counts(
     (prefix, counts)
 }
 
+/// What an evidence row of `kind` rests on: `parsed` when the parse itself establishes it (a
+/// declaration, an import statement, a section, a link, a key), `name` when it only spells
+/// the asked name (a call or reference token, a code-span mention) and may mean another
+/// declaration of that name. Derived from the kind, so stored evidence needs no new field.
+pub fn basis(kind: &str) -> &'static str {
+    if kind.ends_with("-syntax") || kind == "md:mention" {
+        "name"
+    } else {
+        "parsed"
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Evidence {

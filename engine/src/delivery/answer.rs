@@ -199,6 +199,8 @@ fn under_tests(path: &str) -> bool {
 const EXCERPT_CHARS: usize = 120;
 
 const USE: &str = "Verified Project Intelligence rows from the current files with complete coverage of this scope: they answer this question without another search";
+/// What a row matched by name claims, added to `USE` when an answer has one.
+const BY_NAME: &str = "name rows spell the asked name in syntax, not a resolved target";
 
 fn identifier(part: &str) -> bool {
     part.chars()
@@ -434,13 +436,32 @@ pub fn answered(
         return None;
     }
     let left_out = found.len() - rows.len();
-    let lines = rows.into_iter().map(line).collect::<Option<Vec<_>>>()?;
+    // A row of unknown kind claims no more than its name.
+    let basis = |row: &Value| match (row["basis"].as_str(), row["kind"].as_str()) {
+        (Some("parsed"), _) => "parsed",
+        (Some(_), _) | (None, None) => "name",
+        (None, Some(kind)) => crate::basis(kind),
+    };
+    let mixed = rows.iter().any(|row| basis(row) != basis(rows[0]));
+    let lines = rows
+        .iter()
+        .map(|row| {
+            let line = line(row)?;
+            Some(if mixed && basis(row) == "name" {
+                format!("{line} [by name]")
+            } else {
+                line
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let by_name = rows.iter().any(|row| basis(row) == "name");
     let mut answer = json!({
         "question": format!("{ask} {value}"),
         "scopes": result["route"]["scopes"],
         "complete": true,
         "rows": lines,
-        "use": USE,
+        "basis": if mixed { "mixed" } else { basis(rows[0]) },
+        "use": if by_name { format!("{USE}; {BY_NAME}") } else { USE.to_string() },
     });
     if ask == "decisions" && left_out > 0 {
         answer["leftOut"] = json!(format!(
@@ -855,6 +876,59 @@ mod tests {
         );
         let module = result(vec![row("src/prompt/mod.rs", 9, None)], None);
         assert!(answered("callers", "prompt::request", &unqualified, Some(&module)).is_some());
+    }
+
+    #[test]
+    fn answers_state_what_their_rows_rest_on() {
+        let kind = |mut row: Value, kind: &str| {
+            row["kind"] = json!(kind);
+            row
+        };
+        let declaration = result(
+            vec![kind(
+                row("src/Policy.java", 5, None),
+                "java:declares-method",
+            )],
+            None,
+        );
+        let callers = result(
+            vec![kind(
+                row("src/A.java", 1, Some("run")),
+                "java:invokes-syntax",
+            )],
+            None,
+        );
+        let parsed = answered("declaration", "apply", &declaration, None).unwrap();
+        assert_eq!(
+            (&parsed["basis"], &parsed["use"]),
+            (&json!("parsed"), &json!(USE))
+        );
+        let named = usages("apply", &callers, &declaration).unwrap();
+        assert_eq!(named["basis"], "name");
+        assert!(named["use"].as_str().unwrap().ends_with(BY_NAME));
+        assert_eq!(
+            named["rows"],
+            json!(["src/A.java:1 in run: x = policy.apply(1);"])
+        );
+        // Only a mixed answer marks its name rows; a row of unknown kind is one of them.
+        let mentions = result(
+            vec![
+                kind(row("docs/a.md", 2, None), "md:link"),
+                kind(row("docs/a.md", 4, None), "md:mention"),
+                row("docs/b.md", 1, None),
+            ],
+            None,
+        );
+        let mixed = answered("mentions", "apply", &mentions, None).unwrap();
+        assert_eq!(mixed["basis"], "mixed");
+        assert_eq!(
+            mixed["rows"],
+            json!([
+                "docs/a.md:2: x = policy.apply(1);",
+                "docs/a.md:4: x = policy.apply(1); [by name]",
+                "docs/b.md:1: x = policy.apply(1); [by name]"
+            ])
+        );
     }
 
     #[test]

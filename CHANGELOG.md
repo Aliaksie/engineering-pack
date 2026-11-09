@@ -113,6 +113,11 @@ Hooks:
   (`copilot --help | grep model`) no longer gets a code-search answer.
 - A prompt that mentions a test run, its results or logs ("what with test run?") no longer
   routes to testing-only verification work.
+- Project Intelligence rows say what they rest on: `basis` `parsed` (a declaration, import,
+  section, link or key read from the parse) or `name` (a call, reference or code-span mention
+  that only spells the name and may mean another declaration of it). `craft locate` marks name
+  rows `[by name]`; a hook answer states the basis of its rows and, for callers, that they are
+  not resolved targets.
 
 ## 0.0.4
 

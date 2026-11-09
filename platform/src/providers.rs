@@ -119,4 +119,25 @@ mod declared {
             assert_eq!(declared, language.query_kinds(), "{}", language.provider);
         }
     }
+
+    /// In every language a call or reference token rests on its name and a declaration or
+    /// import on the parse; the Markdown and configuration kinds likewise.
+    #[test]
+    fn every_kind_has_the_basis_of_its_role() {
+        for language in super::LANGUAGES {
+            for (kind, invokes) in language.kind_roles() {
+                let expected = if invokes { "name" } else { "parsed" };
+                assert_eq!(craft_engine::basis(&kind), expected, "{kind}");
+            }
+        }
+        for kind in crate::markdown::KINDS {
+            let expected = if *kind == "md:mention" {
+                "name"
+            } else {
+                "parsed"
+            };
+            assert_eq!(craft_engine::basis(kind), expected, "{kind}");
+        }
+        assert_eq!(craft_engine::basis(crate::config::KIND), "parsed");
+    }
 }

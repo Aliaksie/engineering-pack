@@ -488,8 +488,9 @@ impl Store {
                         "observedAt":r.get::<_, String>(11)?}),
                 );
             }
-            let mut row = json!({"id":r.get::<_, String>(0)?,"path":path,"kind":r.get::<_, String>(1)?,
-                "name":r.get::<_, String>(2)?,"line":r.get::<_, i64>(3)?,"column":r.get::<_, i64>(4)?,
+            let kind: String = r.get(1)?;
+            let mut row = json!({"id":r.get::<_, String>(0)?,"path":path,"basis":craft_engine::basis(&kind),
+                "kind":kind,"name":r.get::<_, String>(2)?,"line":r.get::<_, i64>(3)?,"column":r.get::<_, i64>(4)?,
                 "startByte":r.get::<_, i64>(5)?,"endByte":r.get::<_, i64>(6)?});
             if let Some(target) = r.get::<_, Option<String>>(7)? {
                 row["target"] = json!(target);
