@@ -8,9 +8,10 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { bencherMetrics } from './bencher-metrics.mjs';
+import { bencherMetrics, testbed } from './bencher-metrics.mjs';
 import { consumer, directoryBytes, git, gitBash, measurer, quote, run, slash, version, windows } from './fixture.mjs';
 import { LANGUAGES, PROBE, languageFixture } from './languages.mjs';
+import { peakMemory } from './peak-memory.mjs';
 
 const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH]';
 const options = { runs: '30', 'cold-runs': '10', hyperfine: 'hyperfine' };
@@ -60,6 +61,39 @@ run(native, hookArguments('before-prompt').split(' '), { cwd: root, env, input: 
 fs.cpSync(path.join(root, '.craft'), seed, { recursive: true });
 const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), seed, path.join(root, '.craft')]);
 
+// Standards fixture: the consumer with declared standards and debt markers, one caller of
+// `item42`, a started session, a routed change, a warm index and an uncommitted edit adding a
+// TODO. Each cell is a hook the session then fires; its check says the feature answered.
+const standards = consumer(path.join(workspace, 'standards')), standardsSeed = path.join(workspace, 'standards-seed');
+fs.writeFileSync(path.join(standards, 'src/caller.mjs'), "import { item42 } from './item-42.mjs';\nexport const total = value => item42(value);\n");
+fs.writeFileSync(path.join(standards, '.craft/project.json'), JSON.stringify({ formatVersion: 1, routing: { debtMarkers: true }, standards: [
+  { id: 'commits', anchor: 'conventional-commits' },
+  { id: 'item-review', checklist: ['Guards reject negative values'], scope: { paths: ['src'] } }] }) + '\n');
+git(standards, 'add', '.'); git(standards, 'commit', '-qm', 'standards');
+// The background warm-up session start would launch is measured as its own cell.
+const standardsEnv = { ...env, CLAUDE_PROJECT_DIR: slash(standards), CRAFT_EVIDENCE_WARM: '0' };
+const SESSION = [
+  { cell: 'session-start', event: 'session-start', payload: { hook_event_name: 'SessionStart', source: 'startup' }, answers: out => out.includes('Craft session') },
+  { cell: 'after-read', event: 'after-tool', payload: root => ({ hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: { file_path: slash(path.join(root, 'src/item-1.mjs')) }, tool_response: { type: 'text' }, tool_use_id: 'toolu_after_read' }), answers: () => true },
+  { cell: 'after-search', event: 'after-tool', payload: root => ({ hook_event_name: 'PostToolUse', tool_name: 'Grep', tool_input: { pattern: 'item42', path: slash(root) }, tool_response: { mode: 'files_with_matches', filenames: [] }, tool_use_id: 'toolu_after_search' }), answers: out => out.includes('src/caller.mjs:2') },
+  { cell: 'after-test', event: 'after-tool', payload: { hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { stdout: '✔ guards (1ms)\nℹ tests 1\nℹ pass 1\nℹ fail 0\nℹ skipped 0\n', stderr: '', interrupted: false }, tool_use_id: 'toolu_after_test' },
+    answers: (_, root) => fs.readdirSync(path.join(root, '.craft/state/sessions'), { recursive: true }).some(file => String(file).endsWith('test-runs.json')) },
+  { cell: 'agent-start', event: 'agent-start', payload: { hook_event_name: 'SubagentStart', agent_id: 'bench-agent', agent_type: 'general-purpose' }, answers: out => out.includes('conventional-commits') },
+  { cell: 'stop-changed', event: 'turn-end', payload: { hook_event_name: 'Stop', stop_hook_active: false }, answers: out => out.includes('"block"') && out.includes('todo-marker') && out.includes('item-review') }
+];
+const payload = (root, cell, body) => {
+  const file = path.join(workspace, `${cell}.json`);
+  fs.writeFileSync(file, JSON.stringify({ session_id: 'bench-session', transcript_path: slash(path.join(home, 'transcript.jsonl')), cwd: slash(root), ...body }) + '\n');
+  return file;
+};
+for (const step of SESSION) step.file = payload(standards, step.cell, typeof step.payload === 'function' ? step.payload(standards) : step.payload);
+run(native, hookArguments('session-start').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(SESSION[0].file) });
+run(native, hookArguments('before-prompt').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'standards-prompt', HOOKS[0].payload)) });
+run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(standards), '--json'], { env: standardsEnv });
+fs.appendFileSync(path.join(standards, 'src/item-0.mjs'), '// TODO: reject negative values\n');
+fs.cpSync(path.join(standards, '.craft'), standardsSeed, { recursive: true });
+const restoreStandards = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), standardsSeed, path.join(standards, '.craft')]);
+
 // Project Intelligence fixture: a clean copy of the source checkout at HEAD.
 const project = path.join(workspace, 'project'), archive = path.join(workspace, 'project.tar');
 git(options.fixture, 'archive', '--format=tar', '-o', archive, 'HEAD');
@@ -93,6 +127,9 @@ const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stri
 
 
 const measure = measurer({ hyperfine: options.hyperfine, output, results, save });
+// Native cells whose peak memory Windows measures separately: Hyperfine records none there.
+const memoryCells = [];
+const remember = (name, cwd, args, input = null, reset = null, cellEnv = null) => memoryCells.push({ name, program: native, args, cwd, input, reset, env: cellEnv && { CRAFT_EVIDENCE_WARM: cellEnv.CRAFT_EVIDENCE_WARM } });
 
 // The command the plugin registers for this hook, as Claude runs it: its root substituted, under bash.
 const hookConfig = JSON.parse(fs.readFileSync(path.join(plugin, 'platform-hooks/hooks.json'), 'utf8'));
@@ -104,6 +141,7 @@ const registered = event => {
 };
 const reset = ['--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(seed)} ${quote(path.join(root, '.craft'))}`];
 measure('startup/native', root, ['-N', '--warmup', '3', '--runs', String(runs), `${quote(native)} --help`]);
+remember('startup/native', root, ['--help']);
 // One snapshot query through the Git on PATH and, on Windows, through the Git executable the
 // Git for Windows PATH entry forwards to: whether each Git call pays for a second process start.
 const statusQuery = 'status --porcelain=v1 -z --untracked-files=all';
@@ -120,12 +158,29 @@ for (const { cell, event } of HOOKS) {
   for (const [layer, command] of Object.entries(layers)) {
     measure(`hook/${cell}/${layer}`, root, ['--warmup', '3', '--runs', String(runs), ...reset, '--input', slash(payloads[cell]), ...command]);
   }
+  remember(`hook/${cell}/native`, root, hookArguments(event).split(' '), payloads[cell], [seed, path.join(root, '.craft')]);
+}
+// Hooks of a session at work, natively: the cost of each feature as the host reaches it.
+const resetStandards = ['--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(standardsSeed)} ${quote(path.join(standards, '.craft'))}`];
+for (const { cell, event, file } of SESSION) {
+  measure(`hook/${cell}/native`, standards, ['--warmup', '3', '--runs', String(runs), ...resetStandards, '--input', slash(file), '-N',
+    `${quote(native)} ${hookArguments(event)}`], standardsEnv);
+  remember(`hook/${cell}/native`, standards, hookArguments(event).split(' '), file, [standardsSeed, path.join(standards, '.craft')], standardsEnv);
 }
 const refresh = `${quote(native)} project-evidence refresh --enable --root ${quote(project)} --json`;
 measure('project-intelligence/refresh-warm/native', project, ['-N', '--warmup', '2', '--runs', String(runs), refresh]);
 // cmd.exe /C strips the outer quotes of a prepare line that starts with one: leave the binary unquoted.
 measure('project-intelligence/refresh-cold/native', project, ['-N', '--runs', String(coldRuns),
   '--prepare', `${slash(native)} project-evidence rebuild --enable --root ${quote(project)} --json`, refresh]);
+remember('project-intelligence/refresh-warm/native', project, ['project-evidence', 'refresh', '--enable', '--root', slash(project), '--json']);
+// The background warm-up a session start launches, from an empty index: chunked refreshes with
+// pauses for waiting lookups, so its CPU and memory matter more than its wall time.
+const index = path.join(project, '.craft/state/intelligence'), empty = path.join(workspace, 'empty');
+fs.mkdirSync(empty);
+measure('project-intelligence/warm-up/native', project, ['-N', '--runs', String(coldRuns),
+  '--prepare', `node ${quote(path.join(benchmarks, 'reset-state.mjs'))} ${quote(empty)} ${quote(index)}`,
+  `${quote(native)} project-evidence warm --enable --root ${quote(project)} --json`]);
+remember('project-intelligence/warm-up/native', project, ['project-evidence', 'warm', '--enable', '--root', slash(project), '--json'], null, [empty, index]);
 // Per language: cold extraction of the generated fixture and one declaration lookup on the warm index.
 const declaration = root => `${quote(native)} locate --root ${quote(root)} --declaration ${PROBE.name} --json`;
 for (const language of Object.keys(LANGUAGES)) {
@@ -144,6 +199,16 @@ for (const { cell, event } of HOOKS) {
   results.checks.push({ cell, status: result.status, stderr: result.stderr, stdout: result.stdout });
   if (result.status !== 0 || result.stderr || !valid) results.failures.push(`hook/${cell}: output check failed (exit ${result.status})`);
 }
+// Each session hook also delivers its feature: a cell that times a silent hook measures nothing.
+for (const { cell, event, file, answers } of SESSION) {
+  restoreStandards();
+  const result = spawnSync(native, hookArguments(event).split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(file), encoding: 'utf8' });
+  let valid = result.stdout === '';
+  try { valid ||= JSON.parse(result.stdout) !== null; } catch { valid = false; }
+  const answered = answers(result.stdout, standards);
+  results.checks.push({ cell, status: result.status, stderr: result.stderr, stdout: result.stdout, answered });
+  if (result.status !== 0 || result.stderr || !valid || !answered) results.failures.push(`hook/${cell}: output check failed (exit ${result.status}, answered ${answered})`);
+}
 const status = JSON.parse(run(native, ['project-evidence', 'status', '--enable', '--root', slash(project), '--json'], { env }));
 results.checks.push({ cell: 'project-intelligence/status', sources: status.sources, failedSources: status.failedSources, inventoryComplete: status.inventoryComplete });
 if (!(status.sources > 0) || status.failedSources !== 0 || status.inventoryComplete !== true) results.failures.push('project-intelligence: incomplete refresh');
@@ -158,6 +223,16 @@ for (const [language, { file }] of Object.entries(LANGUAGES)) {
   if (check.failed !== 0 || check.answeredBy !== 'intelligence' || check.declaredIn?.join() !== file(PROBE.file)
     || check.calledFrom?.join() !== PROBE.caller) results.failures.push(`project-intelligence/language/${language}: lookup check failed`);
 }
+// Windows peak working set, per native cell, from the same prepared state the timed runs use.
+if (windows) {
+  try {
+    results.memory = peakMemory({ cells: memoryCells, runs: Math.min(runs, 5), reset: path.join(benchmarks, 'reset-state.mjs'), workspace, env });
+    fs.writeFileSync(path.join(output, 'raw/peak-memory.json'), JSON.stringify(results.memory, null, 2) + '\n');
+  } catch (error) { results.failures.push(`peak-memory: ${error.message}`); }
+}
+// Runners of one OS label differ in CPU; history and thresholds compare like with like.
+results.testbed = testbed(process.env.TESTBED ?? process.platform, results.platform.cpu);
+fs.writeFileSync(path.join(output, 'testbed.txt'), results.testbed + '\n');
 save();
 
 const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
