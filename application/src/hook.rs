@@ -730,6 +730,32 @@ mod tests {
         );
     }
 
+    /// Payloads a released Codex sent to Craft's hooks, recorded live: the tool calls a code
+    /// mode `exec` script makes reach hooks as `apply_patch` and `Bash`, with absolute paths.
+    #[test]
+    fn observed_codex_payloads_name_their_tool_and_files() {
+        let observed: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/hosts/codex-observed.json"
+        ))
+        .unwrap();
+        for case in observed["cases"].as_array().unwrap() {
+            let lifecycle = case["lifecycle"].as_str().unwrap();
+            let event = normalize(&case["payload"], "codex", lifecycle);
+            let expect = &case["expect"];
+            assert_eq!(event["tool"], expect["tool"], "{}", case["id"]);
+            for key in ["file", "files"] {
+                if let Some(value) = expect.get(key) {
+                    assert_eq!(&event[key], value, "{} {key}", case["id"]);
+                }
+            }
+            assert_eq!(
+                event["session"], case["payload"]["session_id"],
+                "{}",
+                case["id"]
+            );
+        }
+    }
+
     /// The frozen host corpus: payload normalization and wire serialization per host.
     #[test]
     fn frozen_host_contracts() {
