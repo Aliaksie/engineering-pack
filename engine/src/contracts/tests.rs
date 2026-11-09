@@ -176,3 +176,13 @@ fn evidence_is_enabled_only_by_an_explicit_boolean() {
     assert!(validate_project(&project(json!({"enabled": true, "exclude": ["a"]}))).is_ok());
     assert!(validate_project(&project(json!({"enabled": "yes"}))).is_err());
 }
+
+#[test]
+fn a_schema_link_is_accepted_and_kept_out_of_settings() {
+    let link = json!({"formatVersion": 1, "$schema": "../schemas/project.schema.json"});
+    let settings = effective_settings(&link, &json!({}), &json!({})).unwrap();
+    assert!(settings["settings"].get("$schema").is_none());
+    assert!(settings["origins"].get("$schema").is_none());
+    let wrong = json!({"formatVersion": 1, "$schema": 1});
+    assert!(validate_project(&wrong).is_err());
+}

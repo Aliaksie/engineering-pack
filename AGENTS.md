@@ -21,6 +21,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run architecture` | Check the declared module map, dependency rules and JavaScript placement |
 | `npm run validate:claude` | Official Claude validator on the built marketplace |
 | `npm run sync:craft-bar` | Regenerate craft reference blocks from their canonical standard |
+| `npm run docs:config` | Regenerate `docs/PROJECT-CONFIG.md` from the project schema |
 | `npm run anchors:import -- <checkout> [--check]` | Regenerate the embedded anchor catalog from a Semantic Anchors checkout, or check it |
 | `npm run version:sync -- <x.y.z>` | Set the pack version and its projections; `version:check` rejects drift |
 | `npm run eval:report -- <result.json>` | Check recorded eval evidence; does not run or judge a model |

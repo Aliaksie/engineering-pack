@@ -141,7 +141,8 @@ covered in [installation](docs/INSTALL.md).
 
 No configuration is required to start. Modules, anchors, your own skills and tracker or
 code-host bindings are described in [routing](docs/ROUTING.md) and
-[integrations](docs/INTEGRATIONS.md).
+[integrations](docs/INTEGRATIONS.md). [Project configuration](docs/PROJECT-CONFIG.md) lists
+every field with its default; link the schema with `$schema` for completion in your editor.
 
 ## Packages
 

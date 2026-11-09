@@ -2,7 +2,8 @@
 
 New here? Start with [installation](INSTALL.md), then [commands](COMMANDS.md). To declare your
 project's own standards, read [project standards](ROUTING.md#project-standards). To configure a
-project, read [routing](ROUTING.md) and [integrations](INTEGRATIONS.md). Contributors start
+project, read [project configuration](PROJECT-CONFIG.md), [routing](ROUTING.md) and
+[integrations](INTEGRATIONS.md). Contributors start
 with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 
 ## Using it
@@ -12,6 +13,7 @@ with [contributing](CONTRIBUTING.md) and [architecture](ARCHITECTURE.md).
 | [Installation](INSTALL.md) | Channels, per-host installation, first use, updates and local builds |
 | [Checking an installation](INSTALL.md#checking-an-installation) | `craft doctor`: whether each host would run Craft for the project |
 | [Commands](COMMANDS.md) | Every `craft` command, its purpose and effects |
+| [Project configuration](PROJECT-CONFIG.md) | Every `.craft/project.json` field with its type, default and meaning |
 | [Project standards](ROUTING.md#project-standards) | Declaring the project's standards, their scope and level, and the checks that need no model |
 | [Anchors](ROUTING.md#project-anchors) | Established standards by name, the embedded catalog and the project's own catalog |
 | [Project skills](ROUTING.md#project-skills) | Routing the project's own skills, replacing or disabling package skills |
