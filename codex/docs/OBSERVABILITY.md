@@ -17,8 +17,10 @@ Each event is schema-versioned JSON: name and kind (operation, observation or di
 timestamp, pack version, trace and operation IDs, a pseudonymous session correlation, the
 host when known, outcome, duration, a stable reason code on failure and allowlisted
 attributes such as selected catalog skills, guidance size, lookup and cache counts, advice and
-checkpoints. Hook events also record the package and whether the input was complete,
-invalid, oversized or unreadable.
+checkpoints. Hook events also record the package, whether the input was complete,
+invalid, oversized or unreadable, the bytes of context the hook returned, how many pieces it
+left out to stay under the host's output ceiling and whether a lookup answer was held back by
+the session budget.
 
 Never recorded: prompts, transcripts, code, file contents, paths, search terms, tool output,
 commands, environment variables, credentials, raw errors, model names, and consumer

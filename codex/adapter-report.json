@@ -89,6 +89,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "deliver"
@@ -379,6 +380,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -639,6 +641,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -891,6 +894,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"

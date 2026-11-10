@@ -360,6 +360,31 @@ directory (`test`, `tests`, `__tests__`, `spec`, `fixtures`, `testdata`, `e2e`, 
 ending in `-tests` or `-fixtures`) are test data: the answer leaves them out and says how
 many. Same rule as above: complete coverage or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
 
+### What a session's hooks may inject
+
+Hook answers are bounded per answer, per hook and per session, so a long session does not pay
+for the same text again and again.
+
+- **Per hook.** One hook answer carries at most 9,000 bytes of context on every host
+  (`contextBytes` in `hosts/hooks.json`). Claude Code replaces a hook string over 10,000
+  characters with a file path and a preview, Codex cuts a hook message over about 10,000 bytes
+  and Copilot caps tool-result context at 10 KB; a context over the cap reaches the model in
+  part or not at all. A context that would pass the ceiling loses whole pieces, least
+  important first (planning evidence and unfinished tasks of earlier sessions, the service
+  map, open work plans, then hints), and ends with one line naming what was left out. The
+  session identity, a resumed task and a test run that ran nothing are kept longest. Only a
+  single piece larger than the ceiling is cut, with a marker.
+- **Per session.** Hook answers from Project Intelligence stay within 16 KiB per context
+  window, and an answer with the same text is given once per window: a search or question
+  repeated forty times is answered the first time. A compaction starts a new window, because
+  what was answered before it is no longer in the model's context. Past the budget the lookup
+  does not run; the model's own search result stands, as it does without Craft.
+
+The counts are kept in the session's `delivered.json` (under `routing.sessionRecords`; without
+it there is no session budget and each answer is bounded only on its own) and shown by
+`craft session`. Standards findings and test notices are not budgeted: they report what was
+just written or run.
+
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
 `ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request

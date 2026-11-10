@@ -314,6 +314,34 @@ require a new evaluation.
 anything ran. Execution belongs to the host or to an integration driving the
 [host controls](HOST-CONTROL.md).
 
+## Session summary
+
+When a turn ends, the user reads one line on what Craft did in the session so far:
+
+```text
+Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 task context restored
+```
+
+Only what happened is named, and a session in which none of it happened shows no line. The
+line appears again only after it changed, and never beside a stop the review holds. It is the
+host's own message to the user (`systemMessage`), not context for the model, on Claude Code,
+Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a turn, so there
+the line is in `craft session` only. `routing.sessionSummary: false` shows none.
+
+| Count | Counted when |
+|---|---|
+| Standards findings raised | A check of a written file, a commit message or the stop review reports a finding the session was not yet told for that file |
+| Fixed | The same kind of check runs on that file again and no longer finds it |
+| Test runs that ran no test | The model was told a test command executed no test |
+| Lookups answered | A prompt or search got its answer from Project Intelligence in the hook |
+| Task contexts restored | A task or checkpoint was restated after a session start or a compaction |
+
+`craft session --session <id>` prints the same line, the bytes of context the session's hooks
+returned, the pieces left out to stay under a host's hook output ceiling and the lookup
+answers held back as repeats or over the session budget ([routing](ROUTING.md)); `--json` has
+them under `delivered`. The counts come from the session's `delivered.json`, which holds
+counts and short hashes, never delivered text, and needs `routing.sessionRecords`.
+
 ## What is measured
 
 | Measure | Source | Limits |
@@ -417,6 +445,7 @@ The resume is delivered once per compaction, at the first event after it that ca
       restore.json          # resume pending after compaction
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
       intent.json           # intent the requests established, routed files, planning evidence
+      delivered.json        # what hooks delivered: bytes, answers, findings, the summary line
     telemetry/              # events.jsonl(.1), key.json, captures.json, settings.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
@@ -568,7 +597,8 @@ A fully manual policy:
 {
   "routing": {
     "promptHints": false, "editHints": false, "dedupeHints": false, "standardChecks": false,
-    "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false
+    "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false,
+    "sessionSummary": false
   },
   "checkpoint": { "enabled": false },
   "efficiency": {
@@ -587,8 +617,8 @@ With this policy and `evidence.enabled: false` in `.craft/project.json`, hooks s
 nothing: no hints, answers, standard checks, stop review, test notices, subagent standards,
 resume or session identity line (the line follows `checkpoint.enabled`, as the task commands
 that take it do), and keep no session records under `.craft/state`: `sessionRecords: false`
-stops the established intent, its routed files, planning evidence and the pending-resume mark,
-and `testRuns: false` the test-run history. Features that read those records then see no
+stops the established intent, its routed files, planning evidence, the pending-resume mark and
+the delivery record with its summary line, and `testRuns: false` the test-run history. Features that read those records then see no
 established work, and a declared verification pass is not checked against an observed run.
 What stays on, and why:
 
