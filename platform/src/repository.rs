@@ -123,14 +123,19 @@ pub struct Inventory {
     walked: bool,
 }
 
-/// Tracked paths, then untracked unignored ones within `untracked` pathspecs (`None`: all).
+/// Tracked paths, then untracked unignored ones. Both Git listings start together, so a
+/// listing costs the time of the slower one rather than of one process after another.
 struct Listing {
-    root: PathBuf,
+    tracked: Option<Stream>,
+    untracked: Option<Stream>,
+    prefix: String,
+}
+
+/// One running `git ls-files -z`, read path by path.
+struct Stream {
     child: Child,
     reader: BufReader<std::process::ChildStdout>,
     finished: bool,
-    prefix: String,
-    untracked: Option<Option<Vec<String>>>,
 }
 
 impl Inventory {
@@ -146,8 +151,9 @@ impl Inventory {
             repositories: Vec::new(),
             walked: false,
         };
-        if crate::process::git(root, &["rev-parse", "--show-toplevel"], 16384)?.is_some() {
-            inventory.listing = Some(Listing::start(root, String::new(), exclusions)?);
+        // The listing itself says whether Git serves this directory: no separate query first.
+        if let Some(listing) = Listing::probe(root, exclusions)? {
+            inventory.listing = Some(listing);
         } else if root
             .ancestors()
             .any(|p| fs::symlink_metadata(p.join(".git")).is_ok())
@@ -257,27 +263,68 @@ impl Inventory {
 impl Listing {
     /// `exclusions` are relative to `root`; an empty one excludes the whole worktree.
     fn start(root: &Path, prefix: String, exclusions: &[String]) -> Result<Self, Error> {
-        let untracked = if exclusions.iter().any(String::is_empty) {
+        let tracked = Stream::spawn(root, &["--cached"], &[])?;
+        Self::with(tracked, root, prefix, exclusions)
+    }
+
+    /// The listing of `root` when Git serves it; `None` when Git is not installed or refuses
+    /// the directory before listing anything (not a worktree, or one it cannot read).
+    fn probe(root: &Path, exclusions: &[String]) -> Result<Option<Self>, Error> {
+        let Ok(mut tracked) = Stream::spawn(root, &["--cached"], &[]) else {
+            return Ok(None);
+        };
+        if tracked.reader.fill_buf()?.is_empty() && !tracked.child.wait()?.success() {
+            tracked.finished = true;
+            return Ok(None);
+        }
+        Self::with(tracked, root, String::new(), exclusions).map(Some)
+    }
+
+    fn with(
+        tracked: Stream,
+        root: &Path,
+        prefix: String,
+        exclusions: &[String],
+    ) -> Result<Self, Error> {
+        // Untracked files are listed within the pathspecs that leave excluded directories
+        // unwalked; none are listed when the whole worktree or every entry is excluded.
+        let pathspecs = if exclusions.iter().any(String::is_empty) {
             None
         } else {
-            Some(untracked_scope(root, exclusions)?)
+            match untracked_scope(root, exclusions)? {
+                None => Some(Vec::new()),
+                // An empty pathspec list would mean everything.
+                Some(pathspecs) if pathspecs.is_empty() => None,
+                Some(pathspecs) => Some(pathspecs),
+            }
         };
-        let (child, reader) = Self::spawn(root, &["--cached"], &[])?;
+        let untracked = pathspecs
+            .map(|pathspecs| Stream::spawn(root, &["--others", "--exclude-standard"], &pathspecs))
+            .transpose()?;
         Ok(Self {
-            root: root.to_path_buf(),
-            child,
-            reader,
-            finished: false,
-            prefix,
+            tracked: Some(tracked),
             untracked,
+            prefix,
         })
     }
 
-    fn spawn(
-        root: &Path,
-        mode: &[&str],
-        pathspecs: &[String],
-    ) -> Result<(Child, BufReader<std::process::ChildStdout>), Error> {
+    fn next_path(&mut self) -> Result<Option<String>, Error> {
+        loop {
+            let Some(stream) = self.tracked.as_mut().or(self.untracked.as_mut()) else {
+                return Ok(None);
+            };
+            if let Some(path) = stream.next_path()? {
+                return Ok(Some(format!("{}{path}", self.prefix)));
+            }
+            if self.tracked.take().is_none() {
+                self.untracked = None;
+            }
+        }
+    }
+}
+
+impl Stream {
+    fn spawn(root: &Path, mode: &[&str], pathspecs: &[String]) -> Result<Self, Error> {
         let mut command = crate::process::git_command(root);
         command
             .args(["ls-files", "-z"])
@@ -288,9 +335,14 @@ impl Listing {
             .stderr(Stdio::null());
         let mut child = crate::process::spawn(&mut command)?;
         let reader = BufReader::new(child.stdout.take().ok_or("missing Git output")?);
-        Ok((child, reader))
+        Ok(Self {
+            child,
+            reader,
+            finished: false,
+        })
     }
 
+    /// The next listed path, or `None` once Git has listed everything and exited successfully.
     fn next_path(&mut self) -> Result<Option<String>, Error> {
         let mut bytes = Vec::new();
         let count = self.reader.by_ref().take(4098).read_until(0, &mut bytes)?;
@@ -300,23 +352,13 @@ impl Listing {
             if !status.success() {
                 return Err("Git inventory failed; unseen sources retained".into());
             }
-            let pathspecs = match self.untracked.take() {
-                None => return Ok(None),
-                Some(None) => Vec::new(),
-                // Every entry is excluded: an empty pathspec list would mean everything.
-                Some(Some(pathspecs)) if pathspecs.is_empty() => return Ok(None),
-                Some(Some(pathspecs)) => pathspecs,
-            };
-            (self.child, self.reader) =
-                Self::spawn(&self.root, &["--others", "--exclude-standard"], &pathspecs)?;
-            self.finished = false;
-            return self.next_path();
+            return Ok(None);
         }
         if bytes.pop() != Some(0) {
             return Err("inventory path exceeds bound or is incomplete".into());
         }
         String::from_utf8(bytes)
-            .map(|path| Some(format!("{}{path}", self.prefix)))
+            .map(Some)
             .map_err(|_| "non-UTF-8 inventory path unsupported".into())
     }
 }
@@ -373,7 +415,7 @@ fn untracked_scope(root: &Path, exclusions: &[String]) -> Result<Option<Vec<Stri
     Ok(Some(pathspecs))
 }
 
-impl Drop for Listing {
+impl Drop for Stream {
     fn drop(&mut self) {
         if !self.finished {
             let _ = self.child.kill();
@@ -475,6 +517,29 @@ mod tests {
         // Inside a worktree, Git lists it: tracked and unignored only, nested in no prefix.
         let (paths, described) = inventory(&root.join("repo"));
         assert_eq!(paths, [".gitignore", "kept.js"]);
+        assert_eq!(described, serde_json::json!({"kind": "git"}));
+    }
+
+    #[test]
+    fn a_worktree_with_nothing_tracked_is_listed_by_git() {
+        let fixture = Fixture::new("untracked");
+        let root = fixture.0.canonicalize().unwrap();
+        for (file, content) in [
+            ("new.js", ""),
+            ("ignored.js", ""),
+            (".gitignore", "ignored.js\n"),
+        ] {
+            fs::write(root.join(file), content).unwrap();
+        }
+        let status = Command::new("git")
+            .args(["init", "--quiet"])
+            .arg(&root)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        // Git lists no tracked path and still answers: its ignore rules apply, not a walk.
+        let (paths, described) = inventory(&root);
+        assert_eq!(paths, [".gitignore", "new.js"]);
         assert_eq!(described, serde_json::json!({"kind": "git"}));
     }
 

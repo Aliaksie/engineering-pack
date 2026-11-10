@@ -326,14 +326,18 @@ fn capture_status(
     let mut output = None;
     let result = loop {
         if output.is_none() {
-            match rx.try_recv() {
+            // Output ends when the child closes its pipe, normally as it exits: wait for
+            // that instead of polling for it.
+            match rx.recv_timeout(timeout.saturating_sub(start.elapsed())) {
                 Ok(Ok(bytes)) if bytes.len() <= max_bytes => output = Some(bytes),
                 Ok(Ok(_)) => break Err(format!("{what} failed: output exceeds bound")),
                 Ok(Err(error)) => break Err(format!("{what} failed: {error}")),
-                Err(mpsc::TryRecvError::Disconnected) => {
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
                     break Err(format!("{what} reader failed"));
                 }
-                Err(mpsc::TryRecvError::Empty) => {}
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    break Err(format!("{what} did not complete"));
+                }
             }
         }
         match child.try_wait() {

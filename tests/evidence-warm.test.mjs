@@ -38,6 +38,27 @@ test('warming indexes the project in chunks and stops once nothing is deferred',
   assert.equal(nativeRequest('warm', { root }).chunks, 1, 'a warm index takes one cheap pass');
 });
 
+test('a spent budget defers the sources left without reading them and still reuses unchanged ones', t => {
+  const root = fixture(t);
+  const first = nativeRequest('refresh', { root, maxFiles: 1 });
+  assert.equal(first.changed, 1);
+  assert.equal(first.deferred, 11);
+  assert.deepEqual(first.deferredByLimit, { maxFiles: 11 });
+  assert.equal(first.bytesScanned, fs.statSync(path.join(root, 'm0.rs')).size, 'only the extracted source was read');
+  const complete = nativeRequest('refresh', { root });
+  assert.equal(complete.deferred, 0);
+  assert.equal(indexed(root), 12);
+  // One changed source spends the budget; a later one whose metadata alone changed holds
+  // evidence for its content, so it is read and reused rather than deferred.
+  fs.appendFileSync(path.join(root, 'm0.rs'), 'fn h0() {}\n');
+  const past = new Date(Date.now() - 60_000);
+  fs.utimesSync(path.join(root, 'm1.rs'), past, past);
+  const bounded = nativeRequest('refresh', { root, maxFiles: 1 });
+  assert.equal(bounded.changed, 1);
+  assert.equal(bounded.deferred, 0);
+  assert.equal(bounded.reused, 11);
+});
+
 test('the session start does not warm when the environment opts out', async t => {
   const root = fixture(t);
   const hook = spawnSync(process.env.CRAFT_NATIVE_BINARY, ['hook', 'claude', 'session-start', '--package', 'craft-delivery', '--handler', 'deliver', '--scope', 'any'],

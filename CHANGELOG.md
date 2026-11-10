@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Hooks and lookups that ask Git start fewer processes and no longer wait for one after
+  another: a source inventory starts two Git listings together instead of three queries in
+  a row, and a worktree snapshot runs its three queries at once. Where starting a process is
+  slow, on Windows most of all, the turn-end, session-start, search and lookup hooks answer
+  sooner.
+- A refresh whose file or time budget is spent no longer reads and hashes every source it
+  has not indexed yet; it defers them unread. A first lookup in a large project stays within
+  its budget instead of reading the whole project. `bytesScanned` counts only sources read.
+- Index warm-up keeps one store connection for all its chunks, so each chunk releases the
+  store sooner for a waiting lookup.
 - When a turn ends, Claude Code, Codex and Gemini CLI show one line on what Craft did in the
   session: standards findings raised and fixed, test runs that ran no test, lookups answered
   from the project index and task contexts restored. Nothing happened, or nothing changed

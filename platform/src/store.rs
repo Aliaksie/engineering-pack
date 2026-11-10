@@ -269,6 +269,13 @@ impl Store {
         Ok(sid.is_some())
     }
 
+    /// Whether the store holds an extraction outcome for the source, which unchanged content
+    /// could reuse; a source never extracted, or deferred, holds none.
+    pub fn holds(&self, path: &str, provider: &str) -> Result<bool, Error> {
+        Ok(self.connection.prepare_cached("SELECT 1 FROM sources WHERE path=?1 AND provider=?2 AND outcome IN ('ok','failed','partial')")?
+            .exists(params![path, provider])?)
+    }
+
     /// Whether the source still holds evidence for this content; a read, so a refresh over
     /// unchanged sources writes nothing until it finishes. A settled stamp the source does
     /// not hold yet is recorded, so the next refresh need not read the file.

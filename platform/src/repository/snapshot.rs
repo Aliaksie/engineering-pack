@@ -155,11 +155,25 @@ fn inventory<'a>(status: &'a [u8], index: &'a [u8]) -> Vec<&'a [u8]> {
 /// One worktree: `{checkout, head, status, gitAvailable, fingerprints}`.
 pub fn state(root: &Path) -> Value {
     let mut issues: Vec<String> = Vec::new();
-    let identity = git(
-        root,
-        &["rev-parse", "HEAD", "--symbolic-full-name", "HEAD"],
-        OUTPUT,
-    );
+    // Raw bytes: a name that is not UTF-8 must stay recognizable as such in the inventory.
+    let raw = |args: &[&str]| process::git(root, args, OUTPUT).ok().flatten();
+    // The three queries are independent reads; together they cost the slowest one, which
+    // matters where starting a process is slow.
+    let (identity, status_bytes, index_bytes) = std::thread::scope(|scope| {
+        let status =
+            scope.spawn(|| raw(&["status", "--porcelain=v1", "-z", "--untracked-files=all"]));
+        let index = scope.spawn(|| raw(&["ls-files", "--stage", "-z"]));
+        let identity = git(
+            root,
+            &["rev-parse", "HEAD", "--symbolic-full-name", "HEAD"],
+            OUTPUT,
+        );
+        (
+            identity,
+            status.join().ok().flatten(),
+            index.join().ok().flatten(),
+        )
+    });
     let lines: Option<Vec<String>> =
         identity.map(|t| t.trim_end().split('\n').map(str::to_string).collect());
     // Keep the original queries for failed or unexpected output (including unborn HEAD).
@@ -175,10 +189,6 @@ pub fn state(root: &Path) -> Value {
             self::checkout(root),
         ),
     };
-    // Raw bytes: a name that is not UTF-8 must stay recognizable as such in the inventory.
-    let raw = |args: &[&str]| process::git(root, args, OUTPUT).ok().flatten();
-    let status_bytes = raw(&["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-    let index_bytes = raw(&["ls-files", "--stage", "-z"]);
     let inventory = status_bytes
         .as_deref()
         .zip(index_bytes.as_deref())
