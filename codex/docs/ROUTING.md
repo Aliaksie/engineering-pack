@@ -63,6 +63,31 @@ level, source and a one-line `summary`; the content stays in the project.
 ]
 ```
 
+`craft standards --propose` lists the standards a project's existing files already support,
+so the first declarations need no writing by hand. It reads fixed files at the project root,
+each up to 256 KiB, and follows no links:
+
+| The project has | Proposed |
+|---|---|
+| Conventional Commits, Keep a Changelog, Semantic Versioning, MADR, Nygard ADRs or Gherkin named in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot or Junie instructions, or `CONTRIBUTING.md`; a changelog preamble naming its format; a commitlint configuration extending `config-conventional` | The anchor, checked. Decision-record anchors are scoped to the first of `docs/adr`, `docs/decisions`, `docs/architecture/decisions`, `doc/adr`, `adr` that exists, and are not proposed without one |
+| A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
+| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, golangci-lint or RuboCop | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
+
+Each proposal carries the declaration to copy and the files, with lines, that support it;
+what the configuration already declares is listed apart. Nothing is active until you copy it
+into `standards`, and Craft never writes the configuration. The scan matches names and
+configuration files only: it does not parse commands written in prose, does not read nested
+packages, and a file that names a convention in order to reject it is still a match, so read
+the evidence before accepting. Agent instruction files are read for names but never proposed
+as standards, since the host loads them itself.
+
+A session that starts in a project declaring no standards runs the same scan and says once
+how many standards the files support, to the user where the host shows a hook's message
+(Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
+set is not named again in any session; a changed set is. `routing.conventionProposals: false`
+turns the scan at session start off.
+
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,
   …). Every key given must match; any value within a key matches. Without `scope` a

@@ -449,6 +449,7 @@ The resume is delivered once per compaction, at the first event after it that ca
     telemetry/              # events.jsonl(.1), key.json, captures.json, settings.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
+    notices/                # conventions.json: the proposals a session start last named
 ```
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether
@@ -598,7 +599,7 @@ A fully manual policy:
   "routing": {
     "promptHints": false, "editHints": false, "dedupeHints": false, "standardChecks": false,
     "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false,
-    "sessionSummary": false
+    "sessionSummary": false, "conventionProposals": false
   },
   "checkpoint": { "enabled": false },
   "efficiency": {

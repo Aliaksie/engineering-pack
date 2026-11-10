@@ -27,6 +27,47 @@ interpreters and executable paths, and variable expansion are outside it. Enforc
 tool permissions, read-only credentials and isolation. `npm run hooks:report` measures it
 against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).
 
+## Safety policy
+
+`safety` in `.craft/project.json` turns on rules that refuse destructive shell commands
+before they run, on hosts where a hook can refuse a tool call (Claude Code, Codex, Cursor,
+Copilot CLI, Gemini CLI). It is off until the project sets `enabled`:
+
+```json
+"safety": {
+  "enabled": true,
+  "disables": ["system-administration"],
+  "deny": [{ "id": "infra-destroy", "command": ["terraform", "destroy"],
+             "reason": "tearing down shared infrastructure" }]
+}
+```
+
+| Rule | Refuses |
+|---|---|
+| `delete-outside-project` | `rm -r` whose target is outside the project root, under `~`, or an unexpanded variable or substitution |
+| `delete-project-root` | `rm -r` of the project root, of everything in it (`*`, `.`) or of its `.git` |
+| `force-push` | `git push` with `--force`, `-f`, `--mirror` or a `+refspec`; `--force-with-lease` passes |
+| `discard-changes` | `git reset --hard`, `git checkout`/`git restore` of the whole tree, `git checkout -f`, `git clean -f` (not a dry run), `git stash drop` and `clear` |
+| `system-administration` | `sudo`, `doas`, shutdown and reboot, stopping or disabling services, mounting, formatting and writing to devices |
+
+`disables` leaves built-in rules out. `deny` adds the project's own: a command whose leading
+words match is refused, with the executable matched by name and variable assignments or
+wrappers such as `env` skipped. `craft settings` lists the rules in force and where each
+comes from; refused commands are counted in the session summary.
+
+The policy only refuses. It never approves a command, so the host's prompts, sandbox and
+deny rules apply as before, and what the host already blocks stays blocked: Claude Code
+refuses deletes of critical paths in every mode and has more rules in auto mode; Codex
+confines writes with its sandbox. The policy adds one command-level rule set that is the same
+on every host and still holds where the host has none, such as Claude Code's bypass mode or
+Codex with full access.
+
+Targets are judged by name, from the directory the command runs in; nothing is read from
+disk, so a link that leads outside is not seen, and Windows drive paths are not recognized as
+outside. Commands are read like the review guard reads them, with the same limits; a command
+nested deeper than 16 levels is refused. Personal preferences and task overrides cannot
+change the policy. Use host permissions, sandboxing and credentials for enforcement.
+
 ## Builds and state
 
 Builds reject symlinked or escaping package paths, stage output, replace only managed
@@ -34,7 +75,7 @@ directories, and never touch host configuration or contact services. MCP declara
 credentials through host environment variables; no package ships a live server.
 
 Runtime state lives in `.craft/state/sessions/<session-id>/`, with project-wide records in
-sibling folders (`telemetry/`, `intelligence/`, `workspaces/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
+sibling folders (`telemetry/`, `intelligence/`, `workspaces/`, `notices/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
 `.craft/worktrees/` (ignore it too); `plan-integrate` makes local merge commits and never
 pushes. State paths
 reject symlinks and use bounded, locked, atomic writes. On POSIX, state directories are

@@ -182,6 +182,19 @@ object. Review session safety.
 |---|---|---|---|
 | `review.readOnly` | boolean | `false` | Deny common `gh`/`glab` publishing commands and `git push` from the shell in this project. A heuristic, not a replacement for read-only credentials. |
 
+## `safety`
+
+object. Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `safety.enabled` | boolean | `false` | Turn the policy on. Off, no command is refused. |
+| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
+| `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
+| `safety.deny[].id` | string |  | Stable handle named in the refusal. |
+| `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
+| `safety.deny[].reason` | string |  | What the rule refuses, shown with the refusal. |
+
 ## `runtimes`
 
 array of string. Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Default for modules that declare none.
@@ -202,6 +215,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.workerStandards` | boolean | `true` | Give a subagent the host starts the checked and reviewed standards of the delegating session's scope. Set false to start workers without them. |
 | `routing.sessionRecords` | boolean | `true` | Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work. |
 | `routing.sessionSummary` | boolean | `true` | When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords. |
+| `routing.conventionProposals` | boolean | `true` | When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start. |
 
 ## `efficiency`
 

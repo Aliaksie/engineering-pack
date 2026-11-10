@@ -19,7 +19,7 @@ compacts a host session or posts to a code host.
 | Command | Purpose | Effects |
 |---|---|---|
 | `route` | Intent, paths and risks → guidance loading plan, owners, checks and execution role | Reads configuration; see [routing](ROUTING.md) |
-| `standards` | Declared project standards; with `--file` or `--commit-message`, the deterministic anchor checks the hooks run (for a Git hook or CI) | Reads configuration and the named files; exits non-zero when a standard is not met |
+| `standards` | Declared project standards; with `--propose`, the standards the project's existing convention files support; with `--file` or `--commit-message`, the deterministic anchor checks the hooks run (for a Git hook or CI) | Reads configuration and the named files; `--propose` reads fixed root files and writes nothing; exits non-zero when a standard is not met |
 | `lookup` | Module inventory or owners of paths | Reads configuration |
 | `locate` | Batched literal terms in scoped paths → path/line/snippet evidence | Bounded scan; optional task-scoped reuse receipts |
 | `context-report` | Selected guidance → paths, hashes, bytes, estimated tokens | Reads package resources; never measures live occupancy |
