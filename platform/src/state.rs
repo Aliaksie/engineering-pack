@@ -76,7 +76,7 @@ fn descend(root: &Path, parts: &[&str], create: bool) -> Result<PathBuf, Error> 
 }
 
 /// Shared record families, one directory each beside `sessions/`.
-const FAMILIES: &[&str] = &["telemetry", "intelligence", "workspaces"];
+const FAMILIES: &[&str] = &["telemetry", "intelligence", "workspaces", "notices"];
 /// The per-session description, written once when the session directory is created.
 pub const MANIFEST: &str = "manifest.json";
 pub const MANIFEST_BYTES: usize = 1024;

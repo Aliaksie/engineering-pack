@@ -202,6 +202,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.workerStandards` | boolean | `true` | Give a subagent the host starts the checked and reviewed standards of the delegating session's scope. Set false to start workers without them. |
 | `routing.sessionRecords` | boolean | `true` | Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work. |
 | `routing.sessionSummary` | boolean | `true` | When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords. |
+| `routing.conventionProposals` | boolean | `true` | When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start. |
 
 ## `efficiency`
 

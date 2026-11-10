@@ -82,6 +82,12 @@ packages, and a file that names a convention in order to reject it is still a ma
 the evidence before accepting. Agent instruction files are read for names but never proposed
 as standards, since the host loads them itself.
 
+A session that starts in a project declaring no standards runs the same scan and says once
+how many standards the files support, to the user where the host shows a hook's message
+(Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
+set is not named again in any session; a changed set is. `routing.conventionProposals: false`
+turns the scan at session start off.
+
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,
   …). Every key given must match; any value within a key matches. Without `scope` a

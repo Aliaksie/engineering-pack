@@ -3,8 +3,48 @@
 use crate::failure::Failure;
 use craft_engine::conventions::{self, Look, MAX_BYTES, Source};
 use craft_platform::files::{ReadError, read_bounded};
+use craft_platform::state;
 use serde_json::{Value, json};
 use std::path::Path;
+
+const RECORD_BYTES: usize = 1024;
+
+/// What a session start says about an undeclared project's conventions, once per set of
+/// proposals: the offer with the command that lists them, recorded as shown. `None` when
+/// there is nothing new to say or another hook is recording it.
+pub(crate) fn offer(root: &Path, settings: &Value) -> Result<Option<Value>, Failure> {
+    let declares = settings["standards"]
+        .as_array()
+        .is_some_and(|standards| !standards.is_empty());
+    if declares {
+        return Ok(None);
+    }
+    let proposed = proposed(root, settings)?;
+    let target = state::file(root, "notices/conventions.json", true, None)?;
+    let Some(_lock) = state::lock(&target)? else {
+        return Ok(None);
+    };
+    let shown = crate::session::read_record(&target, RECORD_BYTES).unwrap_or(Value::Null);
+    let Some((mut offer, record)) = conventions::offer(settings, &proposed, &shown) else {
+        return Ok(None);
+    };
+    state::write(&target, &record, RECORD_BYTES, false)?;
+    // This hook's own executable is the runtime that lists the proposals.
+    if let Some(runtime) = std::env::current_exe()
+        .ok()
+        .as_deref()
+        .and_then(Path::to_str)
+    {
+        offer["run"] = json!([
+            runtime,
+            "standards",
+            "--root",
+            root.to_string_lossy(),
+            "--propose"
+        ]);
+    }
+    Ok(Some(offer))
+}
 
 /// What the scan found at `root`: `{proposals, declared, scanned, unread, accept}`.
 pub(crate) fn proposed(root: &Path, settings: &Value) -> Result<Value, Failure> {

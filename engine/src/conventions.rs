@@ -620,6 +620,58 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
     Ok(json!({"proposals": proposals, "declared": covered}))
 }
 
+/// How many proposed standards a session start names; the rest are counted.
+const OFFER_NAMES: usize = 6;
+
+/// What a session start says about `proposed` (the result of [`propose`]) in a project
+/// that declares no standards: `(offer, record)`, the offer `{count, standards}` and the
+/// record to keep so the same set is not named again. `None` when the project declares a
+/// standard, nothing is proposed, or `shown` already records this set.
+pub fn offer(settings: &Value, proposed: &Value, shown: &Value) -> Option<(Value, Value)> {
+    let declares = settings["standards"]
+        .as_array()
+        .is_some_and(|standards| !standards.is_empty());
+    let ids: Vec<&str> = proposed["proposals"]
+        .as_array()?
+        .iter()
+        .filter_map(|proposal| proposal["standard"]["id"].as_str())
+        .collect();
+    if declares || ids.is_empty() {
+        return None;
+    }
+    let key = crate::hash(ids.join("\n").as_bytes());
+    if shown["formatVersion"] == 1 && shown["key"] == key.as_str() {
+        return None;
+    }
+    let named = &ids[..ids.len().min(OFFER_NAMES)];
+    Some((
+        json!({"count": ids.len(), "standards": named}),
+        json!({"formatVersion": 1, "key": key}),
+    ))
+}
+
+/// The line a user reads for an offer.
+pub fn offer_line(offer: &Value) -> String {
+    let count = offer["count"].as_u64().unwrap_or_default();
+    let names: Vec<&str> = offer["standards"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let more = (count as usize).saturating_sub(names.len());
+    format!(
+        "Craft: this project's own files support {count} standard{} it has not declared ({}{}). `craft standards --propose` lists them with evidence; none is active until you add it.",
+        if count == 1 { "" } else { "s" },
+        names.join(", "),
+        if more > 0 {
+            format!(", {more} more")
+        } else {
+            String::new()
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -846,6 +898,39 @@ mod tests {
         assert_eq!(standards.len(), 9);
         crate::contracts::validate_project(&json!({"formatVersion": 1, "standards": standards}))
             .expect("accepted proposals validate");
+    }
+
+    #[test]
+    fn an_undeclared_project_is_offered_its_proposals_once_per_set() {
+        let proposed = scan(&json!({}), &[("rustfmt.toml", None), (".flake8", None)]);
+        let (offer, record) = offer(&json!({}), &proposed, &Value::Null).expect("offer");
+        assert_eq!(
+            offer,
+            json!({"count": 2, "standards": ["rustfmt", "flake8"]})
+        );
+        assert_eq!(
+            offer_line(&offer),
+            "Craft: this project's own files support 2 standards it has not declared (rustfmt, flake8). `craft standards --propose` lists them with evidence; none is active until you add it."
+        );
+        assert!(
+            super::offer(&json!({}), &proposed, &record).is_none(),
+            "same set"
+        );
+        let grown = scan(
+            &json!({}),
+            &[
+                ("rustfmt.toml", None),
+                (".flake8", None),
+                ("biome.json", None),
+            ],
+        );
+        assert!(
+            super::offer(&json!({}), &grown, &record).is_some(),
+            "a new set"
+        );
+        let declaring = json!({"standards": [{"id": "x", "file": "docs/x.md"}]});
+        assert!(super::offer(&declaring, &proposed, &Value::Null).is_none());
+        assert!(super::offer(&json!({}), &scan(&json!({}), &[]), &Value::Null).is_none());
     }
 
     #[test]

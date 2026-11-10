@@ -1040,6 +1040,11 @@
           "type": "boolean",
           "default": true,
           "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
+        },
+        "conventionProposals": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start."
         }
       },
       "additionalProperties": false

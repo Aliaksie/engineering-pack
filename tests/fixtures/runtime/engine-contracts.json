@@ -5581,7 +5581,8 @@
               "testRuns": true,
               "workerStandards": true,
               "sessionRecords": true,
-              "sessionSummary": true
+              "sessionSummary": true,
+              "conventionProposals": true
             },
             "checkpoint": {
               "enabled": true
@@ -5690,6 +5691,7 @@
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
             "routing.sessionSummary": "bundled",
+            "routing.conventionProposals": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",

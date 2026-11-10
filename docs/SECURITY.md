@@ -34,7 +34,7 @@ directories, and never touch host configuration or contact services. MCP declara
 credentials through host environment variables; no package ships a live server.
 
 Runtime state lives in `.craft/state/sessions/<session-id>/`, with project-wide records in
-sibling folders (`telemetry/`, `intelligence/`, `workspaces/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
+sibling folders (`telemetry/`, `intelligence/`, `workspaces/`, `notices/`); ignore `.craft/state/` in Git, which Craft never edits. Worker worktrees live in
 `.craft/worktrees/` (ignore it too); `plan-integrate` makes local merge commits and never
 pushes. State paths
 reject symlinks and use bounded, locked, atomic writes. On POSIX, state directories are

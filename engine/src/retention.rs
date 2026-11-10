@@ -16,6 +16,7 @@ pub const SHARED_FAMILIES: &[(&str, &str)] = &[
     ("telemetry", "rotation: one bounded log and one backup"),
     ("intelligence", "rebuildable: project-evidence rebuild"),
     ("workspaces", "workspace-clean"),
+    ("notices", "one small record per kind of notice"),
 ];
 
 /// One directory entry as observed without following links.

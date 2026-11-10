@@ -109,3 +109,75 @@ fn propose_takes_no_files_and_belongs_to_standards() {
         other.stderr
     );
 }
+
+fn start(host: &str, repo: &Repo, session: &str) -> String {
+    let args: Vec<String> = [
+        host,
+        "session-start",
+        "--package",
+        "craft-delivery",
+        "--handler",
+        "deliver",
+    ]
+    .iter()
+    .map(|arg| arg.to_string())
+    .collect();
+    let payload = json!({"session_id": session, "cwd": repo.path(), "source": "startup",
+        "hook_event_name": "SessionStart"});
+    let (wire, _) = craft_application::hook::run(&args, &mut payload.to_string().as_bytes());
+    assert_eq!(wire.exit_code, 0, "{}", wire.stderr);
+    wire.stdout
+}
+
+#[test]
+fn a_session_start_names_undeclared_conventions_once_and_again_only_when_they_change() {
+    let repo = Repo::new(
+        "conventions-offer",
+        &[("AGENTS.md", AGENTS), ("rustfmt.toml", "max_width = 100\n")],
+    );
+    let first: Value = serde_json::from_str(&start("claude", &repo, "S1")).expect("output");
+    assert_eq!(
+        first["systemMessage"],
+        "Craft: this project's own files support 2 standards it has not declared (commits, rustfmt). `craft standards --propose` lists them with evidence; none is active until you add it."
+    );
+    let context = first["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .expect("context");
+    assert!(context.contains("Craft conventions scan"), "{context}");
+    assert!(
+        context.contains(r#""standards":["commits","rustfmt"]"#),
+        "{context}"
+    );
+    assert!(context.contains(r#""--propose""#), "{context}");
+
+    // The same set is not named again, in this session or the next, on any host.
+    for (host, session) in [("claude", "S1"), ("claude", "S2"), ("codex", "S3")] {
+        let again = start(host, &repo, session);
+        assert!(
+            !again.contains("conventions scan") && !again.contains("own files"),
+            "{again}"
+        );
+    }
+    // A new convention file changes the set.
+    repo.write(".flake8", "[flake8]\n");
+    assert!(start("codex", &repo, "S4").contains("3 standards"));
+}
+
+#[test]
+fn a_project_with_standards_or_the_switch_off_hears_nothing() {
+    for config in [
+        r#"{"formatVersion":1,"standards":[{"id":"api","file":"docs/api.md"}]}"#,
+        r#"{"formatVersion":1,"routing":{"conventionProposals":false}}"#,
+    ] {
+        let repo = Repo::new(
+            "conventions-quiet",
+            &[("AGENTS.md", AGENTS), (".craft/project.json", config)],
+        );
+        let output = start("claude", &repo, "S1");
+        assert!(!output.contains("own files"), "{output}");
+        assert!(
+            !repo.root.join(".craft/state/notices").exists(),
+            "no scan, no record"
+        );
+    }
+}

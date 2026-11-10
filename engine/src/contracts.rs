@@ -333,6 +333,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "workerStandards",
                 "sessionRecords",
                 "sessionSummary",
+                "conventionProposals",
             ],
             "routing",
         )?;
@@ -347,6 +348,7 @@ pub fn validate_project(project: &Value) -> Result {
             "workerStandards",
             "sessionRecords",
             "sessionSummary",
+            "conventionProposals",
         ] {
             boolean(
                 routing.get(field),
@@ -627,7 +629,7 @@ pub fn default_settings() -> Value {
         "routing": {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
-            "sessionRecords": true, "sessionSummary": true
+            "sessionRecords": true, "sessionSummary": true, "conventionProposals": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {
