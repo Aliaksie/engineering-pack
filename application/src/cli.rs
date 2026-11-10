@@ -450,6 +450,12 @@ fn standards(
     let settings = loaded(options, recorder, parent)?;
     let root = root(options);
     let message = options.get("commit-message");
+    if options.values.contains_key("propose") {
+        if !files(options).is_empty() || message.is_some() {
+            return Err("--propose takes no --file or --commit-message".into());
+        }
+        return crate::conventions::proposed(&root, &settings);
+    }
     if files(options).is_empty() && message.is_none() {
         let declared = settings["standards"]
             .as_array()
@@ -1530,8 +1536,8 @@ fn help(action: &str) -> Value {
             "mode":"bounded literal scan; optional local reuse receipts"
         }),
         "standards" => json!({
-            "usage": "standards [--root project] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
-            "mode": "Without files, list declared standards. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
+            "usage": "standards [--root project] [--propose] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
+            "mode": "Without files, list declared standards. With --propose, list standards the project's existing convention files support, ready to copy into the configuration; nothing is written. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
         }),
         "doctor" => json!({
             "usage": "doctor [--root project] [--json]",

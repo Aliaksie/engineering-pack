@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `craft standards --propose` lists standards a project's existing files already support, ready
+  to copy into `.craft/project.json`: conventions named in agent instructions or
+  `CONTRIBUTING.md` that Craft checks, lint, format and type-check commands from package
+  scripts and tool configuration, the contributor document and `.editorconfig`. Each proposal
+  shows the files that support it; nothing is active until it is copied, and the command
+  writes nothing.
 - Hooks and lookups that ask Git start fewer processes and no longer wait for one after
   another: a source inventory starts two Git listings together instead of three queries in
   a row, and a worktree snapshot runs its three queries at once. Where starting a process is
