@@ -84,7 +84,7 @@ test('state-clean measures current shared families and never removes them', t =>
   const families = result => Object.fromEntries(result.shared.map(item => [item.family, item]));
 
   const reported = families(run(['state-clean', '--root', root, '--apply']));
-  assert.deepEqual(Object.keys(reported), ['telemetry', 'intelligence', 'workspaces']);
+  assert.deepEqual(Object.keys(reported), ['telemetry', 'intelligence', 'workspaces', 'notices']);
   assert.deepEqual([reported.intelligence.bytes, reported.intelligence.files], [10, 1]);
   assert.match(reported.intelligence.bounded, /rebuild/);
   assert.ok(reported.telemetry.bytes > 0, 'the command itself records telemetry');
