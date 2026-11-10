@@ -64,7 +64,9 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       });
       assert.equal(result.status, 0, result.stderr);
       assert.equal(result.stderr, '');
-      assert.equal(result.stdout, '', 'observation must not emit permission decisions or context');
+      // Observers grant and add nothing; Cursor alone needs its neutral answer to proceed.
+      const neutral = host === 'cursor' && { 'before-tool': { permission: 'allow' }, 'before-prompt': { continue: true } }[definition.event];
+      assert.equal(result.stdout, neutral ? `${JSON.stringify(neutral)}\n` : '', 'observation must not emit permission decisions or context');
       // A prompt, tool call or turn end is recorded by the handler acting on it, not by observers.
       const hooks = events(root).filter(event => event.name === 'host.hook');
       if (!BOUNDARIES.includes(definition.event)) {
@@ -93,7 +95,8 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
     })]) {
       const result = runHook(packageRoot, host, 'observe-before-tool', { cwd: root, input });
       assert.equal(result.status, 0, result.stderr);
-      assert.equal(result.stdout, '');
+      // Unreadable input still gets Cursor's neutral answer so the tool call is not blocked.
+      assert.equal(result.stdout, host === 'cursor' ? '{"permission":"allow"}\n' : '');
       assert.equal(result.stderr, '');
     }
     const failures = events(root);

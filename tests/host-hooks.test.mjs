@@ -86,8 +86,8 @@ test('a tool call Craft does not deny keeps the host permission flow', (t) => {
     for (const tool of ['shell', 'edit']) {
       const result = invoke(host, pkg, hook, payload(host, dir, 'git status --short', tool), dir);
       assert.equal(result.status, 0, `${host} ${hook}: ${result.stderr}`);
-      // Observation hooks answer nothing on every host.
-      if (host === 'cursor' && !hook.startsWith('observe')) assert.deepEqual(JSON.parse(result.stdout), { permission: 'allow' }, `${hook} ${tool}`);
+      // Cursor requires an answer, observation hooks included.
+      if (host === 'cursor') assert.deepEqual(JSON.parse(result.stdout), { permission: 'allow' }, `${hook} ${tool}`);
       else {
         const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
         const granted = [output.permission, output.permissionDecision, output.decision, output.hookSpecificOutput?.permissionDecision];
