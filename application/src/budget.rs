@@ -33,12 +33,20 @@ impl Budget {
         })
     }
 
-    pub fn start(&mut self, bytes: u64, elapsed: Duration) -> Result<(), &'static str> {
+    /// The limit that refuses every further source whatever its size, once it is reached.
+    pub fn spent(&self, elapsed: Duration) -> Option<&'static str> {
         if self.attempted >= self.max_files {
-            return Err("maxFiles");
+            return Some("maxFiles");
         }
         if elapsed.as_millis() >= self.max_duration_ms as u128 {
-            return Err("maxDurationMs");
+            return Some("maxDurationMs");
+        }
+        None
+    }
+
+    pub fn start(&mut self, bytes: u64, elapsed: Duration) -> Result<(), &'static str> {
+        if let Some(limit) = self.spent(elapsed) {
+            return Err(limit);
         }
         if bytes > self.max_bytes - self.bytes {
             return Err("maxBytes");

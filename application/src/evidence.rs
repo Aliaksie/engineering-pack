@@ -100,6 +100,10 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
     let database = state::shared(&root, "intelligence", true)?.join("project.sqlite");
     let started = Instant::now();
     let (mut chunks, mut deferred, mut reason) = (0u64, None, "complete");
+    // One connection for the whole warm-up: closing the last connection of a write-ahead
+    // store copies its log into the database and syncs it, a cost per chunk when each chunk
+    // opens its own. Only the lock is released between chunks.
+    let mut opened: Option<Store> = None;
     loop {
         // A project removed while warming is not recreated by taking the store's lock.
         if !root.is_dir() || !database.parent().is_some_and(Path::is_dir) {
@@ -110,11 +114,13 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
             reason = "busy";
             break;
         };
-        let mut store = Store::open(&database)?;
+        let store = match &mut opened {
+            Some(store) => store,
+            None => opened.insert(Store::open(&database)?),
+        };
         let mut budget =
             super::budget::Budget::from_input(&json!({"maxDurationMs": WARM_CHUNK_MS}))?;
-        let result = refresh(&root, &mut store, &mut budget, &mut |_, _| {})?;
-        drop(store);
+        let result = refresh(&root, store, &mut budget, &mut |_, _| {})?;
         drop(guard);
         chunks += 1;
         deferred = result["deferred"].as_u64();
@@ -189,6 +195,17 @@ pub(crate) fn refresh(
             continue;
         }
         let stamp = stamp.as_deref();
+        // A spent budget defers every source still to extract. One the store holds no
+        // outcome for has nothing to reuse either, so it is deferred without being read:
+        // the rest of a large project costs a bounded refresh no file reads.
+        if let Some(reason) = budget.spent(started.elapsed())
+            && !phases.time(Phase::Store, || store.holds(&path, provider))?
+        {
+            store.defer(&path, provider, epoch)?;
+            *reasons.entry(reason).or_default() += 1;
+            deferred += 1;
+            continue;
+        }
         let observed_at = now();
         let content = match phases.time(Phase::Read, || read_source(root, &path)) {
             Ok(content) => content,
