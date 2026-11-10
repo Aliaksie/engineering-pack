@@ -7,6 +7,7 @@ use crate::scratch::{self, Action};
 use crate::session::{active_task, read_record};
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::delivery::{self, answer};
+use craft_engine::session::delivered::{self, Checked, Delivery};
 use craft_engine::{hash, identity, routing, standards};
 use craft_platform::{state, telemetry::uuid};
 use serde_json::{Map, Value, json};
@@ -69,15 +70,185 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
+    let settings = project::hook_loaded(recorder, hook, event.root)?;
+    let mut decision = decide(event, &settings, recorder, hook)?;
+    account(event, &settings, &mut decision, recorder, hook);
+    Ok(decision)
+}
+
+/// The answer budget of the session's context window: Project Intelligence answers stay
+/// within it and an identical one is not repeated. Without session records there is no
+/// record to hold a budget, and each answer is bounded on its own as before.
+struct Answers<'a> {
+    root: &'a Path,
+    session: Option<&'a str>,
+    record: Option<Value>,
+    /// Why an answer was held back at this event.
+    held: Option<delivered::Answer>,
+}
+
+impl Answers<'_> {
+    /// The session's record, read once; unreadable reads as none, so answers go out.
+    fn record(&mut self) -> &Value {
+        let (root, session) = (self.root, self.session);
+        self.record.get_or_insert_with(|| {
+            session
+                .and_then(|session| crate::delivered::read(root, session).ok())
+                .unwrap_or(Value::Null)
+        })
+    }
+
+    /// Whether the window has no room left, so the lookup need not run.
+    fn spent(&mut self) -> bool {
+        let spent = self.session.is_some() && delivered::window_spent(self.record());
+        if spent {
+            self.held = Some(delivered::Answer::OverBudget);
+        }
+        spent
+    }
+
+    fn admit(&mut self, answer: Value) -> Option<Value> {
+        if self.session.is_none() {
+            return Some(answer);
+        }
+        let key = delivered::answer_key(&answer);
+        match delivered::answer(self.record(), &key, answer.to_string().len()) {
+            delivered::Answer::Deliver => Some(answer),
+            held => {
+                self.held = Some(held);
+                None
+            }
+        }
+    }
+}
+
+/// Record what the hook delivers in the session's delivery record, and at the end of a turn
+/// give the user the session summary where the host shows one. `decision.delivered` carries
+/// the counts the hook's telemetry event reports.
+fn account(
+    event: &Event,
+    settings: &Value,
+    decision: &mut Value,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) {
+    use crate::hook::{ANSWER, CHECKPOINT, RESUME, ROUTING, STANDARDS, TESTS};
+    let shaped = crate::hook::shaped(decision, event.host, event.lifecycle);
+    let mut take = |field: &str| {
+        decision
+            .as_object_mut()
+            .and_then(|fields| fields.shift_remove(field))
+            .unwrap_or(Value::Null)
+    };
+    let held = match take("held").as_str() {
+        Some("repeated") => Some(delivered::Answer::Repeated),
+        Some(_) => Some(delivered::Answer::OverBudget),
+        None => None,
+    };
+    let checks = take("checked");
+    let kept = |name: &str| shaped.kept.contains(&name);
+    let context = &decision["context"];
+    let answered = match context["kind"].as_str() {
+        Some("answer") if kept(ANSWER) => Some(&context["data"]),
+        Some("routing") if kept(ROUTING) => context["data"].get("answer").filter(|a| !a.is_null()),
+        _ => None,
+    }
+    .map(|answer| (delivered::answer_key(answer), answer.to_string().len()));
+    // Findings the ceiling left out were not raised with the model.
+    let checked: Vec<Checked> = if decision.get("standards").is_none() || kept(STANDARDS) {
+        checks
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|check| Checked {
+                scope: check["scope"].as_str().unwrap_or_default().to_string(),
+                kinds: check["kinds"].as_str().unwrap_or_default().to_string(),
+                keys: check["keys"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|key| key.as_str().map(str::to_owned))
+                    .collect(),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let delivery = Delivery {
+        context_bytes: shaped.bytes(),
+        dropped: shaped.dropped.len(),
+        answer: answered.as_ref().map(|(key, bytes)| (key.as_str(), *bytes)),
+        held,
+        checked: &checked,
+        empty_test: kept(TESTS),
+        resume: kept(RESUME) || (kept(CHECKPOINT) && event.lifecycle != "before-compact"),
+    };
+    decision["delivered"] = json!({
+        "contextBytes": delivery.context_bytes, "droppedPieces": delivery.dropped,
+        "heldAnswers": u64::from(held.is_some()),
+    });
+    let Some(session) = event
+        .session
+        .filter(|s| !s.is_empty() && delivery::session_records(settings))
+    else {
+        return;
+    };
     let root = event.root;
-    let settings = project::hook_loaded(recorder, hook, root)?;
+    let compacted = matches!(event.lifecycle, "before-compact" | "after-compact");
+    let eventful = delivery.context_bytes > 0
+        || delivery.dropped > 0
+        || delivery.held.is_some()
+        || !delivery.checked.is_empty();
+    // A quiet hook touches no record; a compaction only one that holds an answer window.
+    let pending = eventful
+        || (compacted
+            && crate::delivered::read(root, session)
+                .is_ok_and(|record| delivered::new_window(&record).is_some()));
+    if pending
+        && crate::delivered::update(root, session, |record| {
+            let window = compacted.then(|| delivered::new_window(record)).flatten();
+            delivered::recorded(window.as_ref().unwrap_or(record), &delivery).or(window)
+        })
+        .is_err()
+    {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+    }
+    // One line for the user once the turn ends, never beside a held stop.
+    let summarize = event.lifecycle == "turn-end"
+        && delivery::session_summary(settings)
+        && shaped.stop.is_none()
+        && crate::hook::shows_notice(event.host, event.lifecycle)
+        && crate::delivered::read(root, session)
+            .is_ok_and(|record| delivered::summary_due(&record).is_some());
+    if summarize {
+        let mut line = None;
+        let shown = crate::delivered::update(root, session, |record| {
+            let (text, next) = delivered::summary_due(record)?;
+            line = Some(text);
+            Some(next)
+        });
+        match shown {
+            Ok(Some(_)) => decision["notice"] = json!(line),
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+        }
+    }
+}
+
+fn decide(
+    event: &Event,
+    settings: &Value,
+    recorder: &mut Recorder,
+    hook: &Operation,
+) -> Result<Value, Failure> {
+    let root = event.root;
     if event.lifecycle == "agent-start" {
-        return Ok(delegation(root, &settings, event, recorder, hook));
+        return Ok(delegation(root, settings, event, recorder, hook));
     }
     let session = event.session.filter(|s| !s.is_empty());
     // A test command the host just ran: its verdict, kept with the tree it ran on.
     let observed = match (
-        event.test_run.filter(|_| delivery::test_runs(&settings)),
+        event.test_run.filter(|_| delivery::test_runs(settings)),
         session,
     ) {
         (Some(verdict), Some(session)) => observe_run(root, session, event, verdict)
@@ -110,7 +281,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             task: task.as_deref(),
             action,
             input: &json!({}),
-            settings: &settings,
+            settings,
         };
         // Optional housekeeping never prevents delivery.
         if scratch::run(request, recorder, hook).is_err() {
@@ -120,7 +291,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if event.lifecycle == "session-start" {
         warm_evidence(root);
         if let Some(session) = session
-            && crate::stop_review::baseline(root, session, &settings).is_err()
+            && crate::stop_review::baseline(root, session, settings).is_err()
         {
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         }
@@ -143,7 +314,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         None => project_file(root, event.cwd, event.file),
     };
     // Without session records an existing record is still read, never created or changed.
-    let records = delivery::session_records(&settings);
+    let records = delivery::session_records(settings);
     let intent_file = match session {
         Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
             Some(intent_file(root, session, records)?)
@@ -175,19 +346,25 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             && task.is_some()
             && session.is_some_and(|session| restore_pending(root, session)),
     };
-    let plan = delivery::plan(&facts, &settings);
+    let plan = delivery::plan(&facts, settings);
     if let (true, Some(session)) = (plan.invalidate_hint, session) {
         invalidate_hint(root, session, event.host, recorder, hook);
     }
     let services = if plan.services {
         Some(crate::integration::prepared(
-            &settings, None, None, recorder, hook,
+            settings, None, None, recorder, hook,
         )?)
     } else {
         None
     };
     // Hook answers, on prompts and on searches, follow the managed-lookup switch.
     let answers = settings["efficiency"]["lookup"]["enabled"] == true;
+    let mut budget = Answers {
+        root,
+        session: session.filter(|_| records),
+        record: None,
+        held: None,
+    };
     let routing = match (plan.intent, file.as_deref()) {
         (Some(intent), Some(file)) => {
             let files: Vec<Value> = if event.edit {
@@ -214,7 +391,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 verification_mode: None,
                 artifact: plan.artifact,
             };
-            let mut plan = crate::guidance::route(&settings, &request, recorder, hook)?;
+            let mut plan = crate::guidance::route(settings, &request, recorder, hook)?;
             plan["taskIdentity"] = task_identity;
             // This hook's own executable is the runtime the lookup runs.
             let runtime = std::env::current_exe().ok();
@@ -231,7 +408,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             // planning, one about a configuration key may route nowhere else.
             if let Some(answer) = prompt
                 .filter(|_| answers)
-                .and_then(|p| prompt_answer(root, p, recorder, hook))
+                .and_then(|p| prompt_answer(root, p, &mut budget, recorder, hook))
             {
                 plan["answer"] = answer;
             }
@@ -241,7 +418,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         // A prompt no intent claims still gets the answer to the lookup it asks, alone.
         (None, Some(_)) if event.context_supported => prompt
             .filter(|_| answers)
-            .and_then(|p| prompt_answer(root, p, recorder, hook))
+            .and_then(|p| prompt_answer(root, p, &mut budget, recorder, hook))
             .map(|answer| json!({"answer": answer})),
         _ => None,
     };
@@ -341,7 +518,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if let (true, Some(session)) = (resuming, session) {
         let (record, task) = session_scope(root, session, recorder, hook);
         let files = record["files"].as_array().cloned().unwrap_or_default();
-        let pinned = standards::pinned(&settings, record["intent"].as_str(), &files, task.as_ref());
+        let pinned = standards::pinned(settings, record["intent"].as_str(), &files, task.as_ref());
         if !pinned.is_empty() {
             decision["context"]["data"]["standards"] = json!(pinned);
         }
@@ -350,7 +527,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             .ok()
             .flatten()
             .and_then(|binding| binding.get("repositories").cloned());
-        let status = if delivery::test_runs(&settings) {
+        let status = if delivery::test_runs(settings) {
             crate::test_runs::status(root, session, repositories.as_ref())
         } else {
             Ok(None)
@@ -367,10 +544,24 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         && decision.get("context").is_none()
         && answers;
     if let Some(answer) = searching
-        .then(|| search_answer(root, event.pattern, event.command, recorder, hook))
+        .then(|| {
+            search_answer(
+                root,
+                event.pattern,
+                event.command,
+                &mut budget,
+                recorder,
+                hook,
+            )
+        })
         .flatten()
     {
         decision["context"] = json!({"kind": "answer", "data": answer});
+    }
+    match budget.held {
+        Some(delivered::Answer::Repeated) => decision["held"] = json!("repeated"),
+        Some(_) => decision["held"] = json!("over-budget"),
+        None => {}
     }
     // The session identity a started or restored session needs for task commands.
     if let (true, Some(session)) = (plan.identify_session, session) {
@@ -408,9 +599,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     // A file or commit just written in a declared standard's scope gets its anchor check in
     // the same tool result. Findings are reported, never enforced; passing checks stay quiet.
     if event.lifecycle == "after-tool" && event.context_supported {
-        let found = standard_findings(root, &settings, event, &edited);
+        let (found, checked) = standard_findings(root, settings, event, &edited);
         if !found.is_empty() {
             decision["standards"] = json!(found);
+        }
+        if !checked.is_empty() {
+            decision["checked"] = checks(&checked);
         }
     }
     // A turn that changed files ends with one summary of what is new, where the host can
@@ -420,9 +614,15 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         session,
     ) {
         let intent = record["intent"].as_str();
-        match crate::stop_review::stop(root, session, &settings, intent, event.stop_active) {
-            Ok(Some(summary)) => decision["stop"] = summary,
-            Ok(None) => {}
+        match crate::stop_review::stop(root, session, settings, intent, event.stop_active) {
+            Ok((summary, checked)) => {
+                if let Some(summary) = summary {
+                    decision["stop"] = summary;
+                }
+                if !checked.is_empty() {
+                    decision["checked"] = checks(&checked);
+                }
+            }
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
     }
@@ -435,7 +635,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             root,
             session,
             event.host,
-            &settings,
+            settings,
             &mut decision,
             recorder,
             hook,
@@ -559,72 +759,124 @@ const STANDARD_BYTES: u64 = 512 * 1024;
 /// How recent `HEAD` must be to be the commit the shell command just made.
 const COMMIT_FRESH_SECONDS: u64 = 120;
 
-/// Anchor check results for the files an edit wrote or the commit a shell command made.
+/// The scopes a check covered, as the decision carries them to the delivery record.
+fn checks(checked: &[Checked]) -> Value {
+    json!(
+        checked
+            .iter()
+            .map(|c| json!({"scope": c.scope, "kinds": c.kinds, "keys": c.keys}))
+            .collect::<Vec<_>>()
+    )
+}
+
+/// The keys of the findings in failing `verdicts`, for one kind of check.
+fn finding_keys(kind: char, verdicts: &[Value]) -> Vec<String> {
+    verdicts
+        .iter()
+        .flat_map(|verdict| {
+            verdict["findings"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|finding| {
+                    delivered::finding_key(
+                        kind,
+                        &verdict["standard"],
+                        &finding["rule"],
+                        &finding["message"],
+                    )
+                })
+        })
+        .collect()
+}
+
+/// Anchor check results for the files an edit wrote or the commit a shell command made, and
+/// the scopes those checks covered, found or clean.
 fn standard_findings(
     root: &Path,
     settings: &Value,
     event: &Event,
     edited: &[String],
-) -> Vec<Value> {
+) -> (Vec<Value>, Vec<Checked>) {
     if event.edit {
         // A patch writes several files: each finding then names the one it is about.
         let several = edited.len() > 1;
-        return edited
-            .iter()
-            .flat_map(|file| {
-                file_findings(root, settings, file)
-                    .into_iter()
-                    .map(move |mut found| {
-                        if several {
-                            found["file"] = json!(file);
-                        }
-                        found
-                    })
-            })
-            .collect();
+        let (mut found, mut checked) = (Vec::new(), Vec::new());
+        for file in edited {
+            let (verdicts, scope) = file_findings(root, settings, file);
+            checked.extend(scope);
+            found.extend(verdicts.into_iter().map(|mut verdict| {
+                if several {
+                    verdict["file"] = json!(file);
+                }
+                verdict
+            }));
+        }
+        return (found, checked);
     }
     let checks = standards::commit_checks(settings);
     if checks.is_empty() || !event.command.is_some_and(standards::commits) {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
     // A failed commit leaves an older HEAD; only a commit made just now is the one written.
     let Ok(Some(output)) =
         craft_platform::process::git(root, &["log", "-1", "--format=%ct%n%B"], 64 * 1024)
     else {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     };
     let output = String::from_utf8_lossy(&output);
     let (time, message) = output.split_once('\n').unwrap_or((&output, ""));
     let now = now_ms() as u64 / 1000;
     match time.trim().parse::<u64>() {
         Ok(time) if now.saturating_sub(time) <= COMMIT_FRESH_SECONDS => {
-            standards::verdicts(&checks, message.trim_end(), None)
+            let found = standards::verdicts(&checks, message.trim_end(), None);
+            let scope = Checked {
+                scope: "commit".into(),
+                kinds: "c".into(),
+                keys: finding_keys('c', &found),
+            };
+            (found, vec![scope])
         }
-        _ => Vec::new(),
+        _ => (Vec::new(), Vec::new()),
     }
 }
 
-/// Anchor and module dependency check results for one written project file.
-fn file_findings(root: &Path, settings: &Value, file: &str) -> Vec<Value> {
+/// Anchor and module dependency check results for one written project file, and the scope
+/// they covered; none for a file no check reads.
+fn file_findings(root: &Path, settings: &Value, file: &str) -> (Vec<Value>, Option<Checked>) {
     let checks = standards::file_checks(settings, file);
-    if checks.is_empty() && standards::import_checks(settings, file).is_empty() {
-        return Vec::new();
+    let imports = !standards::import_checks(settings, file).is_empty();
+    if checks.is_empty() && !imports {
+        return (Vec::new(), None);
     }
     let path = root.join(file);
     let bytes = match std::fs::metadata(&path) {
         Ok(meta) if meta.is_file() && meta.len() <= STANDARD_BYTES => std::fs::read(&path),
-        _ => return Vec::new(),
+        _ => return (Vec::new(), None),
     };
     let Ok(bytes) = bytes else {
-        return Vec::new();
+        return (Vec::new(), None);
     };
     let mut found = if checks.is_empty() {
         Vec::new()
     } else {
         standards::verdicts(&checks, &String::from_utf8_lossy(&bytes), Some(file))
     };
-    found.extend(crate::dependencies::verdicts(root, settings, file, &bytes));
-    found
+    let mut scope = Checked {
+        scope: file.to_string(),
+        kinds: String::new(),
+        keys: finding_keys('a', &found),
+    };
+    if !checks.is_empty() {
+        scope.kinds.push('a');
+    }
+    let depends = crate::dependencies::verdicts(root, settings, file, &bytes);
+    if imports {
+        scope.kinds.push('d');
+        scope.keys.extend(finding_keys('d', &depends));
+    }
+    found.extend(depends);
+    (found, Some(scope))
 }
 
 /// Start indexing the project in the background, so the session's first lookup finds a warm
@@ -667,11 +919,15 @@ const SEARCH_REFRESH_MS: u64 = 200;
 fn prompt_answer(
     root: &Path,
     prompt: &str,
+    budget: &mut Answers,
     recorder: &mut Recorder,
     hook: &Operation,
 ) -> Option<Value> {
     let (ask, value) = answer::question(prompt)?;
-    evidence_answer(
+    if budget.spent() {
+        return None;
+    }
+    let answer = evidence_answer(
         root,
         ask,
         &value,
@@ -679,7 +935,8 @@ fn prompt_answer(
         recorder,
         hook,
         |result, declarations| answer::answered(ask, &value, result, declarations),
-    )
+    )?;
+    budget.admit(answer)
 }
 
 /// The verified declaration and callers of the one name a search the model just ran looks
@@ -688,11 +945,15 @@ fn search_answer(
     root: &Path,
     pattern: Option<&str>,
     command: Option<&str>,
+    budget: &mut Answers,
     recorder: &mut Recorder,
     hook: &Operation,
 ) -> Option<Value> {
     let value = answer::searched(pattern, command)?;
-    evidence_answer(
+    if budget.spent() {
+        return None;
+    }
+    let answer = evidence_answer(
         root,
         "callers",
         &value,
@@ -700,7 +961,8 @@ fn search_answer(
         recorder,
         hook,
         |result, declarations| answer::usages(&value, result, declarations?),
-    )
+    )?;
+    budget.admit(answer)
 }
 
 /// Ask Project Intelligence `ask` about `value` within one `refresh_ms` budget, then the

@@ -1035,6 +1035,11 @@
           "type": "boolean",
           "default": true,
           "description": "Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work."
+        },
+        "sessionSummary": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
         }
       },
       "additionalProperties": false

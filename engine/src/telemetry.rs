@@ -35,6 +35,9 @@ const COUNTS: &[&str] = &[
     "exportedEvents",
     "rejectedEvents",
     "statusCode",
+    "contextBytes",
+    "droppedPieces",
+    "heldAnswers",
 ];
 const FLAGS: &[&str] = &[
     "reused",

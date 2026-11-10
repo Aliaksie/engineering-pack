@@ -28,7 +28,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -136,6 +137,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -240,7 +242,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -348,6 +351,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "project",
@@ -451,7 +455,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -524,6 +529,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -607,7 +613,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -715,6 +722,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -828,7 +836,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -936,6 +945,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1073,7 +1083,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -1198,6 +1209,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1301,7 +1313,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -1409,6 +1422,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1906,7 +1920,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -2014,6 +2029,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -2193,7 +2209,8 @@
               "debtMarkers": false,
               "testRuns": true,
               "workerStandards": true,
-              "sessionRecords": true
+              "sessionRecords": true,
+              "sessionSummary": true
             },
             "checkpoint": {
               "enabled": true
@@ -2301,6 +2318,7 @@
             "routing.testRuns": "bundled",
             "routing.workerStandards": "bundled",
             "routing.sessionRecords": "bundled",
+            "routing.sessionSummary": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",

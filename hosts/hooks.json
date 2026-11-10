@@ -10,6 +10,7 @@
       ],
       "evidence": "observed"
     },
+    "contextBytes": 9000,
     "events": {
       "before-tool": {
         "name": "PreToolUse",
@@ -49,7 +50,8 @@
         "name": "Stop",
         "context": false,
         "deny": false,
-        "continue": true
+        "continue": true,
+        "notice": true
       },
       "agent-start": {
         "name": "SubagentStart",
@@ -75,6 +77,7 @@
       ],
       "evidence": "observed"
     },
+    "contextBytes": 9000,
     "events": {
       "before-tool": {
         "name": "PreToolUse",
@@ -113,7 +116,8 @@
         "name": "Stop",
         "context": false,
         "deny": false,
-        "continue": true
+        "continue": true,
+        "notice": true
       },
       "agent-start": {
         "name": "SubagentStart",
@@ -139,6 +143,7 @@
       "evidence": "assumed"
     },
     "config": ".cursor/hooks.json",
+    "contextBytes": 9000,
     "events": {
       "before-tool": {
         "name": "preToolUse",
@@ -196,6 +201,7 @@
       "evidence": "assumed"
     },
     "config": ".github/hooks/craft-capabilities.json",
+    "contextBytes": 9000,
     "events": {
       "before-tool": {
         "name": "preToolUse",
@@ -256,6 +262,7 @@
       "evidence": "assumed"
     },
     "config": ".gemini/settings.json",
+    "contextBytes": 9000,
     "events": {
       "before-tool": {
         "name": "BeforeTool",
@@ -287,7 +294,8 @@
         "name": "AfterAgent",
         "context": false,
         "deny": false,
-        "continue": true
+        "continue": true,
+        "notice": true
       }
     }
   },
@@ -305,6 +313,7 @@
       ],
       "evidence": "assumed"
     },
+    "contextBytes": 9000,
     "events": {}
   },
   "jetbrains": {
@@ -322,6 +331,7 @@
       ],
       "evidence": "assumed"
     },
+    "contextBytes": 9000,
     "events": {}
   },
   "agents": {
@@ -337,6 +347,7 @@
       ],
       "evidence": "assumed"
     },
+    "contextBytes": 9000,
     "events": {}
   }
 }
