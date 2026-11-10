@@ -802,3 +802,132 @@ fn a_subagent_the_host_starts_hears_the_standards_of_the_delegating_work() {
     let blind = deliver("agent-start", json!({"contextSupported": false}));
     assert!(blind.get("delegation").is_none());
 }
+
+/// A hook with nothing to say still answers where the host needs an answer: Cursor blocks a
+/// permission hook whose output does not match its schema, so silence could block every call.
+#[test]
+fn a_silent_hook_answers_cursor_within_its_schema() {
+    let fixture = project("silent-answer", None);
+    let wire = |host: &str, lifecycle: &str, payload: &Value| {
+        let args = [
+            host,
+            lifecycle,
+            "--package",
+            "craft-engineering",
+            "--handler",
+            "observe",
+        ]
+        .map(String::from);
+        let (wire, _) = craft_application::hook::run(&args, &mut payload.to_string().as_bytes());
+        assert_eq!((wire.exit_code, wire.stderr.as_str()), (0, ""), "{host}");
+        wire.stdout
+    };
+    let cwd = fixture.0.to_string_lossy();
+    let tool = json!({"session_id": "S-1", "cwd": cwd, "tool_name": "Shell", "tool_input": {"command": "ls"}});
+    let prompt = json!({"session_id": "S-1", "cwd": cwd, "prompt": "hello"});
+    assert_eq!(
+        wire("cursor", "before-tool", &tool),
+        "{\"permission\":\"allow\"}\n"
+    );
+    assert_eq!(
+        wire("cursor", "before-prompt", &prompt),
+        "{\"continue\":true}\n"
+    );
+    // Not a permission hook: nothing to say stays nothing.
+    assert_eq!(wire("cursor", "after-tool", &tool), "");
+    // Hosts that keep their own permission flow on empty output get no grant.
+    for host in ["claude", "codex", "copilot", "gemini"] {
+        assert_eq!(wire(host, "before-tool", &tool), "", "{host}");
+    }
+}
+
+/// `craft hook <host> before-prompt` for the delivery package running from `bundle`.
+fn prompted(host: &str, project: &Path, bundle: &Path, home: &Path, prompt: &str) -> String {
+    use std::io::Write;
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args(["hook", host, "before-prompt"])
+        .args(["--package", "craft-delivery", "--handler", "deliver"])
+        .env("CRAFT_PACKAGE_ROOT", bundle)
+        .env("CRAFT_EVIDENCE_WARM", "0")
+        .env("CLAUDE_CONFIG_DIR", home.join("claude"))
+        .env("CODEX_HOME", home.join("codex"))
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let payload = json!({"session_id": "S-1", "cwd": project, "prompt": prompt});
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(payload.to_string().as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// A prompt hook names only skills of packages the host installed beside it: a route into a
+/// package that is not there says nothing instead of naming skills nobody can load.
+#[test]
+fn a_prompt_routes_only_into_packages_the_host_installed() {
+    let fixture = project("installed-packages", Some(r#"{"formatVersion": 1}"#));
+    let home = fixture.0.join("home");
+    let bundle = |market: &str, package: &str| {
+        let path = home.join(format!("{market}/{package}/0.0.5"));
+        fs::create_dir_all(path.join("support/native-bin")).unwrap();
+        fs::write(path.join("support/native-bin/runtime.json"), "{}").unwrap();
+        path
+    };
+    let prompt = "Create stories for loyalty points";
+    for host in ["claude", "codex"] {
+        // Only delivery and engineering are in the plugin cache.
+        let market = format!("{host}/plugins/cache/craft");
+        let delivery = bundle(&market, "craft-delivery");
+        bundle(&market, "craft-engineering");
+        let silent = prompted(host, &fixture.0, &delivery, &home, prompt);
+        assert_eq!(silent, "", "{host}");
+        // With the stories package beside it, the same prompt names its workflow.
+        bundle(&market, "craft-stories");
+        fs::create_dir_all(home.join("codex")).unwrap();
+        fs::write(
+            home.join("codex/config.toml"),
+            "[plugins.\"craft-stories@craft\"]\nenabled = true\n",
+        )
+        .unwrap();
+        // The prompt changed nothing about the session; a new one hears the route.
+        let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
+        let routed = prompted(host, &fixture.0, &delivery, &home, prompt);
+        assert!(
+            routed.contains("craft-stories:workflow-prepare-stories"),
+            "{host}: {routed}"
+        );
+        // Turned off in the host's settings, it is as good as absent.
+        let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
+        fs::write(
+            home.join("codex/config.toml"),
+            "[plugins.\"craft-stories@craft\"]\nenabled = false\n",
+        )
+        .unwrap();
+        fs::write(
+            home.join("claude/settings.json"),
+            r#"{"enabledPlugins": {"craft-stories@craft": false}}"#,
+        )
+        .unwrap();
+        let off = prompted(host, &fixture.0, &delivery, &home, prompt);
+        assert_eq!(off, "", "{host}");
+        let _ = fs::remove_file(home.join("claude/settings.json"));
+        let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
+    }
+    // Outside an installed bundle nothing is known, so the route is the catalog's.
+    let loose = prompted("claude", &fixture.0, &fixture.0, &home, prompt);
+    assert!(
+        loose.contains("craft-stories:workflow-prepare-stories"),
+        "{loose}"
+    );
+}

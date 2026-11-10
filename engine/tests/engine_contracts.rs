@@ -84,6 +84,7 @@ fn run(operation: &str, input: &Value) -> Result<Value, String> {
                     task: input["task"].as_str(),
                     verification_mode: input["verificationMode"].as_str(),
                     artifact: input["artifact"].as_str(),
+                    packages: None,
                 },
             )
         }

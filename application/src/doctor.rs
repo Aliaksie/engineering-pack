@@ -89,12 +89,12 @@ pub fn text(report: &Value) -> String {
         let name = host["host"].as_str().unwrap_or("?");
         if host["status"] == "not-installed" {
             out.push_str(&format!("{name:<9} not installed\n"));
-            continue;
+        } else {
+            out.push_str(&format!(
+                "{name:<9} {}\n",
+                host["status"].as_str().unwrap_or("?")
+            ));
         }
-        out.push_str(&format!(
-            "{name:<9} {}\n",
-            host["status"].as_str().unwrap_or("?")
-        ));
         for package in host["packages"].as_array().into_iter().flatten() {
             out.push_str(&format!(
                 "  {} {}\n",

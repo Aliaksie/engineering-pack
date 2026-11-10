@@ -57,6 +57,7 @@ fn routed(settings: &Value, intent: &str, files: &[&str], host: &str) -> Value {
             task: None,
             verification_mode: None,
             artifact: None,
+            packages: None,
         },
     )
     .unwrap()
@@ -330,4 +331,60 @@ fn every_host_names_its_project_skill_folders() {
     }
     assert_eq!(folders("claude"), [".claude/skills"]);
     assert!(!folders("claude").contains(&".agents/skills"));
+}
+
+#[test]
+fn a_route_keeps_only_skills_of_packages_the_host_installed() {
+    let settings = settings(
+        json!({"declared": [{"name": "team-stories", "path": ".agents/skills/team-stories",
+            "replaces": ["craft-stories:ground-spec"]}]}),
+        Some("---\nname: team-stories\ndescription: Our stories.\n---\nBody\n"),
+    )
+    .unwrap();
+    let request = |packages| Request {
+        intent: Some("story"),
+        files: &[],
+        risks: &[],
+        host: "codex",
+        delegate: false,
+        task: None,
+        verification_mode: None,
+        artifact: None,
+        packages,
+    };
+    // Unobserved: the route is the catalog's, and says it did not verify availability.
+    let unverified = route(&settings, &request(None)).unwrap();
+    assert_eq!(unverified["skillAvailability"], "not-verified");
+    assert_eq!(
+        unverified["skills"],
+        json!([
+            "craft-stories:workflow-prepare-stories",
+            "project:team-stories"
+        ])
+    );
+    // Observed without the stories package: its skill leaves and is attributed; the
+    // project's own replacement stays, since the project serves it.
+    let installed = [
+        "craft-delivery".to_string(),
+        "craft-engineering".to_string(),
+    ];
+    let plan = route(&settings, &request(Some(&installed))).unwrap();
+    assert_eq!(plan["skillAvailability"], "installed-packages");
+    assert_eq!(plan["skills"], json!(["project:team-stories"]));
+    let left_out: Vec<&Value> = plan["skillSources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|source| source["status"] == "not-installed")
+        .collect();
+    assert_eq!(
+        left_out,
+        [
+            &json!({"skill": "craft-stories:workflow-prepare-stories", "source": "package", "status": "not-installed"})
+        ]
+    );
+    // With the package installed nothing changes but the verification.
+    let all = ["craft-delivery".to_string(), "craft-stories".to_string()];
+    let plan = route(&settings, &request(Some(&all))).unwrap();
+    assert_eq!(plan["skills"], unverified["skills"]);
 }

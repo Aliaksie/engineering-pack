@@ -113,6 +113,31 @@ fn firing(
     )
 }
 
+/// A host with no install found: `not-installed`, still naming hook events this project
+/// recorded for it, which came from an install these files do not show.
+fn absent(host: &str, seen: &[Value]) -> Value {
+    let checks: Vec<Value> = seen
+        .iter()
+        .filter(|event| event["host"] == host)
+        .max_by(|a, b| a["at"].as_str().cmp(&b["at"].as_str()))
+        .map(|event| {
+            check(
+                "hooks",
+                "unknown",
+                format!(
+                    "last hook {} at {} ran {} {}, but no install was found: installed elsewhere (another user, scope or settings) or removed since",
+                    event["lifecycle"].as_str().unwrap_or("event"),
+                    event["at"].as_str().unwrap_or("?"),
+                    event["package"].as_str().unwrap_or("?"),
+                    event["packVersion"].as_str().unwrap_or("?")
+                ),
+            )
+        })
+        .into_iter()
+        .collect();
+    json!({"host": host, "status": "not-installed", "packages": [], "checks": checks})
+}
+
 /// A host's report from its checks: `problem` beats `unknown` beats `ok`.
 fn host_status(checks: &[Value]) -> &'static str {
     let has = |s: &str| checks.iter().any(|c| c["status"] == s);
@@ -169,7 +194,7 @@ struct Report {
 
 fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) -> Value {
     if facts["installed"] != true || facts["packages"].as_array().is_none_or(Vec::is_empty) {
-        return json!({"host": "claude", "status": "not-installed", "packages": [], "checks": []});
+        return absent("claude", seen);
     }
     let layers = facts["settings"].as_array().cloned().unwrap_or_default();
     let mut packages = Vec::new();
@@ -278,10 +303,39 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
 }
 
 fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) -> Value {
-    if facts["installed"] != true || facts["packages"].as_array().is_none_or(Vec::is_empty) {
-        return json!({"host": "codex", "status": "not-installed", "packages": [], "checks": []});
+    let cached = facts["packages"].as_array().map_or(&[][..], Vec::as_slice);
+    // Enabled in the configuration, absent from the plugin cache: Codex loads nothing of it
+    // and says nothing, so Craft is silent without any failure to see.
+    let uncached: Vec<&str> = facts["configured"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|plugin| plugin["enabled"] == "true")
+        .filter_map(|plugin| plugin["id"].as_str())
+        .filter(|id| !cached.iter().any(|package| package["id"] == *id))
+        .collect();
+    if facts["installed"] != true || (cached.is_empty() && uncached.is_empty()) {
+        return absent("codex", seen);
     }
     let mut checks = Vec::new();
+    if !uncached.is_empty() {
+        checks.push(check(
+            "installed",
+            "problem",
+            format!(
+                "{} enabled in config.toml but not in the plugin cache: Codex loads none of its skills or hooks",
+                uncached.join(", ")
+            ),
+        ));
+        report.next.push(format!(
+            "Install what config.toml enables, then restart Codex: {}",
+            uncached
+                .iter()
+                .map(|id| format!("`codex plugin add {id}`"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
     match facts["trust"].as_str() {
         Some("trusted") => checks.push(check("trust", "ok", "project trusted")),
         Some(level) => checks.push(check(
@@ -306,7 +360,7 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
             .push("Remove `hooks = false` from [features] in the Codex config".into());
     }
     let mut packages = Vec::new();
-    for (found, older) in newest(facts["packages"].as_array().map_or(&[][..], Vec::as_slice)) {
+    for (found, older) in newest(cached) {
         let id = found["id"].as_str().unwrap_or_default();
         let mut pchecks = Vec::new();
         let enabled = match found["enabled"].as_str() {
@@ -399,7 +453,12 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
 fn overlay(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) -> Value {
     let host = facts["host"].as_str().unwrap_or_default();
     if facts["present"] != true {
-        return json!({"host": host, "status": "not-installed", "checks": []});
+        let mut report = absent(host, seen);
+        report
+            .as_object_mut()
+            .expect("host report")
+            .remove("packages");
+        return report;
     }
     let mut checks = Vec::new();
     if let Some(error) = facts["error"].as_str() {

@@ -330,6 +330,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             task: None,
             verification_mode: None,
             artifact: None,
+            packages: None,
         },
     )?["checks"]
         .clone();
@@ -781,6 +782,7 @@ pub fn needs(input: &Value, settings: &Value, state: Option<&Value>, saved: &Val
                 task: None,
                 verification_mode: task["verificationMode"].as_str(),
                 artifact: None,
+                packages: None,
             },
         )
     });

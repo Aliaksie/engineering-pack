@@ -54,7 +54,8 @@ Copilot again on 2026-11-05.
 
 Craft's before-tool hooks only deny. Where a call is not denied, Copilot, Claude, Codex and
 Gemini get no decision, so the user's own approvals apply. Cursor blocks a preToolUse answer
-without a `permission`, so Craft answers `allow` there. Cursor treats a hook's `allow` as
+without a `permission`, so every Craft hook answers `allow` there, including hooks that only
+observe, and `{"continue":true}` on `beforeSubmitPrompt`. Cursor treats a hook's `allow` as
 advisory: it does not override Cursor's allowlist or approval prompts
 ([forum](https://forum.cursor.com/t/support-authoritative-allow-deny-and-ask-verdicts-from-hooks/161342)).
 If Cursor makes it authoritative, this answer changes.

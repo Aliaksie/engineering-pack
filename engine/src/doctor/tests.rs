@@ -195,3 +195,67 @@ fn codex_judges_the_newest_cached_version_and_names_older_ones() {
         json!(["0.0.4"])
     );
 }
+
+#[test]
+fn codex_plugins_enabled_but_not_in_the_cache_are_a_problem_with_the_install_command() {
+    let mut facts = facts();
+    facts["codex"]["packages"] = json!([]);
+    facts["codex"]["configured"] = json!([
+        {"id": "craft-delivery@engineering-pack", "enabled": "true"},
+        {"id": "craft-review@engineering-pack", "enabled": "false"}
+    ]);
+    let report = report(&facts);
+    let codex = host(&report, "codex");
+    assert_eq!(codex["status"], "problem");
+    let installed = &codex["checks"][0];
+    assert_eq!(installed["check"], "installed");
+    assert!(installed["detail"].as_str().unwrap().starts_with(
+        "craft-delivery@engineering-pack enabled in config.toml but not in the plugin cache"
+    ));
+    assert!(report["next"].as_array().unwrap().iter().any(|next| {
+        next.as_str()
+            .unwrap()
+            .contains("`codex plugin add craft-delivery@engineering-pack`")
+    }));
+    // Nothing fails in the host: Craft is absent, not broken.
+    assert_eq!(report["blocking"], false);
+    // One enabled plugin missing beside a cached one is named the same way.
+    let mut partly = self::facts();
+    partly["codex"]["configured"] = json!([
+        {"id": "craft-delivery@engineering-pack", "enabled": "true"},
+        {"id": "craft-stories@engineering-pack", "enabled": "true"}
+    ]);
+    let report = self::report(&partly);
+    let detail = host(&report, "codex")["checks"][0]["detail"]
+        .as_str()
+        .unwrap();
+    assert!(
+        detail.starts_with("craft-stories@engineering-pack enabled"),
+        "{detail}"
+    );
+    // Nothing configured and nothing cached stays not installed.
+    let mut none = self::facts();
+    none["codex"]["packages"] = json!([]);
+    assert_eq!(
+        host(&self::report(&none), "codex")["status"],
+        "not-installed"
+    );
+}
+
+#[test]
+fn a_host_without_an_install_still_names_the_hook_events_recorded_for_it() {
+    let mut facts = facts();
+    facts["claude"]["packages"] = json!([]);
+    let report = report(&facts);
+    let claude = host(&report, "claude");
+    assert_eq!(claude["status"], "not-installed");
+    let detail = claude["checks"][0]["detail"].as_str().unwrap();
+    assert!(detail.starts_with("last hook before-tool at 2026-11-09T10:00:00Z ran craft-delivery 0.0.5, but no install was found"), "{detail}");
+    // A host that never ran a hook here has nothing to add.
+    assert!(
+        host(&report, "cursor")["checks"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}

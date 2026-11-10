@@ -277,6 +277,28 @@ fn a_change_request_speaks_at_the_prompt_only_with_a_task_or_a_missing_input() {
 }
 
 #[test]
+fn a_route_whose_skills_the_host_cannot_load_stays_silent() {
+    let left_out = json!([{"skill": "craft-stories:write-stories", "source": "package", "status": "not-installed"}]);
+    let unserved =
+        json!({"intent": "story", "skills": [], "skillSources": left_out, "missing": []});
+    assert!(!speaks(&unserved, true));
+    // What it still carries is said: another skill, a standard, a bound task.
+    let mut partly = unserved.clone();
+    partly["skills"] = json!(["craft-delivery:plan-change"]);
+    assert!(speaks(&partly, true));
+    let mut standards = unserved.clone();
+    standards["standards"] = json!([{"id": "commits"}]);
+    assert!(speaks(&standards, true));
+    let mut bound = unserved.clone();
+    bound["taskIdentity"] = json!({"session": "s", "task": "t1"});
+    assert!(speaks(&bound, true));
+    // A project that turned a skill off made its own choice; the route still speaks.
+    let disabled = json!({"intent": "story", "skills": [],
+        "skillSources": [{"skill": "craft-stories:write-stories", "source": "package", "status": "disabled"}]});
+    assert!(speaks(&disabled, true));
+}
+
+#[test]
 fn a_compacted_task_resumes_at_the_next_event_that_can_show_it() {
     let settings = json!({"checkpoint": {"enabled": true}});
     let changing = Facts {

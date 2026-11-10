@@ -129,7 +129,8 @@ test('without a bundled runtime, launchers answer as a failed runtime would', t 
       assert.equal(output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision, 'deny', denied.stdout);
     }
     const observed = run('craft-engineering', 'observe-before-tool', publish(project));
-    assert.deepEqual([observed.status, observed.stdout, observed.stderr], [0, '', '']);
+    // Cursor blocks a permission hook that answers outside its schema; a silent hook says `allow`.
+    assert.deepEqual([observed.status, observed.stdout.trim(), observed.stderr], [0, host === 'cursor' ? '{"permission":"allow"}' : '', '']);
     // A tool call the fallback does not deny gets no grant where the host takes none.
     const routed = run('craft-delivery', 'routing', publish(project));
     assert.equal(routed.status, 0, routed.stderr);
