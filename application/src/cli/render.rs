@@ -147,6 +147,21 @@ pub(super) fn session_view(status: &Value) -> String {
         );
     }
     lines.extend(acceptance_lines(status, shown));
+    let delivered = &status["delivered"];
+    if delivered.is_object() {
+        if let Some(summary) = nonempty(&delivered["summary"]) {
+            lines.push(summary.to_string());
+        }
+        let held = delivered["lookupsRepeated"].as_u64().unwrap_or(0)
+            + delivered["lookupsOverBudget"].as_u64().unwrap_or(0);
+        lines.push(format!(
+            "Injected: {} bytes in {} hook answers; {} pieces left out; {} lookup answers held back (repeat or budget)",
+            shown(&delivered["contextBytes"]),
+            shown(&delivered["hookAnswers"]),
+            shown(&delivered["droppedPieces"]),
+            held
+        ));
+    }
     if let Some(advice) = nonempty(&status["capability"]["recommendation"]) {
         lines.push(format!("Model advice: {advice}"));
     }

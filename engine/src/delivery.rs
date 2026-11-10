@@ -59,6 +59,12 @@ pub fn test_runs(settings: &Value) -> bool {
     settings["routing"]["testRuns"] != false
 }
 
+/// Whether the user is shown the session summary line when a turn ends: unless
+/// `routing.sessionSummary` is false.
+pub fn session_summary(settings: &Value) -> bool {
+    settings["routing"]["sessionSummary"] != false
+}
+
 /// Whether hooks keep the session's intent record and its pending-resume mark: unless
 /// `routing.sessionRecords` is false.
 pub fn session_records(settings: &Value) -> bool {
@@ -416,6 +422,7 @@ pub fn planning_recorded(record: &Value, path: &str, hash: &str) -> Option<Value
 }
 
 pub mod answer;
+pub mod budget;
 mod prompt;
 #[cfg(test)]
 mod tests;

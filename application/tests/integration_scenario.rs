@@ -339,10 +339,19 @@ fn scenario(host: Host) {
         "{stop}"
     );
     assert_eq!(summary["review"][0]["id"], "api-review", "{stop}");
+    // The same findings never hold a stop twice: the turn ends, and the user reads one line
+    // whose counts are what happened above (rings and changelog raised and fixed, the commit
+    // message and the marker raised, one empty test run, one resume after compaction).
+    let ended = host.hook(&repo, "turn-end", json!({"stop_hook_active": false}));
+    let ended: Value = serde_json::from_str(&ended).unwrap_or_else(|_| panic!("{ended}"));
+    assert_eq!(
+        ended,
+        json!({"systemMessage": "Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 1 task context restored"})
+    );
     assert_eq!(
         host.hook(&repo, "turn-end", json!({"stop_hook_active": false})),
         "",
-        "the same findings never hold a stop twice"
+        "an unchanged summary is not shown again"
     );
 
     // Doctor reads the install and the last hook this session ran, and changes nothing.

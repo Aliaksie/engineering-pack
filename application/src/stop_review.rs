@@ -5,6 +5,7 @@
 //! told, so the same finding never holds a stop twice.
 use crate::failure::Failure;
 use crate::session::read_record;
+use craft_engine::session::delivered::{Checked, finding_key};
 use craft_engine::{debt, hash, routing, standards};
 use craft_platform::state;
 use serde_json::{Map, Value, json};
@@ -159,19 +160,20 @@ fn markers(root: &Path, file: &str, tracked: bool, bytes: &[u8]) -> Vec<Value> {
 /// The stop summary for this turn, or `None` when nothing changed since the last stop or the
 /// session was told all of it. While the host continues a held stop (`stop_active`) nothing
 /// is said or recorded: a stop is never held twice in a row, and what the continuation
-/// changes is reviewed at the next stop.
+/// changes is reviewed at the next stop. With it, each changed file as a scope the stop
+/// checked, so a finding that is gone counts as fixed.
 pub fn stop(
     root: &Path,
     session: &str,
     settings: &Value,
     intent: Option<&str>,
     stop_active: bool,
-) -> Result<Option<Value>, Failure> {
+) -> Result<(Option<Value>, Vec<Checked>), Failure> {
     if stop_active || !standards::stop_relevant(settings) {
-        return Ok(None);
+        return Ok((None, Vec::new()));
     }
     let Some(files) = observed(root) else {
-        return Ok(None);
+        return Ok((None, Vec::new()));
     };
     let file = record_file(root, session, true)?;
     let record = read_record(&file, RECORD_BYTES)?;
@@ -187,8 +189,10 @@ pub fn stop(
         .collect();
     let mut next = json!({"formatVersion": 1, "files": hashes(&files), "delivered": delivered});
     let mut summary = None;
+    let mut checked = Vec::new();
     if !changed.is_empty() {
         let mut findings = Vec::new();
+        let markers_on = standards::debt_markers(settings);
         for Dirty {
             file,
             tracked,
@@ -196,6 +200,7 @@ pub fn stop(
             ..
         } in changed.iter().copied()
         {
+            let from = findings.len();
             for verdict in crate::dependencies::verdicts(root, settings, file, bytes) {
                 for finding in verdict["findings"].as_array().into_iter().flatten() {
                     let mut finding = finding.clone();
@@ -204,12 +209,33 @@ pub fn stop(
                     findings.push(finding);
                 }
             }
-            if standards::debt_markers(settings) {
+            if markers_on {
                 for mut finding in markers(root, file, *tracked, bytes) {
                     finding["file"] = json!(file);
                     findings.push(finding);
                 }
             }
+            // The stop looked at this file for dependency findings and, when on, markers.
+            checked.push(Checked {
+                scope: file.clone(),
+                kinds: if markers_on { "dm" } else { "d" }.into(),
+                keys: findings[from..]
+                    .iter()
+                    .map(|finding| {
+                        let kind = if finding.get("standard").is_some() {
+                            'd'
+                        } else {
+                            'm'
+                        };
+                        finding_key(
+                            kind,
+                            &finding["standard"],
+                            &finding["rule"],
+                            &finding["message"],
+                        )
+                    })
+                    .collect(),
+            });
         }
         let paths: Vec<Value> = changed.iter().map(|dirty| json!(dirty.file)).collect();
         let review = routing::scope(settings, &paths)
@@ -223,5 +249,5 @@ pub fn stop(
     if next != record {
         state::write(&file, &next, RECORD_BYTES, false)?;
     }
-    Ok(summary)
+    Ok((summary, checked))
 }

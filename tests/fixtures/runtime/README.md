@@ -19,7 +19,7 @@ now; the route and session corpora replay those decisions) and the services deci
 built-in mappings (`services-contracts.json` replays it with them). The acceptance-view and
 feature-outcome cases were removed as copies of `view-contracts.json` and
 `feature-contracts.json`. Correction: `settings:precedence` lists every routing switch in the
-bundled defaults (`standardChecks` through `sessionRecords`), each with its `bundled` origin,
+bundled defaults (`standardChecks` through `sessionSummary`), each with its `bundled` origin,
 as `settings-contracts.json` does.
 
 The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,
@@ -47,7 +47,10 @@ schemas, Unicode, string tool arguments, alias precedence, invalid arguments and
 session bounds. Optional undefined event fields compare as absent JSON fields.
 These fixtures protect the thin adapter boundary; they do not establish automatic
 hook dispatch, full application lifecycle, cancellation or native platform support.
-Two intentional corrections, also applied to the wire cases in `render-contracts.json`: a
+Three intentional corrections, also applied to the wire cases in `render-contracts.json`:
+hook context is bounded at 9,000 UTF-8 bytes on every host instead of 12,000 UTF-16 units,
+under the caps Claude Code, Codex and Copilot document, so the twenty `long-*` wire cases cut
+or keep their text at that bound; a
 Copilot before-tool call Craft does not deny gets no output instead of
 `permissionDecision: "allow"`, so Copilot's own permission flow decides; and Copilot
 after-tool carries `additionalContext`, which its hooks reference documents.

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXPORTS, SCENARIOS, listingEntry, measure, portable, spellings } from '../tooling/overhead.mjs';
+import { HOSTS } from '../hosts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const budget = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/overhead-budget.json'), 'utf8'));
@@ -16,7 +17,7 @@ test('every export stays within its overhead ceilings and is silent where Craft 
   const over = [], slack = [];
   for (const [host, measured] of Object.entries(report)) {
     const ceiling = budget.hosts[host];
-    const pairs = [['always', measured.always.bytes, ceiling.always], ['hooks', measured.hooks.bytes, ceiling.hooks],
+    const pairs = [['always', measured.always.bytes, ceiling.always], ['hooks', measured.hooks.bytes, ceiling.hooks], ['session', measured.session.bytes, ceiling.session],
       ...Object.entries(measured.guidance).map(([intent, bytes]) => [`guidance.${intent}`, bytes, ceiling.guidance[intent]])];
     for (const [name, value, limit] of pairs) {
       assert.equal(typeof limit, 'number', `${host} ${name} has a ceiling`);
@@ -24,6 +25,10 @@ test('every export stays within its overhead ceilings and is silent where Craft 
       else if (value < limit * 0.9) slack.push(`${host} ${name}: ${value} (ceiling ${limit})`);
     }
     for (const id of NO_ADVANTAGE) assert.equal(measured.hooks.scenarios[id] ?? 0, 0, `${host} ${id} adds context`);
+    // A hook answer is the context plus a small JSON envelope; the context alone has the ceiling.
+    const limit = HOSTS[host].contextBytes;
+    if (measured.session.events) assert.equal(typeof limit, 'number', `${host} states its hook output ceiling`);
+    assert.ok(measured.session.maxHook <= (limit ?? 0) + 256, `${host}: a hook answer of ${measured.session.maxHook} bytes passes the host ceiling`);
   }
   if (slack.length) console.log(`# overhead well below ceiling, lower it: ${slack.join('; ')}`);
   assert.deepEqual(over, [], 'overhead above its ceiling: reduce it, or raise the ceiling with the reason');

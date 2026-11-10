@@ -41,7 +41,7 @@ test('settings reports precedence, origins, private state placement and worker c
   assert.equal(result.stdout, `${JSON.stringify(report, null, 2)}\n`);
   assert.deepEqual(report.settings.routing, {
     promptHints: true, editHints: false, dedupeHints: false, standardChecks: true, stopReview: true,
-    debtMarkers: false, testRuns: true, workerStandards: true, sessionRecords: true,
+    debtMarkers: false, testRuns: true, workerStandards: true, sessionRecords: true, sessionSummary: true,
   });
   assert.equal(report.origins['routing.testRuns'], 'bundled', 'every hook switch is listed with its origin');
   assert.equal(report.settings.efficiency.delegation.maxWorkers, 1);

@@ -377,6 +377,24 @@ fn observe(
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
         }
     }
+    // What this session's hooks delivered, where its hooks kept the record.
+    if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
+        match crate::delivered::read(root, session) {
+            Ok(record) if !record.is_null() => {
+                let mut delivered = craft_engine::session::delivered::counts(&record);
+                let count = |value: &Value| json!(value.as_u64().unwrap_or(0));
+                delivered["contextBytes"] = count(&record["context"]["bytes"]);
+                delivered["hookAnswers"] = count(&record["context"]["hooks"]);
+                delivered["droppedPieces"] = count(&record["context"]["dropped"]);
+                delivered["lookupsRepeated"] = count(&record["answers"]["repeated"]);
+                delivered["lookupsOverBudget"] = count(&record["answers"]["overBudget"]);
+                delivered["summary"] = json!(craft_engine::session::delivered::summary(&record));
+                result["delivered"] = delivered;
+            }
+            Ok(_) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
+        }
+    }
     result["packVersion"] = pack_version().map_or(Value::Null, Value::String);
     if let Some(mut saved) = host_context {
         saved.as_object_mut().unwrap().remove("lastEvent");

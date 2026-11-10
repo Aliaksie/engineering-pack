@@ -3,6 +3,7 @@
 //! mapping table is the data the build uses to register hooks.
 use crate::host;
 use crate::telemetry::Recorder;
+use craft_engine::delivery::budget::{self, Piece};
 use craft_engine::session::test_runs;
 use craft_engine::values::js_length;
 use craft_platform::files;
@@ -11,7 +12,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 const MAX_INPUT: usize = 65_536;
-const MAX_CONTEXT: usize = 12_000;
+/// The ceiling for a host whose table states none.
+const CONTEXT_BYTES: usize = 9_000;
 /// How much of a long test output's end is read for the runner's summary.
 const RUN_TAIL_BYTES: usize = 65_536;
 const HOSTS: &str = include_str!("../../hosts/hooks.json");
@@ -71,6 +73,20 @@ fn plugin_names(host: &str) -> bool {
 fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
     let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
     table[host]["events"].get(lifecycle).cloned()
+}
+
+/// The most UTF-8 bytes of context one hook answer gives `host`: under the cap past which the
+/// host replaces or cuts the answer.
+fn ceiling(host: &str) -> usize {
+    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
+    table[host]["contextBytes"]
+        .as_u64()
+        .map_or(CONTEXT_BYTES, |bytes| bytes as usize)
+}
+
+/// Whether `host` shows the user a message a hook returns at `lifecycle`.
+pub(crate) fn shows_notice(host: &str, lifecycle: &str) -> bool {
+    mapping(host, lifecycle).is_some_and(|m| m["notice"] == true)
 }
 
 /// Whether `lifecycle` is the one tool hook that delivers an edit's context on `host`: before
@@ -445,21 +461,87 @@ fn render(context: &Value, host: &str) -> String {
     }
 }
 
-/// The host session identity, and unfinished tasks of earlier sessions it may adopt.
-fn session_line(session: &Value) -> String {
+/// Names of the context pieces whose delivery a session counts.
+pub(crate) const ANSWER: &str = "lookup answer";
+pub(crate) const ROUTING: &str = "routing hints";
+pub(crate) const RESUME: &str = "task records";
+pub(crate) const CHECKPOINT: &str = "checkpoint";
+pub(crate) const STANDARDS: &str = "standards findings";
+pub(crate) const TESTS: &str = "test evidence";
+
+/// The host session identity, then what earlier sessions left that it may adopt: each a
+/// piece of its own, so a long list never costs the identity.
+fn session_pieces(session: &Value, pieces: &mut Vec<Piece>) {
     let identity = json!({"id": session["id"], "task": session["task"]});
-    let mut line =
-        format!("Craft session (pass as --session; no authorization implied): {identity}");
+    let mut push = |name, rank, text| pieces.push(Piece { name, rank, text });
+    push(
+        "session identity",
+        0,
+        format!("Craft session (pass as --session; no authorization implied): {identity}"),
+    );
     if let Some(handoff) = session.get("handoff") {
-        line.push_str(&format!("\nUnfinished tasks of earlier sessions in this worktree. Only if the user's request continues one, adopt it with `craft task-adopt --session <id> --from <from>`; records are copied and authorization is not renewed: {handoff}"));
+        push(
+            "unfinished tasks of earlier sessions",
+            6,
+            format!(
+                "Unfinished tasks of earlier sessions in this worktree. Only if the user's request continues one, adopt it with `craft task-adopt --session <id> --from <from>`; records are copied and authorization is not renewed: {handoff}"
+            ),
+        );
     }
     if let Some(planning) = session.get("planning") {
-        line.push_str(&format!("\nPlanning evidence of earlier sessions in this worktree, files unchanged since. A plan document, not a managed work plan: it holds no tasks and starts no execution: {planning}"));
+        push(
+            "planning evidence of earlier sessions",
+            7,
+            format!(
+                "Planning evidence of earlier sessions in this worktree, files unchanged since. A plan document, not a managed work plan: it holds no tasks and starts no execution: {planning}"
+            ),
+        );
     }
     if let Some(plans) = session.get("plans") {
-        line.push_str(&format!("\nOpen work plans in this worktree. Only if the user's request continues one, start a ready task with `craft task-start --session <id> --plan <plan> --task <task>`; a task held in another session (here: false) needs --take-over, as that session may still be working: {plans}"));
+        push(
+            "open work plans",
+            5,
+            format!(
+                "Open work plans in this worktree. Only if the user's request continues one, start a ready task with `craft task-start --session <id> --plan <plan> --task <task>`; a task held in another session (here: false) needs --take-over, as that session may still be working: {plans}"
+            ),
+        );
     }
-    line
+}
+
+/// A decision's context in the pieces a host is given, in the order it reads them. What the
+/// model must not lose ranks lowest: who the session is, the task it resumes, a test run that
+/// ran nothing; lists of what earlier sessions left rank highest and go first.
+fn pieces(result: &Value, host: &str) -> Vec<Piece> {
+    let mut pieces = Vec::new();
+    if let Some(session) = result.get("session") {
+        session_pieces(session, &mut pieces);
+    }
+    if let Some(context) = result.get("context") {
+        let (name, rank) = match context["kind"].as_str() {
+            Some("resume") => (RESUME, 1),
+            Some("answer") => (ANSWER, 2),
+            Some("routing") => (ROUTING, 3),
+            Some("checkpoint") => (CHECKPOINT, 3),
+            Some("services") => ("service map", 6),
+            _ => ("context note", 1),
+        };
+        pieces.push(Piece {
+            name,
+            rank,
+            text: render(context, host),
+        });
+    }
+    let mut push = |name, rank, text| pieces.push(Piece { name, rank, text });
+    if let Some(found) = result.get("standards") {
+        push(STANDARDS, 2, standards_line(found));
+    }
+    if let Some(delegation) = result.get("delegation") {
+        push("delegated standards", 2, delegation_line(delegation));
+    }
+    if let Some(run) = result.get("tests") {
+        push(TESTS, 1, tests_line(run));
+    }
+    pieces
 }
 
 /// Declared standards the file or commit just written does not meet.
@@ -499,23 +581,63 @@ pub(crate) fn continues_turn(host: &str) -> bool {
     mapping(host, "turn-end").is_some_and(|m| m["continue"] == true)
 }
 
-/// At most 12 000 UTF-16 units of context, cut at a character boundary.
-fn bounded(context: String) -> String {
-    if js_length(&context) <= MAX_CONTEXT {
-        return context;
+/// What a decision gives the host at one event, within the host's output ceiling.
+pub(crate) struct Shaped {
+    /// The context text; empty where the host shows none at this event or the call is denied.
+    pub context: String,
+    /// Names of the context pieces delivered and of those left out to fit.
+    pub kept: Vec<&'static str>,
+    pub dropped: Vec<&'static str>,
+    /// The reason a held stop continues the turn with.
+    pub stop: Option<String>,
+}
+
+impl Shaped {
+    /// Bytes the model receives from this hook answer.
+    pub fn bytes(&self) -> usize {
+        self.context.len() + self.stop.as_ref().map_or(0, String::len)
     }
-    let mut units = 0;
-    let end = context
-        .char_indices()
-        .find(|(_, c)| {
-            units += c.len_utf16();
-            units > MAX_CONTEXT
-        })
-        .map_or(context.len(), |(index, _)| index);
-    format!(
-        "{}\n[truncated; use the runtime checkpoint/route CLI for full data]",
-        &context[..end]
-    )
+}
+
+/// The context and stop reason `result` gives `host` at `lifecycle`.
+pub(crate) fn shaped(result: &Value, host: &str, lifecycle: &str) -> Shaped {
+    let mut shaped = Shaped {
+        context: String::new(),
+        kept: Vec::new(),
+        dropped: Vec::new(),
+        stop: None,
+    };
+    let Some(mapping) = mapping(host, lifecycle) else {
+        return shaped;
+    };
+    let denied = result["decision"] == "deny" && mapping["deny"] == true;
+    if mapping["context"] == true && !denied {
+        let pieces = pieces(result, host);
+        let named: Vec<&'static str> = pieces
+            .iter()
+            .filter(|piece| !piece.text.is_empty())
+            .map(|piece| piece.name)
+            .collect();
+        let fitted = budget::fit(pieces, ceiling(host));
+        shaped.kept = named
+            .into_iter()
+            .filter(|name| !fitted.dropped.contains(name))
+            .collect();
+        shaped.context = fitted.text;
+        shaped.dropped = fitted.dropped;
+    }
+    if let Some(summary) = result
+        .get("stop")
+        .filter(|_| lifecycle == "turn-end" && mapping["continue"] == true && !denied)
+    {
+        let piece = Piece {
+            name: "stop review",
+            rank: 0,
+            text: stop_line(summary),
+        };
+        shaped.stop = Some(budget::fit(vec![piece], ceiling(host)).text);
+    }
+    shaped
 }
 
 /// The answer of a hook with nothing to say, where the host needs one. Cursor blocks a
@@ -542,25 +664,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
     };
     let denied = result["decision"] == "deny" && mapping["deny"] == true;
     let reason = &result["reason"];
-    let context = if mapping["context"] == true {
-        let parts = [
-            result.get("session").map(session_line),
-            result.get("context").map(|c| render(c, host)),
-            result.get("standards").map(standards_line),
-            result.get("delegation").map(delegation_line),
-            result.get("tests").map(tests_line),
-        ];
-        bounded(
-            parts
-                .into_iter()
-                .flatten()
-                .filter(|part| !part.is_empty())
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
-    } else {
-        String::new()
-    };
+    let Shaped { context, stop, .. } = shaped(result, host, lifecycle);
     if host == "claude" && denied {
         return Wire {
             stdout: String::new(),
@@ -569,11 +673,7 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         };
     }
     let name = &mapping["name"];
-    if let Some(summary) = result
-        .get("stop")
-        .filter(|_| lifecycle == "turn-end" && mapping["continue"] == true)
-    {
-        let reason = bounded(stop_line(summary));
+    if let Some(reason) = stop {
         let output = match host {
             "cursor" => json!({"followup_message": reason}),
             "gemini" => json!({"decision": "deny", "reason": reason}),
@@ -606,6 +706,18 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         _ => (!context.is_empty()).then(
             || json!({"hookSpecificOutput": {"hookEventName": name, "additionalContext": context}}),
         ),
+    };
+    // One line for the user on what Craft did, where the host shows a hook's message.
+    let notice = result["notice"]
+        .as_str()
+        .filter(|_| mapping["notice"] == true);
+    let output = match (output, notice) {
+        (Some(mut output), Some(notice)) => {
+            output["systemMessage"] = json!(notice);
+            Some(output)
+        }
+        (None, Some(notice)) => Some(json!({"systemMessage": notice})),
+        (output, None) => output,
     };
     Wire {
         stdout: output.map_or_else(String::new, |o| format!("{o}\n")),
@@ -834,14 +946,74 @@ mod tests {
         assert!(different.is_empty(), "{}", different.join("\n"));
     }
 
-    /// JavaScript cuts at 12 000 UTF-16 units and may keep half a surrogate pair; the
-    /// native cut keeps whole characters.
+    /// A session start that would pass the host's ceiling keeps who the session is and the
+    /// task it resumes, leaves out whole lists of what earlier sessions left and says which.
     #[test]
-    fn truncated_context_keeps_whole_characters() {
-        let context = format!("{}\u{1f642}tail", "x".repeat(MAX_CONTEXT - 1));
-        let cut = bounded(context);
-        assert!(cut.starts_with(&format!("{}\n[truncated;", "x".repeat(MAX_CONTEXT - 1))));
-        assert_eq!(bounded("y".repeat(MAX_CONTEXT)), "y".repeat(MAX_CONTEXT));
+    fn a_context_over_the_ceiling_loses_whole_low_priority_pieces() {
+        let list = |name: &str| json!([{"name": name, "notes": "n".repeat(3_500)}]);
+        let result = json!({"decision": "allow",
+            "session": {"id": "S1", "task": "T1", "handoff": list("handoff"),
+                "planning": list("planning"), "plans": list("plans")},
+            "context": {"kind": "resume", "data": {"task": "T1", "next": "r".repeat(2_000)}}});
+        for host in ["claude", "codex", "copilot", "cursor", "gemini"] {
+            let shaped = shaped(&result, host, "session-start");
+            assert!(shaped.context.len() <= ceiling(host), "{host}");
+            assert_eq!(
+                shaped.dropped,
+                [
+                    "unfinished tasks of earlier sessions",
+                    "planning evidence of earlier sessions"
+                ],
+                "{host}"
+            );
+            assert_eq!(
+                shaped.kept,
+                ["session identity", "open work plans", RESUME],
+                "{host}"
+            );
+            assert!(
+                shaped
+                    .context
+                    .starts_with("Craft session (pass as --session")
+            );
+            assert!(shaped.context.ends_with(
+                "[Craft left out, to stay within the host's hook output limit: unfinished tasks of earlier sessions, planning evidence of earlier sessions]"
+            ));
+            // The wire carries exactly this text, and the same bytes every time.
+            let wire = serialize(&result, host, "session-start").stdout;
+            assert!(wire.contains("Craft left out") && !wire.contains("[truncated"));
+            assert_eq!(wire, serialize(&result, host, "session-start").stdout);
+        }
+        // Within the ceiling nothing is left out or added.
+        let small = json!({"decision": "allow", "session": {"id": "S1", "task": null,
+            "plans": [{"name": "p"}]}});
+        let shaped = shaped(&small, "claude", "session-start");
+        assert!(shaped.dropped.is_empty() && !shaped.context.contains("left out"));
+    }
+
+    /// The summary line reaches the user as the host's own message field, only at an event
+    /// where the host shows one, and never beside a held stop.
+    #[test]
+    fn the_session_summary_is_a_user_message_where_the_host_shows_one() {
+        let result = json!({"decision": "allow", "notice": "Craft this session: 1 lookup"});
+        for host in ["claude", "codex", "gemini"] {
+            let wire = serialize(&result, host, "turn-end").stdout;
+            assert_eq!(
+                wire, "{\"systemMessage\":\"Craft this session: 1 lookup\"}\n",
+                "{host}"
+            );
+        }
+        for host in ["cursor", "copilot", "jetbrains"] {
+            assert_eq!(serialize(&result, host, "turn-end").stdout, "", "{host}");
+        }
+        assert_eq!(serialize(&result, "claude", "after-tool").stdout, "");
+        let held =
+            json!({"decision": "allow", "notice": "n", "stop": {"findings": [{"rule": "r"}]}});
+        assert!(
+            !serialize(&held, "claude", "turn-end")
+                .stdout
+                .contains("systemMessage")
+        );
     }
 
     /// Delegated standards reach a host-started subagent only where its start event takes

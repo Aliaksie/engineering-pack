@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- When a turn ends, Claude Code, Codex and Gemini CLI show one line on what Craft did in the
+  session: standards findings raised and fixed, test runs that ran no test, lookups answered
+  from the project index and task contexts restored. Nothing happened, or nothing changed
+  since the line was last shown: no line. `craft session` prints the same line and counts on
+  every host (`delivered` in `--json`); `routing.sessionSummary: false` turns the line off.
+- A hook answer carries at most 9,000 bytes of context on every host, down from 12,000
+  characters, which was over the cap past which Claude Code, Codex and Copilot replace or cut
+  a hook's context. A context over the ceiling now loses whole pieces, least important first,
+  and names them in one line, instead of being cut mid-text; the session identity and a
+  resumed task are kept longest.
+- Hook answers from Project Intelligence are bounded per session: an answer with the same
+  text is given once per context window, and a window receives at most 16 KiB of answers. A
+  compaction starts a new window. Needs `routing.sessionRecords`.
+- Sessions keep a `delivered.json` record of counts (never delivered text); `craft
+  state-clean` treats it as a Craft record. `host.hook` telemetry events add `contextBytes`,
+  `droppedPieces` and `heldAnswers`.
+- `npm run overhead` replays a long session with repeated questions and searches; the
+  overhead budget test fails when its total or any single hook answer passes its ceiling.
 - Cursor: a Craft hook with nothing to say now answers `preToolUse` with `{"permission":"allow"}`
   and `beforeSubmitPrompt` with `{"continue":true}` instead of empty output. Cursor blocks a
   permission hook whose answer does not match its schema; `allow` stays advisory there. The

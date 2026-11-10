@@ -325,7 +325,7 @@ test('session service preparation reads metadata without probing executable avai
     assert.ok(result.stdout.includes('never-execute-this-command'), host);
     assert.ok(result.stdout.includes('unverified'), host);
     assert.equal(readCheckpoint(dir, 'fixture-session'), null, 'metadata preparation creates no checkpoint');
-    assert.ok(only(stateNames(dir), /^(?:manifest\.json|routing-)/), 'only telemetry and routing invalidation state are allowed');
+    assert.ok(only(stateNames(dir), /^(?:manifest\.json|routing-|delivered\.json)/), 'only telemetry, routing invalidation and the delivery record are allowed');
   }
 });
 

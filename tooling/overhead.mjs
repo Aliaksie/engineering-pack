@@ -3,6 +3,7 @@
 //   always   bytes the host shows on every model call (skill listing, instruction files)
 //   hooks    bytes each context-injecting hook returns for fixed prompts and edits
 //   guidance bytes of the files a routed intent selects
+//   session  bytes a long session's hooks return when the same search and question repeat
 // No model runs; hook latency stays in the benchmark suite. `tests/overhead-budget.test.mjs`
 // compares the numbers with checked-in ceilings.
 import fs from 'node:fs';
@@ -103,14 +104,30 @@ export function spellings(value, placeholder) {
   return Object.fromEntries([...forms].sort((a, b) => b.length - a.length).map(form => [form, placeholder]));
 }
 
-// Bytes on stdout of every context-injecting hook the export registers, per scenario.
-export function hooks(exportRoot, host, binary) {
+// The context-injecting hooks an export registers for a host.
+function registered(host) {
   const events = HOSTS[host].events ?? {};
-  const registered = PACKAGES.flatMap(pkg => {
+  return PACKAGES.flatMap(pkg => {
     const manifest = path.join(repository, 'packages', pkg, 'capability.json');
     return JSON.parse(fs.readFileSync(manifest, 'utf8')).hooks.map(hook => ({ pkg, ...hook }));
   }).filter(hook => events[hook.event]?.context && hook.handler !== 'review-read-only');
-  if (!registered.length) return { bytes: 0, scenarios: {} };
+}
+
+// Bytes each registered hook of one lifecycle returns for a payload, machine paths as placeholders.
+function answers(binary, host, hooks, lifecycle, root, input, machine) {
+  return hooks.filter(hook => hook.event === lifecycle).map(hook => {
+    const args = ['hook', host, hook.event, '--package', hook.pkg, '--handler', hook.handler, '--scope', 'any'];
+    const child = spawnSync(binary, args, { cwd: root, input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, CRAFT_EVIDENCE_WARM: '0' } });
+    if (child.status !== 0 && child.status !== 2) throw new Error(`${host} ${hook.pkg} ${hook.event}: ${child.stderr}`);
+    return Buffer.byteLength(portable(child.stdout ?? '', machine));
+  });
+}
+
+// Bytes on stdout of every context-injecting hook the export registers, per scenario.
+export function hooks(exportRoot, host, binary) {
+  const events = HOSTS[host].events ?? {};
+  const hooks = registered(host);
+  if (!hooks.length) return { bytes: 0, scenarios: {} };
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-overhead-')));
   const machine = { ...spellings(root, '<root>'), ...spellings(binary, '<craft>') };
   try {
@@ -118,16 +135,46 @@ export function hooks(exportRoot, host, binary) {
     const session = `overhead-${host}`;
     const scenarios = {};
     for (const scenario of SCENARIOS) {
-      let bytes = 0;
-      for (const hook of registered.filter(hook => hook.event === scenario.lifecycle)) {
-        const args = ['hook', host, hook.event, '--package', hook.pkg, '--handler', hook.handler, '--scope', 'any'];
-        const child = spawnSync(binary, args, { cwd: root, input: JSON.stringify(payload(host, root, session, scenario)), encoding: 'utf8', env: { ...process.env, CRAFT_EVIDENCE_WARM: '0' } });
-        if (child.status !== 0 && child.status !== 2) throw new Error(`${host} ${hook.pkg} ${hook.event}: ${child.stderr}`);
-        bytes += Buffer.byteLength(portable(child.stdout ?? '', machine));
-      }
+      const bytes = answers(binary, host, hooks, scenario.lifecycle, root, payload(host, root, session, scenario), machine).reduce((a, b) => a + b, 0);
       if (events[scenario.lifecycle]?.context) scenarios[scenario.id] = bytes;
     }
     return { bytes: Object.values(scenarios).reduce((a, b) => a + b, 0), scenarios };
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+
+// A long session in two context windows: in each, the same question once and then the same
+// search again and again, with a compaction between them. What the hooks return must not grow
+// with the number of calls: an identical answer goes out once per window, and no single hook
+// answer passes the host's ceiling.
+export const SESSION = { windows: 2, searches: 40, prompts: 10 };
+const SEARCH = { claude: { tool_name: 'Grep', tool_input: { pattern: 'computeTotal' } }, shell: { codex: 'Bash', cursor: 'Shell', gemini: 'run_shell_command' } };
+
+export function session(exportRoot, host, binary) {
+  const events = HOSTS[host].events ?? {};
+  const hooks = registered(host);
+  if (!hooks.length) return { events: 0, bytes: 0, maxHook: 0 };
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'craft-overhead-session-')));
+  const machine = { ...spellings(root, '<root>'), ...spellings(binary, '<craft>') };
+  const id = `overhead-session-${host}`;
+  const base = host === 'copilot' ? { sessionId: id, cwd: root } : { session_id: id, cwd: root };
+  const search = host === 'copilot' ? { toolName: 'bash', toolArgs: { command: 'rg -n computeTotal' } }
+    : SEARCH[host] ?? { tool_name: SEARCH.shell[host] ?? 'Bash', tool_input: { command: 'rg -n computeTotal' } };
+  const sizes = [];
+  let count = 0;
+  const send = (lifecycle, extra = {}) => {
+    if (!events[lifecycle]) return;
+    count += 1;
+    sizes.push(...answers(binary, host, hooks, lifecycle, root, { ...base, ...extra }, machine));
+  };
+  try {
+    project(root);
+    send('session-start', { source: 'startup' });
+    for (let window = 0; window < SESSION.windows; window += 1) {
+      if (window) { send('before-compact', { trigger: 'auto' }); send('after-compact', { source: 'compact' }); }
+      for (let index = 0; index < SESSION.prompts; index += 1) send('before-prompt', { prompt: 'Who calls computeTotal?' });
+      for (let index = 0; index < SESSION.searches; index += 1) send('after-tool', search);
+    }
+    return { events: count, bytes: sizes.reduce((a, b) => a + b, 0), maxHook: Math.max(0, ...sizes) };
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -152,14 +199,14 @@ export function guidance(exportRoot, binary) {
 export function measure(distRoot, binary, hosts = EXPORTS) {
   return Object.fromEntries(hosts.map(host => {
     const exportRoot = path.join(distRoot, host);
-    return [host, { always: always(exportRoot, host), hooks: hooks(exportRoot, host, binary), guidance: guidance(exportRoot, binary) }];
+    return [host, { always: always(exportRoot, host), hooks: hooks(exportRoot, host, binary), session: session(exportRoot, host, binary), guidance: guidance(exportRoot, binary) }];
   }));
 }
 
 function table(report) {
-  const rows = [['host', 'skills', 'listing B', 'instructions B', 'always B', 'hooks B (sequence)', ...INTENTS.map(({ intent }) => intent)]];
-  for (const [host, { always: a, hooks: h, guidance: g }] of Object.entries(report)) {
-    rows.push([`${host}${a.evidence === 'assumed' ? '*' : ''}`, a.skills, a.listingBytes, a.bytes - a.listingBytes, a.bytes, h.bytes, ...INTENTS.map(({ intent }) => g[intent])]);
+  const rows = [['host', 'skills', 'listing B', 'instructions B', 'always B', 'hooks B (sequence)', 'session B (repeats)', 'largest hook B', ...INTENTS.map(({ intent }) => intent)]];
+  for (const [host, { always: a, hooks: h, session: s, guidance: g }] of Object.entries(report)) {
+    rows.push([`${host}${a.evidence === 'assumed' ? '*' : ''}`, a.skills, a.listingBytes, a.bytes - a.listingBytes, a.bytes, h.bytes, s.bytes, s.maxHook, ...INTENTS.map(({ intent }) => g[intent])]);
   }
   const widths = rows[0].map((_, i) => Math.max(...rows.map(row => String(row[i]).length)));
   return rows.map(row => row.map((cell, i) => String(cell).padStart(widths[i])).join('  ')).join('\n')

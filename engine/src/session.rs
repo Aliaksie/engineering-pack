@@ -10,6 +10,7 @@ use crate::{
 use serde_json::{Map, Value, json};
 
 pub mod acceptance;
+pub mod delivered;
 pub mod handoff;
 pub mod host_context;
 pub mod resume;

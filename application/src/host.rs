@@ -275,6 +275,14 @@ pub fn run(input: &Value) -> Result<Value, String> {
     if applies {
         summary.insert("contextSupported".into(), json!(facts.context_supported));
     }
+    // What the hook gave the model: bytes of context, pieces left out to stay under the
+    // host's ceiling, answers held back by the session budget.
+    if let Some(Value::Object(delivered)) = decision
+        .as_object_mut()
+        .and_then(|fields| fields.shift_remove("delivered"))
+    {
+        summary.extend(delivered);
+    }
     recorder.complete(hook, summary, failed.then_some("HOOK_FAILED"));
     decision["failed"] = json!(failed);
     decision["export"] = json!(recorder.finish());
