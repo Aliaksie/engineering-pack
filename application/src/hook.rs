@@ -541,6 +541,9 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
     if let Some(run) = result.get("tests") {
         push(TESTS, 1, tests_line(run));
     }
+    if let Some(offer) = result.get("conventions") {
+        push("undeclared conventions", 6, conventions_line(offer));
+    }
     pieces
 }
 
@@ -548,6 +551,13 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
 fn standards_line(found: &Value) -> String {
     format!(
         "Project standards not met by what was just written (deterministic anchor check; report only, fix or tell the user why not): {found}"
+    )
+}
+
+/// Standards the project's own files support and its configuration does not declare.
+fn conventions_line(offer: &Value) -> String {
+    format!(
+        "Craft conventions scan (said once; the user was shown the same): this project's own files support standards it has not declared, and none is active. Only if the user asks to adopt them, `run` lists each with its evidence; add to `standards` in .craft/project.json the entries the user accepts: {offer}"
     )
 }
 

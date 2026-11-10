@@ -19,7 +19,7 @@ now; the route and session corpora replay those decisions) and the services deci
 built-in mappings (`services-contracts.json` replays it with them). The acceptance-view and
 feature-outcome cases were removed as copies of `view-contracts.json` and
 `feature-contracts.json`. Correction: `settings:precedence` lists every routing switch in the
-bundled defaults (`standardChecks` through `sessionSummary`), each with its `bundled` origin,
+bundled defaults (`standardChecks` through `conventionProposals`), each with its `bundled` origin,
 as `settings-contracts.json` does.
 
 The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,

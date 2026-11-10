@@ -65,6 +65,12 @@ pub fn session_summary(settings: &Value) -> bool {
     settings["routing"]["sessionSummary"] != false
 }
 
+/// Whether a session start names the standards an undeclared project's own files support:
+/// unless `routing.conventionProposals` is false.
+pub fn convention_proposals(settings: &Value) -> bool {
+    settings["routing"]["conventionProposals"] != false
+}
+
 /// Whether hooks keep the session's intent record and its pending-resume mark: unless
 /// `routing.sessionRecords` is false.
 pub fn session_records(settings: &Value) -> bool {

@@ -978,6 +978,73 @@
       },
       "additionalProperties": false
     },
+    "safety": {
+      "type": "object",
+      "required": [],
+      "description": "Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Turn the policy on. Off, no command is refused."
+        },
+        "disables": {
+          "type": "array",
+          "default": [],
+          "description": "Built-in rules to leave out.",
+          "items": {
+            "enum": [
+              "delete-outside-project",
+              "delete-project-root",
+              "force-push",
+              "discard-changes",
+              "system-administration"
+            ]
+          }
+        },
+        "deny": {
+          "type": "array",
+          "maxItems": 32,
+          "default": [],
+          "description": "The project's own rules: a command whose leading words match is refused.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "command"
+            ],
+            "description": "One rule: an `id`, the leading words of the command and why it is refused.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "maxLength": 64,
+                "description": "Stable handle named in the refusal."
+              },
+              "command": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "description": "Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^\\\\S+$"
+                }
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "What the rule refuses, shown with the refusal."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "runtimes": {
       "type": "array",
       "description": "Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Default for modules that declare none.",
@@ -1040,6 +1107,11 @@
           "type": "boolean",
           "default": true,
           "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
+        },
+        "conventionProposals": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start."
         }
       },
       "additionalProperties": false

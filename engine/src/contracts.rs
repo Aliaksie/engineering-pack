@@ -160,6 +160,7 @@ pub fn validate_project(project: &Value) -> Result {
         "permissions",
         "checkpoint",
         "review",
+        "safety",
         "routing",
         "efficiency",
         "workspace",
@@ -319,6 +320,9 @@ pub fn validate_project(project: &Value) -> Result {
             return Err("review.readOnly must be boolean".into());
         }
     }
+    if let Some(safety) = map.get("safety") {
+        crate::safety::validate(safety)?;
+    }
     if let Some(routing) = map.get("routing") {
         let routing = object(
             routing,
@@ -333,6 +337,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "workerStandards",
                 "sessionRecords",
                 "sessionSummary",
+                "conventionProposals",
             ],
             "routing",
         )?;
@@ -347,6 +352,7 @@ pub fn validate_project(project: &Value) -> Result {
             "workerStandards",
             "sessionRecords",
             "sessionSummary",
+            "conventionProposals",
         ] {
             boolean(
                 routing.get(field),
@@ -627,7 +633,7 @@ pub fn default_settings() -> Value {
         "routing": {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
-            "sessionRecords": true, "sessionSummary": true
+            "sessionRecords": true, "sessionSummary": true, "conventionProposals": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {

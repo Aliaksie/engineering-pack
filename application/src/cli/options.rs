@@ -94,6 +94,7 @@ const OPTIONS: &[&str] = &[
     "supersedes",
     "commit-message",
     "search",
+    "propose",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -108,6 +109,7 @@ const FLAGS: &[&str] = &[
     "shared",
     "escalate",
     "discard",
+    "propose",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -186,6 +188,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("commit-message") && action != "standards" {
         return Err("--commit-message is supported by standards".into());
+    }
+    if present("propose") && action != "standards" {
+        return Err("--propose is supported by standards".into());
     }
     if present("search") && action != "anchors" {
         return Err("--search is supported by anchors".into());

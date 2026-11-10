@@ -161,6 +161,9 @@ covered in [installation](docs/INSTALL.md).
    }
    ```
 
+   `craft standards --propose` lists declarations your existing files already support
+   (conventions named in `AGENTS.md` or `CONTRIBUTING.md`, lint and format configuration,
+   `.editorconfig`), each with its evidence; copy the ones you accept. It writes nothing.
    `craft standards` lists what the project declares; `craft standards --commit-message <file>`
    runs the hooks' check and exits non-zero when it is not met, for a `commit-msg` hook or CI.
 

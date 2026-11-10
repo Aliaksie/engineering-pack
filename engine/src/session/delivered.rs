@@ -5,7 +5,7 @@
 //!
 //! `{formatVersion: 1, context: {hooks, bytes, dropped}, answers: {delivered, bytes, repeated,
 //! overBudget, window: {bytes, keys}}, findings: {raised, fixed, open: {<scope>: [key]}},
-//! tests: {empty}, resumes, shown?}`; `Null` is no record.
+//! tests: {empty}, resumes, refused, shown?}`; `Null` is no record.
 use serde_json::{Map, Value, json};
 
 /// Bytes of Project Intelligence answers one context window receives. A compaction starts a
@@ -91,6 +91,7 @@ pub fn validate(record: &Value) -> Result<(), String> {
         findings.get("fixed"),
         tests.get("empty"),
         record.get("resumes"),
+        record.get("refused"),
     ];
     let open = match findings.get("open") {
         None => true,
@@ -302,12 +303,23 @@ pub fn new_window(record: &Value) -> Option<Value> {
     Some(next)
 }
 
+/// The record after the project's safety policy refused one command.
+pub fn refusal(record: &Value) -> Value {
+    let mut next = if record.is_object() {
+        record.clone()
+    } else {
+        json!({"formatVersion": 1})
+    };
+    add(&mut next["refused"], 1);
+    next
+}
+
 fn counted(count: u64, one: &str, many: &str) -> String {
     format!("{count} {}", if count == 1 { one } else { many })
 }
 
 /// The counts the session summary shows: `{findingsRaised, findingsFixed, emptyTestRuns,
-/// lookupsAnswered, resumes}`.
+/// lookupsAnswered, resumes, commandsRefused}`.
 pub fn counts(record: &Value) -> Value {
     json!({
         "findingsRaised": count(&record["findings"]["raised"]),
@@ -315,6 +327,7 @@ pub fn counts(record: &Value) -> Value {
         "emptyTestRuns": count(&record["tests"]["empty"]),
         "lookupsAnswered": count(&record["answers"]["delivered"]),
         "resumes": count(&record["resumes"]),
+        "commandsRefused": count(&record["refused"]),
     })
 }
 
@@ -356,6 +369,12 @@ pub fn summary(record: &Value) -> Option<String> {
             counted(of("resumes"), "task context", "task contexts")
         ));
     }
+    if of("commandsRefused") > 0 {
+        parts.push(format!(
+            "{} refused by the safety policy",
+            counted(of("commandsRefused"), "command", "commands")
+        ));
+    }
     (!parts.is_empty()).then(|| format!("Craft this session: {}", parts.join(" · ")))
 }
 
@@ -374,6 +393,18 @@ pub fn summary_due(record: &Value) -> Option<(String, Value)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refused_command_is_counted_and_summarized() {
+        let once = refusal(&Value::Null);
+        validate(&once).expect("valid record");
+        let twice = refusal(&once);
+        assert_eq!(counts(&twice)["commandsRefused"], 2);
+        assert_eq!(
+            summary(&twice).as_deref(),
+            Some("Craft this session: 2 commands refused by the safety policy")
+        );
+    }
 
     fn after(record: &Value, delivery: Delivery) -> Value {
         let next = recorded(record, &delivery).expect("record changes");
