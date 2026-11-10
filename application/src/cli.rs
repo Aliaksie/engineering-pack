@@ -1513,7 +1513,11 @@ fn settings(
         overrides,
         workers,
     };
-    project::effective_settings(&root(options), request)
+    let mut report = project::effective_settings(&root(options), request)?;
+    // The safety policy is the project's alone: preferences and task overrides cannot set it.
+    let project = project::settings(&root(options), None)?;
+    report["safety"] = craft_engine::safety::listing(&project);
+    Ok(report)
 }
 
 /// Command help; commands without an entry get the general list.

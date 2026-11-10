@@ -71,6 +71,30 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let settings = project::hook_loaded(recorder, hook, event.root)?;
+    // The project's safety policy speaks first: a refused command gets no routing.
+    if let ("before-tool", Some(command)) = (event.lifecycle, event.command) {
+        let slashed = |path: &Path| path.to_string_lossy().replace('\\', "/");
+        let refused = craft_engine::safety::decision(
+            &settings,
+            &slashed(event.root),
+            &slashed(event.cwd),
+            command,
+        );
+        if refused["decision"] == "deny" {
+            // Counted for the session summary; an uncounted refusal still refuses.
+            if let Some(session) = event
+                .session
+                .filter(|s| !s.is_empty() && delivery::session_records(&settings))
+                && crate::delivered::update(event.root, session, |record| {
+                    Some(delivered::refusal(record))
+                })
+                .is_err()
+            {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            }
+            return Ok(refused);
+        }
+    }
     let mut decision = decide(event, &settings, recorder, hook)?;
     account(event, &settings, &mut decision, recorder, hook);
     Ok(decision)

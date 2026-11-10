@@ -38,7 +38,13 @@ const MAX_DEPTH: usize = 16;
 /// Whether `command` publishes: pushes, mutates a pull/merge request or issue, or writes
 /// through the GitHub/GitLab API.
 pub fn publishes(command: &str) -> bool {
-    inspect(&command.chars().collect::<Vec<_>>(), 0)
+    let mut too_deep = false;
+    inspect(
+        &command.chars().collect::<Vec<_>>(),
+        0,
+        &mut publishing,
+        &mut too_deep,
+    ) || too_deep
 }
 
 /// The decision for one tool call in a project with the given effective settings.
@@ -159,16 +165,25 @@ fn api_writes(args: &[String]) -> bool {
             && args.iter().any(|a| field_option(a)))
 }
 
-fn publishing(words: &[String], depth: usize) -> bool {
+/// Visit the words of every command `command` runs: each segment, the script a supported
+/// shell is given with `-c` and each `$()`/backtick substitution, to any depth the recognizer
+/// reads. Stops at the first segment `visit` accepts. Returns whether something was nested
+/// too deep to read.
+pub(crate) fn walk(command: &str, visit: &mut dyn FnMut(&[String]) -> bool) -> bool {
+    let mut too_deep = false;
+    inspect(
+        &command.chars().collect::<Vec<_>>(),
+        0,
+        &mut |words| visit(words),
+        &mut too_deep,
+    );
+    too_deep
+}
+
+fn publishing(words: &[String]) -> bool {
     let Some((executable, args)) = words.split_first() else {
         return false;
     };
-    if SHELLS.contains(&executable.as_str())
-        && let Some(index) = args.iter().position(|word| script_option(word))
-    {
-        let script = args.get(index + 1).map_or("", String::as_str);
-        return inspect(&script.chars().collect::<Vec<_>>(), depth + 1);
-    }
     if executable == "git" {
         let mut index = 0;
         while index < args.len() && args[index].starts_with('-') {
@@ -193,13 +208,43 @@ fn publishing(words: &[String], depth: usize) -> bool {
     first == Some("api") && api_writes(args)
 }
 
-fn inspect(command: &[char], depth: usize) -> bool {
+/// One segment: the script of a shell `-c` is read in its place, any other goes to `visit`.
+fn segment(
+    words: &[String],
+    depth: usize,
+    visit: &mut dyn FnMut(&[String]) -> bool,
+    too_deep: &mut bool,
+) -> bool {
+    if let Some((executable, args)) = words.split_first()
+        && SHELLS.contains(&executable.as_str())
+        && let Some(index) = args.iter().position(|word| script_option(word))
+    {
+        let script = args.get(index + 1).map_or("", String::as_str);
+        return inspect(
+            &script.chars().collect::<Vec<_>>(),
+            depth + 1,
+            visit,
+            too_deep,
+        );
+    }
+    visit(words)
+}
+
+/// Whether `visit` accepted a segment of `command`. Nesting past [`MAX_DEPTH`] is not read
+/// and sets `too_deep`.
+fn inspect(
+    command: &[char],
+    depth: usize,
+    visit: &mut dyn FnMut(&[String]) -> bool,
+    too_deep: &mut bool,
+) -> bool {
     if depth >= MAX_DEPTH {
-        return true;
+        *too_deep = true;
+        return false;
     }
     if segments(command)
         .iter()
-        .any(|words| publishing(words, depth))
+        .any(|words| segment(words, depth, visit, too_deep))
     {
         return true;
     }
@@ -261,7 +306,7 @@ fn inspect(command: &[char], depth: usize) -> bool {
             end += 1;
         }
         let inner = &command[start.min(command.len())..end.min(command.len())];
-        if inspect(inner, depth + 1) {
+        if inspect(inner, depth + 1, visit, too_deep) {
             return true;
         }
         index = end + 1;

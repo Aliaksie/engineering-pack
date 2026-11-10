@@ -160,6 +160,7 @@ pub fn validate_project(project: &Value) -> Result {
         "permissions",
         "checkpoint",
         "review",
+        "safety",
         "routing",
         "efficiency",
         "workspace",
@@ -318,6 +319,9 @@ pub fn validate_project(project: &Value) -> Result {
         if !review.get("readOnly").is_some_and(Value::is_boolean) {
             return Err("review.readOnly must be boolean".into());
         }
+    }
+    if let Some(safety) = map.get("safety") {
+        crate::safety::validate(safety)?;
     }
     if let Some(routing) = map.get("routing") {
         let routing = object(

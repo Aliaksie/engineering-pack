@@ -21,6 +21,7 @@ pub mod repository;
 pub mod retention;
 pub mod review;
 pub mod routing;
+pub mod safety;
 pub mod scratch;
 pub mod services;
 pub mod session;

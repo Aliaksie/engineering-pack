@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- An opt-in safety policy refuses destructive shell commands before they run on Claude Code,
+  Codex, Cursor, Copilot CLI and Gemini CLI: recursive deletes outside the project or of its
+  root, forced pushes, Git commands that discard uncommitted work, and privileged or
+  system-level commands. `safety.enabled` turns it on, `safety.disables` leaves rules out and
+  `safety.deny` adds the project's own by leading words. It only refuses and never approves a
+  command; `craft settings` lists the rules in force and the session summary counts refusals.
 - `craft standards --propose` lists standards a project's existing files already support, ready
   to copy into `.craft/project.json`: conventions named in agent instructions or
   `CONTRIBUTING.md` that Craft checks, lint, format and type-check commands from package
