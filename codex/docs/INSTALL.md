@@ -70,6 +70,12 @@ in an untrusted project, so the `agents` overlay's guidance is absent until you 
 project. `/status` and `/statusline` show session usage; `craft`
 receives no Codex token counts, so they stay unknown.
 
+Two things leave Craft silent in Codex without an error. A plugin that `config.toml` enables
+but `codex plugin add` never installed loads nothing; `craft doctor` names it with the command
+to run. Under the `workspace-write` sandbox `.git` is read-only, so a commit the agent makes
+fails; add the repository's `.git` to `sandbox_workspace_write.writable_roots` in
+`config.toml` if the agent should commit.
+
 Sources: [CLI commands](https://learn.chatgpt.com/docs/cli/reference),
 [plugin packaging](https://developers.openai.com/plugins/build/plugins),
 [skill discovery](https://learn.chatgpt.com/docs/build-skills),
@@ -191,13 +197,15 @@ for the project whether each host would run Craft, from files only:
   user, project or local settings enable them, a bundled runtime for this platform matching
   its manifest digest, and Craft hook commands also registered in settings files;
 - Codex: configured and enabled packages at the newest cached version (older cached
-  versions are listed, not judged), project trust, the hooks feature switch, a recorded
+  versions are listed, not judged), packages the configuration enables that are not in the
+  plugin cache, project trust, the hooks feature switch, a recorded
   approval for each hook a package declares, the bundled runtime, and Craft commands in
   other hook files;
 - Cursor, Copilot CLI and Gemini CLI project overlays: the bundled runtime each command
   starts;
 - per host and package, the last hook event Craft recorded in this project and the version
-  it ran, so a session that predates an update is named.
+  it ran, so a session that predates an update is named; for a host with no install found,
+  the last event recorded for it.
 
 It writes nothing to host configuration or task state and starts no host. Whether a running
 session loaded the current install, Codex approval content hashes, and managed or

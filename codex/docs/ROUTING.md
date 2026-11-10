@@ -324,6 +324,15 @@ every skill before a one-line fix, at 1.76 times the tokens of the same fix with
 request still establishes the session's intent, so the first edit's hint names the skills and
 references for the edited scope where the change happens.
 
+A hook hint names only skills and references of packages the host installed. The hook looks
+beside the package it runs from: the other packages of the same marketplace in a plugin cache
+(Claude Code, Codex), except those the host's settings turn off, or the package folders of a
+project overlay. Skills of other packages leave the route and appear in `skillSources` with
+status `not-installed`; the route reports `skillAvailability: "installed-packages"`. The
+project's own skills stay. A route left with no skill says nothing unless it carries a
+standard, a bound task or a missing input. `craft route` on the command line does not look
+and reports `not-verified`.
+
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
 too, refreshing Project Intelligence for at most one second per prompt (the declaration check
