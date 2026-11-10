@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 pub mod actions;
 pub mod anchors;
 pub mod checkpoint;
+pub mod checks;
 pub mod context;
 pub mod contracts;
 pub mod control;

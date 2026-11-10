@@ -362,9 +362,316 @@ fn capture_status(
     result
 }
 
+/// What happened to one consumer command run by [`run_bounded`].
+#[derive(Debug)]
+pub struct Ran {
+    /// False when the program could not be started; `error` says why.
+    pub started: bool,
+    /// The exit code; `None` when it did not start, was killed or ended by a signal.
+    pub exit: Option<i32>,
+    pub timed_out: bool,
+    pub elapsed: Duration,
+    /// The end of standard output and standard error, in the order their chunks were read.
+    pub output: Vec<u8>,
+    /// Whether earlier output was dropped to keep the end.
+    pub truncated: bool,
+    pub error: Option<String>,
+}
+
+/// The newest bytes of a stream, at most `keep`.
+struct Tail {
+    bytes: std::collections::VecDeque<u8>,
+    keep: usize,
+    dropped: bool,
+}
+
+impl Tail {
+    fn push(&mut self, chunk: &[u8]) {
+        self.bytes.extend(chunk);
+        let extra = self.bytes.len().saturating_sub(self.keep);
+        if extra > 0 {
+            self.bytes.drain(..extra);
+            self.dropped = true;
+        }
+    }
+}
+
+/// How long output is still read after the command itself exited: a process it left behind
+/// may hold the pipe open, and the result does not wait for that one.
+const DRAIN: Duration = Duration::from_millis(500);
+
+/// A program named with a directory is looked up from `dir`, where the command runs; a bare
+/// name is left to `PATH`.
+fn program_in(program: &str, dir: &Path) -> std::path::PathBuf {
+    let path = Path::new(program);
+    if path.is_relative() && path.components().count() > 1 {
+        dir.join(path)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// Start `program` with `args` in `dir`. Windows finds only `.exe` for a bare name, while
+/// package-manager launchers there are `.cmd` files, so a name that is not found is retried
+/// with those script extensions.
+fn start(program: &str, args: &[String], dir: &Path) -> std::io::Result<Child> {
+    let begin = |program: &Path| {
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        spawn(&mut command)
+    };
+    let named = program_in(program, dir);
+    let first = begin(&named);
+    #[cfg(windows)]
+    if matches!(&first, Err(error) if error.kind() == std::io::ErrorKind::NotFound)
+        && named.extension().is_none()
+    {
+        for extension in ["cmd", "bat"] {
+            let next = begin(&named.with_extension(extension));
+            if !matches!(&next, Err(error) if error.kind() == std::io::ErrorKind::NotFound) {
+                return next;
+            }
+        }
+    }
+    first
+}
+
+/// Process ids started, directly or not, by `parent`, children before their own children,
+/// from `pid ppid` rows.
+#[cfg(any(unix, test))]
+fn descendants(parent: u32, table: &str) -> Vec<u32> {
+    let rows: Vec<(u32, u32)> = table
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            Some((fields.next()?.parse().ok()?, fields.next()?.parse().ok()?))
+        })
+        .collect();
+    let mut found = vec![parent];
+    let mut index = 0;
+    while index < found.len() {
+        let current = found[index];
+        for (pid, ppid) in &rows {
+            if *ppid == current && !found.contains(pid) {
+                found.push(*pid);
+            }
+        }
+        index += 1;
+    }
+    found.split_off(1)
+}
+
+/// End `child` and what it started. The processes are found from the process table rather
+/// than a process group of their own, which would outlive an interrupt of the caller.
+fn kill_tree(child: &mut Child) {
+    #[cfg(unix)]
+    {
+        let mut listing = Command::new("ps");
+        listing.args(["-axo", "pid=,ppid="]);
+        let table = capture("Process listing", listing, 4 << 20, Duration::from_secs(5))
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let started = descendants(child.id(), &String::from_utf8_lossy(&table));
+        let _ = child.kill();
+        for pid in started {
+            if let Some(pid) = i32::try_from(pid)
+                .ok()
+                .and_then(rustix::process::Pid::from_raw)
+            {
+                let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        if let Some(root) = std::env::var_os("SystemRoot") {
+            let mut command = Command::new(Path::new(&root).join("System32").join("taskkill.exe"));
+            command.args(["/T", "/F", "/PID", &child.id().to_string()]);
+            let _ = capture("Process tree end", command, 65_536, Duration::from_secs(5));
+        }
+        let _ = child.kill();
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = child.kill();
+    }
+}
+
+/// Run a consumer command without a shell: `program` with `args` in `dir`, no standard
+/// input, at most `timeout` long, keeping the last `keep` bytes of its output. A command
+/// that outlives the bound is ended together with the processes it started.
+pub fn run_bounded(
+    program: &str,
+    args: &[String],
+    dir: &Path,
+    timeout: Duration,
+    keep: usize,
+) -> Ran {
+    let begun = Instant::now();
+    let mut child = match start(program, args, dir) {
+        Ok(child) => child,
+        Err(error) => {
+            return Ran {
+                started: false,
+                exit: None,
+                timed_out: false,
+                elapsed: begun.elapsed(),
+                output: Vec::new(),
+                truncated: false,
+                error: Some(format!("cannot start {program}: {error}")),
+            };
+        }
+    };
+    let tail = std::sync::Arc::new(Mutex::new(Tail {
+        bytes: std::collections::VecDeque::new(),
+        keep,
+        dropped: false,
+    }));
+    let (done, finished) = mpsc::channel();
+    let mut readers = 0;
+    let mut read = |pipe: Option<Box<dyn Read + Send>>| {
+        let Some(mut pipe) = pipe else { return };
+        readers += 1;
+        let (tail, done) = (tail.clone(), done.clone());
+        thread::spawn(move || {
+            let mut chunk = [0u8; 8192];
+            while let Ok(count @ 1..) = pipe.read(&mut chunk) {
+                tail.lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .push(&chunk[..count]);
+            }
+            let _ = done.send(());
+        });
+    };
+    read(child.stdout.take().map(|pipe| Box::new(pipe) as _));
+    read(child.stderr.take().map(|pipe| Box::new(pipe) as _));
+    let mut timed_out = false;
+    let mut error = None;
+    let exit = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status.code(),
+            Ok(None) => {}
+            Err(failure) => {
+                error = Some(format!("cannot wait for {program}: {failure}"));
+                kill_tree(&mut child);
+                let _ = child.wait();
+                break None;
+            }
+        }
+        if begun.elapsed() >= timeout {
+            timed_out = true;
+            kill_tree(&mut child);
+            let _ = child.wait();
+            break None;
+        }
+        thread::sleep(Duration::from_millis(10));
+    };
+    let elapsed = begun.elapsed();
+    let drained = Instant::now();
+    for _ in 0..readers {
+        if finished
+            .recv_timeout(DRAIN.saturating_sub(drained.elapsed()))
+            .is_err()
+        {
+            break;
+        }
+    }
+    let tail = tail.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    Ran {
+        started: true,
+        exit,
+        timed_out,
+        elapsed,
+        output: tail.bytes.iter().copied().collect(),
+        truncated: tail.dropped,
+        error,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    fn script(text: &str, timeout: Duration, keep: usize) -> Ran {
+        run_bounded(
+            "/bin/sh",
+            &["-c".to_string(), text.to_string()],
+            Path::new("."),
+            timeout,
+            keep,
+        )
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_bounded_run_reports_exit_code_and_both_streams() {
+        let ran = script(
+            "echo out; echo err >&2; exit 3",
+            Duration::from_secs(10),
+            1024,
+        );
+        assert!(ran.started && !ran.timed_out);
+        assert_eq!(ran.exit, Some(3));
+        let output = String::from_utf8(ran.output).unwrap();
+        assert!(output.contains("out") && output.contains("err"), "{output}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_bounded_run_keeps_the_end_of_long_output() {
+        let ran = script(
+            "i=0; while [ $i -lt 2000 ]; do echo line-$i; i=$((i+1)); done",
+            Duration::from_secs(20),
+            64,
+        );
+        assert_eq!(ran.exit, Some(0));
+        assert!(ran.truncated && ran.output.len() == 64);
+        assert!(String::from_utf8_lossy(&ran.output).ends_with("line-1999\n"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_run_past_its_bound_is_ended_with_what_it_started() {
+        let begun = Instant::now();
+        let ran = script("sleep 30 & sleep 30", Duration::from_millis(300), 1024);
+        assert!(ran.timed_out && ran.exit.is_none());
+        assert!(begun.elapsed() < Duration::from_secs(20));
+    }
+
+    #[test]
+    fn a_missing_program_is_not_started() {
+        let ran = run_bounded(
+            "craft-no-such-program",
+            &[],
+            Path::new("."),
+            Duration::from_secs(5),
+            64,
+        );
+        assert!(!ran.started && ran.exit.is_none());
+        assert!(ran.error.unwrap().contains("craft-no-such-program"));
+    }
+
+    #[test]
+    fn descendants_are_found_through_every_generation() {
+        let table = "10 1\n11 10\n12 11\n13 1\n14 12\nbad row\n";
+        assert_eq!(descendants(10, table), [11, 12, 14]);
+        assert!(descendants(13, table).is_empty());
+    }
+
+    #[test]
+    fn a_program_named_with_a_directory_is_looked_up_where_it_runs() {
+        let dir = Path::new("project");
+        assert_eq!(program_in("./gradlew", dir), dir.join("./gradlew"));
+        assert_eq!(program_in("tools/check", dir), dir.join("tools/check"));
+        assert_eq!(program_in("npm", dir), Path::new("npm"));
+    }
 
     #[cfg(unix)]
     fn resolve(

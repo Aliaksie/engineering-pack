@@ -18,6 +18,10 @@ intent such as `implement`, `plan`, `review`, `story`, `investigate`, `locate`, 
 or `test-code` when that mode is established; only test-code requests select test editing,
 and no verification mode selects product-code implementation.
 
+Routing lists the declared checks and runs none. `<package-root>/bin/craft check --root
+<project>` runs those of the uncommitted changes at `--stage step`, `commit` (default), `pr`
+or `ci`; a check it reports as left to a later stage, not started or timed out has not passed.
+
 Read the result as a declaration-based plan. Module owners, dependencies and checks still
 need verification in the consumer checkout. Review the `loading` evidence and missing context,
 then open only the relevant installed skills and references. Keep common practice, language,

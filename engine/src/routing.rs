@@ -37,6 +37,11 @@ fn modules(settings: &Value) -> &[Value] {
         .map_or(&[], Vec::as_slice)
 }
 
+/// Every declared module, paths normalized, in declaration order.
+pub fn declared_modules(settings: &Value) -> Vec<Value> {
+    modules(settings).iter().map(normalized).collect()
+}
+
 /// A declared module with its path normalized; settings are validated, so the path is too.
 fn normalized(module: &Value) -> Value {
     let mut module = module.clone();

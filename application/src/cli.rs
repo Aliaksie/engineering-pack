@@ -130,6 +130,9 @@ const COMMANDS: &[Command] = &[
     Command::run("route", route),
     Command::run("standards", standards),
     Command::run("anchors", anchors),
+    Command::run("check", check)
+        .receipt(|_, value| craft_engine::checks::text(value))
+        .fails_when(|value| value["result"] == "failed"),
     Command::run("doctor", |options, _, _| crate::doctor::run(&root(options)))
         .receipt(|_, value| crate::doctor::text(value))
         .fails_when(|value| value["blocking"] == true),
@@ -437,6 +440,24 @@ fn count_activity(
     {
         result["activityDiagnostic"] = json!(warning);
     }
+}
+
+/// The project's declared checks for the changed files, run at `--stage` (default `commit`).
+/// A check that does not pass fails the command.
+fn check(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    crate::checks::run(
+        &root(options),
+        &settings,
+        &crate::checks::Request {
+            stage: options
+                .get("stage")
+                .unwrap_or(craft_engine::checks::DEFAULT_STAGE),
+            files: files(options),
+            all: options.values.contains_key("all"),
+            session: options.get("session").filter(|s| !s.is_empty()),
+        },
+    )
 }
 
 /// The project's declared standards, or the anchor checks for written files and a commit
@@ -1546,6 +1567,10 @@ fn help(action: &str) -> Value {
         "doctor" => json!({
             "usage": "doctor [--root project] [--json]",
             "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
+        }),
+        "check" => json!({
+            "usage": "check [--root project] [--stage step|commit|pr|ci] [--file path ... | --all] [--session id]",
+            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes, the named files or, with --all, every declaration. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass."
         }),
         "anchors" => json!({
             "usage": "anchors [--root project] [--search text]",
