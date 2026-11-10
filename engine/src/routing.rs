@@ -206,6 +206,9 @@ pub struct Request<'a> {
     pub verification_mode: Option<&'a str>,
     /// What the request produces when it decides the workflow: `spec-audit`, `adr`.
     pub artifact: Option<&'a str>,
+    /// The packages the host has installed for this project, when the caller observed them:
+    /// skills and references of other packages leave the route.
+    pub packages: Option<&'a [String]>,
 }
 
 /// What a set of changed files touches: the project-relative files (private paths dropped),
@@ -445,14 +448,21 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
         layers: &layers,
     };
     let standards = crate::standards::select(settings, &work);
-    let (skill_sources, unavailable) =
+    let (mut skill_sources, unavailable) =
         crate::skills::apply(settings, request.host, &work, &mut skills);
     missing.extend(unavailable);
+    if let Some(packages) = request.packages {
+        skill_sources.extend(crate::skills::installed(
+            packages,
+            &mut skills,
+            &mut references,
+        ));
+    }
     let mut plan = json!({
         "intent": intent,
         "capability": capability(intent, request.risks),
         "skills": skills,
-        "skillAvailability": "not-verified",
+        "skillAvailability": if request.packages.is_some() { "installed-packages" } else { "not-verified" },
         "execution": execution,
     });
     if let Some(artifact) = request.artifact {

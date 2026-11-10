@@ -129,6 +129,7 @@ fn run_route(request: &Value) -> Result<Value> {
             task: options["task"].as_str(),
             verification_mode: options["verificationMode"].as_str(),
             artifact: options["artifact"].as_str(),
+            packages: None,
         },
     )
 }

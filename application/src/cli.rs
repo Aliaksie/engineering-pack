@@ -390,6 +390,7 @@ fn route_request<'a>(
         task: options.get("task"),
         verification_mode: options.get("verification-mode"),
         artifact: options.get("artifact"),
+        packages: None,
     }
 }
 

@@ -30,13 +30,17 @@ export function fallback(platform, definition, item) {
   const context = ['session-start', 'after-compact'].includes(definition.event) && mapping.context
     ? (shown || definition.event === 'after-compact' ? inactive : `${inactive} Tell the user once.`) : '';
   const notice = shown ? { systemMessage: inactive } : {};
-  if (definition.handler === 'observe' && !context) return { stdout: '', stderr: '', exitCode: 0 };
+  // Cursor blocks a permission hook whose answer does not match its schema, so a hook with
+  // nothing to say still answers there; other hosts keep their own flow on empty output.
+  const neutral = platform !== 'cursor' ? undefined : definition.event === 'before-tool' ? { permission: 'allow' }
+    : definition.event === 'before-prompt' ? { continue: true } : undefined;
+  if (definition.handler === 'observe' && !context) return { stdout: neutral ? `${JSON.stringify(neutral)}\n` : '', stderr: '', exitCode: 0 };
   if (platform === 'claude' && denied) return { stdout: '', stderr: `${reason}\n`, exitCode: 2 };
   let output;
   // Cursor and Copilot get the answers the runtime gives them: Cursor requires a permission,
   // Copilot keeps its own permission flow on empty output.
-  if (platform === 'cursor') output = definition.event === 'before-tool' ? { permission: denied ? 'deny' : 'allow', ...(denied ? { user_message: reason, agent_message: reason } : {}) }
-    : definition.event === 'before-prompt' ? { continue: true } : context ? { additional_context: context } : undefined;
+  if (platform === 'cursor') output = denied ? { permission: 'deny', user_message: reason, agent_message: reason }
+    : neutral ?? (context ? { additional_context: context } : undefined);
   else if (platform === 'copilot') output = denied ? { permissionDecision: 'deny', permissionDecisionReason: reason }
     : definition.event !== 'before-tool' && context ? { additionalContext: context } : undefined;
   else if (platform === 'gemini') output = denied ? { decision: 'deny', reason } : context ? { ...notice, hookSpecificOutput: { hookEventName: mapping.name, additionalContext: context } } : undefined;

@@ -321,6 +321,32 @@ pub fn apply(
     (sources, missing)
 }
 
+/// Keep the package skills and references whose package the host has installed; a route
+/// must not name a skill the host cannot load. Consumer skills stay: the project serves them.
+/// Returns the attribution of every package skill left out.
+pub fn installed(
+    packages: &[String],
+    skills: &mut Vec<Value>,
+    references: &mut Vec<Value>,
+) -> Vec<Value> {
+    let present = |target: &Value| {
+        target.as_str().is_none_or(|text| {
+            consumer(text)
+                || text
+                    .split_once(':')
+                    .is_none_or(|(package, _)| packages.iter().any(|p| p == package))
+        })
+    };
+    let sources = skills
+        .iter()
+        .filter(|skill| !present(skill))
+        .map(|skill| json!({"skill": skill, "source": "package", "status": "not-installed"}))
+        .collect();
+    skills.retain(present);
+    references.retain(present);
+    sources
+}
+
 /// The name `host` lists a route skill by: consumer skills by their bare name, package
 /// skills as `package:skill` on plugin hosts and `package-skill` elsewhere.
 pub fn host_name(skill: &str, plugin_names: bool) -> String {

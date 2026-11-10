@@ -518,6 +518,18 @@ fn bounded(context: String) -> String {
     )
 }
 
+/// The answer of a hook with nothing to say, where the host needs one. Cursor blocks a
+/// permission hook whose answer does not match its schema and has no neutral value; it treats
+/// `allow` as advisory, so the user's allowlist and approvals still apply. Other hosts keep
+/// their own flow on empty output.
+fn no_opinion(host: &str, lifecycle: &str) -> Option<Value> {
+    match (host, lifecycle) {
+        ("cursor", "before-tool") => Some(json!({"permission": "allow"})),
+        ("cursor", "before-prompt") => Some(json!({"continue": true})),
+        _ => None,
+    }
+}
+
 /// The host wire response for a decision.
 fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
     let empty = Wire {
@@ -577,11 +589,8 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             "before-tool" if denied => {
                 Some(json!({"permission": "deny", "user_message": reason, "agent_message": reason}))
             }
-            // Cursor blocks a preToolUse answer without `permission` and has no neutral value;
-            // it treats `allow` as advisory, so the user's allowlist and approvals still apply.
-            "before-tool" => Some(json!({"permission": "allow"})),
-            "before-prompt" => Some(json!({"continue": true})),
-            _ => (!context.is_empty()).then(|| json!({"additional_context": context})),
+            _ => no_opinion(host, lifecycle)
+                .or_else(|| (!context.is_empty()).then(|| json!({"additional_context": context}))),
         },
         // Empty output keeps Copilot's own permission flow; Craft grants nothing.
         "copilot" if lifecycle == "before-tool" => denied
@@ -657,9 +666,11 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
         );
     }
     if observational {
+        let answer = mapping(&hook.host, &hook.lifecycle)
+            .and_then(|_| no_opinion(&hook.host, &hook.lifecycle));
         return (
             Wire {
-                stdout: String::new(),
+                stdout: answer.map_or_else(String::new, |a| format!("{a}\n")),
                 stderr: String::new(),
                 exit_code: 0,
             },

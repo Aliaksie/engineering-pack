@@ -239,6 +239,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     root: &root,
                     cwd: &cwd,
                     host: facts.host,
+                    package: facts.package,
                     lifecycle: facts.lifecycle,
                     session: facts.session,
                     edit: facts.tool == "edit",

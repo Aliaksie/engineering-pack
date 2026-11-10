@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- Cursor: a Craft hook with nothing to say now answers `preToolUse` with `{"permission":"allow"}`
+  and `beforeSubmitPrompt` with `{"continue":true}` instead of empty output. Cursor blocks a
+  permission hook whose answer does not match its schema; `allow` stays advisory there. The
+  launcher's answer without a bundled runtime does the same.
+- Prompt and edit hints name only skills of Craft packages the host installed beside the
+  package whose hook runs: a plugin cache's sibling packages (Claude Code, Codex) minus those
+  the host's settings turn off, or the package folders of a project overlay. A route whose
+  every skill belongs to a package that is not installed says nothing unless it carries a
+  standard, a bound task or a missing input. Such routes report `skillAvailability:
+  "installed-packages"` and list what was left out in `skillSources` with status
+  `not-installed`; `craft route` on the command line is unchanged (`not-verified`).
+- `craft doctor` reports Codex plugins that `config.toml` enables but the plugin cache does
+  not hold as a problem with the `codex plugin add` command to run, instead of "not
+  installed". For a host with no install found it still names the last hook event the project
+  recorded for that host.
+
 ## 0.0.5
 
 This release lets a project declare its own standards and skills, checks what can be checked

@@ -167,9 +167,25 @@ pub fn lookup(intent: &str, runtime: Option<&str>, root: &str) -> Option<Value> 
 /// before a one-line fix (1.76× vanilla tokens). It stays silent unless a task is bound or it
 /// reports a missing input; the session's intent still routes the first edit, whose hint
 /// carries the scope's guidance where the change happens.
+///
+/// A route whose every skill belongs to a package the host has not installed names a workflow
+/// nobody can load: it stays silent unless it still carries a standard, a task or a missing
+/// input.
 pub fn speaks(route: &Value, prompt: bool) -> bool {
     if route.get("answer").is_some_and(|answer| !answer.is_null()) {
         return true;
+    }
+    let carries = |field: &str| route[field].as_array().is_some_and(|list| !list.is_empty());
+    let unserved = route["skillSources"]
+        .as_array()
+        .is_some_and(|sources| sources.iter().any(|s| s["status"] == "not-installed"))
+        && !carries("skills");
+    if unserved
+        && !carries("standards")
+        && !carries("missing")
+        && !crate::values::truthy(&route["taskIdentity"]["task"])
+    {
+        return false;
     }
     match route["intent"].as_str() {
         Some("locate") => false,

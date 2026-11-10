@@ -255,6 +255,26 @@ fn declared_hooks(hooks: &Value) -> Vec<String> {
     keys
 }
 
+/// The dotted keys of a Codex `config.toml` with their values as text: `Ok(None)` when the
+/// file is absent, an error text when it could not be read in full.
+fn codex_keys(config_file: &Path) -> Result<Option<Map<String, Value>>, String> {
+    let unread = || "config.toml could not be read in full".to_owned();
+    match files::read_bounded(config_file, config::CONFIGURATION_BYTES) {
+        Ok(bytes) => match config::extract("config.toml", &bytes) {
+            Ok(extraction) if !extraction.partial => Ok(Some(
+                extraction
+                    .evidence
+                    .into_iter()
+                    .map(|evidence| (evidence.name, json!(evidence.target)))
+                    .collect(),
+            )),
+            _ => Err(unread()),
+        },
+        Err(files::ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(unread()),
+    }
+}
+
 /// Codex: configured Craft plugins and whether each is enabled, the project's trust level,
 /// the hooks feature switch, recorded hook approvals against the hooks each installed bundle
 /// declares, and other hook files holding commands.
@@ -264,30 +284,20 @@ pub fn codex(root: &Path) -> Value {
     };
     let config_file = home.join("config.toml");
     let mut sources = Vec::new();
-    let mut keys: Map<String, Value> = Map::new();
-    match files::read_bounded(&config_file, config::CONFIGURATION_BYTES) {
-        Ok(bytes) => match config::extract("config.toml", &bytes) {
-            Ok(extraction) if !extraction.partial => {
-                sources.push(looked(&config_file, true, None));
-                for evidence in extraction.evidence {
-                    keys.insert(evidence.name, json!(evidence.target));
-                }
-            }
-            _ => sources.push(looked(
-                &config_file,
-                true,
-                Some("config.toml could not be read in full".into()),
-            )),
-        },
-        Err(files::ReadError::Io(error)) if error.kind() == ErrorKind::NotFound => {
-            sources.push(looked(&config_file, false, None));
+    let keys = match codex_keys(&config_file) {
+        Ok(Some(keys)) => {
+            sources.push(looked(&config_file, true, None));
+            keys
         }
-        Err(_) => sources.push(looked(
-            &config_file,
-            true,
-            Some("config.toml could not be read in full".into()),
-        )),
-    }
+        Ok(None) => {
+            sources.push(looked(&config_file, false, None));
+            Map::new()
+        }
+        Err(error) => {
+            sources.push(looked(&config_file, true, Some(error)));
+            Map::new()
+        }
+    };
     let root_text = root.to_string_lossy();
     let trust = keys
         .get(&format!("projects.{root_text}.trust_level"))
@@ -342,6 +352,15 @@ pub fn codex(root: &Path) -> Value {
             }
         }
     }
+    // Craft plugins the configuration names, installed or not.
+    let configured: Vec<Value> = keys
+        .iter()
+        .filter_map(|(key, enabled)| {
+            let id = key.strip_prefix("plugins.")?.strip_suffix(".enabled")?;
+            id.starts_with("craft-")
+                .then(|| json!({"id": id, "enabled": enabled}))
+        })
+        .collect();
     let mut commands = Vec::new();
     for path in [home.join("hooks.json"), root.join(".codex/hooks.json")] {
         match json_file(&path) {
@@ -360,8 +379,91 @@ pub fn codex(root: &Path) -> Value {
     json!({
         "host": "codex", "installed": home.is_dir(), "config": home.to_string_lossy(),
         "trust": trust, "hooksFeature": hooks_feature, "packages": packages,
-        "commands": commands, "sources": sources,
+        "configured": configured, "commands": commands, "sources": sources,
     })
+}
+
+/// Whether a host setting turns the plugin `id` off for `project`. Claude Code: the last of
+/// the user, project and local settings naming it says `false`. Codex: its configuration
+/// was read and does not enable it. Other hosts load every package an overlay ships.
+fn turned_off(host: &str, project: &Path, id: &str) -> bool {
+    match host {
+        "claude" => {
+            let Some(config) =
+                variable("CLAUDE_CONFIG_DIR").or_else(|| home().map(|h| h.join(".claude")))
+            else {
+                return false;
+            };
+            [
+                config.join("settings.json"),
+                project.join(".claude/settings.json"),
+                project.join(".claude/settings.local.json"),
+            ]
+            .iter()
+            .rev()
+            .find_map(|path| {
+                documents::input(path)
+                    .ok()?
+                    .get("enabledPlugins")?
+                    .get(id)
+                    .cloned()
+            })
+            .is_some_and(|enabled| enabled != true)
+        }
+        "codex" => variable("CODEX_HOME")
+            .or_else(|| home().map(|h| h.join(".codex")))
+            .and_then(|home| codex_keys(&home.join("config.toml")).ok().flatten())
+            .is_some_and(|keys| keys.get(&format!("plugins.{id}.enabled")) != Some(&json!("true"))),
+        _ => false,
+    }
+}
+
+/// The Craft packages `host` has installed beside the running `bundle` of `package`, by
+/// name, or `None` when the bundle sits in no layout a host installs. A plugin cache keeps
+/// `<marketplace>/<package>/<version>`; an overlay or a marketplace checkout keeps `<package>`
+/// folders side by side. The running package always counts: its hook ran.
+pub fn packages(host: &str, project: &Path, bundle: &Path, package: &str) -> Option<Vec<String>> {
+    if !is_bundle(bundle) {
+        return None;
+    }
+    let name = |path: &Path| path.file_name().map(|n| n.to_string_lossy().into_owned());
+    let folders = |path: &Path| -> Vec<PathBuf> {
+        fs::read_dir(path)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect()
+    };
+    let parent = bundle.parent()?;
+    let mut found = vec![package.to_owned()];
+    if name(bundle).as_deref() == Some(package) {
+        found.extend(
+            folders(parent)
+                .iter()
+                .filter(|sibling| is_bundle(sibling))
+                .filter_map(|sibling| name(sibling)),
+        );
+    } else if name(parent).as_deref() == Some(package) {
+        let market = parent.parent()?;
+        let marketplace = name(market)?;
+        for sibling in folders(market) {
+            let Some(sibling_name) = name(&sibling) else {
+                continue;
+            };
+            if folders(&sibling).iter().any(|version| is_bundle(version))
+                && !turned_off(host, project, &format!("{sibling_name}@{marketplace}"))
+            {
+                found.push(sibling_name);
+            }
+        }
+    } else {
+        return None;
+    }
+    found.sort();
+    found.dedup();
+    Some(found)
 }
 
 /// A project overlay a host loads from the repository, with the bundle each of its commands

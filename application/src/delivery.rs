@@ -21,6 +21,8 @@ pub struct Event<'a> {
     pub root: &'a Path,
     pub cwd: &'a Path,
     pub host: &'a str,
+    /// The package whose hook this is.
+    pub package: Option<&'a str>,
     pub lifecycle: &'a str,
     pub session: Option<&'a str>,
     /// The tool writes a file.
@@ -195,7 +197,14 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             } else {
                 vec![json!(file)]
             };
+            // What the host installed beside this hook's package; unknown outside a bundle.
+            let packages = event.package.and_then(|package| {
+                let bundle = std::env::var_os(crate::statusline::PACKAGE_ROOT)?;
+                let bundle = std::fs::canonicalize(bundle).ok()?;
+                craft_platform::host_install::packages(event.host, root, &bundle, package)
+            });
             let request = routing::Request {
+                packages: packages.as_deref(),
                 intent: Some(intent),
                 files: &files,
                 risks: &[],
