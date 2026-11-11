@@ -319,7 +319,7 @@ anything ran. Execution belongs to the host or to an integration driving the
 When a turn ends, the user reads one line on what Craft did in the session so far:
 
 ```text
-Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 task context restored
+Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 context restored after compaction
 ```
 
 Only what happened is named, and a session in which none of it happened shows no line. The
@@ -334,7 +334,7 @@ the line is in `craft session` only. `routing.sessionSummary: false` shows none.
 | Fixed | The same kind of check runs on that file again and no longer finds it |
 | Test runs that ran no test | The model was told a test command executed no test |
 | Lookups answered | A prompt or search got its answer from Project Intelligence in the hook |
-| Task contexts restored | A task or checkpoint was restated after a session start or a compaction |
+| Contexts restored after compaction | A task or checkpoint was restated after the host compacted the context. What a session start restates is not counted: a session the host starts again keeps its transcript |
 
 `craft session --session <id>` prints the same line, the bytes of context the session's hooks
 returned, the pieces left out to stay under a host's hook output ceiling and the lookup

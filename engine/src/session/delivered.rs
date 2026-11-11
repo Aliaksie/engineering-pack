@@ -181,7 +181,7 @@ pub struct Delivery<'a> {
     pub checked: &'a [Checked],
     /// A test run that executed no test was reported.
     pub empty_test: bool,
-    /// The task or checkpoint was restated after a start or a compaction.
+    /// The task or checkpoint was restated after the host compacted the context.
     pub resume: bool,
 }
 
@@ -365,8 +365,8 @@ pub fn summary(record: &Value) -> Option<String> {
     }
     if of("resumes") > 0 {
         parts.push(format!(
-            "{} restored",
-            counted(of("resumes"), "task context", "task contexts")
+            "{} restored after compaction",
+            counted(of("resumes"), "context", "contexts")
         ));
     }
     if of("commandsRefused") > 0 {
@@ -547,7 +547,7 @@ mod tests {
         let (line, shown) = summary_due(&record).unwrap();
         assert_eq!(
             line,
-            "Craft this session: 2 standards findings raised, 0 fixed · 1 test run that ran no test caught · 1 lookup answered from the project index · 1 task context restored"
+            "Craft this session: 2 standards findings raised, 0 fixed · 1 test run that ran no test caught · 1 lookup answered from the project index · 1 context restored after compaction"
         );
         validate(&shown).unwrap();
         assert_eq!(summary_due(&shown), None);

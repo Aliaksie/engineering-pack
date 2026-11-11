@@ -594,7 +594,7 @@ fn scenario(host: Host) {
     let ended: Value = serde_json::from_str(&ended).unwrap_or_else(|_| panic!("{ended}"));
     assert_eq!(
         ended,
-        json!({"systemMessage": "Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 1 task context restored · 1 command refused by the safety policy"})
+        json!({"systemMessage": "Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 1 context restored after compaction · 1 command refused by the safety policy"})
     );
     assert_eq!(
         host.hook(&repo, "turn-end", json!({"stop_hook_active": false})),

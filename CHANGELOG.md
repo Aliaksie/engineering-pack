@@ -60,7 +60,7 @@
   store sooner for a waiting lookup.
 - When a turn ends, Claude Code, Codex and Gemini CLI show one line on what Craft did in the
   session: standards findings raised and fixed, test runs that ran no test, lookups answered
-  from the project index and task contexts restored. Nothing happened, or nothing changed
+  from the project index and contexts restored after compaction. Nothing happened, or nothing changed
   since the line was last shown: no line. `craft session` prints the same line and counts on
   every host (`delivered` in `--json`); `routing.sessionSummary: false` turns the line off.
 - A hook answer carries at most 9,000 bytes of context on every host, down from 12,000
