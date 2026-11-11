@@ -191,6 +191,41 @@ observed, that step is refused while the test status of the current tree is `fai
 includes a tree whose latest run executed no test and no run decided; when that status is
 `unknown`, the pass is recorded as stated.
 
+## Project checks
+
+`craft check` runs the commands a project declares: the `checks` of the modules that own the
+changed files and the `run` command of each `check` standard whose scope covers them. The
+changed files are the uncommitted ones, or those named with `--file`; `--all` takes every
+declared check, as a CI job on a clean tree needs. A module check runs in the module's path,
+a standard's command in its `cwd`.
+
+Each command may name a `stage`: `step`, `commit` (the default), `pr` or `ci`. A run at
+`--stage commit` executes the `step` and `commit` checks and lists the others as
+`left-to-pr` or `left-to-ci`. A check left to a later stage, one that could not start
+(`not-started`), one ended at its time bound (`timed-out`, 600 seconds unless
+`timeoutSeconds` says otherwise) and a test command whose runner summary executed no test are
+never reported as passed. A run in which no check was executed is `nothing-run`, not
+`passed`.
+
+```json
+{
+  "modules": [
+    { "name": "api", "path": "services/api", "checks": [
+      { "command": "cargo", "args": ["fmt", "--check"], "stage": "step" },
+      { "command": "cargo", "args": ["test"] },
+      { "command": "cargo", "args": ["test", "--features", "slow"], "stage": "ci", "timeoutSeconds": 1800 }
+    ] }
+  ]
+}
+```
+
+The result carries the source digest of the tree the commands ran on, and `treeChanged` when
+a command (a formatter, a code generator) changed it. Output is shown only for a check that
+did not pass, from its end. With `--session` the run is kept in the session's records, and a
+test command among the checks counts as an observed test run. Commands start without a shell,
+exactly as declared, and only from this command: no hook runs them.
+`routing.projectChecks: false` makes `craft check` run nothing and say so.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:

@@ -13,6 +13,10 @@ publication, and must not contain credentials, private endpoints or production t
 - Invocation plans keep argv and structured arguments but neither execute nor authorize them.
   Read/write policy, tool availability, credentials and user or job authorization are separate
   checks. Publication requires matching base/head revisions and explicit authorization.
+- `craft check` starts the commands the project configuration declares, without a shell and
+  with the caller's permissions. It runs only when called, never from a hook, and nothing it
+  reports authorizes a commit, push or publication. Run it on untrusted configuration only
+  where running that project's own build would be acceptable.
 - Building untrusted PR code can run arbitrary code even in a disposable checkout.
 - For agent changes, test tool authorization, idempotency, isolation and output validation
   independently of model behavior; a prompt or content filter does not replace them.

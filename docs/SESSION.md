@@ -599,7 +599,7 @@ A fully manual policy:
   "routing": {
     "promptHints": false, "editHints": false, "dedupeHints": false, "standardChecks": false,
     "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false,
-    "sessionSummary": false, "conventionProposals": false
+    "sessionSummary": false, "conventionProposals": false, "projectChecks": false
   },
   "checkpoint": { "enabled": false },
   "efficiency": {
