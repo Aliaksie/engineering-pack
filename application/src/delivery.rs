@@ -205,7 +205,11 @@ fn account(
         held,
         checked: &checked,
         empty_test: kept(TESTS),
-        resume: kept(RESUME) || (kept(CHECKPOINT) && event.lifecycle != "before-compact"),
+        // A restoration is context given back after the host dropped it. A session the host
+        // starts again keeps its transcript, so what a start restates is not counted; a
+        // headless run starts the session at every turn.
+        resume: (kept(RESUME) || kept(CHECKPOINT))
+            && !matches!(event.lifecycle, "before-compact" | "session-start"),
     };
     decision["delivered"] = json!({
         "contextBytes": delivery.context_bytes, "droppedPieces": delivery.dropped,

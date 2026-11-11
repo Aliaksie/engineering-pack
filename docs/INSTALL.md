@@ -65,9 +65,12 @@ overlay into the project; Codex discovers `.agents/skills`.
 
 Plugin hooks need their own trust: open `/hooks`, inspect and trust the current definitions,
 and review again after they change. Codex 0.164 and later binds that approval to the plugin's
-contents, so every Craft update asks again. Codex 0.150 and later loads no project `AGENTS.md`
-in an untrusted project, so the `agents` overlay's guidance is absent until you trust the
-project. `/status` and `/statusline` show session usage; `craft`
+contents, so after every Craft update it skips all Craft hooks, without a message, until you
+trust them again in `/hooks`; a safety policy refuses nothing meanwhile. `craft doctor`
+compares each approval with the installed plugin, the way Codex 0.167 fingerprints one, and
+says when to approve again. Codex 0.150 and later loads no project `AGENTS.md` in an
+untrusted project, so the `agents` overlay's guidance is absent until you trust the project.
+`/status` and `/statusline` show session usage; `craft`
 receives no Codex token counts, so they stay unknown.
 
 Two things leave Craft silent in Codex without an error. A plugin that `config.toml` enables
@@ -199,17 +202,22 @@ for the project whether each host would run Craft, from files only:
 - Codex: configured and enabled packages at the newest cached version (older cached
   versions are listed, not judged), packages the configuration enables that are not in the
   plugin cache, project trust, the hooks feature switch, a recorded
-  approval for each hook a package declares, the bundled runtime, and Craft commands in
-  other hook files;
+  approval for each hook a package declares and whether it was given to the plugin content
+  now installed (an update leaves approvals behind), the bundled runtime, and Craft commands
+  in other hook files;
 - Cursor, Copilot CLI and Gemini CLI project overlays: the bundled runtime each command
   starts;
 - per host and package, the last hook event Craft recorded in this project and the version
-  it ran, so a session that predates an update is named; for a host with no install found,
-  the last event recorded for it.
+  it ran, so a session that predates an update is named and an event of another version is
+  not taken for the installed one; for a host with no install found, the last event recorded
+  for it;
+- the configuration layers: a file that cannot be used, fields of the organization or user
+  file this build does not know and left out, and a safety policy that is on while no hook of
+  an installed host is known to have run in the project.
 
 It writes nothing to host configuration or task state and starts no host. Whether a running
-session loaded the current install, Codex approval content hashes, and managed or
-command-line settings stay unknown. It exits 1 only when an enabled package cannot run here
+session loaded the current install, whether a Codex hook's declaration still matches its
+approval, and managed or command-line settings stay unknown. It exits 1 only when an enabled package cannot run here
 (missing, unrunnable or altered bundled runtime); `--json` returns the full report.
 
 ## Local builds and project overlays

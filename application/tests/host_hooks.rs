@@ -755,6 +755,111 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
     assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
 }
 
+/// A model can write every file through shell commands and commit before the turn ends: no
+/// edit hook fires and the worktree is clean at the stop. The stop still reviews that work.
+#[test]
+fn a_stop_reviews_files_a_shell_command_wrote_and_work_committed_in_the_turn() {
+    let fixture = project(
+        "stop-committed",
+        Some(
+            r#"{"formatVersion":1,"routing":{"debtMarkers":true},
+            "standards":[{"id":"changelog","anchor":"keep-a-changelog"}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    let stop = || lifecycle(root, "turn-end", json!({}));
+    let files = |decision: &Value| -> Vec<(String, String)> {
+        decision["stop"]["findings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|f| {
+                let text = |key: &str| f[key].as_str().unwrap_or_default().to_owned();
+                (text("file"), text("standard"))
+            })
+            .collect()
+    };
+    fs::write(root.join("a.ts"), "export const a = 1\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "a.ts"]);
+    git(&["commit", "-qm", "init"]);
+    lifecycle(root, "session-start", json!({}));
+
+    // Written without an edit tool, then committed: clean at the stop.
+    fs::write(
+        root.join("CHANGELOG.md"),
+        "# Changelog\n\n## Next\n\n### Misc\n- x\n",
+    )
+    .unwrap();
+    fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: change"]);
+    let decision = stop();
+    let found = files(&decision);
+    assert!(
+        found.contains(&("CHANGELOG.md".into(), "changelog".into())),
+        "the anchor check no edit hook ran: {decision}"
+    );
+    assert!(
+        found.contains(&("a.ts".into(), String::new())),
+        "the marker committed in the turn: {decision}"
+    );
+    assert!(stop().get("stop").is_none(), "said once");
+
+    // A finding the session heard when it edited a file is not said again at the stop: this
+    // file's first finding comes from the edit hook, never from a stop.
+    fs::create_dir_all(root.join("docs")).unwrap();
+    let heard_file = root.join("docs/CHANGELOG.md");
+    fs::write(&heard_file, "# Changelog\n\n## Later\n\n### Other\n- y\n").unwrap();
+    let heard = written(
+        root,
+        json!({"tool": "edit", "file": heard_file.to_string_lossy()}),
+    );
+    assert_eq!(heard["standards"][0]["standard"], "changelog", "{heard}");
+    assert!(stop().get("stop").is_none(), "heard at the edit");
+
+    // Commits that arrive another way (a pull, a merge) are other people's work.
+    git(&["checkout", "-qb", "theirs"]);
+    fs::write(root.join("c.ts"), "// FIXME: theirs\nexport const c = 1\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: theirs"]);
+    git(&["checkout", "-q", "-"]);
+    // Concluded by hand, a merge is recorded as a commit; it is still their work.
+    git(&["merge", "-q", "--no-ff", "--no-commit", "theirs"]);
+    git(&["commit", "-qm", "merge theirs"]);
+    assert!(
+        stop().get("stop").is_none(),
+        "a merge is not this session's change"
+    );
+    // What the session commits next is reviewed against the commit that stop saw.
+    fs::write(root.join("d.ts"), "// HACK: ours\nexport const d = 1\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: ours"]);
+    let decision = stop();
+    assert_eq!(
+        files(&decision),
+        [("d.ts".to_string(), String::new())],
+        "{decision}"
+    );
+}
+
 #[test]
 fn a_subagent_the_host_starts_hears_the_standards_of_the_delegating_work() {
     let fixture = project(

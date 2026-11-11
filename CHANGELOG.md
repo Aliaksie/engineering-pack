@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- `craft doctor` compares each Codex hook approval with the installed plugin content and says
+  when an update left the approvals behind: Codex then skips every Craft hook without a
+  message until they are approved again in `/hooks`. A hook event of another version no
+  longer counts as the installed one running, and doctor reports the configuration layers:
+  a file that cannot be used, and a safety policy that is on while no hook of an installed
+  host is known to have run in the project.
+- The stop review covers work that passed no edit hook and work already committed: a file a
+  shell command or a script wrote gets its anchor check at the stop, and files in commits the
+  session made since its previous stop are reviewed like uncommitted ones. Before, a turn
+  that wrote through the shell and committed ended with no review at all. Commits that
+  arrive by a pull, merge, checkout, rebase or reset are not taken for the session's work.
+- A switch or section the running build does not know in the organization or user file is
+  left out and named by `craft config` and `craft doctor` instead of stopping every command
+  and hook, so one file serves installed builds of different versions. The project file
+  stays strict, and so does a known field with a value it cannot take.
+
 - An organization file and a user file declare a baseline every project inherits: switches,
   standards with their checks, the safety policy, execution profiles. The project overrides
   only what differs; `standards` and `safety.deny` merge by `id`, and an entry with
@@ -49,7 +65,7 @@
   store sooner for a waiting lookup.
 - When a turn ends, Claude Code, Codex and Gemini CLI show one line on what Craft did in the
   session: standards findings raised and fixed, test runs that ran no test, lookups answered
-  from the project index and task contexts restored. Nothing happened, or nothing changed
+  from the project index and contexts restored after compaction. Nothing happened, or nothing changed
   since the line was last shown: no line. `craft session` prints the same line and counts on
   every host (`delivered` in `--json`); `routing.sessionSummary: false` turns the line off.
 - A hook answer carries at most 9,000 bytes of context on every host, down from 12,000

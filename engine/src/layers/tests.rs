@@ -315,3 +315,41 @@ fn a_field_filter_keeps_the_field_and_what_lies_beneath_it() {
     assert!(!beneath("routingx", "routing"));
     assert!(!beneath("routing", "routing.debtMarkers"));
 }
+
+/// One organization or user file is read by builds of different versions.
+#[test]
+fn fields_a_build_does_not_know_are_left_out_and_named() {
+    let document = json!({"formatVersion": 1, "futureSection": {"a": 1},
+        "routing": {"debtMarkers": true, "futureSwitch": true},
+        "efficiency": {"context": {"compactAt": 0.7, "futureAt": 0.9}},
+        "safety": {"enabled": true}});
+    let (kept, ignored) = known(&document);
+    assert_eq!(
+        ignored,
+        [
+            "futureSection",
+            "routing.futureSwitch",
+            "efficiency.context.futureAt"
+        ]
+    );
+    assert_eq!(
+        kept,
+        json!({"formatVersion": 1, "routing": {"debtMarkers": true},
+            "efficiency": {"context": {"compactAt": 0.7}}, "safety": {"enabled": true}})
+    );
+    let settings = resolved(&kept, &json!({}), &json!({"formatVersion": 1})).unwrap();
+    assert_eq!(settings["settings"]["routing"]["debtMarkers"], true);
+    // What belongs to one project, and a known field with a wrong value, are kept and refused.
+    for refused in [
+        json!({"modules": []}),
+        json!({"routing": {"debtMarkers": "yes"}}),
+        json!({"routing": true}),
+        json!({"safety": {"futureRule": true}}),
+    ] {
+        let (kept, ignored) = known(&refused);
+        assert!(ignored.is_empty(), "{refused}");
+        assert_eq!(kept, refused);
+        assert!(resolved(&kept, &json!({}), &json!({"formatVersion": 1})).is_err());
+    }
+    assert_eq!(known(&json!([])), (json!([]), vec![]));
+}

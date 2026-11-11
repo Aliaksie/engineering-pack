@@ -275,9 +275,87 @@ fn codex_keys(config_file: &Path) -> Result<Option<Map<String, Value>>, String> 
     }
 }
 
+/// How much of one plugin, in bytes and entries, a content fingerprint reads.
+const PLUGIN_BYTES: u64 = 1024 * 1024 * 1024;
+const PLUGIN_ENTRIES: usize = 20_000;
+
+/// The fingerprint Codex binds a plugin's hook approvals to (`trusted_content_hash`), as
+/// Codex 0.167 computes it (`hooks/src/engine/plugin_fingerprint.rs`): SHA-256 over a tag,
+/// then every entry beneath the plugin root in sorted pre-order as its relative path
+/// (length-prefixed), its kind and, for a file, its length and bytes. Python caches and
+/// virtual environments are left out; any other kind of entry (a link) has no fingerprint.
+pub fn codex_content_hash(root: &Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let skipped = |name: &std::ffi::OsStr| {
+        let name = name.to_string_lossy();
+        name == "__pycache__"
+            || name == ".venv"
+            || name.ends_with(".pyc")
+            || name.ends_with(".egg-info")
+    };
+    let mut hash = Sha256::new();
+    hash.update(b"codex-plugin-bundle-v1");
+    let (mut stack, mut entries, mut bytes) = (vec![root.to_path_buf()], 0usize, 0u64);
+    while let Some(path) = stack.pop() {
+        entries += 1;
+        if entries > PLUGIN_ENTRIES {
+            return Err("plugin holds too many files to fingerprint".into());
+        }
+        let name = path
+            .strip_prefix(root)
+            .map_err(|_| "entry outside the plugin".to_owned())?
+            .as_os_str()
+            .as_encoded_bytes();
+        hash.update((name.len() as u64).to_le_bytes());
+        hash.update(name);
+        let meta = fs::symlink_metadata(&path).map_err(|error| error.to_string())?;
+        if meta.is_dir() {
+            hash.update(b"directory");
+            let mut children: Vec<PathBuf> = fs::read_dir(&path)
+                .map_err(|error| error.to_string())?
+                .filter_map(Result::ok)
+                .filter(|entry| !skipped(&entry.file_name()))
+                .map(|entry| entry.path())
+                .collect();
+            children.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            stack.extend(children);
+        } else if meta.is_file() {
+            bytes += meta.len();
+            if bytes > PLUGIN_BYTES {
+                return Err("plugin is too large to fingerprint".into());
+            }
+            hash.update(b"file");
+            hash.update(meta.len().to_le_bytes());
+            let mut file = fs::File::open(&path)
+                .map_err(|error| error.to_string())?
+                .take(meta.len());
+            let (mut copied, mut buffer) = (0u64, vec![0u8; 64 * 1024]);
+            loop {
+                let read = file.read(&mut buffer).map_err(|error| error.to_string())?;
+                if read == 0 {
+                    break;
+                }
+                hash.update(&buffer[..read]);
+                copied += read as u64;
+            }
+            if copied != meta.len() {
+                return Err("plugin file changed while fingerprinting".into());
+            }
+        } else {
+            return Err(format!(
+                "{} is neither a file nor a folder",
+                path.strip_prefix(root).unwrap_or(&path).display()
+            ));
+        }
+    }
+    let digest: String = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    Ok(format!("sha256:{digest}"))
+}
+
 /// Codex: configured Craft plugins and whether each is enabled, the project's trust level,
 /// the hooks feature switch, recorded hook approvals against the hooks each installed bundle
-/// declares, and other hook files holding commands.
+/// declares and against its current content, and other hook files holding commands.
 pub fn codex(root: &Path) -> Value {
     let Some(home) = variable("CODEX_HOME").or_else(|| home().map(|h| h.join(".codex"))) else {
         return json!({"host": "codex", "installed": false, "reason": "no home directory"});
@@ -343,10 +421,29 @@ pub fn codex(root: &Path) -> Value {
                     .iter()
                     .filter(|key| !approved.contains(&format!("{prefix}{key}").as_str()))
                     .count();
+                // The plugin content each approval was given to, where Codex recorded one.
+                let recorded: Vec<&Value> = declared
+                    .iter()
+                    .filter_map(|key| {
+                        keys.get(&format!("hooks.state.{prefix}{key}.trusted_content_hash"))
+                    })
+                    .collect();
+                let (stale, content) = if recorded.is_empty() {
+                    (0, json!("not-recorded"))
+                } else {
+                    match codex_content_hash(&path) {
+                        Ok(current) => {
+                            let stale = recorded.iter().filter(|r| ***r != json!(current)).count();
+                            (stale, json!(if stale == 0 { "match" } else { "changed" }))
+                        }
+                        Err(error) => (0, json!({"error": error})),
+                    }
+                };
                 packages.push(json!({
                     "id": id, "version": version.file_name().to_string_lossy(),
                     "enabled": keys.get(&format!("plugins.{id}.enabled")).cloned().unwrap_or(Value::Null),
                     "hooks": declared.len(), "unapproved": unapproved,
+                    "staleApprovals": stale, "approvedContent": content,
                     "bundle": bundle(&path),
                 }));
             }
@@ -526,6 +623,42 @@ mod tests {
                 "session_start:1:1"
             ]
         );
+    }
+
+    /// The value Codex 0.167 records as `trusted_content_hash` for this tree (reference
+    /// computed from its published algorithm, which reproduced recorded approvals of real
+    /// plugins). Windows names nested entries with its own separator, so the value differs.
+    #[cfg(unix)]
+    #[test]
+    fn a_plugin_fingerprint_is_the_one_codex_records_with_an_approval() {
+        let root = std::env::temp_dir().join(format!("craft-fingerprint-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        for dir in ["sub", "__pycache__", ".hidden"] {
+            fs::create_dir_all(root.join(dir)).unwrap();
+        }
+        for (file, text) in [
+            ("a.txt", "a\n"),
+            ("sub/b.txt", "b"),
+            ("__pycache__/x.pyc", "x"),
+            (".hidden/h", "h"),
+            ("old.pyc", "c"),
+        ] {
+            fs::write(root.join(file), text).unwrap();
+        }
+        let hash = codex_content_hash(&root).unwrap();
+        assert_eq!(
+            hash,
+            "sha256:b014e4cd12eab7da9958c554a4fa4598ef7cf02c688144df52c8f3cae5583766"
+        );
+        // Any file of the plugin is part of it; a cache is not; a link has no fingerprint.
+        fs::write(root.join("__pycache__/y.pyc"), "y").unwrap();
+        assert_eq!(codex_content_hash(&root).unwrap(), hash);
+        fs::write(root.join(".hidden/h"), "changed").unwrap();
+        assert_ne!(codex_content_hash(&root).unwrap(), hash);
+        std::os::unix::fs::symlink(root.join("a.txt"), root.join("link")).unwrap();
+        let error = codex_content_hash(&root).unwrap_err();
+        assert_eq!(error, "link is neither a file nor a folder");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

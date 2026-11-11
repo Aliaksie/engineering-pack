@@ -54,7 +54,18 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
         .iter()
         .map(|(host, relative)| host_install::overlay(host, &root, relative))
         .collect();
+    // The layers as every command reads them; a file that cannot be used is reported, not raised.
+    let configuration =
+        match crate::project::layers(&root, crate::project::Sources::default(), false, None) {
+            Ok(report) => json!({
+                "layers": report["layers"],
+                "safety": crate::project::settings(&root, None)
+                    .is_ok_and(|settings| craft_engine::safety::enabled(&settings)),
+            }),
+            Err(failure) => json!({"error": failure.message}),
+        };
     let facts = json!({
+        "configuration": configuration,
         "project": root.to_string_lossy(),
         "craftVersion": crate::telemetry::pack_version(),
         "telemetry": hook_events(&root),
@@ -108,6 +119,13 @@ pub fn text(report: &Value) -> String {
         for check in host["checks"].as_array().into_iter().flatten() {
             out.push_str(&format!("  {}\n", line(check)));
         }
+    }
+    let configuration = report["configuration"].as_array().into_iter().flatten();
+    for (index, check) in configuration.enumerate() {
+        if index == 0 {
+            out.push_str("configuration\n");
+        }
+        out.push_str(&format!("  {}\n", line(check)));
     }
     for next in report["next"].as_array().into_iter().flatten() {
         out.push_str(&format!("next: {}\n", next.as_str().unwrap_or_default()));

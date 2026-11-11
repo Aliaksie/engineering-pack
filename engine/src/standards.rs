@@ -569,15 +569,16 @@ pub fn debt_markers(settings: &Value) -> bool {
 }
 
 /// Whether a stop has anything to review here: the summary is on and the project reports
-/// debt markers, declares a `review` standard or checks module dependencies. Otherwise a
-/// stop reads no Git state at all.
+/// debt markers, declares a `review` standard, checks module dependencies or checks written
+/// files against an anchor. Otherwise a stop reads no Git state at all.
 pub fn stop_relevant(settings: &Value) -> bool {
     stop_review(settings)
         && (debt_markers(settings)
             || declared(settings)
                 .iter()
                 .any(|standard| level(settings, standard) == "review")
-            || !checked(settings, Input::Imports).is_empty())
+            || !checked(settings, Input::Imports).is_empty()
+            || !checked(settings, Input::File).is_empty())
 }
 
 /// Craft's anchors for `intent`, advised and never checked. The project's own word wins: a

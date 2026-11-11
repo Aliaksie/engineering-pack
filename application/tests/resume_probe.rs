@@ -152,8 +152,29 @@ fn compaction_resumes_the_task_once_with_its_decisions() {
         &[("value.mjs", "export const value = 1;\n")],
     );
     worked(&repo, "S1");
+    let restorations = || {
+        let status = repo
+            .cli(&[
+                "session",
+                "--session",
+                "S1",
+                "--bundle",
+                repo.path(),
+                "--json",
+            ])
+            .unwrap();
+        status["delivered"]["resumes"].as_u64().unwrap_or(0)
+    };
+    // A session the host starts again (each turn of a headless run) hears its task, but its
+    // transcript was kept: the summary counts no restoration for it.
+    for _ in 0..2 {
+        let started = hook(&repo, "claude", "session-start", "S1", json!({}));
+        assert!(resumed(&started).is_some(), "{started}");
+    }
+    assert_eq!(restorations(), 0);
     hook(&repo, "claude", "before-compact", "S1", json!({}));
     let restored = hook(&repo, "claude", "after-compact", "S1", json!({}));
+    assert_eq!(restorations(), 1);
     let resume = resumed(&restored).expect("resume after compaction");
     assert_resume(resume);
     assert_eq!(resume["source"], "unchanged since the last checkpoint");
