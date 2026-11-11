@@ -13,10 +13,18 @@ const RECORD_BYTES: usize = 1024;
 /// proposals: the offer with the command that lists them, recorded as shown. `None` when
 /// there is nothing new to say or another hook is recording it.
 pub(crate) fn offer(root: &Path, settings: &Value) -> Result<Option<Value>, Failure> {
-    let declares = settings["standards"]
-        .as_array()
-        .is_some_and(|standards| !standards.is_empty());
-    if declares {
+    // Standards inherited from an organization or user layer are not the project's own:
+    // only then is its file read again, for what it declares itself.
+    let listed = |value: &Value| {
+        value["standards"]
+            .as_array()
+            .is_some_and(|standards| !standards.is_empty())
+    };
+    let project = match listed(settings) {
+        true => crate::project::configuration(root)?,
+        false => json!({}),
+    };
+    if listed(&project) {
         return Ok(None);
     }
     let proposed = proposed(root, settings)?;
@@ -25,7 +33,7 @@ pub(crate) fn offer(root: &Path, settings: &Value) -> Result<Option<Value>, Fail
         return Ok(None);
     };
     let shown = crate::session::read_record(&target, RECORD_BYTES).unwrap_or(Value::Null);
-    let Some((mut offer, record)) = conventions::offer(settings, &proposed, &shown) else {
+    let Some((mut offer, record)) = conventions::offer(&project, &proposed, &shown) else {
         return Ok(None);
     };
     state::write(&target, &record, RECORD_BYTES, false)?;

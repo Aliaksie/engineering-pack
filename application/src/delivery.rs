@@ -531,7 +531,7 @@ fn decide(
         services.as_ref(),
         event.lifecycle == "before-compact",
     );
-    // A project that declares no standards hears once which ones its own files support.
+    // A project that declares no standards of its own hears once which ones its files support.
     if event.lifecycle == "session-start"
         && delivery::convention_proposals(settings)
         && (event.context_supported || crate::hook::shows_notice(event.host, event.lifecycle))
