@@ -46,6 +46,7 @@
           "route",
           "standards",
           "anchors",
+          "check",
           "doctor",
           "context-report",
           "session",
