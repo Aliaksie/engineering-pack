@@ -625,10 +625,12 @@ const OFFER_NAMES: usize = 6;
 
 /// What a session start says about `proposed` (the result of [`propose`]) in a project
 /// that declares no standards: `(offer, record)`, the offer `{count, standards}` and the
-/// record to keep so the same set is not named again. `None` when the project declares a
-/// standard, nothing is proposed, or `shown` already records this set.
-pub fn offer(settings: &Value, proposed: &Value, shown: &Value) -> Option<(Value, Value)> {
-    let declares = settings["standards"]
+/// record to keep so the same set is not named again. `project` is the project's own
+/// configuration: standards it inherits from an organization or user layer are not its
+/// declarations, and what they cover is already left out of `proposed`. `None` when the
+/// project declares a standard, nothing is proposed, or `shown` already records this set.
+pub fn offer(project: &Value, proposed: &Value, shown: &Value) -> Option<(Value, Value)> {
+    let declares = project["standards"]
         .as_array()
         .is_some_and(|standards| !standards.is_empty());
     let ids: Vec<&str> = proposed["proposals"]

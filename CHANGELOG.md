@@ -33,8 +33,10 @@
   writes nothing.
 - A session that starts in a project with no declared standards says once how many its own
   files support and that `craft standards --propose` lists them; the same set is not named
-  again. `routing.conventionProposals: false` turns this off. The record of what was named is
-  kept in `.craft/state/notices/`, a new shared state folder that `craft state-clean` measures.
+  again. Standards inherited from an organization or user file do not count as the project's
+  declarations, and what they already cover is not proposed. `routing.conventionProposals:
+  false` turns this off. The record of what was named is kept in `.craft/state/notices/`, a
+  new shared state folder that `craft state-clean` measures.
 - Hooks and lookups that ask Git start fewer processes and no longer wait for one after
   another: a source inventory starts two Git listings together instead of three queries in
   a row, and a worktree snapshot runs its three queries at once. Where starting a process is
