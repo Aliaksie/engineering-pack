@@ -101,7 +101,9 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
             reached = true;
             break;
         }
-        if !action.starts_with("commit") {
+        // A merge concluded by hand is a commit too, and brings other people's work.
+        let own = ["commit:", "commit (initial):", "commit (amend):"];
+        if !own.iter().any(|kind| action.starts_with(kind)) {
             return Vec::new();
         }
     }

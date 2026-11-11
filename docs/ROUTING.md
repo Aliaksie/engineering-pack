@@ -159,7 +159,8 @@ reviewed, whichever tool wrote them: uncommitted changes, and files in commits m
 then, so work committed before the turn ends is still reviewed. Markers are those added since
 the commit the previous stop saw. Uncommitted work from before the session is not reviewed,
 and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
-or a reset, the stop takes nothing from the commits in between. A finding or review item is
+or a reset, the stop takes nothing from the commits in between. One stop reviews at most 64
+files. A finding or review item is
 said once per session, and a stop is never held while the host is already continuing a held
 one. Nothing is enforced: the agent fixes or tells the user why not. The review runs only
 when the project reports debt markers, declares a `review` standard, checks module

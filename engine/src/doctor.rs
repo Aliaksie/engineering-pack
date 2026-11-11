@@ -51,6 +51,15 @@ fn last_seen<'a>(seen: &'a [Value], host: &str, name: &str) -> Option<&'a Value>
         .max_by(|a, b| a["at"].as_str().cmp(&b["at"].as_str()))
 }
 
+/// The version an installed package runs as: the one its bundle states, which hook events
+/// record, else the host's own name for the install (a cache folder can be named otherwise).
+fn installed_version(found: &Value) -> &Value {
+    match &found["bundle"]["packVersion"] {
+        Value::String(_) => &found["bundle"]["packVersion"],
+        _ => &found["version"],
+    }
+}
+
 /// Whether the host ran this package's hooks, and with which version.
 fn firing(
     seen: &[Value],
@@ -100,9 +109,12 @@ fn firing(
             Some(restart.into()),
         );
     }
-    // An install with no recorded time (Codex): an older version's event says nothing about
-    // whether the installed one runs.
-    if let Some(installed) = version.as_str().filter(|installed| *installed != ran) {
+    // An event of another version says nothing about whether the installed one runs. An
+    // event that names no version is not held against it.
+    if let Some(installed) = version
+        .as_str()
+        .filter(|installed| *installed != ran && ran != "unknown")
+    {
         return (
             check(
                 "hooks",
@@ -260,7 +272,7 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
                 telemetry,
                 "claude",
                 package(id),
-                &found["version"],
+                installed_version(found),
                 &found["installedAt"],
             );
             checks.push(hooks);
@@ -341,7 +353,7 @@ fn approval(found: &Value, id: &str, hooks: u64, report: &mut Report) -> Value {
             "approval",
             "problem",
             format!(
-                "{stale} of {hooks} hook approvals were given to other plugin content (the plugin changed since): Codex skips those hooks until they are approved again"
+                "{stale} of {hooks} hook approvals were given to other plugin content (the plugin changed since; compared as Codex 0.167 fingerprints a plugin): Codex skips those hooks until they are approved again"
             ),
         );
     }
@@ -464,7 +476,7 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
                 telemetry,
                 "codex",
                 package(id),
-                &found["version"],
+                installed_version(found),
                 &Value::Null,
             );
             pchecks.push(firing);
@@ -593,7 +605,8 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
             ));
         }
     }
-    if found["safety"] == true {
+    // With telemetry off nothing is recorded, so nothing is known either way.
+    if found["safety"] == true && facts["telemetry"]["local"] != false {
         for host in hosts {
             if matches!(host["status"].as_str(), Some("not-installed" | "off")) {
                 continue;

@@ -312,6 +312,7 @@ fn codex_approvals_given_to_other_plugin_content_are_a_problem() {
 fn a_hook_event_of_another_version_does_not_show_the_installed_one_runs() {
     let mut facts = facts();
     facts["codex"]["packages"][0]["version"] = json!("0.0.6");
+    facts["codex"]["packages"][0]["bundle"]["packVersion"] = json!("0.0.6");
     let report = report(&facts);
     let codex = host(&report, "codex");
     let hooks = codex["packages"][0]["checks"]
@@ -376,4 +377,22 @@ fn configuration_names_ignored_fields_an_unusable_file_and_an_unapplied_safety_p
             .contains("Fix the configuration file")
     );
     assert_eq!(report["blocking"], false);
+}
+
+#[test]
+fn nothing_recorded_is_not_held_against_a_safety_policy_or_a_version() {
+    // Telemetry off: no event is recorded, so a policy is not reported as unapplied.
+    let mut facts = facts();
+    facts["configuration"] = json!({"safety": true, "layers": []});
+    facts["telemetry"] = json!({"local": false, "lastSeen": []});
+    assert_eq!(report(&facts)["configuration"], json!([]));
+    // An event that names no version, and a cache folder named unlike the pack version.
+    let mut facts = self::facts();
+    facts["telemetry"]["lastSeen"][1]
+        .as_object_mut()
+        .unwrap()
+        .remove("packVersion");
+    facts["codex"]["packages"][0]["version"] = json!("0.0.5-77c10e110b37");
+    let report = report(&facts);
+    assert_eq!(host(&report, "codex")["status"], "ok", "{report}");
 }
