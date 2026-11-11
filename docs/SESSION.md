@@ -326,7 +326,8 @@ Only what happened is named, and a session in which none of it happened shows no
 line appears again only after it changed, and never beside a stop the review holds. It is the
 host's own message to the user (`systemMessage`), not context for the model, on Claude Code,
 Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a turn, so there
-the line is in `craft session` only. `routing.sessionSummary: false` shows none.
+the line is in `craft session` only. Codex shows it in its interactive interface; `codex exec`
+prints no hook message, so a non-interactive run reads the line from `craft session` too. `routing.sessionSummary: false` shows none.
 
 | Count | Counted when |
 |---|---|

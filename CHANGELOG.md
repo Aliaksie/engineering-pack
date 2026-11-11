@@ -8,6 +8,11 @@
   longer counts as the installed one running, and doctor reports the configuration layers:
   a file that cannot be used, and a safety policy that is on while no hook of an installed
   host is known to have run in the project.
+- The stop review covers work that passed no edit hook and work already committed: a file a
+  shell command or a script wrote gets its anchor check at the stop, and files in commits the
+  session made since its previous stop are reviewed like uncommitted ones. Before, a turn
+  that wrote through the shell and committed ended with no review at all. Commits that
+  arrive by a pull, merge, checkout, rebase or reset are not taken for the session's work.
 - A switch or section the running build does not know in the organization or user file is
   left out and named by `craft config` and `craft doctor` instead of stopping every command
   and hook, so one file serves installed builds of different versions. The project file
