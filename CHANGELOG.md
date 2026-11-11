@@ -1,25 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.0.6
 
-- Bundles carry a native executable for Linux on arm64 (glibc), next to Linux x86-64, macOS
-  on Apple Silicon and Windows x86-64. Hooks, routing and commands now run on arm64 Linux
-  machines, containers and cloud instances, where every package was inactive before.
-- `craft doctor` compares each Codex hook approval with the installed plugin content and says
-  when an update left the approvals behind: Codex then skips every Craft hook without a
-  message until they are approved again in `/hooks`. A hook event of another version no
-  longer counts as the installed one running, and doctor reports the configuration layers:
-  a file that cannot be used, and a safety policy that is on while no hook of an installed
-  host is known to have run in the project.
-- The stop review covers work that passed no edit hook and work already committed: a file a
-  shell command or a script wrote gets its anchor check at the stop, and files in commits the
-  session made since its previous stop are reviewed like uncommitted ones. Before, a turn
-  that wrote through the shell and committed ended with no review at all. Commits that
-  arrive by a pull, merge, checkout, rebase or reset are not taken for the session's work.
-- A switch or section the running build does not know in the organization or user file is
-  left out and named by `craft config` and `craft doctor` instead of stopping every command
-  and hook, so one file serves installed builds of different versions. The project file
-  stays strict, and so does a known field with a value it cannot take.
+This release lets an organization or a user declare a baseline once that every project
+inherits, runs the checks a project declares at the stage it chose, refuses destructive shell
+commands where a project turns that on, proposes standards from the convention files a project
+already has, and shows in one line what Craft did in a session. Each of these is covered by
+fixtures, and one scenario runs them together through Claude Code's and Codex's own hook
+payloads. That agents keep declared standards more often, or leave less debt, with Craft than
+without it is the goal and has not been measured.
+
+One baseline for every project:
 
 - An organization file and a user file declare a baseline every project inherits: switches,
   standards with their checks, the safety policy, execution profiles. The project overrides
@@ -30,6 +21,13 @@
   file is `~/.config/craft/preferences.json`, which now also takes standards, safety and
   execution. A layer or project file that cannot be used is an error naming the file; while
   it lasts, the review package's shell guard refuses shell commands in the projects it covers.
+- A switch or section the running build does not know in the organization or user file is
+  left out and named by `craft config` and `craft doctor` instead of stopping every command
+  and hook, so one file serves installed builds of different versions. The project file
+  stays strict, and so does a known field with a value it cannot take.
+
+The project's own checks:
+
 - `craft check` runs the checks a project declares (`modules[].checks` and the `run` command
   of its standards) for the changed files, without a shell and each within a time bound. A
   check can name the `stage` it belongs to (`step`, `commit`, `pr`, `ci`); a run executes the
@@ -38,12 +36,18 @@
   executed no test does not pass. A test command it runs in a session is recorded against the
   tree it started on, and a check history that cannot be written is reported in `recordErrors`
   without discarding the results. `routing.projectChecks: false` turns the command off.
+
+Safety policy:
+
 - An opt-in safety policy refuses destructive shell commands before they run on Claude Code,
   Codex, Cursor, Copilot CLI and Gemini CLI: recursive deletes outside the project or of its
   root, forced pushes, Git commands that discard uncommitted work, and privileged or
   system-level commands. `safety.enabled` turns it on, `safety.disables` leaves rules out and
   `safety.deny` adds the project's own by leading words. It only refuses and never approves a
   command; `craft settings` lists the rules in force and the session summary counts refusals.
+
+Standards from existing conventions:
+
 - `craft standards --propose` lists standards a project's existing files already support, ready
   to copy into `.craft/project.json`: conventions named in agent instructions or
   `CONTRIBUTING.md` that Craft checks, lint, format and type-check commands from package
@@ -56,16 +60,9 @@
   declarations, and what they already cover is not proposed. `routing.conventionProposals:
   false` turns this off. The record of what was named is kept in `.craft/state/notices/`, a
   new shared state folder that `craft state-clean` measures.
-- Hooks and lookups that ask Git start fewer processes and no longer wait for one after
-  another: a source inventory starts two Git listings together instead of three queries in
-  a row, and a worktree snapshot runs its three queries at once. Where starting a process is
-  slow, on Windows most of all, the turn-end, session-start, search and lookup hooks answer
-  sooner.
-- A refresh whose file or time budget is spent no longer reads and hashes every source it
-  has not indexed yet; it defers them unread. A first lookup in a large project stays within
-  its budget instead of reading the whole project. `bytesScanned` counts only sources read.
-- Index warm-up keeps one store connection for all its chunks, so each chunk releases the
-  store sooner for a waiting lookup.
+
+Session summary and context budget:
+
 - When a turn ends, Claude Code, Codex and Gemini CLI show one line on what Craft did in the
   session: standards findings raised and fixed, test runs that ran no test, lookups answered
   from the project index and contexts restored after compaction. Nothing happened, or nothing changed
@@ -84,10 +81,14 @@
   `droppedPieces` and `heldAnswers`.
 - `npm run overhead` replays a long session with repeated questions and searches; the
   overhead budget test fails when its total or any single hook answer passes its ceiling.
-- Cursor: a Craft hook with nothing to say now answers `preToolUse` with `{"permission":"allow"}`
-  and `beforeSubmitPrompt` with `{"continue":true}` instead of empty output. Cursor blocks a
-  permission hook whose answer does not match its schema; `allow` stays advisory there. The
-  launcher's answer without a bundled runtime does the same.
+
+Hooks and hosts:
+
+- The stop review covers work that passed no edit hook and work already committed: a file a
+  shell command or a script wrote gets its anchor check at the stop, and files in commits the
+  session made since its previous stop are reviewed like uncommitted ones. Before, a turn
+  that wrote through the shell and committed ended with no review at all. Commits that
+  arrive by a pull, merge, checkout, rebase or reset are not taken for the session's work.
 - Prompt and edit hints name only skills of Craft packages the host installed beside the
   package whose hook runs: a plugin cache's sibling packages (Claude Code, Codex) minus those
   the host's settings turn off, or the package folders of a project overlay. A route whose
@@ -95,10 +96,72 @@
   standard, a bound task or a missing input. Such routes report `skillAvailability:
   "installed-packages"` and list what was left out in `skillSources` with status
   `not-installed`; `craft route` on the command line is unchanged (`not-verified`).
+- `craft doctor` compares each Codex hook approval with the installed plugin content and says
+  when an update left the approvals behind: Codex then skips every Craft hook without a
+  message until they are approved again in `/hooks`. A hook event of another version no
+  longer counts as the installed one running, and doctor reports the configuration layers:
+  a file that cannot be used, and a safety policy that is on while no hook of an installed
+  host is known to have run in the project.
 - `craft doctor` reports Codex plugins that `config.toml` enables but the plugin cache does
   not hold as a problem with the `codex plugin add` command to run, instead of "not
   installed". For a host with no install found it still names the last hook event the project
   recorded for that host.
+- Cursor: a Craft hook with nothing to say now answers `preToolUse` with `{"permission":"allow"}`
+  and `beforeSubmitPrompt` with `{"continue":true}` instead of empty output. Cursor blocks a
+  permission hook whose answer does not match its schema; `allow` stays advisory there. The
+  launcher's answer without a bundled runtime does the same.
+
+Project Intelligence and speed:
+
+- Hooks and lookups that ask Git start fewer processes and no longer wait for one after
+  another: a source inventory starts two Git listings together instead of three queries in
+  a row, and a worktree snapshot runs its three queries at once. Where starting a process is
+  slow, on Windows most of all, the turn-end, session-start, search and lookup hooks answer
+  sooner.
+- A refresh whose file or time budget is spent no longer reads and hashes every source it
+  has not indexed yet; it defers them unread. A first lookup in a large project stays within
+  its budget instead of reading the whole project. `bytesScanned` counts only sources read.
+- Index warm-up keeps one store connection for all its chunks, so each chunk releases the
+  store sooner for a waiting lookup.
+
+Platforms:
+
+- Bundles carry a native executable for Linux on arm64 (glibc), next to Linux x86-64, macOS
+  on Apple Silicon and Windows x86-64. Hooks, routing and commands now run on arm64 Linux
+  machines, containers and cloud instances, where every package was inactive before.
+
+Upgrading:
+
+- Codex binds a hook approval to the plugin's content, so after this update, as after every
+  one, it skips every Craft hook without a message until they are approved again in `/hooks`.
+  `craft doctor` now says when that is the case.
+- `~/.config/craft/preferences.json` is read by every installed Craft build. Builds before
+  0.0.6 stop on a field they do not know: update every installed package before adding
+  standards, safety, execution or new switches to that file.
+- A hook answer now carries at most 9,000 bytes of context; a longer one names the pieces it
+  left out.
+
+Known limits:
+
+- The safety policy judges a command by its words: `xargs rm -rf`, `find -delete`, deleting a
+  remote branch by push, interpreters (`python -c`, `node -e`) and scripts on disk are not
+  recognized, and symbolic links are not resolved. It is evaluated by `craft-delivery`'s
+  hook, so a host without that package has no policy.
+- `craft check` has no scope against a base branch: in CI, name the files with `--file` or
+  run everything with `--all`.
+- A CI runner or teammate without the organization or user file sees the project's own
+  configuration alone.
+- The stop review places changed files relative to the repository's top level; a project
+  whose root is a folder below it is not reviewed correctly.
+- A file written by a shell command is checked when the turn ends, not when it is written,
+  and gets no routing hint.
+- A test run is read from the runner's summary in the tool result. Output cut before the
+  summary, for example by `| tail` or `| grep`, is recorded as `unknown`, or as a run of no
+  test when the last summary left is an empty test binary's.
+- Restoring standards and test status after compaction is exercised live on Claude Code; on
+  Codex it is covered by the hook-payload scenario only. Cursor, Copilot CLI and Gemini CLI
+  are built from their published hook references and tested by payload fixtures.
+- The Linux arm64 executable is built and tested in CI; no host was run on it.
 
 ## 0.0.5
 
