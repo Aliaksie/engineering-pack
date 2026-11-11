@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "adapter": "claude",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -90,6 +90,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "deliver"
@@ -297,7 +298,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -397,6 +398,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -572,7 +574,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -668,6 +670,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -843,7 +846,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -931,6 +934,7 @@
           "context": false,
           "deny": false,
           "continue": true,
+          "notice": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"

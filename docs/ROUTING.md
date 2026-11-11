@@ -63,6 +63,31 @@ level, source and a one-line `summary`; the content stays in the project.
 ]
 ```
 
+`craft standards --propose` lists the standards a project's existing files already support,
+so the first declarations need no writing by hand. It reads fixed files at the project root,
+each up to 256 KiB, and follows no links:
+
+| The project has | Proposed |
+|---|---|
+| Conventional Commits, Keep a Changelog, Semantic Versioning, MADR, Nygard ADRs or Gherkin named in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot or Junie instructions, or `CONTRIBUTING.md`; a changelog preamble naming its format; a commitlint configuration extending `config-conventional` | The anchor, checked. Decision-record anchors are scoped to the first of `docs/adr`, `docs/decisions`, `docs/architecture/decisions`, `doc/adr`, `adr` that exists, and are not proposed without one |
+| A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
+| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, golangci-lint or RuboCop | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
+
+Each proposal carries the declaration to copy and the files, with lines, that support it;
+what the configuration already declares is listed apart. Nothing is active until you copy it
+into `standards`, and Craft never writes the configuration. The scan matches names and
+configuration files only: it does not parse commands written in prose, does not read nested
+packages, and a file that names a convention in order to reject it is still a match, so read
+the evidence before accepting. Agent instruction files are read for names but never proposed
+as standards, since the host loads them itself.
+
+A session that starts in a project declaring no standards runs the same scan and says once
+how many standards the files support, to the user where the host shows a hook's message
+(Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
+set is not named again in any session; a changed set is. `routing.conventionProposals: false`
+turns the scan at session start off.
+
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,
   …). Every key given must match; any value within a key matches. Without `scope` a
@@ -118,7 +143,10 @@ the host can continue a turn from a stop hook (Claude Code, Codex, Copilot CLI, 
 Cursor), holds the stop with one summary the agent addresses before reporting done:
 
 - module dependency findings (above) for imports the changes add;
-- debt markers the changes add against `HEAD`, when `routing.debtMarkers` is true: a
+- anchor check findings (above) for a changed file the session was not told about when the
+  file was written: a file a shell command or a script wrote passes no edit hook, so its
+  check runs here;
+- debt markers the changes add, when `routing.debtMarkers` is true: a
   TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
   `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
   (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
@@ -127,11 +155,16 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
   checklist.
 
 Only files whose content changed since the session started, or since the previous stop, are
-reviewed; uncommitted work from before the session and committed work are not. A finding or
-review item is said once per session, and a stop is never held while the host is already
-continuing a held one. Nothing is enforced: the agent fixes or tells the user why not.
-The review runs only when the project reports debt markers, declares a `review` standard or
-checks module dependencies; `routing.stopReview: false` turns it off.
+reviewed, whichever tool wrote them: uncommitted changes, and files in commits made since
+then, so work committed before the turn ends is still reviewed. Markers are those added since
+the commit the previous stop saw. Uncommitted work from before the session is not reviewed,
+and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
+or a reset, the stop takes nothing from the commits in between. One stop reviews at most 64
+files. A finding or review item is
+said once per session, and a stop is never held while the host is already continuing a held
+one. Nothing is enforced: the agent fixes or tells the user why not. The review runs only
+when the project reports debt markers, declares a `review` standard, checks module
+dependencies or checks files against an anchor; `routing.stopReview: false` turns it off.
 
 ## Test runs
 
@@ -165,6 +198,41 @@ acceptance record is not filled from one and a declared pass is not checked agai
 observed, that step is refused while the test status of the current tree is `failed`, which
 includes a tree whose latest run executed no test and no run decided; when that status is
 `unknown`, the pass is recorded as stated.
+
+## Project checks
+
+`craft check` runs the commands a project declares: the `checks` of the modules that own the
+changed files and the `run` command of each `check` standard whose scope covers them. The
+changed files are the uncommitted ones, or those named with `--file`; `--all` takes every
+declared check, as a CI job on a clean tree needs. A module check runs in the module's path,
+a standard's command in its `cwd`.
+
+Each command may name a `stage`: `step`, `commit` (the default), `pr` or `ci`. A run at
+`--stage commit` executes the `step` and `commit` checks and lists the others as
+`left-to-pr` or `left-to-ci`. A check left to a later stage, one that could not start
+(`not-started`), one ended at its time bound (`timed-out`, 600 seconds unless
+`timeoutSeconds` says otherwise) and a test command whose runner summary executed no test are
+never reported as passed. A run in which no check was executed is `nothing-run`, not
+`passed`.
+
+```json
+{
+  "modules": [
+    { "name": "api", "path": "services/api", "checks": [
+      { "command": "cargo", "args": ["fmt", "--check"], "stage": "step" },
+      { "command": "cargo", "args": ["test"] },
+      { "command": "cargo", "args": ["test", "--features", "slow"], "stage": "ci", "timeoutSeconds": 1800 }
+    ] }
+  ]
+}
+```
+
+The result carries the source digest of the tree the commands ran on, and `treeChanged` when
+a command (a formatter, a code generator) changed it. Output is shown only for a check that
+did not pass, from its end. With `--session` the run is kept in the session's records, and a
+test command among the checks counts as an observed test run. Commands start without a shell,
+exactly as declared, and only from this command: no hook runs them.
+`routing.projectChecks: false` makes `craft check` run nothing and say so.
 
 ## Project anchors
 
@@ -324,6 +392,15 @@ every skill before a one-line fix, at 1.76 times the tokens of the same fix with
 request still establishes the session's intent, so the first edit's hint names the skills and
 references for the edited scope where the change happens.
 
+A hook hint names only skills and references of packages the host installed. The hook looks
+beside the package it runs from: the other packages of the same marketplace in a plugin cache
+(Claude Code, Codex), except those the host's settings turn off, or the package folders of a
+project overlay. Skills of other packages leave the route and appear in `skillSources` with
+status `not-installed`; the route reports `skillAvailability: "installed-packages"`. The
+project's own skills stay. A route left with no skill says nothing unless it carries a
+standard, a bound task or a missing input. `craft route` on the command line does not look
+and reports `not-verified`.
+
 When the prompt asks who calls one code name or where it is declared ("which methods call
 `Policy.apply`?", "where is `apply_discount` defined?"), the prompt hook runs that lookup
 too, refreshing Project Intelligence for at most one second per prompt (the declaration check
@@ -350,6 +427,31 @@ every record with its status, when there are at most 24. Records under a test or
 directory (`test`, `tests`, `__tests__`, `spec`, `fixtures`, `testdata`, `e2e`, or a name
 ending in `-tests` or `-fixtures`) are test data: the answer leaves them out and says how
 many. Same rule as above: complete coverage or nothing. `efficiency.lookup.enabled: false` turns all hook answers off.
+
+### What a session's hooks may inject
+
+Hook answers are bounded per answer, per hook and per session, so a long session does not pay
+for the same text again and again.
+
+- **Per hook.** One hook answer carries at most 9,000 bytes of context on every host
+  (`contextBytes` in `hosts/hooks.json`). Claude Code replaces a hook string over 10,000
+  characters with a file path and a preview, Codex cuts a hook message over about 10,000 bytes
+  and Copilot caps tool-result context at 10 KB; a context over the cap reaches the model in
+  part or not at all. A context that would pass the ceiling loses whole pieces, least
+  important first (planning evidence and unfinished tasks of earlier sessions, the service
+  map, open work plans, then hints), and ends with one line naming what was left out. The
+  session identity, a resumed task and a test run that ran nothing are kept longest. Only a
+  single piece larger than the ceiling is cut, with a marker.
+- **Per session.** Hook answers from Project Intelligence stay within 16 KiB per context
+  window, and an answer with the same text is given once per window: a search or question
+  repeated forty times is answered the first time. A compaction starts a new window, because
+  what was answered before it is no longer in the model's context. Past the budget the lookup
+  does not run; the model's own search result stands, as it does without Craft.
+
+The counts are kept in the session's `delivered.json` (under `routing.sessionRecords`; without
+it there is no session budget and each answer is bounded only on its own) and shown by
+`craft session`. Standards findings and test notices are not budgeted: they report what was
+just written or run.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or

@@ -314,6 +314,35 @@ require a new evaluation.
 anything ran. Execution belongs to the host or to an integration driving the
 [host controls](HOST-CONTROL.md).
 
+## Session summary
+
+When a turn ends, the user reads one line on what Craft did in the session so far:
+
+```text
+Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 context restored after compaction
+```
+
+Only what happened is named, and a session in which none of it happened shows no line. The
+line appears again only after it changed, and never beside a stop the review holds. It is the
+host's own message to the user (`systemMessage`), not context for the model, on Claude Code,
+Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a turn, so there
+the line is in `craft session` only. Codex shows it in its interactive interface; `codex exec`
+prints no hook message, so a non-interactive run reads the line from `craft session` too. `routing.sessionSummary: false` shows none.
+
+| Count | Counted when |
+|---|---|
+| Standards findings raised | A check of a written file, a commit message or the stop review reports a finding the session was not yet told for that file |
+| Fixed | The same kind of check runs on that file again and no longer finds it |
+| Test runs that ran no test | The model was told a test command executed no test |
+| Lookups answered | A prompt or search got its answer from Project Intelligence in the hook |
+| Contexts restored after compaction | A task or checkpoint was restated after the host compacted the context. What a session start restates is not counted: a session the host starts again keeps its transcript |
+
+`craft session --session <id>` prints the same line, the bytes of context the session's hooks
+returned, the pieces left out to stay under a host's hook output ceiling and the lookup
+answers held back as repeats or over the session budget ([routing](ROUTING.md)); `--json` has
+them under `delivered`. The counts come from the session's `delivered.json`, which holds
+counts and short hashes, never delivered text, and needs `routing.sessionRecords`.
+
 ## What is measured
 
 | Measure | Source | Limits |
@@ -417,9 +446,11 @@ The resume is delivered once per compaction, at the first event after it that ca
       restore.json          # resume pending after compaction
       workers-<id>.json  control-<id>.json  routing-<id>.json(.generation)
       intent.json           # intent the requests established, routed files, planning evidence
+      delivered.json        # what hooks delivered: bytes, answers, findings, the summary line
     telemetry/              # events.jsonl(.1), key.json, captures.json, settings.json
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
+    notices/                # conventions.json: the proposals a session start last named
 ```
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether
@@ -557,10 +588,11 @@ and the private state directory; every `routing` switch over what a hook shows o
 listed, with its bundled default where the project sets none. `features` adds the switches read outside that merge, each
 with its origin: Project Intelligence (`evidence.enabled` in `.craft/project.json`), the
 background index warm-up (`CRAFT_EVIDENCE_WARM=0` in the host environment; not started on
-Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, personal preferences
-(`~/.config/craft/preferences.json` or `--preferences`), project `.craft/project.json`, task
-overrides (`--data`). Preferences and task overrides accept only `routing`, `checkpoint`,
-`workspace` and `efficiency`; they cannot grant permissions or map models.
+Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, the
+organization file, the user file (`~/.config/craft/preferences.json` or `--preferences`),
+project `.craft/project.json`, task overrides (`--data`); see
+[configuration layers](#configuration-layers). Task overrides accept only `routing`,
+`checkpoint`, `workspace` and `efficiency`. No layer grants permissions.
 
 A fully manual policy:
 
@@ -568,7 +600,8 @@ A fully manual policy:
 {
   "routing": {
     "promptHints": false, "editHints": false, "dedupeHints": false, "standardChecks": false,
-    "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false
+    "stopReview": false, "testRuns": false, "workerStandards": false, "sessionRecords": false,
+    "sessionSummary": false, "conventionProposals": false, "projectChecks": false
   },
   "checkpoint": { "enabled": false },
   "efficiency": {
@@ -587,8 +620,8 @@ With this policy and `evidence.enabled: false` in `.craft/project.json`, hooks s
 nothing: no hints, answers, standard checks, stop review, test notices, subagent standards,
 resume or session identity line (the line follows `checkpoint.enabled`, as the task commands
 that take it do), and keep no session records under `.craft/state`: `sessionRecords: false`
-stops the established intent, its routed files, planning evidence and the pending-resume mark,
-and `testRuns: false` the test-run history. Features that read those records then see no
+stops the established intent, its routed files, planning evidence, the pending-resume mark and
+the delivery record with its summary line, and `testRuns: false` the test-run history. Features that read those records then see no
 established work, and a declared verification pass is not checked against an observed run.
 What stays on, and why:
 
@@ -599,3 +632,72 @@ What stays on, and why:
 | Skill listing and package instructions the host loads | Read by the host from the installed plugin; disable the plugin in the host to remove them |
 
 Explicit commands keep working under any policy.
+
+## Configuration layers
+
+An organization and a user can each declare a baseline once; every project on the machine
+inherits it and overrides only what differs.
+
+| Layer | File | Notes |
+|---|---|---|
+| Organization | The path in `CRAFT_ORGANIZATION_CONFIG`, else `/etc/craft/organization.json` (Linux), `/Library/Application Support/Craft/organization.json` (macOS). Windows has no default location: set the variable | A file an administrator or a host's managed settings distribute; Craft contacts no server. An empty variable means no organization layer |
+| User | `~/.config/craft/preferences.json` | The same file that held personal switches before |
+| Project | `.craft/project.json` | Everything in [project configuration](PROJECT-CONFIG.md) |
+
+A baseline file takes the fields that make sense across repositories: `routing`, `checkpoint`,
+`workspace`, `efficiency`, `standards` (by `anchor`, `checklist` or `run`, scoped by language,
+layer, intent or path), `anchors.defaults` and `anchors.disables`, `skills.disables`, `safety`,
+`execution` and `review`. What names one repository's files or modules stays in the project;
+a baseline file that sets it is refused. `formatVersion` is optional there.
+
+```json
+{
+  "formatVersion": 1,
+  "standards": [
+    { "id": "commits", "anchor": "conventional-commits" },
+    { "id": "licenses", "run": { "command": "license-check", "stage": "pr" } }
+  ],
+  "safety": { "enabled": true }
+}
+```
+
+One merge rule: a later layer wins field by field. Objects merge key by key, a list is
+replaced whole, and the two lists of entries with an `id` (`standards`, `safety.deny`) merge by
+id: an entry replaces the one with its id, a new id is added, and `{ "id": "licenses",
+"disabled": true }` removes an inherited one. A baseline layer's `execution.profiles` add to the
+bundled profiles; only the project's own set replaces them.
+
+Each file is validated on its own, and once a baseline layer sets more than switches the merged
+result is validated again: an entry limit, a rule id two layers use, a role naming a profile no
+layer declares. A file that cannot be read or is invalid is an error naming the layer and the
+file, never a fallback to a partial configuration. Commands exit non-zero. Hooks tell the model
+that routing is unavailable and let the host continue, except a hook that guards shell
+commands (the review package's read-only guard): it cannot evaluate its policy and refuses
+every shell command until the file is fixed, in each project the file applies to.
+
+`craft config --root <project>` lists the layers and every value one layer set over another,
+including an override that repeats the value beneath it or a `disabled` entry that removes
+nothing. `--explain` adds every effective value with its layer; `--field routing` keeps one
+field and what lies beneath it.
+
+```text
+layers, later wins: bundled < organization < user < project
+  organization: /etc/craft/organization.json — 3 values
+  user: /home/dev/.config/craft/preferences.json — absent
+  project: /work/shop/.craft/project.json — 2 values
+overrides:
+  routing.debtMarkers = false (project) over true (organization), false (bundled)
+  standards[licenses] disabled (project) over {"id":"licenses","run":{"command":"license-check","stage":"pr"}} (organization)
+```
+
+Layers are defaults, not enforcement: a project can override any of them. Every installed
+Craft build reads the same organization and user file, and builds can differ in version, so
+a switch or section a build does not know in those two files is left out, not an error:
+`craft config` and `craft doctor` name each one, which also shows a misspelled name. A known
+field with a value it cannot take, and any unknown field of the project file, stay errors. On POSIX the user
+file and its folder must belong to the user, the organization file and its folder to the
+administrator or the user, and none may be a symlink or writable by group or others. On
+Windows ownership is not checked: keep the organization file where only administrators can
+write. A machine
+without the baseline files, such as a CI runner, sees the project alone; install the
+organization file there or point `CRAFT_ORGANIZATION_CONFIG` at a checked-out copy.

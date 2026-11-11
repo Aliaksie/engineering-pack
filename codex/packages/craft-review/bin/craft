@@ -7,6 +7,7 @@ export CRAFT_PACKAGE_ROOT
 if [ -n "$OSTYPE" ] && [ -n "$HOSTTYPE" ]; then platform="$OSTYPE:$HOSTTYPE"; else platform=$(uname -sm 2>/dev/null); fi
 case $platform in
   'Linux x86_64'|linux*:x86_64) binary="$here/../support/native-bin/x86_64-unknown-linux-gnu/native-bin/craft" ;;
+  'Linux aarch64'|linux*:aarch64) binary="$here/../support/native-bin/aarch64-unknown-linux-gnu/native-bin/craft" ;;
   'Darwin arm64'|darwin*:arm64) binary="$here/../support/native-bin/aarch64-apple-darwin/native-bin/craft" ;;
   MINGW*' x86_64'|MSYS*' x86_64'|CYGWIN*' x86_64'|msys:x86_64|cygwin:x86_64) binary="$here/../support/native-bin/x86_64-pc-windows-msvc/native-bin/craft.exe" ;;
   *) binary= ;;
@@ -25,8 +26,8 @@ fi
 # No working bundled runtime: deny shell policy, say once at session start that it is inactive.
 case "$1 $2 $3 $7" in
   'hook codex before-tool review-read-only') printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Policy could not be evaluated: bundled native runtime unavailable"}}'; exit 0 ;;
-  'hook codex session-start observe') printf '%s\n' '{"systemMessage":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
-  'hook codex after-compact observe') printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
+  'hook codex session-start observe') printf '%s\n' '{"systemMessage":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
+  'hook codex after-compact observe') printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}'; exit 0 ;;
   'hook '*) exit 0 ;;
 esac
 printf '%s\n' 'craft: bundled native runtime unavailable' >&2

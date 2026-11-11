@@ -80,7 +80,7 @@ check locally with cargo-deny 0.20.2:
 cargo deny --locked --config .github/deny.toml check
 ```
 
-The policy covers all three shipped native targets. Known vulnerabilities, disallowed licenses
+The policy covers all four shipped native targets. Known vulnerabilities, disallowed licenses
 and untrusted sources fail the gate; duplicate dependency versions are warnings. When updating
 cargo-deny, change its version and archive checksum together in `dependencies.yml`. CodeQL runs on
 standard Linux runners using the free public-repository feature and publishes security alerts.
@@ -140,6 +140,9 @@ running a model:
   edits, from small talk to a routed fix, with machine paths counted as placeholders;
 - **guidance**: bytes of the skill files each routed intent selects.
 
+It also replays a long session (the same question and the same search repeated in two context
+windows around a compaction) and reports the bytes its hooks returned and the largest single
+hook answer.
 `tests/overhead-budget.test.mjs` fails when a number exceeds its ceiling in
 `tests/fixtures/overhead-budget.json`, or when a hook adds context to a prompt Craft has nothing
 for. Lower a ceiling when a change reduces overhead; raise one only with the reason in the pull

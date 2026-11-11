@@ -1,6 +1,6 @@
 {
   "name": "craft-stories",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Code grounding, specification audits and local user-story drafts.",
   "author": {
     "name": "craft-capabilities contributors"

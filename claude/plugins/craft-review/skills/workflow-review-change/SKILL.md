@@ -7,7 +7,8 @@ description: "Coordinate source identification, regression investigation and rev
 
 Craft guidance grants no permission: the project's instructions and the user's scope decide.
 
-Establish the requested comparison with `review-change`, then select only the engineering
+Establish the requested comparison with the `review-change` skill (its `review-prepare` command
+captures it), then select only the engineering
 references needed for its languages, layers and risks. Gather diff and caller evidence in
 bounded batches. Use an immutable committed snapshot when it represents the requested scope;
 inspect dirty-tree work directly when it does not.

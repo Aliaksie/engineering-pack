@@ -14,9 +14,12 @@ For completion and hover help in an editor, link the schema from the file:
 { "$schema": "https://raw.githubusercontent.com/Aliaksie/engineering-pack/main/schemas/project.schema.json", "formatVersion": 1 }
 ```
 
-Fields that only switch something on or off can also be set in personal preferences or
-task overrides (`routing`, `checkpoint`, `workspace`, `efficiency`); see
-[settings](SESSION.md#settings).
+An organization file and a user file can declare a baseline every project inherits:
+`routing`, `checkpoint`, `workspace`, `efficiency`, `standards`, `anchors`, `skills.disables`,
+`safety`, `execution` and `review`. The project overrides only what differs and
+`craft config` shows which layer won; see [configuration layers](SESSION.md#configuration-layers).
+Task overrides take the switch sections only (`routing`, `checkpoint`, `workspace`,
+`efficiency`).
 
 ## `formatVersion`
 
@@ -53,9 +56,12 @@ array of objects. Parts of the repository with an owner, stack and checks. Route
 | `modules[].dependsOn` | array of string |  | Modules this module may import. With `hexagonal-architecture`, `clean-architecture` or a `module-dependencies` check, an added import into any other declared module is reported. Absent: imports are not checked. |
 | `modules[].providers` | array of string |  | Model or cloud providers in use, such as `foundry`. Selects provider guidance when Craft has it. Overrides the project value; an empty array clears it. |
 | `modules[].frameworks` | array of string |  | Frameworks in use, such as `react`. Selects framework guidance when Craft has it. Overrides the project value; an empty array clears it. |
-| `modules[].checks` | array of objects |  | Commands that verify this module. Routes list them as argv to run; Craft never runs them or assumes they pass. |
+| `modules[].checks` | array of objects |  | Commands that verify this module, run in the module's path. Routes list them as argv; `craft check` runs those of the changed modules without a shell and reports each result. Craft never runs them from a hook or assumes they pass. |
 | `modules[].checks[].command` | string |  | Executable, such as `./gradlew` or `npm`. |
 | `modules[].checks[].args` | array of string |  | Arguments passed to the command. |
+| `modules[].checks[].id` | string |  | Name of the check in `craft check` results. Default: the module name and the check's position, such as `api-1`. |
+| `modules[].checks[].stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
+| `modules[].checks[].timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
 | `modules[].runtimes` | array of string |  | Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Overrides the project value; an empty array clears it. |
 
 ## `standards`
@@ -76,11 +82,14 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].scope.layers` | array of `ui`, `backend`, `agent` |  | Layers of the affected modules. |
 | `standards[].scope.paths` | array of string |  | Project-relative path prefixes of the affected files. |
 | `standards[].scope.intents` | array of string |  | Kinds of work: story, plan, verify, explore, review, implement and the other routing intents. |
-| `standards[].run` | object |  | A consumer command the agent is told to run to check the standard. |
+| `standards[].run` | object |  | A consumer command that checks the standard. The agent is told to run it, and `craft check` runs it without a shell for changed files in the standard's scope. |
 | `standards[].run.command` | string |  | Executable the agent runs to check the standard. |
 | `standards[].run.args` | array of string |  | Arguments passed to the command. |
 | `standards[].run.cwd` | string |  | Project-relative working directory. Default: the project root. |
+| `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
+| `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
 | `standards[].checklist` | array of string |  | Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`. |
+| `standards[].disabled` | boolean | `false` | With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so. |
 
 ## `anchors`
 
@@ -182,6 +191,20 @@ object. Review session safety.
 |---|---|---|---|
 | `review.readOnly` | boolean | `false` | Deny common `gh`/`glab` publishing commands and `git push` from the shell in this project. A heuristic, not a replacement for read-only credentials. |
 
+## `safety`
+
+object. Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `safety.enabled` | boolean | `false` | Turn the policy on. Off, no command is refused. |
+| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
+| `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
+| `safety.deny[].id` | string |  | Stable handle named in the refusal. |
+| `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
+| `safety.deny[].reason` | string |  | What the rule refuses, shown with the refusal. |
+| `safety.deny[].disabled` | boolean | `false` | With only `id`: remove the rule of this id that the organization or user layer declares. |
+
 ## `runtimes`
 
 array of string. Runtimes in use, such as `node`. TypeScript does not imply Node; declare it. Default for modules that declare none.
@@ -201,6 +224,9 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.testRuns` | boolean | `true` | Record each test command the host runs with its verdict and the tree it ran on, tell the model at once when a run executed no test, and restate the runs on resume. Set false to record and show none; a declared verification pass is then not checked against an observed run. |
 | `routing.workerStandards` | boolean | `true` | Give a subagent the host starts the checked and reviewed standards of the delegating session's scope. Set false to start workers without them. |
 | `routing.sessionRecords` | boolean | `true` | Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work. |
+| `routing.sessionSummary` | boolean | `true` | When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, contexts restored after compaction), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords. |
+| `routing.conventionProposals` | boolean | `true` | When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start. |
+| `routing.projectChecks` | boolean | `true` | Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run. |
 
 ## `efficiency`
 
