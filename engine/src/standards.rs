@@ -187,7 +187,12 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
             validate_scope(scope, &format!("standard {id}"), modules, intents)?;
         }
         if let Some(run) = standard.get("run") {
-            let run = object(run, &["command", "args", "cwd"], "standard run")?;
+            let run = object(
+                run,
+                &["command", "args", "cwd", "stage", "timeoutSeconds"],
+                "standard run",
+            )?;
+            crate::checks::validate(run, &format!("standard {id} run"))?;
             if !run["command"]
                 .as_str()
                 .is_some_and(|c| !c.trim().is_empty())
@@ -340,6 +345,46 @@ pub(crate) fn matches(settings: &Value, standard: &Value, work: &Work) -> bool {
             .iter()
             .any(|file| paths.iter().any(|path| member(file, &prefix(path))));
     in_module && in_path
+}
+
+/// The standards with a `run` command kept at `check` whose place covers `scope`, or every
+/// one with `all`, in declaration order. Intents are left aside: a command verifies files,
+/// whatever kind of work changed them.
+pub fn commands<'a>(
+    settings: &'a Value,
+    scope: &crate::routing::Scope,
+    all: bool,
+) -> Vec<&'a Value> {
+    let covers = |standard: &Value| {
+        let overlap = |field: &str, values: &[Value]| {
+            let wanted = listed(standard, field);
+            wanted.is_empty()
+                || values
+                    .iter()
+                    .any(|value| value.as_str().is_some_and(|v| wanted.contains(&v)))
+        };
+        let modules = listed(standard, "modules");
+        let paths = listed(standard, "paths");
+        !scope.files.is_empty()
+            && overlap("languages", &scope.languages)
+            && overlap("layers", &scope.layers)
+            && (modules.is_empty()
+                || scope.modules.iter().any(|module| {
+                    module["name"]
+                        .as_str()
+                        .is_some_and(|name| modules.contains(&name))
+                }))
+            && (paths.is_empty()
+                || scope
+                    .files
+                    .iter()
+                    .any(|file| paths.iter().any(|path| member(file, &prefix(path)))))
+    };
+    declared(settings)
+        .iter()
+        .filter(|standard| standard.get("run").is_some() && level(settings, standard) == "check")
+        .filter(|standard| all || covers(standard))
+        .collect()
 }
 
 /// What a route shows for a standard: its handle, level and source, a one-line summary in

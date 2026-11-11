@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 mod actions;
 mod budget;
 mod checkpoint;
+mod checks;
 pub mod cli;
 mod control;
 mod conventions;

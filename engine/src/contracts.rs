@@ -243,7 +243,12 @@ pub fn validate_project(project: &Value) -> Result {
             None => &[],
         };
         for check in checks {
-            let check = object(check, &["command", "args"], "check")?;
+            let check = object(
+                check,
+                &["command", "args", "id", "stage", "timeoutSeconds"],
+                "check",
+            )?;
+            crate::checks::validate(check, "check")?;
             if !check
                 .get("command")
                 .and_then(Value::as_str)
@@ -338,6 +343,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "sessionRecords",
                 "sessionSummary",
                 "conventionProposals",
+                "projectChecks",
             ],
             "routing",
         )?;
@@ -353,6 +359,7 @@ pub fn validate_project(project: &Value) -> Result {
             "sessionRecords",
             "sessionSummary",
             "conventionProposals",
+            "projectChecks",
         ] {
             boolean(
                 routing.get(field),
@@ -633,7 +640,8 @@ pub fn default_settings() -> Value {
         "routing": {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
-            "sessionRecords": true, "sessionSummary": true, "conventionProposals": true
+            "sessionRecords": true, "sessionSummary": true, "conventionProposals": true,
+            "projectChecks": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {

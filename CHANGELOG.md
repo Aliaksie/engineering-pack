@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `craft check` runs the checks a project declares (`modules[].checks` and the `run` command
+  of its standards) for the changed files, without a shell and each within a time bound. A
+  check can name the `stage` it belongs to (`step`, `commit`, `pr`, `ci`); a run executes the
+  checks up to the stage asked for and lists later ones as left to their stage, never as
+  passed. Results carry the source digest of the tree they ran on; a test command that
+  executed no test does not pass. A test command it runs in a session is recorded against the
+  tree it started on, and a check history that cannot be written is reported in `recordErrors`
+  without discarding the results. `routing.projectChecks: false` turns the command off.
 - An opt-in safety policy refuses destructive shell commands before they run on Claude Code,
   Codex, Cursor, Copilot CLI and Gemini CLI: recursive deletes outside the project or of its
   root, forced pushes, Git commands that discard uncommitted work, and privileged or

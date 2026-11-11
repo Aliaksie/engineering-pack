@@ -2,7 +2,7 @@
 //! `craft` executable answers each hook from the host's own payload. A project with declared
 //! modules, anchors, a review checklist, an advised file and its own review skill is routed,
 //! edited, checked, committed, tested, compacted, delegated and stopped; `craft doctor` then
-//! reads the hook events the session left. A feature that stays silent, contradicts another or
+//! reads the hook events the session left and `craft check` runs the module's declared checks. A feature that stays silent, contradicts another or
 //! cannot be reached from the hooks fails here.
 mod support;
 use serde_json::{Value, json};
@@ -13,7 +13,9 @@ use support::{Repo, doctor, homes};
 const PROJECT: &str = r#"{"formatVersion": 1,
   "routing": {"debtMarkers": true},
   "modules": [
-    {"name": "domain", "path": "src/domain", "dependsOn": []},
+    {"name": "domain", "path": "src/domain", "dependsOn": [], "checks": [
+      {"command": "git", "args": ["--version"], "id": "domain-build"},
+      {"command": "git", "args": ["--version"], "id": "domain-slow", "stage": "ci"}]},
     {"name": "web", "path": "src/web", "dependsOn": ["domain"]}],
   "standards": [
     {"id": "rings", "anchor": "hexagonal-architecture"},
@@ -366,6 +368,22 @@ fn scenario(host: Host) {
     let hooks = seen.to_string().contains("last hook turn-end at");
     assert!(hooks, "{seen}");
     assert!(root.join(".craft/project.json").exists());
+
+    // The declared checks of the module the task edited run at the commit stage; the one
+    // declared for CI is left to it, and the run joins the session's records.
+    let checked = repo
+        .cli(&[
+            "check",
+            "--file",
+            "src/domain/order.ts",
+            "--session",
+            session,
+        ])
+        .unwrap();
+    assert_eq!(checked["result"], "passed", "{checked}");
+    assert_eq!(checked["checks"][0]["id"], "domain-build");
+    assert_eq!(checked["left"][0]["result"], "left-to-ci");
+    assert_eq!(checked["recorded"], true);
 }
 
 /// The same work as a live session does it: no Craft task is ever bound. One edit writes a

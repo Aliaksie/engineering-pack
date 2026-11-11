@@ -32,8 +32,21 @@ pub fn record(
     repositories: Option<&Value>,
 ) -> Result<Value, Failure> {
     let source = source(root, repositories)?;
+    record_at(root, session, host, command, verdict, &source)
+}
+
+/// Record one observed run against the source digest the caller captured, for a command
+/// that may itself have changed the tree it ran on.
+pub fn record_at(
+    root: &Path,
+    session: &str,
+    host: &str,
+    command: &str,
+    verdict: &Value,
+    source: &Value,
+) -> Result<Value, Failure> {
     let at = craft_engine::timestamp::format(crate::telemetry::now_ms());
-    let run = test_runs::observation(verdict, command, host, &at, &source);
+    let run = test_runs::observation(verdict, command, host, &at, source);
     let target = file(root, session, true)?;
     let Some(_lock) = state::lock(&target)? else {
         return Ok(run);
