@@ -15,6 +15,7 @@ pub mod delivery;
 pub mod discovery;
 pub mod doctor;
 pub mod grounding;
+pub mod layers;
 pub mod models;
 pub mod otlp;
 pub mod plan;

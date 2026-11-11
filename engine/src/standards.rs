@@ -134,6 +134,7 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
                 "scope",
                 "run",
                 "checklist",
+                "disabled",
             ],
             "standard",
         )?;
@@ -146,6 +147,15 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
             return Err(format!("duplicate standard id: {id}"));
         }
         ids.push(id);
+        // An entry that only removes the standard of this id an earlier layer declared.
+        match standard.get("disabled") {
+            None | Some(Value::Bool(false)) => {}
+            Some(Value::Bool(true)) if standard.len() == 2 => continue,
+            Some(Value::Bool(true)) => {
+                return Err(format!("standard {id}: a disabled entry takes only its id"));
+            }
+            Some(_) => return Err(format!("standard {id}: disabled must be boolean")),
+        }
         let sources = SOURCES
             .iter()
             .filter(|kind| standard.contains_key(**kind))

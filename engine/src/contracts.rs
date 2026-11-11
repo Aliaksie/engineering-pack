@@ -1,5 +1,6 @@
 //! Project configuration and effective settings, replayed against
 //! `tests/fixtures/runtime/settings-contracts.json`.
+use crate::layers::Layer;
 use crate::values::{MAX_SAFE_INTEGER, object, safe_integer};
 use serde_json::{Map, Value, json};
 
@@ -39,6 +40,8 @@ pub const ROLES: &[&str] = &[
     "planner",
     "verifier",
 ];
+/// Sections a layer or task overrides may set in part, against the bundled defaults.
+pub(crate) const SWITCHES: [&str; 4] = ["routing", "checkpoint", "workspace", "efficiency"];
 type Result<T = ()> = std::result::Result<T, String>;
 
 fn strings(value: Option<&Value>, field: &str, allowed: Option<&[&str]>) -> Result {
@@ -751,11 +754,80 @@ fn validate_settings(value: &Value, template: &Value, label: &str) -> Result {
     Ok(())
 }
 
+/// Switch sections (`routing`, `checkpoint`, `workspace`, `efficiency`) set in part, as
+/// a baseline layer or task overrides set them.
+pub(crate) fn validate_switches(value: &Value) -> Result {
+    validate_settings(value, &default_settings(), "settings")
+}
+
+/// Where each merged value came from: the layer of every field, of every entry of an
+/// id-merged list and, when asked for, each value a field took in merge order.
+#[derive(Default)]
+struct Trace {
+    origins: Map<String, Value>,
+    entries: Map<String, Value>,
+    history: Option<Map<String, Value>>,
+}
+
+impl Trace {
+    fn record(&mut self, field: &str, origin: &str, value: Option<&Value>) {
+        let Some(history) = &mut self.history else {
+            return;
+        };
+        let step = match value {
+            Some(value) => json!({ "origin": origin, "value": value }),
+            None => json!({ "origin": origin, "disabled": true }),
+        };
+        match history.get_mut(field).and_then(Value::as_array_mut) {
+            Some(steps) => steps.push(step),
+            None => {
+                history.insert(field.into(), json!([step]));
+            }
+        }
+    }
+}
+
+/// Merge the entries of an id-merged list: an entry replaces the one of its id in place or
+/// is appended; a disabled entry removes it.
+fn merge_entries(
+    target: &mut Vec<Value>,
+    source: &[Value],
+    origin: &str,
+    trace: &mut Trace,
+    field: &str,
+) {
+    for entry in source {
+        let id = entry["id"].as_str().unwrap_or_default();
+        let at = target.iter().position(|known| known["id"] == entry["id"]);
+        let off = crate::layers::disabled(entry);
+        trace.record(&format!("{field}[{id}]"), origin, (!off).then_some(entry));
+        let origins = trace
+            .entries
+            .entry(field)
+            .or_insert_with(|| json!({}))
+            .as_object_mut()
+            .expect("entry origins");
+        if off {
+            origins.remove(id);
+        } else {
+            origins.insert(id.into(), json!(origin));
+        }
+        match (at, off) {
+            (Some(at), true) => {
+                target.remove(at);
+            }
+            (Some(at), false) => target[at] = entry.clone(),
+            (None, false) => target.push(entry.clone()),
+            (None, true) => {}
+        }
+    }
+}
+
 fn merge(
     target: &mut Map<String, Value>,
     source: &Map<String, Value>,
     origin: &str,
-    origins: &mut Map<String, Value>,
+    trace: &mut Trace,
     prefix: &str,
 ) {
     for (key, value) in source {
@@ -764,26 +836,38 @@ fn merge(
         } else {
             format!("{prefix}.{key}")
         };
-        if let Value::Object(source) = value {
-            let entry = target.entry(key.clone()).or_insert_with(|| json!({}));
-            if !entry.is_object() {
-                *entry = json!({});
+        match value {
+            Value::Array(source) if crate::layers::ENTRY_LISTS.contains(&field.as_str()) => {
+                let entry = target.entry(key.clone()).or_insert_with(|| json!([]));
+                if !entry.is_array() {
+                    *entry = json!([]);
+                }
+                let entries = entry.as_array_mut().expect("array entry");
+                merge_entries(entries, source, origin, trace, &field);
+                trace.origins.insert(field, json!(origin));
             }
-            merge(
-                entry.as_object_mut().expect("object entry"),
-                source,
-                origin,
-                origins,
-                &field,
-            );
-        } else {
-            target.insert(key.clone(), value.clone());
-            origins.insert(field, json!(origin));
+            Value::Object(source) => {
+                let entry = target.entry(key.clone()).or_insert_with(|| json!({}));
+                if !entry.is_object() {
+                    *entry = json!({});
+                }
+                merge(
+                    entry.as_object_mut().expect("object entry"),
+                    source,
+                    origin,
+                    trace,
+                    &field,
+                );
+            }
+            _ => {
+                target.insert(key.clone(), value.clone());
+                trace.record(&field, origin, Some(value));
+                trace.origins.insert(field, json!(origin));
+            }
         }
     }
 }
 
-/// Settings and value origins: bundled < user preferences < project < task overrides.
 /// `anchors` in the project: catalog files, whether Craft's defaults apply and which are off.
 fn validate_anchor_settings(anchors: &Value) -> Result {
     let anchors = object(anchors, &["catalogs", "defaults", "disables"], "anchors")?;
@@ -823,6 +907,7 @@ pub fn anchor_catalogs(project: &Value) -> Vec<String> {
         .collect()
 }
 
+/// Settings and value origins: bundled < user preferences < project < task overrides.
 pub fn effective_settings(
     project: &Value,
     preferences: &Value,
@@ -848,6 +933,26 @@ pub fn effective_settings_with(
     overrides: &Value,
     documents: &Documents,
 ) -> Result<Value> {
+    let user = Layer {
+        origin: "user",
+        label: "preferences".into(),
+        document: preferences,
+    };
+    layered_settings(project, &[user], overrides, documents, false)
+}
+
+/// Effective settings over the baseline `layers`, earliest first, beneath the project:
+/// bundled < organization < user < project < task overrides. Each layer and the project are
+/// validated alone, then the merged result as a whole. `entries` names the layer of every
+/// entry of an id-merged list once a baseline layer supplies one; with `explain`, `history`
+/// holds each value a field took, in merge order.
+pub fn layered_settings(
+    project: &Value,
+    layers: &[Layer],
+    overrides: &Value,
+    documents: &Documents,
+    explain: bool,
+) -> Result<Value> {
     let catalogs = &documents.catalogs;
     validate_project(project)?;
     let files = crate::skills::declared_files(project);
@@ -870,40 +975,50 @@ pub fn effective_settings_with(
         return Err("anchor catalogs do not match anchors.catalogs".into());
     }
     let defaults = default_settings();
-    validate_settings(preferences, &defaults, "preferences")?;
+    for layer in layers {
+        crate::layers::validate(layer)?;
+    }
     validate_settings(overrides, &defaults, "overrides")?;
-    let (mut settings, mut origins) = (Map::new(), Map::new());
+    let mut trace = Trace {
+        history: explain.then(Map::new),
+        ..Trace::default()
+    };
+    let mut settings = Map::new();
     merge(
         &mut settings,
         defaults.as_object().expect("defaults"),
         "bundled",
-        &mut origins,
+        &mut trace,
         "",
     );
+    // Only the project replaces the bundled profiles and roles; a baseline layer adds to them,
+    // so a project that relies on a bundled profile keeps it whatever the baseline declares.
     if project.pointer("/execution/profiles").is_none() {
         merge(
             &mut settings,
             default_execution().as_object().expect("execution"),
             "bundled",
-            &mut origins,
+            &mut trace,
             "",
         );
+    }
+    let mut baseline = false;
+    for layer in layers {
+        let values = crate::layers::values(layer.document);
+        baseline |= values.keys().any(|key| !SWITCHES.contains(&key.as_str()));
+        merge(&mut settings, &values, layer.origin, &mut trace, "");
     }
     let mut project = project.clone();
     project
         .as_object_mut()
         .expect("validated object")
         .remove("$schema");
-    for (source, origin) in [
-        (preferences, "user"),
-        (&project, "project"),
-        (overrides, "task"),
-    ] {
+    for (source, origin) in [(&project, "project"), (overrides, "task")] {
         merge(
             &mut settings,
             source.as_object().expect("validated object"),
             origin,
-            &mut origins,
+            &mut trace,
             "",
         );
     }
@@ -915,6 +1030,26 @@ pub fn effective_settings_with(
         return Err("context thresholds must satisfy elevatedAt < compactAt < restartAt".into());
     }
     let mut settings = Value::Object(settings);
+    // Layers that are valid alone can still disagree: an entry limit, a rule id two of them
+    // use, a role naming a profile the project's own profile set leaves out.
+    if baseline {
+        let merged = || {
+            let names: Vec<&str> = layers.iter().map(|layer| layer.label.as_str()).collect();
+            format!("merged with {}", names.join(" and "))
+        };
+        validate_project(&settings).map_err(|error| format!("{}: {error}", merged()))?;
+        let execution = &settings["execution"];
+        for (role, rule) in execution["roles"].as_object().into_iter().flatten() {
+            let profile = rule["profile"].as_str();
+            if let Some(profile) = profile.filter(|name| execution["profiles"].get(name).is_none())
+            {
+                return Err(format!(
+                    "{}: execution role {role} names profile {profile}, which no layer declares",
+                    merged()
+                ));
+            }
+        }
+    }
     if !catalogs.is_empty() {
         let routing = crate::routing::catalog::catalog()?;
         let intents: Vec<&str> = routing["intents"]
@@ -929,9 +1064,9 @@ pub fn effective_settings_with(
         settings["skills"]["found"] = crate::skills::found(&documents.skills);
     }
     crate::standards::validate_anchors(&settings)?;
-    Ok(json!({
+    let mut result = json!({
         "settings": settings,
-        "origins": origins,
+        "origins": trace.origins,
         "runtimeApplied": [
             "routing", "checkpoint", "workspace", "efficiency.lookup", "efficiency.attempts.maxAttempts",
             "efficiency.context.thresholds", "efficiency.context.action", "efficiency.review.mode",
@@ -943,7 +1078,14 @@ pub fn effective_settings_with(
             "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
         ],
         "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
-    }))
+    });
+    if baseline {
+        result["entries"] = Value::Object(trace.entries);
+    }
+    if let Some(history) = trace.history {
+        result["history"] = Value::Object(history);
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

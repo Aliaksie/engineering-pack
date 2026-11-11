@@ -22,6 +22,14 @@ impl Failure {
     }
 }
 
+impl Failure {
+    /// The same failure with `subject` (a file, a layer) named before its message.
+    pub fn about(mut self, subject: &str) -> Self {
+        self.message = format!("{subject}: {}", self.message);
+        self
+    }
+}
+
 impl std::fmt::Display for Failure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.message)

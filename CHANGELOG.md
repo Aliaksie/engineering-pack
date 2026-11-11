@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- An organization file and a user file declare a baseline every project inherits: switches,
+  standards with their checks, the safety policy, execution profiles. The project overrides
+  only what differs; `standards` and `safety.deny` merge by `id`, and an entry with
+  `"disabled": true` removes an inherited one. `craft config` lists the layers and each value
+  one set over another, `--explain` every effective value with its layer. The organization
+  file is read from `CRAFT_ORGANIZATION_CONFIG` or, on Linux and macOS, a fixed location; the user
+  file is `~/.config/craft/preferences.json`, which now also takes standards, safety and
+  execution. A layer or project file that cannot be used is an error naming the file; while
+  it lasts, the review package's shell guard refuses shell commands in the projects it covers.
 - `craft check` runs the checks a project declares (`modules[].checks` and the `run` command
   of its standards) for the changed files, without a shell and each within a time bound. A
   check can name the `stage` it belongs to (`step`, `commit`, `pr`, `ci`); a run executes the

@@ -127,6 +127,7 @@ const COMMANDS: &[Command] = &[
     Command::run("plan-assign", plan_assign).receipt(|_, value| assign_receipt(value)),
     Command::run("plan-integrate", plan_integrate).receipt(|_, value| integrate_receipt(value)),
     Command::run("settings", settings),
+    Command::run("config", config).receipt(|_, value| craft_engine::layers::text(value)),
     Command::run("route", route),
     Command::run("standards", standards),
     Command::run("anchors", anchors),
@@ -1529,16 +1530,33 @@ fn settings(
         None => None,
     };
     let preferences = options.get("preferences").map(PathBuf::from);
+    let organization = options.get("organization").map(PathBuf::from);
     let request = Settings {
         preferences: preferences.as_deref(),
+        organization: organization.as_deref(),
         overrides,
         workers,
     };
     let mut report = project::effective_settings(&root(options), request)?;
-    // The safety policy is the project's alone: preferences and task overrides cannot set it.
-    let project = project::settings(&root(options), None)?;
-    report["safety"] = craft_engine::safety::listing(&project);
+    // Any layer may declare the safety policy; task overrides cannot.
+    report["safety"] = craft_engine::safety::layered_listing(&report);
     Ok(report)
+}
+
+/// The configuration layers and what each one set over another.
+fn config(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
+    let preferences = options.get("preferences").map(PathBuf::from);
+    let organization = options.get("organization").map(PathBuf::from);
+    let sources = project::Sources {
+        organization: organization.as_deref(),
+        preferences: preferences.as_deref(),
+    };
+    project::layers(
+        &root(options),
+        sources,
+        options.values.contains_key("explain"),
+        options.get("field"),
+    )
 }
 
 /// Command help; commands without an entry get the general list.
@@ -1710,8 +1728,12 @@ fn help(action: &str) -> Value {
             "usage": "telemetry-report [--root project] [--session id | --capture id]",
             "mode": "bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims",
         }),
+        "config" => json!({
+            "usage": "config [--root project] [--explain] [--field routing] [--organization organization.json] [--preferences user.json] [--json]",
+            "mode": "Read-only: the organization, user and project layers the settings come from and each value one layer set over another. With --explain, every effective value with its layer and what it hid; --field keeps one field and what lies beneath it. A layer file that cannot be read or is invalid is an error naming the file.",
+        }),
         "settings" => json!({
-            "usage": "settings [--root project] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
+            "usage": "settings [--root project] [--organization organization.json] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
             "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
         }),
         _ => json!({

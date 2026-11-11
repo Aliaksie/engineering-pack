@@ -90,7 +90,11 @@ pub fn validate(safety: &Value) -> Result {
             .filter(|rules| rules.len() <= MAX_DENY)
             .ok_or_else(|| format!("safety.deny must be an array of at most {MAX_DENY}"))?;
         for rule in rules {
-            let rule = object(rule, &["id", "command", "reason"], "safety.deny rule")?;
+            let rule = object(
+                rule,
+                &["id", "command", "reason", "disabled"],
+                "safety.deny rule",
+            )?;
             let id = rule
                 .get("id")
                 .and_then(Value::as_str)
@@ -100,6 +104,17 @@ pub fn validate(safety: &Value) -> Result {
                 return Err(format!("duplicate safety rule id: {id}"));
             }
             ids.push(id);
+            // An entry that only removes the rule of this id an earlier layer declared.
+            match rule.get("disabled") {
+                None | Some(Value::Bool(false)) => {}
+                Some(Value::Bool(true)) if rule.len() == 2 => continue,
+                Some(Value::Bool(true)) => {
+                    return Err(format!(
+                        "safety rule {id}: a disabled entry takes only its id"
+                    ));
+                }
+                Some(_) => return Err(format!("safety rule {id}: disabled must be boolean")),
+            }
             let words = rule.get("command").and_then(Value::as_array);
             let valid = words.is_some_and(|words| {
                 (1..=MAX_WORDS).contains(&words.len())
@@ -170,6 +185,23 @@ pub fn listing(settings: &Value) -> Value {
         "disabled": off,
         "effect": "Refuses matching shell commands where the host lets a hook refuse a tool call; approves nothing. A guardrail, not a security boundary.",
     })
+}
+
+/// `listing` for resolved settings (`settings`, `origins`, `entries`): the switch and each
+/// declared rule name the layer they came from.
+pub fn layered_listing(resolved: &Value) -> Value {
+    let mut listing = listing(&resolved["settings"]);
+    if let Some(origin) = resolved["origins"]["safety.enabled"].as_str() {
+        listing["origin"] = json!(origin);
+    }
+    let layers = &resolved["entries"]["safety.deny"];
+    for rule in listing["rules"].as_array_mut().into_iter().flatten() {
+        let layer = rule["id"].as_str().and_then(|id| layers[id].as_str());
+        if let Some(layer) = layer.filter(|_| rule["source"] == "project") {
+            rule["source"] = json!(layer);
+        }
+    }
+    listing
 }
 
 fn words_of(rule: &Value) -> Vec<&str> {
