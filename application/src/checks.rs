@@ -121,7 +121,11 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         None => None,
     };
     let before = crate::test_runs::source(root, repositories.as_ref())?;
+    // The digest of the tree each command started on: a run is recorded against that tree,
+    // so a command that rewrites files leaves a record that no longer matches.
+    let mut started_on = before.clone();
     let mut results = Vec::new();
+    let mut record_errors = Vec::new();
     for check in planned {
         let outcome = execute(root, check);
         let verdict = checks::verdict(check, &outcome);
@@ -137,28 +141,41 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
                 outcome["exitCode"].as_i64(),
                 outcome["output"].as_str().unwrap_or_default(),
             );
-            crate::test_runs::record(
-                root,
-                session,
-                "craft",
-                &line,
-                &observed,
-                repositories.as_ref(),
-            )?;
+            // The commands already ran: a history that cannot be written is reported, and
+            // it neither skips the checks still planned nor discards their verdicts.
+            if let Err(error) =
+                crate::test_runs::record_at(root, session, "craft", &line, &observed, &started_on)
+            {
+                record_errors.push(json!(format!("{line}: {error}")));
+            }
         }
         results.push(verdict);
+        started_on = crate::test_runs::source(root, repositories.as_ref())?;
     }
-    let after = crate::test_runs::source(root, repositories.as_ref())?;
+    let after = started_on;
     let mut report = checks::report(&plan, results, &before, &after, &at);
     report["recorded"] = json!(false);
+    if !record_errors.is_empty() {
+        report["recordErrors"] = json!(record_errors);
+    }
     if let Some(session) = request.session {
-        craft_engine::session::identity(&json!(session), &json!("check-runs"))?;
-        let target = state::file(root, "check-runs.json", true, Some(session))?;
-        if let Some(_lock) = state::lock(&target)? {
-            let next = checks::recorded(&read_record(&target, HISTORY_BYTES)?, &report);
-            state::write(&target, &next, HISTORY_BYTES, false)?;
-            report["recorded"] = json!(true);
+        match record_history(root, session, &report) {
+            Ok(true) => report["recorded"] = json!(true),
+            Ok(false) => {}
+            Err(error) => report["recordErrors"] = json!([error.to_string()]),
         }
     }
     Ok(report)
+}
+
+/// Append the report to the session's check history; `false` when another writer holds it.
+fn record_history(root: &Path, session: &str, report: &Value) -> Result<bool, Failure> {
+    craft_engine::session::identity(&json!(session), &json!("check-runs"))?;
+    let target = state::file(root, "check-runs.json", true, Some(session))?;
+    let Some(_lock) = state::lock(&target)? else {
+        return Ok(false);
+    };
+    let next = checks::recorded(&read_record(&target, HISTORY_BYTES)?, report);
+    state::write(&target, &next, HISTORY_BYTES, false)?;
+    Ok(true)
 }

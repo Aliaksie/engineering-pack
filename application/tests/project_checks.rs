@@ -217,3 +217,45 @@ fn a_command_past_its_time_bound_is_ended_and_not_passed() {
     assert_eq!(exit, 1);
     assert_eq!(report["checks"][0]["result"], "timed-out");
 }
+
+#[test]
+fn a_history_that_cannot_be_kept_does_not_discard_the_report() {
+    let repo = repo();
+    repo.write("api/a.txt", "changed\n");
+    // A directory where the history file belongs: reading and writing it fail.
+    let history =
+        craft_platform::state::file(&repo.root, "check-runs.json", true, Some("S4")).unwrap();
+    std::fs::create_dir_all(&history).unwrap();
+    let (exit, report) = check(&repo, &["--session", "S4"]);
+    assert_eq!(exit, 0, "{report}");
+    assert_eq!(report["recorded"], false);
+    assert_eq!(report["result"], "passed");
+    assert!(
+        report["recordErrors"]
+            .as_array()
+            .is_some_and(|e| !e.is_empty())
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn an_observed_run_binds_to_the_tree_the_command_started_on() {
+    let repo = Repo::new(
+        "checks-observed",
+        &[
+            (
+                ".craft/project.json",
+                r#"{"formatVersion":1,"modules":[{"name":"api","path":"api","checks":[
+                    {"command":"sh","args":["-c","git rm -q a.txt; pytest"]}]}]}"#,
+            ),
+            ("api/a.txt", "a\n"),
+        ],
+    );
+    let (_, report) = check(&repo, &["--file", "api/a.txt", "--session", "S3"]);
+    assert_eq!(report["treeChanged"], true, "{report}");
+    let file =
+        craft_platform::state::file(&repo.root, "test-runs.json", false, Some("S3")).unwrap();
+    let runs: Value = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+    assert_ne!(report["source"], Value::Null);
+    assert_eq!(runs["runs"][0]["source"], report["source"]);
+}
