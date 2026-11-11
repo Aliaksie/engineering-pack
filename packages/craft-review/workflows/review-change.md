@@ -3,7 +3,8 @@ name: review-change
 description: Coordinate source identification, regression investigation and review-result checks for a requested change.
 ---
 
-Establish the requested comparison with `review-change`, then select only the engineering
+Establish the requested comparison with the `review-change` skill (its `review-prepare` command
+captures it), then select only the engineering
 references needed for its languages, layers and risks. Gather diff and caller evidence in
 bounded batches. Use an immutable committed snapshot when it represents the requested scope;
 inspect dirty-tree work directly when it does not.
