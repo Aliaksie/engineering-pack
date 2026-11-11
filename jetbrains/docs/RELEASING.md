@@ -40,12 +40,13 @@ claude plugin validate ./dist/distribution --strict
 
 The workflow validates the version, changelog and tag absence, runs workflow linting, dependency
 security checks, CodeQL and `npm run check`. It builds and tests release `craft` on Linux
-x86-64, macOS Apple Silicon and Windows x86-64, and runs every host's registered hook command
-from its installed export under that host's shells on each of them ([installed
-hosts](CONTRIBUTING.md#installed-hosts)). It then archives the eight adapter bundles, the distribution and the three native bundles with
-`native-release.json`, provenance and `SHA256SUMS`. Before publication it creates GitHub
-artifact attestations for all fifteen assets. It pushes only the `vX.Y.Z` tag, refreshes
-`distribution-next` at that revision, publishes the GitHub Release once all fifteen assets
+x86-64 and arm64, macOS Apple Silicon and Windows x86-64, and runs every host's registered hook
+command from its installed export under that host's shells on Linux x86-64, macOS and Windows
+([installed hosts](CONTRIBUTING.md#installed-hosts)). It then archives the eight adapter
+bundles, the distribution and the four native bundles with `native-release.json`, provenance
+and `SHA256SUMS`. Before publication it creates GitHub artifact attestations for all sixteen
+assets. It pushes only the `vX.Y.Z` tag, refreshes
+`distribution-next` at that revision, publishes the GitHub Release once all sixteen assets
 are uploaded and then promotes the release to `distribution` (below). It never bumps
 versions, commits to `main` or forces a ref. The repository must allow the workflow token to
 write tags, releases and both installation branches.
@@ -84,7 +85,7 @@ the workflow refuses the existing tag.
 
 ## Benchmarking a native candidate
 
-The **Performance** workflow measures `main` after merge on all three platforms and tracks
+The **Performance** workflow measures `main` after merge on all four platforms and tracks
 results in Bencher; see [CONTRIBUTING](CONTRIBUTING.md#performance). It does not gate a
 release: check the dashboard for open alerts before dispatching one. To measure a candidate
 export locally, run `.github/benchmarks/suite.mjs` against it.

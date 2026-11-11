@@ -19,4 +19,4 @@ belongs to a separately authorized job, which must check that the remote base an
 match; `bin/craft review-publication` turns a checked review into a comment-only plan for it.
 `bin/craft review-followup` reads a fetched GitHub pull request and says
 what its reviewer should do next, without storing anything. On Windows, use `bin\craft.cmd`.
-See [review integration](https://github.com/Aliaksie/engineering-pack/blob/v0.0.5/docs/REVIEW.md) and [service bindings](https://github.com/Aliaksie/engineering-pack/blob/v0.0.5/docs/INTEGRATIONS.md).
+See [review integration](https://github.com/Aliaksie/engineering-pack/blob/v0.0.6/docs/REVIEW.md) and [service bindings](https://github.com/Aliaksie/engineering-pack/blob/v0.0.6/docs/INTEGRATIONS.md).

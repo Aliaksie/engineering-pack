@@ -14,13 +14,12 @@ Both channels bundle a native `craft` executable in each package; no Node is nee
 commands below use `distribution`. To try the candidate, substitute `distribution-next` in a
 disposable project. Guidance-only use needs no executable; local Git operations need Git.
 
-Bundles ship executables for macOS 15+ on Apple Silicon, Linux x86-64 (glibc) and Windows
-x86-64; the hook command or launcher picks the one for the current OS and CPU. Elsewhere
-(macOS Intel, Linux ARM, musl) the read-only review guard denies shell commands, other hooks
+Bundles ship executables for macOS 15+ on Apple Silicon, Linux x86-64 and arm64 (glibc) and
+Windows x86-64; the hook command or launcher picks the one for the current OS and CPU. Elsewhere
+(macOS Intel, 32-bit ARM, musl) the read-only review guard denies shell commands, other hooks
 continue, the package says once at session start that it is inactive, and an explicit command
-fails with a clear error. Executables are not code-signed or notarized. Bundle checksums
-detect damage; release assets also carry GitHub artifact attestations
-([releasing](RELEASING.md)).
+fails with a clear error. Executables are not code-signed or notarized. Bundle checksums detect
+damage; release assets also carry GitHub artifact attestations ([releasing](RELEASING.md)).
 
 To roll back, reselect the complete previous bundle; never mix executables and adapters from
 different bundles. A previous release is available as a GitHub Release asset or as an earlier
@@ -40,7 +39,7 @@ points use the `workflow-` prefix, for example `/craft-stories:workflow-prepare-
 Installation does not configure a task tracker.
 
 Claude Code refuses an action when a plugin hook cannot start or return an answer. Each package
-ships `bin/craft` with runtimes for Linux x64, macOS arm64 and Windows x64. On another
+ships `bin/craft` with runtimes for Linux x64 and arm64, macOS arm64 and Windows x64. On another
 platform, or with a damaged runtime, the launcher still answers: the package says once that it
 is inactive, and `craft-review` denies every shell command because its policy cannot be
 evaluated. Reinstall the package if `bin/craft` itself is missing.

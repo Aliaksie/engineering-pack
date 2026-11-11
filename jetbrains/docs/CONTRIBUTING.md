@@ -80,7 +80,7 @@ check locally with cargo-deny 0.20.2:
 cargo deny --locked --config .github/deny.toml check
 ```
 
-The policy covers all three shipped native targets. Known vulnerabilities, disallowed licenses
+The policy covers all four shipped native targets. Known vulnerabilities, disallowed licenses
 and untrusted sources fail the gate; duplicate dependency versions are warnings. When updating
 cargo-deny, change its version and archive checksum together in `dependencies.yml`. CodeQL runs on
 standard Linux runners using the free public-repository feature and publishes security alerts.

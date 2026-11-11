@@ -18,8 +18,8 @@ exit /b 1
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Policy could not be evaluated: bundled native runtime unavailable"}}
 exit /b 0
 :answer1
-echo {"systemMessage":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
+echo {"systemMessage":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
 exit /b 0
 :answer2
-echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
+echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"craft-review is inactive: its bundled native runtime is missing or cannot start here (built for linux x64, linux arm64, darwin arm64, win32 x64). Its hooks, routing, checkpoints and telemetry are off; reinstall it or use a supported platform."}}
 exit /b 0
