@@ -143,7 +143,10 @@ the host can continue a turn from a stop hook (Claude Code, Codex, Copilot CLI, 
 Cursor), holds the stop with one summary the agent addresses before reporting done:
 
 - module dependency findings (above) for imports the changes add;
-- debt markers the changes add against `HEAD`, when `routing.debtMarkers` is true: a
+- anchor check findings (above) for a changed file the session was not told about when the
+  file was written: a file a shell command or a script wrote passes no edit hook, so its
+  check runs here;
+- debt markers the changes add, when `routing.debtMarkers` is true: a
   TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
   `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
   (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
@@ -152,11 +155,16 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
   checklist.
 
 Only files whose content changed since the session started, or since the previous stop, are
-reviewed; uncommitted work from before the session and committed work are not. A finding or
-review item is said once per session, and a stop is never held while the host is already
-continuing a held one. Nothing is enforced: the agent fixes or tells the user why not.
-The review runs only when the project reports debt markers, declares a `review` standard or
-checks module dependencies; `routing.stopReview: false` turns it off.
+reviewed, whichever tool wrote them: uncommitted changes, and files in commits made since
+then, so work committed before the turn ends is still reviewed. Markers are those added since
+the commit the previous stop saw. Uncommitted work from before the session is not reviewed,
+and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
+or a reset, the stop takes nothing from the commits in between. One stop reviews at most 64
+files. A finding or review item is
+said once per session, and a stop is never held while the host is already continuing a held
+one. Nothing is enforced: the agent fixes or tells the user why not. The review runs only
+when the project reports debt markers, declares a `review` standard, checks module
+dependencies or checks files against an anchor; `routing.stopReview: false` turns it off.
 
 ## Test runs
 

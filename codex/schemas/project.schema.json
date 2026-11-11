@@ -1168,7 +1168,7 @@
         "sessionSummary": {
           "type": "boolean",
           "default": true,
-          "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, task contexts restored), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
+          "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, contexts restored after compaction), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
         },
         "conventionProposals": {
           "type": "boolean",

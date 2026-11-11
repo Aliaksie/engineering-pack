@@ -319,14 +319,15 @@ anything ran. Execution belongs to the host or to an integration driving the
 When a turn ends, the user reads one line on what Craft did in the session so far:
 
 ```text
-Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 task context restored
+Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 context restored after compaction
 ```
 
 Only what happened is named, and a session in which none of it happened shows no line. The
 line appears again only after it changed, and never beside a stop the review holds. It is the
 host's own message to the user (`systemMessage`), not context for the model, on Claude Code,
 Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a turn, so there
-the line is in `craft session` only. `routing.sessionSummary: false` shows none.
+the line is in `craft session` only. Codex shows it in its interactive interface; `codex exec`
+prints no hook message, so a non-interactive run reads the line from `craft session` too. `routing.sessionSummary: false` shows none.
 
 | Count | Counted when |
 |---|---|
@@ -334,7 +335,7 @@ the line is in `craft session` only. `routing.sessionSummary: false` shows none.
 | Fixed | The same kind of check runs on that file again and no longer finds it |
 | Test runs that ran no test | The model was told a test command executed no test |
 | Lookups answered | A prompt or search got its answer from Project Intelligence in the hook |
-| Task contexts restored | A task or checkpoint was restated after a session start or a compaction |
+| Contexts restored after compaction | A task or checkpoint was restated after the host compacted the context. What a session start restates is not counted: a session the host starts again keeps its transcript |
 
 `craft session --session <id>` prints the same line, the bytes of context the session's hooks
 returned, the pieces left out to stay under a host's hook output ceiling and the lookup
@@ -689,7 +690,11 @@ overrides:
   standards[licenses] disabled (project) over {"id":"licenses","run":{"command":"license-check","stage":"pr"}} (organization)
 ```
 
-Layers are defaults, not enforcement: a project can override any of them. On POSIX the user
+Layers are defaults, not enforcement: a project can override any of them. Every installed
+Craft build reads the same organization and user file, and builds can differ in version, so
+a switch or section a build does not know in those two files is left out, not an error:
+`craft config` and `craft doctor` name each one, which also shows a misspelled name. A known
+field with a value it cannot take, and any unknown field of the project file, stay errors. On POSIX the user
 file and its folder must belong to the user, the organization file and its folder to the
 administrator or the user, and none may be a symlink or writable by group or others. On
 Windows ownership is not checked: keep the organization file where only administrators can
