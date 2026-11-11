@@ -105,10 +105,11 @@ fn managed_file() -> Option<PathBuf> {
     ))
 }
 
+/// Windows has no default: its shared data folder lets any account create the file, and
+/// ownership cannot be checked there, so the organization names the file explicitly.
 #[cfg(windows)]
 fn managed_file() -> Option<PathBuf> {
-    let data = std::env::var_os("ProgramData").filter(|data| !data.is_empty())?;
-    Some(PathBuf::from(data).join("Craft").join("organization.json"))
+    None
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]

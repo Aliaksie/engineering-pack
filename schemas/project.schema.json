@@ -1058,6 +1058,18 @@
             "required": [
               "id"
             ],
+            "anyOf": [
+              {
+                "required": [
+                  "command"
+                ]
+              },
+              {
+                "required": [
+                  "disabled"
+                ]
+              }
+            ],
             "description": "One rule: an `id`, the leading words of the command and why it is refused.",
             "properties": {
               "id": {

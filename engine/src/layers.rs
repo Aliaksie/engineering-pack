@@ -29,6 +29,9 @@ pub const FIELDS: [&str; 12] = [
     "review",
 ];
 
+/// The format marker of a file: not a value a layer sets.
+const VERSION: &str = "formatVersion";
+
 /// Lists merged entry by entry on `id`, by dotted field.
 pub const ENTRY_LISTS: [&str; 2] = ["standards", "safety.deny"];
 
@@ -124,6 +127,7 @@ pub fn values(document: &Value) -> Map<String, Value> {
 pub fn explanation(history: &Map<String, Value>) -> Vec<Value> {
     history
         .iter()
+        .filter(|(field, _)| *field != VERSION)
         .filter_map(|(field, steps)| {
             let (last, earlier) = steps.as_array()?.split_last()?;
             let mut row = Map::new();
@@ -161,8 +165,9 @@ pub fn explanation(history: &Map<String, Value>) -> Vec<Value> {
 /// How many values `origin` set, whether or not a later layer hid them.
 pub fn contributed(history: &Map<String, Value>, origin: &str) -> usize {
     history
-        .values()
-        .filter(|steps| {
+        .iter()
+        .filter(|(field, _)| *field != VERSION)
+        .filter(|(_, steps)| {
             steps
                 .as_array()
                 .is_some_and(|steps| steps.iter().any(|step| step["origin"] == origin))
@@ -239,6 +244,7 @@ pub fn text(report: &Value) -> String {
             "  {}: {file} — {}",
             layer["name"].as_str().unwrap_or("?"),
             match layer["state"].as_str() {
+                Some("loaded") if layer["values"] == 1 => "1 value".to_string(),
                 Some("loaded") => format!("{} values", layer["values"]),
                 Some(state) => state.to_string(),
                 None => "?".to_string(),

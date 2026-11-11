@@ -213,16 +213,75 @@ fn layers_valid_alone_are_checked_again_once_merged() {
         &json!({}),
         &json!({"formatVersion": 1, "standards": more}),
     );
-    match merged {
-        Err(error) => assert!(
-            error.starts_with("merged layers: standards must be"),
-            "{error}"
-        ),
-        Ok(result) => assert_eq!(
-            result["settings"]["standards"].as_array().unwrap().len(),
-            80
-        ),
-    }
+    let error = merged.unwrap_err();
+    assert!(
+        error.starts_with("merged with organization layer /managed/organization.json")
+            && error.contains("standards must be an array of at most 64"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_layer_adds_profiles_and_only_the_project_replaces_the_bundled_ones() {
+    let organization = json!({"execution": {"profiles": {"cheap": {"capabilities": []}}}});
+    let roles = json!({"formatVersion": 1,
+        "execution": {"roles": {"verifier": {"mode": "main", "profile": "standard"}}}});
+    let result = resolved(&organization, &json!({}), &roles).unwrap();
+    let execution = &result["settings"]["execution"];
+    let names: Vec<_> = execution["profiles"].as_object().unwrap().keys().collect();
+    assert_eq!(names, ["economical", "standard", "strong", "cheap"]);
+    assert_eq!(execution["roles"].as_object().unwrap().len(), 6);
+    // The project's own profile set replaces the bundled one and keeps the layer's; a role
+    // left naming a profile that is gone is an error, not a silent dangling name.
+    let own = json!({"formatVersion": 1, "execution": {
+        "profiles": {"fast": {"capabilities": []}},
+        "roles": {"verifier": {"mode": "main", "profile": "cheap"}}}});
+    let result = resolved(&organization, &json!({}), &own).unwrap();
+    let names: Vec<_> = result["settings"]["execution"]["profiles"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .collect();
+    assert_eq!(names, ["cheap", "fast"]);
+    let dangling =
+        json!({"execution": {"roles": {"reviewer": {"mode": "main", "profile": "strong"}}}});
+    let error = resolved(&dangling, &json!({}), &own).unwrap_err();
+    assert!(
+        error.contains("execution role reviewer names profile strong, which no layer declares"),
+        "{error}"
+    );
+}
+
+#[test]
+fn an_entry_declared_again_after_being_disabled_returns_under_its_last_layer() {
+    let declared = json!({"standards": [
+        {"id": "a", "checklist": ["org"]}, {"id": "b", "checklist": ["org"]}]});
+    let off = json!({"standards": [{"id": "a", "disabled": true}, {"id": "b", "disabled": false, "checklist": ["user"]}]});
+    let again = json!({"formatVersion": 1, "standards": [{"id": "a", "checklist": ["project"]}]});
+    let result = resolved(&declared, &off, &again).unwrap();
+    let standards = result["settings"]["standards"].as_array().unwrap();
+    assert_eq!(standards.len(), 2);
+    assert_eq!(
+        (&standards[0]["id"], &standards[0]["checklist"][0]),
+        (&json!("b"), &json!("user"))
+    );
+    assert_eq!(
+        (&standards[1]["id"], &standards[1]["checklist"][0]),
+        (&json!("a"), &json!("project"))
+    );
+    assert_eq!(
+        result["entries"]["standards"],
+        json!({"b": "user", "a": "project"})
+    );
+    let rows = explanation(result["history"].as_object().unwrap());
+    let a = row(&rows, "standards[a]");
+    assert_eq!(a["overrides"].as_array().unwrap().len(), 2);
+    assert!(rows.iter().all(|row| row["field"] != "formatVersion"));
+    // One layer cannot both declare and disable an id.
+    let both =
+        json!({"standards": [{"id": "a", "checklist": ["x"]}, {"id": "a", "disabled": true}]});
+    let error = resolved(&both, &json!({}), &json!({"formatVersion": 1})).unwrap_err();
+    assert!(error.contains("duplicate standard id: a"), "{error}");
 }
 
 #[test]

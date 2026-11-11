@@ -991,8 +991,9 @@ pub fn layered_settings(
         &mut trace,
         "",
     );
-    let profiles = |document: &Value| document.pointer("/execution/profiles").is_some();
-    if !profiles(project) && !layers.iter().any(|layer| profiles(layer.document)) {
+    // Only the project replaces the bundled profiles and roles; a baseline layer adds to them,
+    // so a project that relies on a bundled profile keeps it whatever the baseline declares.
+    if project.pointer("/execution/profiles").is_none() {
         merge(
             &mut settings,
             default_execution().as_object().expect("execution"),
@@ -1029,10 +1030,25 @@ pub fn layered_settings(
         return Err("context thresholds must satisfy elevatedAt < compactAt < restartAt".into());
     }
     let mut settings = Value::Object(settings);
-    // Layers that are valid alone can still disagree: an entry limit, a rule id two layers
-    // spell differently, a profile only one of them declares.
+    // Layers that are valid alone can still disagree: an entry limit, a rule id two of them
+    // use, a role naming a profile the project's own profile set leaves out.
     if baseline {
-        validate_project(&settings).map_err(|error| format!("merged layers: {error}"))?;
+        let merged = || {
+            let names: Vec<&str> = layers.iter().map(|layer| layer.label.as_str()).collect();
+            format!("merged with {}", names.join(" and "))
+        };
+        validate_project(&settings).map_err(|error| format!("{}: {error}", merged()))?;
+        let execution = &settings["execution"];
+        for (role, rule) in execution["roles"].as_object().into_iter().flatten() {
+            let profile = rule["profile"].as_str();
+            if let Some(profile) = profile.filter(|name| execution["profiles"].get(name).is_none())
+            {
+                return Err(format!(
+                    "{}: execution role {role} names profile {profile}, which no layer declares",
+                    merged()
+                ));
+            }
+        }
     }
     if !catalogs.is_empty() {
         let routing = crate::routing::catalog::catalog()?;

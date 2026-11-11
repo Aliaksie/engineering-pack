@@ -354,6 +354,27 @@ fn a_layer_that_cannot_be_used_is_an_error_naming_its_file() {
         json!({"source": "startup"}),
     );
     assert!(said.contains("unavailable: organization layer"), "{said}");
+    // The review package's shell guard cannot evaluate its policy and refuses the command.
+    let payload = json!({"session_id": "S-guard", "cwd": repo.path(),
+        "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}});
+    let guard = [
+        "hook",
+        "claude",
+        "before-tool",
+        "--package",
+        "craft-review",
+        "--handler",
+        "review-read-only",
+        "--scope",
+        "shell",
+    ];
+    let output = truncated.craft(&guard, &payload.to_string());
+    let refused = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(2), "{refused}");
+    assert!(
+        refused.contains("Policy could not be evaluated: organization layer"),
+        "{refused}"
+    );
     let project_only = Machine::new("project-only", r#"{"modules": []}"#, None);
     let error = failure(&project_only, &["config"]);
     named(&project_only, &error, "unknown layer field: modules");
