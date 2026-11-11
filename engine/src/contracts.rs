@@ -148,31 +148,33 @@ fn boolean(value: Option<&Value>, message: &str) -> Result {
     }
 }
 
+/// Every field a project file may hold.
+pub(crate) const PROJECT_FIELDS: [&str; 21] = [
+    "$schema",
+    "formatVersion",
+    "languages",
+    "layers",
+    "runtimes",
+    "frameworks",
+    "providers",
+    "modules",
+    "services",
+    "execution",
+    "permissions",
+    "checkpoint",
+    "review",
+    "safety",
+    "routing",
+    "efficiency",
+    "workspace",
+    "evidence",
+    "standards",
+    "anchors",
+    "skills",
+];
+
 pub fn validate_project(project: &Value) -> Result {
-    let fields = [
-        "$schema",
-        "formatVersion",
-        "languages",
-        "layers",
-        "runtimes",
-        "frameworks",
-        "providers",
-        "modules",
-        "services",
-        "execution",
-        "permissions",
-        "checkpoint",
-        "review",
-        "safety",
-        "routing",
-        "efficiency",
-        "workspace",
-        "evidence",
-        "standards",
-        "anchors",
-        "skills",
-    ];
-    let map = object(project, &fields, "project")?;
+    let map = object(project, &PROJECT_FIELDS, "project")?;
     // An editor's schema link; read by editors only.
     if map.get("$schema").is_some_and(|link| !link.is_string()) {
         return Err("$schema must be a string".into());

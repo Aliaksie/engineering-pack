@@ -259,3 +259,121 @@ fn a_host_without_an_install_still_names_the_hook_events_recorded_for_it() {
             .is_empty()
     );
 }
+
+/// Codex ties a hook approval to the plugin's files: after an update it skips every hook
+/// without a message, so the report has to say it.
+#[test]
+fn codex_approvals_given_to_other_plugin_content_are_a_problem() {
+    let mut facts = facts();
+    facts["codex"]["packages"][0]["staleApprovals"] = json!(8);
+    facts["codex"]["packages"][0]["approvedContent"] = json!("changed");
+    let report = report(&facts);
+    let codex = host(&report, "codex");
+    assert_eq!(codex["status"], "problem");
+    let text = codex.to_string();
+    assert!(
+        text.contains("8 of 8 hook approvals were given to other plugin content"),
+        "{text}"
+    );
+    assert_eq!(report["blocking"], false);
+    let next = report["next"].to_string();
+    assert!(
+        next.contains("Approve craft-delivery@engineering-pack hooks again in Codex `/hooks`"),
+        "{next}"
+    );
+
+    let approval = |content: Value| {
+        let mut facts = self::facts();
+        facts["codex"]["packages"][0]["approvedContent"] = content;
+        let report = self::report(&facts);
+        let checks = host(&report, "codex")["packages"][0]["checks"].clone();
+        let found = checks
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "approval")
+            .unwrap()
+            .clone();
+        (
+            found["status"].as_str().unwrap().to_owned(),
+            found["detail"].as_str().unwrap().to_owned(),
+        )
+    };
+    let (status, detail) = approval(json!("match"));
+    assert_eq!(status, "ok");
+    assert!(detail.contains("given to the installed plugin content"));
+    let (status, detail) = approval(json!({"error": "bin/link is neither a file nor a folder"}));
+    assert_eq!(status, "unknown");
+    assert!(detail.contains("neither a file nor a folder"), "{detail}");
+    assert_eq!(approval(json!("not-recorded")).0, "ok");
+}
+
+#[test]
+fn a_hook_event_of_another_version_does_not_show_the_installed_one_runs() {
+    let mut facts = facts();
+    facts["codex"]["packages"][0]["version"] = json!("0.0.6");
+    let report = report(&facts);
+    let codex = host(&report, "codex");
+    let hooks = codex["packages"][0]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == "hooks")
+        .unwrap();
+    assert_eq!(hooks["status"], "unknown");
+    assert!(
+        hooks["detail"]
+            .as_str()
+            .unwrap()
+            .contains("ran 0.0.5, not the installed 0.0.6"),
+        "{hooks}"
+    );
+}
+
+#[test]
+fn configuration_names_ignored_fields_an_unusable_file_and_an_unapplied_safety_policy() {
+    let mut facts = facts();
+    facts["configuration"] = json!({"safety": true, "layers": [
+        {"name": "bundled", "values": 30},
+        {"name": "user", "file": "/home/u/.config/craft/preferences.json", "state": "loaded",
+         "values": 1, "ignored": ["routing.futureSwitch", "futureSection"]}]});
+    let report = self::report(&facts);
+    let found = report["configuration"].as_array().unwrap();
+    assert_eq!(found.len(), 1, "hooks ran on both hosts: {found:?}");
+    assert_eq!(found[0]["status"], "unknown");
+    let detail = found[0]["detail"].as_str().unwrap();
+    assert!(
+        detail.starts_with("user layer /home/u/.config/craft/preferences.json: routing.futureSwitch, futureSection not known to craft"),
+        "{detail}"
+    );
+
+    // No hook of an installed host has run here: the policy has refused nothing for it.
+    facts["telemetry"]["lastSeen"] = json!([]);
+    let report = self::report(&facts);
+    let safety: Vec<&str> = report["configuration"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["check"] == "safety")
+        .filter_map(|c| c["detail"].as_str())
+        .collect();
+    assert_eq!(safety.len(), 2, "{safety:?}");
+    assert!(safety[1].contains("codex commands are not checked against it"));
+    facts["configuration"]["safety"] = json!(false);
+    assert!(
+        !self::report(&facts)["configuration"]
+            .to_string()
+            .contains("safety")
+    );
+
+    facts["configuration"] =
+        json!({"error": "user layer /p.json: routing.debtMarkers must be boolean"});
+    let report = self::report(&facts);
+    assert_eq!(report["configuration"][0]["status"], "problem");
+    assert!(
+        report["next"]
+            .to_string()
+            .contains("Fix the configuration file")
+    );
+    assert_eq!(report["blocking"], false);
+}

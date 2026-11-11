@@ -403,6 +403,66 @@ fn a_layer_that_cannot_be_used_is_an_error_naming_its_file() {
     );
 }
 
+/// One organization or user file is read by every installed build, and builds differ in
+/// version: a switch a newer build added is left out and named, never a reason to stop.
+#[test]
+fn a_field_this_build_does_not_know_in_a_shared_layer_is_ignored_and_named() {
+    let repo = Repo::new("layers-skew", &[("src/a.txt", "a\n")]);
+    let machine = Machine::new(
+        "skew",
+        r#"{"routing": {"debtMarkers": true}, "futureSection": {"on": true}}"#,
+        Some(r#"{"routing": {"futureSwitch": true, "stopReview": false}}"#),
+    );
+    let report = machine.json(&repo, &["config"]);
+    assert_eq!(
+        layer(&report, "organization")["ignored"],
+        json!(["futureSection"])
+    );
+    assert_eq!(
+        layer(&report, "user")["ignored"],
+        json!(["routing.futureSwitch"])
+    );
+    assert_eq!(layer(&report, "user")["values"], 1);
+    let output = machine.craft(&["config", "--root", repo.path()], "");
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        text.contains("    ignored, not known to this build: routing.futureSwitch"),
+        "{text}"
+    );
+    // The fields the build knows still apply, and hooks work.
+    let settings = machine.json(&repo, &["settings"]);
+    assert_eq!(settings["settings"]["routing"]["debtMarkers"], true);
+    assert_eq!(settings["settings"]["routing"]["stopReview"], false);
+    assert!(
+        settings["settings"]["routing"]
+            .get("futureSwitch")
+            .is_none()
+    );
+    let said = machine.hook(
+        "claude",
+        &repo,
+        "session-start",
+        json!({"source": "startup"}),
+    );
+    assert!(!said.contains("unavailable"), "{said}");
+    // Doctor names them where a user looks when Craft seems off.
+    let output = machine.craft(&["doctor", "--root", repo.path(), "--json"], "");
+    let doctor: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let noted = doctor["configuration"].to_string();
+    assert!(
+        noted.contains("routing.futureSwitch not known to craft")
+            && noted.contains("futureSection not known to craft"),
+        "{noted}"
+    );
+    // The project's own file is read by the build that works on it: still an error there.
+    repo.write(
+        ".craft/project.json",
+        r#"{"formatVersion": 1, "routing": {"futureSwitch": true}}"#,
+    );
+    let output = machine.craft(&["config", "--root", repo.path()], "");
+    assert!(!output.status.success());
+}
+
 #[cfg(unix)]
 #[test]
 fn an_organization_file_others_can_write_is_refused() {

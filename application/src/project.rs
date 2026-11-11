@@ -137,6 +137,8 @@ struct Read {
     origin: &'static str,
     file: Option<PathBuf>,
     document: Value,
+    /// Fields of the file this build does not know and left out.
+    ignored: Vec<String>,
 }
 
 impl Read {
@@ -151,12 +153,16 @@ impl Read {
             Some(file) if fs_exists(file) => "loaded",
             Some(_) => "absent",
         };
-        json!({
+        let mut summary = json!({
             "name": self.origin,
             "file": self.file.as_ref().map(|file| file.to_string_lossy()),
             "state": state,
             "values": layers::contributed(history, self.origin),
-        })
+        });
+        if !self.ignored.is_empty() {
+            summary["ignored"] = json!(self.ignored);
+        }
+        summary
     }
 }
 
@@ -179,11 +185,13 @@ fn baseline(sources: Sources) -> Result<[Read; 2], Failure> {
             origin: "organization",
             file: organization,
             document: json!({}),
+            ignored: Vec::new(),
         },
         Read {
             origin: "user",
             file: Some(user),
             document: json!({}),
+            ignored: Vec::new(),
         },
     ];
     for layer in &mut layers {
@@ -192,7 +200,8 @@ fn baseline(sources: Sources) -> Result<[Read; 2], Failure> {
             "organization" => documents::organization(file),
             _ => documents::preferences(file),
         };
-        layer.document = document(read).map_err(|error| error.about(&layer.label()))?;
+        let read = document(read).map_err(|error| error.about(&layer.label()))?;
+        (layer.document, layer.ignored) = layers::known(&read);
     }
     Ok(layers)
 }

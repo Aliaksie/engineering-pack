@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `craft doctor` compares each Codex hook approval with the installed plugin content and says
+  when an update left the approvals behind: Codex then skips every Craft hook without a
+  message until they are approved again in `/hooks`. A hook event of another version no
+  longer counts as the installed one running, and doctor reports the configuration layers:
+  a file that cannot be used, and a safety policy that is on while no hook of an installed
+  host is known to have run in the project.
+- A switch or section the running build does not know in the organization or user file is
+  left out and named by `craft config` and `craft doctor` instead of stopping every command
+  and hook, so one file serves installed builds of different versions. The project file
+  stays strict, and so does a known field with a value it cannot take.
+
 - An organization file and a user file declare a baseline every project inherits: switches,
   standards with their checks, the safety policy, execution profiles. The project overrides
   only what differs; `standards` and `safety.deny` merge by `id`, and an entry with

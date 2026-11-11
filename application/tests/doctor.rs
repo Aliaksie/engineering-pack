@@ -94,3 +94,55 @@ fn doctor_reads_host_installs_and_blocks_only_on_a_runtime_that_cannot_run() {
     .unwrap();
     assert_eq!(doctor(&repo, &homes).0, 0);
 }
+
+/// Codex skips a hook whose approval was given to other plugin content, without a message:
+/// doctor compares each approval with the installed plugin and says when to approve again.
+#[test]
+fn doctor_says_when_a_codex_update_left_its_hook_approvals_behind() {
+    let repo = Repo::new("doctor-approvals", &[("README.md", "x\n")]);
+    let homes = homes(&repo);
+    let plugin = homes.codex.join("plugins/cache/pack/craft-delivery/0.0.5");
+    let content = craft_platform::host_install::codex_content_hash(&plugin).unwrap();
+    let mut config = fs::read_to_string(homes.codex.join("config.toml")).unwrap();
+    config.push_str(&format!("trusted_content_hash = \"{content}\"\n\n[hooks.state.\"craft-delivery@pack:platform-hooks/hooks.json:session_start:0:0\"]\ntrusted_hash = \"sha256:bb\"\ntrusted_content_hash = \"{content}\"\n"));
+    fs::write(homes.codex.join("config.toml"), config).unwrap();
+    let approval = |report: &Value| {
+        host(report, "codex")["packages"][0]["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "approval")
+            .unwrap()
+            .clone()
+    };
+    let (_, report) = doctor(&repo, &homes);
+    let found = approval(&report);
+    assert_eq!(found["status"], "ok", "{found}");
+    assert!(
+        found["detail"]
+            .as_str()
+            .unwrap()
+            .contains("2 hook approvals recorded, given to the installed plugin content"),
+        "{found}"
+    );
+
+    // An update changes a file of the plugin; its hook declarations stay the same.
+    fs::write(plugin.join("bin/craft"), "#!/bin/sh\n# 0.0.6\n").unwrap();
+    let (code, report) = doctor(&repo, &homes);
+    assert_eq!(code, 0, "an approval to renew does not block: {report}");
+    let found = approval(&report);
+    assert_eq!(found["status"], "problem", "{found}");
+    assert!(
+        found["detail"]
+            .as_str()
+            .unwrap()
+            .contains("2 of 2 hook approvals were given to other plugin content"),
+        "{found}"
+    );
+    assert!(
+        report["next"]
+            .to_string()
+            .contains("Approve craft-delivery@pack hooks again in Codex `/hooks`"),
+        "{report}"
+    );
+}

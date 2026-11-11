@@ -107,6 +107,51 @@ fn shape(layer: &Value) -> Result {
     contracts::validate_project(&Value::Object(rest))
 }
 
+/// A baseline document without the fields this build does not know, and their dotted names.
+/// Every installed build reads the same organization and user file, and builds differ in
+/// version: a switch or a section a newer build added is left out here and named, so one file
+/// serves both. A field that belongs to the project, and a known field with a value it cannot
+/// take, are still errors.
+pub fn known(document: &Value) -> (Value, Vec<String>) {
+    let Some(map) = document.as_object() else {
+        return (document.clone(), Vec::new());
+    };
+    let template = contracts::default_settings();
+    let mut ignored = Vec::new();
+    let mut kept = Map::new();
+    for (key, value) in map {
+        let name = key.as_str();
+        if !FIELDS.contains(&name) && !contracts::PROJECT_FIELDS.contains(&name) {
+            ignored.push(key.clone());
+        } else if contracts::SWITCHES.contains(&name) {
+            kept.insert(
+                key.clone(),
+                known_switches(value, &template[name], name, &mut ignored),
+            );
+        } else {
+            kept.insert(key.clone(), value.clone());
+        }
+    }
+    (Value::Object(kept), ignored)
+}
+
+fn known_switches(value: &Value, template: &Value, path: &str, ignored: &mut Vec<String>) -> Value {
+    let (Some(map), Some(template)) = (value.as_object(), template.as_object()) else {
+        return value.clone();
+    };
+    let mut kept = Map::new();
+    for (key, item) in map {
+        let field = format!("{path}.{key}");
+        match template.get(key) {
+            Some(expected) => {
+                kept.insert(key.clone(), known_switches(item, expected, &field, ignored));
+            }
+            None => ignored.push(field),
+        }
+    }
+    Value::Object(kept)
+}
+
 /// Validate one layer document on its own; the error starts with the layer's label.
 pub fn validate(layer: &Layer) -> Result {
     shape(layer.document).map_err(|error| format!("{}: {error}", layer.label))
@@ -250,6 +295,18 @@ pub fn text(report: &Value) -> String {
                 None => "?".to_string(),
             }
         ));
+        let ignored: Vec<&str> = layer["ignored"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if !ignored.is_empty() {
+            lines.push(format!(
+                "    ignored, not known to this build: {}",
+                ignored.join(", ")
+            ));
+        }
     }
     let rows = |name: &str| report[name].as_array().cloned().unwrap_or_default();
     let overrides = rows("overrides");

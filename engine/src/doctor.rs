@@ -100,6 +100,21 @@ fn firing(
             Some(restart.into()),
         );
     }
+    // An install with no recorded time (Codex): an older version's event says nothing about
+    // whether the installed one runs.
+    if let Some(installed) = version.as_str().filter(|installed| *installed != ran) {
+        return (
+            check(
+                "hooks",
+                "unknown",
+                format!(
+                    "last hook {} at {at} ran {ran}, not the installed {installed}: no hook of the installed version is known to have run in this project",
+                    event["lifecycle"].as_str().unwrap_or("event")
+                ),
+            ),
+            None,
+        );
+    }
     (
         check(
             "hooks",
@@ -302,6 +317,58 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
     json!({"host": "claude", "status": host_status(&all), "packages": packages, "checks": checks})
 }
 
+/// Whether Codex would run a package's hooks: each needs a recorded approval, and Codex ties
+/// an approval to the plugin's files, so one given to other content (before an update) no
+/// longer counts and its hook is skipped without a message.
+fn approval(found: &Value, id: &str, hooks: u64, report: &mut Report) -> Value {
+    let missing = found["unapproved"].as_u64().unwrap_or(0);
+    if missing > 0 {
+        report
+            .next
+            .push(format!("Review and approve {id} hooks in Codex `/hooks`"));
+        return check(
+            "approval",
+            "problem",
+            format!("{missing} of {hooks} hooks have no recorded approval (observed layout)"),
+        );
+    }
+    let stale = found["staleApprovals"].as_u64().unwrap_or(0);
+    if stale > 0 {
+        report.next.push(format!(
+            "Approve {id} hooks again in Codex `/hooks`: an approval covers the plugin content it was given to, so each update needs a new one"
+        ));
+        return check(
+            "approval",
+            "problem",
+            format!(
+                "{stale} of {hooks} hook approvals were given to other plugin content (the plugin changed since): Codex skips those hooks until they are approved again"
+            ),
+        );
+    }
+    let content = &found["approvedContent"];
+    match (content.as_str(), content["error"].as_str()) {
+        (Some("match"), _) => check(
+            "approval",
+            "ok",
+            format!("{hooks} hook approvals recorded, given to the installed plugin content"),
+        ),
+        (_, Some(error)) => check(
+            "approval",
+            "unknown",
+            format!(
+                "{hooks} hook approvals recorded; the plugin content could not be compared ({error})"
+            ),
+        ),
+        _ => check(
+            "approval",
+            "ok",
+            format!(
+                "{hooks} hook approvals recorded (this Codex recorded no plugin content with them; observed layout)"
+            ),
+        ),
+    }
+}
+
 fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) -> Value {
     let cached = facts["packages"].as_array().map_or(&[][..], Vec::as_slice);
     // Enabled in the configuration, absent from the plugin cache: Codex loads nothing of it
@@ -391,13 +458,7 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
             }
             pchecks.push(runtime);
             let hooks = found["hooks"].as_u64().unwrap_or(0);
-            match found["unapproved"].as_u64().unwrap_or(0) {
-                0 => pchecks.push(check("approval", "ok", format!("{hooks} hook approvals recorded (content match not checked; observed layout)"))),
-                missing => {
-                    pchecks.push(check("approval", "problem", format!("{missing} of {hooks} hooks have no recorded approval (observed layout)")));
-                    report.next.push(format!("Review and approve {id} hooks in Codex `/hooks`"));
-                }
-            }
+            pchecks.push(approval(found, id, hooks, report));
             let (firing, next) = firing(
                 seen,
                 telemetry,
@@ -498,8 +559,73 @@ fn overlay(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report
     json!({"host": host, "status": host_status(&checks), "path": facts["path"], "checks": checks})
 }
 
+/// What the configuration layers say about this project: a file that cannot be used, fields
+/// of an organization or user file this build left out, and a safety policy no host hook has
+/// applied here yet.
+fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Value> {
+    let found = &facts["configuration"];
+    let mut checks = Vec::new();
+    if let Some(error) = found["error"].as_str() {
+        checks.push(check("layers", "problem", error));
+        report.next.push(
+            "Fix the configuration file named above: until it loads, hooks deliver nothing and say so".into(),
+        );
+        return checks;
+    }
+    for layer in found["layers"].as_array().into_iter().flatten() {
+        let ignored: Vec<&str> = layer["ignored"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if !ignored.is_empty() {
+            checks.push(check(
+                "layers",
+                "unknown",
+                format!(
+                    "{} layer {}: {} not known to craft {} and ignored (a newer build may read it; otherwise misspelled)",
+                    layer["name"].as_str().unwrap_or("?"),
+                    layer["file"].as_str().unwrap_or("?"),
+                    ignored.join(", "),
+                    facts["craftVersion"].as_str().unwrap_or("dev"),
+                ),
+            ));
+        }
+    }
+    if found["safety"] == true {
+        for host in hosts {
+            if matches!(host["status"].as_str(), Some("not-installed" | "off")) {
+                continue;
+            }
+            let own = host["checks"].as_array().into_iter().flatten();
+            let packaged = host["packages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .flat_map(|package| package["checks"].as_array().into_iter().flatten());
+            let mut hooks = own
+                .chain(packaged)
+                .filter(|c| c["check"] == "hooks")
+                .peekable();
+            if hooks.peek().is_some() && !hooks.any(|c| c["status"] == "ok") {
+                checks.push(check(
+                    "safety",
+                    "unknown",
+                    format!(
+                        "the safety policy is on, but no hook of the installed {} package is known to have run in this project: until one does, {} commands are not checked against it",
+                        host["host"].as_str().unwrap_or("host"),
+                        host["host"].as_str().unwrap_or("its"),
+                    ),
+                ));
+            }
+        }
+    }
+    checks
+}
+
 /// The doctor report over observed facts: `{formatVersion, readOnly, project, craftVersion,
-/// hosts, blocking, next, unknown}`.
+/// hosts, configuration, blocking, next, unknown}`.
 pub fn report(facts: &Value) -> Value {
     let seen = facts["telemetry"]["lastSeen"]
         .as_array()
@@ -517,13 +643,14 @@ pub fn report(facts: &Value) -> Value {
     for found in facts["overlays"].as_array().into_iter().flatten() {
         hosts.push(overlay(found, &seen, telemetry, &mut state));
     }
+    let configuration = configuration(facts, &hosts, &mut state);
     state.next.dedup();
     json!({
         "formatVersion": 1, "readOnly": true, "project": facts["project"], "craftVersion": facts["craftVersion"],
-        "hosts": hosts, "blocking": state.blocking, "next": state.next,
+        "hosts": hosts, "configuration": configuration, "blocking": state.blocking, "next": state.next,
         "unknown": [
             "whether a running host session loaded the current install (hosts keep no record on disk)",
-            "Codex hook approval content match (hash recipe undocumented)",
+            "whether a Codex hook's declaration still matches its approval (only the plugin content is compared)",
             "managed and command-line settings",
         ],
     })
