@@ -26,7 +26,7 @@ test('release collects checked targets with checksummed archives and binary prov
   const options = fixture(t);
   const index = assembleNativeRelease(options);
   assert.equal(index.sourceRevision, options.revision);
-  assert.equal(index.assets.length, 3);
+  assert.equal(index.assets.length, releaseTargets.length);
   for (const asset of index.assets) {
     const archive = path.join(options.output, asset.archive);
     assert.equal(digest(fs.readFileSync(archive)), asset.sha256);

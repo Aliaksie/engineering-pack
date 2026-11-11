@@ -20,6 +20,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-latest, label: linux, runner: ubuntu-24.04, target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-arm, label: linux arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
           - { os: macos-latest, label: macos, runner: macos-15, target: aarch64-apple-darwin }
           - { os: windows-latest, label: windows, runner: windows-2022, target: x86_64-pc-windows-msvc }
     defaults:
@@ -54,7 +55,7 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             target
-          key: cargo-native-${{ runner.os }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
+          key: cargo-native-${{ runner.os }}-${{ runner.arch }}-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('Cargo.lock') }}
       - name: Fetch crates
         run: cargo fetch --locked
       - name: Clippy

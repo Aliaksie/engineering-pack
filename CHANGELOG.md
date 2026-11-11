@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bundles carry a native executable for Linux on arm64 (glibc), next to Linux x86-64, macOS
+  on Apple Silicon and Windows x86-64. Hooks, routing and commands now run on arm64 Linux
+  machines, containers and cloud instances, where every package was inactive before.
 - `craft doctor` compares each Codex hook approval with the installed plugin content and says
   when an update left the approvals behind: Codex then skips every Craft hook without a
   message until they are approved again in `/hooks`. A hook event of another version no
