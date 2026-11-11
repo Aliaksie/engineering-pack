@@ -67,7 +67,7 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_REVISION: ${{ steps.version.outputs.revision }}
         run: |
-          for runner in ubuntu-latest macos-latest windows-latest; do
+          for runner in ubuntu-latest ubuntu-arm macos-latest windows-latest; do
             gh run download "$GITHUB_RUN_ID" --name "native-${runner}-${GITHUB_SHA}" --dir .eval-results/native
           done
           node tooling/native-release.mjs .eval-results/native .eval-results/release
@@ -113,7 +113,7 @@ jobs:
           gh release create "v${RELEASE_VERSION}" --verify-tag --draft --title "Craft Capabilities ${RELEASE_VERSION}" --notes-file .eval-results/release-notes.md
           gh release upload "v${RELEASE_VERSION}" .eval-results/release/*
           gh release view "v${RELEASE_VERSION}" --json assets --jq '.assets | length' > .eval-results/release-asset-count
-          test "$(cat .eval-results/release-asset-count)" = 15
+          test "$(cat .eval-results/release-asset-count)" = 16
           gh release edit "v${RELEASE_VERSION}" --draft=false
       - name: Upload recovery artifacts
         if: always()

@@ -9,7 +9,8 @@ import { nativeTargets } from '../native-release.mjs';
 // closed and say once, when a session starts, that the package is inactive.
 const UNAVAILABLE = 'bundled native runtime unavailable';
 // Bash (incl. Git Bash and macOS /bin/sh) names the platform itself; other shells ask uname once.
-const PLATFORMS = { 'x86_64-unknown-linux-gnu': ["'Linux x86_64'", 'linux*:x86_64'], 'aarch64-apple-darwin': ["'Darwin arm64'", 'darwin*:arm64'],
+const PLATFORMS = { 'x86_64-unknown-linux-gnu': ["'Linux x86_64'", 'linux*:x86_64'], 'aarch64-unknown-linux-gnu': ["'Linux aarch64'", 'linux*:aarch64'],
+  'aarch64-apple-darwin': ["'Darwin arm64'", 'darwin*:arm64'],
   'x86_64-pc-windows-msvc': ["MINGW*' x86_64'", "MSYS*' x86_64'", "CYGWIN*' x86_64'", 'msys:x86_64', 'cygwin:x86_64'] };
 
 export const hookArguments = (platform, definition, item) =>

@@ -195,8 +195,8 @@ Claude Code and Codex are tested in depth: an integration scenario drives `craft
 host's own hook payloads through every standards and evidence feature. The other hosts are
 built from their published hook references and covered by payload fixtures, with less depth.
 No host's live loading or model behavior is certified. The native executable is bundled for
-macOS on Apple Silicon, Linux x86-64 and Windows x86-64. See [adapters](docs/ADAPTERS.md) for
-what each host supports.
+macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
+[adapters](docs/ADAPTERS.md) for what each host supports.
 
 ## What is shown and what is not yet
 

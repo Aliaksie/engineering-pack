@@ -178,7 +178,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for runner in ubuntu-latest macos-latest windows-latest; do
+          for runner in ubuntu-latest ubuntu-arm macos-latest windows-latest; do
             gh run download "$GITHUB_RUN_ID" --name "native-${runner}-${GITHUB_SHA}" --dir .eval-results/native
           done
           for target in claude codex cursor copilot gemini agents gemini-extension jetbrains distribution; do
