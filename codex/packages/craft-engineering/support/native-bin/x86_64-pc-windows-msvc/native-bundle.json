@@ -24,7 +24,7 @@
     "config-keys/v1"
   ],
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "32f7a440087d21faa744000ce10b68522a0d429f",
+  "sourceRevision": "031b0ad6201f40686924e72757738b5d34010a58",
   "sourceDirty": false,
   "cargoLockSha256": "06a6c6d6902e01946e1947983ec23cc66563d8f02c2f76ce81ae31f0e99973b3",
   "files": [
@@ -40,13 +40,13 @@
     },
     {
       "path": "native-bin/craft.exe",
-      "bytes": 26860544,
-      "sha256": "888a7896f21cbb140b6347a7ee8fdfd01be68397c1d20bca690b574ffe660b9a"
+      "bytes": 26903552,
+      "sha256": "271c1664542c11c888414be598bd0421d1df8642fce6041748a80ddd146babb7"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "fc23c03f1e9f59a6f4401c101937915a68b9b916650ce4edf8a4dbb2615f9b0b"
+      "sha256": "43e0fff06ce6f72d4009d3fc37f08f887c4beccd717e78c98ec7d662f2e1f5cc"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",

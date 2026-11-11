@@ -20,6 +20,7 @@ compacts a host session or posts to a code host.
 |---|---|---|
 | `route` | Intent, paths and risks → guidance loading plan, owners, checks and execution role | Reads configuration; see [routing](ROUTING.md) |
 | `standards` | Declared project standards; with `--propose`, the standards the project's existing convention files support; with `--file` or `--commit-message`, the deterministic anchor checks the hooks run (for a Git hook or CI) | Reads configuration and the named files; `--propose` reads fixed root files and writes nothing; exits non-zero when a standard is not met |
+| `config` | The organization, user and project layers the settings come from and each value one layer set over another; with `--explain`, every effective value with its layer; `--field` keeps one field | Reads the layer files; exits non-zero naming the layer and file when one cannot be used; see [configuration layers](SESSION.md#configuration-layers) |
 | `check` | The project's declared checks (`modules[].checks`, `standards[].run`) for the uncommitted changes, `--file` paths or `--all`, run at `--stage` (`step`, `commit` by default, `pr`, `ci`) | Starts the declared commands without a shell, each within its time bound; checks of a later stage are listed as left to it; with `--session` keeps the result in the session's records; exits non-zero when a check did not pass |
 | `lookup` | Module inventory or owners of paths | Reads configuration |
 | `locate` | Batched literal terms in scoped paths → path/line/snippet evidence | Bounded scan; optional task-scoped reuse receipts |

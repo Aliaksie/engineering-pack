@@ -587,10 +587,11 @@ and the private state directory; every `routing` switch over what a hook shows o
 listed, with its bundled default where the project sets none. `features` adds the switches read outside that merge, each
 with its origin: Project Intelligence (`evidence.enabled` in `.craft/project.json`), the
 background index warm-up (`CRAFT_EVIDENCE_WARM=0` in the host environment; not started on
-Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, personal preferences
-(`~/.config/craft/preferences.json` or `--preferences`), project `.craft/project.json`, task
-overrides (`--data`). Preferences and task overrides accept only `routing`, `checkpoint`,
-`workspace` and `efficiency`; they cannot grant permissions or map models.
+Windows) and telemetry (`.craft/telemetry.json`). Precedence: bundled defaults, the
+organization file, the user file (`~/.config/craft/preferences.json` or `--preferences`),
+project `.craft/project.json`, task overrides (`--data`); see
+[configuration layers](#configuration-layers). Task overrides accept only `routing`,
+`checkpoint`, `workspace` and `efficiency`. No layer grants permissions.
 
 A fully manual policy:
 
@@ -630,3 +631,68 @@ What stays on, and why:
 | Skill listing and package instructions the host loads | Read by the host from the installed plugin; disable the plugin in the host to remove them |
 
 Explicit commands keep working under any policy.
+
+## Configuration layers
+
+An organization and a user can each declare a baseline once; every project on the machine
+inherits it and overrides only what differs.
+
+| Layer | File | Notes |
+|---|---|---|
+| Organization | The path in `CRAFT_ORGANIZATION_CONFIG`, else `/etc/craft/organization.json` (Linux), `/Library/Application Support/Craft/organization.json` (macOS). Windows has no default location: set the variable | A file an administrator or a host's managed settings distribute; Craft contacts no server. An empty variable means no organization layer |
+| User | `~/.config/craft/preferences.json` | The same file that held personal switches before |
+| Project | `.craft/project.json` | Everything in [project configuration](PROJECT-CONFIG.md) |
+
+A baseline file takes the fields that make sense across repositories: `routing`, `checkpoint`,
+`workspace`, `efficiency`, `standards` (by `anchor`, `checklist` or `run`, scoped by language,
+layer, intent or path), `anchors.defaults` and `anchors.disables`, `skills.disables`, `safety`,
+`execution` and `review`. What names one repository's files or modules stays in the project;
+a baseline file that sets it is refused. `formatVersion` is optional there.
+
+```json
+{
+  "formatVersion": 1,
+  "standards": [
+    { "id": "commits", "anchor": "conventional-commits" },
+    { "id": "licenses", "run": { "command": "license-check", "stage": "pr" } }
+  ],
+  "safety": { "enabled": true }
+}
+```
+
+One merge rule: a later layer wins field by field. Objects merge key by key, a list is
+replaced whole, and the two lists of entries with an `id` (`standards`, `safety.deny`) merge by
+id: an entry replaces the one with its id, a new id is added, and `{ "id": "licenses",
+"disabled": true }` removes an inherited one. A baseline layer's `execution.profiles` add to the
+bundled profiles; only the project's own set replaces them.
+
+Each file is validated on its own, and once a baseline layer sets more than switches the merged
+result is validated again: an entry limit, a rule id two layers use, a role naming a profile no
+layer declares. A file that cannot be read or is invalid is an error naming the layer and the
+file, never a fallback to a partial configuration. Commands exit non-zero. Hooks tell the model
+that routing is unavailable and let the host continue, except a hook that guards shell
+commands (the review package's read-only guard): it cannot evaluate its policy and refuses
+every shell command until the file is fixed, in each project the file applies to.
+
+`craft config --root <project>` lists the layers and every value one layer set over another,
+including an override that repeats the value beneath it or a `disabled` entry that removes
+nothing. `--explain` adds every effective value with its layer; `--field routing` keeps one
+field and what lies beneath it.
+
+```text
+layers, later wins: bundled < organization < user < project
+  organization: /etc/craft/organization.json — 3 values
+  user: /home/dev/.config/craft/preferences.json — absent
+  project: /work/shop/.craft/project.json — 2 values
+overrides:
+  routing.debtMarkers = false (project) over true (organization), false (bundled)
+  standards[licenses] disabled (project) over {"id":"licenses","run":{"command":"license-check","stage":"pr"}} (organization)
+```
+
+Layers are defaults, not enforcement: a project can override any of them. On POSIX the user
+file and its folder must belong to the user, the organization file and its folder to the
+administrator or the user, and none may be a symlink or writable by group or others. On
+Windows ownership is not checked: keep the organization file where only administrators can
+write. A machine
+without the baseline files, such as a CI runner, sees the project alone; install the
+organization file there or point `CRAFT_ORGANIZATION_CONFIG` at a checked-out copy.
