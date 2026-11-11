@@ -43,6 +43,7 @@
           "plan-assign",
           "plan-integrate",
           "settings",
+          "config",
           "route",
           "standards",
           "anchors",

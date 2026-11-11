@@ -533,6 +533,11 @@
               "maxLength": 200,
               "description": "One item, one line."
             }
+          },
+          "disabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so."
           }
         },
         "additionalProperties": false
@@ -1051,8 +1056,7 @@
           "items": {
             "type": "object",
             "required": [
-              "id",
-              "command"
+              "id"
             ],
             "description": "One rule: an `id`, the leading words of the command and why it is refused.",
             "properties": {
@@ -1078,6 +1082,11 @@
                 "minLength": 1,
                 "maxLength": 200,
                 "description": "What the rule refuses, shown with the refusal."
+              },
+              "disabled": {
+                "type": "boolean",
+                "default": false,
+                "description": "With only `id`: remove the rule of this id that the organization or user layer declares."
               }
             },
             "additionalProperties": false

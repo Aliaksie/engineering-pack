@@ -14,9 +14,12 @@ For completion and hover help in an editor, link the schema from the file:
 { "$schema": "https://raw.githubusercontent.com/Aliaksie/engineering-pack/main/schemas/project.schema.json", "formatVersion": 1 }
 ```
 
-Fields that only switch something on or off can also be set in personal preferences or
-task overrides (`routing`, `checkpoint`, `workspace`, `efficiency`); see
-[settings](SESSION.md#settings).
+An organization file and a user file can declare a baseline every project inherits:
+`routing`, `checkpoint`, `workspace`, `efficiency`, `standards`, `anchors`, `skills.disables`,
+`safety`, `execution` and `review`. The project overrides only what differs and
+`craft config` shows which layer won; see [configuration layers](SESSION.md#configuration-layers).
+Task overrides take the switch sections only (`routing`, `checkpoint`, `workspace`,
+`efficiency`).
 
 ## `formatVersion`
 
@@ -86,6 +89,7 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
 | `standards[].checklist` | array of string |  | Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`. |
+| `standards[].disabled` | boolean | `false` | With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so. |
 
 ## `anchors`
 
@@ -199,6 +203,7 @@ object. Opt-in rules that refuse destructive shell commands and commands that re
 | `safety.deny[].id` | string |  | Stable handle named in the refusal. |
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
 | `safety.deny[].reason` | string |  | What the rule refuses, shown with the refusal. |
+| `safety.deny[].disabled` | boolean | `false` | With only `id`: remove the rule of this id that the organization or user layer declares. |
 
 ## `runtimes`
 

@@ -17,6 +17,10 @@ publication, and must not contain credentials, private endpoints or production t
   with the caller's permissions. It runs only when called, never from a hook, and nothing it
   reports authorizes a commit, push or publication. Run it on untrusted configuration only
   where running that project's own build would be acceptable.
+- The organization and user configuration layers are files outside the repository, read only
+  when no other account can write them. They set defaults a project can override, so they are
+  not a control over a repository's own configuration, and they hold no credentials. A check
+  command a layer declares runs under `craft check` like the project's own.
 - Building untrusted PR code can run arbitrary code even in a disposable checkout.
 - For agent changes, test tool authorization, idempotency, isolation and output validation
   independently of model behavior; a prompt or content filter does not replace them.

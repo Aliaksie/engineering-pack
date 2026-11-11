@@ -22,6 +22,9 @@ Routing lists the declared checks and runs none. `<package-root>/bin/craft check
 <project>` runs those of the uncommitted changes at `--stage step`, `commit` (default), `pr`
 or `ci`; a check it reports as left to a later stage, not started or timed out has not passed.
 
+A standard or switch the project file does not declare can come from the organization or user
+layer: `<package-root>/bin/craft config --root <project>` names the layer of each override.
+
 Read the result as a declaration-based plan. Module owners, dependencies and checks still
 need verification in the consumer checkout. Review the `loading` evidence and missing context,
 then open only the relevant installed skills and references. Keep common practice, language,

@@ -115,6 +115,32 @@ pub fn skill_header(root: &Path, relative: &str, max_bytes: usize) -> Option<Str
 /// Private preferences, or `{}` when absent. On POSIX the file and its folder must be
 /// owned by the current user and not group- or world-writable.
 pub fn preferences(file: &Path) -> Result<Value, DocumentError> {
+    baseline(
+        file,
+        private,
+        "preferences must be user-owned, non-symlink and not writable by others",
+        "preferences must be a bounded JSON file",
+    )
+}
+
+/// The organization's configuration file, or `{}` when absent. On POSIX the file and its
+/// folder must be owned by the administrator or the current user and not group- or
+/// world-writable, so no other account can change what every project inherits.
+pub fn organization(file: &Path) -> Result<Value, DocumentError> {
+    baseline(
+        file,
+        managed,
+        "organization configuration must be owned by root or the user, non-symlink and not writable by others",
+        "organization configuration must be a bounded JSON file",
+    )
+}
+
+fn baseline(
+    file: &Path,
+    trusted: fn(&fs::Metadata) -> bool,
+    untrusted: &str,
+    message: &str,
+) -> Result<Value, DocumentError> {
     let meta = match fs::symlink_metadata(file) {
         Ok(meta) => meta,
         Err(error)
@@ -134,13 +160,10 @@ pub fn preferences(file: &Path) -> Result<Value, DocumentError> {
         .unwrap_or(Path::new("."));
     let parent = fs::symlink_metadata(parent).map_err(DocumentError::Io)?;
     for entry in [&parent, &meta] {
-        if entry.file_type().is_symlink() || !private(entry) {
-            return Err(invalid(
-                "preferences must be user-owned, non-symlink and not writable by others",
-            ));
+        if entry.file_type().is_symlink() || !trusted(entry) {
+            return Err(invalid(untrusted));
         }
     }
-    let message = "preferences must be a bounded JSON file";
     if !meta.is_file() || meta.len() > PREFERENCE_BYTES as u64 {
         return Err(invalid(message));
     }
@@ -160,6 +183,18 @@ fn private(_: &fs::Metadata) -> bool {
 }
 
 #[cfg(unix)]
+fn managed(meta: &fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    (meta.uid() == 0 || meta.uid() == rustix::process::getuid().as_raw())
+        && meta.mode() & 0o022 == 0
+}
+
+#[cfg(not(unix))]
+fn managed(_: &fs::Metadata) -> bool {
+    true
+}
+
+#[cfg(unix)]
 fn read_preferences(
     file: &Path,
     meta: &fs::Metadata,
@@ -174,7 +209,7 @@ fn read_preferences(
         .map_err(DocumentError::Io)?;
     let opened = handle.metadata().map_err(DocumentError::Io)?;
     if (opened.dev(), opened.ino()) != (meta.dev(), meta.ino()) {
-        return Err(invalid("preferences changed while opening"));
+        return Err(invalid("file changed while opening"));
     }
     let mut bytes = Vec::new();
     handle
@@ -313,6 +348,43 @@ mod tests {
         assert!(
             matches!(super::project(&project), Err(DocumentError::Invalid(m)) if m.contains("symlink"))
         );
+    }
+
+    #[test]
+    fn an_organization_file_is_optional_bounded_and_not_writable_by_others() {
+        let fixture = Fixture::new();
+        let file = fixture.0.join("organization.json");
+        assert_eq!(organization(&file).unwrap(), json!({}));
+        fs::write(&file, r#"{"safety":{"enabled":true}}"#).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&fixture.0, fs::Permissions::from_mode(0o755)).unwrap();
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+            assert_eq!(organization(&file).unwrap()["safety"]["enabled"], true);
+            for (target, mode) in [(&file, 0o664), (&fixture.0, 0o777)] {
+                fs::set_permissions(target, fs::Permissions::from_mode(mode)).unwrap();
+                assert!(
+                    matches!(organization(&file), Err(DocumentError::Invalid(m)) if m.contains("writable"))
+                );
+                fs::set_permissions(target, fs::Permissions::from_mode(0o755)).unwrap();
+            }
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+            let link = fixture.0.join("link.json");
+            std::os::unix::fs::symlink(&file, &link).unwrap();
+            assert!(
+                matches!(organization(&link), Err(DocumentError::Invalid(m)) if m.contains("symlink"))
+            );
+        }
+        fs::write(&file, vec![b' '; PREFERENCE_BYTES + 1]).unwrap();
+        assert!(
+            matches!(organization(&file), Err(DocumentError::Invalid(m)) if m.contains("bounded"))
+        );
+        fs::write(&file, "{").unwrap();
+        assert!(matches!(
+            organization(&file),
+            Err(DocumentError::Invalid(_))
+        ));
     }
 
     #[test]
