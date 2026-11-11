@@ -1,5 +1,15 @@
 # Craft Capabilities
 
+Your team's engineering rules, kept by any agent: declared once, checked while it writes,
+enforced where you choose, the same in every project and on every host.
+
+![What Craft tells the agent and the person during one task: a module dependency finding, a
+commit message finding, a declared check run, a refused force push and the session
+summary](docs/assets/demo.svg)
+
+The `craft` lines are what the released executable answered to Claude Code's hook payloads for
+these steps, and to `craft check`; the agent's steps are scripted, not a model run.
+
 Engineering practices and workflows for AI coding agents, together with your project's own
 rules and skills, installed into Claude Code, Codex, Gemini, Cursor, Copilot, JetBrains AI
 Assistant or any Agent Skills host from one source.
@@ -26,6 +36,9 @@ Craft ships working conventions by default and lets your project customize where
   file, a folder or an established name such as `conventional-commits`), where they apply and
   how strictly, and your own skills. On conflict, yours win, and `craft standards` shows which
   source supplied each piece.
+- **One baseline for every project.** An organization file and a user file declare standards,
+  checks and a safety policy once; each project overrides only what differs, and
+  `craft config --explain` shows which layer set each value.
 - **Feedback while the agent works.** Checks that need no model run on what the agent has
   just written, so it corrects course in the same turn, not after review.
 - **Evidence instead of claims.** Test results are read from the runner's own output. What
@@ -87,6 +100,20 @@ and exits 2, for CI or a Git hook.
 - **Workflows for whole tasks.** Deliver a change, review a local diff or a GitHub/GitLab
   review, write code-grounded stories, ship a release: each a named workflow that loads the
   guidance it needs and reports what it verified.
+- **Your checks, at the stage you chose.** `craft check` runs the lint, type and test commands
+  a project declares for the changed files, each at its stage (`step`, `commit`, `pr`, `ci`).
+  A check left to a later stage is listed as not run, never as passed
+  ([project checks](docs/ROUTING.md#project-checks)).
+- **A safety policy you turn on.** With `safety.enabled`, recursive deletes outside the
+  project, forced pushes, Git commands that discard uncommitted work and system-level commands
+  are refused before they run, together with the project's own rules. It only refuses and
+  never approves ([security](docs/SECURITY.md)).
+- **Standards from what you already have.** `craft standards --propose` reads your agent
+  instructions, contributor document and tool configuration and lists the standards they
+  support; nothing is active until you copy it.
+- **One line on what happened.** When a turn ends, Claude Code, Codex and Gemini CLI show
+  what Craft did in the session: findings raised and fixed, test runs that ran no test,
+  lookups answered and contexts restored. Nothing happened, no line.
 - **Continuity.** After compaction, a task gets back its goal, decisions, open result and test
   status. Subagents started by Claude Code, Codex or Copilot CLI receive the same standards.
 - **Fewer turns.** When the agent asks who calls a name, where it is declared or which ADR
@@ -202,7 +229,7 @@ macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
 
 - **Shown by tests on every change:** each check, routing decision and hook response, and an
   end-to-end scenario covering standards, anchors, routing, test evidence, resume after
-  compaction and `doctor`.
+  compaction, configuration layers, declared checks, the safety policy and `doctor`.
 - **Measured:** the runtime cost of `craft` on Linux, macOS and Windows (see Performance), and
   turns and tokens in short model probes on Codex, where cost is watched as a guardrail.
 - **Not yet shown:** that agents keep declared standards more often, or leave less debt, with
@@ -212,9 +239,10 @@ macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
 ## What it does not do
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
-to a code host. Standards checks report; they do not block tools. The one hook that denies is
-craft-review's shell guard: with `review.readOnly: true` it denies common publishing
-commands, and while the project configuration is invalid it denies every shell command
+to a code host. Standards checks report; they do not block tools. Two hooks deny, and only
+shell commands: the safety policy, when a project turns it on, and craft-review's shell
+guard, which with `review.readOnly: true` denies common publishing commands and, while the
+project configuration is invalid, every shell command
 ([read-only sessions](docs/REVIEW.md#read-only-sessions)). Your host's permissions and your
 authorization still decide what happens. Nothing is sent remotely unless you configure an
 OpenTelemetry endpoint; bounded local usage metadata is on by default and can be disabled
@@ -222,13 +250,10 @@ OpenTelemetry endpoint; bounded local usage metadata is on by default and can be
 
 ## Direction
 
-- **Verified standards:** more of the project's own standards checked without a model,
-  including the project's own check commands.
-- **One baseline for every project:** organization and user layers above the project, so
-  several projects share one setup and each overrides only what differs, with precedence
-  that stays inspectable.
-- **Safety you can enforce:** opt-in rules for destructive or unauthorized commands, applied
-  through the same hooks and never weaker than the host's own permissions.
+- **Verified standards:** more of the project's own standards checked without a model, and
+  the same declared check giving the same result in a hook, before a commit and in CI.
+- **A baseline a team can share:** the organization baseline reaching CI runners and
+  teammates, not only the machines that hold the file.
 - **Service recipes:** ready GitHub, GitLab and Jira setups instead of a mapping per project.
 - **Trust and less debt, cost as a guardrail:** Craft should earn its place through standards
   kept and debt avoided, without costing more where it adds nothing.
@@ -238,9 +263,9 @@ OpenTelemetry endpoint; bounded local usage metadata is on by default and can be
 
 ## Performance
 
-Every push to `main` measures the installed release `craft` on Linux, macOS and Windows:
-startup, hooks and Project Intelligence refresh. Any branch can be measured against `main` by
-manual dispatch.
+Every push to `main` measures the installed release `craft` on Linux (x86-64 and arm64), macOS
+and Windows: startup, hooks and Project Intelligence refresh. Any branch can be measured
+against `main` by manual dispatch.
 See the [dashboard](https://bencher.dev/perf/aliaksie-s-craft-capabilities) and
 [contributing](docs/CONTRIBUTING.md#performance) for what is measured.
 

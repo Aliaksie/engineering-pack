@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 720" width="880" height="720" role="img" aria-labelledby="t d">
+<title id="t">One task with Craft 0.0.6</title>
+<desc id="d">An agent adds discount codes to orders. Craft reports an import that breaks the declared module dependencies, a test run that executed no test and a commit message that is not a Conventional Commit; it says nothing once each is fixed, refuses a forced push, runs the project's declared check and ends the turn with one summary line.</desc>
+<style>
+text{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;fill:#c9d1d9;white-space:pre}
+.head{font-weight:600;fill:#f0f6fc}.sub,.who,.quiet{fill:#8b949e}.act{fill:#c9d1d9}.warn{fill:#e3b341}.deny{fill:#ff7b72}.good{fill:#7ee787}
+.scene{animation-duration:32s;animation-iteration-count:infinite;animation-timing-function:linear}
+@keyframes s0{0%,3.75%{opacity:0}5.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s1{0%,13.75%{opacity:0}15.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s2{0%,23.75%{opacity:0}25.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s3{0%,33.75%{opacity:0}35.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s4{0%,43.75%{opacity:0}45.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s5{0%,53.75%{opacity:0}55.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s6{0%,63.75%{opacity:0}65.00%,97%{opacity:1}100%{opacity:0}}
+@keyframes s7{0%,73.75%{opacity:0}75.00%,97%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.scene{animation:none}}
+</style>
+<rect width="880" height="720" rx="10" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="879" height="719" rx="10" fill="none" stroke="#30363d"/>
+<text x="24" y="30" class="head">One task: add discount codes to orders</text>
+<text x="24" y="50" class="sub">Craft 0.0.6 answering Claude Code's hooks: its lines are its own output, no model involved.</text>
+<g class="scene" style="animation-name:s0">
+<text x="24" y="78"><tspan class="who">agent  </tspan><tspan x="84" class="act">edit src/domain/order.ts          adds: import { db } from "../adapters/db"</tspan></text>
+<text x="24" y="96"><tspan class="who">craft  </tspan><tspan x="84" class="warn">Project standards not met by what was just written (deterministic anchor check;</tspan></text>
+<text x="24" y="114"><tspan class="who"></tspan><tspan x="84" class="warn">report only, fix or tell the user why not): [{"standard":"rings",</tspan></text>
+<text x="24" y="132"><tspan class="who"></tspan><tspan x="84" class="warn">"anchor":"hexagonal-architecture","findings":[{"rule":"undeclared-dependency",</tspan></text>
+<text x="24" y="150"><tspan class="who"></tspan><tspan x="84" class="warn">"line":1,"message":"imports ../adapters/db from module adapters; module domain does</tspan></text>
+<text x="24" y="168"><tspan class="who"></tspan><tspan x="84" class="warn">not declare dependsOn adapters"}]}]</tspan></text>
+</g>
+<g class="scene" style="animation-name:s1">
+<text x="24" y="196"><tspan class="who">agent  </tspan><tspan x="84" class="act">edit src/domain/order.ts          removes the import</tspan></text>
+<text x="24" y="214"><tspan class="who">craft  </tspan><tspan x="84" class="quiet">nothing to say</tspan></text>
+</g>
+<g class="scene" style="animation-name:s2">
+<text x="24" y="242"><tspan class="who">agent  </tspan><tspan x="84" class="act">$ node --test --test-name-pattern=discount</tspan></text>
+<text x="24" y="260"><tspan class="who">craft  </tspan><tspan x="84" class="warn">Craft test evidence: the test command just run executed no test, so it verifies</tspan></text>
+<text x="24" y="278"><tspan class="who"></tspan><tspan x="84" class="warn">nothing (a filter or skip matched everything). Run tests that exercise the change</tspan></text>
+<text x="24" y="296"><tspan class="who"></tspan><tspan x="84" class="warn">before reporting them as passing: {"runner":"node","reason":"zero-tests",</tspan></text>
+<text x="24" y="314"><tspan class="who"></tspan><tspan x="84" class="warn">"executed":0,"skipped":0,"command":"node --test --test-name-pattern=discount"}</tspan></text>
+</g>
+<g class="scene" style="animation-name:s3">
+<text x="24" y="342"><tspan class="who">agent  </tspan><tspan x="84" class="act">$ git commit -m 'fixed discounts'</tspan></text>
+<text x="24" y="360"><tspan class="who">craft  </tspan><tspan x="84" class="warn">Project standards not met by what was just written (deterministic anchor check;</tspan></text>
+<text x="24" y="378"><tspan class="who"></tspan><tspan x="84" class="warn">report only, fix or tell the user why not): [{"standard":"commits",</tspan></text>
+<text x="24" y="396"><tspan class="who"></tspan><tspan x="84" class="warn">"anchor":"conventional-commits","findings":[{"rule":"header","message":"the type</tspan></text>
+<text x="24" y="414"><tspan class="who"></tspan><tspan x="84" class="warn">must be followed by `: ` and a description","line":1}]}]</tspan></text>
+</g>
+<g class="scene" style="animation-name:s4">
+<text x="24" y="442"><tspan class="who">agent  </tspan><tspan x="84" class="act">$ git commit --amend -m 'feat(domain): add discount codes to orders'</tspan></text>
+<text x="24" y="460"><tspan class="who">craft  </tspan><tspan x="84" class="quiet">nothing to say</tspan></text>
+</g>
+<g class="scene" style="animation-name:s5">
+<text x="24" y="488"><tspan class="who">agent  </tspan><tspan x="84" class="act">$ git push --force origin main</tspan></text>
+<text x="24" y="506"><tspan class="who">craft  </tspan><tspan x="84" class="deny">This project's safety policy refuses this command (rule `force-push`: a forced push,</tspan></text>
+<text x="24" y="524"><tspan class="who"></tspan><tspan x="84" class="deny">which rewrites the remote branch). Do not reword it to get past the rule; tell the</tspan></text>
+<text x="24" y="542"><tspan class="who"></tspan><tspan x="84" class="deny">user what you wanted to run and why, so they can run it themselves or change the</tspan></text>
+<text x="24" y="560"><tspan class="who"></tspan><tspan x="84" class="deny">request.</tspan></text>
+</g>
+<g class="scene" style="animation-name:s6">
+<text x="24" y="588"><tspan class="who">you    </tspan><tspan x="84" class="act">$ craft check --all</tspan></text>
+<text x="24" y="606"><tspan class="who">craft  </tspan><tspan x="84" class="good">passed domain-1 (commit): node --test</tspan></text>
+<text x="24" y="624"><tspan class="who"></tspan><tspan x="84" class="good">checks at commit: passed — 1 run, 1 passed, 0 not passed, 0 left to a later stage</tspan></text>
+</g>
+<g class="scene" style="animation-name:s7">
+<text x="24" y="652"><tspan class="who">host   </tspan><tspan x="84" class="act">the turn ends; shown to you, not to the model:</tspan></text>
+<text x="24" y="670"><tspan class="who">craft  </tspan><tspan x="84" class="good">Craft this session: 2 standards findings raised, 2 fixed · 1 test run that ran no</tspan></text>
+<text x="24" y="688"><tspan class="who"></tspan><tspan x="84" class="good">test caught · 1 command refused by the safety policy</tspan></text>
+</g>
+</svg>

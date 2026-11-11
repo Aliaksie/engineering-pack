@@ -62,7 +62,7 @@
     "docs": {
       "kind": "docs",
       "responsibility": "Maintained user, contributor and architecture documentation.",
-      "allow": ["**/*.md"],
+      "allow": ["**/*.md", "assets/*.svg"],
       "dependsOn": [],
       "shipped": true
     },
