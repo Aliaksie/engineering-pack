@@ -75,6 +75,16 @@ fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
     table[host]["events"].get(lifecycle).cloned()
 }
 
+/// The directory `host` was opened in, where it names one to its hooks in the environment:
+/// the shell's directory in the payload moves with the session, this one does not.
+fn project_directory(host: &str) -> Option<String> {
+    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
+    let variable = table[host]["projectDirectory"].as_str()?;
+    std::env::var(variable)
+        .ok()
+        .filter(|directory| std::path::Path::new(directory).is_absolute())
+}
+
 /// The most UTF-8 bytes of context one hook answer gives `host`: under the cap past which the
 /// host replaces or cuts the answer.
 fn ceiling(host: &str) -> usize {
@@ -411,6 +421,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
         "scope": if hook.shell { "shell" } else { "any" }, "inputStatus": status, "tool": event["tool"],
         "contextSupported": event["contextSupported"], "cwd": event["cwd"], "session": event["session"],
     });
+    if let Some(directory) = project_directory(&hook.host) {
+        facts["projectDirectory"] = json!(directory);
+    }
     if hook.shell {
         facts["command"] = event["command"].clone();
     }

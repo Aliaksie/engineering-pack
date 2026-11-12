@@ -302,3 +302,66 @@ fn a_commit_format_the_history_keeps_is_in_effect_and_git_is_asked_once_per_comm
         "only a hook writes"
     );
 }
+
+/// A command run from a folder of the project, without `--root`, is the project's: the same
+/// configuration a hook reads, and no second `.craft` beside the folder. The host's own
+/// project directory, where it names one to a hook, decides the same way for the hook.
+#[test]
+fn a_command_or_hook_started_below_the_project_root_belongs_to_the_project() {
+    let repo = Repo::new(
+        "conventions-subfolder",
+        &[("AGENTS.md", AGENTS), ("src/deep/a.txt", "a\n")],
+    );
+    let deep = repo.root.join("src/deep");
+    let home = repo.root.join(".home");
+    std::fs::create_dir_all(&home).expect("home");
+    let craft = |args: &[&str], input: &str, directory: Option<&std::path::Path>| {
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_craft"));
+        command
+            .args(args)
+            .current_dir(&deep)
+            .env("HOME", &home)
+            .env("USERPROFILE", &home)
+            .env("CRAFT_ORGANIZATION_CONFIG", home.join("none.json"))
+            .env("CRAFT_EVIDENCE_WARM", "0")
+            .env_remove("CLAUDE_PROJECT_DIR")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        if let Some(directory) = directory {
+            command.env("CLAUDE_PROJECT_DIR", directory);
+        }
+        let mut child = command.spawn().expect("craft");
+        use std::io::Write;
+        child
+            .stdin
+            .take()
+            .expect("stdin")
+            .write_all(input.as_bytes())
+            .expect("input");
+        let output = child.wait_with_output().expect("output");
+        assert!(output.status.success(), "{output:?}");
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    };
+    let listing: Value = serde_json::from_str(&craft(&["standards"], "", None)).expect("listing");
+    assert_eq!(listing["standards"][0]["id"], "commits", "{listing}");
+    assert!(!deep.join(".craft").exists());
+
+    // A hook whose shell is elsewhere, in a host that names the directory it was opened in.
+    let elsewhere = Repo::new("conventions-elsewhere", &[("README.md", "x\n")]);
+    let payload = json!({"session_id": "S1", "cwd": elsewhere.path(), "source": "startup",
+        "hook_event_name": "SessionStart"});
+    let hook = [
+        "hook",
+        "claude",
+        "session-start",
+        "--package",
+        "craft-delivery",
+        "--handler",
+        "deliver",
+    ];
+    let said = craft(&hook, &payload.to_string(), Some(&deep));
+    assert!(said.contains("commits"), "{said}");
+    assert!(repo.root.join(".craft/state/sessions").exists());
+    assert!(!elsewhere.root.join(".craft").exists());
+}

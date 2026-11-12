@@ -44,6 +44,8 @@ struct Facts<'a> {
     shell_only: bool,
     context_supported: bool,
     cwd: &'a str,
+    /// The directory the host was opened in, when it names one.
+    project_directory: Option<&'a str>,
     session: Option<&'a str>,
     package: Option<&'a str>,
     command: &'a Value,
@@ -87,6 +89,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
             .as_bool()
             .ok_or("invalid hook contextSupported")?,
         cwd: input["cwd"].as_str().ok_or("invalid hook cwd")?,
+        project_directory: optional("projectDirectory")?,
         session: optional("session")?,
         package: optional("package")?,
         command: &input["command"],
@@ -148,7 +151,13 @@ fn attributes(pairs: &[(&str, Value)]) -> Map<String, Value> {
 pub fn run(input: &Value) -> Result<Value, String> {
     let facts = facts(input)?;
     let cwd = absolute(facts.cwd);
-    let root = project_root(&cwd);
+    // The directory the host was opened in names the project even after the session's shell
+    // moved elsewhere; without one, the shell's directory does.
+    let opened = facts
+        .project_directory
+        .map(absolute)
+        .filter(|directory| directory.is_dir());
+    let root = project_root(opened.as_deref().unwrap_or(&cwd));
     // A session directory this hook creates names its host.
     let _describing = state::describing(facts.host);
     let mut recorder = Recorder::open(&root, facts.session, Some(facts.host));

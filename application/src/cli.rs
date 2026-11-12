@@ -167,8 +167,14 @@ fn command(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|command| command.name == name)
 }
 
+/// The project a command works on: `--root` as given, else the project the current
+/// directory is in, as a hook finds it, so a command run from a subfolder reads the same
+/// configuration and state as the session around it.
 fn root(options: &Options) -> PathBuf {
-    absolute(options.get("root").unwrap_or("."))
+    match options.get("root") {
+        Some(root) => absolute(root),
+        None => crate::host::project_root(&absolute(".")),
+    }
 }
 
 fn setup_bundle(options: &Options) -> Result<PathBuf, Failure> {
@@ -1807,7 +1813,8 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
             .map(String::as_str)
     };
     let mut recorder = Recorder::open(
-        &absolute(hint("--root").unwrap_or(".")),
+        // The same project the command itself resolves, before its options are parsed.
+        &hint("--root").map_or_else(|| crate::host::project_root(&absolute(".")), absolute),
         hint("--session"),
         hint("--host"),
     );

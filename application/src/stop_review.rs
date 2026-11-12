@@ -33,9 +33,22 @@ fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::Pa
     )?)
 }
 
+/// Where `root` lies beneath the top of its checkout, as Git prints it (`web/` or empty).
+/// Git names changed files from the top; a project whose root is a folder below it reads
+/// them from its own root. Asked only when `root` is not the top itself.
+fn prefix(root: &Path) -> Option<String> {
+    if root.join(".git").exists() {
+        return Some(String::new());
+    }
+    let output =
+        craft_platform::process::git(root, &["rev-parse", "--show-prefix"], 4096).ok()??;
+    Some(String::from_utf8(output).ok()?.trim_end().to_owned())
+}
+
 /// Project files that differ from `HEAD` (modified, added or untracked outside ignores), each
 /// with whether Git tracks it; `None` without Git or when the listing overflows.
 fn dirty(root: &Path) -> Option<Vec<(String, bool)>> {
+    let prefix = prefix(root)?;
     let output = craft_platform::process::git(
         root,
         &[
@@ -44,6 +57,8 @@ fn dirty(root: &Path) -> Option<Vec<(String, bool)>> {
             "-z",
             "--untracked-files=all",
             "--no-renames",
+            "--",
+            ".",
         ],
         STATUS_BYTES,
     )
@@ -52,7 +67,7 @@ fn dirty(root: &Path) -> Option<Vec<(String, bool)>> {
         .split(|byte| *byte == 0)
         .filter_map(|entry| {
             let entry = std::str::from_utf8(entry).ok()?;
-            let (code, path) = (entry.get(..2)?, entry.get(3..)?);
+            let (code, path) = (entry.get(..2)?, entry.get(3..)?.strip_prefix(&*prefix)?);
             // A deleted file adds nothing to review.
             (!code.contains('D') && !path.is_empty() && !routing::private_path(path))
                 .then(|| (path.to_owned(), code != "??"))
@@ -119,6 +134,8 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
             "-z",
             "--no-renames",
             "--diff-filter=d",
+            // Only the project's files, named from its root.
+            "--relative",
             &range,
         ],
         STATUS_BYTES,

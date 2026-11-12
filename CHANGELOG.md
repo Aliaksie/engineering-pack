@@ -18,6 +18,13 @@
   or Maven build. It also proposes a format the project keeps without naming it: Conventional
   Commits when four in five of the last commit subjects follow it, Keep a Changelog and MADR
   or Nygard decision records when the existing files already pass the check.
+- A session stays with the project it was opened in. On Claude Code a hook reads the project
+  from the directory the host was opened in, so a shell that moved into another repository no
+  longer starts a second session record there. A command run without `--root` from a
+  subfolder works on the project around it instead of creating `.craft` in the subfolder.
+- Fixed: the stop review of a project whose root is a folder below the top of its repository
+  read changed files from the wrong place and reviewed nothing. It now reviews that project's
+  files and leaves its neighbours' alone.
 
 ## 0.0.6
 
