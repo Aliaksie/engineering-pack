@@ -1,5 +1,7 @@
 //! The read-only review guardrail. It recognizes direct publishing commands, literal
 //! scripts passed to supported shells with `-c` and active `$()`/backtick substitutions.
+//! The text of a here-document is data unless a supported shell is named on the line that
+//! opens it; substitutions in it are still read when its delimiter is unquoted.
 //! Aliases, variable expansion and arbitrary interpreters stay outside the recognizer;
 //! tool-side authorization and an isolated runner remain the enforcement boundary.
 use crate::values::js_space;
@@ -242,12 +244,190 @@ fn inspect(
         *too_deep = true;
         return false;
     }
-    if segments(command)
+    let (code, expanded) = here_documents(command);
+    let command = code.as_deref().unwrap_or(command);
+    segments(command)
         .iter()
         .any(|words| segment(words, depth, visit, too_deep))
-    {
-        return true;
+        || substitutions(command, true, depth, visit, too_deep)
+        || expanded
+            .iter()
+            .any(|body| substitutions(body, false, depth, visit, too_deep))
+}
+
+/// A here-document a line opens: its delimiter, whether `<<-` strips leading tabs from its
+/// lines and whether the delimiter was quoted, which keeps the text from being expanded.
+struct HereDocument {
+    delimiter: Vec<char>,
+    tabs: bool,
+    quoted: bool,
+}
+
+/// The here-document operator at `at`, if one is there, and the index after its delimiter.
+fn here_operator(command: &[char], at: usize) -> Option<(HereDocument, usize)> {
+    let rest = command.get(at..)?;
+    if !rest.starts_with(&['<', '<']) {
+        return None;
     }
+    let mut index = at + 2;
+    let tabs = command.get(index) == Some(&'-');
+    index += usize::from(tabs);
+    while matches!(command.get(index), Some(' ' | '\t')) {
+        index += 1;
+    }
+    let mut delimiter = Vec::new();
+    let mut quoted = false;
+    let mut quote = None;
+    while let Some(&character) = command.get(index) {
+        if let Some(open) = quote {
+            if character == open {
+                quote = None;
+            } else {
+                delimiter.push(character);
+            }
+        } else if character == '\'' || character == '"' {
+            quote = Some(character);
+            quoted = true;
+        } else if character == '\\' {
+            quoted = true;
+            index += 1;
+            delimiter.extend(command.get(index));
+        } else if js_space(character) || ";|&<>()".contains(character) {
+            break;
+        } else {
+            delimiter.push(character);
+        }
+        index += 1;
+    }
+    let document = HereDocument {
+        delimiter,
+        tabs,
+        quoted,
+    };
+    (!document.delimiter.is_empty() && quote.is_none()).then_some((document, index))
+}
+
+/// Where the line starting at `start` ends: its newline, or the end of `command`.
+fn line_end(command: &[char], start: usize) -> usize {
+    command[start..]
+        .iter()
+        .position(|character| *character == '\n')
+        .map_or(command.len(), |length| start + length)
+}
+
+/// `command` without the here-document text that is data, and the texts the shell expands.
+/// `None` when nothing was removed. A document stays in place, read as commands, when a
+/// supported shell is named on the line that opens it, and when its closing line is
+/// missing: `<<` is then more likely arithmetic than a document that hides what follows.
+fn here_documents(command: &[char]) -> (Option<Vec<char>>, Vec<Vec<char>>) {
+    if !command.windows(2).any(|pair| pair == ['<', '<']) {
+        return (None, Vec::new());
+    }
+    let mut code = Vec::with_capacity(command.len());
+    let mut expanded = Vec::new();
+    let mut removed = false;
+    let mut opened: Vec<HereDocument> = Vec::new();
+    let mut line = 0;
+    let mut quote = None;
+    let mut index = 0;
+    while index < command.len() {
+        let character = command[index];
+        if let Some(open) = quote {
+            if character == '\\' && open == '"' {
+                code.extend(command.get(index..index + 2).unwrap_or(&command[index..]));
+                index += 2;
+                continue;
+            }
+            if character == open {
+                quote = None;
+            }
+        } else if character == '\\' {
+            code.extend(command.get(index..index + 2).unwrap_or(&command[index..]));
+            index += 2;
+            continue;
+        } else if character == '\'' || character == '"' {
+            quote = Some(character);
+        } else if command[index..].starts_with(&['<', '<', '<']) {
+            code.extend(&command[index..index + 3]);
+            index += 3;
+            continue;
+        } else if let Some((document, after)) = here_operator(command, index) {
+            code.extend(&command[index..after]);
+            opened.push(document);
+            index = after;
+            continue;
+        } else if character == '\n' {
+            if !opened.is_empty() {
+                let runs_it = code[line..]
+                    .split(|c: &char| js_space(*c) || ";|&()$`<>".contains(*c))
+                    .any(|word| {
+                        let name = word.rsplit(|c| *c == '/').next().unwrap_or(word);
+                        SHELLS
+                            .iter()
+                            .any(|shell| shell.chars().eq(name.iter().copied()))
+                    });
+                // The texts follow in the order their documents were opened.
+                let mut start = index + 1;
+                let mut closing = index;
+                let mut texts = Vec::new();
+                for document in &opened {
+                    let from = start;
+                    let mut closed = false;
+                    while start < command.len() && !closed {
+                        let end = line_end(command, start);
+                        let mut text = &command[start..end];
+                        while document.tabs && text.first() == Some(&'\t') {
+                            text = &text[1..];
+                        }
+                        closed = text == document.delimiter;
+                        if closed {
+                            texts.push((document.quoted, &command[from..start]));
+                            closing = end;
+                        }
+                        start = (end + 1).min(command.len());
+                    }
+                    if !closed {
+                        break;
+                    }
+                }
+                if texts.len() == opened.len() {
+                    if runs_it {
+                        // Kept as commands, as written: quotes in the text open nothing.
+                        code.extend(&command[index..closing]);
+                    } else {
+                        expanded.extend(
+                            texts
+                                .iter()
+                                .filter(|(quoted, _)| !quoted)
+                                .map(|(_, text)| text.to_vec()),
+                        );
+                        removed = true;
+                    }
+                    // The newline that ends the last closing line, or the end.
+                    index = closing;
+                }
+                opened.clear();
+                if index >= command.len() {
+                    break;
+                }
+            }
+            line = code.len() + 1;
+        }
+        code.push(command[index]);
+        index += 1;
+    }
+    (removed.then_some(code), expanded)
+}
+
+/// Whether `visit` accepted a segment of a `$()` or backtick substitution in `command`.
+/// With `quotes` off the text is a here-document, where quotes group nothing.
+fn substitutions(
+    command: &[char],
+    quotes: bool,
+    depth: usize,
+    visit: &mut dyn FnMut(&[String]) -> bool,
+    too_deep: &mut bool,
+) -> bool {
     let mut quote = None;
     let mut index = 0;
     while index < command.len() {
@@ -256,7 +436,7 @@ fn inspect(
             index += 2;
             continue;
         }
-        if character == '\'' && quote != Some('"') {
+        if quotes && character == '\'' && quote != Some('"') {
             quote = if quote.is_some() { None } else { Some('\'') };
             index += 1;
             continue;
@@ -265,7 +445,7 @@ fn inspect(
             index += 1;
             continue;
         }
-        if character == '"' {
+        if quotes && character == '"' {
             quote = if quote.is_some() { None } else { Some('"') };
             index += 1;
             continue;
@@ -338,5 +518,22 @@ mod tests {
             segments(&"a \"\" b;c".chars().collect::<Vec<_>>()),
             [vec!["a", "", "b"], vec!["c"]]
         );
+    }
+
+    #[test]
+    fn a_here_document_publishes_only_when_a_shell_runs_it() {
+        for command in [
+            "cat > review.md <<'EOF'\nRun git push after approval.\nEOF",
+            "cat <<EOF\ngh pr create is the author's step\nEOF\ngit status",
+        ] {
+            assert!(!publishes(command), "{command}");
+        }
+        for command in [
+            "sh <<'EOF'\ngit push\nEOF",
+            "cat <<EOF\n$(gh pr merge 7)\nEOF",
+            "cat <<EOF\nnotes\nEOF\ngit push",
+        ] {
+            assert!(publishes(command), "{command}");
+        }
     }
 }

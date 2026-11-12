@@ -327,3 +327,43 @@ fn the_listing_shows_rules_in_force_with_their_source() {
         (json!(false), json!("bundled"))
     );
 }
+
+#[test]
+fn the_text_of_a_here_document_is_data_unless_a_shell_runs_it() {
+    for command in [
+        "cat > notes.md <<'EOF'\nThe session ran rm -rf \"$SCRATCH\" and sudo reboot.\nEOF",
+        "cat <<EOF > notes.md\ngit push --force is refused; don't run it\nEOF\necho done",
+        "cat <<-EOF\n\trm -rf ~\n\tEOF",
+        "cat <<\\EOF\nrm -rf ~\nEOF",
+        "cat <<A <<'B'\nrm -rf ~\nA\nsudo reboot\nB",
+        "git commit -m \"$(cat <<'EOF'\nfix: rm -rf / is refused\nEOF\n)\"",
+        "tee a.txt <<< 'sudo reboot'",
+    ] {
+        assert_eq!(refused(command), None, "{command}");
+    }
+    for (command, rule) in [
+        // What follows the document is a command again.
+        ("cat <<EOF\ntext\nEOF\nrm -rf ~", "delete-outside-project"),
+        (
+            "cat <<'EOF' && sudo reboot\ntext\nEOF",
+            "system-administration",
+        ),
+        // A shell reads its document as a script.
+        ("bash <<'EOF'\nrm -rf ~\nEOF", "delete-outside-project"),
+        ("cat <<EOF | /bin/sh\ngit push -f\nEOF", "force-push"),
+        (
+            "env X=1 zsh -s <<EOF\nsudo reboot\nEOF",
+            "system-administration",
+        ),
+        // An unquoted delimiter leaves substitutions in the text active.
+        ("cat <<EOF\nit's $(rm -rf ~)\nEOF", "delete-outside-project"),
+        ("cat <<EOF\n`git reset --hard`\nEOF", "discard-changes"),
+        // Without a closing line `<<` hides nothing that follows.
+        ("echo $((1<<2))\nrm -rf ~", "delete-outside-project"),
+        ("cat <<EOF\nrm -rf ~", "delete-outside-project"),
+    ] {
+        assert_eq!(refused(command).as_deref(), Some(rule), "{command}");
+    }
+    // A quoted delimiter makes the text literal.
+    assert_eq!(refused("cat <<'EOF'\n$(rm -rf ~)\nEOF"), None);
+}

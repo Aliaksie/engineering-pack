@@ -33,7 +33,9 @@ publication, and must not contain credentials, private endpoints or production t
 The optional review hook recognizes direct publishing commands (PR/MR and issue creation,
 `api` calls whose flags imply a write), quoting, command separators, Git global options,
 `-c` scripts of supported shells and active `$()`/backtick substitutions, and denies nesting
-deeper than 16 levels. It is a guardrail, not a security boundary: aliases, other
+deeper than 16 levels. The text of a here-document is data, not commands, unless a supported
+shell is named on the line that opens it; substitutions in it are read when its delimiter is
+unquoted. It is a guardrail, not a security boundary: aliases, other
 interpreters and executable paths, and variable expansion are outside it. Enforce with host
 tool permissions, read-only credentials and isolation. `npm run hooks:report` measures it
 against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).

@@ -6,6 +6,9 @@
   project that declares nothing. `"safety": {"enabled": false}` in the project, organization
   or user file turns it off, and `disables` leaves single rules out. A project that relied on
   the policy being off until enabled now sees those commands refused.
+- The safety policy and the read-only review guard no longer refuse a command for what the
+  text of a here-document says: the text is data unless a shell is named on the line that
+  opens it. Substitutions in a document with an unquoted delimiter are still read.
 - A project that declares no standards is held to the ones its own files state: what
   `craft standards --propose` lists is in effect without being copied, as a `detected` layer
   beneath the organization and user files. Commit, changelog and decision-record formats are
