@@ -265,13 +265,13 @@ fn resolve(
     // What the files state never invalidates a configuration that is valid without it.
     let detected = (detect != Detect::Nothing
         && !craft_engine::conventions::declares(&project)
-        && settings["settings"]["routing"]["conventionProposals"] == true)
-        .then(|| {
-            let keep = detect == Detect::Kept;
-            crate::conventions::proposed(root, &settings["settings"], keep).ok()
-        })
-        .flatten()
-        .and_then(|proposed| craft_engine::conventions::layer(&proposed));
+        && craft_engine::delivery::convention_proposals(&settings["settings"]))
+    .then(|| {
+        let keep = detect == Detect::Kept;
+        crate::conventions::proposed(root, &settings["settings"], keep).ok()
+    })
+    .flatten()
+    .and_then(|proposed| craft_engine::conventions::layer(&proposed));
     if let Some(document) = &detected {
         layers.insert(
             0,
@@ -281,10 +281,10 @@ fn resolve(
                 document,
             },
         );
-        if let Ok(with) =
-            contracts::layered_settings(&project, &layers, overrides, &documents, explain)
-        {
-            settings = with;
+        match contracts::layered_settings(&project, &layers, overrides, &documents, explain) {
+            Ok(with) => settings = with,
+            // Said by `craft config` and `craft settings`, so nothing is dropped in silence.
+            Err(error) => settings["detectedNotApplied"] = json!(error),
         }
     }
     drop(layers);
@@ -388,10 +388,15 @@ pub fn layers(
         "name": "bundled",
         "values": layers::contributed(&history, "bundled"),
     })];
-    read.push(json!({
+    let mut detected = json!({
         "name": layers::DETECTED,
         "values": layers::contributed(&history, layers::DETECTED),
-    }));
+    });
+    if let Some(reason) = result["detectedNotApplied"].as_str() {
+        detected["state"] = json!("not-applied");
+        detected["reason"] = json!(reason);
+    }
+    read.push(detected);
     read.extend(baseline.iter().map(|layer| layer.summary(&history)));
     read.push(json!({
         "name": "project",

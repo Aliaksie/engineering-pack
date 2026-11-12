@@ -38,6 +38,16 @@ interpreters and executable paths, and variable expansion are outside it. Enforc
 tool permissions, read-only credentials and isolation. `npm run hooks:report` measures it
 against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).
 
+## Checks read from the project's files
+
+While a project declares no standards, the lint, format and type-check commands its own
+files state (`npm run lint`, `./gradlew spotlessCheck`, `npx tsc --noEmit` and the like) are
+checks `craft check` runs when it is called. No hook starts them, but `craft check` in a
+repository you do not trust runs that repository's scripts and build wrappers, as running its
+build would. `craft standards --propose` lists them first, `craft check` names each command
+it starts, and `routing.conventionProposals: false` in the user or organization file turns
+detection off everywhere.
+
 ## Safety policy
 
 Craft refuses destructive shell commands before they run, on hosts where a hook can refuse

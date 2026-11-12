@@ -12,7 +12,8 @@
   checked, contributor documents advised, and lint and format commands run by `craft check`
   when it is called; no hook starts them. Standards the project declares replace them, and
   `routing.conventionProposals: false` turns this off. The session-start line now says what
-  is in effect instead of what could be accepted.
+  is in effect instead of what could be accepted. In `craft config --json`, `order` and
+  `layers` carry the `detected` layer.
 - The conventions scan recognizes more: TypeScript (`tsconfig.json`), mypy, Pyright, `go vet`,
   `dotnet format`, and Checkstyle, Spotless, ktlint and detekt through the project's Gradle
   or Maven build. It also proposes a format the project keeps without naming it: Conventional

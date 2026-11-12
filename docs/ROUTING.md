@@ -87,7 +87,9 @@ While the project's own file declares no `standards`, every proposal is in effec
 one is, a `file` standard is advised, and a `run` standard is a check `craft check` runs when
 it is called. No hook starts a command read from the project's files. A standard of the same
 id in the organization or user file wins. Once the project declares a standard of its own,
-only declared standards apply: copy the proposals to keep. `craft config` shows the layer,
+only declared standards apply: copy the proposals to keep. Any entry counts, a lone
+`{"id": …, "disabled": true}` included, so one detected standard cannot be removed alone:
+declare the ones to keep. `craft config` shows the layer,
 and what the files state never makes a valid configuration invalid.
 
 A format the project keeps without naming it is read from the last 50 commit subjects
@@ -100,7 +102,9 @@ scan also reads each direct folder that is a Git repository, at most 16, and hol
 standard it finds there to that folder. The id is led by the folder's name (`api-rustfmt`),
 `scope.paths` and files by the folder, and a command runs in it, so a file is routed and
 checked with its own repository's standards and not its neighbour's. A commit format is
-brought to the workspace only when every member repository has it. State stays in the one
+brought to the workspace only when every member repository has it. A member's standard that
+cannot be held at the workspace (two folders whose names give the same id, no room left) is
+listed under `skipped` with the reason. State stays in the one
 `.craft` at the workspace root. Not yet covered there: the stop review and the commit check,
 which read Git at the root, and a member's own `.craft/project.json`.
 

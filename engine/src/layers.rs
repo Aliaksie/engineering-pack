@@ -300,7 +300,11 @@ pub fn text(report: &Value) -> String {
     for layer in report["layers"].as_array().into_iter().flatten() {
         let Some(file) = layer["file"].as_str() else {
             // What the project's files state has no file of its own to name.
-            if layer["name"] == DETECTED && layer["values"].as_u64().is_some_and(|n| n > 0) {
+            if let Some(reason) = layer["reason"].as_str() {
+                lines.push(format!(
+                    "  {DETECTED}: standards read from the project's own files — not applied: {reason}"
+                ));
+            } else if layer["name"] == DETECTED && layer["values"].as_u64().is_some_and(|n| n > 0) {
                 lines.push(format!(
                     "  {DETECTED}: standards read from the project's own files — {} value{} (`craft standards --propose` shows the evidence)",
                     layer["values"],

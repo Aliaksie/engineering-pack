@@ -13,7 +13,9 @@ const RECORD_BYTES: usize = 1024;
 /// What a session start says about an undeclared project's conventions, once per set of
 /// proposals: the offer with the command that lists them, recorded as shown. `None` when
 /// there is nothing new to say or another hook is recording it.
-pub(crate) fn offer(root: &Path) -> Result<Option<Value>, Failure> {
+/// `effective` are the settings the hook runs with: a set that was not applied to them is
+/// not said to be in effect.
+pub(crate) fn offer(root: &Path, effective: &Value) -> Result<Option<Value>, Failure> {
     let settings = &crate::project::declared_settings(root)?;
     // Standards inherited from an organization or user layer are not the project's own:
     // only then is its file read again, for what it declares itself.
@@ -38,6 +40,17 @@ pub(crate) fn offer(root: &Path) -> Result<Option<Value>, Failure> {
     let Some((mut offer, record)) = conventions::offer(&project, &proposed, &shown) else {
         return Ok(None);
     };
+    let applied = |id: &Value| {
+        effective["standards"]
+            .as_array()
+            .is_some_and(|standards| standards.iter().any(|standard| standard["id"] == *id))
+    };
+    if !offer["standards"]
+        .as_array()
+        .is_some_and(|ids| ids.iter().all(applied))
+    {
+        return Ok(None);
+    }
     state::write(&target, &record, RECORD_BYTES, false)?;
     // This hook's own executable is the runtime that lists the proposals.
     if let Some(runtime) = std::env::current_exe()
@@ -240,6 +253,10 @@ fn head_key(root: &Path) -> Option<String> {
     let Some(reference) = head.strip_prefix("ref:").map(str::trim) else {
         return Some(head.trim().to_string());
     };
+    // A reference is a name beneath `refs/`; anything else is not followed.
+    if !reference.starts_with("refs/") || reference.split('/').any(|part| part == "..") {
+        return None;
+    }
     // References live in the common directory, which a linked worktree names.
     let common = read_bounded(&directory.join("commondir"), 4096)
         .ok()
@@ -248,12 +265,14 @@ fn head_key(root: &Path) -> Option<String> {
     let loose = read_bounded(&common.join(reference), 4096)
         .ok()
         .and_then(|bytes| String::from_utf8(bytes).ok());
-    let at = loose.unwrap_or_else(|| {
-        std::fs::metadata(common.join("packed-refs")).map_or_else(
-            |_| "unborn".to_string(),
-            |packed| format!("packed {} {:?}", packed.len(), packed.modified().ok()),
-        )
-    });
+    // A branch without a commit has no history to read, and nothing kept is taken for it.
+    let at = match loose {
+        Some(at) => at,
+        None => {
+            let packed = std::fs::metadata(common.join("packed-refs")).ok()?;
+            format!("packed {} {:?}", packed.len(), packed.modified().ok())
+        }
+    };
     Some(format!("{reference} {}", at.trim()))
 }
 
@@ -295,7 +314,13 @@ fn subjects(root: &Path, home: &Path, member: Option<&str>, keep: bool) -> Vec<S
     };
     let subjects: Vec<String> = String::from_utf8_lossy(&output)
         .lines()
-        .map(|line| line.chars().take(SUBJECT_BYTES).collect())
+        .map(|line| {
+            let mut end = line.len().min(SUBJECT_BYTES);
+            while !line.is_char_boundary(end) {
+                end -= 1;
+            }
+            line[..end].to_string()
+        })
         .collect();
     // Kept when the state can be written; a busy or missing state costs one Git start more.
     if keep

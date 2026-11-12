@@ -1032,23 +1032,36 @@ pub fn workspace(
             proposals.push(proposal);
         }
     }
+    let mut skipped = Vec::new();
     for (member, result) in members {
         for proposal in list(result) {
             if commit_format(&proposal["standard"]) {
                 continue;
             }
             let held = within(member, &proposal);
-            if proposals.len() == room
-                || taken(&proposals, &held["standard"]["id"])
-                || declared_standard(settings, &held["standard"])
-                || standards::validate(&json!([held["standard"]]), &[], &intents).is_err()
-            {
+            if declared_standard(settings, &held["standard"]) {
                 continue;
             }
-            proposals.push(held);
+            // Left out and said: nothing a member states disappears in silence.
+            let reason = if proposals.len() >= room {
+                Some("the workspace holds as many standards as it can".to_string())
+            } else if taken(&proposals, &held["standard"]["id"]) {
+                Some("another member's folder gives the same id".to_string())
+            } else {
+                standards::validate(&json!([held["standard"]]), &[], &intents).err()
+            };
+            match reason {
+                Some(reason) => skipped.push(json!({
+                    "member": member, "standard": held["standard"]["id"], "reason": reason,
+                })),
+                None => proposals.push(held),
+            }
         }
     }
     own["proposals"] = json!(proposals);
+    if !skipped.is_empty() {
+        own["skipped"] = json!(skipped);
+    }
     own["members"] = json!(
         members
             .iter()
@@ -1638,6 +1651,16 @@ mod tests {
         let plain = scan(&json!({}), &[("biome.json", None)]);
         let mixed = workspace(&json!({}), own, &[("api", api), ("web", plain)]).expect("mixed");
         assert!(!ids(&mixed).contains(&"commits"), "{:?}", ids(&mixed));
+        // Two folders whose names give the same id: the second is left out and said.
+        let twins = workspace(
+            &json!({}),
+            json!({"proposals": []}),
+            &[("my-app", web.clone()), ("my_app", web.clone())],
+        )
+        .expect("twins");
+        assert_eq!(ids(&twins), ["commits", "my-app-biome"]);
+        assert_eq!(twins["skipped"][0]["member"], "my_app");
+        assert_eq!(twins["skipped"][0]["standard"], "my-app-biome");
         // What the workspace declares itself is not brought in again.
         let declared = json!({"standards": [
             {"id": "format", "run": {"command": "npx", "args": ["biome", "check", "."], "cwd": "web"}}]});
@@ -1670,6 +1693,45 @@ mod tests {
             &json!({"standards": [{"id": "a", "disabled": true}]})
         ));
         assert!(!declares(&json!({"standards": []})));
+    }
+
+    #[test]
+    fn a_standard_a_layer_declares_wins_over_the_one_read_from_the_files() {
+        let proposed = scan(&json!({}), &[("rustfmt.toml", None), (".flake8", None)]);
+        let detected = layer(&proposed).expect("layer");
+        let organization = json!({"standards": [
+            {"id": "rustfmt", "run": {"command": "cargo", "args": ["fmt", "--check"]}}]});
+        let layers = [
+            crate::layers::Layer {
+                origin: crate::layers::DETECTED,
+                label: "detected".into(),
+                document: &detected,
+            },
+            crate::layers::Layer {
+                origin: "organization",
+                label: "organization".into(),
+                document: &organization,
+            },
+        ];
+        let resolved = crate::contracts::layered_settings(
+            &json!({"formatVersion": 1}),
+            &layers,
+            &json!({}),
+            &crate::contracts::Documents::default(),
+            true,
+        )
+        .expect("settings");
+        let standards = resolved["settings"]["standards"]
+            .as_array()
+            .expect("standards");
+        assert_eq!(standards.len(), 2);
+        assert_eq!(
+            standards[0]["run"]["args"],
+            json!(["fmt", "--check"]),
+            "the organization's command, not the detected one"
+        );
+        assert_eq!(resolved["entries"]["standards"]["rustfmt"], "organization");
+        assert_eq!(resolved["entries"]["standards"]["flake8"], "detected");
     }
 
     #[test]
