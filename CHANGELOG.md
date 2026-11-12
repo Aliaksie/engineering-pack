@@ -17,9 +17,10 @@
   `routing.conventionProposals: false` turns this off. The session-start line now says what
   is in effect instead of what could be accepted. In `craft config --json`, `order` and
   `layers` carry the `detected` layer.
-- The conventions scan recognizes more: TypeScript (`tsconfig.json`), mypy, Pyright, `go vet`,
-  `dotnet format`, and Checkstyle, Spotless, ktlint and detekt through the project's Gradle
-  or Maven build. It also proposes a format the project keeps without naming it: Conventional
+- The conventions scan recognizes more: TypeScript (`tsconfig.json`), mypy, Pyright, and
+  Checkstyle, Spotless, ktlint and detekt through the project's Gradle or Maven build. A Go
+  module and a .NET project are advised of `go vet` and `dotnet format`, which `craft check`
+  runs only once the project declares them. It also proposes a format the project keeps without naming it: Conventional
   Commits when four in five of the last commit subjects follow it, Keep a Changelog and MADR
   or Nygard decision records when the existing files already pass the check.
 - A folder holding several repositories works as one workspace: opened there, a session is

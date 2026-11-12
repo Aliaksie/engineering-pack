@@ -44,7 +44,8 @@ against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).
 
 While a project declares no standards, the lint, format and type-check commands its own
 files state (`npm run lint`, `./gradlew spotlessCheck`, `npx tsc --noEmit` and the like) are
-checks `craft check` runs when it is called. No hook starts them, but `craft check` in a
+checks `craft check` runs when it is called. A tool that only comes with the toolchain
+(`go vet`, `dotnet format`) is advised and not run. No hook starts them, but `craft check` in a
 repository you do not trust runs that repository's scripts and build wrappers, as running its
 build would. `craft standards --propose` lists them first, `craft check` names each command
 it starts, and `routing.conventionProposals: false` in the user or organization file turns

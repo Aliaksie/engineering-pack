@@ -138,6 +138,7 @@ struct Tool {
     /// The package script group that states the project's own command for this tool.
     script: Option<&'static str>,
     /// What the standard says when the tool comes with the language, not from configuration.
+    /// The project never asked for such a check, so it is advised and `craft check` leaves it.
     summary: Option<&'static str>,
 }
 
@@ -349,7 +350,7 @@ const TOOLS: [Tool; 19] = [
         runners: &[],
         languages: &["go"],
         script: None,
-        summary: Some("This is a Go module: `go vet ./...` passes."),
+        summary: Some("This is a Go module: `go vet ./...` is expected to pass."),
     },
     Tool {
         id: "checkstyle",
@@ -430,7 +431,7 @@ const TOOLS: [Tool; 19] = [
         languages: &["csharp"],
         script: None,
         summary: Some(
-            "This is a .NET project: `dotnet format --verify-no-changes` reports nothing to change.",
+            "This is a .NET project: `dotnet format --verify-no-changes` is expected to report nothing.",
         ),
     },
 ];
@@ -846,6 +847,9 @@ pub fn propose(settings: &Value, sources: &[Source], practice: &Practice) -> Res
         });
         if !args.is_empty() {
             standard["run"]["args"] = json!(args);
+        }
+        if tool.summary.is_some() {
+            standard["level"] = json!("advise");
         }
         if !tool.languages.is_empty() {
             standard["scope"] = json!({"languages": tool.languages});
@@ -1473,6 +1477,15 @@ mod tests {
         );
         let solution = &others["proposals"][4];
         assert_eq!(solution["evidence"], json!([{"file": "Shop.sln"}]));
+        // A toolchain file is no request for a check: its tool is advised, a configured one
+        // checked.
+        let levels: Vec<&str> = others["proposals"]
+            .as_array()
+            .expect("proposals")
+            .iter()
+            .filter_map(|proposal| proposal["level"].as_str())
+            .collect();
+        assert_eq!(levels, ["check", "check", "check", "advise", "advise"]);
         // The project's own script for the same job replaces the bare tool.
         let scripted = scan(
             &json!({}),

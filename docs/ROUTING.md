@@ -74,7 +74,7 @@ up to 256 KiB, and follows no links:
 | A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
 | Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, mypy, Pyright, golangci-lint or RuboCop; a `tsconfig.json` | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
 | Checkstyle, Spotless, ktlint or detekt configured in the project or named in its Gradle or Maven build | A `run` standard with the build's own task: `./gradlew` when the wrapper is there, else `gradle`, or `mvn`. Not proposed without the build file |
-| `go.mod`; a solution or project file (`.sln`, `.slnx`, `.csproj`, `.fsproj`) at the root | `go vet ./...`; `dotnet format --verify-no-changes` |
+| `go.mod`; a solution or project file (`.sln`, `.slnx`, `.csproj`, `.fsproj`) at the root | `go vet ./...`; `dotnet format --verify-no-changes`. Advised, not run: the file shows the toolchain, not a request for the check. Declare the standard to have `craft check` run it |
 | At least 20 recent commits of which four in five have a Conventional Commits subject; a changelog whose release headings already pass Keep a Changelog; two or more numbered decision records that all pass MADR or Nygard | The anchor, checked, with what was observed as its evidence. Never proposed when what exists does not pass the check |
 | `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
 
