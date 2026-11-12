@@ -620,6 +620,25 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
     Ok(json!({"proposals": proposals, "declared": covered}))
 }
 
+/// Whether `project`, a project's own configuration, declares a standard. One that does is
+/// read as it stands: nothing its files state is added.
+pub fn declares(project: &Value) -> bool {
+    project["standards"]
+        .as_array()
+        .is_some_and(|standards| !standards.is_empty())
+}
+
+/// The layer `proposed` (the result of [`propose`]) stands for in a project that declares no
+/// standards: each proposed standard, as proposed. `None` when nothing is proposed.
+pub fn layer(proposed: &Value) -> Option<Value> {
+    let standards: Vec<&Value> = proposed["proposals"]
+        .as_array()?
+        .iter()
+        .map(|proposal| &proposal["standard"])
+        .collect();
+    (!standards.is_empty()).then(|| json!({"formatVersion": 1, "standards": standards}))
+}
+
 /// How many proposed standards a session start names; the rest are counted.
 const OFFER_NAMES: usize = 6;
 
@@ -630,9 +649,7 @@ const OFFER_NAMES: usize = 6;
 /// declarations, and what they cover is already left out of `proposed`. `None` when the
 /// project declares a standard, nothing is proposed, or `shown` already records this set.
 pub fn offer(project: &Value, proposed: &Value, shown: &Value) -> Option<(Value, Value)> {
-    let declares = project["standards"]
-        .as_array()
-        .is_some_and(|standards| !standards.is_empty());
+    let declares = declares(project);
     let ids: Vec<&str> = proposed["proposals"]
         .as_array()?
         .iter()
@@ -663,8 +680,9 @@ pub fn offer_line(offer: &Value) -> String {
         .collect();
     let more = (count as usize).saturating_sub(names.len());
     format!(
-        "Craft: this project's own files support {count} standard{} it has not declared ({}{}). `craft standards --propose` lists them with evidence; none is active until you add it.",
+        "Craft: {count} standard{} read from this project's own files {} in effect ({}{}). `craft standards --propose` shows the evidence; standards declared in .craft/project.json replace them.",
         if count == 1 { "" } else { "s" },
+        if count == 1 { "is" } else { "are" },
         names.join(", "),
         if more > 0 {
             format!(", {more} more")
@@ -903,6 +921,33 @@ mod tests {
     }
 
     #[test]
+    fn what_the_files_state_is_a_layer_that_validates_with_the_files_it_names() {
+        let proposed = scan(
+            &json!({}),
+            &[
+                ("rustfmt.toml", None),
+                ("CONTRIBUTING.md", Some("# Contributing\n")),
+            ],
+        );
+        let document = layer(&proposed).expect("layer");
+        assert_eq!(document["standards"].as_array().map(Vec::len), Some(2));
+        assert_eq!(document["standards"][1]["file"], "CONTRIBUTING.md");
+        let read = |origin| crate::layers::Layer {
+            origin,
+            label: origin.into(),
+            document: &document,
+        };
+        crate::layers::validate(&read(crate::layers::DETECTED)).expect("the project's files");
+        // The same entry in a layer written for many projects names a file it cannot know.
+        assert!(crate::layers::validate(&read("organization")).is_err());
+        assert!(layer(&scan(&json!({}), &[])).is_none());
+        assert!(declares(
+            &json!({"standards": [{"id": "a", "disabled": true}]})
+        ));
+        assert!(!declares(&json!({"standards": []})));
+    }
+
+    #[test]
     fn an_undeclared_project_is_offered_its_proposals_once_per_set() {
         let proposed = scan(&json!({}), &[("rustfmt.toml", None), (".flake8", None)]);
         let (offer, record) = offer(&json!({}), &proposed, &Value::Null).expect("offer");
@@ -910,10 +955,10 @@ mod tests {
             offer,
             json!({"count": 2, "standards": ["rustfmt", "flake8"]})
         );
-        assert_eq!(
-            offer_line(&offer),
-            "Craft: this project's own files support 2 standards it has not declared (rustfmt, flake8). `craft standards --propose` lists them with evidence; none is active until you add it."
-        );
+        let line = offer_line(&offer);
+        for part in ["2 standards", "in effect", "(rustfmt, flake8)", "--propose"] {
+            assert!(line.contains(part), "{line}");
+        }
         assert!(
             super::offer(&json!({}), &proposed, &record).is_none(),
             "same set"

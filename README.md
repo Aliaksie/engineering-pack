@@ -109,9 +109,10 @@ and exits 2, for CI or a Git hook.
   before they run, together with the project's own rules. Each rule can be left out and
   `safety.enabled: false` turns the policy off. It only refuses and never approves
   ([security](docs/SECURITY.md)).
-- **Standards from what you already have.** `craft standards --propose` reads your agent
-  instructions, contributor document and tool configuration and lists the standards they
-  support; nothing is active until you copy it.
+- **Standards from what you already have.** With no configuration, a project is held to the
+  standards its own files state: conventions named in agent instructions or the contributor
+  document, lint and format configuration. `craft standards --propose` lists them with their
+  evidence; standards you declare replace them.
 - **One line on what happened.** When a turn ends, Claude Code, Codex and Gemini CLI show
   what Craft did in the session: findings raised and fixed, test runs that ran no test,
   lookups answered and contexts restored. Nothing happened, no line.
@@ -189,9 +190,10 @@ covered in [installation](docs/INSTALL.md).
    }
    ```
 
-   `craft standards --propose` lists declarations your existing files already support
+   Until you declare standards, the ones your existing files state are in effect
    (conventions named in `AGENTS.md` or `CONTRIBUTING.md`, lint and format configuration,
-   `.editorconfig`), each with its evidence; copy the ones you accept. It writes nothing.
+   `.editorconfig`). `craft standards --propose` lists them, each with its evidence; copy
+   the ones you keep, since declared standards replace them. It writes nothing.
    `craft standards` lists what the project declares; `craft standards --commit-message <file>`
    runs the hooks' check and exits non-zero when it is not met, for a `commit-msg` hook or CI.
 

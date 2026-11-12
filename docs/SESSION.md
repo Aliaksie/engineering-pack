@@ -681,7 +681,7 @@ nothing. `--explain` adds every effective value with its layer; `--field routing
 field and what lies beneath it.
 
 ```text
-layers, later wins: bundled < organization < user < project
+layers, later wins: bundled < detected < organization < user < project
   organization: /etc/craft/organization.json — 3 values
   user: /home/dev/.config/craft/preferences.json — absent
   project: /work/shop/.craft/project.json — 2 values

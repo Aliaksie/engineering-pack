@@ -1173,7 +1173,7 @@
         "conventionProposals": {
           "type": "boolean",
           "default": true,
-          "description": "When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start."
+          "description": "Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them."
         },
         "projectChecks": {
           "type": "boolean",

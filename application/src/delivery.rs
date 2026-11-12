@@ -540,7 +540,7 @@ fn decide(
         && delivery::convention_proposals(settings)
         && (event.context_supported || crate::hook::shows_notice(event.host, event.lifecycle))
     {
-        match crate::conventions::offer(root, settings) {
+        match crate::conventions::offer(root) {
             Ok(Some(offer)) => {
                 decision["notice"] = json!(craft_engine::conventions::offer_line(&offer));
                 decision["conventions"] = offer;

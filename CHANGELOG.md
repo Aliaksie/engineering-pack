@@ -6,6 +6,13 @@
   project that declares nothing. `"safety": {"enabled": false}` in the project, organization
   or user file turns it off, and `disables` leaves single rules out. A project that relied on
   the policy being off until enabled now sees those commands refused.
+- A project that declares no standards is held to the ones its own files state: what
+  `craft standards --propose` lists is in effect without being copied, as a `detected` layer
+  beneath the organization and user files. Commit, changelog and decision-record formats are
+  checked, contributor documents advised, and lint and format commands run by `craft check`
+  when it is called; no hook starts them. Standards the project declares replace them, and
+  `routing.conventionProposals: false` turns this off. The session-start line now says what
+  is in effect instead of what could be accepted.
 
 ## 0.0.6
 

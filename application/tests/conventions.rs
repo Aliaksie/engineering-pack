@@ -1,5 +1,6 @@
-//! Conventions a project already states become proposals the consumer can accept: the scan
-//! reads the project's own files, writes nothing, and what it proposes is valid configuration.
+//! Conventions a project already states: the scan reads the project's own files, writes
+//! nothing, and what it finds is valid configuration. While the project declares no
+//! standards those are in effect; standards it declares replace them.
 mod support;
 use craft_application::cli;
 use serde_json::{Value, json};
@@ -136,10 +137,15 @@ fn a_session_start_names_undeclared_conventions_once_and_again_only_when_they_ch
         &[("AGENTS.md", AGENTS), ("rustfmt.toml", "max_width = 100\n")],
     );
     let first: Value = serde_json::from_str(&start("claude", &repo, "S1")).expect("output");
-    assert_eq!(
-        first["systemMessage"],
-        "Craft: this project's own files support 2 standards it has not declared (commits, rustfmt). `craft standards --propose` lists them with evidence; none is active until you add it."
-    );
+    let line = first["systemMessage"].as_str().expect("line");
+    for part in [
+        "2 standards",
+        "in effect",
+        "(commits, rustfmt)",
+        "--propose",
+    ] {
+        assert!(line.contains(part), "{line}");
+    }
     let context = first["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .expect("context");
@@ -179,5 +185,86 @@ fn a_project_with_standards_or_the_switch_off_hears_nothing() {
             !repo.root.join(".craft/state/notices").exists(),
             "no scan, no record"
         );
+    }
+}
+
+/// `(exit code, stdout, stderr)` of one `craft` command at the repository.
+fn craft(repo: &Repo, args: &[&str]) -> (i32, String, String) {
+    let mut argv: Vec<String> = vec![args[0].to_string(), "--root".into(), repo.path().into()];
+    argv.extend(args[1..].iter().map(|arg| arg.to_string()));
+    let outcome = cli::run_structured(&argv);
+    (outcome.exit_code, outcome.stdout, outcome.stderr)
+}
+
+fn declared_ids(repo: &Repo) -> Vec<String> {
+    let (code, stdout, stderr) = craft(repo, &["standards"]);
+    assert_eq!(code, 0, "{stderr}");
+    let listing: Value = serde_json::from_str(&stdout).expect("listing");
+    listing["standards"]
+        .as_array()
+        .expect("standards")
+        .iter()
+        .map(|standard| standard["id"].as_str().expect("id").to_string())
+        .collect()
+}
+
+#[test]
+fn a_project_that_declares_no_standards_is_held_to_what_its_files_state() {
+    let repo = Repo::new(
+        "conventions-effect",
+        &[
+            ("AGENTS.md", AGENTS),
+            ("rustfmt.toml", "max_width = 100\n"),
+            ("message.txt", "added stuff\n"),
+        ],
+    );
+    assert_eq!(declared_ids(&repo), ["commits", "rustfmt"]);
+    // The commit check the hooks run now speaks without any configuration.
+    let message = repo.root.join("message.txt").to_string_lossy().into_owned();
+    let (code, stdout, stderr) = craft(&repo, &["standards", "--commit-message", &message]);
+    assert_ne!(code, 0);
+    let said = format!("{stdout}{stderr}");
+    assert!(said.contains(r#""standard":"commits""#), "{said}");
+    // Still listed as proposals with their evidence, not as declared twice.
+    let proposed = propose(&repo);
+    assert_eq!(standards(&proposed).len(), 2);
+    assert_eq!(proposed["declared"], json!([]));
+    // `craft config` names the layer they came from.
+    let report: Value =
+        serde_json::from_str(&craft(&repo, &["config", "--json"]).1).expect("report");
+    let detected = report["layers"]
+        .as_array()
+        .expect("layers")
+        .iter()
+        .find(|layer| layer["name"] == "detected")
+        .expect("detected layer");
+    assert_eq!(detected["values"], 2);
+    let text = craft_engine::layers::text(&report);
+    assert!(text.contains("bundled < detected < organization"), "{text}");
+    assert!(text.contains("read from the project's own files"), "{text}");
+    assert!(!repo.root.join(".craft/project.json").exists());
+}
+
+#[test]
+fn declared_standards_replace_what_the_files_state_and_the_switch_turns_it_off() {
+    for (config, expected) in [
+        (
+            r#"{"formatVersion":1,"standards":[{"id":"api","file":"docs/api.md"}]}"#,
+            vec!["api"],
+        ),
+        (
+            r#"{"formatVersion":1,"routing":{"conventionProposals":false}}"#,
+            vec![],
+        ),
+    ] {
+        let repo = Repo::new(
+            "conventions-replaced",
+            &[
+                ("AGENTS.md", AGENTS),
+                ("docs/api.md", "# API\n"),
+                (".craft/project.json", config),
+            ],
+        );
+        assert_eq!(declared_ids(&repo), expected, "{config}");
     }
 }

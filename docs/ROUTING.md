@@ -63,9 +63,10 @@ level, source and a one-line `summary`; the content stays in the project.
 ]
 ```
 
-`craft standards --propose` lists the standards a project's existing files already support,
-so the first declarations need no writing by hand. It reads fixed files at the project root,
-each up to 256 KiB, and follows no links:
+A project that declares no standards is held to the ones its existing files state, and
+`craft standards --propose` lists them, so the first session needs no configuration and the
+first declarations no writing by hand. The scan reads fixed files at the project root, each
+up to 256 KiB, and follows no links:
 
 | The project has | Proposed |
 |---|---|
@@ -75,18 +76,28 @@ each up to 256 KiB, and follows no links:
 | `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
 
 Each proposal carries the declaration to copy and the files, with lines, that support it;
-what the configuration already declares is listed apart. Nothing is active until you copy it
-into `standards`, and Craft never writes the configuration. The scan matches names and
+what the configuration already declares is listed apart. Craft never writes the
+configuration.
+
+While the project's own file declares no `standards`, every proposal is in effect as the
+`detected` layer, beneath the organization and user files: an anchor is checked as a declared
+one is, a `file` standard is advised, and a `run` standard is a check `craft check` runs when
+it is called. No hook starts a command read from the project's files. A standard of the same
+id in the organization or user file wins. Once the project declares a standard of its own,
+only declared standards apply: copy the proposals to keep. `craft config` shows the layer,
+and what the files state never makes a valid configuration invalid.
+
+The scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
 packages, and a file that names a convention in order to reject it is still a match, so read
-the evidence before accepting. Agent instruction files are read for names but never proposed
+the evidence. Agent instruction files are read for names but never proposed
 as standards, since the host loads them itself.
 
-A session that starts in a project declaring no standards runs the same scan and says once
-how many standards the files support, to the user where the host shows a hook's message
+A session that starts in a project declaring no standards says once how many standards
+read from its files are in effect, to the user where the host shows a hook's message
 (Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
 set is not named again in any session; a changed set is. `routing.conventionProposals: false`
-turns the scan at session start off.
+turns the scan off: nothing is read from the files and nothing is said.
 
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,

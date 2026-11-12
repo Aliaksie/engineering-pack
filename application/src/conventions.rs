@@ -1,5 +1,6 @@
 //! The conventions scan over a project's root files: bounded reads, then the engine's
-//! proposal. Read-only; the consumer copies what it accepts into the configuration.
+//! proposal. Read-only. What it finds is in effect while the project declares no standards;
+//! the consumer copies what it keeps into the configuration.
 use crate::failure::Failure;
 use craft_engine::conventions::{self, Look, MAX_BYTES, Source};
 use craft_platform::files::{ReadError, read_bounded};
@@ -12,7 +13,8 @@ const RECORD_BYTES: usize = 1024;
 /// What a session start says about an undeclared project's conventions, once per set of
 /// proposals: the offer with the command that lists them, recorded as shown. `None` when
 /// there is nothing new to say or another hook is recording it.
-pub(crate) fn offer(root: &Path, settings: &Value) -> Result<Option<Value>, Failure> {
+pub(crate) fn offer(root: &Path) -> Result<Option<Value>, Failure> {
+    let settings = &crate::project::declared_settings(root)?;
     // Standards inherited from an organization or user layer are not the project's own:
     // only then is its file read again, for what it declares itself.
     let listed = |value: &Value| {
@@ -100,7 +102,7 @@ pub(crate) fn proposed(root: &Path, settings: &Value) -> Result<Value, Failure> 
     result["scanned"] = json!(found.iter().map(|(path, _)| *path).collect::<Vec<_>>());
     result["unread"] = json!(unread);
     result["accept"] = json!(
-        "Copy the `standard` of each proposal you accept into `standards` in .craft/project.json. A proposal is inactive until then; this command writes nothing."
+        "While the project declares no standards and `routing.conventionProposals` is on, every proposal is in effect. Standards declared in .craft/project.json replace them: copy the `standard` of each proposal to keep. This command writes nothing."
     );
     Ok(result)
 }
