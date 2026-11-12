@@ -1036,3 +1036,92 @@ fn a_prompt_routes_only_into_packages_the_host_installed() {
         "{loose}"
     );
 }
+
+/// A project whose root is a folder of a larger checkout: Git names changed files from the
+/// top, the project reads them from its own root, and its neighbours are not its work.
+#[test]
+fn a_project_below_the_top_of_its_checkout_is_reviewed_from_its_own_root() {
+    let top = std::env::temp_dir().join(format!("craft-host-below-top-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&top);
+    fs::create_dir_all(top.join("web/.craft")).unwrap();
+    fs::create_dir_all(top.join("other")).unwrap();
+    let fixture = Scratch(fs::canonicalize(&top).unwrap());
+    let top = &fixture.0;
+    let root = top.join("web");
+    fs::write(
+        root.join(".craft/project.json"),
+        r#"{"formatVersion":1,"routing":{"debtMarkers":true}}"#,
+    )
+    .unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .current_dir(top)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    let files = |decision: &Value| -> Vec<String> {
+        decision["stop"]["findings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|finding| finding["file"].as_str().map(str::to_owned))
+            .collect()
+    };
+    fs::write(root.join("a.ts"), "export const a = 1\n").unwrap();
+    fs::write(top.join("other/x.ts"), "export const x = 1\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "init"]);
+    lifecycle(&root, "session-start", json!({}));
+
+    // One file left dirty, one committed in the turn, and a neighbour changed both ways.
+    fs::write(root.join("b.ts"), "// TODO: later\nexport const b = 1\n").unwrap();
+    fs::write(
+        top.join("other/x.ts"),
+        "// TODO: theirs\nexport const x = 2\n",
+    )
+    .unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: change"]);
+    fs::write(root.join("a.ts"), "// FIXME: mine\nexport const a = 2\n").unwrap();
+    fs::write(top.join("other/y.ts"), "// TODO: untracked\n").unwrap();
+    let decision = lifecycle(&root, "turn-end", json!({}));
+    let mut found = files(&decision);
+    found.sort();
+    assert_eq!(found, ["a.ts", "b.ts"], "{decision}");
+}
+
+/// The host names the directory it was opened in; a session whose shell moved into another
+/// project still belongs to the first, and leaves no state in the second.
+#[test]
+fn a_session_keeps_the_project_it_was_opened_in_when_its_shell_moves() {
+    let opened = project("opened-in", None);
+    let visited = project("visited", None);
+    let state = |root: &Path| root.join(".craft/state/sessions").exists();
+    lifecycle(
+        &visited.0,
+        "session-start",
+        json!({"projectDirectory": opened.0.to_string_lossy()}),
+    );
+    assert!(state(&opened.0), "the project the host was opened in");
+    assert!(!state(&visited.0), "the project the shell moved to");
+    // Opened in a folder of a project, the session is the project's.
+    lifecycle(
+        &visited.0,
+        "session-start",
+        json!({"projectDirectory": opened.0.join("deep/er").to_string_lossy(), "session": "S-2"}),
+    );
+    assert!(!state(&visited.0));
+    assert!(!opened.0.join("deep/er/.craft").exists());
+    // A directory that is not there names nothing: the shell's directory decides, as before.
+    lifecycle(
+        &visited.0,
+        "session-start",
+        json!({"projectDirectory": opened.0.join("gone").to_string_lossy(), "session": "S-3"}),
+    );
+    assert!(state(&visited.0));
+}

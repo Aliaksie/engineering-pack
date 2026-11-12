@@ -210,11 +210,24 @@ fn project_file(root: &Path) -> PathBuf {
     root.join(".craft").join("project.json")
 }
 
+/// What `resolve` adds beneath the organization layer.
+#[derive(Clone, Copy, PartialEq)]
+enum Detect {
+    /// The standards the project's own files state, while it declares none.
+    Conventions,
+    /// The same for a host hook, which runs on every event: what Git was asked is kept in
+    /// the project's state. A command a person runs writes no state for it.
+    Kept,
+    /// Nothing: the settings as the files of the layers declare them.
+    Nothing,
+}
+
 fn resolve(
     root: &Path,
     sources: Sources,
     overrides: &Value,
     explain: bool,
+    detect: Detect,
 ) -> Result<(Value, [Read; 2]), Failure> {
     let named = |error: Failure| error.about(&project_file(root).to_string_lossy());
     let project = document(documents::project(root)).map_err(named)?;
@@ -237,7 +250,7 @@ fn resolve(
         })
         .collect();
     let documents = contracts::Documents { catalogs, skills };
-    let layers: Vec<Layer> = baseline
+    let mut layers: Vec<Layer> = baseline
         .iter()
         .map(|layer| Layer {
             origin: layer.origin,
@@ -245,9 +258,43 @@ fn resolve(
             document: &layer.document,
         })
         .collect();
-    let settings = contracts::layered_settings(&project, &layers, overrides, &documents, explain)?;
+    let mut settings =
+        contracts::layered_settings(&project, &layers, overrides, &documents, explain)?;
+    // A project that declares no standards is held to the ones its own files state. Read
+    // against the settings without them, so a standard a layer declares is not stated twice.
+    // What the files state never invalidates a configuration that is valid without it.
+    let detected = (detect != Detect::Nothing
+        && !craft_engine::conventions::declares(&project)
+        && craft_engine::delivery::convention_proposals(&settings["settings"]))
+    .then(|| {
+        let keep = detect == Detect::Kept;
+        crate::conventions::proposed(root, &settings["settings"], keep).ok()
+    })
+    .flatten()
+    .and_then(|proposed| craft_engine::conventions::layer(&proposed));
+    if let Some(document) = &detected {
+        layers.insert(
+            0,
+            Layer {
+                origin: layers::DETECTED,
+                label: "standards read from the project's files".into(),
+                document,
+            },
+        );
+        match contracts::layered_settings(&project, &layers, overrides, &documents, explain) {
+            Ok(with) => settings = with,
+            // Said by `craft config` and `craft settings`, so nothing is dropped in silence.
+            Err(error) => settings["detectedNotApplied"] = json!(error),
+        }
+    }
     drop(layers);
     Ok((settings, baseline))
+}
+
+/// The effective settings without the standards read from the project's own files: what
+/// the conventions scan compares those files with.
+pub(crate) fn declared_settings(root: &Path) -> Result<Value, Failure> {
+    Ok(resolve(root, Sources::default(), &json!({}), false, Detect::Nothing)?.0["settings"].take())
 }
 
 /// Validated effective settings without task overrides, as commands consume them.
@@ -256,7 +303,7 @@ pub fn settings(root: &Path, preferences: Option<&Path>) -> Result<Value, Failur
         preferences,
         ..Sources::default()
     };
-    Ok(resolve(root, sources, &json!({}), false)?.0["settings"].take())
+    Ok(resolve(root, sources, &json!({}), false, Detect::Conventions)?.0["settings"].take())
 }
 
 /// `settings` recorded as a `project.loaded` child operation of `parent`.
@@ -285,7 +332,8 @@ pub(crate) fn hook_loaded(
     root: &Path,
 ) -> Result<Value, Failure> {
     let operation = recorder.start("project.loaded", Some(parent));
-    let loaded = settings(root, None);
+    let loaded = resolve(root, Sources::default(), &json!({}), false, Detect::Kept)
+        .map(|(mut resolved, _)| resolved["settings"].take());
     match &loaded {
         Ok(settings) => {
             let digest = craft_engine::digest(&craft_engine::canonical(settings));
@@ -306,7 +354,13 @@ pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failu
         organization: request.organization,
         preferences: request.preferences,
     };
-    let (mut result, _) = resolve(root, sources, &request.overrides, false)?;
+    let (mut result, _) = resolve(
+        root,
+        sources,
+        &request.overrides,
+        false,
+        Detect::Conventions,
+    )?;
     let (facts, session) = request.workers.unwrap_or((json!({}), None));
     let budget = workers::budget(&result["settings"], &facts, session, now_ms())?;
     result["state"] = state_location(root);
@@ -324,7 +378,7 @@ pub fn layers(
     explain: bool,
     field: Option<&str>,
 ) -> Result<Value, Failure> {
-    let (mut result, baseline) = resolve(root, sources, &json!({}), true)?;
+    let (mut result, baseline) = resolve(root, sources, &json!({}), true, Detect::Conventions)?;
     let history = match result["history"].take() {
         Value::Object(history) => history,
         _ => Map::new(),
@@ -334,6 +388,15 @@ pub fn layers(
         "name": "bundled",
         "values": layers::contributed(&history, "bundled"),
     })];
+    let mut detected = json!({
+        "name": layers::DETECTED,
+        "values": layers::contributed(&history, layers::DETECTED),
+    });
+    if let Some(reason) = result["detectedNotApplied"].as_str() {
+        detected["state"] = json!("not-applied");
+        detected["reason"] = json!(reason);
+    }
+    read.push(detected);
     read.extend(baseline.iter().map(|layer| layer.summary(&history)));
     read.push(json!({
         "name": "project",
@@ -359,7 +422,7 @@ pub fn layers(
         })
         .collect();
     let mut report = json!({
-        "order": &layers::ORDER[..4],
+        "order": &layers::ORDER[..5],
         "layers": read,
         "overrides": overrides,
         "rule": "A later layer wins field by field; lists are replaced whole, except standards and safety.deny, which merge by id. Layers are defaults, not enforcement.",

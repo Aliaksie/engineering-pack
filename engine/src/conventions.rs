@@ -1,8 +1,9 @@
-//! Conventions a project already states, as ready `standards` declarations. The scan reads
-//! fixed root files and recognizes three forms: a convention named in prose that Craft can
-//! check, a lint or format tool with its configuration, and a contributor document. Nothing
-//! is inferred from code and no command written in prose is parsed; a proposal is inactive
-//! until the consumer copies it into the project configuration.
+//! Conventions a project already states or keeps, as ready `standards` declarations. The
+//! scan reads fixed root files and recognizes four forms: a convention named in prose that
+//! Craft can check, a lint or format tool with its configuration, a contributor document,
+//! and a format the project keeps without naming it (its recent commit subjects, its
+//! changelog, its decision records), proposed only when what exists already passes the
+//! check. Nothing is inferred from code and no command written in prose is parsed.
 use crate::anchors::{self, Tier};
 use crate::standards;
 use serde_json::{Value, json};
@@ -124,35 +125,57 @@ const NAMED: [Named; 6] = [
 struct Tool {
     id: &'static str,
     title: &'static str,
+    /// Root files whose presence shows the tool; `*.ext` is any root file with that ending.
     files: &'static [&'static str],
-    marker: Option<(&'static str, &'static [&'static str])>,
+    /// Shared manifests that show the tool when their text contains a needle.
+    markers: &'static [Marker],
     command: &'static str,
     args: &'static [&'static str],
+    /// The build tool that runs the check, first present file wins: `(file, command,
+    /// leading arguments)` before `args`. Empty: `command` runs it. None present: no proposal.
+    runners: &'static [Runner],
     languages: &'static [&'static str],
     /// The package script group that states the project's own command for this tool.
     script: Option<&'static str>,
+    /// What the standard says when the tool comes with the language, not from configuration.
+    /// The project never asked for such a check, so it is advised and `craft check` leaves it.
+    summary: Option<&'static str>,
 }
 
-const TOOLS: [Tool; 10] = [
+type Marker = (&'static str, &'static [&'static str]);
+type Runner = (&'static str, &'static str, &'static [&'static str]);
+
+/// Gradle through the project's wrapper when it has one.
+const GRADLE: [Runner; 3] = [
+    ("gradlew", "./gradlew", &[]),
+    ("build.gradle", "gradle", &[]),
+    ("build.gradle.kts", "gradle", &[]),
+];
+
+const TOOLS: [Tool; 19] = [
     Tool {
         id: "rustfmt",
         title: "rustfmt",
         files: &["rustfmt.toml", ".rustfmt.toml"],
-        marker: None,
+        markers: &[],
         command: "cargo",
         args: &["fmt", "--all", "--", "--check"],
+        runners: &[],
         languages: &["rust"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "clippy",
         title: "Clippy",
         files: &["clippy.toml", ".clippy.toml"],
-        marker: Some(("Cargo.toml", &["[lints", "[workspace.lints"])),
+        markers: &[("Cargo.toml", &["[lints", "[workspace.lints"])],
         command: "cargo",
         args: &["clippy", "--all-targets"],
+        runners: &[],
         languages: &["rust"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "eslint",
@@ -169,21 +192,25 @@ const TOOLS: [Tool; 10] = [
             ".eslintrc.yml",
             ".eslintrc.yaml",
         ],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["eslint", "."],
+        runners: &[],
         languages: &["javascript", "typescript"],
         script: Some("lint"),
+        summary: None,
     },
     Tool {
         id: "biome",
         title: "Biome",
         files: &["biome.json", "biome.jsonc"],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["biome", "check", "."],
+        runners: &[],
         languages: &["javascript", "typescript"],
         script: Some("lint"),
+        summary: None,
     },
     Tool {
         id: "prettier",
@@ -201,41 +228,49 @@ const TOOLS: [Tool; 10] = [
             "prettier.config.cjs",
             "prettier.config.mjs",
         ],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["prettier", "--check", "."],
+        runners: &[],
         languages: &[],
         script: Some("format"),
+        summary: None,
     },
     Tool {
         id: "ruff",
         title: "Ruff",
         files: &["ruff.toml", ".ruff.toml"],
-        marker: Some(("pyproject.toml", &["[tool.ruff"])),
+        markers: &[("pyproject.toml", &["[tool.ruff"])],
         command: "ruff",
         args: &["check", "."],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "black",
         title: "Black",
         files: &[],
-        marker: Some(("pyproject.toml", &["[tool.black"])),
+        markers: &[("pyproject.toml", &["[tool.black"])],
         command: "black",
         args: &["--check", "."],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "flake8",
         title: "Flake8",
         files: &[".flake8"],
-        marker: None,
+        markers: &[],
         command: "flake8",
         args: &[],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "golangci-lint",
@@ -246,21 +281,158 @@ const TOOLS: [Tool; 10] = [
             ".golangci.toml",
             ".golangci.json",
         ],
-        marker: None,
+        markers: &[],
         command: "golangci-lint",
         args: &["run"],
+        runners: &[],
         languages: &["go"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "rubocop",
         title: "RuboCop",
         files: &[".rubocop.yml"],
-        marker: None,
+        markers: &[],
         command: "bundle",
         args: &["exec", "rubocop"],
+        runners: &[],
         languages: &["ruby"],
         script: None,
+        summary: None,
+    },
+    Tool {
+        id: "typescript",
+        title: "The TypeScript compiler",
+        files: &["tsconfig.json"],
+        markers: &[],
+        command: "npx",
+        args: &["tsc", "--noEmit"],
+        runners: &[],
+        languages: &["typescript"],
+        script: Some("types"),
+        summary: None,
+    },
+    Tool {
+        id: "mypy",
+        title: "mypy",
+        files: &["mypy.ini", ".mypy.ini"],
+        markers: &[
+            ("pyproject.toml", &["[tool.mypy"]),
+            ("setup.cfg", &["[mypy"]),
+        ],
+        command: "mypy",
+        args: &["."],
+        runners: &[],
+        languages: &["python"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "pyright",
+        title: "Pyright",
+        files: &["pyrightconfig.json"],
+        markers: &[("pyproject.toml", &["[tool.pyright"])],
+        command: "pyright",
+        args: &[],
+        runners: &[],
+        languages: &["python"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "go-vet",
+        title: "go vet",
+        files: &["go.mod"],
+        markers: &[],
+        command: "go",
+        args: &["vet", "./..."],
+        runners: &[],
+        languages: &["go"],
+        script: None,
+        summary: Some("This is a Go module: `go vet ./...` is expected to pass."),
+    },
+    Tool {
+        id: "checkstyle",
+        title: "Checkstyle",
+        files: &["checkstyle.xml", "config/checkstyle/checkstyle.xml"],
+        markers: &[("pom.xml", &["maven-checkstyle-plugin"])],
+        command: "",
+        args: &[],
+        runners: &[
+            ("gradlew", "./gradlew", &["checkstyleMain"]),
+            ("build.gradle", "gradle", &["checkstyleMain"]),
+            ("build.gradle.kts", "gradle", &["checkstyleMain"]),
+            ("pom.xml", "mvn", &["-q", "checkstyle:check"]),
+        ],
+        languages: &["java"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "spotless",
+        title: "Spotless",
+        files: &[],
+        markers: &[
+            ("build.gradle", &["spotless"]),
+            ("build.gradle.kts", &["spotless"]),
+            ("pom.xml", &["spotless-maven-plugin"]),
+        ],
+        command: "",
+        args: &[],
+        runners: &[
+            ("gradlew", "./gradlew", &["spotlessCheck"]),
+            ("build.gradle", "gradle", &["spotlessCheck"]),
+            ("build.gradle.kts", "gradle", &["spotlessCheck"]),
+            ("pom.xml", "mvn", &["-q", "spotless:check"]),
+        ],
+        languages: &["java", "kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "ktlint",
+        title: "ktlint",
+        files: &[],
+        markers: &[
+            ("build.gradle", &["ktlint"]),
+            ("build.gradle.kts", &["ktlint"]),
+        ],
+        command: "",
+        args: &["ktlintCheck"],
+        runners: &GRADLE,
+        languages: &["kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "detekt",
+        title: "detekt",
+        files: &["detekt.yml", "config/detekt/detekt.yml"],
+        markers: &[
+            ("build.gradle", &["detekt"]),
+            ("build.gradle.kts", &["detekt"]),
+        ],
+        command: "",
+        args: &["detekt"],
+        runners: &GRADLE,
+        languages: &["kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "dotnet-format",
+        title: "dotnet format",
+        files: &["*.sln", "*.slnx", "*.csproj", "*.fsproj"],
+        markers: &[],
+        command: "dotnet",
+        args: &["format", "--verify-no-changes"],
+        runners: &[],
+        languages: &["csharp"],
+        script: None,
+        summary: Some(
+            "This is a .NET project: `dotnet format --verify-no-changes` is expected to report nothing.",
+        ),
     },
 ];
 
@@ -318,10 +490,13 @@ pub fn candidates() -> Vec<(&'static str, Look)> {
         add(path, Look::Folder);
     }
     for tool in &TOOLS {
-        if let Some((file, _)) = tool.marker {
+        for (file, _) in tool.markers {
             add(file, Look::Text);
         }
-        for file in tool.files {
+        for file in tool.files.iter().filter(|file| !file.starts_with('*')) {
+            add(file, Look::File);
+        }
+        for (file, _, _) in tool.runners {
             add(file, Look::File);
         }
     }
@@ -329,6 +504,36 @@ pub fn candidates() -> Vec<(&'static str, Look)> {
         add(file, Look::File);
     }
     list
+}
+
+/// The endings of root files a tool is shown by, such as `.sln`: their names vary, so the
+/// caller lists the root for them and passes each match as a [`Source`].
+pub fn endings() -> Vec<&'static str> {
+    TOOLS
+        .iter()
+        .flat_map(|tool| tool.files)
+        .filter_map(|file| file.strip_prefix('*'))
+        .collect()
+}
+
+/// The decision-record folders, most usual first; the caller passes the records of the
+/// first present one, at most [`MAX_RECORDS`], as [`Source`]s with their text.
+pub fn record_folders() -> &'static [&'static str] {
+    &DECISIONS
+}
+
+/// How many decision records the scan reads to learn the format they keep.
+pub const MAX_RECORDS: usize = 5;
+/// How many recent commit subjects the scan reads, and how many it needs to judge.
+pub const MAX_SUBJECTS: usize = 50;
+const MIN_SUBJECTS: usize = 20;
+const MIN_RECORDS: usize = 2;
+
+/// What the project does rather than states: the subjects of its most recent commits,
+/// newest first, merges left out.
+#[derive(Default)]
+pub struct Practice<'a> {
+    pub subjects: &'a [String],
 }
 
 fn word_character(character: Option<char>) -> bool {
@@ -400,6 +605,14 @@ fn editor_summary(text: &str) -> String {
     }
 }
 
+/// Evidence that the project keeps a format without naming it.
+fn observed(file: Option<&str>, what: String) -> Value {
+    match file {
+        Some(file) => json!({"file": file, "observed": what}),
+        None => json!({"observed": what}),
+    }
+}
+
 fn evidence(file: &str, line: Option<usize>) -> Value {
     match line {
         Some(line) => json!({"file": file, "line": line}),
@@ -431,7 +644,7 @@ fn declared<'a>(settings: &'a Value, standard: &Value) -> Option<&'a str> {
 /// declaration to copy, its form and the files that support it; `declared` lists what the
 /// project configuration already covers. Every proposal passes the project validator, and
 /// ids never collide with declared ones.
-pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
+pub fn propose(settings: &Value, sources: &[Source], practice: &Practice) -> Result<Value, String> {
     let text = |path: &str| {
         sources
             .iter()
@@ -439,6 +652,32 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
             .and_then(|source| source.text)
     };
     let present = |path: &str| sources.iter().any(|source| source.path == path);
+    // Root files a pattern such as `*.sln` stands for.
+    let matching = |file: &'static str| -> Vec<&str> {
+        match file.strip_prefix('*') {
+            Some(ending) => sources
+                .iter()
+                .map(|source| source.path)
+                .filter(|path| !path.contains('/') && path.ends_with(ending))
+                .collect(),
+            None => sources
+                .iter()
+                .map(|source| source.path)
+                .filter(|path| *path == file)
+                .collect(),
+        }
+    };
+    // The decision records read, with the folder they are in.
+    let folder = DECISIONS.iter().find(|folder| present(folder));
+    let records: Vec<(&str, &str)> = folder
+        .into_iter()
+        .flat_map(|folder| {
+            sources.iter().filter_map(move |source| {
+                let inside = source.path.strip_prefix(*folder)?.strip_prefix('/')?;
+                (!inside.contains('/')).then_some((source.path, source.text?))
+            })
+        })
+        .collect();
     let mut found: Vec<(&str, Value, Vec<Value>)> = Vec::new();
 
     let disabled = |id: &str| {
@@ -478,6 +717,51 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
                     .filter(|path| text(path).is_some_and(|t| t.contains("config-conventional")))
                     .map(|path| evidence(path, None)),
             );
+        }
+        // A format kept without being named: only when what exists already passes its check,
+        // so the first thing the project hears is never a finding on its own history.
+        if support.is_empty() {
+            let passes = |text: &str, path: Option<&str>| {
+                anchors::check(named.anchor, text, path).is_empty()
+            };
+            match named.anchor {
+                "conventional-commits" if practice.subjects.len() >= MIN_SUBJECTS => {
+                    let all = practice.subjects.len();
+                    let kept = practice
+                        .subjects
+                        .iter()
+                        .filter(|subject| passes(subject, None))
+                        .count();
+                    if kept * 5 >= all * 4 {
+                        support.push(observed(
+                            None,
+                            format!("{kept} of the last {all} commit subjects follow it"),
+                        ));
+                    }
+                }
+                "keep-a-changelog" => {
+                    if let Some(text) = text(CHANGELOG)
+                        && text.lines().any(|line| line.starts_with("## ["))
+                        && passes(text, Some(CHANGELOG))
+                    {
+                        support.push(observed(
+                            Some(CHANGELOG),
+                            "its release headings follow it".into(),
+                        ));
+                    }
+                }
+                _ if named.records
+                    && records.len() >= MIN_RECORDS
+                    && records.iter().all(|(path, text)| passes(text, Some(path))) =>
+                {
+                    support.extend(
+                        records
+                            .iter()
+                            .map(|(path, _)| observed(Some(path), "the record follows it".into())),
+                    );
+                }
+                _ => {}
+            }
         }
         if support.is_empty() {
             continue;
@@ -526,28 +810,46 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
         let mut support: Vec<Value> = tool
             .files
             .iter()
-            .filter(|file| present(file))
+            .flat_map(|file| matching(file))
             .map(|file| evidence(file, None))
             .collect();
-        if let Some((file, needles)) = tool.marker
-            && text(file).is_some_and(|text| needles.iter().any(|needle| text.contains(needle)))
-        {
-            support.push(evidence(file, None));
+        for (file, needles) in tool.markers {
+            if text(file).is_some_and(|text| needles.iter().any(|needle| text.contains(needle))) {
+                support.push(evidence(file, None));
+            }
         }
         if support.is_empty() {
             continue;
         }
-        let command = std::iter::once(tool.command)
-            .chain(tool.args.iter().copied())
+        let (program, leading): (&str, &[&str]) = if tool.runners.is_empty() {
+            (tool.command, &[])
+        } else {
+            // Without the build tool there is no command to state.
+            let Some((_, program, leading)) =
+                tool.runners.iter().find(|(file, _, _)| present(file))
+            else {
+                continue;
+            };
+            (program, leading)
+        };
+        let args: Vec<&str> = leading.iter().chain(tool.args).copied().collect();
+        let command = std::iter::once(program)
+            .chain(args.iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
         let mut standard = json!({
             "id": tool.id,
-            "run": {"command": tool.command},
-            "summary": format!("{} is configured for this project: `{command}` passes.", tool.title),
+            "run": {"command": program},
+            "summary": tool.summary.map_or_else(
+                || format!("{} is configured for this project: `{command}` passes.", tool.title),
+                str::to_owned,
+            ),
         });
-        if !tool.args.is_empty() {
-            standard["run"]["args"] = json!(tool.args);
+        if !args.is_empty() {
+            standard["run"]["args"] = json!(args);
+        }
+        if tool.summary.is_some() {
+            standard["level"] = json!("advise");
         }
         if !tool.languages.is_empty() {
             standard["scope"] = json!({"languages": tool.languages});
@@ -620,6 +922,182 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
     Ok(json!({"proposals": proposals, "declared": covered}))
 }
 
+/// How many member repositories a workspace root reads.
+pub const MAX_MEMBERS: usize = 16;
+
+/// A folder name as the leading part of a standard's id.
+fn slug(member: &str) -> String {
+    let mut slug = String::new();
+    for character in member.chars() {
+        if character.is_ascii_alphanumeric() {
+            slug.push(character.to_ascii_lowercase());
+        } else if !slug.is_empty() && !slug.ends_with('-') {
+            slug.push('-');
+        }
+    }
+    let slug = slug.trim_end_matches('-');
+    if slug.is_empty() {
+        "member".into()
+    } else {
+        slug.to_string()
+    }
+}
+
+fn commit_format(standard: &Value) -> bool {
+    standard["anchor"]
+        .as_str()
+        .and_then(anchors::find)
+        .is_some_and(|anchor| anchor.input() == Some(anchors::Input::CommitMessage))
+}
+
+/// One member's proposal as the workspace above it holds it: the id led by the member's
+/// name, files and paths led by its folder, a command run in that folder.
+fn within(member: &str, proposal: &Value) -> Value {
+    let mut proposal = proposal.clone();
+    let inside = |path: &str| format!("{member}/{path}");
+    let standard = &mut proposal["standard"];
+    standard["id"] = json!(format!(
+        "{}-{}",
+        slug(member),
+        standard["id"].as_str().unwrap_or_default()
+    ));
+    if let Some(file) = standard["file"].as_str().map(inside) {
+        standard["file"] = json!(file);
+    }
+    if standard.get("run").is_some() {
+        let directory = match standard["run"]["cwd"].as_str() {
+            Some(cwd) if cwd != "." => inside(cwd),
+            _ => member.to_string(),
+        };
+        standard["run"]["cwd"] = json!(directory);
+    }
+    let paths: Vec<String> = match standard["scope"]["paths"].as_array() {
+        Some(paths) => paths.iter().filter_map(Value::as_str).map(inside).collect(),
+        None => vec![member.to_string()],
+    };
+    if standard.get("scope").is_none() {
+        standard["scope"] = json!({});
+    }
+    standard["scope"]["paths"] = json!(paths);
+    for evidence in proposal["evidence"].as_array_mut().into_iter().flatten() {
+        if let Some(file) = evidence["file"].as_str().map(inside) {
+            evidence["file"] = json!(file);
+        }
+    }
+    proposal["member"] = json!(member);
+    proposal
+}
+
+/// What a workspace root is held to: `own`, the result of [`propose`] for its own files,
+/// and each member repository's result, every standard kept to the member's folder. A
+/// commit format cannot be kept to a folder, so it is proposed only when every member has
+/// it. `settings` are the workspace's; a member's proposal that does not validate there, or
+/// that the workspace already declares, is left out.
+pub fn workspace(
+    settings: &Value,
+    mut own: Value,
+    members: &[(&str, Value)],
+) -> Result<Value, String> {
+    let catalog = crate::routing::catalog::catalog()?;
+    let intents: Vec<&str> = catalog["intents"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let mut proposals = own["proposals"].as_array().cloned().unwrap_or_default();
+    let declared = settings["standards"].as_array().map_or(0, Vec::len);
+    let room = MAX_STANDARDS.saturating_sub(declared);
+    let list = |result: &Value| result["proposals"].as_array().cloned().unwrap_or_default();
+    // A commit format every member keeps, once for the workspace.
+    let shared: Vec<Value> = members
+        .first()
+        .map(|(_, first)| list(first))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|proposal| commit_format(&proposal["standard"]))
+        .filter(|proposal| {
+            members.iter().all(|(_, result)| {
+                list(result)
+                    .iter()
+                    .any(|other| other["standard"]["anchor"] == proposal["standard"]["anchor"])
+            })
+        })
+        .collect();
+    let taken = |proposals: &[Value], id: &Value| {
+        proposals.iter().any(|known| known["standard"]["id"] == *id)
+            || settings["standards"]
+                .as_array()
+                .is_some_and(|known| known.iter().any(|standard| standard["id"] == *id))
+    };
+    for mut proposal in shared {
+        if proposals.len() < room && !taken(&proposals, &proposal["standard"]["id"]) {
+            proposal["evidence"] = json!([{"observed": "every member repository keeps it"}]);
+            proposals.push(proposal);
+        }
+    }
+    let mut skipped = Vec::new();
+    for (member, result) in members {
+        for proposal in list(result) {
+            if commit_format(&proposal["standard"]) {
+                continue;
+            }
+            let held = within(member, &proposal);
+            if declared_standard(settings, &held["standard"]) {
+                continue;
+            }
+            // Left out and said: nothing a member states disappears in silence.
+            let reason = if proposals.len() >= room {
+                Some("the workspace holds as many standards as it can".to_string())
+            } else if taken(&proposals, &held["standard"]["id"]) {
+                Some("another member's folder gives the same id".to_string())
+            } else {
+                standards::validate(&json!([held["standard"]]), &[], &intents).err()
+            };
+            match reason {
+                Some(reason) => skipped.push(json!({
+                    "member": member, "standard": held["standard"]["id"], "reason": reason,
+                })),
+                None => proposals.push(held),
+            }
+        }
+    }
+    own["proposals"] = json!(proposals);
+    if !skipped.is_empty() {
+        own["skipped"] = json!(skipped);
+    }
+    own["members"] = json!(
+        members
+            .iter()
+            .map(|(member, _)| *member)
+            .collect::<Vec<_>>()
+    );
+    Ok(own)
+}
+
+fn declared_standard(settings: &Value, standard: &Value) -> bool {
+    declared(settings, standard).is_some()
+}
+
+/// Whether `project`, a project's own configuration, declares a standard. One that does is
+/// read as it stands: nothing its files state is added.
+pub fn declares(project: &Value) -> bool {
+    project["standards"]
+        .as_array()
+        .is_some_and(|standards| !standards.is_empty())
+}
+
+/// The layer `proposed` (the result of [`propose`]) stands for in a project that declares no
+/// standards: each proposed standard, as proposed. `None` when nothing is proposed.
+pub fn layer(proposed: &Value) -> Option<Value> {
+    let standards: Vec<&Value> = proposed["proposals"]
+        .as_array()?
+        .iter()
+        .map(|proposal| &proposal["standard"])
+        .collect();
+    (!standards.is_empty()).then(|| json!({"formatVersion": 1, "standards": standards}))
+}
+
 /// How many proposed standards a session start names; the rest are counted.
 const OFFER_NAMES: usize = 6;
 
@@ -630,9 +1108,7 @@ const OFFER_NAMES: usize = 6;
 /// declarations, and what they cover is already left out of `proposed`. `None` when the
 /// project declares a standard, nothing is proposed, or `shown` already records this set.
 pub fn offer(project: &Value, proposed: &Value, shown: &Value) -> Option<(Value, Value)> {
-    let declares = project["standards"]
-        .as_array()
-        .is_some_and(|standards| !standards.is_empty());
+    let declares = declares(project);
     let ids: Vec<&str> = proposed["proposals"]
         .as_array()?
         .iter()
@@ -663,8 +1139,9 @@ pub fn offer_line(offer: &Value) -> String {
         .collect();
     let more = (count as usize).saturating_sub(names.len());
     format!(
-        "Craft: this project's own files support {count} standard{} it has not declared ({}{}). `craft standards --propose` lists them with evidence; none is active until you add it.",
+        "Craft: {count} standard{} read from this project's own files {} in effect ({}{}). `craft standards --propose` shows the evidence; standards declared in .craft/project.json replace them.",
         if count == 1 { "" } else { "s" },
+        if count == 1 { "is" } else { "are" },
         names.join(", "),
         if more > 0 {
             format!(", {more} more")
@@ -683,7 +1160,7 @@ mod tests {
             .iter()
             .map(|(path, text)| Source { path, text: *text })
             .collect();
-        propose(settings, &sources).expect("proposal")
+        propose(settings, &sources, &Practice::default()).expect("proposal")
     }
 
     fn ids(result: &Value) -> Vec<&str> {
@@ -902,6 +1379,374 @@ mod tests {
             .expect("accepted proposals validate");
     }
 
+    fn runs(result: &Value) -> Vec<(String, String)> {
+        result["proposals"]
+            .as_array()
+            .expect("proposals")
+            .iter()
+            .filter(|proposal| proposal["form"] == "run")
+            .map(|proposal| {
+                let run = &proposal["standard"]["run"];
+                let words: Vec<&str> = std::iter::once(run["command"].as_str().expect("command"))
+                    .chain(
+                        run["args"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str),
+                    )
+                    .collect();
+                (
+                    proposal["standard"]["id"].as_str().expect("id").to_string(),
+                    words.join(" "),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_tool_is_proposed_with_the_command_of_the_build_the_project_has() {
+        let gradle = scan(
+            &json!({}),
+            &[
+                ("gradlew", None),
+                (
+                    "build.gradle.kts",
+                    Some(
+                        "plugins { id(\"com.diffplug.spotless\"); id(\"io.gitlab.arturbosch.detekt\") }\nktlint {}\n",
+                    ),
+                ),
+                ("config/checkstyle/checkstyle.xml", None),
+            ],
+        );
+        let pairs = |list: &[(&str, &str)]| -> Vec<(String, String)> {
+            list.iter()
+                .map(|(id, command)| (id.to_string(), command.to_string()))
+                .collect()
+        };
+        assert_eq!(
+            runs(&gradle),
+            pairs(&[
+                ("checkstyle", "./gradlew checkstyleMain"),
+                ("spotless", "./gradlew spotlessCheck"),
+                ("ktlint", "./gradlew ktlintCheck"),
+                ("detekt", "./gradlew detekt"),
+            ])
+        );
+        let maven = scan(
+            &json!({}),
+            &[(
+                "pom.xml",
+                Some(
+                    "<artifactId>spotless-maven-plugin</artifactId><artifactId>maven-checkstyle-plugin</artifactId>",
+                ),
+            )],
+        );
+        assert_eq!(
+            runs(&maven),
+            pairs(&[
+                ("checkstyle", "mvn -q checkstyle:check"),
+                ("spotless", "mvn -q spotless:check"),
+            ])
+        );
+        // A configuration without the build that runs it states no command.
+        assert!(runs(&scan(&json!({}), &[("checkstyle.xml", None)])).is_empty());
+
+        let others = scan(
+            &json!({}),
+            &[
+                ("tsconfig.json", None),
+                (
+                    "pyproject.toml",
+                    Some("[tool.mypy]\nstrict = true\n[tool.pyright]\n"),
+                ),
+                ("go.mod", None),
+                ("Shop.sln", None),
+                ("src/Nested.csproj", None),
+            ],
+        );
+        assert_eq!(
+            runs(&others),
+            pairs(&[
+                ("typescript", "npx tsc --noEmit"),
+                ("mypy", "mypy ."),
+                ("pyright", "pyright"),
+                ("go-vet", "go vet ./..."),
+                ("dotnet-format", "dotnet format --verify-no-changes"),
+            ])
+        );
+        let solution = &others["proposals"][4];
+        assert_eq!(solution["evidence"], json!([{"file": "Shop.sln"}]));
+        // A toolchain file is no request for a check: its tool is advised, a configured one
+        // checked.
+        let levels: Vec<&str> = others["proposals"]
+            .as_array()
+            .expect("proposals")
+            .iter()
+            .filter_map(|proposal| proposal["level"].as_str())
+            .collect();
+        assert_eq!(levels, ["check", "check", "check", "advise", "advise"]);
+        // The project's own script for the same job replaces the bare tool.
+        let scripted = scan(
+            &json!({}),
+            &[
+                ("tsconfig.json", None),
+                (
+                    "package.json",
+                    Some(r#"{"scripts":{"typecheck":"tsc -p ."}}"#),
+                ),
+            ],
+        );
+        assert_eq!(
+            runs(&scripted),
+            pairs(&[("typecheck", "npm run typecheck")])
+        );
+        for result in [&gradle, &maven, &others] {
+            let standards: Vec<&Value> = result["proposals"]
+                .as_array()
+                .expect("proposals")
+                .iter()
+                .map(|proposal| &proposal["standard"])
+                .collect();
+            crate::contracts::validate_project(
+                &json!({"formatVersion": 1, "standards": standards}),
+            )
+            .expect("valid");
+        }
+        assert!(endings().contains(&".sln"));
+    }
+
+    fn practised(subjects: &[String], files: &[(&str, Option<&str>)]) -> Value {
+        let sources: Vec<Source> = files
+            .iter()
+            .map(|(path, text)| Source { path, text: *text })
+            .collect();
+        propose(&json!({}), &sources, &Practice { subjects }).expect("proposal")
+    }
+
+    fn subjects(kept: usize, other: usize) -> Vec<String> {
+        (0..kept)
+            .map(|n| format!("fix(api): correct case {n}"))
+            .chain((0..other).map(|n| format!("Update things {n}")))
+            .collect()
+    }
+
+    #[test]
+    fn a_commit_format_most_recent_commits_keep_is_proposed_without_being_named() {
+        let result = practised(&subjects(16, 4), &[]);
+        assert_eq!(ids(&result), ["commits"]);
+        assert_eq!(
+            result["proposals"][0]["evidence"],
+            json!([{"observed": "16 of the last 20 commit subjects follow it"}])
+        );
+        // Under four in five, or too little history to judge: nothing.
+        assert!(ids(&practised(&subjects(15, 5), &[])).is_empty());
+        assert!(ids(&practised(&subjects(19, 0), &[])).is_empty());
+        // Where a file names it, the file is the evidence.
+        let named = practised(
+            &subjects(20, 0),
+            &[("AGENTS.md", Some("We use Conventional Commits.\n"))],
+        );
+        assert_eq!(
+            named["proposals"][0]["evidence"],
+            json!([{"file": "AGENTS.md", "line": 1}])
+        );
+    }
+
+    #[test]
+    fn a_changelog_or_record_format_is_proposed_only_when_what_exists_passes_its_check() {
+        let kept =
+            "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-03-01\n\n### Added\n\n- x\n";
+        let result = practised(&[], &[("CHANGELOG.md", Some(kept))]);
+        assert_eq!(ids(&result), ["changelog"]);
+        assert_eq!(
+            result["proposals"][0]["evidence"][0]["file"],
+            "CHANGELOG.md"
+        );
+        // Plain version headings are another format: proposing the check would only nag.
+        let plain = "# Changelog\n\n## Unreleased\n\n## 1.0.0\n\n- x\n";
+        assert!(ids(&practised(&[], &[("CHANGELOG.md", Some(plain))])).is_empty());
+
+        let record = |number: usize| {
+            format!(
+                "# {number}. Use SQLite\n\n## Context\n\nJobs are lost on restart.\n\n## Decision\n\nWe will use SQLite.\n\n## Status\n\nAccepted\n\n## Consequences\n\nThe volume needs backups.\n"
+            )
+        };
+        let (first, second) = (record(1), record(2));
+        let records = practised(
+            &[],
+            &[
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(&first)),
+                ("docs/adr/0002-use-sqlite.md", Some(&second)),
+            ],
+        );
+        assert_eq!(ids(&records), ["nygard-adr"]);
+        assert_eq!(
+            records["proposals"][0]["standard"]["scope"],
+            json!({"paths": ["docs/adr"]})
+        );
+        // One record that does not follow it, or a single record: no format to hold to.
+        let free = "# Use SQLite\n\nBecause.\n";
+        for files in [
+            vec![
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(first.as_str())),
+                ("docs/adr/0002-notes.md", Some(free)),
+            ],
+            vec![
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(first.as_str())),
+            ],
+        ] {
+            assert!(ids(&practised(&[], &files)).is_empty());
+        }
+    }
+
+    #[test]
+    fn a_workspace_holds_each_member_to_its_own_standards_within_its_folder() {
+        let named = Some("We use Conventional Commits.\n");
+        let api = scan(
+            &json!({}),
+            &[
+                ("AGENTS.md", named),
+                ("rustfmt.toml", None),
+                ("CONTRIBUTING.md", Some("# Contributing\n")),
+                ("docs/adr", None),
+                ("docs/adr/0001-a.md", None),
+            ],
+        );
+        let web = scan(&json!({}), &[("AGENTS.md", named), ("biome.json", None)]);
+        let own = scan(
+            &json!({}),
+            &[(".editorconfig", Some("[*]\nindent_style = tab\n"))],
+        );
+        let members = [("Shop.API", api.clone()), ("web", web.clone())];
+        let result = workspace(&json!({}), own.clone(), &members).expect("workspace");
+        assert_eq!(
+            ids(&result),
+            [
+                "editorconfig",
+                "commits",
+                "shop-api-rustfmt",
+                "shop-api-contributing",
+                "web-biome"
+            ]
+        );
+        let standard = |id: &str| {
+            result["proposals"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|proposal| proposal["standard"]["id"] == id)
+                .unwrap_or_else(|| panic!("{id}"))
+                .clone()
+        };
+        let rustfmt = standard("shop-api-rustfmt");
+        assert_eq!(rustfmt["standard"]["run"]["cwd"], "Shop.API");
+        assert_eq!(
+            rustfmt["standard"]["scope"],
+            json!({"languages": ["rust"], "paths": ["Shop.API"]})
+        );
+        assert_eq!(
+            rustfmt["evidence"],
+            json!([{"file": "Shop.API/rustfmt.toml"}])
+        );
+        assert_eq!(
+            standard("shop-api-contributing")["standard"]["file"],
+            "Shop.API/CONTRIBUTING.md"
+        );
+        assert_eq!(result["members"], json!(["Shop.API", "web"]));
+        let layer = layer(&result).expect("layer");
+        crate::contracts::validate_project(&layer).expect("valid at the workspace root");
+
+        // A commit format one member does not keep is nobody's at the workspace.
+        let plain = scan(&json!({}), &[("biome.json", None)]);
+        let mixed = workspace(&json!({}), own, &[("api", api), ("web", plain)]).expect("mixed");
+        assert!(!ids(&mixed).contains(&"commits"), "{:?}", ids(&mixed));
+        // Two folders whose names give the same id: the second is left out and said.
+        let twins = workspace(
+            &json!({}),
+            json!({"proposals": []}),
+            &[("my-app", web.clone()), ("my_app", web.clone())],
+        )
+        .expect("twins");
+        assert_eq!(ids(&twins), ["commits", "my-app-biome"]);
+        assert_eq!(twins["skipped"][0]["member"], "my_app");
+        assert_eq!(twins["skipped"][0]["standard"], "my-app-biome");
+        // What the workspace declares itself is not brought in again.
+        let declared = json!({"standards": [
+            {"id": "format", "run": {"command": "npx", "args": ["biome", "check", "."], "cwd": "web"}}]});
+        let covered = workspace(&declared, json!({"proposals": []}), &[("web", web)]).unwrap();
+        assert!(!ids(&covered).contains(&"web-biome"), "{:?}", ids(&covered));
+    }
+
+    #[test]
+    fn what_the_files_state_is_a_layer_that_validates_with_the_files_it_names() {
+        let proposed = scan(
+            &json!({}),
+            &[
+                ("rustfmt.toml", None),
+                ("CONTRIBUTING.md", Some("# Contributing\n")),
+            ],
+        );
+        let document = layer(&proposed).expect("layer");
+        assert_eq!(document["standards"].as_array().map(Vec::len), Some(2));
+        assert_eq!(document["standards"][1]["file"], "CONTRIBUTING.md");
+        let read = |origin| crate::layers::Layer {
+            origin,
+            label: origin.into(),
+            document: &document,
+        };
+        crate::layers::validate(&read(crate::layers::DETECTED)).expect("the project's files");
+        // The same entry in a layer written for many projects names a file it cannot know.
+        assert!(crate::layers::validate(&read("organization")).is_err());
+        assert!(layer(&scan(&json!({}), &[])).is_none());
+        assert!(declares(
+            &json!({"standards": [{"id": "a", "disabled": true}]})
+        ));
+        assert!(!declares(&json!({"standards": []})));
+    }
+
+    #[test]
+    fn a_standard_a_layer_declares_wins_over_the_one_read_from_the_files() {
+        let proposed = scan(&json!({}), &[("rustfmt.toml", None), (".flake8", None)]);
+        let detected = layer(&proposed).expect("layer");
+        let organization = json!({"standards": [
+            {"id": "rustfmt", "run": {"command": "cargo", "args": ["fmt", "--check"]}}]});
+        let layers = [
+            crate::layers::Layer {
+                origin: crate::layers::DETECTED,
+                label: "detected".into(),
+                document: &detected,
+            },
+            crate::layers::Layer {
+                origin: "organization",
+                label: "organization".into(),
+                document: &organization,
+            },
+        ];
+        let resolved = crate::contracts::layered_settings(
+            &json!({"formatVersion": 1}),
+            &layers,
+            &json!({}),
+            &crate::contracts::Documents::default(),
+            true,
+        )
+        .expect("settings");
+        let standards = resolved["settings"]["standards"]
+            .as_array()
+            .expect("standards");
+        assert_eq!(standards.len(), 2);
+        assert_eq!(
+            standards[0]["run"]["args"],
+            json!(["fmt", "--check"]),
+            "the organization's command, not the detected one"
+        );
+        assert_eq!(resolved["entries"]["standards"]["rustfmt"], "organization");
+        assert_eq!(resolved["entries"]["standards"]["flake8"], "detected");
+    }
+
     #[test]
     fn an_undeclared_project_is_offered_its_proposals_once_per_set() {
         let proposed = scan(&json!({}), &[("rustfmt.toml", None), (".flake8", None)]);
@@ -910,10 +1755,10 @@ mod tests {
             offer,
             json!({"count": 2, "standards": ["rustfmt", "flake8"]})
         );
-        assert_eq!(
-            offer_line(&offer),
-            "Craft: this project's own files support 2 standards it has not declared (rustfmt, flake8). `craft standards --propose` lists them with evidence; none is active until you add it."
-        );
+        let line = offer_line(&offer);
+        for part in ["2 standards", "in effect", "(rustfmt, flake8)", "--propose"] {
+            assert!(line.contains(part), "{line}");
+        }
         assert!(
             super::offer(&json!({}), &proposed, &record).is_none(),
             "same set"

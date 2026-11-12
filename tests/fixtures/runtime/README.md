@@ -20,7 +20,9 @@ built-in mappings (`services-contracts.json` replays it with them). The acceptan
 feature-outcome cases were removed as copies of `view-contracts.json` and
 `feature-contracts.json`. Correction: `settings:precedence` lists every routing switch in the
 bundled defaults (`standardChecks` through `projectChecks`), each with its `bundled` origin,
-as `settings-contracts.json` does.
+as `settings-contracts.json` does. Correction: effective settings carry `safety.enabled: true` with
+a `bundled` origin unless a layer or the project sets it, here and in the nine
+`settings-contracts.json` cases that return settings: the safety policy is on by default.
 
 The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,
 continuation, blocked attempts, checkpoint binding, context selection and budgets,

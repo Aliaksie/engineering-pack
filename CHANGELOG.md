@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+- The safety policy is on with no configuration: a destructive shell command is refused in a
+  project that declares nothing. `"safety": {"enabled": false}` in the project, organization
+  or user file turns it off, and `disables` leaves single rules out. A project that relied on
+  the policy being off until enabled now sees those commands refused.
+- The safety policy and the read-only review guard no longer refuse a command for what the
+  text of a here-document says: the text is data unless a shell is named on the line that
+  opens it. Substitutions in a document with an unquoted delimiter are still read.
+- A project that declares no standards is held to the ones its own files state: what
+  `craft standards --propose` lists is in effect without being copied, as a `detected` layer
+  beneath the organization and user files. Commit, changelog and decision-record formats are
+  checked, contributor documents advised, and lint and format commands run by `craft check`
+  when it is called; no hook starts them. Standards the project declares replace them, and
+  `routing.conventionProposals: false` turns this off. The session-start line now says what
+  is in effect instead of what could be accepted. In `craft config --json`, `order` and
+  `layers` carry the `detected` layer.
+- The conventions scan recognizes more: TypeScript (`tsconfig.json`), mypy, Pyright, and
+  Checkstyle, Spotless, ktlint and detekt through the project's Gradle or Maven build. A Go
+  module and a .NET project are advised of `go vet` and `dotnet format`, which `craft check`
+  runs only once the project declares them. It also proposes a format the project keeps without naming it: Conventional
+  Commits when four in five of the last commit subjects follow it, Keep a Changelog and MADR
+  or Nygard decision records when the existing files already pass the check.
+- A folder holding several repositories works as one workspace: opened there, a session is
+  held to each repository's own standards within that repository's folder, with one `.craft`
+  at the workspace root. The stop review and the commit check do not yet run there.
+- A session stays with the project it was opened in. On Claude Code a hook reads the project
+  from the directory the host was opened in, so a shell that moved into another repository no
+  longer starts a second session record there. A command run without `--root` from a
+  subfolder works on the project around it instead of creating `.craft` in the subfolder.
+- Fixed: the stop review of a project whose root is a folder below the top of its repository
+  read changed files from the wrong place and reviewed nothing. It now reviews that project's
+  files and leaves its neighbours' alone.
+
 ## 0.0.6
 
 This release lets an organization or a user declare a baseline once that every project

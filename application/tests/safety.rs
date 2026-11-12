@@ -1,6 +1,6 @@
 //! The project's safety policy at the host boundary: a destructive shell command is refused
 //! in each host's own format before it runs, other commands pass with no permission
-//! decision, and a project that has not turned the policy on is never refused.
+//! decision. The policy is on until a project or a baseline layer turns it off.
 mod support;
 use serde_json::{Value, json};
 use support::Repo;
@@ -98,16 +98,22 @@ fn an_allowed_command_gets_no_permission_decision() {
 }
 
 #[test]
-fn without_the_policy_nothing_is_refused() {
+fn a_project_that_declares_nothing_is_protected_and_one_that_turns_the_policy_off_is_not() {
+    let command = "sudo rm -rf / && git push --force";
+    let bare = Repo::new("safety-default", &[("README.md", "x\n")]);
+    let refused = shell("claude", bare.path(), command);
+    assert!(refused.starts_with("deny "), "{refused}");
+    assert!(
+        refused.contains("rule `system-administration`"),
+        "{refused}"
+    );
+    let harmless = shell("claude", bare.path(), "git status && rm -rf target");
+    assert!(!harmless.starts_with("deny"), "{harmless}");
+
     let off = r#"{"formatVersion":1,"safety":{"enabled":false}}"#;
-    for files in [
-        vec![("README.md", "x\n")],
-        vec![(".craft/project.json", off)],
-    ] {
-        let repo = Repo::new("safety-off", &files);
-        let output = shell("claude", repo.path(), "sudo rm -rf / && git push --force");
-        assert!(!output.starts_with("deny"), "{output}");
-    }
+    let repo = Repo::new("safety-off", &[(".craft/project.json", off)]);
+    let output = shell("claude", repo.path(), command);
+    assert!(!output.starts_with("deny"), "{output}");
 }
 
 #[test]

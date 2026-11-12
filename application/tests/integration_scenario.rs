@@ -393,7 +393,7 @@ fn scenario(host: Host) {
     let config = host.cli(&repo, &["config", "--explain"]).unwrap();
     assert_eq!(
         config["order"],
-        json!(["bundled", "organization", "user", "project"])
+        json!(["bundled", "detected", "organization", "user", "project"])
     );
     for name in ["organization", "user", "project"] {
         assert_eq!(layer(&config, name)["state"], "loaded", "{name}");

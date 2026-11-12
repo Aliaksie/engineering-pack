@@ -104,13 +104,16 @@ and exits 2, for CI or a Git hook.
   a project declares for the changed files, each at its stage (`step`, `commit`, `pr`, `ci`).
   A check left to a later stage is listed as not run, never as passed
   ([project checks](docs/ROUTING.md#project-checks)).
-- **A safety policy you turn on.** With `safety.enabled`, recursive deletes outside the
-  project, forced pushes, Git commands that discard uncommitted work and system-level commands
-  are refused before they run, together with the project's own rules. It only refuses and
-  never approves ([security](docs/SECURITY.md)).
-- **Standards from what you already have.** `craft standards --propose` reads your agent
-  instructions, contributor document and tool configuration and lists the standards they
-  support; nothing is active until you copy it.
+- **A safety policy from the first session.** Recursive deletes outside the project, forced
+  pushes, Git commands that discard uncommitted work and system-level commands are refused
+  before they run, together with the project's own rules. Each rule can be left out and
+  `safety.enabled: false` turns the policy off. It only refuses and never approves
+  ([security](docs/SECURITY.md)).
+- **Standards from what you already have.** With no configuration, a project is held to the
+  standards its own files state or its history keeps: conventions named in agent instructions
+  or the contributor document, lint, format and type-check configuration, and a commit,
+  changelog or decision-record format it already follows. `craft standards --propose` lists them with their
+  evidence; standards you declare replace them.
 - **One line on what happened.** When a turn ends, Claude Code, Codex and Gemini CLI show
   what Craft did in the session: findings raised and fixed, test runs that ran no test,
   lookups answered and contexts restored. Nothing happened, no line.
@@ -188,9 +191,10 @@ covered in [installation](docs/INSTALL.md).
    }
    ```
 
-   `craft standards --propose` lists declarations your existing files already support
+   Until you declare standards, the ones your existing files state are in effect
    (conventions named in `AGENTS.md` or `CONTRIBUTING.md`, lint and format configuration,
-   `.editorconfig`), each with its evidence; copy the ones you accept. It writes nothing.
+   `.editorconfig`). `craft standards --propose` lists them, each with its evidence; copy
+   the ones you keep, since declared standards replace them. It writes nothing.
    `craft standards` lists what the project declares; `craft standards --commit-message <file>`
    runs the hooks' check and exits non-zero when it is not met, for a `commit-msg` hook or CI.
 
@@ -240,7 +244,7 @@ macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
 to a code host. Standards checks report; they do not block tools. Two hooks deny, and only
-shell commands: the safety policy, when a project turns it on, and craft-review's shell
+shell commands: the safety policy, unless a project turns it off, and craft-review's shell
 guard, which with `review.readOnly: true` denies common publishing commands and, while the
 project configuration is invalid, every shell command
 ([read-only sessions](docs/REVIEW.md#read-only-sessions)). Your host's permissions and your

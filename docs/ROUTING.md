@@ -63,30 +63,62 @@ level, source and a one-line `summary`; the content stays in the project.
 ]
 ```
 
-`craft standards --propose` lists the standards a project's existing files already support,
-so the first declarations need no writing by hand. It reads fixed files at the project root,
-each up to 256 KiB, and follows no links:
+A project that declares no standards is held to the ones its existing files state, and
+`craft standards --propose` lists them, so the first session needs no configuration and the
+first declarations no writing by hand. The scan reads fixed files at the project root, each
+up to 256 KiB, and follows no links:
 
 | The project has | Proposed |
 |---|---|
 | Conventional Commits, Keep a Changelog, Semantic Versioning, MADR, Nygard ADRs or Gherkin named in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot or Junie instructions, or `CONTRIBUTING.md`; a changelog preamble naming its format; a commitlint configuration extending `config-conventional` | The anchor, checked. Decision-record anchors are scoped to the first of `docs/adr`, `docs/decisions`, `docs/architecture/decisions`, `doc/adr`, `adr` that exists, and are not proposed without one |
 | A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
-| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, golangci-lint or RuboCop | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, mypy, Pyright, golangci-lint or RuboCop; a `tsconfig.json` | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Checkstyle, Spotless, ktlint or detekt configured in the project or named in its Gradle or Maven build | A `run` standard with the build's own task: `./gradlew` when the wrapper is there, else `gradle`, or `mvn`. Not proposed without the build file |
+| `go.mod`; a solution or project file (`.sln`, `.slnx`, `.csproj`, `.fsproj`) at the root | `go vet ./...`; `dotnet format --verify-no-changes`. Advised, not run: the file shows the toolchain, not a request for the check. Declare the standard to have `craft check` run it |
+| At least 20 recent commits of which four in five have a Conventional Commits subject; a changelog whose release headings already pass Keep a Changelog; two or more numbered decision records that all pass MADR or Nygard | The anchor, checked, with what was observed as its evidence. Never proposed when what exists does not pass the check |
 | `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
 
 Each proposal carries the declaration to copy and the files, with lines, that support it;
-what the configuration already declares is listed apart. Nothing is active until you copy it
-into `standards`, and Craft never writes the configuration. The scan matches names and
+what the configuration already declares is listed apart. Craft never writes the
+configuration.
+
+While the project's own file declares no `standards`, every proposal is in effect as the
+`detected` layer, beneath the organization and user files: an anchor is checked as a declared
+one is, a `file` standard is advised, and a `run` standard is a check `craft check` runs when
+it is called. No hook starts a command read from the project's files. A standard of the same
+id in the organization or user file wins. Once the project declares a standard of its own,
+only declared standards apply: copy the proposals to keep. Any entry counts, a lone
+`{"id": …, "disabled": true}` included, so one detected standard cannot be removed alone:
+declare the ones to keep. `craft config` shows the layer,
+and what the files state never makes a valid configuration invalid.
+
+A format the project keeps without naming it is read from the last 50 commit subjects
+(merges left out), `CHANGELOG.md` and the five newest numbered records of the decision
+folder. A hook asks Git once per commit the checkout is at and keeps the answer in
+`.craft/state/notices/practice.json`; a command you run keeps nothing.
+
+A root that is no repository and has no `.craft/project.json` is read as a workspace: the
+scan also reads each direct folder that is a Git repository, at most 16, and holds every
+standard it finds there to that folder. The id is led by the folder's name (`api-rustfmt`),
+`scope.paths` and files by the folder, and a command runs in it, so a file is routed and
+checked with its own repository's standards and not its neighbour's. A commit format is
+brought to the workspace only when every member repository has it. A member's standard that
+cannot be held at the workspace (two folders whose names give the same id, no room left) is
+listed under `skipped` with the reason. State stays in the one
+`.craft` at the workspace root. Not yet covered there: the stop review and the commit check,
+which read Git at the root, and a member's own `.craft/project.json`.
+
+Otherwise the scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
-packages, and a file that names a convention in order to reject it is still a match, so read
-the evidence before accepting. Agent instruction files are read for names but never proposed
+packages of one repository, and a file that names a convention in order to reject it is still a match, so read
+the evidence. Agent instruction files are read for names but never proposed
 as standards, since the host loads them itself.
 
-A session that starts in a project declaring no standards runs the same scan and says once
-how many standards the files support, to the user where the host shows a hook's message
+A session that starts in a project declaring no standards says once how many standards
+read from its files are in effect, to the user where the host shows a hook's message
 (Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
 set is not named again in any session; a changed set is. `routing.conventionProposals: false`
-turns the scan at session start off.
+turns the scan off: nothing is read from the files and nothing is said.
 
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,

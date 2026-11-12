@@ -1,5 +1,6 @@
-//! Configuration layers beneath the project: an organization baseline and a user baseline.
-//! One merge rule for every layer, later wins: bundled < organization < user < project < task.
+//! Configuration layers beneath the project: what its own files state, an organization
+//! baseline and a user baseline. One merge rule for every layer, later wins:
+//! bundled < detected < organization < user < project < task.
 //! Objects merge key by key; a scalar or a plain list replaces the earlier value whole; a list
 //! of entries with an `id` (`ENTRY_LISTS`) merges entry by entry, and an entry
 //! `{"id", "disabled": true}` removes the one an earlier layer declared.
@@ -10,7 +11,18 @@ use crate::values::{object, safe_integer};
 use serde_json::{Map, Value, json};
 
 /// Merge order, earliest first; a later layer wins.
-pub const ORDER: [&str; 5] = ["bundled", "organization", "user", "project", "task"];
+pub const ORDER: [&str; 6] = [
+    "bundled",
+    "detected",
+    "organization",
+    "user",
+    "project",
+    "task",
+];
+
+/// The layer of standards read from the project's own files while it declares none. Its
+/// entries may name those files, which a layer written for many projects may not.
+pub const DETECTED: &str = "detected";
 
 /// What a baseline layer may set. Everything else describes one repository (its modules,
 /// stack, services, permissions and evidence scope) and stays in the project file.
@@ -50,7 +62,7 @@ pub fn disabled(entry: &Value) -> bool {
     entry["disabled"] == true
 }
 
-fn shape(layer: &Value) -> Result {
+fn shape(layer: &Value, project_files: bool) -> Result {
     let map = object(layer, &FIELDS, "layer")?;
     if map.get("$schema").is_some_and(|link| !link.is_string()) {
         return Err("$schema must be a string".into());
@@ -69,6 +81,9 @@ fn shape(layer: &Value) -> Result {
         .flatten()
     {
         let id = standard["id"].as_str().unwrap_or("?");
+        if project_files {
+            continue;
+        }
         for field in ["file", "folder"] {
             if standard.get(field).is_some() {
                 return Err(format!(
@@ -154,7 +169,8 @@ fn known_switches(value: &Value, template: &Value, path: &str, ignored: &mut Vec
 
 /// Validate one layer document on its own; the error starts with the layer's label.
 pub fn validate(layer: &Layer) -> Result {
-    shape(layer.document).map_err(|error| format!("{}: {error}", layer.label))
+    shape(layer.document, layer.origin == DETECTED)
+        .map_err(|error| format!("{}: {error}", layer.label))
 }
 
 /// The layer's values as merged: without the editor link and the format version.
@@ -283,6 +299,18 @@ pub fn text(report: &Value) -> String {
     )];
     for layer in report["layers"].as_array().into_iter().flatten() {
         let Some(file) = layer["file"].as_str() else {
+            // What the project's files state has no file of its own to name.
+            if let Some(reason) = layer["reason"].as_str() {
+                lines.push(format!(
+                    "  {DETECTED}: standards read from the project's own files — not applied: {reason}"
+                ));
+            } else if layer["name"] == DETECTED && layer["values"].as_u64().is_some_and(|n| n > 0) {
+                lines.push(format!(
+                    "  {DETECTED}: standards read from the project's own files — {} value{} (`craft standards --propose` shows the evidence)",
+                    layer["values"],
+                    if layer["values"] == 1 { "" } else { "s" },
+                ));
+            }
             continue;
         };
         lines.push(format!(

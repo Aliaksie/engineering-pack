@@ -83,6 +83,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -168,6 +171,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -301,6 +305,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -386,6 +393,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -518,6 +526,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "formatVersion": 1,
             "execution": {
               "profiles": {
@@ -568,6 +579,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "formatVersion": "project",
             "execution.profiles.fast.capabilities": "project"
           },
@@ -680,6 +692,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -765,6 +780,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -907,6 +923,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -992,6 +1011,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -1158,6 +1178,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -1260,6 +1283,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -1392,6 +1416,9 @@
                 "maxWorkers": 0
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -1477,6 +1504,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "task",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -2003,6 +2031,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -2088,6 +2119,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",
@@ -2296,6 +2328,9 @@
                 "maxWorkers": 3
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -2381,6 +2416,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",

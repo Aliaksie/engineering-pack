@@ -75,6 +75,16 @@ fn mapping(host: &str, lifecycle: &str) -> Option<Value> {
     table[host]["events"].get(lifecycle).cloned()
 }
 
+/// The directory `host` was opened in, where it names one to its hooks in the environment:
+/// the shell's directory in the payload moves with the session, this one does not.
+fn project_directory(host: &str) -> Option<String> {
+    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
+    let variable = table[host]["projectDirectory"].as_str()?;
+    std::env::var(variable)
+        .ok()
+        .filter(|directory| std::path::Path::new(directory).is_absolute())
+}
+
 /// The most UTF-8 bytes of context one hook answer gives `host`: under the cap past which the
 /// host replaces or cuts the answer.
 fn ceiling(host: &str) -> usize {
@@ -411,6 +421,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
         "scope": if hook.shell { "shell" } else { "any" }, "inputStatus": status, "tool": event["tool"],
         "contextSupported": event["contextSupported"], "cwd": event["cwd"], "session": event["session"],
     });
+    if let Some(directory) = project_directory(&hook.host) {
+        facts["projectDirectory"] = json!(directory);
+    }
     if hook.shell {
         facts["command"] = event["command"].clone();
     }
@@ -554,10 +567,10 @@ fn standards_line(found: &Value) -> String {
     )
 }
 
-/// Standards the project's own files support and its configuration does not declare.
+/// Standards read from the project's own files, in effect while it declares none.
 fn conventions_line(offer: &Value) -> String {
     format!(
-        "Craft conventions scan (said once; the user was shown the same): this project's own files support standards it has not declared, and none is active. Only if the user asks to adopt them, `run` lists each with its evidence; add to `standards` in .craft/project.json the entries the user accepts: {offer}"
+        "Craft conventions scan (said once; the user was shown the same): these standards were read from this project's own files and are in effect while it declares none. `run` lists each with its evidence. Only if the user asks to change them, declare `standards` in .craft/project.json, which replace them: {offer}"
     )
 }
 

@@ -193,7 +193,7 @@ fn shared_baseline(host: &str) {
     let config = machine.json(&inherits, &["config", "--explain"]);
     assert_eq!(
         config["order"],
-        json!(["bundled", "organization", "user", "project"])
+        json!(["bundled", "detected", "organization", "user", "project"])
     );
     assert_eq!(layer(&config, "organization")["state"], "loaded");
     assert_eq!(layer(&config, "user")["state"], "loaded");
