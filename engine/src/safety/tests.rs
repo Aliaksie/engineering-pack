@@ -299,7 +299,6 @@ fn the_listing_shows_rules_in_force_with_their_source() {
         "deny": [{"id": "no-publish", "command": ["npm", "publish"]}]}});
     let listing = listing(&settings);
     assert_eq!(listing["enabled"], true);
-    assert_eq!(listing["origin"], "project");
     assert_eq!(listing["disabled"], json!(["system-administration"]));
     let ids: Vec<(&str, &str)> = listing["rules"]
         .as_array()

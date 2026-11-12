@@ -61,7 +61,8 @@ const SYSTEM: [&str; 12] = [
 ];
 const SERVICE_ACTIONS: [&str; 4] = ["stop", "disable", "mask", "kill"];
 
-/// Whether the policy is on: only when `safety.enabled` is true.
+/// Whether the policy is on in resolved settings, where it is on unless a layer or the
+/// project sets `safety.enabled` to false.
 pub fn enabled(settings: &Value) -> bool {
     settings["safety"]["enabled"] == true
 }
@@ -180,7 +181,7 @@ pub fn listing(settings: &Value) -> Value {
         .collect();
     json!({
         "enabled": enabled(settings),
-        "origin": if settings.get("safety").is_some() { "project" } else { "bundled" },
+        "origin": "bundled",
         "rules": rules,
         "disabled": off,
         "effect": "Refuses matching shell commands where the host lets a hook refuse a tool call; approves nothing. A guardrail, not a security boundary.",

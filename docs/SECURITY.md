@@ -40,13 +40,13 @@ against a labeled corpus ([contributing](CONTRIBUTING.md#hook-diagnostics)).
 
 ## Safety policy
 
-`safety` in `.craft/project.json` turns on rules that refuse destructive shell commands
-before they run, on hosts where a hook can refuse a tool call (Claude Code, Codex, Cursor,
-Copilot CLI, Gemini CLI). It is off until the project sets `enabled`:
+Craft refuses destructive shell commands before they run, on hosts where a hook can refuse
+a tool call (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI). The policy is on with no
+configuration. `safety` in `.craft/project.json`, or in an organization or user file, leaves
+rules out, adds the project's own or turns the policy off with `"enabled": false`:
 
 ```json
 "safety": {
-  "enabled": true,
   "disables": ["system-administration"],
   "deny": [{ "id": "infra-destroy", "command": ["terraform", "destroy"],
              "reason": "tearing down shared infrastructure" }]

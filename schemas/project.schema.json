@@ -1027,12 +1027,12 @@
     "safety": {
       "type": "object",
       "required": [],
-      "description": "Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "description": "Rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Turn the policy on. Off, no command is refused."
+          "default": true,
+          "description": "Whether the policy is on. Set `false` to turn it off: no command is refused."
         },
         "disables": {
           "type": "array",

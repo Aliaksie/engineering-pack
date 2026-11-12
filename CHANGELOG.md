@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The safety policy is on with no configuration: a destructive shell command is refused in a
+  project that declares nothing. `"safety": {"enabled": false}` in the project, organization
+  or user file turns it off, and `disables` leaves single rules out. A project that relied on
+  the policy being off until enabled now sees those commands refused.
+
 ## 0.0.6
 
 This release lets an organization or a user declare a baseline once that every project

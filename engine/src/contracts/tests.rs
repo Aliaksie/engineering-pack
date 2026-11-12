@@ -58,6 +58,34 @@ fn frozen_settings_cases_replay() {
 }
 
 #[test]
+fn the_safety_policy_is_on_until_a_layer_or_the_project_turns_it_off_and_no_task_can() {
+    let resolved = |project: Value| effective_settings(&project, &json!({}), &json!({})).unwrap();
+    let shipped = crate::safety::layered_listing(&resolved(json!({"formatVersion": 1})));
+    assert_eq!(
+        (&shipped["enabled"], &shipped["origin"]),
+        (&json!(true), &json!("bundled"))
+    );
+    assert_eq!(shipped["rules"].as_array().map(Vec::len), Some(5));
+
+    let narrowed = resolved(json!({"formatVersion": 1, "safety": {"disables": ["force-push"]}}));
+    assert_eq!(narrowed["settings"]["safety"]["enabled"], true);
+
+    let off = crate::safety::layered_listing(&resolved(
+        json!({"formatVersion": 1, "safety": {"enabled": false}}),
+    ));
+    assert_eq!(
+        (&off["enabled"], &off["origin"]),
+        (&json!(false), &json!("project"))
+    );
+
+    let task = json!({"safety": {"enabled": false}});
+    assert!(effective_settings(&json!({"formatVersion": 1}), &json!({}), &task).is_err());
+    let user = effective_settings(&json!({"formatVersion": 1}), &task, &json!({})).unwrap();
+    assert_eq!(user["origins"]["safety.enabled"], "user");
+    assert_eq!(user["settings"]["safety"]["enabled"], false);
+}
+
+#[test]
 fn result_key_order_matches_javascript() {
     let result = effective_settings(&json!({"formatVersion": 1}), &json!({}), &json!({})).unwrap();
     let keys: Vec<_> = result["settings"]
@@ -73,6 +101,7 @@ fn result_key_order_matches_javascript() {
             "checkpoint",
             "workspace",
             "efficiency",
+            "safety",
             "execution",
             "formatVersion"
         ]

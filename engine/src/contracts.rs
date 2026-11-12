@@ -666,6 +666,11 @@ pub fn default_settings() -> Value {
     })
 }
 
+/// The safety policy as shipped: on, with every built-in rule.
+fn default_safety() -> Value {
+    json!({ "safety": { "enabled": true } })
+}
+
 /// Logical classes are declarations, not measured rankings or vendor model names.
 fn default_execution() -> Value {
     let roles: Map<String, Value> = ROLES
@@ -989,6 +994,15 @@ pub fn layered_settings(
     merge(
         &mut settings,
         defaults.as_object().expect("defaults"),
+        "bundled",
+        &mut trace,
+        "",
+    );
+    // The safety policy is on unless a layer or the project turns it off. Outside
+    // `default_settings`, so task overrides, which are checked against those, cannot.
+    merge(
+        &mut settings,
+        default_safety().as_object().expect("safety"),
         "bundled",
         &mut trace,
         "",

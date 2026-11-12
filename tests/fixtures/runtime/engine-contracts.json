@@ -5635,6 +5635,9 @@
                 "maxWorkers": 0
               }
             },
+            "safety": {
+              "enabled": true
+            },
             "execution": {
               "profiles": {
                 "economical": {
@@ -5720,6 +5723,7 @@
             "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "task",
+            "safety.enabled": "bundled",
             "execution.profiles.economical.class": "bundled",
             "execution.profiles.economical.capabilities": "bundled",
             "execution.profiles.economical.escalateTo": "bundled",

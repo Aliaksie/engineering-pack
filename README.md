@@ -104,10 +104,11 @@ and exits 2, for CI or a Git hook.
   a project declares for the changed files, each at its stage (`step`, `commit`, `pr`, `ci`).
   A check left to a later stage is listed as not run, never as passed
   ([project checks](docs/ROUTING.md#project-checks)).
-- **A safety policy you turn on.** With `safety.enabled`, recursive deletes outside the
-  project, forced pushes, Git commands that discard uncommitted work and system-level commands
-  are refused before they run, together with the project's own rules. It only refuses and
-  never approves ([security](docs/SECURITY.md)).
+- **A safety policy from the first session.** Recursive deletes outside the project, forced
+  pushes, Git commands that discard uncommitted work and system-level commands are refused
+  before they run, together with the project's own rules. Each rule can be left out and
+  `safety.enabled: false` turns the policy off. It only refuses and never approves
+  ([security](docs/SECURITY.md)).
 - **Standards from what you already have.** `craft standards --propose` reads your agent
   instructions, contributor document and tool configuration and lists the standards they
   support; nothing is active until you copy it.
@@ -240,7 +241,7 @@ macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
 to a code host. Standards checks report; they do not block tools. Two hooks deny, and only
-shell commands: the safety policy, when a project turns it on, and craft-review's shell
+shell commands: the safety policy, unless a project turns it off, and craft-review's shell
 guard, which with `review.readOnly: true` denies common publishing commands and, while the
 project configuration is invalid, every shell command
 ([read-only sessions](docs/REVIEW.md#read-only-sessions)). Your host's permissions and your

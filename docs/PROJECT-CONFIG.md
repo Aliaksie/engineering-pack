@@ -193,11 +193,11 @@ object. Review session safety.
 
 ## `safety`
 
-object. Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
+object. Rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `safety.enabled` | boolean | `false` | Turn the policy on. Off, no command is refused. |
+| `safety.enabled` | boolean | `true` | Whether the policy is on. Set `false` to turn it off: no command is refused. |
 | `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
 | `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
 | `safety.deny[].id` | string |  | Stable handle named in the refusal. |
