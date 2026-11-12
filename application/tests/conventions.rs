@@ -268,3 +268,37 @@ fn declared_standards_replace_what_the_files_state_and_the_switch_turns_it_off()
         assert_eq!(declared_ids(&repo), expected, "{config}");
     }
 }
+
+#[test]
+fn a_commit_format_the_history_keeps_is_in_effect_and_git_is_asked_once_per_commit() {
+    let repo = Repo::new("conventions-practice", &[("README.md", "x\n")]);
+    for number in 0..20 {
+        let subject = format!("fix: correct case {number}");
+        repo.git(&["commit", "-q", "--allow-empty", "-m", &subject]);
+    }
+    assert_eq!(declared_ids(&repo), ["commits"]);
+    // A command a person runs keeps nothing in the project's state; a hook does.
+    let kept = repo.root.join(".craft/state/notices/practice.json");
+    assert!(!kept.exists());
+    assert!(start("claude", &repo, "S1").contains("commits"));
+    let proposed = propose(&repo);
+    let evidence = proposed["proposals"][0]["evidence"][0]["observed"]
+        .as_str()
+        .expect("observed");
+    assert!(evidence.contains("commit subjects follow it"), "{evidence}");
+    // The answer is kept for the commit the checkout is at: the next command reads it
+    // instead of starting Git, and a new commit asks again.
+    let record: Value =
+        serde_json::from_str(&std::fs::read_to_string(&kept).expect("kept")).expect("record");
+    let mut edited = record.clone();
+    edited["subjects"] = json!([]);
+    std::fs::write(&kept, edited.to_string()).expect("write");
+    assert!(declared_ids(&repo).is_empty(), "the kept answer is read");
+    repo.git(&["commit", "-q", "--allow-empty", "-m", "fix: one more"]);
+    assert_eq!(declared_ids(&repo), ["commits"]);
+    assert_eq!(
+        std::fs::read_to_string(&kept).expect("kept"),
+        edited.to_string(),
+        "only a hook writes"
+    );
+}

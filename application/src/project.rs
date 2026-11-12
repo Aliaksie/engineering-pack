@@ -215,6 +215,9 @@ fn project_file(root: &Path) -> PathBuf {
 enum Detect {
     /// The standards the project's own files state, while it declares none.
     Conventions,
+    /// The same for a host hook, which runs on every event: what Git was asked is kept in
+    /// the project's state. A command a person runs writes no state for it.
+    Kept,
     /// Nothing: the settings as the files of the layers declare them.
     Nothing,
 }
@@ -260,10 +263,13 @@ fn resolve(
     // A project that declares no standards is held to the ones its own files state. Read
     // against the settings without them, so a standard a layer declares is not stated twice.
     // What the files state never invalidates a configuration that is valid without it.
-    let detected = (detect == Detect::Conventions
+    let detected = (detect != Detect::Nothing
         && !craft_engine::conventions::declares(&project)
         && settings["settings"]["routing"]["conventionProposals"] == true)
-        .then(|| crate::conventions::proposed(root, &settings["settings"]).ok())
+        .then(|| {
+            let keep = detect == Detect::Kept;
+            crate::conventions::proposed(root, &settings["settings"], keep).ok()
+        })
         .flatten()
         .and_then(|proposed| craft_engine::conventions::layer(&proposed));
     if let Some(document) = &detected {
@@ -326,7 +332,8 @@ pub(crate) fn hook_loaded(
     root: &Path,
 ) -> Result<Value, Failure> {
     let operation = recorder.start("project.loaded", Some(parent));
-    let loaded = settings(root, None);
+    let loaded = resolve(root, Sources::default(), &json!({}), false, Detect::Kept)
+        .map(|(mut resolved, _)| resolved["settings"].take());
     match &loaded {
         Ok(settings) => {
             let digest = craft_engine::digest(&craft_engine::canonical(settings));

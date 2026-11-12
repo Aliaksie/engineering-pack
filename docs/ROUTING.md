@@ -72,7 +72,10 @@ up to 256 KiB, and follows no links:
 |---|---|
 | Conventional Commits, Keep a Changelog, Semantic Versioning, MADR, Nygard ADRs or Gherkin named in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot or Junie instructions, or `CONTRIBUTING.md`; a changelog preamble naming its format; a commitlint configuration extending `config-conventional` | The anchor, checked. Decision-record anchors are scoped to the first of `docs/adr`, `docs/decisions`, `docs/architecture/decisions`, `doc/adr`, `adr` that exists, and are not proposed without one |
 | A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
-| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, golangci-lint or RuboCop | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, mypy, Pyright, golangci-lint or RuboCop; a `tsconfig.json` | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Checkstyle, Spotless, ktlint or detekt configured in the project or named in its Gradle or Maven build | A `run` standard with the build's own task: `./gradlew` when the wrapper is there, else `gradle`, or `mvn`. Not proposed without the build file |
+| `go.mod`; a solution or project file (`.sln`, `.slnx`, `.csproj`, `.fsproj`) at the root | `go vet ./...`; `dotnet format --verify-no-changes` |
+| At least 20 recent commits of which four in five have a Conventional Commits subject; a changelog whose release headings already pass Keep a Changelog; two or more numbered decision records that all pass MADR or Nygard | The anchor, checked, with what was observed as its evidence. Never proposed when what exists does not pass the check |
 | `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
 
 Each proposal carries the declaration to copy and the files, with lines, that support it;
@@ -87,7 +90,12 @@ id in the organization or user file wins. Once the project declares a standard o
 only declared standards apply: copy the proposals to keep. `craft config` shows the layer,
 and what the files state never makes a valid configuration invalid.
 
-The scan matches names and
+A format the project keeps without naming it is read from the last 50 commit subjects
+(merges left out), `CHANGELOG.md` and the five newest numbered records of the decision
+folder. A hook asks Git once per commit the checkout is at and keeps the answer in
+`.craft/state/notices/practice.json`; a command you run keeps nothing.
+
+Otherwise the scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
 packages, and a file that names a convention in order to reject it is still a match, so read
 the evidence. Agent instruction files are read for names but never proposed

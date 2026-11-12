@@ -1,8 +1,9 @@
-//! Conventions a project already states, as ready `standards` declarations. The scan reads
-//! fixed root files and recognizes three forms: a convention named in prose that Craft can
-//! check, a lint or format tool with its configuration, and a contributor document. Nothing
-//! is inferred from code and no command written in prose is parsed; a proposal is inactive
-//! until the consumer copies it into the project configuration.
+//! Conventions a project already states or keeps, as ready `standards` declarations. The
+//! scan reads fixed root files and recognizes four forms: a convention named in prose that
+//! Craft can check, a lint or format tool with its configuration, a contributor document,
+//! and a format the project keeps without naming it (its recent commit subjects, its
+//! changelog, its decision records), proposed only when what exists already passes the
+//! check. Nothing is inferred from code and no command written in prose is parsed.
 use crate::anchors::{self, Tier};
 use crate::standards;
 use serde_json::{Value, json};
@@ -124,35 +125,56 @@ const NAMED: [Named; 6] = [
 struct Tool {
     id: &'static str,
     title: &'static str,
+    /// Root files whose presence shows the tool; `*.ext` is any root file with that ending.
     files: &'static [&'static str],
-    marker: Option<(&'static str, &'static [&'static str])>,
+    /// Shared manifests that show the tool when their text contains a needle.
+    markers: &'static [Marker],
     command: &'static str,
     args: &'static [&'static str],
+    /// The build tool that runs the check, first present file wins: `(file, command,
+    /// leading arguments)` before `args`. Empty: `command` runs it. None present: no proposal.
+    runners: &'static [Runner],
     languages: &'static [&'static str],
     /// The package script group that states the project's own command for this tool.
     script: Option<&'static str>,
+    /// What the standard says when the tool comes with the language, not from configuration.
+    summary: Option<&'static str>,
 }
 
-const TOOLS: [Tool; 10] = [
+type Marker = (&'static str, &'static [&'static str]);
+type Runner = (&'static str, &'static str, &'static [&'static str]);
+
+/// Gradle through the project's wrapper when it has one.
+const GRADLE: [Runner; 3] = [
+    ("gradlew", "./gradlew", &[]),
+    ("build.gradle", "gradle", &[]),
+    ("build.gradle.kts", "gradle", &[]),
+];
+
+const TOOLS: [Tool; 19] = [
     Tool {
         id: "rustfmt",
         title: "rustfmt",
         files: &["rustfmt.toml", ".rustfmt.toml"],
-        marker: None,
+        markers: &[],
         command: "cargo",
         args: &["fmt", "--all", "--", "--check"],
+        runners: &[],
         languages: &["rust"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "clippy",
         title: "Clippy",
         files: &["clippy.toml", ".clippy.toml"],
-        marker: Some(("Cargo.toml", &["[lints", "[workspace.lints"])),
+        markers: &[("Cargo.toml", &["[lints", "[workspace.lints"])],
         command: "cargo",
         args: &["clippy", "--all-targets"],
+        runners: &[],
         languages: &["rust"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "eslint",
@@ -169,21 +191,25 @@ const TOOLS: [Tool; 10] = [
             ".eslintrc.yml",
             ".eslintrc.yaml",
         ],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["eslint", "."],
+        runners: &[],
         languages: &["javascript", "typescript"],
         script: Some("lint"),
+        summary: None,
     },
     Tool {
         id: "biome",
         title: "Biome",
         files: &["biome.json", "biome.jsonc"],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["biome", "check", "."],
+        runners: &[],
         languages: &["javascript", "typescript"],
         script: Some("lint"),
+        summary: None,
     },
     Tool {
         id: "prettier",
@@ -201,41 +227,49 @@ const TOOLS: [Tool; 10] = [
             "prettier.config.cjs",
             "prettier.config.mjs",
         ],
-        marker: None,
+        markers: &[],
         command: "npx",
         args: &["prettier", "--check", "."],
+        runners: &[],
         languages: &[],
         script: Some("format"),
+        summary: None,
     },
     Tool {
         id: "ruff",
         title: "Ruff",
         files: &["ruff.toml", ".ruff.toml"],
-        marker: Some(("pyproject.toml", &["[tool.ruff"])),
+        markers: &[("pyproject.toml", &["[tool.ruff"])],
         command: "ruff",
         args: &["check", "."],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "black",
         title: "Black",
         files: &[],
-        marker: Some(("pyproject.toml", &["[tool.black"])),
+        markers: &[("pyproject.toml", &["[tool.black"])],
         command: "black",
         args: &["--check", "."],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "flake8",
         title: "Flake8",
         files: &[".flake8"],
-        marker: None,
+        markers: &[],
         command: "flake8",
         args: &[],
+        runners: &[],
         languages: &["python"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "golangci-lint",
@@ -246,21 +280,158 @@ const TOOLS: [Tool; 10] = [
             ".golangci.toml",
             ".golangci.json",
         ],
-        marker: None,
+        markers: &[],
         command: "golangci-lint",
         args: &["run"],
+        runners: &[],
         languages: &["go"],
         script: None,
+        summary: None,
     },
     Tool {
         id: "rubocop",
         title: "RuboCop",
         files: &[".rubocop.yml"],
-        marker: None,
+        markers: &[],
         command: "bundle",
         args: &["exec", "rubocop"],
+        runners: &[],
         languages: &["ruby"],
         script: None,
+        summary: None,
+    },
+    Tool {
+        id: "typescript",
+        title: "The TypeScript compiler",
+        files: &["tsconfig.json"],
+        markers: &[],
+        command: "npx",
+        args: &["tsc", "--noEmit"],
+        runners: &[],
+        languages: &["typescript"],
+        script: Some("types"),
+        summary: None,
+    },
+    Tool {
+        id: "mypy",
+        title: "mypy",
+        files: &["mypy.ini", ".mypy.ini"],
+        markers: &[
+            ("pyproject.toml", &["[tool.mypy"]),
+            ("setup.cfg", &["[mypy"]),
+        ],
+        command: "mypy",
+        args: &["."],
+        runners: &[],
+        languages: &["python"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "pyright",
+        title: "Pyright",
+        files: &["pyrightconfig.json"],
+        markers: &[("pyproject.toml", &["[tool.pyright"])],
+        command: "pyright",
+        args: &[],
+        runners: &[],
+        languages: &["python"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "go-vet",
+        title: "go vet",
+        files: &["go.mod"],
+        markers: &[],
+        command: "go",
+        args: &["vet", "./..."],
+        runners: &[],
+        languages: &["go"],
+        script: None,
+        summary: Some("This is a Go module: `go vet ./...` passes."),
+    },
+    Tool {
+        id: "checkstyle",
+        title: "Checkstyle",
+        files: &["checkstyle.xml", "config/checkstyle/checkstyle.xml"],
+        markers: &[("pom.xml", &["maven-checkstyle-plugin"])],
+        command: "",
+        args: &[],
+        runners: &[
+            ("gradlew", "./gradlew", &["checkstyleMain"]),
+            ("build.gradle", "gradle", &["checkstyleMain"]),
+            ("build.gradle.kts", "gradle", &["checkstyleMain"]),
+            ("pom.xml", "mvn", &["-q", "checkstyle:check"]),
+        ],
+        languages: &["java"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "spotless",
+        title: "Spotless",
+        files: &[],
+        markers: &[
+            ("build.gradle", &["spotless"]),
+            ("build.gradle.kts", &["spotless"]),
+            ("pom.xml", &["spotless-maven-plugin"]),
+        ],
+        command: "",
+        args: &[],
+        runners: &[
+            ("gradlew", "./gradlew", &["spotlessCheck"]),
+            ("build.gradle", "gradle", &["spotlessCheck"]),
+            ("build.gradle.kts", "gradle", &["spotlessCheck"]),
+            ("pom.xml", "mvn", &["-q", "spotless:check"]),
+        ],
+        languages: &["java", "kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "ktlint",
+        title: "ktlint",
+        files: &[],
+        markers: &[
+            ("build.gradle", &["ktlint"]),
+            ("build.gradle.kts", &["ktlint"]),
+        ],
+        command: "",
+        args: &["ktlintCheck"],
+        runners: &GRADLE,
+        languages: &["kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "detekt",
+        title: "detekt",
+        files: &["detekt.yml", "config/detekt/detekt.yml"],
+        markers: &[
+            ("build.gradle", &["detekt"]),
+            ("build.gradle.kts", &["detekt"]),
+        ],
+        command: "",
+        args: &["detekt"],
+        runners: &GRADLE,
+        languages: &["kotlin"],
+        script: None,
+        summary: None,
+    },
+    Tool {
+        id: "dotnet-format",
+        title: "dotnet format",
+        files: &["*.sln", "*.slnx", "*.csproj", "*.fsproj"],
+        markers: &[],
+        command: "dotnet",
+        args: &["format", "--verify-no-changes"],
+        runners: &[],
+        languages: &["csharp"],
+        script: None,
+        summary: Some(
+            "This is a .NET project: `dotnet format --verify-no-changes` reports nothing to change.",
+        ),
     },
 ];
 
@@ -318,10 +489,13 @@ pub fn candidates() -> Vec<(&'static str, Look)> {
         add(path, Look::Folder);
     }
     for tool in &TOOLS {
-        if let Some((file, _)) = tool.marker {
+        for (file, _) in tool.markers {
             add(file, Look::Text);
         }
-        for file in tool.files {
+        for file in tool.files.iter().filter(|file| !file.starts_with('*')) {
+            add(file, Look::File);
+        }
+        for (file, _, _) in tool.runners {
             add(file, Look::File);
         }
     }
@@ -329,6 +503,36 @@ pub fn candidates() -> Vec<(&'static str, Look)> {
         add(file, Look::File);
     }
     list
+}
+
+/// The endings of root files a tool is shown by, such as `.sln`: their names vary, so the
+/// caller lists the root for them and passes each match as a [`Source`].
+pub fn endings() -> Vec<&'static str> {
+    TOOLS
+        .iter()
+        .flat_map(|tool| tool.files)
+        .filter_map(|file| file.strip_prefix('*'))
+        .collect()
+}
+
+/// The decision-record folders, most usual first; the caller passes the records of the
+/// first present one, at most [`MAX_RECORDS`], as [`Source`]s with their text.
+pub fn record_folders() -> &'static [&'static str] {
+    &DECISIONS
+}
+
+/// How many decision records the scan reads to learn the format they keep.
+pub const MAX_RECORDS: usize = 5;
+/// How many recent commit subjects the scan reads, and how many it needs to judge.
+pub const MAX_SUBJECTS: usize = 50;
+const MIN_SUBJECTS: usize = 20;
+const MIN_RECORDS: usize = 2;
+
+/// What the project does rather than states: the subjects of its most recent commits,
+/// newest first, merges left out.
+#[derive(Default)]
+pub struct Practice<'a> {
+    pub subjects: &'a [String],
 }
 
 fn word_character(character: Option<char>) -> bool {
@@ -400,6 +604,14 @@ fn editor_summary(text: &str) -> String {
     }
 }
 
+/// Evidence that the project keeps a format without naming it.
+fn observed(file: Option<&str>, what: String) -> Value {
+    match file {
+        Some(file) => json!({"file": file, "observed": what}),
+        None => json!({"observed": what}),
+    }
+}
+
 fn evidence(file: &str, line: Option<usize>) -> Value {
     match line {
         Some(line) => json!({"file": file, "line": line}),
@@ -431,7 +643,7 @@ fn declared<'a>(settings: &'a Value, standard: &Value) -> Option<&'a str> {
 /// declaration to copy, its form and the files that support it; `declared` lists what the
 /// project configuration already covers. Every proposal passes the project validator, and
 /// ids never collide with declared ones.
-pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
+pub fn propose(settings: &Value, sources: &[Source], practice: &Practice) -> Result<Value, String> {
     let text = |path: &str| {
         sources
             .iter()
@@ -439,6 +651,32 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
             .and_then(|source| source.text)
     };
     let present = |path: &str| sources.iter().any(|source| source.path == path);
+    // Root files a pattern such as `*.sln` stands for.
+    let matching = |file: &'static str| -> Vec<&str> {
+        match file.strip_prefix('*') {
+            Some(ending) => sources
+                .iter()
+                .map(|source| source.path)
+                .filter(|path| !path.contains('/') && path.ends_with(ending))
+                .collect(),
+            None => sources
+                .iter()
+                .map(|source| source.path)
+                .filter(|path| *path == file)
+                .collect(),
+        }
+    };
+    // The decision records read, with the folder they are in.
+    let folder = DECISIONS.iter().find(|folder| present(folder));
+    let records: Vec<(&str, &str)> = folder
+        .into_iter()
+        .flat_map(|folder| {
+            sources.iter().filter_map(move |source| {
+                let inside = source.path.strip_prefix(*folder)?.strip_prefix('/')?;
+                (!inside.contains('/')).then_some((source.path, source.text?))
+            })
+        })
+        .collect();
     let mut found: Vec<(&str, Value, Vec<Value>)> = Vec::new();
 
     let disabled = |id: &str| {
@@ -478,6 +716,51 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
                     .filter(|path| text(path).is_some_and(|t| t.contains("config-conventional")))
                     .map(|path| evidence(path, None)),
             );
+        }
+        // A format kept without being named: only when what exists already passes its check,
+        // so the first thing the project hears is never a finding on its own history.
+        if support.is_empty() {
+            let passes = |text: &str, path: Option<&str>| {
+                anchors::check(named.anchor, text, path).is_empty()
+            };
+            match named.anchor {
+                "conventional-commits" if practice.subjects.len() >= MIN_SUBJECTS => {
+                    let all = practice.subjects.len();
+                    let kept = practice
+                        .subjects
+                        .iter()
+                        .filter(|subject| passes(subject, None))
+                        .count();
+                    if kept * 5 >= all * 4 {
+                        support.push(observed(
+                            None,
+                            format!("{kept} of the last {all} commit subjects follow it"),
+                        ));
+                    }
+                }
+                "keep-a-changelog" => {
+                    if let Some(text) = text(CHANGELOG)
+                        && text.lines().any(|line| line.starts_with("## ["))
+                        && passes(text, Some(CHANGELOG))
+                    {
+                        support.push(observed(
+                            Some(CHANGELOG),
+                            "its release headings follow it".into(),
+                        ));
+                    }
+                }
+                _ if named.records
+                    && records.len() >= MIN_RECORDS
+                    && records.iter().all(|(path, text)| passes(text, Some(path))) =>
+                {
+                    support.extend(
+                        records
+                            .iter()
+                            .map(|(path, _)| observed(Some(path), "the record follows it".into())),
+                    );
+                }
+                _ => {}
+            }
         }
         if support.is_empty() {
             continue;
@@ -526,28 +809,43 @@ pub fn propose(settings: &Value, sources: &[Source]) -> Result<Value, String> {
         let mut support: Vec<Value> = tool
             .files
             .iter()
-            .filter(|file| present(file))
+            .flat_map(|file| matching(file))
             .map(|file| evidence(file, None))
             .collect();
-        if let Some((file, needles)) = tool.marker
-            && text(file).is_some_and(|text| needles.iter().any(|needle| text.contains(needle)))
-        {
-            support.push(evidence(file, None));
+        for (file, needles) in tool.markers {
+            if text(file).is_some_and(|text| needles.iter().any(|needle| text.contains(needle))) {
+                support.push(evidence(file, None));
+            }
         }
         if support.is_empty() {
             continue;
         }
-        let command = std::iter::once(tool.command)
-            .chain(tool.args.iter().copied())
+        let (program, leading): (&str, &[&str]) = if tool.runners.is_empty() {
+            (tool.command, &[])
+        } else {
+            // Without the build tool there is no command to state.
+            let Some((_, program, leading)) =
+                tool.runners.iter().find(|(file, _, _)| present(file))
+            else {
+                continue;
+            };
+            (program, leading)
+        };
+        let args: Vec<&str> = leading.iter().chain(tool.args).copied().collect();
+        let command = std::iter::once(program)
+            .chain(args.iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
         let mut standard = json!({
             "id": tool.id,
-            "run": {"command": tool.command},
-            "summary": format!("{} is configured for this project: `{command}` passes.", tool.title),
+            "run": {"command": program},
+            "summary": tool.summary.map_or_else(
+                || format!("{} is configured for this project: `{command}` passes.", tool.title),
+                str::to_owned,
+            ),
         });
-        if !tool.args.is_empty() {
-            standard["run"]["args"] = json!(tool.args);
+        if !args.is_empty() {
+            standard["run"]["args"] = json!(args);
         }
         if !tool.languages.is_empty() {
             standard["scope"] = json!({"languages": tool.languages});
@@ -701,7 +999,7 @@ mod tests {
             .iter()
             .map(|(path, text)| Source { path, text: *text })
             .collect();
-        propose(settings, &sources).expect("proposal")
+        propose(settings, &sources, &Practice::default()).expect("proposal")
     }
 
     fn ids(result: &Value) -> Vec<&str> {
@@ -918,6 +1216,221 @@ mod tests {
         assert_eq!(standards.len(), 9);
         crate::contracts::validate_project(&json!({"formatVersion": 1, "standards": standards}))
             .expect("accepted proposals validate");
+    }
+
+    fn runs(result: &Value) -> Vec<(String, String)> {
+        result["proposals"]
+            .as_array()
+            .expect("proposals")
+            .iter()
+            .filter(|proposal| proposal["form"] == "run")
+            .map(|proposal| {
+                let run = &proposal["standard"]["run"];
+                let words: Vec<&str> = std::iter::once(run["command"].as_str().expect("command"))
+                    .chain(
+                        run["args"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str),
+                    )
+                    .collect();
+                (
+                    proposal["standard"]["id"].as_str().expect("id").to_string(),
+                    words.join(" "),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_tool_is_proposed_with_the_command_of_the_build_the_project_has() {
+        let gradle = scan(
+            &json!({}),
+            &[
+                ("gradlew", None),
+                (
+                    "build.gradle.kts",
+                    Some(
+                        "plugins { id(\"com.diffplug.spotless\"); id(\"io.gitlab.arturbosch.detekt\") }\nktlint {}\n",
+                    ),
+                ),
+                ("config/checkstyle/checkstyle.xml", None),
+            ],
+        );
+        let pairs = |list: &[(&str, &str)]| -> Vec<(String, String)> {
+            list.iter()
+                .map(|(id, command)| (id.to_string(), command.to_string()))
+                .collect()
+        };
+        assert_eq!(
+            runs(&gradle),
+            pairs(&[
+                ("checkstyle", "./gradlew checkstyleMain"),
+                ("spotless", "./gradlew spotlessCheck"),
+                ("ktlint", "./gradlew ktlintCheck"),
+                ("detekt", "./gradlew detekt"),
+            ])
+        );
+        let maven = scan(
+            &json!({}),
+            &[(
+                "pom.xml",
+                Some(
+                    "<artifactId>spotless-maven-plugin</artifactId><artifactId>maven-checkstyle-plugin</artifactId>",
+                ),
+            )],
+        );
+        assert_eq!(
+            runs(&maven),
+            pairs(&[
+                ("checkstyle", "mvn -q checkstyle:check"),
+                ("spotless", "mvn -q spotless:check"),
+            ])
+        );
+        // A configuration without the build that runs it states no command.
+        assert!(runs(&scan(&json!({}), &[("checkstyle.xml", None)])).is_empty());
+
+        let others = scan(
+            &json!({}),
+            &[
+                ("tsconfig.json", None),
+                (
+                    "pyproject.toml",
+                    Some("[tool.mypy]\nstrict = true\n[tool.pyright]\n"),
+                ),
+                ("go.mod", None),
+                ("Shop.sln", None),
+                ("src/Nested.csproj", None),
+            ],
+        );
+        assert_eq!(
+            runs(&others),
+            pairs(&[
+                ("typescript", "npx tsc --noEmit"),
+                ("mypy", "mypy ."),
+                ("pyright", "pyright"),
+                ("go-vet", "go vet ./..."),
+                ("dotnet-format", "dotnet format --verify-no-changes"),
+            ])
+        );
+        let solution = &others["proposals"][4];
+        assert_eq!(solution["evidence"], json!([{"file": "Shop.sln"}]));
+        // The project's own script for the same job replaces the bare tool.
+        let scripted = scan(
+            &json!({}),
+            &[
+                ("tsconfig.json", None),
+                (
+                    "package.json",
+                    Some(r#"{"scripts":{"typecheck":"tsc -p ."}}"#),
+                ),
+            ],
+        );
+        assert_eq!(
+            runs(&scripted),
+            pairs(&[("typecheck", "npm run typecheck")])
+        );
+        for result in [&gradle, &maven, &others] {
+            let standards: Vec<&Value> = result["proposals"]
+                .as_array()
+                .expect("proposals")
+                .iter()
+                .map(|proposal| &proposal["standard"])
+                .collect();
+            crate::contracts::validate_project(
+                &json!({"formatVersion": 1, "standards": standards}),
+            )
+            .expect("valid");
+        }
+        assert!(endings().contains(&".sln"));
+    }
+
+    fn practised(subjects: &[String], files: &[(&str, Option<&str>)]) -> Value {
+        let sources: Vec<Source> = files
+            .iter()
+            .map(|(path, text)| Source { path, text: *text })
+            .collect();
+        propose(&json!({}), &sources, &Practice { subjects }).expect("proposal")
+    }
+
+    fn subjects(kept: usize, other: usize) -> Vec<String> {
+        (0..kept)
+            .map(|n| format!("fix(api): correct case {n}"))
+            .chain((0..other).map(|n| format!("Update things {n}")))
+            .collect()
+    }
+
+    #[test]
+    fn a_commit_format_most_recent_commits_keep_is_proposed_without_being_named() {
+        let result = practised(&subjects(16, 4), &[]);
+        assert_eq!(ids(&result), ["commits"]);
+        assert_eq!(
+            result["proposals"][0]["evidence"],
+            json!([{"observed": "16 of the last 20 commit subjects follow it"}])
+        );
+        // Under four in five, or too little history to judge: nothing.
+        assert!(ids(&practised(&subjects(15, 5), &[])).is_empty());
+        assert!(ids(&practised(&subjects(19, 0), &[])).is_empty());
+        // Where a file names it, the file is the evidence.
+        let named = practised(
+            &subjects(20, 0),
+            &[("AGENTS.md", Some("We use Conventional Commits.\n"))],
+        );
+        assert_eq!(
+            named["proposals"][0]["evidence"],
+            json!([{"file": "AGENTS.md", "line": 1}])
+        );
+    }
+
+    #[test]
+    fn a_changelog_or_record_format_is_proposed_only_when_what_exists_passes_its_check() {
+        let kept =
+            "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-03-01\n\n### Added\n\n- x\n";
+        let result = practised(&[], &[("CHANGELOG.md", Some(kept))]);
+        assert_eq!(ids(&result), ["changelog"]);
+        assert_eq!(
+            result["proposals"][0]["evidence"][0]["file"],
+            "CHANGELOG.md"
+        );
+        // Plain version headings are another format: proposing the check would only nag.
+        let plain = "# Changelog\n\n## Unreleased\n\n## 1.0.0\n\n- x\n";
+        assert!(ids(&practised(&[], &[("CHANGELOG.md", Some(plain))])).is_empty());
+
+        let record = |number: usize| {
+            format!(
+                "# {number}. Use SQLite\n\n## Context\n\nJobs are lost on restart.\n\n## Decision\n\nWe will use SQLite.\n\n## Status\n\nAccepted\n\n## Consequences\n\nThe volume needs backups.\n"
+            )
+        };
+        let (first, second) = (record(1), record(2));
+        let records = practised(
+            &[],
+            &[
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(&first)),
+                ("docs/adr/0002-use-sqlite.md", Some(&second)),
+            ],
+        );
+        assert_eq!(ids(&records), ["nygard-adr"]);
+        assert_eq!(
+            records["proposals"][0]["standard"]["scope"],
+            json!({"paths": ["docs/adr"]})
+        );
+        // One record that does not follow it, or a single record: no format to hold to.
+        let free = "# Use SQLite\n\nBecause.\n";
+        for files in [
+            vec![
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(first.as_str())),
+                ("docs/adr/0002-notes.md", Some(free)),
+            ],
+            vec![
+                ("docs/adr", None),
+                ("docs/adr/0001-use-sqlite.md", Some(first.as_str())),
+            ],
+        ] {
+            assert!(ids(&practised(&[], &files)).is_empty());
+        }
     }
 
     #[test]

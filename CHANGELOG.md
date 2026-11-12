@@ -13,6 +13,11 @@
   when it is called; no hook starts them. Standards the project declares replace them, and
   `routing.conventionProposals: false` turns this off. The session-start line now says what
   is in effect instead of what could be accepted.
+- The conventions scan recognizes more: TypeScript (`tsconfig.json`), mypy, Pyright, `go vet`,
+  `dotnet format`, and Checkstyle, Spotless, ktlint and detekt through the project's Gradle
+  or Maven build. It also proposes a format the project keeps without naming it: Conventional
+  Commits when four in five of the last commit subjects follow it, Keep a Changelog and MADR
+  or Nygard decision records when the existing files already pass the check.
 
 ## 0.0.6
 

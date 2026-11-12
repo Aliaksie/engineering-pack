@@ -478,7 +478,7 @@ fn standards(
         }
         // Compared with what the layers declare, not with what the scan itself put in effect.
         let declared = crate::project::declared_settings(&root)?;
-        return crate::conventions::proposed(&root, &declared);
+        return crate::conventions::proposed(&root, &declared, false);
     }
     if files(options).is_empty() && message.is_none() {
         let declared = settings["standards"]

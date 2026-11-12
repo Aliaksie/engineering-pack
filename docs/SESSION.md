@@ -451,6 +451,7 @@ The resume is delivered once per compaction, at the first event after it that ca
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
     notices/                # conventions.json: the proposals a session start last named
+                            # practice.json: recent commit subjects of the commit checked out
 ```
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether

@@ -110,8 +110,9 @@ and exits 2, for CI or a Git hook.
   `safety.enabled: false` turns the policy off. It only refuses and never approves
   ([security](docs/SECURITY.md)).
 - **Standards from what you already have.** With no configuration, a project is held to the
-  standards its own files state: conventions named in agent instructions or the contributor
-  document, lint and format configuration. `craft standards --propose` lists them with their
+  standards its own files state or its history keeps: conventions named in agent instructions
+  or the contributor document, lint, format and type-check configuration, and a commit,
+  changelog or decision-record format it already follows. `craft standards --propose` lists them with their
   evidence; standards you declare replace them.
 - **One line on what happened.** When a turn ends, Claude Code, Codex and Gemini CLI show
   what Craft did in the session: findings raised and fixed, test runs that ran no test,
