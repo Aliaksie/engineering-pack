@@ -918,6 +918,150 @@ pub fn propose(settings: &Value, sources: &[Source], practice: &Practice) -> Res
     Ok(json!({"proposals": proposals, "declared": covered}))
 }
 
+/// How many member repositories a workspace root reads.
+pub const MAX_MEMBERS: usize = 16;
+
+/// A folder name as the leading part of a standard's id.
+fn slug(member: &str) -> String {
+    let mut slug = String::new();
+    for character in member.chars() {
+        if character.is_ascii_alphanumeric() {
+            slug.push(character.to_ascii_lowercase());
+        } else if !slug.is_empty() && !slug.ends_with('-') {
+            slug.push('-');
+        }
+    }
+    let slug = slug.trim_end_matches('-');
+    if slug.is_empty() {
+        "member".into()
+    } else {
+        slug.to_string()
+    }
+}
+
+fn commit_format(standard: &Value) -> bool {
+    standard["anchor"]
+        .as_str()
+        .and_then(anchors::find)
+        .is_some_and(|anchor| anchor.input() == Some(anchors::Input::CommitMessage))
+}
+
+/// One member's proposal as the workspace above it holds it: the id led by the member's
+/// name, files and paths led by its folder, a command run in that folder.
+fn within(member: &str, proposal: &Value) -> Value {
+    let mut proposal = proposal.clone();
+    let inside = |path: &str| format!("{member}/{path}");
+    let standard = &mut proposal["standard"];
+    standard["id"] = json!(format!(
+        "{}-{}",
+        slug(member),
+        standard["id"].as_str().unwrap_or_default()
+    ));
+    if let Some(file) = standard["file"].as_str().map(inside) {
+        standard["file"] = json!(file);
+    }
+    if standard.get("run").is_some() {
+        let directory = match standard["run"]["cwd"].as_str() {
+            Some(cwd) if cwd != "." => inside(cwd),
+            _ => member.to_string(),
+        };
+        standard["run"]["cwd"] = json!(directory);
+    }
+    let paths: Vec<String> = match standard["scope"]["paths"].as_array() {
+        Some(paths) => paths.iter().filter_map(Value::as_str).map(inside).collect(),
+        None => vec![member.to_string()],
+    };
+    if standard.get("scope").is_none() {
+        standard["scope"] = json!({});
+    }
+    standard["scope"]["paths"] = json!(paths);
+    for evidence in proposal["evidence"].as_array_mut().into_iter().flatten() {
+        if let Some(file) = evidence["file"].as_str().map(inside) {
+            evidence["file"] = json!(file);
+        }
+    }
+    proposal["member"] = json!(member);
+    proposal
+}
+
+/// What a workspace root is held to: `own`, the result of [`propose`] for its own files,
+/// and each member repository's result, every standard kept to the member's folder. A
+/// commit format cannot be kept to a folder, so it is proposed only when every member has
+/// it. `settings` are the workspace's; a member's proposal that does not validate there, or
+/// that the workspace already declares, is left out.
+pub fn workspace(
+    settings: &Value,
+    mut own: Value,
+    members: &[(&str, Value)],
+) -> Result<Value, String> {
+    let catalog = crate::routing::catalog::catalog()?;
+    let intents: Vec<&str> = catalog["intents"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let mut proposals = own["proposals"].as_array().cloned().unwrap_or_default();
+    let declared = settings["standards"].as_array().map_or(0, Vec::len);
+    let room = MAX_STANDARDS.saturating_sub(declared);
+    let list = |result: &Value| result["proposals"].as_array().cloned().unwrap_or_default();
+    // A commit format every member keeps, once for the workspace.
+    let shared: Vec<Value> = members
+        .first()
+        .map(|(_, first)| list(first))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|proposal| commit_format(&proposal["standard"]))
+        .filter(|proposal| {
+            members.iter().all(|(_, result)| {
+                list(result)
+                    .iter()
+                    .any(|other| other["standard"]["anchor"] == proposal["standard"]["anchor"])
+            })
+        })
+        .collect();
+    let taken = |proposals: &[Value], id: &Value| {
+        proposals.iter().any(|known| known["standard"]["id"] == *id)
+            || settings["standards"]
+                .as_array()
+                .is_some_and(|known| known.iter().any(|standard| standard["id"] == *id))
+    };
+    for mut proposal in shared {
+        if proposals.len() < room && !taken(&proposals, &proposal["standard"]["id"]) {
+            proposal["evidence"] = json!([{"observed": "every member repository keeps it"}]);
+            proposals.push(proposal);
+        }
+    }
+    for (member, result) in members {
+        for proposal in list(result) {
+            if commit_format(&proposal["standard"]) {
+                continue;
+            }
+            let held = within(member, &proposal);
+            if proposals.len() == room
+                || taken(&proposals, &held["standard"]["id"])
+                || declared_standard(settings, &held["standard"])
+                || standards::validate(&json!([held["standard"]]), &[], &intents).is_err()
+            {
+                continue;
+            }
+            proposals.push(held);
+        }
+    }
+    own["proposals"] = json!(proposals);
+    own["members"] = json!(
+        members
+            .iter()
+            .map(|(member, _)| *member)
+            .collect::<Vec<_>>()
+    );
+    Ok(own)
+}
+
+fn declared_standard(settings: &Value, standard: &Value) -> bool {
+    declared(settings, standard).is_some()
+}
+
 /// Whether `project`, a project's own configuration, declares a standard. One that does is
 /// read as it stands: nothing its files state is added.
 pub fn declares(project: &Value) -> bool {
@@ -1431,6 +1575,74 @@ mod tests {
         ] {
             assert!(ids(&practised(&[], &files)).is_empty());
         }
+    }
+
+    #[test]
+    fn a_workspace_holds_each_member_to_its_own_standards_within_its_folder() {
+        let named = Some("We use Conventional Commits.\n");
+        let api = scan(
+            &json!({}),
+            &[
+                ("AGENTS.md", named),
+                ("rustfmt.toml", None),
+                ("CONTRIBUTING.md", Some("# Contributing\n")),
+                ("docs/adr", None),
+                ("docs/adr/0001-a.md", None),
+            ],
+        );
+        let web = scan(&json!({}), &[("AGENTS.md", named), ("biome.json", None)]);
+        let own = scan(
+            &json!({}),
+            &[(".editorconfig", Some("[*]\nindent_style = tab\n"))],
+        );
+        let members = [("Shop.API", api.clone()), ("web", web.clone())];
+        let result = workspace(&json!({}), own.clone(), &members).expect("workspace");
+        assert_eq!(
+            ids(&result),
+            [
+                "editorconfig",
+                "commits",
+                "shop-api-rustfmt",
+                "shop-api-contributing",
+                "web-biome"
+            ]
+        );
+        let standard = |id: &str| {
+            result["proposals"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|proposal| proposal["standard"]["id"] == id)
+                .unwrap_or_else(|| panic!("{id}"))
+                .clone()
+        };
+        let rustfmt = standard("shop-api-rustfmt");
+        assert_eq!(rustfmt["standard"]["run"]["cwd"], "Shop.API");
+        assert_eq!(
+            rustfmt["standard"]["scope"],
+            json!({"languages": ["rust"], "paths": ["Shop.API"]})
+        );
+        assert_eq!(
+            rustfmt["evidence"],
+            json!([{"file": "Shop.API/rustfmt.toml"}])
+        );
+        assert_eq!(
+            standard("shop-api-contributing")["standard"]["file"],
+            "Shop.API/CONTRIBUTING.md"
+        );
+        assert_eq!(result["members"], json!(["Shop.API", "web"]));
+        let layer = layer(&result).expect("layer");
+        crate::contracts::validate_project(&layer).expect("valid at the workspace root");
+
+        // A commit format one member does not keep is nobody's at the workspace.
+        let plain = scan(&json!({}), &[("biome.json", None)]);
+        let mixed = workspace(&json!({}), own, &[("api", api), ("web", plain)]).expect("mixed");
+        assert!(!ids(&mixed).contains(&"commits"), "{:?}", ids(&mixed));
+        // What the workspace declares itself is not brought in again.
+        let declared = json!({"standards": [
+            {"id": "format", "run": {"command": "npx", "args": ["biome", "check", "."], "cwd": "web"}}]});
+        let covered = workspace(&declared, json!({"proposals": []}), &[("web", web)]).unwrap();
+        assert!(!ids(&covered).contains(&"web-biome"), "{:?}", ids(&covered));
     }
 
     #[test]

@@ -57,8 +57,74 @@ pub(crate) fn offer(root: &Path) -> Result<Option<Value>, Failure> {
 }
 
 /// What the scan found at `root`: `{proposals, declared, scanned, unread, accept}`.
-/// `keep` lets the scan keep what it asked Git in the project's state.
+/// `keep` lets the scan keep what it asked Git in the project's state. A root that is no
+/// repository and declares nothing is a workspace: its member repositories are scanned too,
+/// each one's standards kept to its folder.
 pub(crate) fn proposed(root: &Path, settings: &Value, keep: bool) -> Result<Value, Failure> {
+    let own = scan(root, root, None, settings, keep)?;
+    let entry = |name: &str| std::fs::symlink_metadata(root.join(name)).is_ok();
+    if entry(".git") || entry(".craft/project.json") {
+        return Ok(own);
+    }
+    let members: Vec<(String, Value)> = repositories(root)
+        .into_iter()
+        .filter_map(|member| {
+            let result = scan(&root.join(&member), root, Some(&member), settings, keep).ok()?;
+            Some((member, result))
+        })
+        .collect();
+    if members.is_empty() {
+        return Ok(own);
+    }
+    let scanned: Vec<Value> = own["scanned"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .cloned()
+        .chain(members.iter().flat_map(|(member, result)| {
+            result["scanned"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(move |path| json!(format!("{member}/{path}")))
+        }))
+        .collect();
+    let named: Vec<(&str, Value)> = members
+        .iter()
+        .map(|(member, result)| (member.as_str(), result.clone()))
+        .collect();
+    let mut result = conventions::workspace(settings, own, &named)?;
+    result["scanned"] = json!(scanned);
+    Ok(result)
+}
+
+/// The member repositories of a workspace root: its direct folders that hold a Git entry,
+/// by name; links are not followed.
+fn repositories(root: &Path) -> Vec<String> {
+    let mut members: Vec<String> = std::fs::read_dir(root)
+        .into_iter()
+        .flatten()
+        .take(ROOT_ENTRIES)
+        .flatten()
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .filter(|entry| std::fs::symlink_metadata(entry.path().join(".git")).is_ok())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect();
+    members.sort();
+    members.truncate(conventions::MAX_MEMBERS);
+    members
+}
+
+/// The scan of one directory. `home` is the project whose state keeps what Git was asked,
+/// under `member`'s name when `root` is a member of a workspace.
+fn scan(
+    root: &Path,
+    home: &Path,
+    member: Option<&str>,
+    settings: &Value,
+    keep: bool,
+) -> Result<Value, Failure> {
     let mut found: Vec<(String, Option<String>)> = Vec::new();
     let mut unread = Vec::new();
     let mut read = |path: String, found: &mut Vec<(String, Option<String>)>| match read_bounded(
@@ -116,7 +182,7 @@ pub(crate) fn proposed(root: &Path, settings: &Value, keep: bool) -> Result<Valu
             read(format!("{folder}/{name}"), &mut found);
         }
     }
-    let subjects = subjects(root, keep);
+    let subjects = subjects(root, home, member, keep);
     let sources: Vec<Source> = found
         .iter()
         .map(|(path, text)| Source {
@@ -194,11 +260,19 @@ fn head_key(root: &Path) -> Option<String> {
 /// The subjects of the most recent commits, newest first, merges left out. Hooks resolve the
 /// settings on every event, so with `keep` Git is asked once per commit the checkout is at
 /// and the answer kept in the project's state. A kept answer is read either way.
-fn subjects(root: &Path, keep: bool) -> Vec<String> {
+fn subjects(root: &Path, home: &Path, member: Option<&str>, keep: bool) -> Vec<String> {
     let Some(head) = head_key(root) else {
         return Vec::new();
     };
-    let target = state::file(root, "notices/practice.json", false, None).ok();
+    // One record per member of a workspace, named by a digest of the member's folder.
+    let name = match member {
+        Some(member) => format!(
+            "notices/practice-{}.json",
+            &craft_engine::hash(member.as_bytes())[..12]
+        ),
+        None => "notices/practice.json".to_string(),
+    };
+    let target = state::file(home, &name, false, None).ok();
     let kept = target
         .as_deref()
         .and_then(|file| crate::session::read_record(file, PRACTICE_BYTES).ok());
@@ -225,7 +299,7 @@ fn subjects(root: &Path, keep: bool) -> Vec<String> {
         .collect();
     // Kept when the state can be written; a busy or missing state costs one Git start more.
     if keep
-        && let Ok(target) = state::file(root, "notices/practice.json", true, None)
+        && let Ok(target) = state::file(home, &name, true, None)
         && let Ok(Some(_lock)) = state::lock(&target)
     {
         let record = json!({"formatVersion": 1, "head": head, "subjects": subjects});

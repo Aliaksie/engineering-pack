@@ -18,6 +18,9 @@
   or Maven build. It also proposes a format the project keeps without naming it: Conventional
   Commits when four in five of the last commit subjects follow it, Keep a Changelog and MADR
   or Nygard decision records when the existing files already pass the check.
+- A folder holding several repositories works as one workspace: opened there, a session is
+  held to each repository's own standards within that repository's folder, with one `.craft`
+  at the workspace root. The stop review and the commit check do not yet run there.
 - A session stays with the project it was opened in. On Claude Code a hook reads the project
   from the directory the host was opened in, so a shell that moved into another repository no
   longer starts a second session record there. A command run without `--root` from a

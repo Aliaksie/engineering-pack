@@ -365,3 +365,47 @@ fn a_command_or_hook_started_below_the_project_root_belongs_to_the_project() {
     assert!(repo.root.join(".craft/state/sessions").exists());
     assert!(!elsewhere.root.join(".craft").exists());
 }
+
+/// A folder that is no repository and holds two: opened there, a session is held to each
+/// repository's own standards within its folder, and the workspace keeps one `.craft`.
+#[test]
+fn a_workspace_root_is_held_to_what_each_member_repository_states() {
+    let api = Repo::new(
+        "workspace-api",
+        &[("AGENTS.md", AGENTS), ("rustfmt.toml", "\n")],
+    );
+    let home = api
+        .root
+        .parent()
+        .expect("parent")
+        .join(format!("craft-workspace-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&home);
+    std::fs::create_dir_all(home.join("notes")).expect("workspace");
+    std::fs::rename(&api.root, home.join("api")).expect("member");
+    let web = Repo::new("workspace-web", &[("biome.json", "{}\n")]);
+    std::fs::rename(&web.root, home.join("web")).expect("member");
+    let root = home.to_string_lossy().into_owned();
+    let run = |args: &[&str]| -> Value {
+        let mut argv: Vec<String> = vec![args[0].into(), "--root".into(), root.clone()];
+        argv.extend(args[1..].iter().map(|arg| arg.to_string()));
+        let outcome = cli::run_structured(&argv);
+        assert_eq!(outcome.exit_code, 0, "{}", outcome.stderr);
+        serde_json::from_str(&outcome.stdout).expect("JSON")
+    };
+    let listed = |value: &Value| -> Vec<String> {
+        value["standards"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|standard| standard["id"].as_str().map(str::to_owned))
+            .collect()
+    };
+    assert_eq!(listed(&run(&["standards"])), ["api-rustfmt", "web-biome"]);
+    // A file is routed with its own repository's standards, not its neighbour's.
+    let routed = run(&["route", "--intent", "implement", "--file", "web/src/app.ts"]);
+    assert_eq!(listed(&routed), ["web-biome"], "{routed}");
+    let proposed = run(&["standards", "--propose"]);
+    assert_eq!(proposed["members"], json!(["api", "web"]));
+    assert!(!home.join("api/.craft").exists() && !home.join("web/.craft").exists());
+    let _ = std::fs::remove_dir_all(&home);
+}

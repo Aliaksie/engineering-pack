@@ -95,9 +95,18 @@ A format the project keeps without naming it is read from the last 50 commit sub
 folder. A hook asks Git once per commit the checkout is at and keeps the answer in
 `.craft/state/notices/practice.json`; a command you run keeps nothing.
 
+A root that is no repository and has no `.craft/project.json` is read as a workspace: the
+scan also reads each direct folder that is a Git repository, at most 16, and holds every
+standard it finds there to that folder. The id is led by the folder's name (`api-rustfmt`),
+`scope.paths` and files by the folder, and a command runs in it, so a file is routed and
+checked with its own repository's standards and not its neighbour's. A commit format is
+brought to the workspace only when every member repository has it. State stays in the one
+`.craft` at the workspace root. Not yet covered there: the stop review and the commit check,
+which read Git at the root, and a member's own `.craft/project.json`.
+
 Otherwise the scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
-packages, and a file that names a convention in order to reject it is still a match, so read
+packages of one repository, and a file that names a convention in order to reject it is still a match, so read
 the evidence. Agent instruction files are read for names but never proposed
 as standards, since the host loads them itself.
 
