@@ -72,7 +72,9 @@ host accepts context (`adapter-report.json` lists it per event).
 
 Failure behavior:
 
-- Input over 64 KiB is rejected; malformed JSON is not denied.
+- Input over 1 MiB is not read. Before a shell command, or a tool the input does not name, the
+  safety policy and the read-only review deny it when they are on; any other hook stays silent
+  and records the event in telemetry. Malformed JSON is not denied.
 - A before-shell policy that cannot evaluate denies with a configuration error. PowerShell tool
   names are normalized, so the read-only review policy also covers them.
 - Context and observational handlers stay advisory and exit 0 on failure.

@@ -41,7 +41,7 @@ shell (Gemini, whose one command must run in bash and PowerShell, and shells tha
 the platform, such as dash, use the package launcher); everything else starts the launcher:
 
 - **Hooks.** The host runs `craft hook <host> <lifecycle>`. `craft` reads the payload
-  (64 KiB bound), maps it to host-neutral lifecycle facts with the embedded host table, runs
+  (1 MiB bound), maps it to host-neutral lifecycle facts with the embedded host table, runs
   observation, the read-only review guard or context delivery (routing hints, checkpoints,
   service metadata, hint reuse), and writes the host's wire output.
 - **Commands.** Skills and users run `craft <command>` for routing, lookup, sessions, tasks,
