@@ -87,6 +87,13 @@
       "dependsOn": "*",
       "shipped": false
     },
+    ".craft": {
+      "kind": "project-config",
+      "responsibility": "The repository's own Craft project declaration: modules, checks and standards.",
+      "allow": ["project.json"],
+      "dependsOn": [],
+      "shipped": false
+    },
     ".github": {
       "kind": "ci-config",
       "responsibility": "CI workflows and benchmark harnesses.",
