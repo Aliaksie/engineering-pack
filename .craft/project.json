@@ -1,0 +1,106 @@
+{
+  "$schema": "../schemas/project.schema.json",
+  "formatVersion": 1,
+  "routing": {
+    "debtMarkers": true
+  },
+  "modules": [
+    {
+      "name": "engine",
+      "path": "engine",
+      "languages": ["rust"],
+      "dependsOn": [],
+      "checks": [
+        {"id": "engine-tests", "command": "cargo", "args": ["test", "--lib"], "stage": "commit"}
+      ]
+    },
+    {
+      "name": "platform",
+      "path": "platform",
+      "languages": ["rust"],
+      "dependsOn": ["engine"],
+      "checks": [
+        {"id": "platform-tests", "command": "cargo", "args": ["test"], "stage": "pr", "timeoutSeconds": 1800}
+      ]
+    },
+    {
+      "name": "application",
+      "path": "application",
+      "languages": ["rust"],
+      "dependsOn": ["engine", "platform"],
+      "checks": [
+        {"id": "application-tests", "command": "cargo", "args": ["test"], "stage": "pr", "timeoutSeconds": 3600}
+      ]
+    },
+    {
+      "name": "hosts",
+      "path": "hosts",
+      "languages": ["javascript"],
+      "dependsOn": []
+    },
+    {
+      "name": "tooling",
+      "path": "tooling",
+      "languages": ["javascript"],
+      "dependsOn": ["hosts"]
+    },
+    {
+      "name": "packages",
+      "path": "packages",
+      "dependsOn": []
+    }
+  ],
+  "standards": [
+    {
+      "id": "commits",
+      "anchor": "conventional-commits"
+    },
+    {
+      "id": "changelog-line",
+      "summary": "A change users or consumers can observe adds a line under `## Unreleased` in CHANGELOG.md.",
+      "checklist": [
+        "Behaviour a user or consumer can observe changed: CHANGELOG.md has a line under `## Unreleased` saying what changed for them",
+        "The line states merged facts only, no plans or promises"
+      ],
+      "scope": {"paths": ["engine", "platform", "application", "hosts", "packages", "schemas", "tooling/export"]}
+    },
+    {
+      "id": "module-map",
+      "file": "docs/adr/0002-module-map-and-boundaries.md",
+      "checklist": [
+        "A new top-level folder, cross-module import or JavaScript in a shipped module changes architecture.json and ADR 0002 together",
+        "`npm run architecture` passes"
+      ],
+      "scope": {"paths": ["architecture.json", "engine", "platform", "application", "hosts", "tooling"]}
+    },
+    {
+      "id": "rust-runtime",
+      "file": "docs/adr/0001-rust-core-runtime.md",
+      "summary": "Runtime behaviour belongs in Rust; JavaScript is build tooling, tests and build-time host tables only.",
+      "scope": {"languages": ["javascript"]}
+    },
+    {
+      "id": "public-text",
+      "summary": "Docs, comments, commit messages and pull requests carry no planning vocabulary: no backlog ids, slice or stage names.",
+      "checklist": [
+        "No backlog ids, slice names or plan stages in code comments, docs, the changelog or commit messages"
+      ]
+    },
+    {
+      "id": "rust-format",
+      "summary": "Rust sources are formatted with rustfmt.",
+      "scope": {"languages": ["rust"]},
+      "run": {"command": "cargo", "args": ["fmt", "--check"], "stage": "step"}
+    },
+    {
+      "id": "fast-gate",
+      "summary": "Sources, exports, architecture, Rust format and clippy.",
+      "run": {"command": "npm", "args": ["run", "check:fast"], "stage": "pr", "timeoutSeconds": 1800}
+    },
+    {
+      "id": "full-check",
+      "summary": "Source validation, exports, script syntax and every test.",
+      "run": {"command": "npm", "args": ["run", "check"], "stage": "ci", "timeoutSeconds": 3600}
+    }
+  ]
+}
