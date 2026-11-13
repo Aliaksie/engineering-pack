@@ -114,7 +114,7 @@ pub(crate) fn proposed(root: &Path, settings: &Value, keep: bool) -> Result<Valu
 
 /// The member repositories of a workspace root: its direct folders that hold a Git entry,
 /// by name; links are not followed.
-fn repositories(root: &Path) -> Vec<String> {
+pub(crate) fn repositories(root: &Path) -> Vec<String> {
     let mut members: Vec<String> = std::fs::read_dir(root)
         .into_iter()
         .flatten()

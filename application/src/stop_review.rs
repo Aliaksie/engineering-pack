@@ -5,14 +5,16 @@
 //! command or a script counts like an edited one, and so does one the session committed
 //! before the turn ended. The session remembers each changed file's content and the commit
 //! it stopped on, so a stop reviews only files changed since the last one, and what it was
-//! told, so the same finding never holds a stop twice.
+//! told, so the same finding never holds a stop twice. At a workspace root, a folder that is
+//! no repository itself, each member repository is read the same way and its files are named
+//! from the workspace root.
 use crate::failure::Failure;
 use crate::session::read_record;
 use craft_engine::session::delivered::{Checked, finding_key};
 use craft_engine::{debt, hash, routing, standards};
 use craft_platform::state;
 use serde_json::{Map, Value, json};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const RECORD_BYTES: usize = 128 * 1024;
 /// How much `git status` and one file's diff may print; beyond, the stop stays quiet.
@@ -33,24 +35,53 @@ fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::Pa
     )?)
 }
 
-/// Where `root` lies beneath the top of its checkout, as Git prints it (`web/` or empty).
-/// Git names changed files from the top; a project whose root is a folder below it reads
-/// them from its own root. Asked only when `root` is not the top itself.
-fn prefix(root: &Path) -> Option<String> {
-    if root.join(".git").exists() {
-        return Some(String::new());
-    }
-    let output =
-        craft_platform::process::git(root, &["rev-parse", "--show-prefix"], 4096).ok()??;
-    Some(String::from_utf8(output).ok()?.trim_end().to_owned())
+/// One Git checkout a stop reads: the project's own, or a member repository of a workspace.
+pub(crate) struct Checkout {
+    pub(crate) directory: PathBuf,
+    /// The member's folder as files are named from the workspace root (`api/`); empty for
+    /// the project's own checkout.
+    folder: String,
+    /// Where `directory` lies beneath the top of its checkout, as Git prints it (`web/` or
+    /// empty). Git names changed files from the top; a project whose root is a folder below
+    /// it reads them from its own root.
+    prefix: String,
 }
 
-/// Project files that differ from `HEAD` (modified, added or untracked outside ignores), each
-/// with whether Git tracks it; `None` without Git or when the listing overflows.
-fn dirty(root: &Path) -> Option<Vec<(String, bool)>> {
-    let prefix = prefix(root)?;
+/// The checkouts `root` is reviewed from: its own when Git knows it, otherwise its member
+/// repositories; none for a plain folder.
+pub(crate) fn checkouts(root: &Path) -> Vec<Checkout> {
+    let own = |prefix| Checkout {
+        directory: root.to_owned(),
+        folder: String::new(),
+        prefix,
+    };
+    if std::fs::symlink_metadata(root.join(".git")).is_ok() {
+        return vec![own(String::new())];
+    }
+    // Asked only when `root` is not the top itself.
+    let below = craft_platform::process::git(root, &["rev-parse", "--show-prefix"], 4096)
+        .ok()
+        .flatten()
+        .and_then(|output| String::from_utf8(output).ok());
+    if let Some(prefix) = below {
+        return vec![own(prefix.trim_end().to_owned())];
+    }
+    crate::conventions::repositories(root)
+        .into_iter()
+        .map(|member| Checkout {
+            directory: root.join(&member),
+            folder: format!("{member}/"),
+            prefix: String::new(),
+        })
+        .collect()
+}
+
+/// A checkout's files that differ from `HEAD` (modified, added or untracked outside
+/// ignores), named from the project root, each with whether Git tracks it; `None` without
+/// Git or when the listing overflows.
+fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
     let output = craft_platform::process::git(
-        root,
+        &checkout.directory,
         &[
             "status",
             "--porcelain=v1",
@@ -63,19 +94,21 @@ fn dirty(root: &Path) -> Option<Vec<(String, bool)>> {
         STATUS_BYTES,
     )
     .ok()??;
-    let mut files: Vec<(String, bool)> = output
-        .split(|byte| *byte == 0)
-        .filter_map(|entry| {
-            let entry = std::str::from_utf8(entry).ok()?;
-            let (code, path) = (entry.get(..2)?, entry.get(3..)?.strip_prefix(&*prefix)?);
-            // A deleted file adds nothing to review.
-            (!code.contains('D') && !path.is_empty() && !routing::private_path(path))
-                .then(|| (path.to_owned(), code != "??"))
-        })
-        .collect();
-    files.sort();
-    files.truncate(MAX_FILES);
-    Some(files)
+    Some(
+        output
+            .split(|byte| *byte == 0)
+            .filter_map(|entry| {
+                let entry = std::str::from_utf8(entry).ok()?;
+                let (code, path) = (
+                    entry.get(..2)?,
+                    entry.get(3..)?.strip_prefix(&*checkout.prefix)?,
+                );
+                // A deleted file adds nothing to review.
+                (!code.contains('D') && !path.is_empty() && !routing::private_path(path))
+                    .then(|| (format!("{}{path}", checkout.folder), code != "??"))
+            })
+            .collect(),
+    )
 }
 
 /// A regular file's bytes, `None` when absent, a link or too large.
@@ -153,21 +186,43 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
 
 /// One changed file as a stop sees it.
 struct Dirty {
+    /// Which of the stop's checkouts holds it.
+    checkout: usize,
     file: String,
     tracked: bool,
     bytes: Vec<u8>,
     digest: String,
 }
 
-/// Each dirty file's content now, with its hash and whether Git tracks it.
-fn observed(root: &Path) -> Option<Vec<Dirty>> {
+/// Each dirty file's content now, with its hash and whether Git tracks it. `None` when no
+/// checkout could be read; a member repository that cannot is left out.
+fn observed(root: &Path, checkouts: &[Checkout]) -> Option<Vec<Dirty>> {
+    let listed: Vec<(usize, Vec<(String, bool)>)> = checkouts
+        .iter()
+        .enumerate()
+        .filter_map(|(index, checkout)| Some((index, dirty(checkout)?)))
+        .collect();
+    if listed.is_empty() {
+        return None;
+    }
+    let mut files: Vec<(usize, String, bool)> = listed
+        .into_iter()
+        .flat_map(|(index, files)| {
+            files
+                .into_iter()
+                .map(move |(file, tracked)| (index, file, tracked))
+        })
+        .collect();
+    files.sort_by(|a, b| a.1.cmp(&b.1));
+    files.truncate(MAX_FILES);
     Some(
-        dirty(root)?
+        files
             .into_iter()
-            .filter_map(|(file, tracked)| {
+            .filter_map(|(checkout, file, tracked)| {
                 let bytes = bytes(root, &file)?;
                 let digest = hash(&bytes);
                 Some(Dirty {
+                    checkout,
                     file,
                     tracked,
                     bytes,
@@ -176,6 +231,38 @@ fn observed(root: &Path) -> Option<Vec<Dirty>> {
             })
             .collect(),
     )
+}
+
+/// The commit a record keeps for a checkout: `head` for the project's own, `heads` by
+/// folder for a member repository.
+fn seen<'a>(record: &'a Value, checkout: &Checkout) -> Option<&'a str> {
+    match checkout.folder.strip_suffix('/') {
+        Some(member) => record["heads"][member].as_str(),
+        None => record["head"].as_str(),
+    }
+}
+
+/// The record of a stop: each changed file's content, what the session was told and the
+/// commit every checkout is on.
+fn record(
+    files: &[Dirty],
+    delivered: &[String],
+    checkouts: &[Checkout],
+    heads: &[Option<String>],
+) -> Value {
+    let mut record = json!({"formatVersion": 1, "files": hashes(files), "delivered": delivered});
+    let mut members = Map::new();
+    for (checkout, head) in checkouts.iter().zip(heads) {
+        let Some(head) = head else { continue };
+        match checkout.folder.strip_suffix('/') {
+            Some(member) => drop(members.insert(member.to_owned(), json!(head))),
+            None => record["head"] = json!(head),
+        }
+    }
+    if !members.is_empty() {
+        record["heads"] = Value::Object(members);
+    }
+    record
 }
 
 fn hashes(files: &[Dirty]) -> Value {
@@ -197,17 +284,17 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
     if file.exists() {
         return Ok(());
     }
-    let Some(files) = observed(root) else {
+    let checkouts = checkouts(root);
+    let Some(files) = observed(root, &checkouts) else {
         return Ok(());
     };
-    let mut record = json!({"formatVersion": 1, "files": hashes(&files), "delivered": []});
-    if let Some(head) = head(root) {
-        record["head"] = json!(head);
-    }
+    let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
+    let record = record(&files, &[], &checkouts, &heads);
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
-/// Debt markers `file` adds against the commit `base`; an untracked file adds every line.
+/// Debt markers `file`, named from its checkout's directory, adds against the commit `base`;
+/// an untracked file adds every line.
 fn markers(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Vec<Value> {
     let diff = tracked
         .then(|| {
@@ -258,7 +345,8 @@ pub fn stop(
     if stop_active || !standards::stop_relevant(settings) {
         return Ok((None, Vec::new()));
     }
-    let Some(files) = observed(root) else {
+    let checkouts = checkouts(root);
+    let Some(files) = observed(root, &checkouts) else {
         return Ok((None, Vec::new()));
     };
     let file = record_file(root, session, true)?;
@@ -269,43 +357,49 @@ pub fn stop(
         .flatten()
         .filter_map(|key| key.as_str().map(str::to_owned))
         .collect();
+    let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
     // Work the session committed since its last stop is clean now, and still its change.
-    let current = head(root);
-    let since = record["head"].as_str().zip(current.as_deref());
-    let landed: Vec<Dirty> = since
-        .filter(|(base, current)| base != current)
-        .map(|(base, current)| committed(root, base, current))
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|file| !files.iter().any(|dirty| dirty.file == *file))
-        .take(MAX_FILES.saturating_sub(files.len()))
-        .filter_map(|file| {
-            let bytes = bytes(root, &file)?;
-            let digest = hash(&bytes);
-            Some(Dirty {
-                file,
-                tracked: true,
-                bytes,
-                digest,
-            })
-        })
-        .collect();
     // Markers are new against the commit the last stop saw, whether or not they were
     // committed since; without one (an older record, no commit yet), against `HEAD`.
-    let base = if landed.is_empty() {
-        "HEAD"
-    } else {
-        since.map_or("HEAD", |(base, _)| base)
-    };
+    let mut landed: Vec<Dirty> = Vec::new();
+    let mut bases: Vec<&str> = vec!["HEAD"; checkouts.len()];
+    for (index, checkout) in checkouts.iter().enumerate() {
+        let (Some(base), Some(current)) = (seen(&record, checkout), heads[index].as_deref()) else {
+            continue;
+        };
+        if base == current {
+            continue;
+        }
+        let room = MAX_FILES.saturating_sub(files.len() + landed.len());
+        let before = landed.len();
+        landed.extend(
+            committed(&checkout.directory, base, current)
+                .into_iter()
+                .map(|file| format!("{}{file}", checkout.folder))
+                .filter(|file| !files.iter().any(|dirty| dirty.file == *file))
+                .take(room)
+                .filter_map(|file| {
+                    let bytes = bytes(root, &file)?;
+                    let digest = hash(&bytes);
+                    Some(Dirty {
+                        checkout: index,
+                        file,
+                        tracked: true,
+                        bytes,
+                        digest,
+                    })
+                }),
+        );
+        if landed.len() > before {
+            bases[index] = base;
+        }
+    }
     let changed: Vec<&Dirty> = files
         .iter()
         .chain(&landed)
         .filter(|dirty| record["files"][dirty.file.as_str()] != json!(dirty.digest))
         .collect();
-    let mut next = json!({"formatVersion": 1, "files": hashes(&files), "delivered": delivered});
-    if let Some(current) = &current {
-        next["head"] = json!(current);
-    }
+    let mut next = self::record(&files, &delivered, &checkouts, &heads);
     // Anchor findings the session heard when it edited the file are not said again.
     let told = crate::delivered::read(root, session).unwrap_or(Value::Null);
     let mut summary = None;
@@ -314,6 +408,7 @@ pub fn stop(
         let mut findings = Vec::new();
         let markers_on = standards::debt_markers(settings);
         for Dirty {
+            checkout,
             file,
             tracked,
             bytes,
@@ -330,7 +425,10 @@ pub fn stop(
                 }
             }
             if markers_on {
-                for mut finding in markers(root, file, *tracked, bytes, base) {
+                let within = &checkouts[*checkout];
+                let inside = file.strip_prefix(&*within.folder).unwrap_or(file);
+                let base = bases[*checkout];
+                for mut finding in markers(&within.directory, inside, *tracked, bytes, base) {
                     finding["file"] = json!(file);
                     findings.push(finding);
                 }

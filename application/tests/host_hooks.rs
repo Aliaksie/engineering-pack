@@ -1125,3 +1125,141 @@ fn a_session_keeps_the_project_it_was_opened_in_when_its_shell_moves() {
     );
     assert!(state(&visited.0));
 }
+
+/// A workspace root is no repository: the stop reads each member repository, names its files
+/// from the workspace root, and the commit check reads the member a commit was just made in.
+#[test]
+fn a_workspace_root_reviews_what_changed_in_each_member_repository() {
+    let top = std::env::temp_dir().join(format!("craft-host-workspace-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&top);
+    for folder in [".craft", "api", "web", "notes"] {
+        fs::create_dir_all(top.join(folder)).unwrap();
+    }
+    let fixture = Scratch(fs::canonicalize(&top).unwrap());
+    let root = &fixture.0;
+    fs::write(
+        root.join(".craft/project.json"),
+        r#"{"formatVersion":1,"routing":{"debtMarkers":true},"standards":[
+          {"id":"commits","anchor":"conventional-commits"}]}"#,
+    )
+    .unwrap();
+    let git = |member: &str, args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .current_dir(root.join(member))
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    let files = |decision: &Value| -> Vec<String> {
+        let mut files: Vec<String> = decision["stop"]["findings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|finding| finding["file"].as_str().map(str::to_owned))
+            .collect();
+        files.sort();
+        files
+    };
+    for member in ["api", "web"] {
+        fs::write(root.join(member).join("a.ts"), "export const a = 1\n").unwrap();
+        git(member, &["init", "-q"]);
+        git(member, &["add", "-A"]);
+        git(member, &["commit", "-qm", "feat: start"]);
+    }
+    fs::write(root.join("web/old.ts"), "// TODO: before the session\n").unwrap();
+    lifecycle(root, "session-start", json!({}));
+
+    // One member's file left dirty, the other's committed in the turn; a plain folder's
+    // file belongs to no repository.
+    fs::write(
+        root.join("api/a.ts"),
+        "// FIXME: mine\nexport const a = 2\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("web/b.ts"),
+        "// TODO: later\nexport const b = 1\n",
+    )
+    .unwrap();
+    fs::write(root.join("notes/n.ts"), "// TODO: a note\n").unwrap();
+    git("web", &["add", "b.ts"]);
+    git("web", &["commit", "-qm", "Added b"]);
+    let shell = json!({"tool": "shell", "command": "git -C web commit -m 'Added b'"});
+    let found = written(root, shell);
+    assert_eq!(found["standards"][0]["standard"], "commits", "{found}");
+
+    let decision = lifecycle(root, "turn-end", json!({}));
+    assert_eq!(files(&decision), ["api/a.ts", "web/b.ts"], "{decision}");
+    // Said once: the next stop without a change is quiet, and a later one names only the new.
+    let quiet = lifecycle(root, "turn-end", json!({}));
+    assert!(quiet.get("stop").is_none(), "{quiet}");
+    fs::write(root.join("web/a.ts"), "// HACK: next\nexport const a = 3\n").unwrap();
+    let decision = lifecycle(root, "turn-end", json!({}));
+    assert_eq!(files(&decision), ["web/a.ts"], "{decision}");
+}
+
+/// With no configuration at all, a workspace is held at its stops and commits to what its
+/// member repositories state.
+#[test]
+fn an_undeclared_workspace_is_held_to_its_members_formats_at_commit_and_stop() {
+    let top = std::env::temp_dir().join(format!("craft-host-undeclared-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&top);
+    fs::create_dir_all(&top).unwrap();
+    let fixture = Scratch(fs::canonicalize(&top).unwrap());
+    let root = &fixture.0;
+    let git = |member: &str, args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .current_dir(root.join(member))
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    let log = "# Changelog\n\nThe format is based on Keep a Changelog.\n\n## [Unreleased]\n";
+    for member in ["api", "web"] {
+        fs::create_dir_all(root.join(member)).unwrap();
+        let rules = "# Rules\n\nCommit messages follow Conventional Commits.\n";
+        fs::write(root.join(member).join("AGENTS.md"), rules).unwrap();
+        git(member, &["init", "-q"]);
+    }
+    fs::write(root.join("api/CHANGELOG.md"), log).unwrap();
+    for member in ["api", "web"] {
+        git(member, &["add", "-A"]);
+        git(member, &["commit", "-qm", "feat: start"]);
+    }
+    let session = json!({"projectDirectory": root.to_string_lossy()});
+    lifecycle(root, "session-start", session.clone());
+
+    fs::write(root.join("web/b.ts"), "export const b = 1\n").unwrap();
+    git("web", &["add", "b.ts"]);
+    git("web", &["commit", "-qm", "Added b"]);
+    let mut shell = json!({"tool": "shell", "command": "cd web && git commit -m 'Added b'"});
+    shell["projectDirectory"] = session["projectDirectory"].clone();
+    let found = written(root, shell);
+    assert_eq!(
+        found["standards"][0]["anchor"], "conventional-commits",
+        "{found}"
+    );
+
+    // A shell command rewrote one member's changelog out of its format: no edit hook saw it.
+    fs::write(
+        root.join("api/CHANGELOG.md"),
+        log.replace("[Unreleased]", "Next"),
+    )
+    .unwrap();
+    fs::write(root.join("api/README.md"), "# Api\n\n## Install\n").unwrap();
+    let decision = lifecycle(root, "turn-end", session);
+    let files: Vec<&str> = decision["stop"]["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|finding| finding["file"].as_str())
+        .collect();
+    assert_eq!(files, ["api/CHANGELOG.md"], "{decision}");
+    assert!(!root.join("api/.craft").exists() && !root.join("web/.craft").exists());
+}

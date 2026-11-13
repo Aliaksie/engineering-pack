@@ -25,7 +25,8 @@
   or Nygard decision records when the existing files already pass the check.
 - A folder holding several repositories works as one workspace: opened there, a session is
   held to each repository's own standards within that repository's folder, with one `.craft`
-  at the workspace root. The stop review and the commit check do not yet run there.
+  at the workspace root. The stop review reads every member repository and names its files
+  from the workspace root, and the commit check reads the repository a commit was just made in.
 - A changelog, version or Gherkin standard with a folder in `scope.paths` checks its own
   files inside that folder (`CHANGELOG.md`, manifests, `*.feature`) instead of every file
   there; a path that names one file still selects it. In a workspace this kept a member
