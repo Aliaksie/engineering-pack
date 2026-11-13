@@ -26,6 +26,10 @@
 - A folder holding several repositories works as one workspace: opened there, a session is
   held to each repository's own standards within that repository's folder, with one `.craft`
   at the workspace root. The stop review and the commit check do not yet run there.
+- A changelog, version or Gherkin standard with a folder in `scope.paths` checks its own
+  files inside that folder (`CHANGELOG.md`, manifests, `*.feature`) instead of every file
+  there; a path that names one file still selects it. In a workspace this kept a member
+  repository's changelog format from being reported on its other documents.
 - A session stays with the project it was opened in. On Claude Code a hook reads the project
   from the directory the host was opened in, so a shell that moved into another repository no
   longer starts a second session record there. A command run without `--root` from a

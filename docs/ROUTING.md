@@ -145,8 +145,10 @@ turns the scan off: nothing is read from the files and nothing is said.
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
   `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
-  manifests; the others read the files under `scope.paths`. Checks cover structure, not
-  whether the content is right, and an ADR's sections are checked in any order.
+  manifests; the others read the files under `scope.paths`. With `scope.paths`, those three
+  read their own files inside a named folder, and any file a path names exactly. Checks cover
+  structure, not whether the content is right, and an ADR's sections are checked in any
+  order.
 - `hexagonal-architecture` and `clean-architecture` check module dependencies instead of
   text. Declare each ring or layer as a module with the `dependsOn` it may import. When a source
   file in such a module is written, Craft reports each import that the change adds (compared with

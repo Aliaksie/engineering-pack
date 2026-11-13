@@ -322,6 +322,21 @@ fn anchor_checks_read_the_files_their_standard_names() {
         file_checks(&settings, "docs/adr-notes.md").is_empty(),
         "whole path components"
     );
+    // A folder narrows an anchor's own files; a path that names a file selects it.
+    let scoped = self::settings(json!([
+        {"id": "api-changelog", "anchor": "keep-a-changelog", "scope": {"paths": ["api"]}},
+        {"id": "history", "anchor": "keep-a-changelog", "scope": {"paths": ["docs/HISTORY.md"]}}
+    ]));
+    assert_eq!(
+        pairs(file_checks(&scoped, "api/CHANGELOG.md")),
+        pair("api-changelog", "keep-a-changelog")
+    );
+    assert!(file_checks(&scoped, "api/README.md").is_empty());
+    assert!(file_checks(&scoped, "web/CHANGELOG.md").is_empty());
+    assert_eq!(
+        pairs(file_checks(&scoped, "docs/HISTORY.md")),
+        pair("history", "keep-a-changelog")
+    );
     assert!(
         file_checks(&settings, "docs/requirements.md").is_empty(),
         "no layout is assumed for EARS"

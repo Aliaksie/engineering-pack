@@ -673,18 +673,24 @@ fn planned<'a>(standard: &'a Value, anchor: Anchor) -> Check<'a> {
     }
 }
 
-/// The anchor checks that read `file` after it is written. A declared `scope.paths`
-/// replaces the anchor's default targets.
+/// The anchor checks that read `file` after it is written: the anchor's default targets,
+/// or the files a declared `scope.paths` selects. A path that names the file selects it
+/// whatever it is called. A folder selects the anchor's default targets inside it, and every
+/// file inside it for an anchor that has none: a changelog format held to a folder is not
+/// held to the folder's other documents.
 pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
     checked(settings, Input::File)
         .into_iter()
         .filter(|(standard, anchor)| {
             let paths = listed(standard, "paths");
             if paths.is_empty() {
-                default_target(anchor, file)
-            } else {
-                paths.iter().any(|path| member(file, &prefix(path)))
+                return default_target(anchor, file);
             }
+            let named = anchor.targets.is_empty() || default_target(anchor, file);
+            paths
+                .iter()
+                .map(|path| prefix(path))
+                .any(|path| file == path || (named && member(file, &path)))
         })
         .map(|(standard, anchor)| planned(standard, anchor))
         .collect()
