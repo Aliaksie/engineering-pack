@@ -20,6 +20,7 @@ mod grounding;
 mod guidance;
 mod handoff;
 pub mod hook;
+mod hook_gap;
 pub mod host;
 mod host_context;
 mod integration;

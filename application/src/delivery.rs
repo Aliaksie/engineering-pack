@@ -549,6 +549,22 @@ fn decide(
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
     }
+    // Earlier sessions the host ran here without Craft's hooks, said once, when they run again.
+    if event.lifecycle == "session-start"
+        && (event.context_supported || crate::hook::shows_notice(event.host, event.lifecycle))
+    {
+        let installed = std::env::var_os(crate::statusline::PACKAGE_ROOT)
+            .and_then(|bundle| craft_platform::host_install::installed_ms(Path::new(&bundle)));
+        let safety = craft_engine::safety::enabled(settings);
+        if let Some(found) = crate::hook_gap::found(root, event.host, session, installed, safety) {
+            let line = craft_engine::hook_gap::line(&found);
+            decision["notice"] = json!(match decision["notice"].as_str() {
+                Some(earlier) => format!("{earlier}\n{line}"),
+                None => line,
+            });
+            decision["hookGap"] = found;
+        }
+    }
     // A resumed session restates the checked and reviewed standards of its scope: rules a
     // compaction dropped from context come back with the work they govern, whether or not
     // a task was bound to it.

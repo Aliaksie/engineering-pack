@@ -335,9 +335,10 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
 fn approval(found: &Value, id: &str, hooks: u64, report: &mut Report) -> Value {
     let missing = found["unapproved"].as_u64().unwrap_or(0);
     if missing > 0 {
-        report
-            .next
-            .push(format!("Review and approve {id} hooks in Codex `/hooks`"));
+        report.next.push(format!(
+            "Review and trust {id} hooks in Codex with {}",
+            crate::hook_gap::trust_place("codex")
+        ));
         return check(
             "approval",
             "problem",
@@ -347,7 +348,8 @@ fn approval(found: &Value, id: &str, hooks: u64, report: &mut Report) -> Value {
     let stale = found["staleApprovals"].as_u64().unwrap_or(0);
     if stale > 0 {
         report.next.push(format!(
-            "Approve {id} hooks again in Codex `/hooks`: an approval covers the plugin content it was given to, so each update needs a new one"
+            "Trust {id} hooks again in Codex with {}: an approval covers the plugin content it was given to, so each update needs a new one",
+            crate::hook_gap::trust_place("codex")
         ));
         return check(
             "approval",
@@ -513,6 +515,29 @@ fn codex(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) 
                 "Craft hook commands also in {}: Codex runs every matching hook",
                 duplicated.join(", ")
             ),
+        ));
+    }
+    // Codex's own session records against the hook telemetry: sessions since the last hook
+    // that ran none show it skipping them now, whatever the cause.
+    if let Some(gap) = facts.get("gap").filter(|gap| gap.is_object()) {
+        let count = gap["sessions"].as_u64().unwrap_or(0);
+        checks.push(check(
+            "sessions",
+            "problem",
+            format!(
+                "{count} Codex session{} in this project since {} ran no Craft hook{}",
+                if count == 1 { "" } else { "s" },
+                gap["first"].as_str().unwrap_or("?"),
+                if gap["safety"] == true {
+                    ": the safety policy checked none of their commands"
+                } else {
+                    ""
+                }
+            ),
+        ));
+        report.next.push(format!(
+            "Trust Craft's hooks in Codex with {}, then start a new session",
+            crate::hook_gap::trust_place("codex")
         ));
     }
     let mut all = checks.clone();

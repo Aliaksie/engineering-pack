@@ -1,4 +1,5 @@
 //! Host hook events through the native protocol: decisions, telemetry and failures.
+mod support;
 use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1349,4 +1350,55 @@ fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_comma
         payload(&fixture.0, Some("Read"), &"x".repeat(200 * 1024)),
     );
     assert_eq!((read.exit_code, read.stderr.as_str()), (0, ""));
+}
+
+/// Codex skips Craft's hooks after an update until they are trusted again, and some of its
+/// surfaces say nothing. When they run again, the first session start says once how many
+/// sessions in this project ran without them, from Codex's own session records.
+#[test]
+fn a_codex_session_hears_once_how_many_earlier_sessions_ran_without_craft_hooks() {
+    let fixture = project("codex-gap", Some(r#"{"formatVersion": 1}"#));
+    let root = &fixture.0;
+    let home = root.join("codex-home");
+    let pause = || std::thread::sleep(std::time::Duration::from_millis(20));
+    let said = |out: &str| out.contains("earlier Codex session");
+    support::codex_session(&home, "S-old", root, true);
+    assert!(!said(&support::codex_started(root, &home, "S-old")));
+    pause();
+    // After the update: one session worked without hooks, one was opened and left, one ran
+    // in another project.
+    support::codex_session(&home, "S-skipped", root, true);
+    support::codex_session(&home, "S-idle", root, false);
+    support::codex_session(&home, "S-elsewhere", &std::env::temp_dir(), true);
+    pause();
+    support::codex_session(&home, "S-new", root, true);
+    let out = support::codex_started(root, &home, "S-new");
+    assert!(
+        out.contains("Craft: 1 earlier Codex session in this project since"),
+        "{out}"
+    );
+    let wire: Value = serde_json::from_str(out.trim()).unwrap();
+    assert!(
+        wire["systemMessage"]
+            .as_str()
+            .unwrap()
+            .contains("Settings → Hooks"),
+        "{wire}"
+    );
+    assert!(
+        wire["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .unwrap()
+            .contains("Tell the user this once"),
+        "{wire}"
+    );
+    // The safety policy is on by default and said to have checked nothing meanwhile.
+    assert!(
+        out.contains("The safety policy checked no command"),
+        "{out}"
+    );
+    pause();
+    support::codex_session(&home, "S-next", root, true);
+    let again = support::codex_started(root, &home, "S-next");
+    assert!(!said(&again), "said once: {again}");
 }

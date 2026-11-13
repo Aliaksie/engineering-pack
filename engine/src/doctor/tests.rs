@@ -278,7 +278,7 @@ fn codex_approvals_given_to_other_plugin_content_are_a_problem() {
     assert_eq!(report["blocking"], false);
     let next = report["next"].to_string();
     assert!(
-        next.contains("Approve craft-delivery@engineering-pack hooks again in Codex `/hooks`"),
+        next.contains("Trust craft-delivery@engineering-pack hooks again in Codex with `/hooks` in the terminal or Settings → Hooks in the Codex app and IDE extension"),
         "{next}"
     );
 

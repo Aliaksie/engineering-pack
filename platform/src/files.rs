@@ -130,6 +130,24 @@ pub fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError>
     Ok(bytes)
 }
 
+/// The first `max_bytes` of a regular file, for a record whose header comes first. Refuses
+/// special files like [`read_bounded`]; a cut last line is kept as is.
+pub fn read_head(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {
+    let before = fs::symlink_metadata(path).map_err(ReadError::Io)?;
+    if !before.is_file() {
+        return Err(ReadError::Bounds);
+    }
+    let file = File::open(path).map_err(ReadError::Io)?;
+    if !file.metadata().map_err(ReadError::Io)?.is_file() {
+        return Err(ReadError::Bounds);
+    }
+    let mut bytes = Vec::new();
+    file.take(max_bytes as u64)
+        .read_to_end(&mut bytes)
+        .map_err(ReadError::Io)?;
+    Ok(bytes)
+}
+
 /// The last `max_bytes` of a regular file, for output whose summary comes last. Refuses
 /// special files like [`read_bounded`]; a cut first line is kept as is.
 pub fn read_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {

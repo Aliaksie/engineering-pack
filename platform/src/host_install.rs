@@ -444,7 +444,7 @@ pub fn codex(root: &Path) -> Value {
                     "enabled": keys.get(&format!("plugins.{id}.enabled")).cloned().unwrap_or(Value::Null),
                     "hooks": declared.len(), "unapproved": unapproved,
                     "staleApprovals": stale, "approvedContent": content,
-                    "bundle": bundle(&path),
+                    "bundle": bundle(&path), "installedMs": installed_ms(&path),
                 }));
             }
         }
@@ -478,6 +478,108 @@ pub fn codex(root: &Path) -> Value {
         "trust": trust, "hooksFeature": hooks_feature, "packages": packages,
         "configured": configured, "commands": commands, "sources": sources,
     })
+}
+
+/// How many Codex session records, and how much of each, a session listing reads.
+const SESSION_FILES: usize = 64;
+const SESSION_HEAD: usize = 256 * 1024;
+const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+
+/// Codex sessions that ran at least one turn in a directory within `root` and started after
+/// `since_ms`, as `(session id, start in ms)`, from Codex's own records
+/// (`sessions/YYYY/MM/DD/rollout-*.jsonl`: a `session_meta` line, then `task_started` once a
+/// turn runs). Folders are named in local time, so a day before `since_ms` is read too; the
+/// newest records are read first, at most [`SESSION_FILES`]. Nothing else of a session is
+/// returned.
+pub fn codex_sessions(root: &Path, since_ms: i64) -> Vec<(String, i64)> {
+    let Some(home) = variable("CODEX_HOME").or_else(|| home().map(|h| h.join(".codex"))) else {
+        return Vec::new();
+    };
+    let first_day = craft_engine::timestamp::format(since_ms.saturating_sub(DAY_MS));
+    let first_day = first_day.get(..10).unwrap_or_default();
+    let named = |path: &Path| -> Vec<(String, PathBuf)> {
+        let mut found: Vec<(String, PathBuf)> = fs::read_dir(path)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| {
+                (
+                    entry.file_name().to_string_lossy().into_owned(),
+                    entry.path(),
+                )
+            })
+            .collect();
+        found.sort();
+        found.reverse();
+        found
+    };
+    let mut records = Vec::new();
+    'days: for (year, year_path) in named(&home.join("sessions")) {
+        for (month, month_path) in named(&year_path) {
+            for (day, day_path) in named(&month_path) {
+                if format!("{year}-{month}-{day}").as_str() < first_day {
+                    break 'days;
+                }
+                for (name, path) in named(&day_path) {
+                    if name.starts_with("rollout-") && name.ends_with(".jsonl") {
+                        records.push(path);
+                        if records.len() == SESSION_FILES {
+                            break 'days;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let root = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let mut sessions = Vec::new();
+    for path in records {
+        let Ok(head) = files::read_head(&path, SESSION_HEAD) else {
+            continue;
+        };
+        let mut lines = head.split(|byte| *byte == b'\n');
+        let Some(meta) = lines
+            .next()
+            .and_then(|line| serde_json::from_slice::<Value>(line).ok())
+        else {
+            continue;
+        };
+        let meta = &meta["payload"];
+        let (Some(id), Some(started), Some(cwd)) = (
+            meta["id"].as_str(),
+            meta["timestamp"]
+                .as_str()
+                .and_then(craft_engine::timestamp::parse),
+            meta["cwd"].as_str(),
+        ) else {
+            continue;
+        };
+        let cwd = fs::canonicalize(cwd).unwrap_or_else(|_| PathBuf::from(cwd));
+        let turned = lines.any(|line| {
+            line.windows(TURN.len()).any(|window| window == TURN)
+                && serde_json::from_slice::<Value>(line)
+                    .is_ok_and(|event| event["payload"]["type"] == "task_started")
+        });
+        if started > since_ms && turned && cwd.starts_with(&root) {
+            sessions.push((id.to_owned(), started));
+        }
+    }
+    sessions
+}
+
+/// The event type Codex records when a turn starts.
+const TURN: &[u8] = b"\"task_started\"";
+
+/// When the bundle at `path` was installed: the modification time of its plugin manifest,
+/// else of its folder, in ms.
+pub fn installed_ms(path: &Path) -> Option<i64> {
+    let modified = |path: &Path| fs::metadata(path).and_then(|meta| meta.modified()).ok();
+    let time = [".codex-plugin/plugin.json", ".claude-plugin/plugin.json"]
+        .iter()
+        .find_map(|manifest| modified(&path.join(manifest)))
+        .or_else(|| modified(path))?;
+    let elapsed = time.duration_since(std::time::UNIX_EPOCH).ok()?;
+    i64::try_from(elapsed.as_millis()).ok()
 }
 
 /// Whether a host setting turns the plugin `id` off for `project`. Claude Code: the last of
