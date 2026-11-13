@@ -1320,8 +1320,19 @@ fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_comma
             shell.stderr
         );
     }
-    // With the policy off there is nothing to enforce.
+    // With the policy off there is nothing to enforce. The project is the one the input names,
+    // also when its directory is written with escapes (as on Windows), not the hook's own.
     let free = run("before-tool", payload(&off.0, Some("Bash"), &large));
+    assert_eq!((free.exit_code, free.stderr.as_str()), (0, ""));
+    let escaped = payload(&off.0, Some("Bash"), &large).replacen(
+        &json!(off.0.to_string_lossy()).to_string(),
+        &json!(off.0.to_string_lossy())
+            .to_string()
+            .replace('/', "\\/"),
+        1,
+    );
+    assert!(escaped.contains("\\/"), "the fixture escapes the directory");
+    let free = run("before-tool", escaped);
     assert_eq!((free.exit_code, free.stderr.as_str()), (0, ""));
     // Under the bound a large payload is read as any other.
     let read = run(

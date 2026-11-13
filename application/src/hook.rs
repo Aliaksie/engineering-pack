@@ -162,8 +162,9 @@ pub(crate) fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {
 
 /// The tool and working directory an unread input states near its start (`"tool_name":
 /// "Bash"`, `"cwd"`). Hosts send them before the tool's input and result, so a payload too
-/// large to read still says where it runs and whether a shell command is about to. A value
-/// with an escape is left out rather than guessed.
+/// large to read still says where it runs and whether a shell command is about to. Each value
+/// is decoded as the JSON string it is (a Windows directory arrives with escaped backslashes);
+/// one that does not end within the bytes looked at is left out.
 fn peeked(bytes: &[u8]) -> Value {
     // Never the session: partial input does not claim one.
     const FIELDS: [&str; 3] = ["tool_name", "toolName", "cwd"];
@@ -173,9 +174,22 @@ fn peeked(bytes: &[u8]) -> Value {
         let key = format!("\"{field}\"");
         let value = text.find(&key).and_then(|at| {
             let rest = text[at + key.len()..].trim_start().strip_prefix(':')?;
-            let value = rest.trim_start().strip_prefix('"')?;
-            let value = &value[..value.find('"')?];
-            (!value.contains('\\')).then(|| value.to_owned())
+            let literal = rest.trim_start();
+            let body = literal.strip_prefix('"')?;
+            // The closing quote is the first one no backslash escapes.
+            let (mut end, mut escaped) = (None, false);
+            for (index, character) in body.char_indices() {
+                match character {
+                    _ if escaped => escaped = false,
+                    '\\' => escaped = true,
+                    '"' => {
+                        end = Some(index);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            serde_json::from_str::<String>(&literal[..end? + 2]).ok()
         });
         if let Some(value) = value {
             found.insert(field.to_owned(), json!(value));
