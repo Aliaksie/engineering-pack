@@ -188,7 +188,8 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
   TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
   `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
   (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
-  than the change removed. Commented-out code is not detected;
+  than the change removed. Text inside a string literal or a Markdown code span on the same
+  line is not a marker. Commented-out code is not detected;
 - the declared `review` standards whose scope the changed files fall under, with their
   checklist.
 

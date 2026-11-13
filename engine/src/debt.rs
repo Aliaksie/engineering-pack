@@ -89,6 +89,62 @@ fn word_at(text: &str, word: &str) -> Option<usize> {
     })
 }
 
+/// `text` with the content of each string literal on it blanked: `"…"`, `'…'` and `` `…` ``
+/// (a Markdown code span too), a backslash escaping the next character, and Rust's raw
+/// `r"…"` and `r#"…"#`, which hold quotes and no escapes. A quote with no closing one on the
+/// line (a Rust lifetime, an apostrophe) opens no string, so a comment after it is still found.
+fn code(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let identifier = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let mut code = String::with_capacity(text.len());
+    let mut index = 0;
+    while index < chars.len() {
+        let quote = chars[index];
+        if matches!(quote, '"' | '\'' | '`') {
+            // `r`, `br` and their hashes right before the quote open a raw string.
+            let hashes = chars[..index]
+                .iter()
+                .rev()
+                .take_while(|c| **c == '#')
+                .count();
+            let opener = index - hashes;
+            let raw = quote == '"'
+                && opener > 0
+                && chars[opener - 1] == 'r'
+                && (opener < 2 || !identifier(chars[opener - 2]) || chars[opener - 2] == 'b');
+            let mut end = index + 1;
+            if raw {
+                let closes = |at: usize| {
+                    chars[at] == '"'
+                        && chars[at + 1..]
+                            .iter()
+                            .take(hashes)
+                            .filter(|c| **c == '#')
+                            .count()
+                            == hashes
+                };
+                while end < chars.len() && !closes(end) {
+                    end += 1;
+                }
+            } else {
+                while end < chars.len() && chars[end] != quote {
+                    end += if chars[end] == '\\' { 2 } else { 1 };
+                }
+            }
+            if end < chars.len() {
+                code.push(quote);
+                code.extend(std::iter::repeat_n(' ', end - index - 1));
+                code.push(quote);
+                index = end + 1;
+                continue;
+            }
+        }
+        code.push(quote);
+        index += 1;
+    }
+    code
+}
+
 /// A line that states an assertion: `assert…`, `expect(`, `.should`, testify `require.`.
 fn asserts(line: &str) -> bool {
     let line = line.trim_start();
@@ -107,20 +163,22 @@ pub fn markers(added: &[(usize, String)], removed: &[String]) -> Vec<Value> {
     let mut found = Vec::new();
     for (line, text) in added {
         let trimmed = text.trim();
+        // Markers in code and comments, not in a string literal or code span naming one.
+        let outside = code(trimmed);
         let todo = TODO.iter().find_map(|marker| {
-            let at = word_at(trimmed, marker)?;
+            let at = word_at(&outside, marker)?;
             COMMENTS
                 .iter()
-                .any(|comment| trimmed[..at].contains(comment))
+                .any(|comment| outside[..at].contains(comment))
                 .then_some(*marker)
         });
         if let Some(marker) = todo {
             found.push(json!({"rule": "todo-marker", "line": line, "message": format!("adds a {marker} comment: {}", excerpt(trimmed))}));
         }
-        if let Some(token) = SUPPRESSIONS.iter().find(|token| trimmed.contains(*token)) {
+        if let Some(token) = SUPPRESSIONS.iter().find(|token| outside.contains(*token)) {
             found.push(json!({"rule": "suppression", "line": line, "message": format!("adds a {token} suppression: {}", excerpt(trimmed))}));
         }
-        if let Some(token) = SKIPS.iter().find(|token| trimmed.contains(*token)) {
+        if let Some(token) = SKIPS.iter().find(|token| outside.contains(*token)) {
             found.push(json!({"rule": "skipped-test", "line": line, "message": format!("skips a test with {token}: {}", excerpt(trimmed))}));
         }
     }

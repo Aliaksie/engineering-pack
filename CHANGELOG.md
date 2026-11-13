@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The stop review no longer reports debt markers that sit inside a string literal (also Rust
+  raw strings) or a Markdown code span: a TODO in a test's fixture text, or documentation
+  naming `eslint-disable` or `#[ignore]`, had been reported as added debt.
 - A hook no longer fails with "hook input exceeds 64 KiB" when the host sends a large payload,
   such as the text of a large file just read. Hooks read up to 1 MiB; above that, a hook with
   nothing to enforce stays silent, and before a shell command the safety policy denies what it

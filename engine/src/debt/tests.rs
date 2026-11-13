@@ -130,3 +130,44 @@ fn delivered_keys_stay_bounded_newest_last() {
     assert_eq!(keys[keys.len() - 2], "0");
     assert!(!keys.contains(&"1".to_owned()));
 }
+
+/// A test that writes marker text into a fixture file adds no marker of its own.
+#[test]
+fn a_marker_inside_a_string_literal_is_not_a_comment() {
+    let added = |lines: &[&str]| -> Vec<(usize, String)> {
+        lines
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i + 1, (*l).to_owned()))
+            .collect()
+    };
+    let found = markers(
+        &added(&[
+            r#"fs::write(root.join("web/old.ts"), "// TODO: before the session\n").unwrap();"#,
+            r#"    "// FIXME: mine\nexport const a = 2\n","#,
+            r#"const note = 'a # HACK here';"#,
+            r#"let s = `/* XXX */`; let t = "escaped \" // TODO inside";"#,
+            // Raw strings hold quotes: the session's own test lines.
+            r##"    r#"fs::write(root.join("web/old.ts"), "// TODO: early\n").unwrap();"#,"##,
+            // A raw string ends at its quote even after a backslash.
+            r#"let dir = r"C:\temp\"; let note = "// HACK";"#,
+            // Documentation naming the tokens in code spans.
+            "  suppression (`eslint-disable`, `@ts-ignore`, `# noqa`, `#[allow(`, …),",
+            "  a skipped or disabled test (`it.skip(`, `#[ignore]`, `@Disabled`, …)",
+        ]),
+        &[],
+    );
+    assert!(found.is_empty(), "{found:?}");
+    // A real comment after a string, or after a lifetime's lone quote, still counts.
+    let found = markers(
+        &added(&[
+            r#"let path = "a/b"; // TODO: move"#,
+            "fn f<'a>(x: &'a str) {} // FIXME: lifetimes",
+            "# TODO: plain",
+            "#[allow(dead_code)]",
+            "    #[ignore]",
+        ]),
+        &[],
+    );
+    assert_eq!(found.len(), 5, "{found:?}");
+}
