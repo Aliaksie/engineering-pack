@@ -217,7 +217,10 @@ source digest of the tree it ran on:
   `all-skipped`), whatever the exit code;
 - `unknown` when the output carries no summary Craft recognizes (another runner, output cut
   before the summary, `cargo test --no-run`), or the host reports a failed call with neither
-  summary nor exit code (`tool-failed`); never `passed`;
+  summary nor exit code (`tool-failed`); never `passed`. Output the command piped into a
+  filter (`| tail -5`, `| grep`, anything but `tee` or `cat`) may show only the last of several
+  summaries: from it a shown failure still fails the run, anything else is `unknown`
+  (`cut-output`);
 - `passed` only with at least one executed test and no failures.
 
 A run that checked nothing (no executed test, or `unknown`) neither confirms nor contradicts

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A test command whose output is piped into a filter such as `tail` or `grep` is no longer
+  reported as having executed no test when the summary left in view is an empty one: such a
+  run is `unknown` (`cut-output`) unless the output shows a failure. `cargo test | tail -4`
+  had been reported as checking nothing although its tests ran.
 - The safety policy is on with no configuration: a destructive shell command is refused in a
   project that declares nothing. `"safety": {"enabled": false}` in the project, organization
   or user file turns it off, and `disables` leaves single rules out. A project that relied on

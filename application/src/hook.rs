@@ -402,7 +402,7 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
     if output.trim().is_empty() && exit.is_none_or(|code| code == 0) {
         return None;
     }
-    let mut verdict = test_runs::classify(exit, &output);
+    let mut verdict = test_runs::classify_command(exit, &output, command);
     if outcome.as_deref() == Some("failure") && verdict["result"] != "failed" {
         // A failed call never passes; without a summary or exit code it may not have run.
         if verdict["result"] == "passed" {
