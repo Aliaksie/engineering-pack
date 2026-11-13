@@ -1027,12 +1027,12 @@
     "safety": {
       "type": "object",
       "required": [],
-      "description": "Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "description": "Rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Turn the policy on. Off, no command is refused."
+          "default": true,
+          "description": "Whether the policy is on. Set `false` to turn it off: no command is refused."
         },
         "disables": {
           "type": "array",
@@ -1173,7 +1173,7 @@
         "conventionProposals": {
           "type": "boolean",
           "default": true,
-          "description": "When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start."
+          "description": "Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them."
         },
         "projectChecks": {
           "type": "boolean",

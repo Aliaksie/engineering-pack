@@ -10,6 +10,13 @@ receipts are compact; `--json` or `--verbose` returns the full structured result
 carry a stable error `code` with exit status 1; callers branch on the code, never on the
 message. Git and `gh`/`glab` are prerequisites only for operations that need them.
 
+A command works on the project named by `--root`. Without it, the project is the nearest
+directory at or above the current one that holds `.craft/project.json` or a Git entry, else
+the current directory: a command run from a subfolder reads the same configuration and state
+as the session around it. A hook finds its project the same way, starting from the directory
+the host was opened in where the host names one (Claude Code), else from the directory the
+session's shell is in.
+
 No command grants permission. A routing, service or publication plan describes work; it does
 not execute or authorize it. No command calls a model, switches models, starts workers,
 compacts a host session or posts to a code host.
