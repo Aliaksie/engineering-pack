@@ -1328,10 +1328,13 @@ fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_comma
     let directory = off.0.to_string_lossy();
     let first = directory.chars().next().unwrap();
     let plain = json!(directory).to_string();
+    // Skip the first character as JSON writes it: `\\` for the backslash of a Windows
+    // verbatim path (`\\?\C:\…`), the character itself otherwise.
+    let first_written = json!(first.to_string()).to_string();
     let written = format!(
         r#""\u{:04x}{}"#,
         first as u32,
-        &plain[1 + first.len_utf8()..]
+        &plain[first_written.len() - 1..]
     );
     let escaped = payload(&off.0, Some("Bash"), &large).replacen(&plain, &written, 1);
     assert!(
