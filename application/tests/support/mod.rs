@@ -335,5 +335,7 @@ pub fn codex_session(home: &Path, id: &str, cwd: &Path, turned: bool) {
             json!({"timestamp": started, "type": "event_msg", "payload": {"type": "task_started", "turn_id": "t"}})
         ));
     }
-    fs::write(day.join(format!("rollout-{started}-{id}.jsonl")), text).unwrap();
+    // Codex's own name, `rollout-YYYY-MM-DDThh-mm-ss-<id>`: no `:`, which Windows refuses.
+    let stamp = started[..19].replace(':', "-");
+    fs::write(day.join(format!("rollout-{stamp}-{id}.jsonl")), text).unwrap();
 }
