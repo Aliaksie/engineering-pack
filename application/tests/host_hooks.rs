@@ -1324,14 +1324,20 @@ fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_comma
     // also when its directory is written with escapes (as on Windows), not the hook's own.
     let free = run("before-tool", payload(&off.0, Some("Bash"), &large));
     assert_eq!((free.exit_code, free.stderr.as_str()), (0, ""));
-    let escaped = payload(&off.0, Some("Bash"), &large).replacen(
-        &json!(off.0.to_string_lossy()).to_string(),
-        &json!(off.0.to_string_lossy())
-            .to_string()
-            .replace('/', "\\/"),
-        1,
+    // Its first character written as a `\u` escape, which any path can carry.
+    let directory = off.0.to_string_lossy();
+    let first = directory.chars().next().unwrap();
+    let plain = json!(directory).to_string();
+    let written = format!(
+        r#""\u{:04x}{}"#,
+        first as u32,
+        &plain[1 + first.len_utf8()..]
     );
-    assert!(escaped.contains("\\/"), "the fixture escapes the directory");
+    let escaped = payload(&off.0, Some("Bash"), &large).replacen(&plain, &written, 1);
+    assert!(
+        escaped.contains(r#""cwd":"\u00"#),
+        "the fixture escapes the directory"
+    );
     let free = run("before-tool", escaped);
     assert_eq!((free.exit_code, free.stderr.as_str()), (0, ""));
     // Under the bound a large payload is read as any other.
