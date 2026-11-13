@@ -648,3 +648,26 @@ fn observed_counts_come_only_from_craft_and_the_format_is_checked_first() {
     let refused = submit(&repo, 2, json!([forged]), "passed", false).unwrap_err();
     assert!(refused.contains("did not observe"), "{refused}");
 }
+
+/// Output a pipe cut short may hold only the last test binary's summary: the agent is not told
+/// that no test ran, and the run is kept as unknown.
+#[test]
+fn a_run_whose_output_a_pipe_cut_is_not_reported_as_running_no_test() {
+    let repo = Repo::new("test-runs-cut", &[("src/lib.rs", "pub fn f() {}\n")]);
+    let command = "cargo test -q -p craft-engine layers 2>&1 | tail -4";
+    let said = hook(
+        "claude",
+        "after-tool",
+        shell(
+            &repo,
+            command,
+            json!({"tool_response": {"stdout": CARGO_ZERO, "stderr": ""}}),
+        ),
+    );
+    assert!(!said.contains("executed no test"), "{said}");
+    let run = &runs(&repo)[0];
+    assert_eq!(
+        (run["result"].as_str(), run["reason"].as_str()),
+        (Some("unknown"), Some("cut-output"))
+    );
+}

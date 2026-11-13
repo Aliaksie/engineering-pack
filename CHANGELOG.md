@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- The stop review no longer reports debt markers that sit inside a string literal (also Rust
+  raw strings) or a Markdown code span: a TODO in a test's fixture text, or documentation
+  naming `eslint-disable` or `#[ignore]`, had been reported as added debt.
+- A hook no longer fails with "hook input exceeds 64 KiB" when the host sends a large payload,
+  such as the text of a large file just read. Hooks read up to 1 MiB; above that, a hook with
+  nothing to enforce stays silent, and before a shell command the safety policy denies what it
+  could not read, where until now such a command was not checked at all.
+- A test command whose output is piped into a filter such as `tail` or `grep` is no longer
+  reported as having executed no test when the summary left in view is an empty one: such a
+  run is `unknown` (`cut-output`) unless the output shows a failure. `cargo test | tail -4`
+  had been reported as checking nothing although its tests ran.
 - The safety policy is on with no configuration: a destructive shell command is refused in a
   project that declares nothing. `"safety": {"enabled": false}` in the project, organization
   or user file turns it off, and `disables` leaves single rules out. A project that relied on

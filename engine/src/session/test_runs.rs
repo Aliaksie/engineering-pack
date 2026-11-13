@@ -3,7 +3,8 @@
 //! The result is read from the runner's own summary line, never guessed from other output.
 //! A run whose exit code says it failed is failed; a summary Craft does not recognise is
 //! `unknown`, never `passed`; a run in which no test executed is `failed`, because a filter
-//! that matches nothing exits 0 on most runners.
+//! that matches nothing exits 0 on most runners. Output a pipe cut short (`| tail -5`) may show
+//! only the last of several summaries, so from it only a failure it shows is decisive.
 
 use serde_json::{Value, json};
 
@@ -137,6 +138,47 @@ pub fn classify(exit: Option<i64>, output: &str) -> Value {
         verdict["skipped"] = json!(counts.skipped);
     }
     verdict
+}
+
+/// The verdict on a shell command's run of tests, as [`classify`], for output the command
+/// may have cut: after a filter such as `tail` or `grep` the summary seen can be the last of
+/// several (one per test binary or module), so an empty or passing one is `unknown` with the
+/// reason `cut-output`. A failure the cut output shows still fails the run.
+pub fn classify_command(exit: Option<i64>, output: &str, command: &str) -> Value {
+    let mut verdict = classify(exit, output);
+    let decisive = verdict["result"] == "failed"
+        && matches!(verdict["reason"].as_str(), Some("failures" | "exit-code"));
+    if !decisive && cut_output(command) {
+        verdict["result"] = json!("unknown");
+        verdict["reason"] = json!("cut-output");
+    }
+    verdict
+}
+
+/// Whether a test command's output passes through a later stage of its pipeline that can
+/// drop lines: any program but `tee` and `cat`.
+fn cut_output(command: &str) -> bool {
+    command
+        .split(['\n', ';'])
+        .flat_map(|line| line.split("&&"))
+        .flat_map(|list| list.split("||"))
+        .any(|pipeline| {
+            let stages: Vec<&str> = pipeline
+                .split('|')
+                .map(|stage| stage.trim_start_matches('&'))
+                .collect();
+            stages.iter().enumerate().any(|(at, stage)| {
+                runs_tests(stage.split_whitespace().collect())
+                    && stages[at + 1..].iter().any(|later| {
+                        let program = later
+                            .split_whitespace()
+                            .find(|word| !(word.contains('=') && !word.starts_with('-')))
+                            .map(program)
+                            .unwrap_or_default();
+                        !program.is_empty() && program != "tee" && program != "cat"
+                    })
+            })
+        })
 }
 
 type Parser = fn(&[&str]) -> Option<Summary>;
@@ -594,6 +636,48 @@ mod tests {
         assert_eq!(verdict["reason"], "failures");
         // No exit code from the host: the summary alone decides.
         assert_eq!(classify(None, output)["result"], "failed");
+    }
+
+    #[test]
+    fn output_a_pipe_cut_says_nothing_about_tests_it_does_not_show() {
+        // Cargo ran a library with 10 tests; `tail` kept only the last binary's summary.
+        let last = "running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s\n";
+        let cut = "cargo test -q -p craft-engine layers 2>&1 | tail -4";
+        assert_eq!(classify(Some(0), last)["reason"], "zero-tests");
+        let verdict = classify_command(Some(0), last, cut);
+        assert_eq!(
+            (verdict["result"].as_str(), verdict["reason"].as_str()),
+            (Some("unknown"), Some("cut-output"))
+        );
+        let passed = "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n";
+        assert_eq!(classify_command(Some(0), passed, cut)["result"], "unknown");
+        let failed = "test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n";
+        assert_eq!(classify_command(Some(0), failed, cut)["reason"], "failures");
+        // Whole output: kept by `tee` and `cat`, or a pipe that comes before the runner.
+        for whole in [
+            "cargo test 2>&1 | tee test.log",
+            "cargo test | cat",
+            "printf 'y' | cargo test",
+            "cargo test && git status | head -3",
+            "cargo test || echo failed | tail -1",
+        ] {
+            assert_eq!(
+                classify_command(Some(0), last, whole)["reason"],
+                "zero-tests",
+                "{whole}"
+            );
+        }
+        for cut in [
+            "npm test |& tail -5",
+            "pytest -q | grep -v PASSED",
+            "cargo test 2>&1 | LC_ALL=C sed -n '1,40p'",
+        ] {
+            assert_eq!(
+                classify_command(Some(0), last, cut)["reason"],
+                "cut-output",
+                "{cut}"
+            );
+        }
     }
 
     #[test]

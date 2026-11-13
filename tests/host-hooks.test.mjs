@@ -60,7 +60,7 @@ test('read-only review denies shell input it could not read in full', (t) => {
   const guarded = fixture(t, { review: { readOnly: true } });
   const unrestricted = fixture(t);
   for (const host of native) {
-    const command = `gh pr comment 42 --body ${'x'.repeat(70000)}`;
+    const command = `gh pr comment 42 --body ${'x'.repeat(1024 * 1024 + 16)}`;
     const result = invoke(host, 'craft-review', 'read-only', payload(host, guarded, command), guarded);
     assert.equal(decision(host, result), 'deny', `${host}: ${result.stderr}`);
     assert.equal(result.status, host === 'claude' ? 2 : 0, `${host}: ${result.stderr}`);
