@@ -15,6 +15,7 @@ pub mod delivery;
 pub mod discovery;
 pub mod doctor;
 pub mod grounding;
+pub mod hook_gap;
 pub mod layers;
 pub mod models;
 pub mod otlp;

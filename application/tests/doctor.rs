@@ -142,7 +142,47 @@ fn doctor_says_when_a_codex_update_left_its_hook_approvals_behind() {
     assert!(
         report["next"]
             .to_string()
-            .contains("Approve craft-delivery@pack hooks again in Codex `/hooks`"),
+            .contains("Trust craft-delivery@pack hooks again in Codex with `/hooks` in the terminal or Settings → Hooks"),
+        "{report}"
+    );
+}
+
+/// A Codex surface that never asks to trust hooks leaves them skipped without a word: doctor
+/// counts the sessions since the last Craft hook that ran none, from Codex's own records.
+#[test]
+fn doctor_counts_codex_sessions_that_ran_no_craft_hook() {
+    let repo = Repo::new("doctor-gap", &[("README.md", "x\n")]);
+    let homes = homes(&repo);
+    let root = fs::canonicalize(repo.path()).unwrap();
+    let sessions = |report: &Value| {
+        host(report, "codex")["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "sessions")
+            .cloned()
+    };
+    support::codex_session(&homes.codex, "S-old", &root, true);
+    support::codex_started(&root, &homes.codex, "S-old");
+    assert_eq!(sessions(&doctor(&repo, &homes).1), None);
+
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    support::codex_session(&homes.codex, "S-skipped", &root, true);
+    let (code, report) = doctor(&repo, &homes);
+    assert_eq!(code, 0, "skipped hooks do not block: {report}");
+    let found = sessions(&report).expect("a sessions check");
+    assert_eq!(found["status"], "problem", "{found}");
+    let detail = found["detail"].as_str().unwrap();
+    assert!(
+        detail.starts_with("1 Codex session in this project since")
+            && detail
+                .ends_with("ran no Craft hook: the safety policy checked none of their commands"),
+        "{detail}"
+    );
+    assert!(
+        report["next"].to_string().contains(
+            "Trust Craft's hooks in Codex with `/hooks` in the terminal or Settings → Hooks"
+        ),
         "{report}"
     );
 }

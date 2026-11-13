@@ -522,6 +522,7 @@ pub(crate) const RESUME: &str = "task records";
 pub(crate) const CHECKPOINT: &str = "checkpoint";
 pub(crate) const STANDARDS: &str = "standards findings";
 pub(crate) const TESTS: &str = "test evidence";
+pub(crate) const HOOK_GAP: &str = "hook gap";
 
 /// The host session identity, then what earlier sessions left that it may adopt: each a
 /// piece of its own, so a long list never costs the identity.
@@ -598,6 +599,9 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
     if let Some(offer) = result.get("conventions") {
         push("undeclared conventions", 6, conventions_line(offer));
     }
+    if let Some(found) = result.get("hookGap") {
+        push(HOOK_GAP, 4, hook_gap_line(found));
+    }
     pieces
 }
 
@@ -612,6 +616,14 @@ fn standards_line(found: &Value) -> String {
 fn conventions_line(offer: &Value) -> String {
     format!(
         "Craft conventions scan (said once; the user was shown the same): these standards were read from this project's own files and are in effect while it declares none. `run` lists each with its evidence. Only if the user asks to change them, declare `standards` in .craft/project.json, which replace them: {offer}"
+    )
+}
+
+/// Earlier host sessions here that ran without Craft's hooks; the user may not see the notice.
+fn hook_gap_line(found: &Value) -> String {
+    format!(
+        "Craft hook gap (said once; also shown to the user where the host shows hook messages). Tell the user this once, in your first reply: {}",
+        craft_engine::hook_gap::line(found)
     )
 }
 

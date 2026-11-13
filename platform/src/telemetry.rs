@@ -95,6 +95,19 @@ pub fn existing_identity(root: &Path, session: &str) -> Result<Option<String>, E
     }
 }
 
+/// The pseudonyms of `sessions`, in order, when the worktree key exists; never creates it.
+pub fn existing_identities(root: &Path, sessions: &[&str]) -> Result<Option<Vec<String>>, Error> {
+    let file = state::file(root, "telemetry/key.json", false, None)?;
+    match state::read(&file, 256)? {
+        None | Some(Value::Null) => Ok(None),
+        data => sessions
+            .iter()
+            .map(|session| pseudonym(data.as_ref(), session))
+            .collect::<Result<_, _>>()
+            .map(Some),
+    }
+}
+
 fn pseudonym(data: Option<&Value>, session: &str) -> Result<String, Error> {
     let key = data
         .and_then(|data| data["key"].as_str())

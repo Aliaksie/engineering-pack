@@ -279,3 +279,63 @@ pub fn doctor(repo: &Repo, homes: &Homes) -> (i32, Value) {
         .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&output.stderr)));
     (output.status.code().unwrap(), report)
 }
+
+/// `craft hook codex session-start` for the delivery package, Codex's home at `home`.
+pub fn codex_started(project: &Path, home: &Path, session: &str) -> String {
+    use std::io::Write;
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args(["hook", "codex", "session-start"])
+        .args(["--package", "craft-delivery", "--handler", "deliver"])
+        .env("CRAFT_EVIDENCE_WARM", "0")
+        .env_remove("CRAFT_PACKAGE_ROOT")
+        .env("CODEX_HOME", home)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let payload = json!({"session_id": session, "cwd": project, "hook_event_name": "SessionStart", "source": "startup"});
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(payload.to_string().as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// A Codex session record as Codex writes it: its header, then a turn when one ran.
+pub fn codex_session(home: &Path, id: &str, cwd: &Path, turned: bool) {
+    let started = craft_engine::timestamp::format(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64,
+    );
+    let day = home.join(format!(
+        "sessions/{}/{}/{}",
+        &started[..4],
+        &started[5..7],
+        &started[8..10]
+    ));
+    fs::create_dir_all(&day).unwrap();
+    let mut text = format!(
+        "{}\n",
+        json!({"timestamp": started, "type": "session_meta", "payload": {"id": id, "timestamp": started, "cwd": cwd, "originator": "codex-tui", "source": "vscode"}})
+    );
+    if turned {
+        text.push_str(&format!(
+            "{}\n",
+            json!({"timestamp": started, "type": "event_msg", "payload": {"type": "task_started", "turn_id": "t"}})
+        ));
+    }
+    // Codex's own name, `rollout-YYYY-MM-DDThh-mm-ss-<id>`: no `:`, which Windows refuses.
+    let stamp = started[..19].replace(':', "-");
+    fs::write(day.join(format!("rollout-{stamp}-{id}.jsonl")), text).unwrap();
+}

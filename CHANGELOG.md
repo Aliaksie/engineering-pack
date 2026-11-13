@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- In Codex, the first session after Craft's hooks run again says once how many earlier
+  sessions in the project ran without them, and whether a Craft update preceded the gap: Codex
+  skips a plugin's hooks after every update until they are trusted again, and its app and IDE
+  extension do not say so. `craft doctor` reports the same count, and its advice names both
+  places to trust hooks: `/hooks` in the terminal, Settings → Hooks in the app and extension.
 - The stop review no longer reports debt markers that sit inside a string literal (also Rust
   raw strings) or a Markdown code span: a TODO in a test's fixture text, or documentation
   naming `eslint-disable` or `#[ignore]`, had been reported as added debt.

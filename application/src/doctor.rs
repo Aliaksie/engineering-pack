@@ -64,13 +64,26 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
             }),
             Err(failure) => json!({"error": failure.message}),
         };
+    let mut codex = host_install::codex(&root);
+    // The newest install: sessions before it are not this install's gap.
+    let installed = codex["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|package| package["enabled"] == "true")
+        .filter_map(|package| package["installedMs"].as_i64())
+        .max();
+    let safety = configuration["safety"] == true;
+    if let Some(gap) = crate::hook_gap::found(&root, "codex", None, installed, safety) {
+        codex["gap"] = gap;
+    }
     let facts = json!({
         "configuration": configuration,
         "project": root.to_string_lossy(),
         "craftVersion": crate::telemetry::pack_version(),
         "telemetry": hook_events(&root),
         "claude": host_install::claude(&root),
-        "codex": host_install::codex(&root),
+        "codex": codex,
         "overlays": overlays,
     });
     Ok(craft_engine::doctor::report(&facts))
