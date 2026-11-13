@@ -11,7 +11,9 @@ use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::path::Path;
 
-const MAX_INPUT: usize = 65_536;
+const MAX_INPUT: usize = 1024 * 1024;
+/// How much of an unread input is searched for the tool it names.
+const TOOL_PEEK_BYTES: usize = 8 * 1024;
 /// The ceiling for a host whose table states none.
 const CONTEXT_BYTES: usize = 9_000;
 /// How much of a long test output's end is read for the runner's summary.
@@ -158,15 +160,40 @@ pub(crate) fn repair_surrogates(text: &str) -> std::borrow::Cow<'_, str> {
     output.into()
 }
 
-/// `{payload, inputStatus, inputError}` as the host delivered it, bounded to 64 KiB.
+/// The tool and working directory an unread input states near its start (`"tool_name":
+/// "Bash"`, `"cwd"`). Hosts send them before the tool's input and result, so a payload too
+/// large to read still says where it runs and whether a shell command is about to. A value
+/// with an escape is left out rather than guessed.
+fn peeked(bytes: &[u8]) -> Value {
+    // Never the session: partial input does not claim one.
+    const FIELDS: [&str; 3] = ["tool_name", "toolName", "cwd"];
+    let text = String::from_utf8_lossy(&bytes[..bytes.len().min(TOOL_PEEK_BYTES)]);
+    let mut found = serde_json::Map::new();
+    for field in FIELDS {
+        let key = format!("\"{field}\"");
+        let value = text.find(&key).and_then(|at| {
+            let rest = text[at + key.len()..].trim_start().strip_prefix(':')?;
+            let value = rest.trim_start().strip_prefix('"')?;
+            let value = &value[..value.find('"')?];
+            (!value.contains('\\')).then(|| value.to_owned())
+        });
+        if let Some(value) = value {
+            found.insert(field.to_owned(), json!(value));
+        }
+    }
+    Value::Object(found)
+}
+
+/// `{payload, inputStatus, inputError}` as the host delivered it, bounded to 1 MiB. An
+/// oversized payload keeps only the plain fields it starts with.
 fn read_payload(input: &mut dyn Read) -> (Value, &'static str, Option<String>) {
     let mut bytes = Vec::new();
     match input.take(MAX_INPUT as u64 + 1).read_to_end(&mut bytes) {
         Err(error) => (json!({}), "read-failure", Some(error.to_string())),
         Ok(_) if bytes.len() > MAX_INPUT => (
-            json!({}),
+            peeked(&bytes),
             "oversized",
-            Some("hook input exceeds 64 KiB".into()),
+            Some("hook input exceeds 1 MiB".into()),
         ),
         Ok(_) => {
             let text = String::from_utf8_lossy(&bytes);
@@ -767,6 +794,22 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
     let observational = hook.handler == "observe";
     let enforcement = hook.shell && hook.lifecycle == "before-tool";
     let mut event = normalize(&payload, &hook.host, &hook.lifecycle);
+    if status != "complete" {
+        // Unread input whose tool is unknown may be a shell command: a shell policy judges it.
+        if payload
+            .get("tool_name")
+            .or(payload.get("toolName"))
+            .is_none()
+        {
+            event["tool"] = json!("shell");
+        }
+        // Hosts start a hook in the project; without a stated directory, that is where it is.
+        if event["cwd"].is_null()
+            && let Ok(directory) = std::env::current_dir()
+        {
+            event["cwd"] = json!(directory.to_string_lossy());
+        }
+    }
     // Only delivery records test runs; other packages' hooks do not read the result.
     if hook.handler == "deliver"
         && event["tool"] == "shell"
@@ -790,7 +833,11 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
         .as_object_mut()
         .and_then(|r| r.remove("export"))
         .filter(|e| !e.is_null());
-    if let Some(error) = input_error.filter(|_| !observational && result["decision"] != "deny") {
+    // Unread input that no policy denied leaves the event to the host: a context handler stays
+    // advisory, and the failure is in telemetry, not in front of the user.
+    if let Some(error) =
+        input_error.filter(|_| enforcement && !observational && result["decision"] != "deny")
+    {
         return (
             Wire {
                 stdout: String::new(),

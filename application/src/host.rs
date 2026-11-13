@@ -205,12 +205,19 @@ pub fn run(input: &Value) -> Result<Value, String> {
         } else {
             Map::new()
         };
-        // Hosts continue after a failing hook, so an enabled shell guard denies explicitly.
-        let guarded = facts.handler == Handler::ReviewReadOnly
-            && facts.shell_only
-            && facts.lifecycle == "before-tool"
-            && project::settings(&root, None)
-                .map_or(true, |settings| settings["review"]["readOnly"] == true);
+        // Hosts continue after a failing hook, so an enabled shell guard denies explicitly:
+        // the read-only review, and the safety policy before a shell command (or a tool the
+        // input did not name) that it could not read.
+        let before_shell = facts.lifecycle == "before-tool" && facts.tool == "shell";
+        let guarded =
+            match facts.handler {
+                Handler::ReviewReadOnly => facts.shell_only && before_shell,
+                Handler::Deliver => before_shell,
+                Handler::Observe => false,
+            } && project::settings(&root, None).map_or(true, |settings| match facts.handler {
+                Handler::ReviewReadOnly => settings["review"]["readOnly"] == true,
+                _ => craft_engine::safety::enabled(&settings),
+            });
         recorder.complete(hook, summary, Some("HOOK_FAILED"));
         let mut result = if guarded {
             craft_engine::delivery::failure(true, "hook input could not be read in full")

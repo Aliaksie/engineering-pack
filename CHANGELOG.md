@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A hook no longer fails with "hook input exceeds 64 KiB" when the host sends a large payload,
+  such as the text of a large file just read. Hooks read up to 1 MiB; above that, a hook with
+  nothing to enforce stays silent, and before a shell command the safety policy denies what it
+  could not read, where until now such a command was not checked at all.
 - A test command whose output is piped into a filter such as `tail` or `grep` is no longer
   reported as having executed no test when the summary left in view is an empty one: such a
   run is `unknown` (`cut-output`) unless the output shows a failure. `cargo test | tail -4`

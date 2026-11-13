@@ -1263,3 +1263,70 @@ fn an_undeclared_workspace_is_held_to_its_members_formats_at_commit_and_stop() {
     assert_eq!(files, ["api/CHANGELOG.md"], "{decision}");
     assert!(!root.join("api/.craft").exists() && !root.join("web/.craft").exists());
 }
+
+/// A payload over the input bound (a large file read, a long patch) is not read. A host would
+/// show a failing hook as an error, so where no policy applies the hook stays silent; before a
+/// shell command, or a tool the input does not name, the safety policy denies what it could
+/// not read.
+#[test]
+fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_command() {
+    let fixture = project("unread-large", None);
+    let off = project(
+        "unread-large-off",
+        Some(r#"{"formatVersion":1,"safety":{"enabled":false}}"#),
+    );
+    let run = |lifecycle: &str, payload: String| {
+        let args: Vec<String> = [
+            "claude",
+            lifecycle,
+            "--package",
+            "craft-delivery",
+            "--handler",
+            "deliver",
+        ]
+        .iter()
+        .map(|a| a.to_string())
+        .collect();
+        craft_application::hook::run(&args, &mut payload.as_bytes()).0
+    };
+    let large = "x".repeat(1024 * 1024);
+    // In the host's order: where and which tool first, then the tool's input and result.
+    let payload = |root: &Path, tool: Option<&str>, text: &str| {
+        let named = tool.map_or_else(String::new, |tool| format!(r#""tool_name":"{tool}","#));
+        format!(
+            r#"{{"session_id":"S-1","cwd":{},{named}"tool_input":{},"tool_response":{}}}"#,
+            json!(root.to_string_lossy()),
+            json!({"command": text, "file_path": "a.txt"}),
+            json!({"stdout": text}),
+        )
+    };
+    // A large read result after the tool ran: nothing to judge, nothing said.
+    let read = run("after-tool", payload(&fixture.0, Some("Read"), &large));
+    assert_eq!(
+        (read.exit_code, read.stdout.as_str(), read.stderr.as_str()),
+        (0, "", "")
+    );
+    // Before a write the policy does not judge: silent too.
+    let write = run("before-tool", payload(&fixture.0, Some("Write"), &large));
+    assert_eq!((write.exit_code, write.stderr.as_str()), (0, ""));
+    // Before a shell command, or a tool the input does not name: denied with the reason, which
+    // Claude Code takes as exit code 2 and the reason on stderr.
+    for tool in [Some("Bash"), None] {
+        let shell = run("before-tool", payload(&fixture.0, tool, &large));
+        assert_eq!(shell.exit_code, 2, "{tool:?}: {}", shell.stderr);
+        assert!(
+            shell.stderr.contains("could not be read in full"),
+            "{}",
+            shell.stderr
+        );
+    }
+    // With the policy off there is nothing to enforce.
+    let free = run("before-tool", payload(&off.0, Some("Bash"), &large));
+    assert_eq!((free.exit_code, free.stderr.as_str()), (0, ""));
+    // Under the bound a large payload is read as any other.
+    let read = run(
+        "after-tool",
+        payload(&fixture.0, Some("Read"), &"x".repeat(200 * 1024)),
+    );
+    assert_eq!((read.exit_code, read.stderr.as_str()), (0, ""));
+}

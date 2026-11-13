@@ -91,7 +91,7 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
       ['events.jsonl', 'key.json']);
     for (const input of ['INVALID_JSON_MARKER', JSON.stringify({
       cwd: root, sessionId: 'PRIVATE_SESSION_MARKER', toolName: 'write_file',
-      toolArgs: { path: 'PRIVATE_PATH_MARKER', content: 'PRIVATE_CONTENT_MARKER'.repeat(4000) }
+      toolArgs: { path: 'PRIVATE_PATH_MARKER', content: 'PRIVATE_CONTENT_MARKER'.repeat(50000) }
     })]) {
       const result = runHook(packageRoot, host, 'observe-before-tool', { cwd: root, input });
       assert.equal(result.status, 0, result.stderr);
@@ -124,11 +124,11 @@ for (const pkg of ['craft-engineering', 'craft-stories', 'craft-review']) for (c
 test('oversized inputs still fail existing policy hooks on every hook-capable adapter', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'policy input bound '));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const input = JSON.stringify({ cwd: root, tool_name: 'Bash', tool_input: { command: 'x'.repeat(70000) } });
+  const input = JSON.stringify({ cwd: root, tool_name: 'Bash', tool_input: { command: 'x'.repeat(1024 * 1024 + 16) } });
   for (const host of ['claude', 'codex', 'cursor', 'copilot', 'gemini']) {
     const result = runHook(hookPackage(path.resolve('dist', host), host, 'craft-review'), host, 'read-only', { cwd: root, input });
     assert.equal(result.status, 1, `${host}: policy input rejection changed`);
-    assert.match(result.stderr, /hook input exceeds 64 KiB/);
+    assert.match(result.stderr, /hook input exceeds 1 MiB/);
   }
 });
 

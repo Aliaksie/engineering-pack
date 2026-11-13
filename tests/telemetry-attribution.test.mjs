@@ -33,7 +33,7 @@ test('each package hook attributes its own events and keeps one session pseudony
 
 test('a valid JSON prefix followed by oversized whitespace never claims a session from partial input', t => {
   const root = fixture(t);
-  const result = hook(root, 'craft-engineering', JSON.stringify({ session_id: 'PRIVATE_SESSION', cwd: root }) + ' '.repeat(70000), 'observe-before-tool');
+  const result = hook(root, 'craft-engineering', JSON.stringify({ session_id: 'PRIVATE_SESSION', cwd: root }) + ' '.repeat(1024 * 1024 + 16), 'observe-before-tool');
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, ''); assert.equal(result.stderr, '');
   const events = readTelemetry(root);
