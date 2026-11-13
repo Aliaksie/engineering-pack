@@ -861,26 +861,34 @@ fn standard_findings(
         return (Vec::new(), Vec::new());
     }
     // A failed commit leaves an older HEAD; only a commit made just now is the one written.
-    let Ok(Some(output)) =
-        craft_platform::process::git(root, &["log", "-1", "--format=%ct%n%B"], 64 * 1024)
-    else {
+    // At a workspace root that is the newest one among its member repositories.
+    let now = now_ms() as u64 / 1000;
+    let written = crate::stop_review::checkouts(root)
+        .iter()
+        .filter_map(|checkout| {
+            let output = craft_platform::process::git(
+                &checkout.directory,
+                &["log", "-1", "--format=%ct%n%B"],
+                64 * 1024,
+            )
+            .ok()??;
+            let output = String::from_utf8_lossy(&output);
+            let (time, message) = output.split_once('\n').unwrap_or((&output, ""));
+            let time = time.trim().parse::<u64>().ok()?;
+            (now.saturating_sub(time) <= COMMIT_FRESH_SECONDS)
+                .then(|| (time, message.trim_end().to_owned()))
+        })
+        .max_by_key(|(time, _)| *time);
+    let Some((_, message)) = written else {
         return (Vec::new(), Vec::new());
     };
-    let output = String::from_utf8_lossy(&output);
-    let (time, message) = output.split_once('\n').unwrap_or((&output, ""));
-    let now = now_ms() as u64 / 1000;
-    match time.trim().parse::<u64>() {
-        Ok(time) if now.saturating_sub(time) <= COMMIT_FRESH_SECONDS => {
-            let found = standards::verdicts(&checks, message.trim_end(), None);
-            let scope = Checked {
-                scope: "commit".into(),
-                kinds: "c".into(),
-                keys: finding_keys('c', &found),
-            };
-            (found, vec![scope])
-        }
-        _ => (Vec::new(), Vec::new()),
-    }
+    let found = standards::verdicts(&checks, &message, None);
+    let scope = Checked {
+        scope: "commit".into(),
+        kinds: "c".into(),
+        keys: finding_keys('c', &found),
+    };
+    (found, vec![scope])
 }
 
 /// Anchor and module dependency check results for one written project file, and the scope

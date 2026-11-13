@@ -105,8 +105,12 @@ checked with its own repository's standards and not its neighbour's. A commit fo
 brought to the workspace only when every member repository has it. A member's standard that
 cannot be held at the workspace (two folders whose names give the same id, no room left) is
 listed under `skipped` with the reason. State stays in the one
-`.craft` at the workspace root. Not yet covered there: the stop review and the commit check,
-which read Git at the root, and a member's own `.craft/project.json`.
+`.craft` at the workspace root. The stop review reads each member repository (its changed
+files, and the commits the session made there) and names files from the workspace root; it
+does so at any root that is no repository, with or without a `.craft/project.json`. The commit
+check reads the newest commit made in the last two minutes among the member repositories. Not
+covered there: a member's own `.craft/project.json`, and a repository deeper than a direct
+folder.
 
 Otherwise the scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
@@ -145,8 +149,10 @@ turns the scan off: nothing is read from the files and nothing is said.
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
   `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
-  manifests; the others read the files under `scope.paths`. Checks cover structure, not
-  whether the content is right, and an ADR's sections are checked in any order.
+  manifests; the others read the files under `scope.paths`. With `scope.paths`, those three
+  read their own files inside a named folder, and any file a path names exactly. Checks cover
+  structure, not whether the content is right, and an ADR's sections are checked in any
+  order.
 - `hexagonal-architecture` and `clean-architecture` check module dependencies instead of
   text. Declare each ring or layer as a module with the `dependsOn` it may import. When a source
   file in such a module is written, Craft reports each import that the change adds (compared with
