@@ -35,7 +35,8 @@ test('a valid JSON prefix followed by oversized whitespace never claims a sessio
   const root = fixture(t);
   const result = hook(root, 'craft-engineering', JSON.stringify({ session_id: 'PRIVATE_SESSION', cwd: root }) + ' '.repeat(1024 * 1024 + 16), 'observe-before-tool');
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, ''); assert.equal(result.stderr, '');
+  // The safety policy fails closed before a tool it could not read; that is not a session claim.
+  assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny'); assert.equal(result.stderr, '');
   const events = readTelemetry(root);
   assert.ok(events.some(event => event.reasonCode === 'INPUT_TOO_LARGE'));
   assert.ok(events.every(event => event.attributes.identityScope === 'invocation'));
