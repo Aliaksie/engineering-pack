@@ -91,8 +91,9 @@ fn hex_record(name: &str, prefix: &str, suffix: &str) -> bool {
         .is_some_and(|id| lower_hex(id, 24))
 }
 
-/// Records the runtime writes into a session directory.
-fn recognized(name: &str) -> bool {
+/// Records the runtime writes into a session directory. A record missing here keeps its
+/// session forever, so the state layer refuses to place one in debug builds.
+pub fn recognized(name: &str) -> bool {
     matches!(
         name,
         "manifest.json"
@@ -101,9 +102,13 @@ fn recognized(name: &str) -> bool {
             | "host-context.json"
             | "intent.json"
             | "delivered.json"
+            | "restore.json"
+            | "test-runs.json"
+            | "check-runs.json"
+            | "stop-review.json"
     ) || hex_record(name, "routing-", ".json")
         || hex_record(name, "routing-", ".json.generation")
-        || ["activity-", "workers-", "control-"]
+        || ["activity-", "workers-", "control-", "statusline-"]
             .iter()
             .any(|prefix| hex_record(name, prefix, ".json"))
 }

@@ -210,6 +210,10 @@ pub fn file(
         (None, Some((family, file))) if FAMILIES.contains(&family) && segment(file) => Some(family),
         _ => return Err("invalid state filename".into()),
     };
+    debug_assert!(
+        session.is_none() || craft_engine::retention::recognized(name),
+        "session record {name} is unknown to state-clean"
+    );
     let canonical = canonical_root(root)?;
     let place = location_at(&canonical, session, create)?;
     let folder = match family {

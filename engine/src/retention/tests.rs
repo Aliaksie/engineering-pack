@@ -44,10 +44,15 @@ fn idle_recognized_session_is_removable() {
         entry(&format!("routing-{HEX}.json.generation"), OLD),
         entry("intent.json", OLD),
         entry("delivered.json", OLD),
+        entry("restore.json", OLD),
+        entry("test-runs.json", OLD),
+        entry("check-runs.json", OLD),
+        entry("stop-review.json", OLD),
+        entry(&format!("statusline-{HEX}.json"), OLD),
     ];
     let session = current(&entries);
     assert_eq!(keep(&session, NOW, &Workspaces::default()), None);
-    assert_eq!(session.bytes(), 100);
+    assert_eq!(session.bytes(), 150);
     assert_eq!(idle_days(&session, NOW), SESSION_RETENTION_DAYS);
 }
 

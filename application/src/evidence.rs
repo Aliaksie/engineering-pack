@@ -503,11 +503,8 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     if !OPERATIONS.contains(&operation.as_str()) {
         return Err("unknown project evidence operation".into());
     }
-    let root = options.get("root").and_then(Value::as_str).unwrap_or(".");
-    input.insert(
-        "root".into(),
-        json!(crate::project::absolute(root).to_string_lossy()),
-    );
+    let root = crate::host::resolve_root(options.get("root").and_then(Value::as_str));
+    input.insert("root".into(), json!(root.to_string_lossy()));
     Ok((json, Some((operation, Value::Object(input)))))
 }
 
