@@ -552,6 +552,52 @@ fn a_written_file_that_misses_a_declared_standard_is_reported_in_the_tool_result
 }
 
 #[test]
+fn a_file_a_shell_command_writes_is_checked_like_an_edit() {
+    let fixture = project("standards-shell-write", Some(STANDARDS));
+    let root = &fixture.0;
+    let body = "# Changelog\n\n## Next\n\n### Misc\n- x\n";
+    fs::write(root.join("CHANGELOG.md"), body).unwrap();
+    let shell = json!({"tool": "shell",
+        "command": format!("cat > CHANGELOG.md <<'EOF'\n{body}EOF")});
+    let found = written(root, shell);
+    assert_eq!(found["standards"][0]["standard"], "changelog");
+
+    for command in [
+        "cat CHANGELOG.md > /dev/null",
+        "grep -n Next CHANGELOG.md",
+        "cd deep && echo x > CHANGELOG.md",
+    ] {
+        let shell = json!({"tool": "shell", "command": command});
+        assert!(
+            written(root, shell).get("standards").is_none(),
+            "{command} writes no project file it names"
+        );
+    }
+}
+
+#[test]
+fn the_first_shell_write_of_a_project_file_gets_the_edit_routing_hint() {
+    let fixture = project("routing-shell-write", Some(r#"{"formatVersion":1}"#));
+    let root = &fixture.0;
+    let before = |command: &str| {
+        hook(facts(
+            root,
+            "deliver",
+            json!({"package": "craft-delivery", "scope": "any", "command": command}),
+        ))
+    };
+    let first = before("printf 'pub fn f() {}\\n' > deep/lib.rs");
+    assert_eq!(first["context"]["kind"], "routing", "{first}");
+    assert_eq!(first["context"]["data"]["intent"], "implement");
+    let again = before("echo '// more' >> deep/lib.rs");
+    assert!(again.get("context").is_none(), "routed once: {again}");
+    let outside = before("echo x > /tmp/craft-shell-write-elsewhere.txt");
+    assert!(outside.get("context").is_none(), "{outside}");
+    let reads = before("cat deep/lib.rs");
+    assert!(reads.get("context").is_none(), "{reads}");
+}
+
+#[test]
 fn a_commit_just_made_is_checked_against_the_declared_commit_standard() {
     let fixture = project("standards-commit", Some(STANDARDS));
     let root = &fixture.0;

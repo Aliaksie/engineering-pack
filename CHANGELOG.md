@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A file a shell command writes by name (an output redirection, `tee`, `sed -i`, `perl -i`,
+  or the destination of `cp` and `mv`) gets the routing hint and the standards check an edit
+  gets, in the same tool call, instead of waiting for the stop review. Scripts and generators
+  are still checked at the stop.
 - The safety policy holds with any Craft package installed, not only `craft-delivery`; it also
   refuses `xargs rm -r` (targets read from input), `find -delete` and `find -exec rm -r` from
   outside the project or from its root with no narrowing test, and a push that deletes a
