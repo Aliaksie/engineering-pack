@@ -206,14 +206,14 @@ pub fn run(input: &Value) -> Result<Value, String> {
             Map::new()
         };
         // Hosts continue after a failing hook, so an enabled shell guard denies explicitly:
-        // the read-only review, and the safety policy before a shell command (or a tool the
-        // input did not name) that it could not read.
+        // the read-only review, and the safety policy, which every package's hook before a
+        // tool enforces, before a shell command (or a tool the input did not name) that it
+        // could not read.
         let before_shell = facts.lifecycle == "before-tool" && facts.tool == "shell";
         let guarded =
             match facts.handler {
                 Handler::ReviewReadOnly => facts.shell_only && before_shell,
-                Handler::Deliver => before_shell,
-                Handler::Observe => false,
+                Handler::Deliver | Handler::Observe => before_shell,
             } && project::settings(&root, None).map_or(true, |settings| match facts.handler {
                 Handler::ReviewReadOnly => settings["review"]["readOnly"] == true,
                 _ => craft_engine::safety::enabled(&settings),
@@ -229,7 +229,10 @@ pub fn run(input: &Value) -> Result<Value, String> {
         return Ok(result);
     }
     // Observation records a session's boundaries; a prompt, tool call or turn end is recorded
-    // once, by the handler that acts on it, not again by every installed package.
+    // once, by the handler that acts on it, not again by every installed package. The safety
+    // policy holds with any package installed: each one's hook before a shell command
+    // refuses what the policy refuses, and only that refusal is recorded.
+    let mut refused = None;
     if observational
         && facts.input_status == "complete"
         && !matches!(
@@ -237,14 +240,24 @@ pub fn run(input: &Value) -> Result<Value, String> {
             "session-start" | "before-compact" | "after-compact"
         )
     {
-        return Ok(json!({"decision": "allow", "failed": false, "export": recorder.finish()}));
+        if facts.lifecycle == "before-tool"
+            && facts.tool == "shell"
+            && let Some(command) = facts.command.as_str()
+            && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
+        {
+            let decision = crate::safety::decision(&settings, &root, &cwd, command);
+            refused = (decision["decision"] == "deny").then_some(decision);
+        }
+        if refused.is_none() {
+            return Ok(json!({"decision": "allow", "failed": false, "export": recorder.finish()}));
+        }
     }
     let mut decision = json!({"decision": "allow"});
     let mut failed = false;
     let applies = facts.input_status == "complete" && (!facts.shell_only || facts.tool == "shell");
     if applies {
         let evaluated = match facts.handler {
-            Handler::Observe => Ok(decision.clone()),
+            Handler::Observe => Ok(refused.take().unwrap_or(decision.clone())),
             Handler::ReviewReadOnly => {
                 project::hook_loaded(&mut recorder, &hook, &root).map(|settings| {
                     review::read_only_decision(&settings, facts.tool == "shell", facts.command)

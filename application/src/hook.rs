@@ -454,8 +454,9 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
     Some(verdict)
 }
 
-/// Facts for the native `host` handler; only shell-scoped hooks and delivery receive the
-/// command, and only delivery the file, prompt and search pattern.
+/// Facts for the native `host` handler; shell-scoped hooks, delivery and any hook before a
+/// shell command (which the safety policy judges) receive the command, and only delivery the
+/// file, prompt and search pattern.
 fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     let mut facts = json!({
         "handler": hook.handler, "host": hook.host, "package": hook.package, "lifecycle": hook.lifecycle,
@@ -465,7 +466,7 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     if let Some(directory) = project_directory(&hook.host) {
         facts["projectDirectory"] = json!(directory);
     }
-    if hook.shell {
+    if hook.shell || hook.lifecycle == "before-tool" && event["tool"] == "shell" {
         facts["command"] = event["command"].clone();
     }
     if hook.handler == "deliver" {
@@ -873,7 +874,8 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
             export,
         );
     }
-    if observational {
+    // An observing hook has no opinion, unless the safety policy refused the command.
+    if observational && result["decision"] != "deny" {
         let answer = mapping(&hook.host, &hook.lifecycle)
             .and_then(|_| no_opinion(&hook.host, &hook.lifecycle));
         return (

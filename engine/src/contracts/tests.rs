@@ -65,7 +65,10 @@ fn the_safety_policy_is_on_until_a_layer_or_the_project_turns_it_off_and_no_task
         (&shipped["enabled"], &shipped["origin"]),
         (&json!(true), &json!("bundled"))
     );
-    assert_eq!(shipped["rules"].as_array().map(Vec::len), Some(5));
+    assert_eq!(
+        shipped["rules"].as_array().map(Vec::len),
+        Some(crate::safety::RULES.len())
+    );
 
     let narrowed = resolved(json!({"formatVersion": 1, "safety": {"disables": ["force-push"]}}));
     assert_eq!(narrowed["settings"]["safety"]["enabled"], true);

@@ -11,13 +11,18 @@ const ON: &str = r#"{"formatVersion":1,"safety":{"enabled":true,
 /// What the host is told: `deny <reason>` for a refusal (Claude Code's blocking exit with
 /// the reason, or a deny in another host's JSON), else the hook's output.
 fn shell(host: &str, cwd: &str, command: &str) -> String {
+    hook(host, "craft-delivery", "deliver", cwd, command)
+}
+
+/// `shell` through the hook one package registers before a tool.
+fn hook(host: &str, package: &str, handler: &str, cwd: &str, command: &str) -> String {
     let args: Vec<String> = [
         host,
         "before-tool",
         "--package",
-        "craft-delivery",
+        package,
         "--handler",
-        "deliver",
+        handler,
     ]
     .iter()
     .map(|arg| arg.to_string())
@@ -134,7 +139,7 @@ fn craft_settings_lists_the_rules_in_force() {
         .iter()
         .filter_map(|rule| rule["id"].as_str())
         .collect();
-    assert_eq!(ids.len(), 6);
+    assert_eq!(ids.len(), 7);
     assert_eq!(ids.last(), Some(&"infra-destroy"));
 }
 
@@ -160,4 +165,61 @@ fn the_session_summary_counts_refused_commands() {
         serde_json::from_str::<Value>(&wire.stdout).expect("output")["systemMessage"],
         "Craft this session: 2 commands refused by the safety policy"
     );
+}
+
+#[test]
+fn every_package_refuses_what_the_policy_refuses() {
+    let repo = Repo::new("safety-observe", &[("README.md", "x\n")]);
+    for host in ["claude", "codex"] {
+        for package in ["craft-engineering", "craft-review", "craft-stories"] {
+            let refused = hook(host, package, "observe", repo.path(), "git push --force");
+            assert!(refused.starts_with("deny "), "{host} {package}: {refused}");
+            assert!(refused.contains("rule `force-push`"), "{refused}");
+            let allowed = hook(
+                host,
+                package,
+                "observe",
+                repo.path(),
+                "git push origin main",
+            );
+            assert!(allowed.is_empty(), "{host} {package}: {allowed}");
+        }
+    }
+    let off = r#"{"formatVersion":1,"safety":{"enabled":false}}"#;
+    let repo = Repo::new("safety-observe-off", &[(".craft/project.json", off)]);
+    let output = hook(
+        "claude",
+        "craft-engineering",
+        "observe",
+        repo.path(),
+        "sudo reboot",
+    );
+    assert!(output.is_empty(), "{output}");
+}
+
+#[test]
+fn a_delete_below_the_temporary_directory_is_allowed_and_the_directory_itself_is_not() {
+    let repo = Repo::new("safety-temp", &[("README.md", "x\n")]);
+    let temp = std::env::temp_dir();
+    let temp = temp.to_string_lossy();
+    let temp = temp.trim_end_matches(['/', '\\']);
+    let below = format!("rm -rf {temp}/craft-safety-scratch-{}", std::process::id());
+    assert!(!shell("claude", repo.path(), &below).starts_with("deny"));
+    let whole = shell("claude", repo.path(), &format!("rm -rf {temp}"));
+    assert!(whole.contains("delete-outside-project"), "{whole}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_project_reached_through_a_link_is_the_same_project() {
+    let repo = Repo::new("safety-link", &[("README.md", "x\n")]);
+    let parent = Repo::bare("safety-link-parent");
+    let link = format!("{}/shop", parent.path());
+    std::os::unix::fs::symlink(repo.path(), &link).unwrap();
+    for target in [format!("{}/build", repo.path()), format!("{link}/build")] {
+        let output = shell("claude", &link, &format!("rm -rf {target}"));
+        assert!(!output.starts_with("deny"), "{target}: {output}");
+    }
+    let root = shell("claude", &link, &format!("rm -rf {}", repo.path()));
+    assert!(root.contains("delete-project-root"), "{root}");
 }

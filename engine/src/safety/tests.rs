@@ -2,17 +2,25 @@ use super::*;
 
 const ROOT: &str = "/work/shop";
 
-fn on() -> Value {
-    json!({"safety": {"enabled": true}})
+fn at<'a>(roots: &'a [String], cwd: &'a str, temp: &'a [String]) -> Place<'a> {
+    Place { roots, cwd, temp }
 }
 
-fn rule(settings: &Value, cwd: &str, command: &str) -> Option<String> {
-    let decision = decision(settings, ROOT, cwd, command);
+fn judged(settings: &Value, place: &Place, command: &str) -> Option<String> {
+    let decision = decision(settings, place, command);
     match decision["decision"].as_str() {
         Some("allow") => None,
         Some("deny") => Some(decision["rule"].as_str().expect("rule").to_string()),
         other => panic!("decision {other:?}"),
     }
+}
+
+fn on() -> Value {
+    json!({"safety": {"enabled": true}})
+}
+
+fn rule(settings: &Value, cwd: &str, command: &str) -> Option<String> {
+    judged(settings, &at(&[ROOT.into()], cwd, &[]), command)
 }
 
 fn refused(command: &str) -> Option<String> {
@@ -251,7 +259,11 @@ fn a_project_rule_refuses_commands_by_their_leading_words() {
         Some("no-publish")
     );
     assert_eq!(rule(&settings, ROOT, "npm"), None);
-    let denied = decision(&settings, ROOT, ROOT, "terraform destroy");
+    let denied = decision(
+        &settings,
+        &at(&[ROOT.into()], ROOT, &[]),
+        "terraform destroy",
+    );
     let reason = denied["reason"].as_str().expect("reason");
     assert!(
         reason.contains("rule `infra-destroy`: tearing down shared infrastructure"),
@@ -261,7 +273,7 @@ fn a_project_rule_refuses_commands_by_their_leading_words() {
 
 #[test]
 fn the_reason_names_the_rule_and_never_how_to_turn_it_off() {
-    let denied = decision(&on(), ROOT, ROOT, "git push --force");
+    let denied = decision(&on(), &at(&[ROOT.into()], ROOT, &[]), "git push --force");
     let reason = denied["reason"].as_str().expect("reason");
     assert!(reason.contains("rule `force-push`"), "{reason}");
     for word in ["disables", "enabled", "project.json", "safety."] {
@@ -317,6 +329,7 @@ fn the_listing_shows_rules_in_force_with_their_source() {
             ("delete-outside-project", "craft"),
             ("delete-project-root", "craft"),
             ("force-push", "craft"),
+            ("delete-remote-branch", "craft"),
             ("discard-changes", "craft"),
             ("no-publish", "project"),
         ]
@@ -366,4 +379,146 @@ fn the_text_of_a_here_document_is_data_unless_a_shell_runs_it() {
     }
     // A quoted delimiter makes the text literal.
     assert_eq!(refused("cat <<'EOF'\n$(rm -rf ~)\nEOF"), None);
+}
+
+#[test]
+fn a_recursive_delete_strictly_below_a_temporary_directory_is_allowed() {
+    let roots = [ROOT.to_string()];
+    let temp = ["/tmp".to_string(), "/private/var/folders/x1/T".to_string()];
+    let place = at(&roots, ROOT, &temp);
+    for command in [
+        "rm -rf /tmp/claude-501/session/scratchpad/out",
+        "rm -rf /tmp/build-cache",
+        "rm -rf /private/var/folders/x1/T/craft-probe",
+    ] {
+        assert_eq!(judged(&on(), &place, command), None, "{command}");
+    }
+    for command in [
+        "rm -rf /tmp",
+        "rm -rf /tmp/",
+        "rm -rf /tmp/*",
+        "rm -rf /tmp/../etc",
+        "rm -rf \"$TMPDIR/x\"",
+        "rm -rf /var/tmp/x",
+        "rm -rf /private/var/folders/x1",
+    ] {
+        assert_eq!(
+            judged(&on(), &place, command).as_deref(),
+            Some("delete-outside-project"),
+            "{command}"
+        );
+    }
+}
+
+#[test]
+fn the_project_root_is_recognized_under_each_of_its_spellings() {
+    let roots = ["/tmp/shop".to_string(), "/private/tmp/shop".to_string()];
+    let place = at(&roots, "/private/tmp/shop", &[]);
+    assert_eq!(judged(&on(), &place, "rm -rf /tmp/shop/build"), None);
+    assert_eq!(judged(&on(), &place, "rm -rf build"), None);
+    assert_eq!(
+        judged(&on(), &place, "rm -rf /tmp/shop").as_deref(),
+        Some("delete-project-root")
+    );
+}
+
+#[test]
+fn windows_drive_and_network_paths_are_judged_as_absolute() {
+    let roots = ["C:/work/shop".to_string()];
+    let temp = ["C:/Users/me/AppData/Local/Temp".to_string()];
+    let place = at(&roots, "C:/work/shop", &temp);
+    for command in [
+        "rm -rf D:/data",
+        "rm -rf D:\\data",
+        "rm -rf C:\\Users\\me",
+        "rm -rf \\\\server\\share\\x",
+        "rm -rf D:",
+        "rm -rf D:data",
+    ] {
+        assert_eq!(
+            judged(&on(), &place, command).as_deref(),
+            Some("delete-outside-project"),
+            "{command}"
+        );
+    }
+    for command in [
+        "rm -rf C:/work/shop/build",
+        "rm -rf c:\\work\\shop\\dist",
+        "rm -rf build",
+        "rm -rf C:\\Users\\me\\AppData\\Local\\Temp\\craft",
+    ] {
+        assert_eq!(judged(&on(), &place, command), None, "{command}");
+    }
+    assert_eq!(
+        judged(&on(), &place, "rm -rf C:\\work\\shop").as_deref(),
+        Some("delete-project-root")
+    );
+}
+
+#[test]
+fn deletes_through_xargs_and_find_are_read() {
+    for (command, expected) in [
+        (
+            "find build -name '*.o' | xargs rm -rf",
+            Some("delete-outside-project"),
+        ),
+        (
+            "git ls-files -z | xargs -0 -n 1 rm -r",
+            Some("delete-outside-project"),
+        ),
+        (
+            "xargs -I {} rm -rf {} < list.txt",
+            Some("delete-outside-project"),
+        ),
+        ("ls | xargs rm -f", None),
+        ("ls | xargs git push --force", Some("force-push")),
+        (
+            "find / -name '*.log' -delete",
+            Some("delete-outside-project"),
+        ),
+        ("find ~/cache -delete", Some("delete-outside-project")),
+        ("find . -delete", Some("delete-project-root")),
+        ("find -mindepth 1 -delete", Some("delete-project-root")),
+        (
+            "find . -type d -exec rm -rf {} +",
+            Some("delete-project-root"),
+        ),
+        (
+            "find /srv -name x -exec rm -rf {} \\;",
+            Some("delete-outside-project"),
+        ),
+        ("find . -name '*.pyc' -delete", None),
+        ("find build -delete", None),
+        ("find . -name node_modules -type d -exec rm -rf {} +", None),
+        ("find / -name x -exec rm {} \\;", None),
+        ("find / -name '*.log'", None),
+    ] {
+        assert_eq!(refused(command).as_deref(), expected, "{command}");
+    }
+}
+
+#[test]
+fn a_push_that_deletes_a_remote_branch_is_refused() {
+    for command in [
+        "git push origin --delete feature",
+        "git push -d origin feature",
+        "git push origin :feature",
+        "git push --prune origin",
+        "git push origin :refs/tags/v1",
+    ] {
+        assert_eq!(
+            refused(command).as_deref(),
+            Some("delete-remote-branch"),
+            "{command}"
+        );
+    }
+    for command in [
+        "git push origin feature",
+        "git push origin HEAD:feature",
+        "git push -u origin x",
+    ] {
+        assert_eq!(refused(command), None, "{command}");
+    }
+    let settings = json!({"safety": {"enabled": true, "disables": ["delete-remote-branch"]}});
+    assert_eq!(rule(&settings, ROOT, "git push origin :feature"), None);
 }

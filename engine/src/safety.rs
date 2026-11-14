@@ -4,7 +4,8 @@
 //!
 //! It is a guardrail, not a security boundary. The recognizer reads literal commands,
 //! scripts passed to supported shells with `-c` and `$()`/backtick substitutions; aliases,
-//! other interpreters, variable expansion and scripts on disk are outside it.
+//! other interpreters, variable expansion and scripts on disk are outside it. Paths are
+//! judged by name: the caller passes each spelling of the project root it knows.
 use crate::contracts::kebab;
 use crate::review::walk;
 use crate::values::object;
@@ -13,10 +14,10 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, String>;
 
 /// A built-in rule: its id and what it refuses, in the words shown to the user and model.
-pub const RULES: [(&str, &str); 5] = [
+pub const RULES: [(&str, &str); 6] = [
     (
         "delete-outside-project",
-        "a recursive delete whose target is outside the project, in the home directory or an unexpanded variable",
+        "a recursive delete whose target is outside the project and the temporary directories, in the home directory, an unexpanded variable or read from input",
     ),
     (
         "delete-project-root",
@@ -25,6 +26,10 @@ pub const RULES: [(&str, &str); 5] = [
     (
         "force-push",
         "a forced push, which rewrites the remote branch",
+    ),
+    (
+        "delete-remote-branch",
+        "a push that deletes a remote branch or tag",
     ),
     (
         "discard-changes",
@@ -60,6 +65,66 @@ const SYSTEM: [&str; 12] = [
     "mkswap", "swapoff", "chroot",
 ];
 const SERVICE_ACTIONS: [&str; 4] = ["stop", "disable", "mask", "kill"];
+/// `xargs` options whose value is the next word.
+const XARGS_VALUE_OPTIONS: [&str; 15] = [
+    "-a",
+    "-d",
+    "-E",
+    "-I",
+    "-L",
+    "-n",
+    "-P",
+    "-s",
+    "--arg-file",
+    "--delimiter",
+    "--max-args",
+    "--max-chars",
+    "--max-lines",
+    "--max-procs",
+    "--process-slot-var",
+];
+/// `find` tests that narrow what an expression matches by name, place, time, size or owner.
+const FIND_TESTS: [&str; 30] = [
+    "-name",
+    "-iname",
+    "-path",
+    "-ipath",
+    "-wholename",
+    "-iwholename",
+    "-regex",
+    "-iregex",
+    "-lname",
+    "-ilname",
+    "-newer",
+    "-mtime",
+    "-mmin",
+    "-atime",
+    "-amin",
+    "-ctime",
+    "-cmin",
+    "-size",
+    "-empty",
+    "-user",
+    "-group",
+    "-nouser",
+    "-nogroup",
+    "-perm",
+    "-links",
+    "-inum",
+    "-samefile",
+    "-uid",
+    "-gid",
+    "-used",
+];
+
+/// Where a command runs, as absolute `/`-separated paths: the project root under each
+/// spelling it may be written in (as given, as resolved on disk), the working directory, and
+/// the temporary directories strictly below which a recursive delete is allowed.
+pub struct Place<'a> {
+    pub roots: &'a [String],
+    pub cwd: &'a str,
+    pub temp: &'a [String],
+}
 
 /// Whether the policy is on in resolved settings, where it is on unless a layer or the
 /// project sets `safety.enabled` to false.
@@ -274,29 +339,82 @@ enum Target {
     Outside,
 }
 
-fn target(root: &str, cwd: &str, word: &str) -> Target {
+/// A Windows drive segment such as `C:`.
+fn drive(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    bytes.len() == 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+/// `path` below `base`: the segments left, with drive letters compared without case.
+fn below<'p>(path: &'p [&'p str], base: &[&str]) -> Option<&'p [&'p str]> {
+    (path.len() >= base.len()
+        && path
+            .iter()
+            .zip(base)
+            .all(|(a, b)| a == b || drive(a) && a.eq_ignore_ascii_case(b)))
+    .then(|| &path[base.len()..])
+}
+
+/// A segment that names everything in a directory: `*`, `.`, `.*` and the like.
+fn everything(segment: &str) -> bool {
+    segment.chars().all(|c| matches!(c, '*' | '.' | '?'))
+}
+
+fn target(place: &Place, word: &str) -> Target {
     if word.starts_with('~') || word.contains('$') || word.contains('`') {
         return Target::Outside;
     }
-    let absolute = if word.starts_with('/') {
-        word.to_string()
+    // A Windows drive or network path, with either separator; a bare drive (`D:`, `D:x`)
+    // means that drive's own working directory, which is not known here.
+    let windows = word.starts_with("\\\\") || word.get(..2).is_some_and(drive);
+    let word = if windows {
+        word.replace('\\', "/")
     } else {
-        format!("{cwd}/{word}")
+        word.to_string()
     };
-    let (Some(path), Some(root)) = (normalized(&absolute), normalized(root)) else {
+    let absolute = if word.starts_with('/') || word.get(2..3) == Some("/") && windows {
+        word
+    } else if windows {
+        return Target::Outside;
+    } else {
+        format!("{}/{word}", place.cwd)
+    };
+    let Some(path) = normalized(&absolute) else {
         return Target::Outside;
     };
-    if !path.starts_with(&root) {
-        return Target::Outside;
+    for root in place.roots.iter().filter_map(|root| normalized(root)) {
+        if let Some(rest) = below(&path, &root) {
+            return match rest {
+                [] | [".git"] => Target::Root,
+                [all] if everything(all) => Target::Root,
+                _ => Target::Inside,
+            };
+        }
     }
-    match &path[root.len()..] {
-        [] | [".git"] => Target::Root,
-        [all] if all.chars().all(|c| matches!(c, '*' | '.' | '?')) => Target::Root,
-        _ => Target::Inside,
+    // Strictly below a temporary directory: never the directory itself or all of it.
+    let temporary = place
+        .temp
+        .iter()
+        .filter_map(|temp| normalized(temp))
+        .any(|temp| match below(&path, &temp) {
+            None | Some([]) => false,
+            Some([one]) => !everything(one),
+            Some(_) => true,
+        });
+    if temporary {
+        Target::Inside
+    } else {
+        Target::Outside
     }
 }
 
-fn delete(args: &[String], root: &str, cwd: &str) -> Option<&'static str> {
+fn recursive(word: &str) -> bool {
+    word == "--recursive" || short(word, 'r') || short(word, 'R')
+}
+
+/// A recursive `rm` judged by its targets; `input` adds targets read from standard input,
+/// which are not known here.
+fn delete(args: &[String], place: &Place, input: bool) -> Option<&'static str> {
     let mut recursive = false;
     let mut targets = Vec::new();
     let mut options = true;
@@ -304,7 +422,7 @@ fn delete(args: &[String], root: &str, cwd: &str) -> Option<&'static str> {
         if options && word == "--" {
             options = false;
         } else if options && word.starts_with('-') && word.len() > 1 {
-            recursive |= word == "--recursive" || short(word, 'r') || short(word, 'R');
+            recursive |= self::recursive(word);
         } else {
             targets.push(word.as_str());
         }
@@ -312,8 +430,8 @@ fn delete(args: &[String], root: &str, cwd: &str) -> Option<&'static str> {
     if !recursive {
         return None;
     }
-    let places: Vec<Target> = targets.iter().map(|t| target(root, cwd, t)).collect();
-    if places.contains(&Target::Outside) {
+    let places: Vec<Target> = targets.iter().map(|t| target(place, t)).collect();
+    if input || places.contains(&Target::Outside) {
         Some("delete-outside-project")
     } else if places.contains(&Target::Root) {
         Some("delete-project-root")
@@ -337,13 +455,24 @@ fn git(args: &[String]) -> Option<&'static str> {
             .any(|word| matches!(word.as_str(), "." | ":/" | "*"))
     };
     match verb.as_str() {
-        "push" => (has("--force")
-            || has("--mirror")
-            || rest.iter().any(|word| short(word, 'f'))
+        "push"
+            if has("--force")
+                || has("--mirror")
+                || rest.iter().any(|word| short(word, 'f'))
+                || rest
+                    .iter()
+                    .any(|word| word.starts_with('+') && word.len() > 1) =>
+        {
+            Some("force-push")
+        }
+        // `--delete`, `-d`, `--prune` or an empty source, as in `:branch`.
+        "push" => (has("--delete")
+            || has("--prune")
+            || rest.iter().any(|word| short(word, 'd'))
             || rest
                 .iter()
-                .any(|word| word.starts_with('+') && word.len() > 1))
-        .then_some("force-push"),
+                .any(|word| word.starts_with(':') && word.len() > 1))
+        .then_some("delete-remote-branch"),
         "reset" => has("--hard").then_some("discard-changes"),
         "checkout" => (whole_tree() || has("--force") || rest.iter().any(|w| short(w, 'f')))
             .then_some("discard-changes"),
@@ -380,28 +509,102 @@ fn system(executable: &str, args: &[String]) -> bool {
     }
 }
 
+/// The command `xargs` runs, with the targets it appends from standard input.
+fn xargs(args: &[String], place: &Place) -> Option<&'static str> {
+    let mut index = 0;
+    while let Some(word) = args.get(index).filter(|word| word.starts_with('-')) {
+        index += if XARGS_VALUE_OPTIONS.contains(&word.as_str()) {
+            2
+        } else {
+            1
+        };
+    }
+    let words = command(args.get(index..)?);
+    match words.split_first() {
+        Some((rm, args)) if basename(rm) == "rm" => delete(args, place, true),
+        _ => builtin(words, place),
+    }
+}
+
+/// `find … -delete`, or `-exec rm -r`, judged by the places the search starts from: one
+/// outside the project, or the project root with nothing narrowing what is matched.
+fn find(args: &[String], place: &Place) -> Option<&'static str> {
+    let mut index = 0;
+    while let Some(word) = args.get(index) {
+        match word.as_str() {
+            "-H" | "-L" | "-P" => index += 1,
+            "-D" => index += 2,
+            word if word.starts_with("-O") => index += 1,
+            _ => break,
+        }
+    }
+    let rest = args.get(index..).unwrap_or_default();
+    let starts: Vec<&str> = rest
+        .iter()
+        .map(String::as_str)
+        .take_while(|word| !word.starts_with('-') && !matches!(*word, "(" | "!"))
+        .collect();
+    let expression = &rest[starts.len()..];
+    let mut deletes = false;
+    let mut at = 0;
+    while at < expression.len() {
+        match expression[at].as_str() {
+            "-delete" => deletes = true,
+            "-exec" | "-execdir" | "-ok" | "-okdir" => {
+                let end = expression[at + 1..]
+                    .iter()
+                    .position(|word| matches!(word.as_str(), ";" | "\\;" | "\\" | "+"))
+                    .map_or(expression.len(), |end| at + 1 + end);
+                let run = command(&expression[at + 1..end]);
+                deletes |= run.split_first().is_some_and(|(rm, args)| {
+                    basename(rm) == "rm" && args.iter().any(|word| recursive(word))
+                });
+                at = end;
+            }
+            _ => {}
+        }
+        at += 1;
+    }
+    if !deletes {
+        return None;
+    }
+    let narrowed = expression
+        .iter()
+        .any(|word| FIND_TESTS.contains(&word.as_str()));
+    let starts = if starts.is_empty() { vec!["."] } else { starts };
+    let places: Vec<Target> = starts.iter().map(|start| target(place, start)).collect();
+    if places.contains(&Target::Outside) {
+        Some("delete-outside-project")
+    } else if places.contains(&Target::Root) && !narrowed {
+        Some("delete-project-root")
+    } else {
+        None
+    }
+}
+
 /// The built-in rule one command segment breaks, if any.
-fn builtin(words: &[String], root: &str, cwd: &str) -> Option<&'static str> {
+fn builtin(words: &[String], place: &Place) -> Option<&'static str> {
     let (executable, args) = words.split_first()?;
     let executable = basename(executable);
     match executable {
-        "rm" => delete(args, root, cwd),
+        "rm" => delete(args, place, false),
+        "xargs" => xargs(args, place),
+        "find" => find(args, place),
         "git" => git(args),
         _ => system(executable, args).then_some("system-administration"),
     }
 }
 
-/// The decision for one shell command run from `cwd` in the project at `root` (both
-/// absolute, `/`-separated): `allow`, or `deny` with the rule and a reason. With the policy
-/// off every command is allowed.
-pub fn decision(settings: &Value, root: &str, cwd: &str, shell: &str) -> Value {
+/// The decision for one shell command run at `place`: `allow`, or `deny` with the rule and
+/// a reason. With the policy off every command is allowed.
+pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
     if !enabled(settings) {
         return json!({"decision": "allow"});
     }
     let mut broken: Option<(String, String)> = None;
     let too_deep = walk(shell, &mut |words| {
         let words = command(words);
-        if let Some(id) = builtin(words, root, cwd).filter(|id| !disabled(settings, id)) {
+        if let Some(id) = builtin(words, place).filter(|id| !disabled(settings, id)) {
             let refuses = RULES
                 .iter()
                 .find(|(known, _)| *known == id)
