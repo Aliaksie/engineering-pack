@@ -68,16 +68,18 @@ rules out, adds the project's own or turns the policy off with `"enabled": false
 
 | Rule | Refuses |
 |---|---|
-| `delete-outside-project` | `rm -r` whose target is outside the project root, under `~`, or an unexpanded variable or substitution |
-| `delete-project-root` | `rm -r` of the project root, of everything in it (`*`, `.`) or of its `.git` |
+| `delete-outside-project` | `rm -r`, `find -delete` or `find -exec rm -r` whose target is outside the project root, under `~`, an unexpanded variable or substitution, or read from input as with `xargs rm -r`; a target strictly below a temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`) passes |
+| `delete-project-root` | `rm -r` of the project root, of everything in it (`*`, `.`) or of its `.git`; `find` from the project root deleting with no name, path, time or size test |
 | `force-push` | `git push` with `--force`, `-f`, `--mirror` or a `+refspec`; `--force-with-lease` passes |
+| `delete-remote-branch` | `git push` with `--delete`, `-d`, `--prune` or an empty source (`:branch`) |
 | `discard-changes` | `git reset --hard`, `git checkout`/`git restore` of the whole tree, `git checkout -f`, `git clean -f` (not a dry run), `git stash drop` and `clear` |
 | `system-administration` | `sudo`, `doas`, shutdown and reboot, stopping or disabling services, mounting, formatting and writing to devices |
 
 `disables` leaves built-in rules out. `deny` adds the project's own: a command whose leading
 words match is refused, with the executable matched by name and variable assignments or
 wrappers such as `env` skipped. `craft settings` lists the rules in force and where each
-comes from; refused commands are counted in the session summary.
+comes from; refused commands are counted in the session summary. Every installed Craft
+package enforces the policy before a shell command, so it holds with any one of them.
 
 The policy only refuses. It never approves a command, so the host's prompts, sandbox and
 deny rules apply as before, and what the host already blocks stays blocked: Claude Code
@@ -86,9 +88,10 @@ confines writes with its sandbox. The policy adds one command-level rule set tha
 on every host and still holds where the host has none, such as Claude Code's bypass mode or
 Codex with full access.
 
-Targets are judged by name, from the directory the command runs in; nothing is read from
-disk, so a link that leads outside is not seen, and Windows drive paths are not recognized as
-outside. Commands are read like the review guard reads them, with the same limits; a command
+Targets are judged by name, from the directory the command runs in, against the project
+root as the host names it and as it resolves on disk; a Windows drive or network path is
+judged as absolute. Nothing else is read from disk, so a link inside the project that leads
+outside is not seen. Commands are read like the review guard reads them, with the same limits; a command
 nested deeper than 16 levels is refused. Personal preferences and task overrides cannot
 change the policy. Use host permissions, sandboxing and credentials for enforcement.
 

@@ -198,7 +198,7 @@ object. Rules that refuse destructive shell commands and commands that reach out
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `safety.enabled` | boolean | `true` | Whether the policy is on. Set `false` to turn it off: no command is refused. |
-| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
+| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `delete-remote-branch`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
 | `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
 | `safety.deny[].id` | string |  | Stable handle named in the refusal. |
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |

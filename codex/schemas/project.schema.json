@@ -1043,6 +1043,7 @@
               "delete-outside-project",
               "delete-project-root",
               "force-push",
+              "delete-remote-branch",
               "discard-changes",
               "system-administration"
             ]
