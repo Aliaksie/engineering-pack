@@ -284,7 +284,7 @@ fn basename(word: &str) -> &str {
 }
 
 /// The command a segment runs: leading variable assignments and wrapper words removed.
-fn command(words: &[String]) -> &[String] {
+pub(crate) fn command(words: &[String]) -> &[String] {
     let mut rest = words;
     loop {
         match rest.first().map(String::as_str) {

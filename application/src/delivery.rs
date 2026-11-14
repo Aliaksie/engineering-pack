@@ -329,6 +329,22 @@ fn decide(
             }
         }
     }
+    // A shell command that names the project files it writes is an edit of them: their first
+    // write gets the edit's routing hint and, once written, its standards check.
+    if !event.edit
+        && matches!(event.lifecycle, "before-tool" | "after-tool")
+        && let Some(command) = event.command
+    {
+        for path in shell_written(event.cwd, command)
+            .iter()
+            .filter_map(|f| project_file(root, event.cwd, Some(f)))
+        {
+            if !path.is_empty() && !edited.contains(&path) {
+                edited.push(path);
+            }
+        }
+    }
+    let edit = event.edit || !edited.is_empty();
     // An edit outside the project has no project route; it is not a delivery failure. A
     // patch is routed when any file it writes is the project's, not only its first.
     let file = match edited.first() {
@@ -338,7 +354,7 @@ fn decide(
     // Without session records an existing record is still read, never created or changed.
     let records = delivery::session_records(settings);
     let intent_file = match session {
-        Some(session) if prompt.is_some() || event.edit || event.lifecycle == "turn-end" => {
+        Some(session) if prompt.is_some() || edit || event.lifecycle == "turn-end" => {
             Some(intent_file(root, session, records)?)
         }
         _ => None,
@@ -352,7 +368,7 @@ fn decide(
     let facts = delivery::Facts {
         session: session.is_some(),
         context_supported: event.context_supported,
-        edit: event.edit && event.edit_context,
+        edit: edit && event.edit_context,
         established: record["intent"].as_str(),
         file_routed: !edited.is_empty()
             && edited
@@ -389,7 +405,7 @@ fn decide(
     };
     let routing = match (plan.intent, file.as_deref()) {
         (Some(intent), Some(file)) => {
-            let files: Vec<Value> = if event.edit {
+            let files: Vec<Value> = if edit {
                 edited.iter().map(|f| json!(f)).collect()
             } else if file.is_empty() {
                 vec![]
@@ -445,7 +461,7 @@ fn decide(
         _ => None,
     };
     // A request establishes its intent; an edit only once it is routed.
-    let routed_edit = event.edit && routing.is_some();
+    let routed_edit = edit && routing.is_some();
     if let (Some(intent), Some(target)) = (plan.establish, intent_file.as_deref())
         && records
         && (prompt.is_some() || routed_edit)
@@ -472,7 +488,7 @@ fn decide(
     }
     // A file written while the session plans is its planning evidence, by content hash.
     if let (true, "after-tool", Some(target)) = (
-        records && event.edit && record["intent"] == "plan",
+        records && edit && record["intent"] == "plan",
         event.lifecycle,
         intent_file.as_deref(),
     ) {
@@ -850,25 +866,22 @@ fn standard_findings(
     event: &Event,
     edited: &[String],
 ) -> (Vec<Value>, Vec<Checked>) {
-    if event.edit {
-        // A patch writes several files: each finding then names the one it is about.
-        let several = edited.len() > 1;
-        let (mut found, mut checked) = (Vec::new(), Vec::new());
-        for file in edited {
-            let (verdicts, scope) = file_findings(root, settings, file);
-            checked.extend(scope);
-            found.extend(verdicts.into_iter().map(|mut verdict| {
-                if several {
-                    verdict["file"] = json!(file);
-                }
-                verdict
-            }));
-        }
-        return (found, checked);
+    // A patch or a shell command writes several files: each finding then names its file.
+    let several = edited.len() > 1;
+    let (mut found, mut checked) = (Vec::new(), Vec::new());
+    for file in edited {
+        let (verdicts, scope) = file_findings(root, settings, file);
+        checked.extend(scope);
+        found.extend(verdicts.into_iter().map(|mut verdict| {
+            if several {
+                verdict["file"] = json!(file);
+            }
+            verdict
+        }));
     }
     let checks = standards::commit_checks(settings);
-    if checks.is_empty() || !event.command.is_some_and(standards::commits) {
-        return (Vec::new(), Vec::new());
+    if event.edit || checks.is_empty() || !event.command.is_some_and(standards::commits) {
+        return (found, checked);
     }
     // A failed commit leaves an older HEAD; only a commit made just now is the one written.
     // At a workspace root that is the newest one among its member repositories.
@@ -890,15 +903,36 @@ fn standard_findings(
         })
         .max_by_key(|(time, _)| *time);
     let Some((_, message)) = written else {
-        return (Vec::new(), Vec::new());
+        return (found, checked);
     };
-    let found = standards::verdicts(&checks, &message, None);
-    let scope = Checked {
+    let verdicts = standards::verdicts(&checks, &message, None);
+    checked.push(Checked {
         scope: "commit".into(),
         kinds: "c".into(),
-        keys: finding_keys('c', &found),
-    };
-    (found, vec![scope])
+        keys: finding_keys('c', &verdicts),
+    });
+    found.extend(verdicts);
+    (found, checked)
+}
+
+/// The files a shell command names as written, resolved against `cwd` only where a copy or
+/// move lands in an existing directory: each source then lands inside it by its own name.
+fn shell_written(cwd: &Path, command: &str) -> Vec<String> {
+    let mut paths = Vec::new();
+    for written in delivery::writes::shell_writes(command) {
+        if written.sources.is_empty() || !cwd.join(&written.path).is_dir() {
+            paths.push(written.path);
+            continue;
+        }
+        for source in &written.sources {
+            let name = Path::new(source).file_name().and_then(|n| n.to_str());
+            if let Some(name) = name {
+                let directory = written.path.trim_end_matches(['/', '\\']);
+                paths.push(format!("{directory}/{name}"));
+            }
+        }
+    }
+    paths
 }
 
 /// Anchor and module dependency check results for one written project file, and the scope

@@ -182,7 +182,7 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
 
 - module dependency findings (above) for imports the changes add;
 - anchor check findings (above) for a changed file the session was not told about when the
-  file was written: a file a shell command or a script wrote passes no edit hook, so its
+  file was written: a file a script, generator or formatter wrote passes no edit hook, so its
   check runs here;
 - debt markers the changes add, when `routing.debtMarkers` is true: a
   TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
@@ -500,6 +500,13 @@ prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a plann
 `ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
 established another intent, once per file until the next request, and only at one tool hook:
 before the tool runs where the host shows context there, otherwise after it.
+
+A shell command that names the project files it writes is an edit of them: an output
+redirection (`>`, `>>`, `&>`, `2>`), `tee`, `sed -i`, `perl -i`, or the destination of `cp` and
+`mv`. Those files get the edit's routing hint and, after the command, its anchor checks. The
+command is read by its words, as the [safety policy](SECURITY.md) reads it: scripts,
+interpreters, generators, formatters, variables, globs and relative paths after a `cd` are not
+read, and the stop review checks what they wrote.
 
 For requests that create, change or assess something, what they are about decides the
 intent. Feedback and reading requests ("any feedback…", "look at the diff…") are reviews when
