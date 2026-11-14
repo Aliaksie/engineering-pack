@@ -30,6 +30,7 @@ mod question;
 mod render;
 mod retention;
 mod review;
+mod safety;
 mod scratch;
 mod session;
 mod setup;

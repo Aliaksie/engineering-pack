@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The safety policy holds with any Craft package installed, not only `craft-delivery`; it also
+  refuses `xargs rm -r` (targets read from input), `find -delete` and `find -exec rm -r` from
+  outside the project or from its root with no narrowing test, and a push that deletes a
+  remote branch or tag (new rule `delete-remote-branch`). A recursive delete strictly below a
+  temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`), such as a host's scratch directory, is
+  no longer refused. A project reached through a link is recognized under both of its paths,
+  and on Windows a drive or network path outside the project, which had passed as inside, is
+  refused.
 - In Codex, the first session after Craft's hooks run again says once how many earlier
   sessions in the project ran without them, and whether a Craft update preceded the gap: Codex
   skips a plugin's hooks after every update until they are trusted again, and its app and IDE

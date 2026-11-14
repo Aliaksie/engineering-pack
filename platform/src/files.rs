@@ -19,6 +19,55 @@ impl std::fmt::Display for ReadError {
     }
 }
 
+/// `path` with `/` separators, without a Windows verbatim prefix.
+fn slashed(path: &Path) -> String {
+    let text = path.to_string_lossy().replace('\\', "/");
+    match text.strip_prefix("//?/") {
+        Some(rest) if !rest.starts_with("UNC/") => rest.to_string(),
+        _ => text,
+    }
+}
+
+/// A directory as given and, when it differs, as resolved on disk (links, `/tmp` on macOS),
+/// with `/` separators.
+pub fn spellings(path: &Path) -> Vec<String> {
+    let mut spellings = vec![slashed(path)];
+    if let Ok(resolved) = fs::canonicalize(path).map(|resolved| slashed(&resolved))
+        && !spellings.contains(&resolved)
+    {
+        spellings.push(resolved);
+    }
+    spellings
+}
+
+/// The directories temporary files go to, under each spelling: the platform's own and, on
+/// Unix, `/tmp` and `/var/tmp`. One that is the file system root, or holds the home
+/// directory, is left out.
+pub fn temporary_directories() -> Vec<String> {
+    let mut candidates = vec![std::env::temp_dir()];
+    if cfg!(unix) {
+        candidates.extend(["/tmp".into(), "/var/tmp".into()]);
+    }
+    let home = std::env::home_dir();
+    let mut directories = Vec::new();
+    for candidate in candidates {
+        if candidate.parent().is_none()
+            || home
+                .as_deref()
+                .is_some_and(|home| home.starts_with(&candidate))
+        {
+            continue;
+        }
+        for spelling in spellings(&candidate) {
+            let spelling = spelling.trim_end_matches('/').to_string();
+            if !spelling.is_empty() && !directories.contains(&spelling) {
+                directories.push(spelling);
+            }
+        }
+    }
+    directories
+}
+
 /// How long a file must have been left alone before its metadata stands for its content.
 /// Timestamps are as coarse as two seconds on some filesystems, so a write in the same tick
 /// as a read could leave the metadata unchanged; a file changed this recently is read.
@@ -172,6 +221,26 @@ pub fn read_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, ReadError> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn temporary_directories_are_named_as_given_and_as_resolved() {
+        let directories = temporary_directories();
+        let temp = std::env::temp_dir();
+        for spelling in spellings(&temp) {
+            assert!(
+                directories.contains(&spelling.trim_end_matches('/').to_string()),
+                "{spelling} in {directories:?}"
+            );
+        }
+        assert!(
+            directories
+                .iter()
+                .all(|d| !d.is_empty() && !d.ends_with('/'))
+        );
+        if cfg!(unix) {
+            assert!(directories.contains(&"/tmp".to_string()));
+        }
+    }
 
     #[test]
     fn a_stamp_waits_for_the_file_to_settle_and_follows_every_write() {

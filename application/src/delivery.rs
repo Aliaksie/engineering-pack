@@ -73,13 +73,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let settings = project::hook_loaded(recorder, hook, event.root)?;
     // The project's safety policy speaks first: a refused command gets no routing.
     if let ("before-tool", Some(command)) = (event.lifecycle, event.command) {
-        let slashed = |path: &Path| path.to_string_lossy().replace('\\', "/");
-        let refused = craft_engine::safety::decision(
-            &settings,
-            &slashed(event.root),
-            &slashed(event.cwd),
-            command,
-        );
+        let refused = crate::safety::decision(&settings, event.root, event.cwd, command);
         if refused["decision"] == "deny" {
             // Counted for the session summary; an uncounted refusal still refuses.
             if let Some(session) = event

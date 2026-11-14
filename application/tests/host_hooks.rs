@@ -120,16 +120,26 @@ fn observation_records_session_boundaries_without_reading_the_project() {
 #[test]
 fn unread_input_fails_the_hook_and_invalid_input_is_diagnosed() {
     let fixture = project("unread", None);
-    for (handler, status) in [
-        ("observe", "oversized"),
-        ("review-read-only", "read-failure"),
+    // Every package enforces the safety policy, on by default, before a shell command it
+    // could not read; the read-only review is off here and fails open.
+    for (handler, status, expected) in [
+        (
+            "observe",
+            "oversized",
+            json!({"decision": "deny", "reason": "Policy could not be evaluated: hook input could not be read in full", "failed": true, "export": null}),
+        ),
+        (
+            "review-read-only",
+            "read-failure",
+            json!({"failed": true, "export": null}),
+        ),
     ] {
         let result = hook(facts(
             &fixture.0,
             handler,
             json!({"inputStatus": status, "session": null, "package": "craft-stories"}),
         ));
-        assert_eq!(result, json!({"failed": true, "export": null}));
+        assert_eq!(result, expected, "{handler}");
     }
     hook(facts(
         &fixture.0,
