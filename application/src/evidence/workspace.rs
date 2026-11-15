@@ -64,7 +64,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
             .remove("members");
         request["root"] = json!(root);
         request.as_object_mut().unwrap().remove("database");
-        match super::evidence::run(operation, &request) {
+        match super::run(operation, &request) {
             Ok(mut result) => {
                 let sources = result["sources"].clone();
                 if let Some(rows) = result["results"].as_array_mut() {

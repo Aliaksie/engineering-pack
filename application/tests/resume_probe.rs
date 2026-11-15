@@ -21,7 +21,7 @@ fn hook(repo: &Repo, host: &str, lifecycle: &str, session: &str, extra: Value) -
     for (key, value) in extra.as_object().unwrap() {
         facts[key] = value.clone();
     }
-    craft_application::host::run(&facts).unwrap()
+    craft_application::hook::host::run(&facts).unwrap()
 }
 
 fn resumed(decision: &Value) -> Option<&Value> {

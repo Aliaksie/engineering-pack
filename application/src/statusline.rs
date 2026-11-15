@@ -91,7 +91,7 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
         return Err(USAGE.into());
     }
     if !request.root_explicit {
-        request.root = crate::host::resolve_root(None)
+        request.root = crate::hook::host::resolve_root(None)
             .to_string_lossy()
             .into_owned();
     }
@@ -182,7 +182,7 @@ fn declared(
             if !std::path::Path::new(root).is_absolute() {
                 return Err("native project root must be absolute".into());
             }
-            request.root = crate::host::project_root(std::path::Path::new(root))
+            request.root = crate::hook::host::project_root(std::path::Path::new(root))
                 .to_string_lossy()
                 .into_owned();
         }

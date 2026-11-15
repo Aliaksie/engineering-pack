@@ -8,7 +8,7 @@ macro_rules! hook_template {
         pub(crate) const $name: Template = Template {
             id: concat!("hook.", $id),
             slots: &[$($slot),*],
-            source: include_str!(concat!("../text/hook/", $id, ".txt")),
+            source: include_str!(concat!("../../text/hook/", $id, ".txt")),
         };
     };
 }

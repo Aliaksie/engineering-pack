@@ -174,7 +174,7 @@ fn a_resumed_task_hears_whether_its_last_test_run_still_holds() {
             "scope": "any", "inputStatus": "complete", "tool": "other", "contextSupported": true,
             "cwd": repo.path(), "session": "S1", "file": null, "prompt": "", "pattern": null,
         });
-        craft_application::host::run(&facts).unwrap()["context"]["data"]["tests"].clone()
+        craft_application::hook::host::run(&facts).unwrap()["context"]["data"]["tests"].clone()
     };
     let held = resume(&repo);
     assert_eq!(held["status"], "passed");

@@ -1,9 +1,7 @@
 //! `craft hook <host> <lifecycle> --package <name> --handler <handler> [--scope shell]`:
 //! one host hook event from the host's own payload on stdin to its wire output. The host
 //! mapping table is the data the build uses to register hooks.
-use crate::host;
 use crate::telemetry::Recorder;
-use crate::text;
 use craft_engine::delivery::budget::{self, Piece};
 use craft_engine::session::test_runs;
 use craft_engine::values::js_length;
@@ -11,6 +9,13 @@ use craft_platform::files;
 use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::path::Path;
+
+pub(crate) mod delivered;
+pub(crate) mod delivery;
+pub mod host;
+mod safety;
+pub(crate) mod stop_review;
+pub(crate) mod text;
 
 const MAX_INPUT: usize = 1024 * 1024;
 /// How much of an unread input is searched for the tool it names.

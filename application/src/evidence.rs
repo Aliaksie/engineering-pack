@@ -14,12 +14,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub(crate) mod budget;
+pub(crate) mod workspace;
+
 pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     if operation == "warm" {
         return warm(Path::new(input["root"].as_str().ok_or("root is required")?));
     }
     let mut budget = if operation == "refresh" {
-        Some(super::budget::Budget::from_input(input)?)
+        Some(budget::Budget::from_input(input)?)
     } else {
         None
     };
@@ -118,8 +121,7 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
             Some(store) => store,
             None => opened.insert(Store::open(&database)?),
         };
-        let mut budget =
-            super::budget::Budget::from_input(&json!({"maxDurationMs": WARM_CHUNK_MS}))?;
+        let mut budget = budget::Budget::from_input(&json!({"maxDurationMs": WARM_CHUNK_MS}))?;
         let result = refresh(&root, store, &mut budget, &mut |_, _| {})?;
         drop(guard);
         chunks += 1;
@@ -146,7 +148,7 @@ pub fn warm(root: &Path) -> Result<Value, Failure> {
 pub(crate) fn refresh(
     root: &Path,
     store: &mut Store,
-    budget: &mut super::budget::Budget,
+    budget: &mut budget::Budget,
     observe: &mut dyn FnMut(&str, bool),
 ) -> Result<Value, Failure> {
     let mut reasons = std::collections::BTreeMap::<&str, u64>::new();
@@ -503,7 +505,7 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     if !OPERATIONS.contains(&operation.as_str()) {
         return Err("unknown project evidence operation".into());
     }
-    let root = crate::host::resolve_root(options.get("root").and_then(Value::as_str));
+    let root = crate::hook::host::resolve_root(options.get("root").and_then(Value::as_str));
     input.insert("root".into(), json!(root.to_string_lossy()));
     Ok((json, Some((operation, Value::Object(input)))))
 }

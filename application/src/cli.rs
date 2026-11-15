@@ -173,9 +173,9 @@ fn command(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|command| command.name == name)
 }
 
-/// The project a command works on; see [`crate::host::resolve_root`].
+/// The project a command works on; see [`crate::hook::host::resolve_root`].
 fn root(options: &Options) -> PathBuf {
-    crate::host::resolve_root(options.get("root"))
+    crate::hook::host::resolve_root(options.get("root"))
 }
 
 fn setup_bundle(options: &Options) -> Result<PathBuf, Failure> {
@@ -1716,7 +1716,7 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
     };
     let mut recorder = Recorder::open(
         // The same project the command itself resolves, before its options are parsed.
-        &crate::host::resolve_root(hint("--root")),
+        &crate::hook::host::resolve_root(hint("--root")),
         hint("--session"),
         hint("--host"),
     );

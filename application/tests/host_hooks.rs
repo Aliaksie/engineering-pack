@@ -36,7 +36,7 @@ fn facts(root: &Path, handler: &str, extra: Value) -> Value {
 }
 
 fn hook(input: Value) -> Value {
-    craft_application::host::run(&input).unwrap()
+    craft_application::hook::host::run(&input).unwrap()
 }
 
 fn events(root: &Path) -> Vec<Value> {
@@ -410,7 +410,8 @@ fn malformed_facts_are_rejected() {
         json!({"session": 7}),
         json!({"package": false}),
     ] {
-        let decision = craft_application::host::run(&facts(&fixture.0, "observe", extra.clone()));
+        let decision =
+            craft_application::hook::host::run(&facts(&fixture.0, "observe", extra.clone()));
         assert!(decision.is_err(), "{extra}");
     }
     assert!(

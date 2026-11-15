@@ -471,7 +471,7 @@ fn settled(root: &Path, settings: &Value, told: &Value, reviewed: &[&str]) -> Ve
                     keys: Vec::new(),
                 });
             }
-            crate::delivery::file_findings(root, settings, scope, &Value::Null).1
+            crate::hook::delivery::file_findings(root, settings, scope, &Value::Null).1
         })
         .collect()
 }
@@ -558,7 +558,7 @@ pub fn stop(
         .collect();
     let mut next = self::record(&files, &delivered, &own, &checkouts, &heads);
     // Anchor findings the session heard when it edited the file are not said again.
-    let told = crate::delivered::read(root, session).unwrap_or(Value::Null);
+    let told = crate::hook::delivered::read(root, session).unwrap_or(Value::Null);
     let mut summary = None;
     let reviewed: Vec<&str> = files
         .iter()

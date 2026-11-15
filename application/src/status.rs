@@ -371,7 +371,7 @@ fn observe(
         result["taskEvidenceStale"] = json!(true);
     }
     if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
-        match crate::delivery::planning(root, session) {
+        match crate::hook::delivery::planning(root, session) {
             Ok(planning) if !planning.is_empty() => result["planning"] = json!(planning),
             Ok(_) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
@@ -386,7 +386,7 @@ fn observe(
     }
     // What this session's hooks delivered, where its hooks kept the record.
     if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
-        match crate::delivered::read(root, session) {
+        match crate::hook::delivered::read(root, session) {
             Ok(record) if !record.is_null() => {
                 let mut delivered = craft_engine::session::delivered::counts(&record);
                 let count = |value: &Value| json!(value.as_u64().unwrap_or(0));
