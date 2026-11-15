@@ -261,7 +261,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
             && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
         {
             let decision =
-                crate::safety::secret_read(&settings, &cwd, facts.tool == "edit", secret);
+                crate::safety::read_decision(&settings, &cwd, facts.tool == "edit", secret);
             refused = (decision["decision"] == "deny").then_some(decision);
         }
         if refused.is_none() {

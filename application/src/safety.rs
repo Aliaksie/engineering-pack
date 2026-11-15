@@ -25,9 +25,9 @@ pub(crate) fn decision(settings: &Value, root: &Path, cwd: &Path, command: &str)
 /// `allow`, or the secret-file refusal, for a tool call that names `secret`, a file or
 /// search filter that reaches secret files. A call that `rewrites` a file is judged only when
 /// the file exists: its old content comes back to the model, while a new file holds nothing.
-pub(crate) fn secret_read(settings: &Value, cwd: &Path, rewrites: bool, secret: &str) -> Value {
+pub(crate) fn read_decision(settings: &Value, cwd: &Path, rewrites: bool, secret: &str) -> Value {
     if rewrites && !cwd.join(secret).exists() {
         return serde_json::json!({"decision": "allow"});
     }
-    craft_engine::safety::secret_read(settings, secret)
+    craft_engine::safety::read_decision(settings, secret)
 }

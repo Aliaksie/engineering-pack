@@ -566,9 +566,9 @@ fn decision_for(command: &str) -> Value {
 fn the_secret_file_rule_can_be_disabled_like_any_built_in_rule() {
     let off = json!({"safety": {"enabled": true, "disables": ["read-secret-file"]}});
     assert_eq!(rule(&off, ROOT, "cat .env"), None);
-    assert_eq!(secret_read(&off, ".env")["decision"], "allow");
-    assert_eq!(secret_read(&json!({}), ".env")["decision"], "allow");
-    let on = secret_read(&on(), "config/.env");
+    assert_eq!(read_decision(&off, ".env")["decision"], "allow");
+    assert_eq!(read_decision(&json!({}), ".env")["decision"], "allow");
+    let on = read_decision(&on(), "config/.env");
     assert_eq!(
         (on["decision"].as_str(), on["rule"].as_str()),
         (Some("deny"), Some("read-secret-file"))

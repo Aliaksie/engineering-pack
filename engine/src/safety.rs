@@ -641,7 +641,7 @@ pub fn named_secret<'a>(files: &[&'a str], filters: &[&'a str]) -> Option<&'a st
 
 /// The decision for a tool call that reads, searches or rewrites `secret`, a file or filter
 /// [`named_secret`] found: the secret-file refusal while the rule is in force, else `allow`.
-pub fn secret_read(settings: &Value, secret: &str) -> Value {
+pub fn read_decision(settings: &Value, secret: &str) -> Value {
     if !enabled(settings) || disabled(settings, SECRET_RULE) {
         return json!({"decision": "allow"});
     }

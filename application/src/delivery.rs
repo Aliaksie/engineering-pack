@@ -80,7 +80,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 crate::safety::decision(&settings, event.root, event.cwd, command)
             }
             (_, Some(secret)) => {
-                crate::safety::secret_read(&settings, event.cwd, event.edit, secret)
+                crate::safety::read_decision(&settings, event.cwd, event.edit, secret)
             }
             _ => json!({"decision": "allow"}),
         };
