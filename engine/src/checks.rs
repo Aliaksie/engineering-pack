@@ -429,5 +429,95 @@ pub fn text(report: &Value) -> String {
     lines.join("\n") + "\n"
 }
 
+/// Whether an agent's `git commit` waits for the declared checks: Craft runs checks and
+/// `routing.commitGate` is not false.
+pub fn gates_commits(settings: &Value) -> bool {
+    enabled(settings) && settings["routing"]["commitGate"] != false
+}
+
+/// The declared checks of the commit stage (and the step stage before it) that cover a file
+/// of `changed`: one that takes `{changedFiles}` only when a changed file falls under it.
+pub fn covering(settings: &Value, changed: &[Value]) -> Result<Vec<Value>> {
+    if changed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let scope = crate::routing::scope(settings, changed)?;
+    let plan = plan(settings, &scope, DEFAULT_STAGE, false)?;
+    let mut found = Vec::new();
+    for check in plan["run"].as_array().into_iter().flatten() {
+        if !takes_files(check) || !files_for(settings, check, changed)?.is_empty() {
+            found.push(check.clone());
+        }
+    }
+    Ok(found)
+}
+
+/// The refusal of a commit while a check of `covering` has not passed on the current files
+/// (`source`, the tree digest a run binds to) in a run of the session's `history` at the
+/// commit stage or later; `None` once the newest such run on these files passed every one of
+/// them (a check skipped for want of a file it takes counts as covered). Nothing is run here.
+pub fn commit_hold(
+    covering: &[Value],
+    history: &Value,
+    source: &Value,
+    session: &str,
+) -> Option<Value> {
+    if covering.is_empty() || source.is_null() {
+        return None;
+    }
+    let rank = |stage: &str| STAGES.iter().position(|s| *s == stage);
+    let commit = rank(DEFAULT_STAGE);
+    let ids: Vec<&str> = covering
+        .iter()
+        .filter_map(|check| check["id"].as_str())
+        .collect();
+    let on_these_files = history["runs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .rev()
+        .find(|run| run["stage"].as_str().and_then(rank) >= commit && run["source"] == *source);
+    let failed: Vec<&str> = match on_these_files {
+        Some(run) => {
+            let entries = |field: &str| -> Vec<&Value> {
+                run[field].as_array().into_iter().flatten().collect()
+            };
+            let (checks, skipped) = (entries("checks"), entries("skipped"));
+            let settled = |id: &str| {
+                checks
+                    .iter()
+                    .any(|c| c["id"] == id && c["result"] == "passed")
+                    || skipped.iter().any(|c| c["id"] == id)
+            };
+            let open: Vec<&str> = ids.iter().copied().filter(|id| !settled(id)).collect();
+            if open.is_empty() {
+                return None;
+            }
+            // Not passed in that run: failed there, or not part of it.
+            open.into_iter()
+                .filter(|id| checks.iter().any(|c| c["id"] == *id))
+                .collect()
+        }
+        None => Vec::new(),
+    };
+    let command = format!("craft check --stage commit --session {session}");
+    let reason = if failed.is_empty() {
+        format!(
+            "Craft holds this commit: the declared commit-stage check{} {} cover{} changed files and {} not passed on the current files. Run `{command}`, fix what it reports, then commit. (routing.commitGate: false turns this off.)",
+            if ids.len() == 1 { "" } else { "s" },
+            ids.join(", "),
+            if ids.len() == 1 { "s" } else { "" },
+            if ids.len() == 1 { "has" } else { "have" },
+        )
+    } else {
+        format!(
+            "Craft holds this commit: the declared commit-stage check{} {} did not pass on the current files. Fix it, run `{command}` again, then commit. (routing.commitGate: false turns this off.)",
+            if failed.len() == 1 { "" } else { "s" },
+            failed.join(", "),
+        )
+    };
+    Some(json!({"decision": "deny", "rule": "commit-gate", "reason": reason, "checks": ids}))
+}
+
 #[cfg(test)]
 mod tests;

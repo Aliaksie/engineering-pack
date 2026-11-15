@@ -349,6 +349,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "sessionSummary",
                 "conventionProposals",
                 "projectChecks",
+                "commitGate",
             ],
             "routing",
         )?;
@@ -365,6 +366,7 @@ pub fn validate_project(project: &Value) -> Result {
             "sessionSummary",
             "conventionProposals",
             "projectChecks",
+            "commitGate",
         ] {
             boolean(
                 routing.get(field),
@@ -646,7 +648,7 @@ pub fn default_settings() -> Value {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
             "sessionRecords": true, "sessionSummary": true, "conventionProposals": true,
-            "projectChecks": true
+            "projectChecks": true, "commitGate": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {
