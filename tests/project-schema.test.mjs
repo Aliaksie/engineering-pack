@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from './craft.mjs';
-import { DOC, SCHEMA, render } from '../tooling/project-config-doc.mjs';
+import { DOC, LAYER_FIELDS, LAYER_SCHEMA, SCHEMA, layerSchema, render } from '../tooling/project-config-doc.mjs';
 
 // The project schema is the configuration reference: every field described, its defaults the
 // ones `craft settings` applies, and docs/PROJECT-CONFIG.md generated from it.
@@ -63,4 +63,22 @@ test('a project file may link the schema; craft ignores the link', t => {
   assert.equal('$schema' in settings, false);
   assert.equal('$schema' in origins, false);
   assert.throws(() => settingsFor(t, { formatVersion: 1, $schema: 1 }), /\$schema must be a string/);
+});
+
+test('the layer schema is the project schema narrowed to the fields a layer may set', t => {
+  const current = JSON.parse(fs.readFileSync(path.join(root, LAYER_SCHEMA), 'utf8'));
+  assert.deepEqual(current, layerSchema(schema), 'run npm run docs:config');
+  const engine = fs.readFileSync(path.join(root, 'engine/src/layers.rs'), 'utf8');
+  const declared = engine.match(/pub const FIELDS: \[&str; \d+\] = \[([^\]]*)\]/)[1].match(/"[^"]+"/g).map(name => JSON.parse(name));
+  assert.deepEqual(LAYER_FIELDS, declared);
+  // An organization file that links it and sets a standard of each layer form is accepted.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-layer-schema-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const organization = path.join(dir, 'organization.json');
+  fs.writeFileSync(organization, JSON.stringify({ $schema: `../${LAYER_SCHEMA}`, formatVersion: 1, standards: [
+    { id: 'commits', anchor: 'conventional-commits' },
+    { id: 'review', checklist: ['Tests cover the change'] },
+    { id: 'licenses', run: { command: 'git', args: ['--version'] } }] }), { mode: 0o600 });
+  const report = run(['config', '--root', dir, '--organization', organization, '--preferences', path.join(dir, 'none.json')]);
+  assert.equal(report.layers.find(layer => layer.name === 'organization').state, 'loaded');
 });

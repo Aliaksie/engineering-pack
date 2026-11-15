@@ -27,6 +27,9 @@ publication, and must not contain credentials, private endpoints or production t
   over a repository's own configuration, and they hold no credentials. A check command a
   layer declares runs under `craft check` like the project's own. While a layer file cannot be
   used, a hook that guards shell commands refuses them, as with an unusable project file.
+  A committed `.craft/organization.json` (written by `craft config --sync --apply`) is
+  repository content, read like the project file and only where the machine has no
+  organization file: whoever can change the project file can change it too.
 - Building untrusted PR code can run arbitrary code even in a disposable checkout.
 - For agent changes, test tool authorization, idempotency, isolation and output validation
   independently of model behavior; a prompt or content filter does not replace them.

@@ -726,6 +726,27 @@ field with a value it cannot take, and any unknown field of the project file, st
 file and its folder must belong to the user, the organization file and its folder to the
 administrator or the user, and none may be a symlink or writable by group or others. On
 Windows ownership is not checked: keep the organization file where only administrators can
-write. A machine
-without the baseline files, such as a CI runner, sees the project alone; install the
-organization file there or point `CRAFT_ORGANIZATION_CONFIG` at a checked-out copy.
+write.
+
+### The organization layer on CI and teammates' machines
+
+A machine without the organization file, such as a CI runner or a teammate's laptop, would see
+the project alone. `craft config --sync` previews copying the machine's organization file to
+`.craft/organization.json`; `--apply` writes it, to be committed with the project. Where a
+machine has no organization file, that copy is the organization layer, so the organization's
+standards, checks and safety rules hold in `craft check` on CI and in a teammate's hooks.
+Where the machine has one, its own file wins and the copy is only compared with it:
+
+```text
+  organization: /etc/craft/organization.json — 3 values
+    pinned copy /work/shop/.craft/organization.json differs: CI and teammates without this file use the pin (`craft config --sync --apply` updates it)
+```
+
+`craft doctor` reports a copy that differs, `craft settings` lists where each layer was read
+from, and `craft route` names the layer of each standard the project does not declare itself.
+The copy is repository content like `project.json`: no ownership check, the same field rules
+as an organization file, and the project still overrides every value. A machine with neither
+file sees the project alone; `CRAFT_ORGANIZATION_CONFIG` can also name a checked-out copy.
+
+A layer file can link [`schemas/layer.schema.json`](../schemas/layer.schema.json) for
+completion in an editor: the project schema without the fields that name one repository.
