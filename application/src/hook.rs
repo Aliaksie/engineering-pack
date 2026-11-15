@@ -1331,6 +1331,7 @@ mod tests {
             json!({"decision": "allow"}),
             json!({"decision": "allow", "context": {"kind": "routing", "skills": ["s"]}}),
             json!({"decision": "deny", "reason": "R", "context": {"kind": "answer"}}),
+            json!({"decision": "deny", "rule": "read-secret-file", "reason": "R", "ask": "A"}),
             json!({"decision": "allow", "notice": "N", "standards": {"findings": []}}),
             json!({"decision": "allow", "notice": "N"}),
             json!({"decision": "allow", "notice": "N", "stop": {"findings": [{"rule": "r"}]}}),
