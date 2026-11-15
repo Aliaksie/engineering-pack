@@ -151,3 +151,98 @@ fn a_full_context_names_compaction_only_with_a_checkpoint_on_this_commit() {
         )
     );
 }
+
+#[test]
+fn an_open_task_names_its_first_required_criterion_without_evidence() {
+    let repo = started(
+        "next-acceptance",
+        &[("src/value.mjs", "export const value = 1;\n")],
+    );
+    let contract = repo.input(
+        "contract.json",
+        &serde_json::from_str::<Value>(include_str!(
+            "../../tests/fixtures/acceptance/contract.json"
+        ))
+        .unwrap(),
+    );
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix it",
+        "--file",
+        "src",
+        "--contract",
+        &contract,
+    ])
+    .unwrap();
+    assert_eq!(
+        notice(&repo).as_deref(),
+        Some("Craft next: acceptance \"value\" of task fix has no evidence yet")
+    );
+    assert_eq!(notice(&repo), None, "said once");
+}
+
+#[test]
+fn a_completed_plan_task_names_the_next_ready_one() {
+    let repo = started("next-plan", &[("a.txt", "a\n")]);
+    let plan = repo.input(
+        "plan.json",
+        &json!({"tasks": [{"id": "first", "goal": "Add the API"},
+            {"id": "second", "goal": "Document the API", "dependsOn": ["first"]}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "api",
+        "--goal",
+        "Ship the API",
+        "--data",
+        &plan,
+    ])
+    .unwrap();
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--plan",
+        "api",
+        "--task",
+        "first",
+    ])
+    .unwrap();
+    assert_eq!(notice(&repo), None, "the held task is open");
+    let bundle = support::bundle();
+    let done = repo.cli(&[
+        "task-step",
+        "--session",
+        "S1",
+        "--stage",
+        "implement",
+        "--target",
+        "task:first",
+        "--approach",
+        "direct",
+        "--evidence",
+        "e1",
+        "--outcome",
+        "passed",
+        "--result",
+        "Added",
+        "--next",
+        "Document it",
+        "--complete",
+        "--bundle",
+        &bundle,
+    ]);
+    assert!(done.is_ok(), "{done:?}");
+    assert_eq!(
+        notice(&repo).as_deref(),
+        Some(
+            "Craft next: plan task second (Document the API) is ready: craft task-start --plan api --ready"
+        )
+    );
+}

@@ -338,7 +338,12 @@ Craft next: context 81 %: compact or start a new session; the session's checkpoi
 
 A declared check of the commit stage (or the step stage) that covers a file the turn changed
 comes first, until a `craft check` run of the session at that stage or later follows the
-change. Otherwise, a context observation of the session at or past
+change. Then the task bound to the session (`task-start`): while it is open, the first required
+acceptance criterion that no evidence record names (`acceptance "value" of task fix has no
+evidence yet`; whether recorded evidence is current is for `craft session` to say); once a task
+of a Craft work plan is completed, the plan's next ready task with the command that starts it
+(`plan task second (Document the API) is ready: craft task-start --plan api --ready`). Nothing
+is claimed or started for you. Otherwise, a context observation of the session at or past
 `efficiency.context.compactAt` names compaction when a saved continuation is on the commit the
 project is on, and asks for a checkpoint first when there is none or it is on another commit.
 Occupancy is never estimated: without a fresh observation, from the Claude Code status line or

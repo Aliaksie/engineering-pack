@@ -1,6 +1,7 @@
 //! The facts a turn-end notice's next step is chosen from, read from the session's own
-//! records and the files the turn changed: the session's check runs, the host's last context
-//! observation and its checkpoint. A record that cannot be read is a fact Craft does not
+//! records and the files the turn changed: the session's check runs, the task bound to it with
+//! its acceptance contract and Craft work plan, the host's last context observation and its
+//! checkpoint. A consumer's own planning files are never read. A record that cannot be read is a fact Craft does not
 //! hold, so it names nothing from it.
 use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::session::next::{self, Checkpoint, Facts};
@@ -22,11 +23,50 @@ pub(crate) fn line(
     if !next::enabled(settings) {
         return None;
     }
-    let facts = Facts {
+    let mut facts = Facts {
         unrun_checks: unrun_checks(root, settings, session, changed),
-        context: context(root, settings, session, recorder, hook),
+        ..Facts::default()
     };
+    if facts.unrun_checks == 0 {
+        task(root, session, &mut facts, recorder, hook);
+    }
+    if facts == Facts::default() {
+        facts.context = context(root, settings, session, recorder, hook);
+    }
     next::line(&facts)
+}
+
+/// The facts of the task bound to the session: a required acceptance criterion without
+/// evidence while it is open, and the plan's next ready task once it is completed.
+fn task(root: &Path, session: &str, facts: &mut Facts, recorder: &mut Recorder, hook: &Operation) {
+    let Ok(Some(binding)) = crate::session::active_binding(root, session) else {
+        return;
+    };
+    let Some(task) = binding["task"].as_str() else {
+        return;
+    };
+    if let Ok(state) = crate::session::read_state(root, session, task, recorder, hook) {
+        facts.unevidenced =
+            next::unevidenced(&state["taskRecord"]).map(|criterion| (criterion, task.to_owned()));
+    }
+    if facts.unevidenced.is_some() {
+        return;
+    }
+    let Some(plan) = binding["plan"].as_str() else {
+        return;
+    };
+    // The queue reads every holder's session; it is taken only once the task is completed.
+    let Ok(Some(saved)) = crate::plan::read(root, plan) else {
+        return;
+    };
+    let completed = saved["tasks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|entry| entry["id"] == task && entry["state"] == "completed");
+    if completed && let Ok(queue) = crate::plan::queue(root, plan, Some(session)) {
+        facts.ready = next::ready(&saved, task, &queue);
+    }
 }
 
 /// Declared checks of the commit stage (and the step stage before it) that cover a changed
