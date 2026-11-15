@@ -107,7 +107,9 @@ and exits 2, for CI or a Git hook.
   ([project checks](docs/ROUTING.md#project-checks)).
 - **A safety policy from the first session.** Recursive deletes outside the project, forced
   pushes, Git commands that discard uncommitted work and system-level commands are refused
-  before they run, together with the project's own rules. Each rule can be left out and
+  before they run, together with the project's own rules. Reading `.env` files, private keys
+  and credential files through any tool waits for your approval on Claude Code and is refused
+  elsewhere. Each rule can be left out and
   `safety.enabled: false` turns the policy off. It only refuses and never approves
   ([security](docs/SECURITY.md)).
 - **Standards from what you already have.** With no configuration, a project is held to the
@@ -244,9 +246,9 @@ macOS on Apple Silicon, Linux x86-64 and arm64, and Windows x86-64. See
 ## What it does not do
 
 `craft` never calls a model, switches models, starts workers, compacts your session or posts
-to a code host. Standards checks report; they do not block tools. Two hooks deny, and only
-shell commands: the safety policy, unless a project turns it off, and craft-review's shell
-guard, which with `review.readOnly: true` denies common publishing commands and, while the
+to a code host. Standards checks report; they do not block tools. Two hooks deny: the safety
+policy, unless a project turns it off, which refuses shell commands and reads of secret
+files, and craft-review's shell guard, which with `review.readOnly: true` denies common publishing commands and, while the
 project configuration is invalid, every shell command
 ([read-only sessions](docs/REVIEW.md#read-only-sessions)). Your host's permissions and your
 authorization still decide what happens. Nothing is sent remotely unless you configure an

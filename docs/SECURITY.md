@@ -60,8 +60,8 @@ it commits, detected checks included; `routing.commitGate: false` stops that.
 
 ## Safety policy
 
-Craft refuses destructive shell commands before they run, on hosts where a hook can refuse
-a tool call (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI). The policy is on with no
+Craft refuses destructive shell commands and reads of secret files before they run, on hosts
+where a hook can refuse a tool call (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI). The policy is on with no
 configuration. `safety` in `.craft/project.json`, or in an organization or user file, leaves
 rules out, adds the project's own or turns the policy off with `"enabled": false`:
 
@@ -81,14 +81,37 @@ rules out, adds the project's own or turns the policy off with `"enabled": false
 | `delete-remote-branch` | `git push` with `--delete`, `-d`, `--prune` or an empty source (`:branch`) |
 | `discard-changes` | `git reset --hard`, `git checkout`/`git restore` of the whole tree, `git checkout -f`, `git clean -f` (not a dry run), `git stash drop` and `clear` |
 | `system-administration` | `sudo`, `doas`, shutdown and reboot, stopping or disabling services, mounting, formatting and writing to devices |
+| `read-secret-file` | Reading a file that commonly holds secrets through any tool the hook sees: a file read, a search whose path or file filter names one (`.env*`, `*.key`), an edit of an existing one, or a shell command that prints, searches, copies or sends it (`cat`, `grep`, `base64`, `cp`, `curl -d @file`, `git show HEAD:.env`, `< .env`). Inside or outside the project, in any repository of a workspace. Claude Code asks the user, who sees why; other hosts refuse |
+
+### Secret files
+
+`read-secret-file` judges a file by its name and the directories above it: `.env` and
+`.env.*`, `*.env`, `.npmrc`, `.pypirc`, `.netrc`, `.pgpass`, `.git-credentials`,
+`.htpasswd`, `credentials` and `credentials.json`/`secrets.yaml` and similar data files,
+private keys (`*.key`, `*.p12`, `*.pfx`, `*.jks`, `*.ppk`, a `.pem` named as a key such as
+`privkey.pem`, `id_rsa`/`id_ed25519` and anything else in `~/.ssh` but public keys,
+`known_hosts`, `config` and `authorized_keys`), `~/.gnupg`, Terraform state, and token files
+of `gh`, `kubectl`, Docker, Azure and gcloud. Templates (`.env.example`, `.sample`,
+`.template`, `.dist`), public keys and certificates, files named `example-…` or `sample-…`
+and files below `testdata`, `fixtures`, `examples` or `samples` are not secrets. Listing a
+file by name and writing a new one are not reads. Loading a file into the shell
+(`source .env`) shows the model nothing and passes.
+
+It is a guardrail for the common direct reads, not a boundary. A read that does not name the
+file is outside it: a script (`python -c "open('.env')"`), `env` or `printenv`, a test or
+build that prints its configuration, a search of a whole directory, and tools the host does
+not pass to a hook. For a boundary use the host's own controls: Claude Code
+`permissions.deny` rules such as `Read(./.env)` and its sandbox, Codex's sandbox, Cursor's
+ignore files. Leave the rule out with `"disables": ["read-secret-file"]`.
 
 `disables` leaves built-in rules out. `deny` adds the project's own: a command whose leading
 words match is refused, with the executable matched by name and variable assignments or
 wrappers such as `env` skipped. `craft settings` lists the rules in force and where each
 comes from; refused commands are counted in the session summary. Every installed Craft
-package enforces the policy before a shell command, so it holds with any one of them.
+package enforces the policy before a tool call, so it holds with any one of them.
 
-The policy only refuses. It never approves a command, so the host's prompts, sandbox and
+The policy only refuses, or on Claude Code hands a secret read to the user. It never
+approves a tool call, so the host's prompts, sandbox and
 deny rules apply as before, and what the host already blocks stays blocked: Claude Code
 refuses deletes of critical paths in every mode and has more rules in auto mode; Codex
 confines writes with its sandbox. The policy adds one command-level rule set that is the same

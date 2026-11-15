@@ -331,6 +331,7 @@ fn the_listing_shows_rules_in_force_with_their_source() {
             ("force-push", "craft"),
             ("delete-remote-branch", "craft"),
             ("discard-changes", "craft"),
+            ("read-secret-file", "craft"),
             ("no-publish", "project"),
         ]
     );
@@ -521,4 +522,66 @@ fn a_push_that_deletes_a_remote_branch_is_refused() {
     }
     let settings = json!({"safety": {"enabled": true, "disables": ["delete-remote-branch"]}});
     assert_eq!(rule(&settings, ROOT, "git push origin :feature"), None);
+}
+
+#[test]
+fn a_shell_read_of_a_secret_file_is_refused_and_may_go_to_the_user() {
+    let decision = decision(
+        &on(),
+        &at(&[ROOT.into()], ROOT, &[]),
+        "cd app && cat .env | head",
+    );
+    assert_eq!(decision["decision"], "deny");
+    assert_eq!(decision["rule"], "read-secret-file");
+    assert_eq!(decision["file"], ".env");
+    assert!(
+        decision["ask"]
+            .as_str()
+            .is_some_and(|ask| ask.contains("`.env`"))
+    );
+    // A destructive command is judged first and has no user hand-off.
+    let destructive = decision_for("cat .env; rm -rf /");
+    assert_eq!(destructive["rule"], "read-secret-file");
+    assert_eq!(
+        refused("rm -rf / ; cat .env").as_deref(),
+        Some("delete-outside-project")
+    );
+    assert!(decision_for("rm -rf /")["ask"].is_null());
+    assert_eq!(
+        refused("bash -c 'cat ~/.aws/credentials'").as_deref(),
+        Some("read-secret-file")
+    );
+    assert_eq!(
+        refused("echo $(cat .env)").as_deref(),
+        Some("read-secret-file")
+    );
+    assert_eq!(refused("cat .env.example"), None);
+}
+
+fn decision_for(command: &str) -> Value {
+    decision(&on(), &at(&[ROOT.into()], ROOT, &[]), command)
+}
+
+#[test]
+fn the_secret_file_rule_can_be_disabled_like_any_built_in_rule() {
+    let off = json!({"safety": {"enabled": true, "disables": ["read-secret-file"]}});
+    assert_eq!(rule(&off, ROOT, "cat .env"), None);
+    assert_eq!(secret_read(&off, ".env")["decision"], "allow");
+    assert_eq!(secret_read(&json!({}), ".env")["decision"], "allow");
+    let on = secret_read(&on(), "config/.env");
+    assert_eq!(
+        (on["decision"].as_str(), on["rule"].as_str()),
+        (Some("deny"), Some("read-secret-file"))
+    );
+    assert!(validate(&json!({"disables": ["read-secret-file"]})).is_ok());
+}
+
+#[test]
+fn a_tool_call_names_a_secret_by_a_file_or_a_search_filter() {
+    assert_eq!(
+        named_secret(&["src/main.rs", "app/.env"], &[]),
+        Some("app/.env")
+    );
+    assert_eq!(named_secret(&["src"], &["*.pem"]), Some("*.pem"));
+    assert_eq!(named_secret(&["src", ".env.example"], &["*.rs", "*"]), None);
 }

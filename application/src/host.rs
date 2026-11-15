@@ -54,6 +54,8 @@ struct Facts<'a> {
     files: Vec<&'a str>,
     prompt: Option<&'a str>,
     pattern: Option<&'a str>,
+    /// A file or search filter the tool call names that reaches secret files.
+    secret: Option<&'a str>,
     /// The host is continuing a stop a hook already held.
     stop_active: bool,
     /// The runner's verdict on a test command the host just ran.
@@ -104,6 +106,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         },
         prompt: optional("prompt")?,
         pattern: optional("pattern")?,
+        secret: optional("secret")?,
         stop_active: input["stopActive"] == true,
         test_run: match &input["testRun"] {
             Value::Null => None,
@@ -253,6 +256,13 @@ pub fn run(input: &Value) -> Result<Value, String> {
         {
             let decision = crate::safety::decision(&settings, &root, &cwd, command);
             refused = (decision["decision"] == "deny").then_some(decision);
+        } else if facts.lifecycle == "before-tool"
+            && let Some(secret) = facts.secret
+            && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
+        {
+            let decision =
+                crate::safety::secret_read(&settings, &cwd, facts.tool == "edit", secret);
+            refused = (decision["decision"] == "deny").then_some(decision);
         }
         if refused.is_none() {
             return Ok(json!({"decision": "allow", "failed": false, "export": recorder.finish()}));
@@ -283,6 +293,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     files: &facts.files,
                     prompt: facts.prompt,
                     pattern: facts.pattern,
+                    secret: facts.secret,
                     command: facts.command.as_str(),
                     context_supported: facts.context_supported,
                     stop_active: facts.stop_active,

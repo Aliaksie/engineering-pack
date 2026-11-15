@@ -277,6 +277,9 @@ fn tool(name: &str) -> &'static str {
     }
 }
 
+/// How many files of one tool call the safety policy judges.
+const NAMED_FILES: usize = 64;
+
 /// How many files of one patch an edit event names: as many as a session's intent record
 /// keeps, so every file a patch names is routed and stays in the session's scope.
 const PATCH_FILES: usize = craft_engine::delivery::INTENT_FILES;
@@ -345,6 +348,28 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
         // Codex `apply_patch` passes the patch, not a path: the files are in its headers.
         event["file"] = json!(files[0]);
         event["files"] = json!(files);
+    }
+    // The first file or search filter a tool call names that reaches secret files, judged
+    // by name alone so a call that names none costs nothing more: `Read`/`view`/`read_file`,
+    // a search's `path` and `glob` or `include`, Gemini `read_many_files`, notebooks and the
+    // files of a patch.
+    if lifecycle == "before-tool" && event["tool"] != "shell" {
+        let patch = event["files"].as_array().into_iter().flatten();
+        let named: Vec<&str> = ["file_path", "path", "absolute_path", "notebook_path"]
+            .iter()
+            .map(|key| &input[*key])
+            .chain(input["paths"].as_array().into_iter().flatten())
+            .chain(patch)
+            .filter_map(Value::as_str)
+            .take(NAMED_FILES)
+            .collect();
+        let filters: Vec<&str> = ["glob", "include"]
+            .iter()
+            .filter_map(|key| input[*key].as_str())
+            .collect();
+        if let Some(secret) = craft_engine::safety::named_secret(&named, &filters) {
+            event["secret"] = json!(secret);
+        }
     }
     // A search tool's pattern (Claude `Grep`, Gemini `search_file_content`).
     if let Some(pattern) = text(&input["pattern"]).filter(|p| js_length(p) <= 256) {
@@ -468,6 +493,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     }
     if hook.shell || hook.lifecycle == "before-tool" && event["tool"] == "shell" {
         facts["command"] = event["command"].clone();
+    }
+    if let Some(secret) = event.get("secret") {
+        facts["secret"] = secret.clone();
     }
     if hook.handler == "deliver" {
         facts["file"] = event["file"].clone();
@@ -799,6 +827,19 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
     let denied = result["decision"] == "deny" && mapping["deny"] == true;
     let reason = &result["reason"];
     let Shaped { context, stop, .. } = shaped(result, host, lifecycle);
+    // Claude can hand a tool call to the user instead of refusing it: a secret read waits
+    // for the person, who sees why; the model cannot approve it. Other hosts refuse it.
+    if host == "claude"
+        && denied
+        && let Some(ask) = result["ask"].as_str()
+    {
+        let output = json!({"hookSpecificOutput": {"hookEventName": mapping["name"],
+            "permissionDecision": "ask", "permissionDecisionReason": ask}});
+        return Wire {
+            stdout: format!("{output}\n"),
+            ..empty
+        };
+    }
     if host == "claude" && denied {
         return Wire {
             stdout: String::new(),

@@ -1027,7 +1027,7 @@
     "safety": {
       "type": "object",
       "required": [],
-      "description": "Rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "description": "Rules that refuse destructive shell commands, commands that reach outside the project and reads of files that commonly hold secrets, on hosts where a hook can refuse a tool call; Claude Code asks the user about a secret read instead. A rule only refuses: nothing here approves a tool call, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -1045,7 +1045,8 @@
               "force-push",
               "delete-remote-branch",
               "discard-changes",
-              "system-administration"
+              "system-administration",
+              "read-secret-file"
             ]
           }
         },

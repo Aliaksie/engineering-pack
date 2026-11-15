@@ -37,6 +37,8 @@ pub struct Event<'a> {
     /// A search tool's pattern and a shell tool's command, for a search the model ran.
     pub pattern: Option<&'a str>,
     pub command: Option<&'a str>,
+    /// A file or search filter the tool call names that reaches secret files.
+    pub secret: Option<&'a str>,
     pub context_supported: bool,
     /// The host is continuing a stop a hook already held.
     pub stop_active: bool,
@@ -72,13 +74,23 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let settings = project::hook_loaded(recorder, hook, event.root)?;
     // The project's safety policy speaks first: a refused command gets no routing.
-    if let ("before-tool", Some(command)) = (event.lifecycle, event.command) {
-        let refused = crate::safety::decision(&settings, event.root, event.cwd, command);
+    if event.lifecycle == "before-tool" {
+        let refused = match (event.command, event.secret) {
+            (Some(command), _) if !command.is_empty() => {
+                crate::safety::decision(&settings, event.root, event.cwd, command)
+            }
+            (_, Some(secret)) => {
+                crate::safety::secret_read(&settings, event.cwd, event.edit, secret)
+            }
+            _ => json!({"decision": "allow"}),
+        };
         if refused["decision"] == "deny" {
-            // Counted for the session summary; an uncounted refusal still refuses.
+            // Counted for the session summary; an uncounted refusal still refuses. A read
+            // Claude Code hands to the user is a question, which the user may approve.
+            let asked = event.host == "claude" && refused.get("ask").is_some();
             if let Some(session) = event
                 .session
-                .filter(|s| !s.is_empty() && delivery::session_records(&settings))
+                .filter(|s| !asked && !s.is_empty() && delivery::session_records(&settings))
                 && crate::delivered::update(event.root, session, |record| {
                     Some(delivered::refusal(record))
                 })
