@@ -62,9 +62,10 @@ fs.cpSync(path.join(root, '.craft'), seed, { recursive: true });
 const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), seed, path.join(root, '.craft')]);
 
 // Standards fixture: the consumer with declared standards and debt markers, one caller of
-// `item42`, a started session, a routed change, a warm index and an uncommitted edit adding a
-// TODO. Each cell is a hook the session then fires; its check says the feature answered. A
-// held stop is `decision: block`, or on Claude feedback context that continues the turn.
+// `item42`, a started session, a routed change, a warm index and an uncommitted edit that adds
+// a debt marker. Each cell is a hook the session then fires; its check says the feature
+// answered. A held stop is `decision: block`, or on Claude feedback context that continues
+// the turn.
 const standards = consumer(path.join(workspace, 'standards')), standardsSeed = path.join(workspace, 'standards-seed');
 fs.writeFileSync(path.join(standards, 'src/caller.mjs'), "import { item42 } from './item-42.mjs';\nexport const total = value => item42(value);\n");
 fs.writeFileSync(path.join(standards, '.craft/project.json'), JSON.stringify({ formatVersion: 1, routing: { debtMarkers: true }, standards: [
