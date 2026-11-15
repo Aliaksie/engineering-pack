@@ -5,6 +5,7 @@
 use crate::anchors::{self, Anchor, Input, Tier};
 use crate::contracts::{LANGUAGES, LAYERS, kebab, relative_file};
 use crate::routing::member;
+use crate::safety::secrets::secret_file;
 use crate::values::object;
 use serde_json::{Map, Value, json};
 
@@ -677,8 +678,12 @@ fn planned<'a>(standard: &'a Value, anchor: Anchor) -> Check<'a> {
 /// or the files a declared `scope.paths` selects. A path that names the file selects it
 /// whatever it is called. A folder selects the anchor's default targets inside it, and every
 /// file inside it for an anchor that has none: a changelog format held to a folder is not
-/// held to the folder's other documents.
+/// held to the folder's other documents. A file that commonly holds secrets is never read
+/// for a check: a finding could quote its content.
 pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
+    if secret_file(file) {
+        return Vec::new();
+    }
     checked(settings, Input::File)
         .into_iter()
         .filter(|(standard, anchor)| {
@@ -700,6 +705,9 @@ pub fn file_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
 /// reads imports, narrowed by a declared `scope.paths`. Whether the file's module is checked
 /// at all is decided with the imports, in `dependency_verdicts`.
 pub fn import_checks<'a>(settings: &'a Value, file: &str) -> Vec<Check<'a>> {
+    if secret_file(file) {
+        return Vec::new();
+    }
     checked(settings, Input::Imports)
         .into_iter()
         .filter(|(standard, _)| {

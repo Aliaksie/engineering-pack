@@ -427,6 +427,7 @@ impl Drop for Stream {
 pub fn eligible(path: &str) -> bool {
     valid_path(path)
         && !path.split('/').any(|p| GENERATED.contains(&p))
+        && !craft_engine::safety::secrets::secret_file(path)
         && crate::providers::for_path(path).is_some()
 }
 
@@ -463,6 +464,14 @@ mod tests {
             assert!(read_source(&fixture.0, path).is_err(), "{path}");
         }
         assert!(read_source(&fixture.0, "source.mjs").is_ok());
+    }
+
+    #[test]
+    fn files_that_commonly_hold_secrets_are_never_indexed() {
+        assert!(!eligible("config/credentials.json"));
+        assert!(!eligible("ci/secrets.yml"));
+        assert!(eligible("config/settings.json"));
+        assert!(eligible("fixtures/credentials.json"), "test data");
     }
 
     fn inventory(root: &Path) -> (Vec<String>, serde_json::Value) {

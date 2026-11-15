@@ -115,8 +115,12 @@ fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
     )
 }
 
-/// A regular file's bytes, `None` when absent, a link or too large.
+/// A regular file's bytes, `None` when absent, a link, too large or a file that commonly
+/// holds secrets: a finding quotes the line it is about.
 fn bytes(root: &Path, file: &str) -> Option<Vec<u8>> {
+    if craft_engine::safety::secrets::secret_file(file) {
+        return None;
+    }
     match std::fs::symlink_metadata(root.join(file)) {
         Ok(meta) if meta.is_file() && meta.len() <= FILE_BYTES => {
             std::fs::read(root.join(file)).ok()

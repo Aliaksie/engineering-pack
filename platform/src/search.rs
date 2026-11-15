@@ -3,6 +3,7 @@ use crate::process;
 use craft_engine::{
     discovery::{self, MAX_FILE_BYTES, Search},
     routing::private_path,
+    safety::secrets::secret_file,
 };
 use serde_json::{Value, json};
 use std::{
@@ -64,7 +65,7 @@ const OMIT: &[&str] = &[".git", "node_modules", "dist"];
 const LIMITATIONS: &[&str] = &[
     "Case-sensitive literal matches are navigation evidence, not semantic definitions.",
     "No match is not proof of absence: ignores, scopes, skips and bounds restrict coverage.",
-    "Symlinks, generated directories and binary or oversized files are excluded; this is not a sandbox against concurrent filesystem changes.",
+    "Symlinks, generated directories, files that commonly hold secrets and binary or oversized files are excluded; this is not a sandbox against concurrent filesystem changes.",
 ];
 
 pub(crate) fn safe_file(root: &Path, relative: &str) -> Result<Option<PathBuf>, SearchError> {
@@ -136,6 +137,11 @@ impl Scan<'_> {
             }) && !self.request.scopes.is_empty()
             || name.split('/').any(|part| OMIT.contains(&part))
         {
+            return;
+        }
+        // A match line would show the secret itself.
+        if secret_file(&name) {
+            self.skip("secret");
             return;
         }
         if self.files.len() >= self.request.max_files && !self.files.contains(&name) {
@@ -271,7 +277,7 @@ pub fn scan(
         request,
         files: BTreeSet::new(),
         truncation: Vec::new(),
-        skipped: json!({"symlink":0,"binary":0,"oversized":0,"unreadable":0,"excludedDirectory":0}),
+        skipped: json!({"symlink":0,"binary":0,"oversized":0,"unreadable":0,"excludedDirectory":0,"secret":0}),
         entries: 0,
     };
     if let Some(output) = output {

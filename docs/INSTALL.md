@@ -222,7 +222,11 @@ for the project whether each host would run Craft, from files only:
   that stays silent is otherwise taken for one with nothing to say);
 - the configuration layers: a file that cannot be used, fields of the organization or user
   file this build does not know and left out, and a safety policy that is on while no hook of
-  an installed host is known to have run in the project.
+  an installed host is known to have run in the project;
+- with the secret-file rule in force and Claude Code installed, whether Claude's own
+  `permissions.deny` rules in user, project or local settings also refuse reading `.env`
+  files: none is `off` with a deny-rule snippet to add as an optional next step (doctor
+  writes nothing).
 
 It writes nothing to host configuration or task state and starts no host. Whether a running
 session loaded the current install, whether a Codex hook's declaration still matches its

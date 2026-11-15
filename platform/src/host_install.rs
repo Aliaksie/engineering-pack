@@ -214,6 +214,8 @@ pub fn claude(root: &Path) -> Value {
                     "layer": layer, "path": path.to_string_lossy(),
                     "enabledPlugins": settings.get("enabledPlugins").cloned().unwrap_or(json!({})),
                     "commands": settings_commands(&settings),
+                    "deny": settings["permissions"]["deny"].as_array().into_iter().flatten()
+                        .filter_map(Value::as_str).collect::<Vec<_>>(),
                 }));
             }
             Err(_) if !path.exists() => sources.push(looked(&path, false, None)),

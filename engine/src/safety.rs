@@ -143,6 +143,11 @@ pub fn enabled(settings: &Value) -> bool {
     settings["safety"]["enabled"] == true
 }
 
+/// Whether the secret-file rule is in force: the policy is on and does not leave it out.
+pub fn guards_secret_files(settings: &Value) -> bool {
+    enabled(settings) && !disabled(settings, SECRET_RULE)
+}
+
 /// Validate `safety`: `enabled`, `disables` naming built-in rules, and `deny` rules of the
 /// project's own, each an id, the leading words of a command and an optional reason.
 pub fn validate(safety: &Value) -> Result {
@@ -661,7 +666,7 @@ pub fn named_secret<'a>(files: &[&'a str], filters: &[&'a str]) -> Option<&'a st
 /// The decision for a tool call that reads, searches or rewrites `secret`, a file or filter
 /// [`named_secret`] found: the secret-file refusal while the rule is in force, else `allow`.
 pub fn read_decision(settings: &Value, secret: &str) -> Value {
-    if !enabled(settings) || disabled(settings, SECRET_RULE) {
+    if !guards_secret_files(settings) {
         return json!({"decision": "allow"});
     }
     refusal(SECRET_RULE, "", Some(secret))
