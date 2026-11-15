@@ -90,6 +90,11 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
     if request.package.is_empty() {
         return Err(USAGE.into());
     }
+    if !request.root_explicit {
+        request.root = crate::host::resolve_root(None)
+            .to_string_lossy()
+            .into_owned();
+    }
     Ok(request)
 }
 
@@ -195,12 +200,8 @@ fn declared(
                         )
                     });
             if let Ok(event) = event
-                && crate::host_context::record_event(
-                    &crate::host::resolve_root(Some(&request.root)),
-                    session,
-                    &event,
-                )
-                .is_err()
+                && crate::host_context::record_event(&absolute(&request.root), session, &event)
+                    .is_err()
             {
                 recorder.report("host", "HOST_OBSERVATION_UNAVAILABLE", Map::new(), parent);
             }
@@ -327,7 +328,7 @@ fn status(
 ) -> Result<(String, Option<Refresh>), Failure> {
     let data = declared(request, stdin, interactive, recorder, parent)?;
     let bundles = bundle(request)?;
-    let root = crate::host::resolve_root(Some(&request.root));
+    let root = absolute(&request.root);
     let mut status = crate::status::for_root(&root, &data, &bundles, recorder, parent)?;
     let refresh = refresh(&root, data["sessionId"].as_str(), request, &status);
     let capabilities = capabilities(&request.host).expect("parsed host");

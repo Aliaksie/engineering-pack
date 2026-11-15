@@ -167,9 +167,7 @@ fn command(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|command| command.name == name)
 }
 
-/// The project a command works on: the project `--root` or the current directory is in, so
-/// a command run from a subfolder reads the same configuration and state as the session
-/// around it.
+/// The project a command works on; see [`crate::host::resolve_root`].
 fn root(options: &Options) -> PathBuf {
     crate::host::resolve_root(options.get("root"))
 }

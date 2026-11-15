@@ -124,13 +124,12 @@ fn a_hook_from_a_subfolder_or_another_spelling_keeps_the_checkouts_state() {
 }
 
 #[test]
-fn a_command_given_a_subfolder_works_on_the_checkout() {
+fn a_command_run_from_a_subfolder_works_on_the_checkout() {
     let repo = Repo::new("state-root-cli", &[("src/deep/a.txt", "a\n")]);
     prompt(&repo.root, "S-1");
     let deep = repo.root.join("src/deep");
 
-    let preview: Value =
-        serde_json::from_str(&craft(&deep, &["state-clean", "--root", "."], None)).unwrap();
+    let preview: Value = serde_json::from_str(&craft(&deep, &["state-clean"], None)).unwrap();
     let id = state::location(&repo.root, Some("S-1")).unwrap().session_id;
     assert_eq!(preview["sessions"][0]["session"], id.as_str());
 

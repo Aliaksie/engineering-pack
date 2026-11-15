@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- A command given a subfolder of a project with `--root` (or `project-evidence` and the
-  status line run from one) works on the project, as a hook does: it had kept separate state
-  and a second Project Intelligence index under that subfolder. `state-clean` now removes idle
+- `project-evidence` and the status line run from a subfolder without `--root` work on the
+  project around it, as other commands and hooks do: they had kept separate state and a
+  second Project Intelligence index under that subfolder. `state-clean` now removes idle
   sessions that hold a test-run, check-run, stop-review, resume or status-line record; it had
   kept them as holding an unrecognized file.
 - A file a shell command writes by name (an output redirection, `tee`, `sed -i`, `perl -i`,
