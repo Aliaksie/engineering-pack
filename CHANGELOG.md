@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A prompt that only relays text from the host, such as a background task's completion notice,
+  a subagent's or another session's report, or a reminder, no longer gets a routing hint or
+  changes the session's intent. Before, the relayed text was read as the user's request and
+  could route, say, a finished test run as testing-only work. A prohibition such as "do not
+  repeat work that is already complete" no longer reads as a question either, so a
+  "continue the task" prompt keeps the change it continues and its edits keep their hints.
+
 - A standards finding for a written file is reported once per session: further writes that
   leave it in place report only new findings, instead of repeating every finding on every
   write. A file reverted outside an edit (for example by `git checkout`) or deleted no longer

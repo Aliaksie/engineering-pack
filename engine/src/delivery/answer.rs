@@ -289,7 +289,8 @@ fn one(text: &str, name: impl Fn(&str) -> Option<String>) -> Option<String> {
 /// `mentions` for the documents naming a code name or file. Competing questions or more than
 /// one name ask nothing.
 pub fn question(prompt: &str) -> Option<(&'static str, String)> {
-    let text = own(prompt);
+    let own = own(prompt);
+    let text: &str = &own;
     let words: Vec<String> = text
         .split(|c: char| !c.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
