@@ -579,13 +579,17 @@ fn scenario(host: Host) {
     );
     host.after_edit(&repo, &["src/web/refund.ts"]);
     let stop = host.hook(&repo, "turn-end", json!({"stop_hook_active": false}));
-    let summary = data_after(&stop, "fix it, or tell the user why it stays:");
-    assert_eq!(summary["findings"][0]["rule"], "todo-marker", "{stop}");
+    let items: Vec<&str> = stop
+        .lines()
+        .filter(|line| line.starts_with("- "))
+        .map(|line| line.split(':').next().unwrap())
+        .collect();
     assert_eq!(
-        summary["findings"][0]["file"], "src/web/refund.ts",
+        items,
+        ["- src/web/refund.ts", "- review", "- api-review"],
         "{stop}"
     );
-    assert_eq!(ids(&summary["review"]), ["review", "api-review"], "{stop}");
+    assert!(stop.contains("refund.ts:2 todo-marker"), "{stop}");
     // The same findings never hold a stop twice: the turn ends, and the user reads one line
     // whose counts are what happened above (rings and changelog raised and fixed, the commit
     // message and the marker raised, one empty test run, one resume after compaction, one

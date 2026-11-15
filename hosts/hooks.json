@@ -52,6 +52,7 @@
         "context": false,
         "deny": false,
         "continue": true,
+        "holdAsContext": true,
         "notice": true
       },
       "agent-start": {

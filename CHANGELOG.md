@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The stop review reads as a short list, one line per finding and per review item, instead of
+  a sentence followed by raw JSON, and is smaller for the same items. In Claude Code it
+  continues the turn as hook feedback (Claude Code 2.1.163 or later) instead of being
+  shown as "Stop hook error".
 - The stop review counts a commit as the session's work only when a shell command of that
   session made it. A commit another session made in the same checkout, or one the user made by
   hand, had held this session's stop with review items for files it never touched; a file the
