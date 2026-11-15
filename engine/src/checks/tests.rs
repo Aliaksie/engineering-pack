@@ -325,3 +325,89 @@ fn the_latest_run_is_counted_and_current_only_on_its_own_tree() {
         Value::Null
     );
 }
+
+fn settings() -> Value {
+    let mut settings = crate::contracts::default_settings();
+    let project = project();
+    settings["modules"] = project["modules"].clone();
+    settings["standards"] = project["standards"].clone();
+    settings
+}
+
+fn run(stage: &str, source: &str, checks: Value, skipped: Value) -> Value {
+    json!({"stage": stage, "result": "x", "source": source, "checks": checks, "skipped": skipped, "left": []})
+}
+
+#[test]
+fn a_commit_is_held_until_a_run_on_the_current_files_passed_every_covering_check() {
+    let settings = settings();
+    let covering = covering(&settings, &[json!("services/api/src/lib.rs")]).unwrap();
+    let ids: Vec<&str> = covering.iter().filter_map(|c| c["id"].as_str()).collect();
+    assert_eq!(
+        ids.len(),
+        3,
+        "two api checks and the repository-wide standard: {ids:?}"
+    );
+    let passed = |id: &str| json!({"id": id, "result": "passed"});
+    let all_passed = json!(ids.iter().map(|id| passed(id)).collect::<Vec<_>>());
+    let held = |history: Value| commit_hold(&covering, &history, &json!("tree-2"), "S1");
+
+    // Never run.
+    let hold = held(json!(null)).unwrap();
+    assert_eq!(hold["decision"], "deny");
+    assert!(
+        hold["reason"]
+            .as_str()
+            .unwrap()
+            .contains("craft check --stage commit --session S1")
+    );
+    // Passed, but on other files.
+    assert!(
+        held(json!({"runs": [run("commit", "tree-1", all_passed.clone(), json!([]))]})).is_some()
+    );
+    // Passed on these files, at the commit stage or later.
+    assert!(
+        held(json!({"runs": [run("commit", "tree-2", all_passed.clone(), json!([]))]})).is_none()
+    );
+    assert!(held(json!({"runs": [run("ci", "tree-2", all_passed.clone(), json!([]))]})).is_none());
+    // A step-stage run leaves the commit-stage checks out.
+    assert!(
+        held(json!({"runs": [run("step", "tree-2", all_passed.clone(), json!([]))]})).is_some()
+    );
+    // The newest run on these files decides: a failure there names the check.
+    let mut failed = all_passed.clone();
+    failed[0]["result"] = json!("failed");
+    let hold = held(json!({"runs": [
+        run("commit", "tree-2", all_passed.clone(), json!([])),
+        run("commit", "tree-2", failed, json!([]))
+    ]}))
+    .unwrap();
+    let reason = hold["reason"].as_str().unwrap();
+    assert!(
+        reason.contains(&format!("{} did not pass", ids[0])),
+        "{reason}"
+    );
+    // A check skipped for want of a file counts as covered.
+    let mut some = all_passed.clone();
+    let skipped = json!([some.as_array_mut().unwrap().remove(0)]);
+    assert!(held(json!({"runs": [run("commit", "tree-2", some, skipped)]})).is_none());
+}
+
+#[test]
+fn no_hold_without_a_covering_check_or_with_the_gate_off() {
+    let settings = settings();
+    // The ui module's own check runs at the pr stage: it never holds a commit.
+    let ui = covering(&settings, &[json!("ui/app.ts")]).unwrap();
+    assert!(ui.iter().all(|c| c["stage"] != "pr"), "{ui:?}");
+    assert!(covering(&settings, &[]).unwrap().is_empty());
+    assert!(commit_hold(&[], &json!(null), &json!("t"), "S1").is_none());
+    // No tree digest (no checkout): nothing to bind a run to, so nothing is held.
+    assert!(commit_hold(&ui, &json!(null), &json!(null), "S1").is_none());
+    let mut off = settings.clone();
+    off["routing"]["commitGate"] = json!(false);
+    assert!(!gates_commits(&off));
+    off["routing"]["commitGate"] = json!(true);
+    off["routing"]["projectChecks"] = json!(false);
+    assert!(!gates_commits(&off));
+    assert!(gates_commits(&settings));
+}

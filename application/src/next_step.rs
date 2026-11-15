@@ -4,8 +4,8 @@
 //! checkpoint. A consumer's own planning files are never read. A record that cannot be read is a fact Craft does not
 //! hold, so it names nothing from it.
 use crate::telemetry::{Operation, Recorder, now_ms};
+use craft_engine::checks;
 use craft_engine::session::next::{self, Checkpoint, Facts};
-use craft_engine::{checks, routing};
 use serde_json::{Value, json};
 use std::path::Path;
 use std::time::UNIX_EPOCH;
@@ -76,21 +76,7 @@ fn unrun_checks(root: &Path, settings: &Value, session: &str, changed: &[String]
         return 0;
     }
     let files: Vec<Value> = changed.iter().map(|file| json!(file)).collect();
-    let Ok(scope) = routing::scope(settings, &files) else {
-        return 0;
-    };
-    let Ok(plan) = checks::plan(settings, &scope, checks::DEFAULT_STAGE, false) else {
-        return 0;
-    };
-    let covering = plan["run"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|check| {
-            !checks::takes_files(check)
-                || checks::files_for(settings, check, &files).is_ok_and(|f| !f.is_empty())
-        })
-        .count();
+    let covering = checks::covering(settings, &files).map_or(0, |found| found.len());
     if covering == 0 {
         return 0;
     }

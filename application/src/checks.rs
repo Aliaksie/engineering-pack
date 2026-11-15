@@ -3,7 +3,7 @@
 //! from the project root: its own folder below the top of a repository, or each member
 //! repository of a workspace root. Commands start without a shell, each within its time bound, only from
 //! this explicit command and never from a hook. The result binds to the source digest of the
-//! tree the commands ran on.
+//! tree the commands ran on; an agent's commit waits for a passing run on its files.
 use crate::failure::Failure;
 use crate::session::read_record;
 use craft_engine::{checks, routing, session::test_runs};
@@ -132,6 +132,40 @@ fn changed_files(
         .filter(|path| !path.is_empty() && !routing::private_path(path))
         .map(|path| format!("{}{path}", checkout.folder))
         .collect())
+}
+
+/// The refusal of the session's `git commit` while a declared commit-stage check covers a
+/// changed file and has not passed on the current files in a `craft check` run of the
+/// session; `None` to let it through. Runs no check: reads the changes, the session's check
+/// history and the current tree digest.
+pub(crate) fn commit_gate(
+    root: &Path,
+    settings: &Value,
+    session: &str,
+) -> Result<Option<Value>, Failure> {
+    if !checks::gates_commits(settings) {
+        return Ok(None);
+    }
+    let mut changed = Vec::new();
+    for checkout in &crate::stop_review::checkouts(root) {
+        changed.extend(changed_files(checkout, None)?);
+    }
+    changed.sort();
+    changed.dedup();
+    let changed: Vec<Value> = changed.into_iter().map(Value::from).collect();
+    let covering = checks::covering(settings, &changed)?;
+    if covering.is_empty() {
+        return Ok(None);
+    }
+    let repositories = crate::session::active_binding(root, session)?
+        .and_then(|binding| binding.get("repositories").cloned());
+    let source = crate::test_runs::source(root, repositories.as_ref())?;
+    Ok(checks::commit_hold(
+        &covering,
+        &history(root, session)?,
+        &source,
+        session,
+    ))
 }
 
 /// The command line of a check as one text, for the observed test runs.

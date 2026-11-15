@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- An agent's `git commit` now waits for the project's declared commit-stage checks: while one
+  covers a changed file and has not passed on the current files in a `craft check --session`
+  run, the hook refuses the commit and names the command to run. The hook runs no check
+  itself. `routing.commitGate: false` turns this off; projects that declare no check of the
+  commit or step stage see no change.
 - `craft doctor` checks Claude Code's status line, through which Craft sees context usage:
   without one it offers the `host-setup --apply` command (it writes nothing itself), and a
   status line still running a removed or older Craft after an update is reported with the

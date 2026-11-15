@@ -89,6 +89,20 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             return Ok(refused);
         }
     }
+    // An agent's commit waits for the declared commit-stage checks to pass on its files. A
+    // gate that cannot read its facts lets the commit through and says so in telemetry.
+    if let ("before-tool", Some(session), Some(command)) = (
+        event.lifecycle,
+        event.session.filter(|s| !s.is_empty()),
+        event.command,
+    ) && standards::commits(command)
+    {
+        match crate::checks::commit_gate(event.root, &settings, session) {
+            Ok(Some(held)) => return Ok(held),
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+        }
+    }
     // A commit the session's own command makes is its change at the stop; one another session
     // or the user makes in the same checkout is not.
     if let (Some(session), Some(command)) = (event.session.filter(|s| !s.is_empty()), event.command)
