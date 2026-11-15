@@ -438,6 +438,38 @@ fn markers(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> 
     debt::markers(&added, &removed)
 }
 
+/// Files the session was told findings for that the stop does not review because they no
+/// longer differ from what it compares against (reverted, or rewritten outside any hook),
+/// checked again on their current content so that findings gone from them count as fixed.
+/// Nothing is said for them. A deleted file has no finding of any kind; otherwise only
+/// anchor and dependency checks are repeated: debt markers are new against a base that a
+/// clean file no longer shows.
+fn settled(root: &Path, settings: &Value, told: &Value, reviewed: &[&str]) -> Vec<Checked> {
+    let Some(open) = told["findings"]["open"].as_object() else {
+        return Vec::new();
+    };
+    open.iter()
+        .filter(|(scope, _)| *scope != "commit" && !reviewed.contains(&scope.as_str()))
+        .filter_map(|(scope, keys)| {
+            if !root.join(scope).exists() {
+                let mut kinds: Vec<char> = keys
+                    .as_array()?
+                    .iter()
+                    .filter_map(|key| key.as_str()?.chars().next())
+                    .collect();
+                kinds.sort_unstable();
+                kinds.dedup();
+                return Some(Checked {
+                    scope: scope.clone(),
+                    kinds: kinds.into_iter().collect(),
+                    keys: Vec::new(),
+                });
+            }
+            crate::delivery::file_findings(root, settings, scope, &Value::Null).1
+        })
+        .collect()
+}
+
 /// The stop summary for this turn, or `None` when nothing changed since the last stop or the
 /// session was told all of it. While the host continues a held stop (`stop_active`) nothing
 /// is said or recorded: a stop is never held twice in a row, and what the continuation
@@ -512,7 +544,12 @@ pub fn stop(
     // Anchor findings the session heard when it edited the file are not said again.
     let told = crate::delivered::read(root, session).unwrap_or(Value::Null);
     let mut summary = None;
-    let mut checked = Vec::new();
+    let reviewed: Vec<&str> = files
+        .iter()
+        .chain(&landed)
+        .map(|dirty| dirty.file.as_str())
+        .collect();
+    let mut checked = settled(root, settings, &told, &reviewed);
     if !changed.is_empty() {
         let mut findings = Vec::new();
         let markers_on = standards::debt_markers(settings);

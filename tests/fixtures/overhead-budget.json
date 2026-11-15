@@ -4,72 +4,72 @@
   "hosts": {
     "claude": {
       "always": 4657,
-      "hooks": 2461,
-      "session": 4140,
+      "hooks": 1791,
+      "session": 5266,
       "guidance": {
-        "implement": 17839,
-        "verify": 12452,
-        "review": 18101,
-        "plan": 12767,
-        "locate": 5106,
-        "investigate": 4898,
-        "explore": 5087
+        "implement": 16241,
+        "verify": 11638,
+        "review": 15950,
+        "plan": 12213,
+        "locate": 4096,
+        "investigate": 4099,
+        "explore": 3848
       }
     },
     "codex": {
       "always": 5942,
-      "hooks": 2460,
-      "session": 4138,
+      "hooks": 1790,
+      "session": 5264,
       "guidance": {
-        "implement": 18199,
-        "verify": 12632,
-        "review": 18461,
-        "plan": 12947,
-        "locate": 5286,
-        "investigate": 5078,
-        "explore": 5267
+        "implement": 16241,
+        "verify": 11638,
+        "review": 15950,
+        "plan": 12213,
+        "locate": 4096,
+        "investigate": 4099,
+        "explore": 3848
       }
     },
     "cursor": {
       "always": 6877,
-      "hooks": 534,
-      "session": 865,
+      "hooks": 551,
+      "session": 1849,
       "guidance": {
-        "implement": 17892,
-        "verify": 12489,
-        "review": 18152,
-        "plan": 12798,
-        "locate": 5125,
-        "investigate": 4914,
-        "explore": 5106
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     },
     "copilot": {
       "always": 6941,
-      "hooks": 534,
-      "session": 864,
+      "hooks": 549,
+      "session": 1847,
       "guidance": {
-        "implement": 17892,
-        "verify": 12489,
-        "review": 18152,
-        "plan": 12798,
-        "locate": 5125,
-        "investigate": 4914,
-        "explore": 5106
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     },
     "gemini": {
       "always": 6553,
-      "hooks": 2445,
-      "session": 2063,
+      "hooks": 1784,
+      "session": 2831,
       "guidance": {
-        "implement": 17892,
-        "verify": 12489,
-        "review": 18152,
-        "plan": 12798,
-        "locate": 5125,
-        "investigate": 4914,
-        "explore": 5106
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     },
     "gemini-extension": {
@@ -77,13 +77,13 @@
       "hooks": 0,
       "session": 0,
       "guidance": {
-        "implement": 17768,
-        "verify": 12427,
-        "review": 18028,
-        "plan": 12736,
-        "locate": 5063,
-        "investigate": 4852,
-        "explore": 5044
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     },
     "jetbrains": {
@@ -91,13 +91,13 @@
       "hooks": 0,
       "session": 0,
       "guidance": {
-        "implement": 17768,
-        "verify": 12427,
-        "review": 18028,
-        "plan": 12736,
-        "locate": 5063,
-        "investigate": 4852,
-        "explore": 5044
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     },
     "agents": {
@@ -105,13 +105,13 @@
       "hooks": 0,
       "session": 0,
       "guidance": {
-        "implement": 17768,
-        "verify": 12427,
-        "review": 18028,
-        "plan": 12736,
-        "locate": 5063,
-        "investigate": 4852,
-        "explore": 5044
+        "implement": 16293,
+        "verify": 11676,
+        "review": 16001,
+        "plan": 12244,
+        "locate": 4114,
+        "investigate": 4114,
+        "explore": 3866
       }
     }
   }

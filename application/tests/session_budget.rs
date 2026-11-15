@@ -274,3 +274,56 @@ fn the_summary_switch_shows_no_line_and_keeps_the_counts() {
     assert_eq!(session.record()["tests"]["empty"], 1);
     assert_eq!(session.at("turn-end", json!({})), "");
 }
+
+#[test]
+fn a_finding_is_said_once_per_session_and_a_reverted_file_counts_it_fixed() {
+    let repo = project(
+        "findings-once",
+        r#"{"formatVersion":1,"standards":[{"id":"changelog","anchor":"keep-a-changelog"}]}"#,
+    );
+    let good = "# Changelog\n\n## [Unreleased]\n\n### Fixed\n- Keep quoted keys.\n";
+    repo.write("CHANGELOG.md", good);
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-qm", "docs: changelog"]);
+    let session = Session {
+        repo: &repo,
+        host: "claude",
+        id: "S1",
+    };
+    session.at("session-start", json!({"source": "startup"}));
+    let file = Path::new(repo.path()).join("CHANGELOG.md");
+    let edit = |text: &str| {
+        repo.write("CHANGELOG.md", text);
+        session.at(
+            "after-tool",
+            json!({"tool_name": "Edit", "tool_input": {"file_path": file.to_string_lossy()}}),
+        )
+    };
+    let broken = "# Changelog\n\n## Next\n\n### Fixed\n- Keep quoted keys.\n";
+    let first = edit(broken);
+    assert!(first.contains("Project standards not met"), "{first}");
+    // A further edit that leaves the same finding in place says nothing again.
+    let again = edit(&format!("{broken}- Another.\n"));
+    assert!(!again.contains("Project standards not met"), "{again}");
+    // A new finding in the same file is said, without the one already told.
+    let more = edit("# Changelog\n\n## Next\n\n### Misc\n- x\n");
+    assert!(more.contains("Project standards not met"), "{more}");
+    let raised = session.record()["findings"]["raised"].as_u64().unwrap();
+    assert!(raised >= 2, "{}", session.record());
+    let told = session.record()["findings"]["open"]["CHANGELOG.md"]
+        .as_array()
+        .unwrap()
+        .len();
+    assert_eq!(told as u64, raised);
+    // Reverted outside any edit hook: the turn's end checks it again, and every finding is
+    // fixed though nothing is left to review.
+    repo.git(&["checkout", "--", "CHANGELOG.md"]);
+    let line = session.message().expect("a summary line");
+    assert!(
+        line.contains(&format!(
+            "{raised} standards findings raised, {raised} fixed"
+        )),
+        "{line}"
+    );
+    assert!(session.record()["findings"].get("open").is_none());
+}
