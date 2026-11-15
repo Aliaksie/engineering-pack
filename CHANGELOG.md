@@ -17,6 +17,10 @@
   and counts them under `skipped.secret`, Project Intelligence does not index them, and
   standards checks and the stop review leave them unread, so no Craft answer or finding
   quotes a line of a `.env` file, key or credentials file.
+- `craft doctor` says whether Claude Code's own deny rules also keep `.env` files from the
+  model while the secret-file rule is in force, and when none does, prints a
+  `permissions.deny` snippet to add. Craft's rule is a hook guardrail; the host's deny rules
+  and sandbox are the boundary. Doctor writes nothing.
 - `craft doctor` counts, per host, hook runs that gave no answer because their input was too
   large, unreadable or not JSON, or because the hook failed, and names the last one. The
   session summary and `craft session` count the session's hook failures. Before, such a hook

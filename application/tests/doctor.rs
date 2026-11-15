@@ -71,6 +71,24 @@ fn doctor_reads_host_installs_and_blocks_only_on_a_runtime_that_cannot_run() {
         before,
         "doctor writes nothing"
     );
+    // The secret-file rule is on by default; Claude's own deny rule is offered, not written.
+    let secret = |report: &Value| {
+        report["configuration"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "secret-files")
+            .map(|c| c["status"].clone())
+    };
+    assert_eq!(secret(&report), Some(json!("off")), "{report}");
+    fs::write(
+        Path::new(repo.path()).join(".claude/settings.json"),
+        json!({"permissions": {"deny": ["Read(**/.env)"]}}).to_string(),
+    )
+    .unwrap();
+    let (_, report) = doctor(&repo, &homes);
+    assert_eq!(secret(&report), Some(json!("ok")), "{report}");
+    fs::remove_file(Path::new(repo.path()).join(".claude/settings.json")).unwrap();
 
     // An altered runtime in the enabled Claude package blocks, and still reports in full.
     let runtime = homes.claude.join(

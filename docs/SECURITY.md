@@ -102,7 +102,9 @@ file is outside it: a script (`python -c "open('.env')"`), `env` or `printenv`, 
 build that prints its configuration, a search of a whole directory, and tools the host does
 not pass to a hook. For a boundary use the host's own controls: Claude Code
 `permissions.deny` rules such as `Read(./.env)` and its sandbox, Codex's sandbox, Cursor's
-ignore files. Leave the rule out with `"disables": ["read-secret-file"]`.
+ignore files. `craft doctor` says whether Claude's settings hold such a deny rule and, when
+none does, prints one to add; Craft does not write it. Leave the rule out with
+`"disables": ["read-secret-file"]`.
 
 Craft never reads such a file's content itself, whether the rule is in force or not: `craft
 locate` skips it (counted under `skipped.secret`), Project Intelligence does not index it,

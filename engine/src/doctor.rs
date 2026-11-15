@@ -807,7 +807,54 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
             }
         }
     }
+    checks.extend(secret_files(facts, hosts, report));
     checks
+}
+
+/// Claude's own deny rules for secret files, listed for `doctor` to offer; Craft writes none.
+const CLAUDE_SECRET_DENY: &str = r#"{"permissions": {"deny": ["Read(**/.env)", "Read(**/.env.local)", "Read(**/*.key)", "Read(~/.ssh/id_*)", "Read(~/.aws/credentials)"]}}"#;
+
+/// Whether Claude's own settings also keep `.env` files from the model while Craft's
+/// secret-file rule is in force. The rule is a hook guardrail; a host deny rule or sandbox is
+/// the boundary, and only the consumer adds one.
+fn secret_files(facts: &Value, hosts: &[Value], report: &mut Report) -> Option<Value> {
+    if facts["configuration"]["secretFiles"] != true {
+        return None;
+    }
+    let claude = hosts.iter().find(|host| host["host"] == "claude")?;
+    if matches!(claude["status"].as_str(), Some("not-installed" | "off")) {
+        return None;
+    }
+    let denying: Vec<&str> = facts["claude"]["settings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|layer| {
+            layer["deny"].as_array().into_iter().flatten().any(|rule| {
+                rule.as_str()
+                    .is_some_and(|rule| rule.starts_with("Read(") && rule.contains(".env"))
+            })
+        })
+        .filter_map(|layer| layer["layer"].as_str())
+        .collect();
+    if !denying.is_empty() {
+        return Some(check(
+            "secret-files",
+            "ok",
+            format!(
+                "Claude's own deny rules ({} settings) refuse reading .env files; Craft's rule asks about the other secret files its hook sees",
+                denying.join(", ")
+            ),
+        ));
+    }
+    report.next.push(format!(
+        "Optional, for a boundary on secret files in Claude: add to .claude/settings.json (or your user settings) {CLAUDE_SECRET_DENY}; Craft does not write it"
+    ));
+    Some(check(
+        "secret-files",
+        "off",
+        "only Craft's hook guards secret files in Claude, a guardrail: no Claude deny rule for .env files in user, project or local settings (managed settings not inspected), so a read the hook cannot see, such as a script, is not stopped",
+    ))
 }
 
 /// A host's hook runs that gave no answer in the retained telemetry, as a `problem` check:

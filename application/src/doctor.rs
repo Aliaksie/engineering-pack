@@ -131,11 +131,15 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
     // The layers as every command reads them; a file that cannot be used is reported, not raised.
     let configuration =
         match crate::project::layers(&root, crate::project::Sources::default(), false, None) {
-            Ok(report) => json!({
-                "layers": report["layers"],
-                "safety": crate::project::settings(&root, None)
-                    .is_ok_and(|settings| craft_engine::safety::enabled(&settings)),
-            }),
+            Ok(report) => {
+                let settings = crate::project::settings(&root, None).ok();
+                let on = |rule: fn(&Value) -> bool| settings.as_ref().is_some_and(rule);
+                json!({
+                    "layers": report["layers"],
+                    "safety": on(craft_engine::safety::enabled),
+                    "secretFiles": on(craft_engine::safety::guards_secret_files),
+                })
+            }
             Err(failure) => json!({"error": failure.message}),
         };
     let mut codex = host_install::codex(&root);

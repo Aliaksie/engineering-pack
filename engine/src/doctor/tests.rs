@@ -448,6 +448,44 @@ fn nothing_recorded_is_not_held_against_a_safety_policy_or_a_version() {
     assert_eq!(host(&report, "codex")["status"], "ok", "{report}");
 }
 
+#[test]
+fn secret_files_name_claudes_own_deny_rules_or_offer_them_without_writing() {
+    let secret = |report: &Value| {
+        report["configuration"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "secret-files")
+            .cloned()
+    };
+    let mut facts = facts();
+    facts["configuration"] = json!({"safety": true, "secretFiles": true, "layers": []});
+    let without = report(&facts);
+    let check = secret(&without).unwrap();
+    assert_eq!(check["status"], "off");
+    let offer = without["next"].as_array().unwrap().iter().find_map(|n| {
+        n.as_str()
+            .filter(|n| n.contains("Read(**/.env)") && n.contains("does not write"))
+    });
+    assert!(offer.is_some(), "{without}");
+    assert_eq!(without["blocking"], false);
+
+    facts["claude"]["settings"][0]["deny"] = json!(["Bash(rm:*)", "Read(./.env)"]);
+    let with = report(&facts);
+    let check = secret(&with).unwrap();
+    assert_eq!(check["status"], "ok");
+    assert!(check["detail"].as_str().unwrap().contains("user settings"));
+    assert!(with["next"].as_array().unwrap().is_empty(), "{with}");
+
+    // Rule left out, or no Claude package here: nothing to say.
+    facts["configuration"]["secretFiles"] = json!(false);
+    assert!(secret(&report(&facts)).is_none());
+    let mut facts = self::facts();
+    facts["configuration"] = json!({"safety": true, "secretFiles": true, "layers": []});
+    facts["claude"] = json!({"installed": false});
+    assert!(secret(&report(&facts)).is_none());
+}
+
 fn status_line(report: &Value) -> &Value {
     host(report, "claude")["checks"]
         .as_array()
