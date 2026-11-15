@@ -3,9 +3,11 @@
 //! session was not told when the file was written) and the declared `review` items of their
 //! scope, said once. The changes are read from the worktree, so a file written by a shell
 //! command or a script counts like an edited one, and so does one the session committed
-//! before the turn ended. The session remembers each changed file's content and the commit
-//! it stopped on, so a stop reviews only files changed since the last one, and what it was
-//! told, so the same finding never holds a stop twice. At a workspace root, a folder that is
+//! before the turn ended. A commit counts as the session's own only when a shell command the
+//! session ran made it: another session working in the same checkout, or the user committing
+//! by hand, is not this session's change. The session remembers each changed file's content
+//! and the commit it stopped on, so a stop reviews only files changed since the last one, and
+//! what it was told, so the same finding never holds a stop twice. At a workspace root, a folder that is
 //! no repository itself, each member repository is read the same way and its files are named
 //! from the workspace root.
 use crate::failure::Failure;
@@ -23,8 +25,10 @@ const DIFF_BYTES: usize = 512 * 1024;
 /// How large a changed file is read, and how many changed files one stop reviews.
 const FILE_BYTES: u64 = 512 * 1024;
 const MAX_FILES: usize = 64;
-/// How many `HEAD` movements back the last stop's commit is looked for.
+/// How many `HEAD` movements back the last stop's commit is looked for, and how many of its
+/// own commits a session remembers.
 const REFLOG_ENTRIES: &str = "64";
+const OWN_COMMITS: usize = 64;
 
 fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::PathBuf, Failure> {
     Ok(state::file(
@@ -130,9 +134,11 @@ fn head(root: &Path) -> Option<String> {
 }
 
 /// Files the session committed since `base`, the commit its last stop saw: only when every
-/// movement of `HEAD` since then was a commit made here. After a pull, a checkout, a rebase
-/// or a reset the difference holds other people's work, so nothing is taken from it.
-fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
+/// movement of `HEAD` since then was a commit. After a pull, a checkout, a rebase or a reset
+/// the difference holds other people's work, so nothing is taken from it. Of the commits, only
+/// those in `own` (made by a command this session ran) count, and a file another commit in
+/// the range also changed is left out: its markers could be someone else's.
+fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Vec<String> {
     let moves = craft_platform::process::git(
         root,
         &["reflog", "-n", REFLOG_ENTRIES, "--format=%H %gs", "HEAD"],
@@ -150,8 +156,8 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
             break;
         }
         // A merge concluded by hand is a commit too, and brings other people's work.
-        let own = ["commit:", "commit (initial):", "commit (amend):"];
-        if !own.iter().any(|kind| action.starts_with(kind)) {
+        let kinds = ["commit:", "commit (initial):", "commit (amend):"];
+        if !kinds.iter().any(|kind| action.starts_with(kind)) {
             return Vec::new();
         }
     }
@@ -162,9 +168,11 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
     let listed = craft_platform::process::git(
         root,
         &[
-            "diff",
+            "-c",
+            "core.quotePath=false",
+            "log",
+            "--format=%x01%H",
             "--name-only",
-            "-z",
             "--no-renames",
             "--diff-filter=d",
             // Only the project's files, named from its root.
@@ -176,12 +184,29 @@ fn committed(root: &Path, base: &str, current: &str) -> Vec<String> {
     let Ok(Some(listed)) = listed else {
         return Vec::new();
     };
-    listed
-        .split(|byte| *byte == 0)
-        .filter_map(|path| std::str::from_utf8(path).ok())
-        .filter(|path| !path.is_empty() && !routing::private_path(path))
+    let listed = String::from_utf8_lossy(&listed);
+    let (mut ours, mut theirs): (Vec<&str>, Vec<&str>) = (Vec::new(), Vec::new());
+    for commit in listed.split('\u{1}').filter(|c| !c.is_empty()) {
+        let mut lines = commit.lines();
+        let id = lines.next().unwrap_or_default().trim();
+        let files = lines.filter(|path| {
+            // A name Git still quotes holds a newline or a quote: no file to read.
+            !path.is_empty() && !path.starts_with('"') && !routing::private_path(path)
+        });
+        if own.contains(&id) {
+            ours.extend(files);
+        } else {
+            theirs.extend(files);
+        }
+    }
+    let mut files: Vec<String> = ours
+        .into_iter()
+        .filter(|file| !theirs.contains(file))
         .map(str::to_owned)
-        .collect()
+        .collect();
+    files.sort();
+    files.dedup();
+    files
 }
 
 /// One changed file as a stop sees it.
@@ -242,15 +267,19 @@ fn seen<'a>(record: &'a Value, checkout: &Checkout) -> Option<&'a str> {
     }
 }
 
-/// The record of a stop: each changed file's content, what the session was told and the
-/// commit every checkout is on.
+/// The record of a stop: each changed file's content, what the session was told, the commits
+/// it made and the commit every checkout is on.
 fn record(
     files: &[Dirty],
     delivered: &[String],
+    own: &[&str],
     checkouts: &[Checkout],
     heads: &[Option<String>],
 ) -> Value {
     let mut record = json!({"formatVersion": 1, "files": hashes(files), "delivered": delivered});
+    if !own.is_empty() {
+        record["commits"] = json!(own);
+    }
     let mut members = Map::new();
     for (checkout, head) in checkouts.iter().zip(heads) {
         let Some(head) = head else { continue };
@@ -289,7 +318,86 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
         return Ok(());
     };
     let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
-    let record = record(&files, &[], &checkouts, &heads);
+    let record = record(&files, &[], &[], &checkouts, &heads);
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// The commits a record names as made by the session.
+fn own_commits(record: &Value) -> Vec<&str> {
+    record["commits"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect()
+}
+
+/// Before a shell command of the session runs `git commit`: the commit each checkout is on,
+/// so the command's own commit can be told from one another session makes meanwhile.
+pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
+    if !standards::stop_relevant(settings) {
+        return Ok(());
+    }
+    let file = record_file(root, session, true)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if !record.is_object() {
+        record = json!({"formatVersion": 1});
+    }
+    let heads: Map<String, Value> = checkouts(root)
+        .iter()
+        .map(|checkout| {
+            let head = head(&checkout.directory).map_or(Value::Null, Value::from);
+            (checkout.folder.clone(), head)
+        })
+        .collect();
+    record["committing"] = Value::Object(heads);
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// After that command: each checkout whose `HEAD` moved by a commit since `commit_started`
+/// adds the commit to the session's own. A failed commit leaves `HEAD` where it was.
+pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
+    if !standards::stop_relevant(settings) {
+        return Ok(());
+    }
+    let file = record_file(root, session, false)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    let Some(before) = record
+        .as_object_mut()
+        .and_then(|record| record.remove("committing"))
+    else {
+        return Ok(());
+    };
+    let mut own: Vec<String> = own_commits(&record)
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    for checkout in checkouts(root) {
+        let Some(now) = head(&checkout.directory) else {
+            continue;
+        };
+        if before[checkout.folder.as_str()].as_str() == Some(now.as_str()) {
+            continue;
+        }
+        let latest = craft_platform::process::git(
+            &checkout.directory,
+            &["reflog", "-n", "1", "--format=%H %gs", "HEAD"],
+            4096,
+        )
+        .ok()
+        .flatten()
+        .map(|line| String::from_utf8_lossy(&line).into_owned())
+        .unwrap_or_default();
+        let made = latest
+            .strip_prefix(&format!("{now} "))
+            .is_some_and(|action| action.starts_with("commit"));
+        if made && !own.contains(&now) {
+            own.push(now);
+        }
+    }
+    let excess = own.len().saturating_sub(OWN_COMMITS);
+    own.drain(..excess);
+    record["commits"] = json!(own);
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
@@ -357,6 +465,7 @@ pub fn stop(
         .flatten()
         .filter_map(|key| key.as_str().map(str::to_owned))
         .collect();
+    let own = own_commits(&record);
     let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
     // Work the session committed since its last stop is clean now, and still its change.
     // Markers are new against the commit the last stop saw, whether or not they were
@@ -373,7 +482,7 @@ pub fn stop(
         let room = MAX_FILES.saturating_sub(files.len() + landed.len());
         let before = landed.len();
         landed.extend(
-            committed(&checkout.directory, base, current)
+            committed(&checkout.directory, base, current, &own)
                 .into_iter()
                 .map(|file| format!("{}{file}", checkout.folder))
                 .filter(|file| !files.iter().any(|dirty| dirty.file == *file))
@@ -399,7 +508,7 @@ pub fn stop(
         .chain(&landed)
         .filter(|dirty| record["files"][dirty.file.as_str()] != json!(dirty.digest))
         .collect();
-    let mut next = self::record(&files, &delivered, &checkouts, &heads);
+    let mut next = self::record(&files, &delivered, &own, &checkouts, &heads);
     // Anchor findings the session heard when it edited the file are not said again.
     let told = crate::delivered::read(root, session).unwrap_or(Value::Null);
     let mut summary = None;
