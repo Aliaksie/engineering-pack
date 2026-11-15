@@ -139,16 +139,30 @@ struct Read {
     document: Value,
     /// Fields of the file this build does not know and left out.
     ignored: Vec<String>,
+    /// The organization configuration the project committed, when there is one.
+    pin: Option<Pin>,
+}
+
+/// `.craft/organization.json` beside the organization layer.
+enum Pin {
+    /// The machine has no organization file: the pin is the layer.
+    InUse,
+    /// The machine's file is the layer; whether the pin holds the same document.
+    Beside { file: PathBuf, matches: bool },
 }
 
 impl Read {
     fn label(&self) -> String {
         let file = self.file.as_deref().unwrap_or(Path::new(""));
-        format!("{} layer {}", self.origin, file.display())
+        match self.pin {
+            Some(Pin::InUse) => format!("{} layer (pinned) {}", self.origin, file.display()),
+            _ => format!("{} layer {}", self.origin, file.display()),
+        }
     }
 
     fn summary(&self, history: &Map<String, Value>) -> Value {
         let state = match &self.file {
+            _ if matches!(self.pin, Some(Pin::InUse)) => "pinned",
             None => "none",
             Some(file) if fs_exists(file) => "loaded",
             Some(_) => "absent",
@@ -162,6 +176,12 @@ impl Read {
         if !self.ignored.is_empty() {
             summary["ignored"] = json!(self.ignored);
         }
+        if let Some(Pin::Beside { file, matches }) = &self.pin {
+            summary["pin"] = json!({
+                "file": file.to_string_lossy(),
+                "state": if *matches { "matches" } else { "differs" },
+            });
+        }
         summary
     }
 }
@@ -170,9 +190,16 @@ fn fs_exists(file: &Path) -> bool {
     std::fs::symlink_metadata(file).is_ok()
 }
 
+/// The organization configuration a project commits so that CI and teammates without the
+/// machine's file get the same layer.
+pub fn pin_file(root: &Path) -> PathBuf {
+    root.join(".craft").join("organization.json")
+}
+
 /// The organization and user layers, earliest first. A file that cannot be read or parsed is
-/// an error naming the layer and the file.
-fn baseline(sources: Sources) -> Result<[Read; 2], Failure> {
+/// an error naming the layer and the file. The organization layer is the machine's file where
+/// it exists, else the project's pin; with both, the pin is only compared with it.
+fn baseline(root: &Path, sources: Sources) -> Result<[Read; 2], Failure> {
     let organization = match sources.organization {
         Some(file) => Some(file.to_path_buf()),
         None => organization_file()?,
@@ -186,14 +213,17 @@ fn baseline(sources: Sources) -> Result<[Read; 2], Failure> {
             file: organization,
             document: json!({}),
             ignored: Vec::new(),
+            pin: None,
         },
         Read {
             origin: "user",
             file: Some(user),
             document: json!({}),
             ignored: Vec::new(),
+            pin: None,
         },
     ];
+    let mut machine = None;
     for layer in &mut layers {
         let Some(file) = &layer.file else { continue };
         let read = match layer.origin {
@@ -202,6 +232,29 @@ fn baseline(sources: Sources) -> Result<[Read; 2], Failure> {
         };
         let read = document(read).map_err(|error| error.about(&layer.label()))?;
         (layer.document, layer.ignored) = layers::known(&read);
+        if layer.origin == "organization" && fs_exists(file) {
+            machine = Some(read);
+        }
+    }
+    let pin = pin_file(root);
+    let label = || format!("organization layer (pinned) {}", pin.display());
+    let pinned = match documents::organization_pin(root) {
+        Ok(Some(read)) => Some(document(Ok(read)).map_err(|error| error.about(&label()))?),
+        Ok(None) => None,
+        Err(error) => return Err(Failure::from(error).about(&label())),
+    };
+    let organization = &mut layers[0];
+    match (pinned, machine) {
+        (Some(pinned), Some(machine)) => {
+            let matches = same_document(&machine, &pinned);
+            organization.pin = Some(Pin::Beside { file: pin, matches });
+        }
+        (Some(pinned), None) => {
+            (organization.document, organization.ignored) = layers::known(&pinned);
+            organization.file = Some(pin);
+            organization.pin = Some(Pin::InUse);
+        }
+        (None, _) => {}
     }
     Ok(layers)
 }
@@ -231,7 +284,7 @@ fn resolve(
 ) -> Result<(Value, [Read; 2]), Failure> {
     let named = |error: Failure| error.about(&project_file(root).to_string_lossy());
     let project = document(documents::project(root)).map_err(named)?;
-    let baseline = baseline(sources)?;
+    let baseline = baseline(root, sources)?;
     // The catalog files are read only once the project names them validly.
     contracts::validate_project(&project).map_err(|error| named(error.into()))?;
     let catalogs = contracts::anchor_catalogs(&project)
@@ -431,6 +484,73 @@ pub fn layers(
         report["values"] = json!(rows);
     }
     Ok(report)
+}
+
+/// `craft config --sync`: the machine's organization file as the project's pin
+/// (`.craft/organization.json`), so CI and teammates without that file get the same layer.
+/// Without `apply` only says what would change. The file must load as a layer here first.
+pub fn sync(root: &Path, organization: Option<&Path>, apply: bool) -> Result<Value, Failure> {
+    let file = match organization {
+        Some(file) => Some(file.to_path_buf()),
+        None => organization_file()?,
+    };
+    let Some(file) = file.filter(|file| fs_exists(file)) else {
+        return Err(format!(
+            "no organization file on this machine to pin: set {ORGANIZATION_VARIABLE} or pass --organization"
+        )
+        .into());
+    };
+    let label = format!("organization layer {}", file.display());
+    let machine = document(documents::organization(&file)).map_err(|error| error.about(&label))?;
+    let (known, _) = layers::known(&machine);
+    layers::validate(&Layer {
+        origin: "organization",
+        label: label.clone(),
+        document: &known,
+    })?;
+    let pin = pin_file(root);
+    let pinned = documents::organization_pin(root).map_err(|error| {
+        Failure::from(error).about(&format!("organization layer (pinned) {}", pin.display()))
+    })?;
+    let state = match &pinned {
+        None => "absent",
+        Some(pinned) if same_document(pinned, &machine) => "matches",
+        Some(_) => "differs",
+    };
+    let writes = state != "matches";
+    if writes && apply {
+        write_pin(&pin, &machine)?;
+    }
+    Ok(json!({
+        "sync": {
+            "organization": file.to_string_lossy(),
+            "pin": pin.to_string_lossy(),
+            "state": state,
+            "applied": writes && apply,
+        }
+    }))
+}
+
+/// Whether two read documents state the same thing, key order and spacing aside.
+fn same_document(left: &Value, right: &Value) -> bool {
+    craft_engine::canonical(left) == craft_engine::canonical(right)
+}
+
+/// Replace the pin in one rename, readable by everyone who clones the repository.
+fn write_pin(pin: &Path, document: &Value) -> Result<(), Failure> {
+    let directory = pin.parent().ok_or("the pin has no directory")?;
+    std::fs::create_dir_all(directory)
+        .map_err(|error| format!("{} cannot be created: {error}", directory.display()))?;
+    let staged = directory.join(".organization.json.craft");
+    let mut text = serde_json::to_string_pretty(document)
+        .map_err(|error| format!("the pin cannot be serialized: {error}"))?;
+    text.push('\n');
+    std::fs::write(&staged, text)
+        .map_err(|error| format!("{} cannot be written: {error}", staged.display()))?;
+    std::fs::rename(&staged, pin).map_err(|error| {
+        let _ = std::fs::remove_file(&staged);
+        format!("{} cannot be written: {error}", pin.display()).into()
+    })
 }
 
 /// Switches read outside the merged settings, with where each value came from: Project

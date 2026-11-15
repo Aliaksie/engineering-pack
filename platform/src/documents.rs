@@ -69,6 +69,30 @@ pub fn project(root: &Path) -> Result<Value, DocumentError> {
     )
 }
 
+/// `.craft/organization.json`: the organization configuration a project committed, or `None`
+/// when absent. Repository content, read with the project file's rules: neither the folder
+/// nor the file may be a symlink, and the file is bounded like an organization file.
+pub fn organization_pin(root: &Path) -> Result<Option<Value>, DocumentError> {
+    let folder = root.join(".craft");
+    let file = folder.join("organization.json");
+    for candidate in [&folder, &file] {
+        if fs::symlink_metadata(candidate).is_ok_and(|meta| meta.file_type().is_symlink()) {
+            return Err(invalid(
+                "pinned organization configuration may not be a symlink",
+            ));
+        }
+    }
+    if fs::symlink_metadata(&file).is_err() {
+        return Ok(None);
+    }
+    bounded(
+        &file,
+        PREFERENCE_BYTES,
+        "pinned organization configuration must be a bounded JSON file",
+    )
+    .map(Some)
+}
+
 /// A project anchor catalog at `relative`, a validated project-relative path. Unlike the
 /// project file it must exist, and it may not be a symlink.
 pub fn anchor_catalog(root: &Path, relative: &str) -> Result<Value, DocumentError> {

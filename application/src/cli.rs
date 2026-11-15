@@ -1585,6 +1585,18 @@ fn settings(
 fn config(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, Failure> {
     let preferences = options.get("preferences").map(PathBuf::from);
     let organization = options.get("organization").map(PathBuf::from);
+    let apply = options.values.contains_key("apply");
+    if options.values.contains_key("sync") {
+        for name in ["explain", "field", "preferences"] {
+            if options.values.contains_key(name) {
+                return Err(format!("--sync takes no --{name}").into());
+            }
+        }
+        return project::sync(&root(options), organization.as_deref(), apply);
+    }
+    if apply {
+        return Err("config takes --apply only with --sync".into());
+    }
     let sources = project::Sources {
         organization: organization.as_deref(),
         preferences: preferences.as_deref(),
@@ -1767,8 +1779,8 @@ fn help(action: &str) -> Value {
             "mode": "bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims",
         }),
         "config" => json!({
-            "usage": "config [--root project] [--explain] [--field routing] [--organization organization.json] [--preferences user.json] [--json]",
-            "mode": "Read-only: the organization, user and project layers the settings come from and each value one layer set over another. With --explain, every effective value with its layer and what it hid; --field keeps one field and what lies beneath it. A layer file that cannot be read or is invalid is an error naming the file.",
+            "usage": "config [--root project] [--explain] [--field routing] [--organization organization.json] [--preferences user.json] [--json] | config [--root project] [--organization organization.json] --sync [--apply]",
+            "mode": "Without --sync --apply, read-only: the organization, user and project layers the settings come from and each value one layer set over another. With --explain, every effective value with its layer and what it hid; --field keeps one field and what lies beneath it. A layer file that cannot be read or is invalid is an error naming the file. Where the machine has no organization file, a committed .craft/organization.json is the organization layer; where it has one, the pin is compared with it. --sync previews copying the machine's organization file to .craft/organization.json, so CI and teammates without it get the same layer; --apply writes it.",
         }),
         "settings" => json!({
             "usage": "settings [--root project] [--organization organization.json] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",

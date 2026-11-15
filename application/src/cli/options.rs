@@ -102,6 +102,7 @@ const OPTIONS: &[&str] = &[
     "field",
     "install-hook",
     "ci-snippet",
+    "sync",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -120,6 +121,7 @@ const FLAGS: &[&str] = &[
     "all",
     "explain",
     "install-hook",
+    "sync",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -209,7 +211,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     {
         return Err(format!("--{name} is supported by check").into());
     }
-    if let Some(name) = ["explain", "field"].iter().find(|name| present(name))
+    if let Some(name) = ["explain", "field", "sync"]
+        .iter()
+        .find(|name| present(name))
         && action != "config"
     {
         return Err(format!("--{name} is supported by config").into());
