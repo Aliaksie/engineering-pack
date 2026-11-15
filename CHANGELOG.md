@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `craft session` shows the session's last `craft check` run: its result, stage and counts,
+  and whether the tree changed since, so a passed check is not taken for the current code.
 - A declared check can take the changed files: an argument that is exactly `{changedFiles}`
   becomes the files the check covers, named from its directory, so a formatter or linter
   reads only what changed. A check with no such file is reported as skipped and never as

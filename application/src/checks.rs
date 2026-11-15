@@ -280,3 +280,18 @@ fn record_history(root: &Path, session: &str, report: &Value) -> Result<bool, Fa
     state::write(&target, &next, HISTORY_BYTES, false)?;
     Ok(true)
 }
+
+/// The session's newest check run, and whether the tree is still the one it ran on; `None`
+/// before its first run, so a session that never ran a check fingerprints nothing.
+pub(crate) fn last(root: &Path, session: &str) -> Result<Option<Value>, Failure> {
+    craft_engine::session::identity(&json!(session), &json!("check-runs"))?;
+    let target = state::file(root, "check-runs.json", false, Some(session))?;
+    let history = read_record(&target, HISTORY_BYTES)?;
+    if history["runs"].as_array().is_none_or(Vec::is_empty) {
+        return Ok(None);
+    }
+    let repositories = crate::session::active_binding(root, session)?
+        .and_then(|binding| binding.get("repositories").cloned());
+    let source = crate::test_runs::source(root, repositories.as_ref())?;
+    Ok(checks::latest(&history, &source))
+}

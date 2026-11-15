@@ -299,3 +299,29 @@ fn a_skipped_check_is_reported_and_never_passed() {
     let history = recorded(&json!({}), &report);
     assert_eq!(history["runs"][0]["skipped"][0]["id"], "lint");
 }
+
+#[test]
+fn the_latest_run_is_counted_and_current_only_on_its_own_tree() {
+    assert!(latest(&json!({}), &json!("A")).is_none());
+    let plan = json!({"stage": "commit", "run": [], "left": [{"id": "slow", "stage": "ci"}]});
+    let passed = verdict(&json!({"id": "fmt"}), &ended(0, "ok"));
+    let older = recorded(
+        &json!({}),
+        &report(&plan, vec![], &json!("A"), &json!("A"), "t1"),
+    );
+    let history = recorded(
+        &older,
+        &report(&plan, vec![passed], &json!("B"), &json!("B"), "t2"),
+    );
+    let last = latest(&history, &json!("B")).unwrap();
+    assert_eq!(
+        last,
+        json!({"at": "t2", "stage": "commit", "result": "passed", "run": 1, "passed": 1,
+            "skipped": 0, "left": 1, "current": true})
+    );
+    assert_eq!(latest(&history, &json!("C")).unwrap()["current"], false);
+    assert_eq!(
+        latest(&history, &Value::Null).unwrap()["current"],
+        Value::Null
+    );
+}

@@ -348,6 +348,30 @@ pub fn recorded(history: &Value, report: &Value) -> Value {
     json!({"formatVersion": 1, "runs": runs.split_off(skip)})
 }
 
+/// The newest run of a session's history, counted, as `craft session` shows it; `current`
+/// when `source` (the tree now) is the tree it ran on, `null` when the tree cannot be told.
+/// `None` before the first run.
+pub fn latest(history: &Value, source: &Value) -> Option<Value> {
+    let run = history["runs"].as_array()?.last()?;
+    let count = |field: &str| run[field].as_array().map_or(0, Vec::len);
+    let passed = run["checks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|check| check["result"] == "passed")
+        .count();
+    Some(json!({
+        "at": run["at"],
+        "stage": run["stage"],
+        "result": run["result"],
+        "run": count("checks"),
+        "passed": passed,
+        "skipped": count("skipped"),
+        "left": count("left"),
+        "current": if source.is_null() { Value::Null } else { json!(run["source"] == *source) },
+    }))
+}
+
 /// One line per check for a terminal, then what was left and the overall result.
 pub fn text(report: &Value) -> String {
     let mut lines = Vec::new();

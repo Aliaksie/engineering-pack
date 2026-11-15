@@ -377,6 +377,13 @@ fn observe(
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
         }
     }
+    if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
+        match crate::checks::last(root, session) {
+            Ok(Some(last)) => result["lastCheck"] = last,
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), operation),
+        }
+    }
     // What this session's hooks delivered, where its hooks kept the record.
     if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
         match crate::delivered::read(root, session) {

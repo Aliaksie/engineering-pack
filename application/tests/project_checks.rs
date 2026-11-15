@@ -419,3 +419,31 @@ fn a_changed_files_argument_passes_the_checks_own_files_and_skips_a_check_withou
     assert_eq!(all["summary"]["skipped"], 2);
     assert_eq!(all["skipped"][0]["reason"], "no-changed-file");
 }
+
+#[test]
+fn the_session_shows_its_last_check_run_and_whether_the_tree_moved_since() {
+    let repo = repo();
+    let bundle = support::bundle();
+    let session = |repo: &Repo| {
+        repo.cli(&["session", "--session", "S5", "--bundle", &bundle])
+            .unwrap()
+    };
+    assert!(session(&repo)["lastCheck"].is_null(), "no run, no line");
+
+    repo.write("api/a.txt", "changed\n");
+    let (_, report) = check(&repo, &["--session", "S5"]);
+    assert_eq!(report["recorded"], true);
+    let last = &session(&repo)["lastCheck"];
+    assert_eq!(
+        (
+            &last["result"],
+            &last["stage"],
+            &last["run"],
+            &last["current"]
+        ),
+        (&json!("passed"), &json!("commit"), &json!(2), &json!(true)),
+        "{last}"
+    );
+    repo.write("api/a.txt", "changed again\n");
+    assert_eq!(session(&repo)["lastCheck"]["current"], false);
+}
