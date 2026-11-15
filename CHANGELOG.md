@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The safety policy keeps files that commonly hold secrets out of the model's context: a new
+  built-in rule, `read-secret-file`, catches reading `.env` files, private keys, credential
+  and token files and Terraform state through a file read, a search, an edit of an existing
+  one or a shell command such as `cat .env`, inside or outside the project. Claude Code asks
+  you before the read; Codex, Cursor, Copilot CLI and Gemini CLI refuse it. Templates such as
+  `.env.example`, public keys and certificates, test fixtures and `source .env` pass. The rule
+  is on with the policy; `"safety": {"disables": ["read-secret-file"]}` leaves it out.
 - `craft doctor` counts, per host, hook runs that gave no answer because their input was too
   large, unreadable or not JSON, or because the hook failed, and names the last one. The
   session summary and `craft session` count the session's hook failures. Before, such a hook

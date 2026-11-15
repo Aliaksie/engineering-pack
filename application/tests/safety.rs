@@ -139,7 +139,7 @@ fn craft_settings_lists_the_rules_in_force() {
         .iter()
         .filter_map(|rule| rule["id"].as_str())
         .collect();
-    assert_eq!(ids.len(), 7);
+    assert_eq!(ids.len(), 8);
     assert_eq!(ids.last(), Some(&"infra-destroy"));
 }
 
@@ -148,6 +148,8 @@ fn the_session_summary_counts_refused_commands() {
     let repo = Repo::new("safety-summary", &[(".craft/project.json", ON)]);
     assert!(shell("claude", repo.path(), "git reset --hard").starts_with("deny"));
     assert!(shell("claude", repo.path(), "sudo reboot").starts_with("deny"));
+    // A secret read Claude Code hands to the user is not counted as refused.
+    assert!(shell("claude", repo.path(), "cat .env").contains(r#""ask""#));
     let args: Vec<String> = [
         "claude",
         "turn-end",
@@ -222,4 +224,189 @@ fn a_project_reached_through_a_link_is_the_same_project() {
     }
     let root = shell("claude", &link, &format!("rm -rf {}", repo.path()));
     assert!(root.contains("delete-project-root"), "{root}");
+}
+
+/// What the host is told for one tool call: `ask <reason>` where the call waits for the
+/// user, `deny <reason>` for a refusal, else the hook's output.
+fn call(host: &str, package: &str, cwd: &str, tool: &str, input: Value) -> String {
+    let handler = if package == "craft-delivery" {
+        "deliver"
+    } else {
+        "observe"
+    };
+    let args: Vec<String> = [
+        host,
+        "before-tool",
+        "--package",
+        package,
+        "--handler",
+        handler,
+    ]
+    .iter()
+    .map(|arg| arg.to_string())
+    .collect();
+    let payload = json!({"session_id": "S1", "cwd": cwd, "hook_event_name": "PreToolUse",
+        "tool_name": tool, "tool_input": input});
+    let (wire, _) = craft_application::hook::run(&args, &mut payload.to_string().as_bytes());
+    match wire.exit_code {
+        2 => format!("deny {}", wire.stderr),
+        0 if wire.stdout.contains(r#""ask""#) => format!("ask {}", wire.stdout),
+        0 if wire.stdout.contains(r#""deny""#) => format!("deny {}", wire.stdout),
+        0 => wire.stdout,
+        code => panic!("exit {code}: {}", wire.stderr),
+    }
+}
+
+const SECRET_REPO: [(&str, &str); 4] = [
+    ("README.md", "x\n"),
+    (".env", "TOKEN=real\n"),
+    (".env.example", "TOKEN=\n"),
+    ("api/.env.local", "KEY=real\n"),
+];
+
+#[test]
+fn claude_code_hands_a_secret_file_read_to_the_user_through_every_package() {
+    let repo = Repo::new("secret-claude", &SECRET_REPO);
+    for package in [
+        "craft-delivery",
+        "craft-engineering",
+        "craft-review",
+        "craft-stories",
+    ] {
+        let read = call(
+            "claude",
+            package,
+            repo.path(),
+            "Read",
+            json!({"file_path": format!("{}/.env", repo.path())}),
+        );
+        assert!(read.starts_with("ask "), "{package}: {read}");
+        assert!(read.contains("read-secret-file"), "{read}");
+        let template = call(
+            "claude",
+            package,
+            repo.path(),
+            "Read",
+            json!({"file_path": ".env.example"}),
+        );
+        assert!(
+            template.is_empty() || !template.contains("permissionDecision"),
+            "{package}: {template}"
+        );
+    }
+    let search = call(
+        "claude",
+        "craft-engineering",
+        repo.path(),
+        "Grep",
+        json!({"pattern": "KEY", "glob": ".env*"}),
+    );
+    assert!(search.starts_with("ask "), "{search}");
+    let searched = call(
+        "claude",
+        "craft-engineering",
+        repo.path(),
+        "Grep",
+        json!({"pattern": "KEY", "path": "api/.env.local"}),
+    );
+    assert!(searched.starts_with("ask "), "{searched}");
+    // Listing names shows no content; a broad search is outside what a name shows.
+    for (tool, input) in [
+        ("Glob", json!({"pattern": "**/.env*"})),
+        ("Grep", json!({"pattern": "KEY", "glob": "*"})),
+        ("Read", json!({"file_path": "README.md"})),
+    ] {
+        let output = call("claude", "craft-engineering", repo.path(), tool, input);
+        assert!(output.is_empty(), "{tool}: {output}");
+    }
+    // A file outside the workspace is judged the same way.
+    let home = call(
+        "claude",
+        "craft-engineering",
+        repo.path(),
+        "Read",
+        json!({"file_path": "/home/dev/.aws/credentials"}),
+    );
+    assert!(home.starts_with("ask "), "{home}");
+    let shell = call(
+        "claude",
+        "craft-delivery",
+        repo.path(),
+        "Bash",
+        json!({"command": "cat api/.env.local"}),
+    );
+    assert!(shell.starts_with("ask "), "{shell}");
+}
+
+#[test]
+fn hosts_that_cannot_ask_refuse_a_secret_file_read() {
+    let repo = Repo::new("secret-hosts", &SECRET_REPO);
+    for (host, tool, input) in [
+        ("codex", "Bash", json!({"command": "grep TOKEN .env"})),
+        (
+            "codex",
+            "apply_patch",
+            json!({"command": "*** Begin Patch\n*** Update File: .env\n@@\n-a\n+b\n*** End Patch"}),
+        ),
+        (
+            "gemini",
+            "read_many_files",
+            json!({"paths": ["README.md", "api/.env.local"]}),
+        ),
+        (
+            "gemini",
+            "read_file",
+            json!({"absolute_path": format!("{}/.env", repo.path())}),
+        ),
+        ("copilot", "view", json!({"path": ".env"})),
+        ("cursor", "Read", json!({"file_path": ".env"})),
+    ] {
+        let output = call(host, "craft-engineering", repo.path(), tool, input);
+        assert!(output.starts_with("deny "), "{host} {tool}: {output}");
+        assert!(output.contains("read-secret-file"), "{output}");
+    }
+}
+
+#[test]
+fn writing_a_new_secret_file_is_not_a_read_and_the_rule_can_be_turned_off() {
+    let repo = Repo::new("secret-write", &SECRET_REPO);
+    let new = call(
+        "claude",
+        "craft-delivery",
+        repo.path(),
+        "Write",
+        json!({"file_path": "web/.env", "content": "A=1\n"}),
+    );
+    assert!(!new.contains("permissionDecision"), "{new}");
+    let existing = call(
+        "claude",
+        "craft-delivery",
+        repo.path(),
+        "Edit",
+        json!({"file_path": ".env", "old_string": "a", "new_string": "b"}),
+    );
+    assert!(existing.starts_with("ask "), "{existing}");
+    let off = r#"{"formatVersion":1,"safety":{"disables":["read-secret-file"]}}"#;
+    let repo = Repo::new(
+        "secret-off",
+        &[(".craft/project.json", off), (".env", "T=1\n")],
+    );
+    for package in ["craft-delivery", "craft-engineering"] {
+        let read = call(
+            "claude",
+            package,
+            repo.path(),
+            "Read",
+            json!({"file_path": ".env"}),
+        );
+        assert!(!read.contains("permissionDecision"), "{package}: {read}");
+        let shell = call(
+            "codex",
+            package,
+            repo.path(),
+            "Bash",
+            json!({"command": "cat .env"}),
+        );
+        assert!(!shell.starts_with("deny"), "{package}: {shell}");
+    }
 }

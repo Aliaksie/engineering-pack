@@ -1,6 +1,7 @@
-//! The project's safety policy for shell commands: opt-in rules that refuse destructive
-//! commands and commands that reach outside the project. A rule only ever refuses; nothing
-//! here approves a command, so the host's own prompts, sandbox and deny rules keep applying.
+//! The project's safety policy: rules that refuse destructive shell commands, commands that
+//! reach outside the project, and reads of files that commonly hold secrets, through any
+//! tool the hook sees. A rule only ever refuses or hands the call to the user; nothing here
+//! approves one, so the host's own prompts, sandbox and deny rules keep applying.
 //!
 //! It is a guardrail, not a security boundary. The recognizer reads literal commands,
 //! scripts passed to supported shells with `-c` and `$()`/backtick substitutions; aliases,
@@ -13,8 +14,13 @@ use serde_json::{Value, json};
 
 type Result<T = ()> = std::result::Result<T, String>;
 
+pub mod secrets;
+
+/// The rule that keeps secret files out of the model's context.
+pub const SECRET_RULE: &str = "read-secret-file";
+
 /// A built-in rule: its id and what it refuses, in the words shown to the user and model.
-pub const RULES: [(&str, &str); 6] = [
+pub const RULES: [(&str, &str); 7] = [
     (
         "delete-outside-project",
         "a recursive delete whose target is outside the project and the temporary directories, in the home directory, an unexpanded variable or read from input",
@@ -38,6 +44,10 @@ pub const RULES: [(&str, &str); 6] = [
     (
         "system-administration",
         "a privileged or system-level command (sudo, shutdown, service, mount or disk changes)",
+    ),
+    (
+        SECRET_RULE,
+        "reading a file that commonly holds secrets (.env files, private keys, credential and token files) through any tool",
     ),
 ];
 /// The rule reported for a command nested too deep to read.
@@ -249,7 +259,7 @@ pub fn listing(settings: &Value) -> Value {
         "origin": "bundled",
         "rules": rules,
         "disabled": off,
-        "effect": "Refuses matching shell commands where the host lets a hook refuse a tool call; approves nothing. A guardrail, not a security boundary.",
+        "effect": "Refuses matching shell commands and reads of secret files where the host lets a hook refuse a tool call; where the host can ask the user instead (Claude), a secret read waits for the user. Approves nothing. A guardrail, not a security boundary.",
     })
 }
 
@@ -595,13 +605,57 @@ fn builtin(words: &[String], place: &Place) -> Option<&'static str> {
     }
 }
 
+/// A refusal of `rule`. A secret read also carries `ask`: the words shown to the user
+/// where the host can hand the call to them instead of refusing it.
+fn refusal(rule: &str, refuses: &str, secret: Option<&str>) -> Value {
+    let Some(file) = secret else {
+        return json!({
+            "decision": "deny",
+            "rule": rule,
+            "reason": format!(
+                "This project's safety policy refuses this command (rule `{rule}`: {refuses}). Do not reword it to get past the rule; tell the user what you wanted to run and why, so they can run it themselves or change the request."
+            ),
+        });
+    };
+    json!({
+        "decision": "deny",
+        "rule": rule,
+        "file": file,
+        "reason": format!(
+            "This project's safety policy keeps `{file}` out of your context: it commonly holds secrets (rule `{rule}`). Do not read it another way (a script, a copy, a search); tell the user which value or setting you need, so they can give it to you or turn the rule off."
+        ),
+        "ask": format!(
+            "Craft: `{file}` commonly holds secrets (safety rule `{rule}`). Allow only if the model should see its content."
+        ),
+    })
+}
+
+/// The first file or search filter a tool call names that reaches secret files.
+pub fn named_secret<'a>(files: &[&'a str], filters: &[&'a str]) -> Option<&'a str> {
+    files
+        .iter()
+        .find(|file| secrets::secret_file(file))
+        .or_else(|| filters.iter().find(|filter| secrets::secret_filter(filter)))
+        .copied()
+}
+
+/// The decision for a tool call that reads, searches or rewrites `secret`, a file or filter
+/// [`named_secret`] found: the secret-file refusal while the rule is in force, else `allow`.
+pub fn read_decision(settings: &Value, secret: &str) -> Value {
+    if !enabled(settings) || disabled(settings, SECRET_RULE) {
+        return json!({"decision": "allow"});
+    }
+    refusal(SECRET_RULE, "", Some(secret))
+}
+
 /// The decision for one shell command run at `place`: `allow`, or `deny` with the rule and
 /// a reason. With the policy off every command is allowed.
 pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
     if !enabled(settings) {
         return json!({"decision": "allow"});
     }
-    let mut broken: Option<(String, String)> = None;
+    let secrets_on = !disabled(settings, SECRET_RULE);
+    let mut broken: Option<(String, String, Option<String>)> = None;
     let too_deep = walk(shell, &mut |words| {
         let words = command(words);
         if let Some(id) = builtin(words, place).filter(|id| !disabled(settings, id)) {
@@ -609,7 +663,19 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
                 .iter()
                 .find(|(known, _)| *known == id)
                 .map(|(_, r)| *r);
-            broken = Some((id.to_string(), refuses.unwrap_or_default().to_string()));
+            broken = Some((
+                id.to_string(),
+                refuses.unwrap_or_default().to_string(),
+                None,
+            ));
+            return true;
+        }
+        if let Some(file) = secrets::shell_read(words).filter(|_| secrets_on) {
+            broken = Some((
+                SECRET_RULE.to_string(),
+                String::new(),
+                Some(file.to_string()),
+            ));
             return true;
         }
         for rule in project_rules(settings) {
@@ -626,24 +692,21 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
                     || format!("commands starting with `{}`", prefix.join(" ")),
                     str::to_owned,
                 );
-                broken = Some((rule["id"].as_str().unwrap_or_default().to_string(), refuses));
+                broken = Some((
+                    rule["id"].as_str().unwrap_or_default().to_string(),
+                    refuses,
+                    None,
+                ));
                 return true;
             }
         }
         false
     });
-    let (rule, refuses) = match broken {
-        Some(found) => found,
-        None if too_deep => (UNREADABLE.0.to_string(), UNREADABLE.1.to_string()),
-        None => return json!({"decision": "allow"}),
-    };
-    json!({
-        "decision": "deny",
-        "rule": rule,
-        "reason": format!(
-            "This project's safety policy refuses this command (rule `{rule}`: {refuses}). Do not reword it to get past the rule; tell the user what you wanted to run and why, so they can run it themselves or change the request."
-        ),
-    })
+    match broken {
+        Some((rule, refuses, file)) => refusal(&rule, &refuses, file.as_deref()),
+        None if too_deep => refusal(UNREADABLE.0, UNREADABLE.1, None),
+        None => json!({"decision": "allow"}),
+    }
 }
 
 #[cfg(test)]

@@ -196,12 +196,12 @@ object. Review session safety.
 
 ## `safety`
 
-object. Rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
+object. Rules that refuse destructive shell commands, commands that reach outside the project and reads of files that commonly hold secrets, on hosts where a hook can refuse a tool call; Claude Code asks the user about a secret read instead. A rule only refuses: nothing here approves a tool call, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `safety.enabled` | boolean | `true` | Whether the policy is on. Set `false` to turn it off: no command is refused. |
-| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `delete-remote-branch`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
+| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `delete-remote-branch`, `discard-changes`, `system-administration`, `read-secret-file` | `[]` | Built-in rules to leave out. |
 | `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
 | `safety.deny[].id` | string |  | Stable handle named in the refusal. |
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
