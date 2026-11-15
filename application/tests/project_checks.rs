@@ -379,3 +379,43 @@ fn a_base_adds_the_files_committed_since_it() {
     );
     assert!(repo.cli(&["standards", "--base", "start"]).is_err());
 }
+
+/// `git diff --exit-code` fails only for a file it is given that changed, and prints its path
+/// from the top: a check that fails names the files the argument passed, from its directory.
+#[test]
+fn a_changed_files_argument_passes_the_checks_own_files_and_skips_a_check_without_any() {
+    let repo = Repo::new(
+        "checks-files",
+        &[
+            (
+                ".craft/project.json",
+                r#"{"formatVersion":1,"modules":[
+                  {"name":"api","path":"api","checks":[{"command":"git","args":["diff","--exit-code","--","{changedFiles}"],"id":"api-diff"}]},
+                  {"name":"ui","path":"ui","checks":[{"command":"git","args":["diff","--exit-code","--","{changedFiles}"],"id":"ui-diff"}]}]}"#,
+            ),
+            ("api/a.txt", "a\n"),
+            ("api/b.txt", "b\n"),
+            ("ui/a.txt", "a\n"),
+        ],
+    );
+    repo.write("api/a.txt", "changed\n");
+    std::fs::remove_file(repo.root.join("api/b.txt")).unwrap();
+    let (exit, report) = check(&repo, &[]);
+    assert_eq!(exit, 1, "{report}");
+    // The deleted file is a change of the module, but no file to pass.
+    let diff = &report["checks"][0];
+    assert_eq!(
+        (diff["id"].as_str(), diff["files"].as_u64()),
+        (Some("api-diff"), Some(1))
+    );
+    assert!(
+        diff["output"].as_str().unwrap().contains("api/a.txt"),
+        "{diff}"
+    );
+
+    let (exit, all) = check(&repo, &["--all"]);
+    assert_eq!(exit, 0, "no changed file is named, so nothing ran: {all}");
+    assert_eq!(all["result"], "nothing-run");
+    assert_eq!(all["summary"]["skipped"], 2);
+    assert_eq!(all["skipped"][0]["reason"], "no-changed-file");
+}

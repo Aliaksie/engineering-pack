@@ -21,6 +21,10 @@ pub const OUTPUT_BYTES: usize = 65_536;
 const SHOWN_BYTES: usize = 4_000;
 /// Runs kept in a session's history.
 const HISTORY: usize = 20;
+/// An argument that stands for the changed files the check covers.
+pub const CHANGED_FILES: &str = "{changedFiles}";
+/// Most bytes the files of one `{changedFiles}` argument may take on a command line.
+const ARGUMENT_BYTES: usize = 65_536;
 
 /// Whether `craft check` runs declared commands: unless `routing.projectChecks` is false.
 pub fn enabled(settings: &Value) -> bool {
@@ -45,6 +49,18 @@ pub fn validate(check: &serde_json::Map<String, Value>, what: &str) -> Result<()
     {
         return Err(format!(
             "{what} timeoutSeconds must be a whole number from 1 to {MAX_TIMEOUT_SECONDS}"
+        ));
+    }
+    if check
+        .get("args")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .any(|arg| arg != CHANGED_FILES && arg.contains(CHANGED_FILES))
+    {
+        return Err(format!(
+            "{what} args may hold {CHANGED_FILES} only as a whole argument"
         ));
     }
     if let Some(id) = check.get("id")
@@ -125,6 +141,78 @@ pub fn plan(settings: &Value, scope: &Scope, stage: &str, all: bool) -> Result<V
     Ok(json!({"stage": stage, "run": run, "left": left}))
 }
 
+/// Whether a planned check passes the changed files through a `{changedFiles}` argument.
+pub fn takes_files(check: &Value) -> bool {
+    check["args"]
+        .as_array()
+        .is_some_and(|args| args.iter().any(|arg| arg == CHANGED_FILES))
+}
+
+/// The files of `changed` a planned check covers, named from its `cwd`: for a module check
+/// those the module owns, for a standard's command those in the standard's scope. A file
+/// outside the check's directory is not passed to it.
+pub fn files_for(settings: &Value, check: &Value, changed: &[Value]) -> Result<Vec<String>> {
+    let cwd = check["cwd"].as_str().unwrap_or(".").trim_end_matches('/');
+    let mut files = Vec::new();
+    for file in changed {
+        let scope = crate::routing::scope(settings, std::slice::from_ref(file))?;
+        let covered = match check["kind"].as_str() {
+            Some("module") => scope
+                .modules
+                .iter()
+                .any(|module| module["name"] == check["module"]),
+            _ => standards::commands(settings, &scope, false)
+                .iter()
+                .any(|standard| standard["id"] == check["standard"]),
+        };
+        let Some(path) = scope.files.first().filter(|_| covered) else {
+            continue;
+        };
+        let named = if cwd == "." || cwd.is_empty() {
+            Some(path.as_str())
+        } else {
+            path.strip_prefix(cwd)
+                .and_then(|rest| rest.strip_prefix('/'))
+        };
+        files.extend(named.filter(|name| !name.is_empty()).map(str::to_owned));
+    }
+    Ok(files)
+}
+
+/// A planned check's arguments with each `{changedFiles}` replaced by `files`; `Err` when the
+/// files would make the command line longer than Craft passes.
+pub fn arguments(check: &Value, files: &[String]) -> Result<Vec<String>> {
+    let bytes: usize = files.iter().map(|file| file.len() + 1).sum();
+    if takes_files(check) && bytes > ARGUMENT_BYTES {
+        return Err(format!(
+            "{} changed files take {bytes} bytes, more than the {ARGUMENT_BYTES} one {CHANGED_FILES} argument passes; name fewer with --file",
+            files.len()
+        ));
+    }
+    let mut arguments = Vec::new();
+    for arg in check["args"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        if arg == CHANGED_FILES {
+            arguments.extend(files.iter().cloned());
+        } else {
+            arguments.push(arg.to_owned());
+        }
+    }
+    Ok(arguments)
+}
+
+/// A check that takes the changed files and covers none of them: not run, never passed.
+pub fn skipped(check: &Value) -> Value {
+    let mut entry = check.clone();
+    entry["result"] = json!("skipped");
+    entry["reason"] = json!("no-changed-file");
+    entry
+}
+
 /// The last `limit` bytes of `text`, from a character boundary.
 fn tail(text: &str, limit: usize) -> &str {
     let mut start = text.len().saturating_sub(limit);
@@ -189,12 +277,15 @@ pub fn verdict(check: &Value, outcome: &Value) -> Value {
     entry
 }
 
-/// The report of one run: every executed check with its verdict, every check left to a later
-/// stage, and one overall `result`: `failed` when any executed check did not pass, `passed`
+/// The report of one run: every executed check with its verdict, every check skipped for want
+/// of a changed file, every check left to a later stage, and one overall `result`: `failed` when any executed check did not pass, `passed`
 /// when all did, `nothing-run` when none was executed. `before` and `after` are the source
 /// digests of the tree around the run; results bind to `before`, and a tree the commands
 /// changed says so.
 pub fn report(plan: &Value, results: Vec<Value>, before: &Value, after: &Value, at: &str) -> Value {
+    let (skipped, results): (Vec<Value>, Vec<Value>) = results
+        .into_iter()
+        .partition(|entry| entry["result"] == "skipped");
     let left: Vec<Value> = plan["left"]
         .as_array()
         .into_iter()
@@ -225,8 +316,10 @@ pub fn report(plan: &Value, results: Vec<Value>, before: &Value, after: &Value, 
         "at": at,
         "source": before,
         "treeChanged": before != after,
-        "summary": {"run": results.len(), "passed": passed, "notPassed": results.len() - passed, "left": left.len()},
+        "summary": {"run": results.len(), "passed": passed, "notPassed": results.len() - passed,
+            "skipped": skipped.len(), "left": left.len()},
         "checks": results,
+        "skipped": skipped,
         "left": left,
     })
 }
@@ -248,7 +341,7 @@ pub fn recorded(history: &Value, report: &Value) -> Value {
     };
     let run = json!({"at": report["at"], "stage": report["stage"], "result": report["result"],
         "source": report["source"], "treeChanged": report["treeChanged"],
-        "checks": entries("checks"), "left": entries("left")});
+        "checks": entries("checks"), "skipped": entries("skipped"), "left": entries("left")});
     let mut runs: Vec<Value> = history["runs"].as_array().cloned().unwrap_or_default();
     runs.push(run);
     let skip = runs.len().saturating_sub(HISTORY);
@@ -282,20 +375,26 @@ pub fn text(report: &Value) -> String {
             lines.extend(output.lines().map(|text| format!("  {text}")));
         }
     }
-    for entry in report["left"].as_array().into_iter().flatten() {
-        lines.push(line(entry));
+    for field in ["skipped", "left"] {
+        for entry in report[field].as_array().into_iter().flatten() {
+            lines.push(line(entry));
+        }
     }
     if let Some(note) = report["note"].as_str() {
         lines.push(note.to_string());
     }
     let summary = &report["summary"];
     lines.push(format!(
-        "checks at {}: {} — {} run, {} passed, {} not passed, {} left to a later stage{}",
+        "checks at {}: {} — {} run, {} passed, {} not passed, {}{} left to a later stage{}",
         report["stage"].as_str().unwrap_or("?"),
         report["result"].as_str().unwrap_or("?"),
         summary["run"],
         summary["passed"],
         summary["notPassed"],
+        match summary["skipped"].as_u64() {
+            Some(skipped) if skipped > 0 => format!("{skipped} skipped with no changed file, "),
+            _ => String::new(),
+        },
         summary["left"],
         if report["treeChanged"] == true {
             "; the commands changed the tree, so the results describe the tree before them"

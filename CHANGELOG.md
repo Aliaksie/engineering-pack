@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A declared check can take the changed files: an argument that is exactly `{changedFiles}`
+  becomes the files the check covers, named from its directory, so a formatter or linter
+  reads only what changed. A check with no such file is reported as skipped and never as
+  passed.
 - `craft check --base <ref>` also checks the files committed since the ref's merge base with
   `HEAD`, so a pull-request stage run covers the whole change instead of finding nothing on a
   clean tree. `craft check` now finds the changed files when the project's root is a folder

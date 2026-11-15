@@ -30,8 +30,8 @@ pub struct Request<'a> {
     pub session: Option<&'a str>,
 }
 
-/// Run one planned check in its directory under the project root.
-fn execute(root: &Path, check: &Value) -> Value {
+/// Run one planned check with `args` in its directory under the project root.
+fn execute(root: &Path, check: &Value, args: &[String]) -> Value {
     let cwd = check["cwd"].as_str().unwrap_or(".");
     let dir = if cwd == "." {
         root.to_path_buf()
@@ -42,15 +42,9 @@ fn execute(root: &Path, check: &Value) -> Value {
         return json!({"started": false, "durationMs": 0,
             "error": format!("working directory {cwd} does not exist")});
     }
-    let args: Vec<String> = check["args"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|arg| arg.as_str().map(str::to_string))
-        .collect();
     let ran = process::run_bounded(
         check["command"].as_str().unwrap_or_default(),
-        &args,
+        args,
         &dir,
         Duration::from_secs(
             check["timeoutSeconds"]
@@ -141,15 +135,9 @@ fn changed_files(
 }
 
 /// The command line of a check as one text, for the observed test runs.
-fn command_line(check: &Value) -> String {
+fn command_line(check: &Value, args: &[String]) -> String {
     std::iter::once(check["command"].as_str().unwrap_or_default())
-        .chain(
-            check["args"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_str),
-        )
+        .chain(args.iter().map(String::as_str))
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -214,9 +202,35 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     let mut results = Vec::new();
     let mut record_errors = Vec::new();
     for check in planned {
-        let outcome = execute(root, check);
-        let verdict = checks::verdict(check, &outcome);
-        let line = command_line(check);
+        let files = if checks::takes_files(check) {
+            // A deleted file selects its module's checks but is no file to hand a tool.
+            let dir = root.join(check["cwd"].as_str().unwrap_or("."));
+            let mut files = checks::files_for(settings, check, &changed)?;
+            files.retain(|file| std::fs::symlink_metadata(dir.join(file)).is_ok());
+            if files.is_empty() {
+                results.push(checks::skipped(check));
+                continue;
+            }
+            Some(files)
+        } else {
+            None
+        };
+        let expanded = checks::arguments(check, files.as_deref().unwrap_or(&[]));
+        let (outcome, args) = match &expanded {
+            Ok(args) => (execute(root, check, args), args.clone()),
+            Err(error) => (
+                json!({"started": false, "durationMs": 0, "error": error}),
+                Vec::new(),
+            ),
+        };
+        let mut verdict = checks::verdict(check, &outcome);
+        if expanded.is_err() {
+            verdict["reason"] = json!("argument-bound");
+        }
+        if let Some(files) = &files {
+            verdict["files"] = json!(files.len());
+        }
+        let line = command_line(check, &args);
         // A test command Craft ran itself is an observed run, as one the host's shell ran.
         if let Some(session) = request.session
             && outcome["started"] == true

@@ -257,6 +257,15 @@ own folder when its root lies below the top of the repository, and from each mem
 repository at a workspace root, named from the project root either way. A module check runs
 in the module's path, a standard's command in its `cwd`.
 
+An argument that is exactly `{changedFiles}` becomes the changed files the check covers,
+named from its directory: the module's files for a module check, the files in the standard's
+scope (and below its `cwd`) for a standard's command. A deleted file selects the checks
+but is not passed. A formatter or linter then reads only
+what changed: `{ "command": "npx", "args": ["eslint", "{changedFiles}"] }`. A check with no
+such file is `skipped` and runs nothing, so a run of only skipped checks is `nothing-run`. A
+list longer than 64 KiB is not passed: the check is `not-started` (`argument-bound`) and
+`--file` narrows it.
+
 Each command may name a `stage`: `step`, `commit` (the default), `pr` or `ci`. A run at
 `--stage commit` executes the `step` and `commit` checks and lists the others as
 `left-to-pr` or `left-to-ci`. A check left to a later stage, one that could not start
