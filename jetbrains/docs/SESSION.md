@@ -329,6 +329,28 @@ Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a tu
 the line is in `craft session` only. Codex shows it in its interactive interface; `codex exec`
 prints no hook message, so a non-interactive run reads the line from `craft session` too. `routing.sessionSummary: false` shows none.
 
+The same message names one next step when Craft holds a fact that calls for it, and only then:
+
+```text
+Craft next: craft check --stage commit (1 declared check covers files changed since it last ran)
+Craft next: context 81 %: compact or start a new session; the session's checkpoint is on this commit
+```
+
+A declared check of the commit stage (or the step stage) that covers a file the turn changed
+comes first, until a `craft check` run of the session at that stage or later follows the
+change. Then the task bound to the session (`task-start`): while it is open, the first required
+acceptance criterion that no evidence record names (`acceptance "value" of task fix has no
+evidence yet`; whether recorded evidence is current is for `craft session` to say); once a task
+of a Craft work plan is completed, the plan's next ready task with the command that starts it
+(`plan task second (Document the API) is ready: craft task-start --plan api --ready`). Nothing
+is claimed or started for you. Otherwise, a context observation of the session at or past
+`efficiency.context.compactAt` names compaction when a saved continuation is on the commit the
+project is on, and asks for a checkpoint first when there is none or it is on another commit.
+Occupancy is never estimated: without a fresh observation, from the Claude Code status line or
+Codex, nothing is said about context. A next step is said once while it applies, after the
+summary when both are new. `efficiency.advice.nextStep: false` or `efficiency.advice.enabled:
+false` turns it off; `routing.projectChecks: false` leaves checks out of it.
+
 | Count | Counted when |
 |---|---|
 | Standards findings raised | A check of a written file, a commit message or the stop review reports a finding the session was not yet told for that file |
