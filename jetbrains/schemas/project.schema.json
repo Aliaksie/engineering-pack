@@ -1180,6 +1180,11 @@
           "type": "boolean",
           "default": true,
           "description": "Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run."
+        },
+        "commitGate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through."
         }
       },
       "additionalProperties": false

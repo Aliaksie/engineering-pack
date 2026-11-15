@@ -49,7 +49,8 @@ checks `craft check` runs when it is called. A tool that only comes with the too
 repository you do not trust runs that repository's scripts and build wrappers, as running its
 build would. `craft standards --propose` lists them first, `craft check` names each command
 it starts, and `routing.conventionProposals: false` in the user or organization file turns
-detection off everywhere.
+detection off everywhere. The commit gate's refusal asks the agent to run `craft check` before
+it commits, detected checks included; `routing.commitGate: false` stops that.
 
 ## Safety policy
 

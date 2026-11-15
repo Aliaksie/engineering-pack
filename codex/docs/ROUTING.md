@@ -293,6 +293,16 @@ test command among the checks counts as an observed test run. Commands start wit
 exactly as declared, and only from this command: no hook runs them.
 `routing.projectChecks: false` makes `craft check` run nothing and say so.
 
+A `git commit` the agent runs waits for these checks. While a declared check of the `commit`
+stage (or the `step` stage) covers a changed file, the host's before-tool hook refuses the
+commit until a `craft check --session <id>` run at the commit stage or later passed every such
+check on the current files; the refusal names the command, and the failed checks once a run
+on these files failed. A file changed after the passing run holds the next commit again. The
+hook only reads the changed files, the session's check runs and the tree digest; it starts no
+command. It needs a session id and a host whose hook can refuse a command (Claude Code, Codex,
+Cursor, Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
+`routing.commitGate: false` lets every commit through.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:
