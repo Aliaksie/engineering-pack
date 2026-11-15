@@ -526,7 +526,9 @@ fn without_layer_files_a_project_is_configured_alone() {
 fn a_committed_copy_of_the_organization_file_reaches_a_machine_without_one() {
     let machine = Machine::new("pin", ORGANIZATION, None);
     let repo = Repo::new("layers-pin", &[("src/a.txt", "a\n")]);
-    let pin = Path::new(repo.path()).join(".craft/organization.json");
+    let pin = Path::new(repo.path())
+        .join(".craft")
+        .join("organization.json");
 
     let preview = machine.json(&repo, &["config", "--sync"]);
     assert_eq!(preview["sync"]["state"], "absent");
