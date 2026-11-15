@@ -303,6 +303,23 @@ command. It needs a session id and a host whose hook can refuse a command (Claud
 Cursor, Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
 `routing.commitGate: false` lets every commit through.
 
+The same declaration gates commits made outside the agent and pull requests:
+
+- `craft check --install-hook` previews a Git pre-commit hook that runs
+  `craft check --stage commit` (with `--root` for a project below the top of its repository);
+  `--apply` writes it to the repository's hooks directory. A check that does not pass stops
+  the commit; `git commit --no-verify` skips it. Craft writes its own hook only: where husky,
+  lefthook or the pre-commit framework manages the hooks, `core.hooksPath` is set or another
+  pre-commit hook is in place, it prints the line or entry to add there and writes nothing.
+  The hook runs the installed Craft by its path; after Craft moves or updates, it lets the
+  commit through, says the checks did not run, and `--install-hook --apply` points it at the
+  current install. A workspace root is refused: install it from each member repository.
+- `craft check --ci-snippet github` or `--ci-snippet gitlab` prints a CI job for pull or
+  merge requests. It downloads this Craft release's Linux runtime, verifies it against the
+  release checksums (and its attestation on GitHub), and runs
+  `craft check --stage ci --base origin/<target branch>`. The job needs the tools the declared
+  checks run; the snippet says where to add them. Nothing is written.
+
 ## Project anchors
 
 `anchors` in `.craft/project.json` adds the project's own anchors, or changes Craft's:

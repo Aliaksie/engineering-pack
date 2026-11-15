@@ -132,7 +132,13 @@ const COMMANDS: &[Command] = &[
     Command::run("standards", standards),
     Command::run("anchors", anchors),
     Command::run("check", check)
-        .receipt(|_, value| craft_engine::checks::text(value))
+        .receipt(|_, value| {
+            if value.get("hook").is_some() || value.get("ciSnippet").is_some() {
+                craft_engine::checks::gates::text(value)
+            } else {
+                craft_engine::checks::text(value)
+            }
+        })
         .fails_when(|value| value["result"] == "failed"),
     Command::run("doctor", |options, _, _| crate::doctor::run(&root(options)))
         .receipt(|_, value| crate::doctor::text(value))
@@ -446,7 +452,35 @@ fn count_activity(
 
 /// The project's declared checks for the changed files, run at `--stage` (default `commit`).
 /// A check that does not pass fails the command.
+/// `--install-hook` and `--ci-snippet` set up the same checks at Git's and CI's gates.
 fn check(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
+    let gate = options.values.contains_key("install-hook") || options.get("ci-snippet").is_some();
+    if gate {
+        if let Some(name) = ["stage", "base", "file", "all", "session"]
+            .iter()
+            .find(|name| options.values.contains_key(**name))
+        {
+            return Err(format!("--install-hook and --ci-snippet take no --{name}").into());
+        }
+        // Read for its validation: a configuration Craft cannot use stops the setup too.
+        loaded(options, recorder, parent)?;
+        return match options.get("ci-snippet") {
+            Some(_) if options.values.contains_key("install-hook") => {
+                Err("--install-hook takes no --ci-snippet".into())
+            }
+            Some(_) if options.values.contains_key("apply") => {
+                Err("--ci-snippet prints the job; it takes no --apply".into())
+            }
+            Some(provider) => crate::checks::gates::ci_snippet(&root(options), provider),
+            None => crate::checks::gates::install_hook(
+                &root(options),
+                options.values.contains_key("apply"),
+            ),
+        };
+    }
+    if options.values.contains_key("apply") {
+        return Err("check takes --apply only with --install-hook".into());
+    }
     let settings = loaded(options, recorder, parent)?;
     crate::checks::run(
         &root(options),
@@ -1591,8 +1625,8 @@ fn help(action: &str) -> Value {
             "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
         }),
         "check" => json!({
-            "usage": "check [--root project] [--stage step|commit|pr|ci] [--base ref | --file path ... | --all] [--session id]",
-            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes (with --base, also the files committed since the ref's merge base with HEAD), the named files or, with --all, every declaration. A project below the top of its checkout reads its own folder; a workspace root reads each member repository. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass."
+            "usage": "check [--root project] [--stage step|commit|pr|ci] [--base ref | --file path ... | --all] [--session id] | check [--root project] --install-hook [--apply] | check [--root project] --ci-snippet github|gitlab",
+            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes (with --base, also the files committed since the ref's merge base with HEAD), the named files or, with --all, every declaration. A project below the top of its checkout reads its own folder; a workspace root reads each member repository. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass. --install-hook previews a Git pre-commit hook running the commit stage and writes it with --apply; where a hook manager (husky, lefthook, pre-commit), core.hooksPath or another hook owns pre-commit it prints the line to add and writes nothing. --ci-snippet prints a GitHub Actions or GitLab CI job that installs this Craft release and runs the ci stage since the target branch."
         }),
         "anchors" => json!({
             "usage": "anchors [--root project] [--search text]",

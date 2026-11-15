@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `craft check --install-hook` previews a Git pre-commit hook that runs the project's declared
+  commit-stage checks, and writes it with `--apply`. Where husky, lefthook, the pre-commit
+  framework, `core.hooksPath` or another hook owns pre-commit, it prints the line to add there
+  and writes nothing.
+- `craft check --ci-snippet github` or `gitlab` prints a CI job that installs this Craft
+  release, verifies it and runs the declared checks of the `ci` stage for the pull or merge
+  request's changes.
 - An agent's `git commit` now waits for the project's declared commit-stage checks: while one
   covers a changed file and has not passed on the current files in a `craft check --session`
   run, the hook refuses the commit and names the command to run. The hook runs no check

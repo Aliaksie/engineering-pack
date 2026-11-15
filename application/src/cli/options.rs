@@ -100,6 +100,8 @@ const OPTIONS: &[&str] = &[
     "organization",
     "explain",
     "field",
+    "install-hook",
+    "ci-snippet",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -117,6 +119,7 @@ const FLAGS: &[&str] = &[
     "propose",
     "all",
     "explain",
+    "install-hook",
 ];
 const REPEATED: &[&str] = &[
     "repository",
@@ -199,7 +202,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     if present("propose") && action != "standards" {
         return Err("--propose is supported by standards".into());
     }
-    if let Some(name) = ["all", "base"].iter().find(|name| present(name))
+    if let Some(name) = ["all", "base", "install-hook", "ci-snippet"]
+        .iter()
+        .find(|name| present(name))
         && action != "check"
     {
         return Err(format!("--{name} is supported by check").into());

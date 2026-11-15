@@ -14,9 +14,12 @@ publication, and must not contain credentials, private endpoints or production t
   Read/write policy, tool availability, credentials and user or job authorization are separate
   checks. Publication requires matching base/head revisions and explicit authorization.
 - `craft check` starts the commands the project configuration declares, without a shell and
-  with the caller's permissions. It runs only when called, never from a hook, and nothing it
-  reports authorizes a commit, push or publication. Run it on untrusted configuration only
-  where running that project's own build would be acceptable.
+  with the caller's permissions. It runs only when called, never from an agent host's hook,
+  and nothing it reports authorizes a commit, push or publication. Run it on untrusted
+  configuration only where running that project's own build would be acceptable. A Git
+  pre-commit hook runs it only after the user wrote one with `craft check --install-hook
+  --apply`. The CI job `--ci-snippet` prints runs the pull request's own declared checks with
+  a read-only token and no persisted credentials, as building that pull request would.
 - The organization and user configuration layers are files outside the repository. On POSIX
   they are read only when no other account can write them; Windows has no default
   organization file and checks no ownership, so the file named there must be writable by

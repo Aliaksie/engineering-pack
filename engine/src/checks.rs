@@ -7,6 +7,8 @@ use crate::session::test_runs;
 use crate::standards;
 use serde_json::{Value, json};
 
+pub mod gates;
+
 type Result<T = ()> = std::result::Result<T, String>;
 
 /// When a check runs, earliest first. A run at one stage includes the earlier ones.
