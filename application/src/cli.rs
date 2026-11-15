@@ -457,6 +457,7 @@ fn check(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Resu
                 .unwrap_or(craft_engine::checks::DEFAULT_STAGE),
             files: files(options),
             all: options.values.contains_key("all"),
+            base: options.get("base").filter(|b| !b.is_empty()),
             session: options.get("session").filter(|s| !s.is_empty()),
         },
     )
@@ -1590,8 +1591,8 @@ fn help(action: &str) -> Value {
             "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
         }),
         "check" => json!({
-            "usage": "check [--root project] [--stage step|commit|pr|ci] [--file path ... | --all] [--session id]",
-            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes, the named files or, with --all, every declaration. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass."
+            "usage": "check [--root project] [--stage step|commit|pr|ci] [--base ref | --file path ... | --all] [--session id]",
+            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes (with --base, also the files committed since the ref's merge base with HEAD), the named files or, with --all, every declaration. A project below the top of its checkout reads its own folder; a workspace root reads each member repository. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass."
         }),
         "anchors" => json!({
             "usage": "anchors [--root project] [--search text]",

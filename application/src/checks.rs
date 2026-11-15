@@ -1,17 +1,23 @@
 //! `craft check`: the project's declared checks for the changed files, run by Craft at the
-//! stage asked for. Commands start without a shell, each within its time bound, only from
+//! stage asked for. The changed files are read from each checkout the project lies in, named
+//! from the project root: its own folder below the top of a repository, or each member
+//! repository of a workspace root. Commands start without a shell, each within its time bound, only from
 //! this explicit command and never from a hook. The result binds to the source digest of the
 //! tree the commands ran on.
 use crate::failure::Failure;
 use crate::session::read_record;
 use craft_engine::{checks, routing, session::test_runs};
-use craft_platform::{process, repository::snapshot, state};
+use craft_platform::{process, state};
 use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
 const HISTORY_BYTES: usize = 262_144;
 const OFF: &str = "routing.projectChecks is false: Craft runs no declared check here";
 const NO_CHANGES: &str = "no changed file: nothing is in scope; name files with --file or run every declared check with --all";
+const NO_CHECKOUT: &str =
+    "no Git checkout here: name files with --file or run every declared check with --all";
+/// How much one Git listing of changed files may print.
+const LISTING_BYTES: usize = 1_048_576;
 const NOTHING: &str = "no check is declared for the changed files";
 
 pub struct Request<'a> {
@@ -19,6 +25,8 @@ pub struct Request<'a> {
     /// Project-relative files that select the checks; empty means the uncommitted changes.
     pub files: &'a [Value],
     pub all: bool,
+    /// A revision whose merge base with `HEAD` adds the files committed since then.
+    pub base: Option<&'a str>,
     pub session: Option<&'a str>,
 }
 
@@ -62,6 +70,76 @@ fn execute(root: &Path, check: &Value) -> Value {
     })
 }
 
+/// NUL-separated Git output of `args` run in `directory`, refused when Git fails.
+fn listing(directory: &Path, args: &[&str], what: &str) -> Result<Vec<String>, Failure> {
+    let output = process::git(directory, args, LISTING_BYTES)?
+        .ok_or_else(|| format!("Git could not list {what} in {}", directory.display()))?;
+    Ok(String::from_utf8_lossy(&output)
+        .split('\0')
+        .filter(|entry| !entry.is_empty())
+        .map(str::to_owned)
+        .collect())
+}
+
+/// One checkout's changed files named from the project root: uncommitted ones (deleted too,
+/// a removal can break a build) and, with `base`, those committed since its merge base with
+/// `HEAD`. Private state is never a change.
+fn changed_files(
+    checkout: &crate::stop_review::Checkout,
+    base: Option<&str>,
+) -> Result<Vec<String>, Failure> {
+    let directory = &checkout.directory;
+    let status = [
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--no-renames",
+        "--",
+        ".",
+    ];
+    let mut paths: Vec<String> = listing(directory, &status, "the changed files")?
+        .iter()
+        .filter_map(|entry| entry.get(3..).map(str::to_owned))
+        .collect();
+    if let Some(base) = base {
+        // A ref is resolved by Git itself; `--end-of-options` keeps it from reading as one.
+        let merge = process::git(
+            directory,
+            &["merge-base", "--end-of-options", base, "HEAD"],
+            256,
+        )?
+        .map(|output| String::from_utf8_lossy(&output).trim().to_owned())
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| {
+            format!(
+                "--base {base} names no commit sharing history with HEAD in {}",
+                directory.display()
+            )
+        })?;
+        let range = format!("{merge}..HEAD");
+        paths.extend(listing(
+            directory,
+            &[
+                "diff",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                &range,
+                "--",
+                ".",
+            ],
+            "the committed files",
+        )?);
+    }
+    Ok(paths
+        .into_iter()
+        .filter_map(|path| path.strip_prefix(&*checkout.prefix).map(str::to_owned))
+        .filter(|path| !path.is_empty() && !routing::private_path(path))
+        .map(|path| format!("{}{path}", checkout.folder))
+        .collect())
+}
+
 /// The command line of a check as one text, for the observed test runs.
 fn command_line(check: &Value) -> String {
     std::iter::once(check["command"].as_str().unwrap_or_default())
@@ -87,6 +165,9 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     if request.all && !request.files.is_empty() {
         return Err("--all takes no --file".into());
     }
+    if request.base.is_some() && (request.all || !request.files.is_empty()) {
+        return Err("--base takes no --file or --all".into());
+    }
     // An unknown stage is refused before anything else is said.
     checks::plan(
         settings,
@@ -100,11 +181,17 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     let changed: Vec<Value> = if request.all || !request.files.is_empty() {
         request.files.to_vec()
     } else {
-        snapshot::changes(root, None)
-            .uncommitted
-            .into_iter()
-            .map(|(path, _)| json!(path))
-            .collect()
+        let checkouts = crate::stop_review::checkouts(root);
+        if checkouts.is_empty() {
+            return empty(NO_CHECKOUT);
+        }
+        let mut changed = Vec::new();
+        for checkout in &checkouts {
+            changed.extend(changed_files(checkout, request.base)?);
+        }
+        changed.sort();
+        changed.dedup();
+        changed.into_iter().map(Value::from).collect()
     };
     if changed.is_empty() && !request.all {
         return empty(NO_CHANGES);
