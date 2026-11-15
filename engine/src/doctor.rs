@@ -720,7 +720,44 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
         );
         return checks;
     }
+    let read: Vec<String> = found["layers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|layer| matches!(layer["state"].as_str(), Some("loaded" | "pinned")))
+        .filter_map(|layer| {
+            let name = layer["name"].as_str()?;
+            Some(match layer["state"].as_str() {
+                Some("pinned") => format!("{name} (the project's pinned copy)"),
+                _ => name.to_string(),
+            })
+        })
+        .collect();
+    if !read.is_empty() {
+        checks.push(check(
+            "layers",
+            "ok",
+            format!(
+                "settings read from: {} (`craft config` explains each value)",
+                read.join(", ")
+            ),
+        ));
+    }
     for layer in found["layers"].as_array().into_iter().flatten() {
+        if layer["pin"]["state"] == "differs" {
+            checks.push(check(
+                "layers",
+                "problem",
+                format!(
+                    "{} differs from {}: CI and teammates without that file get the older organization layer",
+                    layer["pin"]["file"].as_str().unwrap_or("?"),
+                    layer["file"].as_str().unwrap_or("?"),
+                ),
+            ));
+            report.next.push(
+                "Run `craft config --sync --apply` and commit .craft/organization.json".into(),
+            );
+        }
         let ignored: Vec<&str> = layer["ignored"]
             .as_array()
             .into_iter()

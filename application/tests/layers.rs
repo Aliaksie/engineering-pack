@@ -223,6 +223,8 @@ fn shared_baseline(host: &str) {
     );
     assert_eq!(settings["origins"]["efficiency.review.mode"], "user");
     assert_eq!(settings["safety"]["origin"], "organization");
+    assert_eq!(layer(&settings, "organization")["state"], "loaded");
+    assert_eq!(layer(&settings, "user")["state"], "loaded");
 
     // The other repository overrides only what differs; each override names the layer it hid,
     // and the one that changes nothing is said.
@@ -259,6 +261,22 @@ fn shared_baseline(host: &str) {
         settings["entries"]["standards"],
         json!({"commits": "organization", "review": "project", "audit": "organization"})
     );
+    // A route names the layer of each standard the project does not declare itself.
+    let route = machine.json(
+        &differs,
+        &["route", "--intent", "implement", "--file", "src/a.txt"],
+    );
+    let layers: Vec<(&str, Option<&str>)> = route["standards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| (s["id"].as_str().unwrap(), s["layer"].as_str()))
+        .collect();
+    assert!(
+        layers.contains(&("commits", Some("organization"))),
+        "{layers:?}"
+    );
+    assert!(layers.contains(&("review", None)), "{layers:?}");
     let only = machine.json(&differs, &["config", "--explain", "--field", "safety"]);
     assert!(
         only["values"]
@@ -531,6 +549,8 @@ fn a_committed_copy_of_the_organization_file_reaches_a_machine_without_one() {
     let config = machine.json(&repo, &["config", "--explain"]);
     let organization = layer(&config, "organization");
     assert_eq!(organization["state"], "pinned");
+    let settings = machine.json(&repo, &["settings"]);
+    assert_eq!(layer(&settings, "organization")["state"], "pinned");
     assert_eq!(organization["file"], pin.to_string_lossy().as_ref());
     assert_eq!(
         row(&config, "values", "standards[commits]")["origin"],

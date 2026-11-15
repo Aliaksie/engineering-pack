@@ -606,13 +606,26 @@ fn anchors(
 
 fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {
     let task = advisory_task(options, recorder, parent);
-    let settings = loaded(options, recorder, parent)?;
+    let preferences = options.get("preferences").map(Path::new);
+    let (settings, entries) =
+        project::loaded_with_entries(recorder, parent, &root(options), preferences)?;
     let risks = strings(options, "risk");
     let request = routing::Request {
         task: task.as_deref(),
         ..route_request(options, files(options), &risks)
     };
     let mut plan = crate::guidance::route(&settings, &request, recorder, parent)?;
+    // A standard a project does not declare itself names the layer it came from.
+    let standards = plan.get_mut("standards").and_then(Value::as_array_mut);
+    for standard in standards.into_iter().flatten() {
+        let layer = standard["id"]
+            .as_str()
+            .and_then(|id| entries["standards"][id].as_str())
+            .filter(|layer| *layer != "project");
+        if let Some(layer) = layer {
+            standard["layer"] = json!(layer);
+        }
+    }
     let values = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
     count_activity(
         options,

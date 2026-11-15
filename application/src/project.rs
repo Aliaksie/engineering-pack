@@ -376,6 +376,31 @@ pub(crate) fn loaded(
     )
 }
 
+/// `loaded` with the layer of every id-merged entry an organization or user layer set
+/// (`entries`, empty when the project alone declares them), for a person reading a route.
+pub(crate) fn loaded_with_entries(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    root: &Path,
+    preferences: Option<&Path>,
+) -> Result<(Value, Value), Failure> {
+    let sources = Sources {
+        preferences,
+        ..Sources::default()
+    };
+    observe(
+        recorder,
+        "project.loaded",
+        parent,
+        "CONFIG_INVALID",
+        Map::new(),
+        |_, _| {
+            let (mut resolved, _) = resolve(root, sources, &json!({}), false, Detect::Conventions)?;
+            Ok((resolved["settings"].take(), resolved["entries"].take()))
+        },
+    )
+}
+
 /// `settings` for a host hook. Hooks load them on every event, so a success is recorded as
 /// `project.loaded` only when the session has not yet recorded these effective settings;
 /// a failure is always recorded and makes the next success record again.
@@ -407,13 +432,22 @@ pub fn effective_settings(root: &Path, request: Settings) -> Result<Value, Failu
         organization: request.organization,
         preferences: request.preferences,
     };
-    let (mut result, _) = resolve(
+    let (mut result, baseline) = resolve(
         root,
         sources,
         &request.overrides,
         false,
         Detect::Conventions,
     )?;
+    // Where the organization and user layers were read from; `craft config` counts values.
+    result["layers"] = baseline
+        .iter()
+        .map(|layer| {
+            let mut summary = layer.summary(&Map::new());
+            summary.as_object_mut().map(|row| row.remove("values"));
+            summary
+        })
+        .collect();
     let (facts, session) = request.workers.unwrap_or((json!({}), None));
     let budget = workers::budget(&result["settings"], &facts, session, now_ms())?;
     result["state"] = state_location(root);
