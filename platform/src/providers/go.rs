@@ -1,6 +1,6 @@
 //! Go syntax relationships only. A call names a function or selector field, not a resolved
 //! callee; an import names a package path as written.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 
 pub const PROVIDER: &str = "go-tree-sitter-0.25.0/v1";
 
@@ -9,7 +9,7 @@ pub const LANGUAGE: Language = Language {
     provider: PROVIDER,
     extensions: &["go"],
     grammar: || tree_sitter_go::LANGUAGE.into(),
-    query: || include_str!("../queries/go.scm").into(),
+    query: || include_str!("../../queries/go.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "go:declares-const",
@@ -26,7 +26,7 @@ pub const LANGUAGE: Language = Language {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::tests::rows;
+    use crate::providers::syntax::tests::rows;
 
     #[test]
     fn functions_methods_types_calls_and_imports() {

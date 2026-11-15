@@ -1,7 +1,7 @@
 //! A structural lookup: refresh Project Intelligence within a short budget, answer from verified
 //! evidence for the sources it covers and search the remaining in-scope sources literally, or
 //! the whole scope when the index cannot answer.
-use crate::{budget::Budget, failure::Failure, project};
+use crate::{evidence::budget::Budget, failure::Failure, project};
 use craft_engine::{
     contracts,
     discovery::question::{self, Coverage, Question},

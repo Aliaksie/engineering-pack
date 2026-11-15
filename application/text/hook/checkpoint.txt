@@ -1,0 +1,1 @@
+Checkpoint data; verify against the current tree before continuing{in-force}: {checkpoint}

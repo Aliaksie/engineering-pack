@@ -1,0 +1,1 @@
+; `standards` are the project standards of this scope, still in force

@@ -1,5 +1,5 @@
 //! Java syntax relationships only. Method names are not resolved call targets.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 use craft_engine::Extraction;
 use tree_sitter::Node;
 
@@ -10,7 +10,7 @@ pub const LANGUAGE: Language = Language {
     provider: PROVIDER,
     extensions: &["java"],
     grammar: || tree_sitter_java::LANGUAGE.into(),
-    query: || include_str!("../queries/java.scm").into(),
+    query: || include_str!("../../queries/java.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "java:declares-constructor",

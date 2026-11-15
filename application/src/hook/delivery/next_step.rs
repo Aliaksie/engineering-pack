@@ -110,7 +110,7 @@ fn context(
     // Hooks keep an automatic snapshot too; only a saved continuation says where to resume.
     let checkpoint = match crate::checkpoint::read(root, session, recorder, hook) {
         Ok(saved) if saved["continuationSource"].is_object() => {
-            let head = crate::stop_review::head(root);
+            let head = crate::hook::stop_review::head(root);
             let saved = saved["continuationSource"]["head"].as_str();
             if head.is_some() && saved == head.as_deref() {
                 Checkpoint::Current

@@ -210,6 +210,15 @@ test('eval summaries require complete evidence and never turn a recorded failure
   ]) assert.throws(() => evaluateReport(packages, invalid));
 });
 
+test('eval reports carry the template identities a run was given, and older reports stay valid', () => {
+  const templates = { 'hook.routing': 'a'.repeat(64) };
+  assert.deepEqual(evaluateReport(packages, { ...resultFixture(), templates }).templates, templates);
+  assert.equal(evaluateReport(packages, resultFixture()).templates, undefined);
+  for (const invalid of [{}, [], 'hook.routing', { 'hook.routing': 'A'.repeat(64) }, { 'hook.routing': 'a'.repeat(63) }, { ' ': 'a'.repeat(64) }]) {
+    assert.throws(() => evaluateReport(packages, { ...resultFixture(), templates: invalid }), /templates maps/);
+  }
+});
+
 test('eval reports accept every exported host and reject unknown adapters', () => {
   for (const adapter of Object.keys(ADAPTERS)) {
     const report = { ...resultFixture(), adapter };

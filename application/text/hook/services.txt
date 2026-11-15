@@ -1,0 +1,1 @@
+Configured service map (not live verification; reuse within this session, refresh on binding/tool/account changes or access failures): {services}

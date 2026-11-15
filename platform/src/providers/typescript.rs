@@ -1,6 +1,6 @@
 //! TypeScript and TSX syntax relationships, read with the JavaScript patterns plus TypeScript
 //! declarations. No type checking: a call names a token, not a resolved callee.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 
 pub const PROVIDER: &str = "typescript-tree-sitter-0.23.2/v1";
 pub const TSX_PROVIDER: &str = "tsx-tree-sitter-0.23.2/v1";
@@ -22,8 +22,8 @@ const KINDS: &[&str] = &[
 
 fn query() -> String {
     [
-        include_str!("../queries/ecmascript.scm"),
-        include_str!("../queries/typescript.scm"),
+        include_str!("../../queries/ecmascript.scm"),
+        include_str!("../../queries/typescript.scm"),
     ]
     .join("\n")
 }
@@ -53,7 +53,7 @@ pub const TSX: Language = Language {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::tests::rows;
+    use crate::providers::syntax::tests::rows;
 
     #[test]
     fn declarations_calls_and_imports() {

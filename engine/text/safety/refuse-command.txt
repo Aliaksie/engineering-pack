@@ -1,0 +1,1 @@
+This project's safety policy refuses this command (rule `{rule}`: {refuses}). Do not reword it to get past the rule; tell the user what you wanted to run and why, so they can run it themselves or change the request.

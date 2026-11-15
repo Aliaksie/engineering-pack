@@ -531,8 +531,8 @@ impl Recorder {
         }
         recorder.remote = None;
         let started = now_ms();
-        let result = match craft_engine::otlp::traces(events) {
-            Ok(body) => craft_engine::otlp::outcome(&craft_platform::http::post(
+        let result = match craft_engine::telemetry::otlp::traces(events) {
+            Ok(body) => craft_engine::telemetry::otlp::outcome(&craft_platform::http::post(
                 endpoint,
                 body.to_string().as_bytes(),
                 std::time::Duration::from_millis(300),

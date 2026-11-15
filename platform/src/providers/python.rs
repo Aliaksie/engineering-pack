@@ -1,6 +1,6 @@
 //! Python syntax relationships only. A call names an attribute or identifier, not a resolved
 //! callee, and an import names a module as written.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 
 pub const PROVIDER: &str = "python-tree-sitter-0.25.0/v1";
 
@@ -9,7 +9,7 @@ pub const LANGUAGE: Language = Language {
     provider: PROVIDER,
     extensions: &["py", "pyi"],
     grammar: || tree_sitter_python::LANGUAGE.into(),
-    query: || include_str!("../queries/python.scm").into(),
+    query: || include_str!("../../queries/python.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "python:declares-class",
@@ -26,7 +26,7 @@ pub const LANGUAGE: Language = Language {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::tests::rows;
+    use crate::providers::syntax::tests::rows;
 
     #[test]
     fn methods_functions_calls_and_imports() {

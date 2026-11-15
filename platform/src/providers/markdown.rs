@@ -11,7 +11,7 @@
 //! A document under an ADR directory (or named `adr-*`) is also a decision record: its first
 //! heading is the title and its `Status:` line, front matter `status` or `## Status`
 //! section the status, with links in it resolved like any other.
-use crate::syntax::MAX_SOURCE_BYTES;
+use crate::providers::syntax::MAX_SOURCE_BYTES;
 use craft_engine::{Evidence, Extraction, hash, identity, valid_path};
 
 pub const PROVIDER: &str = "markdown-sections/v1";

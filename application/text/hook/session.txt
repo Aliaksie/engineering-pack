@@ -1,0 +1,1 @@
+Craft session (pass as --session; no authorization implied): {identity}

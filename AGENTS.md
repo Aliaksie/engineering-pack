@@ -74,6 +74,11 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
   [ADR 0002](docs/adr/0002-module-map-and-boundaries.md). Change both together; never add a
   top-level folder, cross-module import or JavaScript in a shipped module without them.
 
+- Rust modules with children are `name.rs` + `name/`, never `mod.rs`; long unit tests sit in
+  `tests.rs` beside their module. Group siblings under a domain-named parent only when they are
+  one kind or one concept, never by technical layer. A new crate needs a concrete reason and
+  goes through `architecture.json` and ADR 0002.
+
 - Investigate suspicious behavior rather than preserving it. Fix confirmed defects with
   regression coverage. State formats, digest identities and error codes are compatibility
   contracts: document intentional corrections and update the affected fixtures explicitly.

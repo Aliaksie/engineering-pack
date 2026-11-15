@@ -1,4 +1,4 @@
-use crate::{Error, syntax::MAX_SOURCE_BYTES};
+use crate::{Error, providers::syntax::MAX_SOURCE_BYTES};
 
 pub mod comparison;
 pub mod snapshot;

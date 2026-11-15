@@ -7,7 +7,7 @@
       "kind": "rust-crate",
       "crate": "craft-engine",
       "responsibility": "Pure decisions, contracts, identities and transitions over explicit observations.",
-      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "routing/catalog.json", "anchors/catalog.json", "anchors/overlay.json", "anchors/LICENSE", "anchors/NOTICE"],
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "routing/catalog.json", "anchors/catalog.json", "anchors/overlay.json", "anchors/LICENSE", "anchors/NOTICE", "text/**/*.txt"],
       "dependsOn": [],
       "externalDependencies": ["serde", "serde_json", "sha2"],
       "shipped": true
@@ -25,7 +25,7 @@
       "kind": "rust-crate",
       "crate": "craft-application",
       "responsibility": "Complete use cases, CLI parsing and rendering, host-neutral lifecycle handling and the craft executable.",
-      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+      "allow": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs", "text/**/*.txt", "text/help.json"],
       "dependsOn": ["engine", "platform"],
       "externalDependencies": ["serde_json"],
       "shipped": true

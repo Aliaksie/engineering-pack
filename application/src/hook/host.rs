@@ -4,7 +4,7 @@
 use crate::failure::Failure;
 use crate::project::absolute;
 use crate::telemetry::Recorder;
-use crate::{delivery, project};
+use crate::{hook::delivery, project};
 use craft_engine::review;
 use craft_platform::state;
 use serde_json::{Map, Value, json};
@@ -254,14 +254,14 @@ pub fn run(input: &Value) -> Result<Value, String> {
             && let Some(command) = facts.command.as_str()
             && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
         {
-            let decision = crate::safety::decision(&settings, &root, &cwd, command);
+            let decision = crate::hook::safety::decision(&settings, &root, &cwd, command);
             refused = (decision["decision"] == "deny").then_some(decision);
         } else if facts.lifecycle == "before-tool"
             && let Some(secret) = facts.secret
             && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
         {
             let decision =
-                crate::safety::read_decision(&settings, &cwd, facts.tool == "edit", secret);
+                crate::hook::safety::read_decision(&settings, &cwd, facts.tool == "edit", secret);
             refused = (decision["decision"] == "deny").then_some(decision);
         }
         if refused.is_none() {
@@ -313,7 +313,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     // A project file that cannot be read is the usual cause: still counted.
                     && project::settings(&root, None)
                         .map_or(true, |settings| craft_engine::delivery::session_records(&settings))
-                    && crate::delivered::update(&root, session, |record| {
+                    && crate::hook::delivered::update(&root, session, |record| {
                         Some(craft_engine::session::delivered::hook_failure(record))
                     })
                     .is_err()

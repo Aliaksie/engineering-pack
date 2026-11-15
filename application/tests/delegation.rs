@@ -10,7 +10,7 @@ const PROJECT: &str = r#"{"formatVersion":1,"standards":[
 ]}"#;
 
 fn agent_start(repo: &Repo, session: &str) -> Value {
-    craft_application::host::run(&json!({
+    craft_application::hook::host::run(&json!({
         "handler": "deliver", "host": "claude", "package": "craft-delivery", "lifecycle": "agent-start",
         "scope": "any", "inputStatus": "complete", "tool": "other", "contextSupported": true,
         "cwd": repo.path(), "session": session, "file": null, "prompt": "", "pattern": null,

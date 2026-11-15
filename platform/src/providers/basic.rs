@@ -2,7 +2,7 @@
 //! read through the grammar's shipped tags query where it serves (C#, PHP, Ruby) and a short
 //! query of our own where it does not (C, C++). No resolution and, beyond C/C++ includes, no
 //! imports.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 
 pub const C: Language = Language {
     name: "c",
@@ -11,7 +11,7 @@ pub const C: Language = Language {
     grammar: || tree_sitter_c::LANGUAGE.into(),
     // The tags query cites a function by its signature, not its body, so calls would have no
     // enclosing function; a short query of our own reads C instead.
-    query: || include_str!("../queries/c.scm").into(),
+    query: || include_str!("../../queries/c.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "c:declares-function",
@@ -28,7 +28,7 @@ pub const CPP: Language = Language {
     provider: "cpp-tree-sitter-0.23.4/v1",
     extensions: &["cc", "cpp", "cxx", "hh", "hpp", "hxx"],
     grammar: || tree_sitter_cpp::LANGUAGE.into(),
-    query: || include_str!("../queries/cpp.scm").into(),
+    query: || include_str!("../../queries/cpp.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "cpp:declares-function",
@@ -123,7 +123,7 @@ pub const RUBY: Language = Language {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::tests::rows;
+    use crate::providers::syntax::tests::rows;
 
     fn owners(
         language: &Language,

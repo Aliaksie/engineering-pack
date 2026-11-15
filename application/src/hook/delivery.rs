@@ -13,6 +13,8 @@ use craft_platform::{state, telemetry::uuid};
 use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
 
+mod next_step;
+
 const HINT_BYTES: usize = 2048;
 const INTENT_BYTES: usize = 16384;
 const RESTORE_BYTES: usize = 256;
@@ -77,10 +79,10 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if event.lifecycle == "before-tool" {
         let refused = match (event.command, event.secret) {
             (Some(command), _) if !command.is_empty() => {
-                crate::safety::decision(&settings, event.root, event.cwd, command)
+                crate::hook::safety::decision(&settings, event.root, event.cwd, command)
             }
             (_, Some(secret)) => {
-                crate::safety::read_decision(&settings, event.cwd, event.edit, secret)
+                crate::hook::safety::read_decision(&settings, event.cwd, event.edit, secret)
             }
             _ => json!({"decision": "allow"}),
         };
@@ -91,7 +93,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             if let Some(session) = event
                 .session
                 .filter(|s| !asked && !s.is_empty() && delivery::session_records(&settings))
-                && crate::delivered::update(event.root, session, |record| {
+                && crate::hook::delivered::update(event.root, session, |record| {
                     Some(delivered::refusal(record))
                 })
                 .is_err()
@@ -121,9 +123,11 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         && standards::commits(command)
     {
         let recorded = match event.lifecycle {
-            "before-tool" => crate::stop_review::commit_started(event.root, session, &settings),
+            "before-tool" => {
+                crate::hook::stop_review::commit_started(event.root, session, &settings)
+            }
             "after-tool" | "after-tool-failure" => {
-                crate::stop_review::commit_made(event.root, session, &settings)
+                crate::hook::stop_review::commit_made(event.root, session, &settings)
             }
             _ => Ok(()),
         };
@@ -153,7 +157,7 @@ impl Answers<'_> {
         let (root, session) = (self.root, self.session);
         self.record.get_or_insert_with(|| {
             session
-                .and_then(|session| crate::delivered::read(root, session).ok())
+                .and_then(|session| crate::hook::delivered::read(root, session).ok())
                 .unwrap_or(Value::Null)
         })
     }
@@ -267,10 +271,10 @@ fn account(
     // A quiet hook touches no record; a compaction only one that holds an answer window.
     let pending = eventful
         || (compacted
-            && crate::delivered::read(root, session)
+            && crate::hook::delivered::read(root, session)
                 .is_ok_and(|record| delivered::new_window(&record).is_some()));
     if pending
-        && crate::delivered::update(root, session, |record| {
+        && crate::hook::delivered::update(root, session, |record| {
             let window = compacted.then(|| delivered::new_window(record)).flatten();
             delivered::recorded(window.as_ref().unwrap_or(record), &delivery).or(window)
         })
@@ -293,12 +297,13 @@ fn account(
         .flatten()
         .filter_map(|file| file.as_str().map(str::to_owned))
         .collect();
-    let next = crate::next_step::line(root, settings, session, &changed, recorder, hook);
-    let due = crate::delivered::read(root, session)
+    let next =
+        crate::hook::delivery::next_step::line(root, settings, session, &changed, recorder, hook);
+    let due = crate::hook::delivered::read(root, session)
         .is_ok_and(|record| delivered::notice_due(&record, summarize, next.as_deref()).is_some());
     if due {
         let mut line = None;
-        let shown = crate::delivered::update(root, session, |record| {
+        let shown = crate::hook::delivered::update(root, session, |record| {
             let (text, updated) = delivered::notice_due(record, summarize, next.as_deref())?;
             line = text;
             Some(updated)
@@ -371,7 +376,7 @@ fn decide(
     if event.lifecycle == "session-start" {
         warm_evidence(root);
         if let Some(session) = session
-            && crate::stop_review::baseline(root, session, settings).is_err()
+            && crate::hook::stop_review::baseline(root, session, settings).is_err()
         {
             recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
         }
@@ -740,7 +745,7 @@ fn decide(
         session,
     ) {
         let intent = record["intent"].as_str();
-        match crate::stop_review::stop(root, session, settings, intent, event.stop_active) {
+        match crate::hook::stop_review::stop(root, session, settings, intent, event.stop_active) {
             Ok(stopped) => {
                 if let Some(summary) = stopped.summary {
                     decision["stop"] = summary;
@@ -935,7 +940,7 @@ fn standard_findings(
         .session
         .filter(|s| !s.is_empty() && !edited.is_empty())
     {
-        Some(session) => crate::delivered::read(root, session).unwrap_or(Value::Null),
+        Some(session) => crate::hook::delivered::read(root, session).unwrap_or(Value::Null),
         None => Value::Null,
     };
     for file in edited {
@@ -955,7 +960,7 @@ fn standard_findings(
     // A failed commit leaves an older HEAD; only a commit made just now is the one written.
     // At a workspace root that is the newest one among its member repositories.
     let now = now_ms() as u64 / 1000;
-    let written = crate::stop_review::checkouts(root)
+    let written = crate::hook::stop_review::checkouts(root)
         .iter()
         .filter_map(|checkout| {
             let output = craft_platform::process::git(

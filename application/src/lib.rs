@@ -2,15 +2,12 @@ use craft_engine::PROTOCOL_VERSION;
 use failure::Failure;
 use serde_json::{Value, json};
 mod actions;
-mod budget;
 mod checkpoint;
 mod checks;
 pub mod cli;
 mod control;
 mod conventions;
 mod delegation;
-mod delivered;
-mod delivery;
 mod dependencies;
 mod discovery;
 mod doctor;
@@ -21,28 +18,23 @@ mod guidance;
 mod handoff;
 pub mod hook;
 mod hook_gap;
-pub mod host;
 mod host_context;
 mod integration;
-mod next_step;
 mod plan;
 mod project;
 mod question;
 mod render;
 mod retention;
 mod review;
-mod safety;
 mod scratch;
 mod session;
 mod setup;
 mod status;
 pub mod statusline;
-mod stop_review;
 mod task;
 mod telemetry;
 mod test_runs;
 mod workers;
-mod workspace;
 
 /// What one `craft` invocation writes and exits with.
 pub struct Outcome {
@@ -66,15 +58,17 @@ pub fn serve(request: Value, write: impl FnOnce(&Value)) {
     telemetry::Recorder::deliver(export);
 }
 
+/// The executable's identity; `templates` names the exact model-facing wording it embeds.
 fn version() -> Value {
-    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE})
+    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::providers::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE,
+        "templates":craft_engine::text::identities(&hook::text::templates())})
 }
 
 /// One Project Intelligence operation over a single repository or explicit members.
 fn project_evidence(operation: &str, input: &Value) -> Result<Value, Failure> {
     match operation {
         "version" => Ok(version()),
-        _ if input.get("members").is_some() => workspace::run(operation, input),
+        _ if input.get("members").is_some() => evidence::workspace::run(operation, input),
         _ => evidence::run(operation, input),
     }
 }
