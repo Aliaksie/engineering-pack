@@ -129,6 +129,16 @@ pub(crate) fn project_root(cwd: &Path) -> PathBuf {
     cwd.to_path_buf()
 }
 
+/// The project a command works on: `--root` as given, which may name a folder inside a
+/// repository on purpose; without it, the project the current directory is in, as a hook
+/// finds it, so a command run from a subfolder never keeps state of its own there.
+pub(crate) fn resolve_root(given: Option<&str>) -> PathBuf {
+    match given {
+        Some(root) => absolute(root),
+        None => project_root(&absolute(".")),
+    }
+}
+
 /// Whether a compaction is kept in the session's host context. Without session records it
 /// only updates a host context an explicit integration (the status line, `host-observe`)
 /// already keeps, so occupancy from before the compaction is not read after it; it creates

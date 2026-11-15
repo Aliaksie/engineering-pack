@@ -52,7 +52,7 @@ fn bytes_and_exact_utf8_bounds() {
     let contracts: Value = serde_json::from_str(CONTRACTS).unwrap();
     for case in contracts["writes"].as_array().unwrap() {
         let fixture = Fixture::new();
-        let record = fixture.record("record.json");
+        let record = fixture.record("intent.json");
         let bytes = case["bytes"].as_u64().unwrap() as usize;
         let pretty = case["pretty"].as_bool().unwrap();
         let expected = case["text"].as_str().unwrap();
@@ -81,21 +81,21 @@ fn bytes_and_exact_utf8_bounds() {
 #[test]
 fn missing_malformed_and_oversized_records_preserve_existing_bytes() {
     let fixture = Fixture::new();
-    let record = fixture.record("record.json");
+    let record = fixture.record("intent.json");
     assert_eq!(read(&record, 64).unwrap(), None);
     for text in ["{broken".to_string(), " ".repeat(65)] {
         fs::write(&record, &text).unwrap();
         assert!(write(&record, &json!({"replacement": true}), 64, false).is_err());
         assert_eq!(fs::read_to_string(&record).unwrap(), text);
-        assert_eq!(listing(record.parent().unwrap()), [MANIFEST, "record.json"]);
+        assert_eq!(listing(record.parent().unwrap()), ["intent.json", MANIFEST]);
     }
 }
 
 #[test]
 fn exclusive_lock_refuses_overlap_and_unresolved_stale_locks() {
     let fixture = Fixture::new();
-    let record = fixture.record("record.json");
-    let lock_file = record.with_file_name("record.json.lock");
+    let record = fixture.record("intent.json");
+    let lock_file = record.with_file_name("intent.json.lock");
     let ticket = lock(&record).unwrap().unwrap();
     assert!(lock(&record).unwrap().is_none());
     drop(ticket);
@@ -108,8 +108,8 @@ fn exclusive_lock_refuses_overlap_and_unresolved_stale_locks() {
 #[test]
 fn windows_denied_locks_are_busy_while_listed_and_retried_once_released() {
     let fixture = Fixture::new();
-    let record = fixture.record("record.json");
-    let lock_file = record.with_file_name("record.json.lock");
+    let record = fixture.record("intent.json");
+    let lock_file = record.with_file_name("intent.json.lock");
     let denied = || std::io::Error::from(ErrorKind::PermissionDenied);
 
     // A persistent denial without a listed lock is a real error, on every attempt.
@@ -155,7 +155,7 @@ fn windows_denied_locks_are_busy_while_listed_and_retried_once_released() {
 #[test]
 fn failed_atomic_publication_preserves_old_bytes_and_removes_temporary_files() {
     let fixture = Fixture::new();
-    let record = fixture.record("record.json");
+    let record = fixture.record("intent.json");
     write(&record, &json!({"old": true}), 64, false).unwrap();
     FAIL_PUBLISH.with(|fail| fail.set(true));
     let failed = write(&record, &json!({"next": true}), 64, false);
@@ -165,7 +165,7 @@ fn failed_atomic_publication_preserves_old_bytes_and_removes_temporary_files() {
         "injected publication failure"
     );
     assert_eq!(fs::read_to_string(&record).unwrap(), "{\"old\":true}\n");
-    assert_eq!(listing(record.parent().unwrap()), [MANIFEST, "record.json"]);
+    assert_eq!(listing(record.parent().unwrap()), ["intent.json", MANIFEST]);
     write(&record, &json!({"next": true}), 64, false).unwrap();
     assert_eq!(read(&record, 64).unwrap(), Some(json!({"next": true})));
 }
@@ -200,7 +200,7 @@ fn placement_hashes_the_physical_root_and_session() {
         "a/b",
         "a\\b",
         "λ.json",
-        "record.json",
+        "intent.json",
         "telemetry/",
         "telemetry/a/b",
         "sessions/x.json",
@@ -282,7 +282,7 @@ fn fresh_writes_never_create_or_change_git_metadata() {
     let git = git_metadata(&fixture.0);
     let before = metadata(&git);
     write(
-        &fixture.record("record.json"),
+        &fixture.record("intent.json"),
         &json!({"value": 1}),
         1024,
         false,
@@ -330,7 +330,7 @@ fn concurrent_writers_serialize_on_one_lock() {
     const ROUNDS: u64 = 40;
     const WRITERS: u64 = 4;
     let fixture = Fixture::new();
-    let record = fixture.record("counter.json");
+    let record = fixture.record("delivered.json");
     write(&record, &json!({"count": 0}), 1024, false).unwrap();
     let writers: Vec<_> = (0..WRITERS)
         .map(|_| {
@@ -360,7 +360,7 @@ fn concurrent_writers_serialize_on_one_lock() {
     );
     assert_eq!(
         listing(record.parent().unwrap()),
-        ["counter.json", MANIFEST],
+        ["delivered.json", MANIFEST],
         "no lock or temporary file remains"
     );
 }
@@ -370,7 +370,7 @@ fn a_new_session_directory_is_described_once_without_raw_identities() {
     let fixture = Fixture::new();
     let described = |session: &str, host: Option<&str>| {
         let _describing = host.map(describing);
-        let record = file(&fixture.0, "record.json", true, Some(session)).unwrap();
+        let record = file(&fixture.0, "intent.json", true, Some(session)).unwrap();
         read(&record.with_file_name(MANIFEST), MANIFEST_BYTES)
             .unwrap()
             .unwrap()

@@ -306,16 +306,26 @@ mod tests {
         let log = state::file(&fixture.0, "telemetry/events.jsonl", true, None).unwrap();
         let lock = PathBuf::from(format!("{}.lock", log.display()));
         fs::write(&lock, "").unwrap();
+        let started = Instant::now();
         let releaser = {
             let lock = lock.clone();
             std::thread::spawn(move || {
                 std::thread::sleep(Duration::from_millis(80));
                 fs::remove_file(lock).unwrap();
+                started.elapsed()
             })
         };
-        assert!(append(&fixture.0, &[json!({ "n": 1 })]));
-        releaser.join().unwrap();
-        assert_eq!(fs::read_to_string(&log).unwrap(), "{\"n\":1}\n");
+        // The production wait, with errors surfaced rather than dropped as by `append`.
+        let written = write_batch(&fixture.0, &[json!({ "n": 1 })], LOCK_WAIT).unwrap();
+        let released = releaser.join().unwrap();
+        // A loaded scheduler may release past the wait; a release inside it must be outwaited.
+        assert!(
+            written || released >= LOCK_WAIT,
+            "released after {released:?}"
+        );
+        if written {
+            assert_eq!(fs::read_to_string(&log).unwrap(), "{\"n\":1}\n");
+        }
     }
 
     #[test]

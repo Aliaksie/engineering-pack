@@ -90,6 +90,11 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
     if request.package.is_empty() {
         return Err(USAGE.into());
     }
+    if !request.root_explicit {
+        request.root = crate::host::resolve_root(None)
+            .to_string_lossy()
+            .into_owned();
+    }
     Ok(request)
 }
 
