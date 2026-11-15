@@ -1276,6 +1276,69 @@ mod tests {
         assert!(one.starts_with("Craft stop review, 1 item "), "{one}");
     }
 
+    /// Every answer shape, at every event a host maps, uses only the output fields that
+    /// host documents for that event: a field it ignores is lost, one it rejects breaks the
+    /// hook (Cursor refuses an answer outside its schema).
+    #[test]
+    fn every_answer_uses_only_fields_its_host_documents() {
+        let documented: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/runtime/host-response-fields.json"
+        ))
+        .unwrap();
+        let hosts: Value = serde_json::from_str(HOSTS).unwrap();
+        let results = [
+            json!({"decision": "allow"}),
+            json!({"decision": "allow", "context": {"kind": "routing", "skills": ["s"]}}),
+            json!({"decision": "deny", "reason": "R", "context": {"kind": "answer"}}),
+            json!({"decision": "allow", "notice": "N", "standards": {"findings": []}}),
+            json!({"decision": "allow", "notice": "N"}),
+            json!({"decision": "allow", "notice": "N", "stop": {"findings": [{"rule": "r"}]}}),
+            json!({"decision": "allow", "delegation": {"intent": "story", "standards": []}}),
+            json!({"decision": "allow", "session": {"id": "s", "task": null}}),
+        ];
+        let mut checked = 0;
+        for (host, table) in hosts.as_object().unwrap() {
+            let Some(events) = table["events"].as_object().filter(|e| !e.is_empty()) else {
+                continue;
+            };
+            for (lifecycle, mapping) in events {
+                let name = mapping["name"].as_str().unwrap();
+                let allowed = &documented["hosts"][host][name];
+                assert!(allowed.is_object(), "{host} {name}: no documented fields");
+                let listed = |field: &str| -> Vec<&str> {
+                    allowed[field]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|f| f.as_str().unwrap())
+                        .collect()
+                };
+                for result in &results {
+                    let wire = serialize(result, host, lifecycle);
+                    if wire.stdout.is_empty() {
+                        continue;
+                    }
+                    let output: Value = serde_json::from_str(&wire.stdout).unwrap();
+                    let label = format!("{host} {lifecycle} {result}: {output}");
+                    for field in output.as_object().unwrap().keys() {
+                        assert!(listed("fields").contains(&field.as_str()), "{label}");
+                    }
+                    if let Some(nested) = output.get("hookSpecificOutput") {
+                        assert_eq!(nested["hookEventName"], name, "{label}");
+                        for field in nested.as_object().unwrap().keys() {
+                            assert!(
+                                listed("hookSpecificOutput").contains(&field.as_str()),
+                                "{label}"
+                            );
+                        }
+                    }
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked > 40, "{checked}");
+    }
+
     #[test]
     fn a_continued_stop_is_marked_active() {
         let active =

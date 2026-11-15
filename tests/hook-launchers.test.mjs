@@ -9,6 +9,7 @@ import { nativeTargets } from '../tooling/native-release.mjs';
 import { hookPackage, runHook } from './hook-command.mjs';
 import { launch } from './craft.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
+import { fallback } from '../tooling/export/launcher.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const windows = process.platform === 'win32';
@@ -112,6 +113,33 @@ test('registered hook commands start the bundled runtime without the launcher', 
       assert.match(reason(result), /Policy could not be evaluated: bundled native runtime unavailable/);
     }
   }
+});
+
+// The fallback is a second writer of host answers: it too uses only the fields each host
+// documents for the event.
+test('without a bundled runtime, every answer uses only fields its host documents', () => {
+  const documented = read(path.join(repo, 'tests/fixtures/runtime/host-response-fields.json')).hosts;
+  const packages = fs.readdirSync(path.join(repo, 'packages')).filter(name => fs.existsSync(path.join(repo, 'packages', name, 'capability.json')));
+  let checked = 0;
+  for (const name of packages) for (const definition of read(path.join(repo, 'packages', name, 'capability.json')).hooks ?? []) {
+    for (const [host, table] of Object.entries(HOSTS)) {
+      const mapping = table.events?.[definition.event];
+      if (!mapping) continue;
+      const allowed = documented[host]?.[mapping.name];
+      assert.ok(allowed, `${host} ${mapping.name}: no documented fields`);
+      const { stdout } = fallback(host, definition, { manifest: { name } });
+      if (!stdout) continue;
+      const output = JSON.parse(stdout);
+      const label = `${host} ${name}:${definition.name}: ${stdout}`;
+      for (const field of Object.keys(output)) assert.ok(allowed.fields.includes(field), label);
+      if (output.hookSpecificOutput) {
+        assert.equal(output.hookSpecificOutput.hookEventName, mapping.name, label);
+        for (const field of Object.keys(output.hookSpecificOutput)) assert.ok(allowed.hookSpecificOutput.includes(field), label);
+      }
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 10, `${checked}`);
 });
 
 test('without a bundled runtime, launchers answer as a failed runtime would', t => {
