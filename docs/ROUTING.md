@@ -424,7 +424,10 @@ then fix it" is a change, not testing-only work), and statements, chat or questi
 about the conversation get no hint. Where a result goes ("write them to `ANSWER.md`") never
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
-no request does not decide one either. The words are English and matched deterministically;
+no request does not decide one either. Text the host relays into a prompt (a
+`<task-notification>`, `<agent-message>` or `<system-reminder>` block) is not the user's and
+is left out, and a prohibition ("do not repeat work that is already complete") is never a
+request: a prompt with nothing else gets no hint and keeps the session's intent. The words are English and matched deterministically;
 an unrecognized request simply gets none. A lookup prompt gets a hint only when the hook
 answers it (below): a hint that merely pointed at a command cost the model one or two turns
 more than its own search. An answered hint also carries `lookup`: the `craft locate` command
