@@ -87,6 +87,18 @@ The checker reads only the working tree, Git's file list and the manifest. It ne
 or toolchain beyond Node and Git. Each rule has a negative fixture in
 `tests/architecture-rules.test.mjs`.
 
+## Rust module layout
+
+Inside a crate, layout follows these conventions; review keeps them, no check does:
+
+- A module with children is `name.rs` beside a `name/` folder, never `name/mod.rs`.
+- A long unit-test module is `tests.rs` in the folder of the module it tests.
+- Sibling modules go under a parent named for their domain when they are one kind (the
+  language providers) or the parts of one concept the parent presents (hook handling), and a
+  module that only serves one other module is its child. A use case is not a child of the
+  command dispatcher that calls it. Modules are not grouped by technical layer, and a module
+  used from many unrelated places stays at the crate root.
+
 ## Adding a top-level module
 
 Add one only if all of these hold:
@@ -96,8 +108,9 @@ Add one only if all of these hold:
    the dependency graph.
 3. It cannot be a submodule of an existing module without breaking a rule above.
 
-A new Rust crate must also name the dependency rule it enforces that a module inside an existing
-crate cannot (ADR 0001: crates only for useful boundaries).
+A new Rust crate must also name the concrete reason a module inside an existing crate cannot
+serve: a dependency rule the crate boundary enforces, build time, dependencies the other crates
+should not carry, or reuse outside the runtime (ADR 0001: crates only for useful boundaries).
 
 Steps: amend this ADR's table and rationale, add the `architecture.json` entry, add a negative
 fixture if the change introduces a rule, and pass `npm run architecture`. Removing a module is
