@@ -152,7 +152,11 @@ turns the scan off: nothing is read from the files and nothing is said.
   manifests; the others read the files under `scope.paths`. With `scope.paths`, those three
   read their own files inside a named folder, and any file a path names exactly. Checks cover
   structure, not whether the content is right, and an ADR's sections are checked in any
-  order.
+  order. A file's finding is reported once per session: a later write that leaves it in place
+  reports only what is new, and one fixed and then back is reported again. When the stop
+  review runs, a file with reported findings that no longer differs from `HEAD` (reverted
+  outside any edit, or deleted) is checked again, and what is gone counts as fixed in the
+  session summary.
 - `hexagonal-architecture` and `clean-architecture` check module dependencies instead of
   text. Declare each ring or layer as a module with the `dependsOn` it may import. When a source
   file in such a module is written, Craft reports each import that the change adds (compared with
