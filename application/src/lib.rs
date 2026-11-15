@@ -69,7 +69,7 @@ pub fn serve(request: Value, write: impl FnOnce(&Value)) {
 
 /// The executable's identity; `templates` names the exact model-facing wording it embeds.
 fn version() -> Value {
-    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE,
+    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::providers::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE,
         "templates":craft_engine::text::identities(&text::templates())})
 }
 

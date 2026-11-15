@@ -1,6 +1,6 @@
 //! Syntax evidence only: no claims about runtime calls or package resolution.
-pub use crate::syntax::MAX_SOURCE_BYTES;
-use crate::syntax::{Language, Vocabulary};
+pub use crate::providers::syntax::MAX_SOURCE_BYTES;
+use crate::providers::syntax::{Language, Vocabulary};
 use craft_engine::Extraction;
 
 pub const PROVIDER: &str = "javascript-tree-sitter-0.25.0/v4";
@@ -12,8 +12,8 @@ pub const LANGUAGE: Language = Language {
     grammar: || tree_sitter_javascript::LANGUAGE.into(),
     query: || {
         [
-            include_str!("../queries/ecmascript.scm"),
-            include_str!("../queries/javascript.scm"),
+            include_str!("../../queries/ecmascript.scm"),
+            include_str!("../../queries/javascript.scm"),
         ]
         .join("\n")
     },
@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn callers_name_their_enclosing_function_and_requires_are_imports() {
-        use crate::syntax::tests::rows;
+        use crate::providers::syntax::tests::rows;
         let source = b"const fs = require('node:fs');\nconst load = async () => import('./plugin.js');\nclass Store {\n  cache = build();\n  read(p) { return fs.readFileSync(p); }\n  #drop = () => this.#evict();\n}\nexports.run = function () { new Store().read(load()); };\nconst handlers = { start() { boot(); }, stop: () => halt() };\n";
         let result = extract("store.cjs", source).unwrap();
         assert_eq!(

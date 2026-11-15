@@ -2,7 +2,7 @@
 //! configuration files, and each installed bundle's launcher and native runtime. Nothing is
 //! written, started or fetched; values that could hold secrets are never returned, only paths,
 //! identifiers, booleans, versions and counts.
-use crate::{config, documents, files};
+use crate::{documents, files, providers::config};
 use serde_json::{Map, Value, json};
 use std::{
     fs,

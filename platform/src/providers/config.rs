@@ -10,7 +10,7 @@
 //! data rather than configuration (`data`): a refresh does not read it, and a key lookup
 //! searches it literally as an unindexed candidate. Extracted anyway, it is recorded partial
 //! without keys, so an empty answer is never read as absence.
-use crate::syntax::MAX_SOURCE_BYTES;
+use crate::providers::syntax::MAX_SOURCE_BYTES;
 use craft_engine::{Evidence, Extraction, hash, identity, valid_path};
 use std::collections::HashMap;
 

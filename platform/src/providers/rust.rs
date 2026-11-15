@@ -1,6 +1,6 @@
 //! Rust syntax relationships only. Call names are not resolved targets, and macro arguments are
 //! token trees, so a call there is recognized only by its `name(` spelling.
-use crate::syntax::{Language, Vocabulary};
+use crate::providers::syntax::{Language, Vocabulary};
 use craft_engine::Extraction;
 use tree_sitter::Node;
 
@@ -11,7 +11,7 @@ pub const LANGUAGE: Language = Language {
     provider: PROVIDER,
     extensions: &["rs"],
     grammar: || tree_sitter_rust::LANGUAGE.into(),
-    query: || include_str!("../queries/rust.scm").into(),
+    query: || include_str!("../../queries/rust.scm").into(),
     vocabulary: Vocabulary::Craft,
     kinds: &[
         "rust:declares-const",

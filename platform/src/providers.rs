@@ -1,29 +1,44 @@
-use crate::syntax::Language;
+//! Project Intelligence providers: which provider reads a source, the evidence kinds it can
+//! extract and the extraction itself. Programming languages go through the one query-driven
+//! syntax extractor; Markdown and configuration files have scanners of their own.
+
+pub mod basic;
+pub mod config;
+pub mod go;
+pub mod java;
+pub mod javascript;
+pub mod markdown;
+pub mod python;
+pub mod rust;
+pub(crate) mod syntax;
+pub mod typescript;
+
 use craft_engine::Extraction;
 use std::path::Path;
 use std::sync::LazyLock;
+use syntax::Language;
 
 /// Languages read by the common syntax extractor.
 pub const LANGUAGES: &[&Language] = &[
-    &crate::javascript::LANGUAGE,
-    &crate::java::LANGUAGE,
-    &crate::rust::LANGUAGE,
-    &crate::typescript::LANGUAGE,
-    &crate::typescript::TSX,
-    &crate::python::LANGUAGE,
-    &crate::go::LANGUAGE,
-    &crate::basic::C,
-    &crate::basic::CPP,
-    &crate::basic::CSHARP,
-    &crate::basic::PHP,
-    &crate::basic::RUBY,
+    &javascript::LANGUAGE,
+    &java::LANGUAGE,
+    &rust::LANGUAGE,
+    &typescript::LANGUAGE,
+    &typescript::TSX,
+    &python::LANGUAGE,
+    &go::LANGUAGE,
+    &basic::C,
+    &basic::CPP,
+    &basic::CSHARP,
+    &basic::PHP,
+    &basic::RUBY,
 ];
 
 /// Every provider this binary extracts with.
 pub static ACTIVE: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     let mut active: Vec<_> = LANGUAGES.iter().map(|l| l.provider).collect();
-    active.push(crate::markdown::PROVIDER);
-    active.push(crate::config::PROVIDER);
+    active.push(markdown::PROVIDER);
+    active.push(config::PROVIDER);
     active
 });
 
@@ -37,8 +52,8 @@ fn language(path: &str) -> Option<&'static Language> {
 
 pub fn for_path(path: &str) -> Option<&'static str> {
     match Path::new(path).extension().and_then(|s| s.to_str()) {
-        Some("md" | "markdown") => Some(crate::markdown::PROVIDER),
-        Some("json" | "jsonc" | "toml" | "yaml" | "yml") => Some(crate::config::PROVIDER),
+        Some("md" | "markdown") => Some(markdown::PROVIDER),
+        Some("json" | "jsonc" | "toml" | "yaml" | "yml") => Some(config::PROVIDER),
         _ => language(path).map(|l| l.provider),
     }
 }
@@ -46,16 +61,16 @@ pub fn for_path(path: &str) -> Option<&'static str> {
 /// Whether a source of `bytes` at `path` is data its provider does not index (a lockfile or
 /// an oversized configuration file), so a refresh leaves it unread.
 pub fn data(path: &str, bytes: u64) -> bool {
-    for_path(path) == Some(crate::config::PROVIDER) && crate::config::data(path, bytes)
+    for_path(path) == Some(config::PROVIDER) && config::data(path, bytes)
 }
 
 /// The evidence kinds a provider can extract.
 pub fn kinds(provider: &str) -> &'static [&'static str] {
-    if provider == crate::markdown::PROVIDER {
-        return crate::markdown::KINDS;
+    if provider == markdown::PROVIDER {
+        return markdown::KINDS;
     }
-    if provider == crate::config::PROVIDER {
-        return &[crate::config::KIND];
+    if provider == config::PROVIDER {
+        return &[config::KIND];
     }
     LANGUAGES
         .iter()
@@ -65,8 +80,8 @@ pub fn kinds(provider: &str) -> &'static [&'static str] {
 
 pub fn extract(path: &str, bytes: &[u8]) -> Result<Extraction, String> {
     match for_path(path) {
-        Some(crate::markdown::PROVIDER) => crate::markdown::extract(path, bytes),
-        Some(crate::config::PROVIDER) => crate::config::extract(path, bytes),
+        Some(markdown::PROVIDER) => markdown::extract(path, bytes),
+        Some(config::PROVIDER) => config::extract(path, bytes),
         Some(_) => language(path)
             .ok_or("unsupported source extension")?
             .extract(path, bytes),
@@ -130,7 +145,7 @@ mod declared {
                 assert_eq!(craft_engine::basis(&kind), expected, "{kind}");
             }
         }
-        for kind in crate::markdown::KINDS {
+        for kind in super::markdown::KINDS {
             let expected = if *kind == "md:mention" {
                 "name"
             } else {
@@ -138,6 +153,6 @@ mod declared {
             };
             assert_eq!(craft_engine::basis(kind), expected, "{kind}");
         }
-        assert_eq!(craft_engine::basis(crate::config::KIND), "parsed");
+        assert_eq!(craft_engine::basis(super::config::KIND), "parsed");
     }
 }

@@ -1,5 +1,5 @@
 use super::*;
-use crate::javascript::{PROVIDER, extract};
+use crate::providers::javascript::{PROVIDER, extract};
 
 #[test]
 fn a_refused_write_ahead_log_keeps_the_rollback_journal() {
@@ -367,8 +367,11 @@ fn other_schema_store_is_discarded_and_counts_follow_outcomes() {
 fn partial_sources_answer_and_stay_listed_as_gaps() {
     let mut store = Store::initialize(Connection::open_in_memory().unwrap()).unwrap();
     let epoch = store.begin_inventory().unwrap();
-    let extraction =
-        crate::java::extract("A.java", b"class A { void go() { ping(); } void broken( }").unwrap();
+    let extraction = crate::providers::java::extract(
+        "A.java",
+        b"class A { void go() { ping(); } void broken( }",
+    )
+    .unwrap();
     assert!(extraction.partial);
     store.replace(&extraction, "1", epoch, None).unwrap();
     let rows = store.query(&Query::new("name", "ping")).unwrap();
@@ -377,7 +380,7 @@ fn partial_sources_answer_and_stay_listed_as_gaps() {
         store.unextracted().unwrap(),
         [(
             "A.java".into(),
-            crate::java::PROVIDER.into(),
+            crate::providers::java::PROVIDER.into(),
             "partial".into()
         )]
     );
@@ -388,7 +391,12 @@ fn partial_sources_answer_and_stay_listed_as_gaps() {
     );
     assert!(
         store
-            .reuse("A.java", crate::java::PROVIDER, &extraction.hash, None)
+            .reuse(
+                "A.java",
+                crate::providers::java::PROVIDER,
+                &extraction.hash,
+                None
+            )
             .unwrap()
     );
 }
@@ -493,7 +501,7 @@ fn queries_page_in_source_order_with_filters_containers_and_counts() {
         ("a/y/z.java", "class Z { void go() { ping(); } }"),
         ("ab/w.java", "class W { void go() { ping(); } }"),
     ] {
-        let extraction = crate::java::extract(path, source.as_bytes()).unwrap();
+        let extraction = crate::providers::java::extract(path, source.as_bytes()).unwrap();
         store.replace(&extraction, "1", epoch, None).unwrap();
     }
     let page = |query: Query| store.query(&query).unwrap();
@@ -590,7 +598,7 @@ fn queries_page_in_source_order_with_filters_containers_and_counts() {
         );
     }
     let continuation = first["continuation"].as_str().unwrap().to_string();
-    let replaced = crate::java::extract("a/x.java", b"class X {}").unwrap();
+    let replaced = crate::providers::java::extract("a/x.java", b"class X {}").unwrap();
     store.replace(&replaced, "2", epoch, None).unwrap();
     let stale = store.query(&Query {
         after: &continuation,
