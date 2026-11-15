@@ -180,6 +180,7 @@ fn account(
         None => None,
     };
     let checks = take("checked");
+    let changed = take("changed");
     let kept = |name: &str| shaped.kept.contains(&name);
     let context = &decision["context"];
     let answered = match context["kind"].as_str() {
@@ -251,22 +252,37 @@ fn account(
     {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
     }
-    // One line for the user once the turn ends, never beside a held stop.
-    let summarize = event.lifecycle == "turn-end"
-        && delivery::session_summary(settings)
+    // One line for the user once the turn ends, never beside a held stop: what Craft did in
+    // the session and, when Craft holds a fact that calls for one, the next step.
+    let notice = event.lifecycle == "turn-end"
         && shaped.stop.is_none()
-        && crate::hook::shows_notice(event.host, event.lifecycle)
-        && crate::delivered::read(root, session)
-            .is_ok_and(|record| delivered::summary_due(&record).is_some());
-    if summarize {
+        && crate::hook::shows_notice(event.host, event.lifecycle);
+    if !notice {
+        return;
+    }
+    let summarize = delivery::session_summary(settings);
+    let changed: Vec<String> = changed
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|file| file.as_str().map(str::to_owned))
+        .collect();
+    let next = crate::next_step::line(root, settings, session, &changed, recorder, hook);
+    let due = crate::delivered::read(root, session)
+        .is_ok_and(|record| delivered::notice_due(&record, summarize, next.as_deref()).is_some());
+    if due {
         let mut line = None;
         let shown = crate::delivered::update(root, session, |record| {
-            let (text, next) = delivered::summary_due(record)?;
-            line = Some(text);
-            Some(next)
+            let (text, updated) = delivered::notice_due(record, summarize, next.as_deref())?;
+            line = text;
+            Some(updated)
         });
         match shown {
-            Ok(Some(_)) => decision["notice"] = json!(line),
+            Ok(Some(_)) => {
+                if let Some(line) = line {
+                    decision["notice"] = json!(line);
+                }
+            }
             Ok(None) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
@@ -699,12 +715,15 @@ fn decide(
     ) {
         let intent = record["intent"].as_str();
         match crate::stop_review::stop(root, session, settings, intent, event.stop_active) {
-            Ok((summary, checked)) => {
-                if let Some(summary) = summary {
+            Ok(stopped) => {
+                if let Some(summary) = stopped.summary {
                     decision["stop"] = summary;
                 }
-                if !checked.is_empty() {
-                    decision["checked"] = checks(&checked);
+                if !stopped.checked.is_empty() {
+                    decision["checked"] = checks(&stopped.checked);
+                }
+                if !stopped.changed.is_empty() {
+                    decision["changed"] = json!(stopped.changed);
                 }
             }
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),

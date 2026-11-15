@@ -126,7 +126,7 @@ fn bytes(root: &Path, file: &str) -> Option<Vec<u8>> {
 }
 
 /// The commit `HEAD` names, `None` without Git or before the first commit.
-fn head(root: &Path) -> Option<String> {
+pub(crate) fn head(root: &Path) -> Option<String> {
     let output = craft_platform::process::git(root, &["rev-parse", "--verify", "-q", "HEAD"], 256)
         .ok()??;
     let id = String::from_utf8(output).ok()?.trim().to_owned();
@@ -306,7 +306,7 @@ fn hashes(files: &[Dirty]) -> Value {
 /// Remember what the worktree already holds when a session starts, so the first stop reviews
 /// only what this session changes. A resumed session keeps its record.
 pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !standards::stop_relevant(settings) {
+    if !relevant(settings) {
         return Ok(());
     }
     let file = record_file(root, session, true)?;
@@ -322,6 +322,12 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
+/// Whether stops follow the session's changes: to review them, or to name a declared check
+/// that covers them.
+fn relevant(settings: &Value) -> bool {
+    standards::stop_relevant(settings) || craft_engine::session::next::tracks_changes(settings)
+}
+
 /// The commits a record names as made by the session.
 fn own_commits(record: &Value) -> Vec<&str> {
     record["commits"]
@@ -335,7 +341,7 @@ fn own_commits(record: &Value) -> Vec<&str> {
 /// Before a shell command of the session runs `git commit`: the commit each checkout is on,
 /// so the command's own commit can be told from one another session makes meanwhile.
 pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !standards::stop_relevant(settings) {
+    if !relevant(settings) {
         return Ok(());
     }
     let file = record_file(root, session, true)?;
@@ -357,7 +363,7 @@ pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<()
 /// After that command: each checkout whose `HEAD` moved by a commit since `commit_started`
 /// adds the commit to the session's own. A failed commit leaves `HEAD` where it was.
 pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !standards::stop_relevant(settings) {
+    if !relevant(settings) {
         return Ok(());
     }
     let file = record_file(root, session, false)?;
@@ -470,24 +476,34 @@ fn settled(root: &Path, settings: &Value, told: &Value, reviewed: &[&str]) -> Ve
         .collect()
 }
 
+/// What one stop found.
+#[derive(Default)]
+pub struct Stopped {
+    pub summary: Option<Value>,
+    pub checked: Vec<Checked>,
+    /// Files named from the project root that changed since the last stop.
+    pub changed: Vec<String>,
+}
+
 /// The stop summary for this turn, or `None` when nothing changed since the last stop or the
 /// session was told all of it. While the host continues a held stop (`stop_active`) nothing
 /// is said or recorded: a stop is never held twice in a row, and what the continuation
 /// changes is reviewed at the next stop. With it, each changed file as a scope the stop
-/// checked, so a finding that is gone counts as fixed.
+/// checked, so a finding that is gone counts as fixed, and the files changed since the last
+/// stop.
 pub fn stop(
     root: &Path,
     session: &str,
     settings: &Value,
     intent: Option<&str>,
     stop_active: bool,
-) -> Result<(Option<Value>, Vec<Checked>), Failure> {
-    if stop_active || !standards::stop_relevant(settings) {
-        return Ok((None, Vec::new()));
+) -> Result<Stopped, Failure> {
+    if stop_active || !relevant(settings) {
+        return Ok(Stopped::default());
     }
     let checkouts = checkouts(root);
     let Some(files) = observed(root, &checkouts) else {
-        return Ok((None, Vec::new()));
+        return Ok(Stopped::default());
     };
     let file = record_file(root, session, true)?;
     let record = read_record(&file, RECORD_BYTES)?;
@@ -649,5 +665,10 @@ pub fn stop(
     if next != record {
         state::write(&file, &next, RECORD_BYTES, false)?;
     }
-    Ok((summary, checked))
+    let changed = changed.iter().map(|dirty| dirty.file.clone()).collect();
+    Ok(Stopped {
+        summary,
+        checked,
+        changed,
+    })
 }

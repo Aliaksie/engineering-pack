@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- At the end of a turn, Claude Code, Codex and Gemini CLI show one next step beside the session
+  summary when Craft knows one: `craft check --stage commit` when a declared check covers files
+  the turn changed and has not run since, or, when the host reports the context window past
+  `efficiency.context.compactAt`, whether to compact now or save a checkpoint first. It is said
+  once while it applies; `efficiency.advice.nextStep: false` turns it off.
 - `craft session` shows the session's last `craft check` run: its result, stage and counts,
   and whether the tree changed since, so a passed check is not taken for the current code.
 - A declared check can take the changed files: an argument that is exactly `{changedFiles}`
