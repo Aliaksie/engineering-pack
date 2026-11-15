@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A standards finding for a written file is reported once per session: further writes that
+  leave it in place report only new findings, instead of repeating every finding on every
+  write. A file reverted outside an edit (for example by `git checkout`) or deleted no longer
+  keeps its findings open: the stop review checks it again, and the session summary counts
+  them fixed.
 - The stop review reads as a short list, one line per finding and per review item, instead of
   a sentence followed by raw JSON, and is smaller for the same items. In Claude Code it
   continues the turn as hook feedback (Claude Code 2.1.163 or later) instead of being

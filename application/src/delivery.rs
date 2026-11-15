@@ -885,8 +885,16 @@ fn standard_findings(
     // A patch or a shell command writes several files: each finding then names its file.
     let several = edited.len() > 1;
     let (mut found, mut checked) = (Vec::new(), Vec::new());
+    // Findings the session was told for a file and has not fixed are not said again.
+    let told = match event
+        .session
+        .filter(|s| !s.is_empty() && !edited.is_empty())
+    {
+        Some(session) => crate::delivered::read(root, session).unwrap_or(Value::Null),
+        None => Value::Null,
+    };
     for file in edited {
-        let (verdicts, scope) = file_findings(root, settings, file);
+        let (verdicts, scope) = file_findings(root, settings, file, &told);
         checked.extend(scope);
         found.extend(verdicts.into_iter().map(|mut verdict| {
             if several {
@@ -951,9 +959,15 @@ fn shell_written(cwd: &Path, command: &str) -> Vec<String> {
     paths
 }
 
-/// Anchor and module dependency check results for one written project file, and the scope
-/// they covered; none for a file no check reads.
-fn file_findings(root: &Path, settings: &Value, file: &str) -> (Vec<Value>, Option<Checked>) {
+/// Anchor and module dependency check results for one written project file the session was
+/// not `told` of yet, and the scope they covered with every finding; none for a file no check
+/// reads.
+pub(crate) fn file_findings(
+    root: &Path,
+    settings: &Value,
+    file: &str,
+    told: &Value,
+) -> (Vec<Value>, Option<Checked>) {
     let checks = standards::file_checks(settings, file);
     let imports = !standards::import_checks(settings, file).is_empty();
     if checks.is_empty() && !imports {
@@ -985,7 +999,8 @@ fn file_findings(root: &Path, settings: &Value, file: &str) -> (Vec<Value>, Opti
         scope.kinds.push('d');
         scope.keys.extend(finding_keys('d', &depends));
     }
-    found.extend(depends);
+    found = delivered::unheard(told, file, 'a', found);
+    found.extend(delivered::unheard(told, file, 'd', depends));
     (found, Some(scope))
 }
 

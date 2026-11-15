@@ -143,10 +143,11 @@ export function hooks(exportRoot, host, binary) {
 }
 
 // A long session in two context windows: in each, the same question once and then the same
-// search again and again, with a compaction between them. What the hooks return must not grow
-// with the number of calls: an identical answer goes out once per window, and no single hook
-// answer passes the host's ceiling.
-export const SESSION = { windows: 2, searches: 40, prompts: 10 };
+// search again and again, and the same file edited again and again while it misses a declared
+// standard, with a compaction between them. What the hooks return must not grow with the
+// number of calls: an identical answer goes out once per window, a standards finding once per
+// session, and no single hook answer passes the host's ceiling.
+export const SESSION = { windows: 2, searches: 40, prompts: 10, edits: 10 };
 const SEARCH = { claude: { tool_name: 'Grep', tool_input: { pattern: 'computeTotal' } }, shell: { codex: 'Bash', cursor: 'Shell', gemini: 'run_shell_command' } };
 
 export function session(exportRoot, host, binary) {
@@ -166,13 +167,22 @@ export function session(exportRoot, host, binary) {
     count += 1;
     sizes.push(...answers(binary, host, hooks, lifecycle, root, { ...base, ...extra }, machine));
   };
+  const changelog = path.join(root, 'CHANGELOG.md');
+  const edit = payload(host, root, id, { lifecycle: 'after-tool', tool: 'edit', file: 'CHANGELOG.md' });
   try {
     project(root);
+    fs.mkdirSync(path.join(root, '.craft'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, standards: [{ id: 'changelog', anchor: 'keep-a-changelog' }] }));
     send('session-start', { source: 'startup' });
     for (let window = 0; window < SESSION.windows; window += 1) {
       if (window) { send('before-compact', { trigger: 'auto' }); send('after-compact', { source: 'compact' }); }
       for (let index = 0; index < SESSION.prompts; index += 1) send('before-prompt', { prompt: 'Who calls computeTotal?' });
       for (let index = 0; index < SESSION.searches; index += 1) send('after-tool', search);
+      for (let index = 0; index < SESSION.edits; index += 1) {
+        fs.writeFileSync(changelog, `# Changelog\n\n## Next\n\n### Fixed\n${'- Keep totals exact.\n'.repeat(index + 1)}`);
+        const { session_id, sessionId, cwd, ...tool } = edit;
+        send('after-tool', tool);
+      }
     }
     return { events: count, bytes: sizes.reduce((a, b) => a + b, 0), maxHook: Math.max(0, ...sizes) };
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

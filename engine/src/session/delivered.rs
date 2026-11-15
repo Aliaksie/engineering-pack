@@ -130,6 +130,29 @@ pub fn finding_key(kind: char, standard: &Value, rule: &Value, message: &Value) 
     format!("{kind}:{}", &identity[..KEY])
 }
 
+/// The failing `verdicts` (`{standard, findings: [{rule, message, …}], …}`) of a check of
+/// `kind` on file `scope`, without the findings the session was told there and has not fixed
+/// since: an edit that leaves them in place hears only what is new. A verdict left with no
+/// finding is dropped.
+pub fn unheard(record: &Value, scope: &str, kind: char, verdicts: Vec<Value>) -> Vec<Value> {
+    let heard = keys(&record["findings"]["open"][scope]);
+    if heard.is_empty() {
+        return verdicts;
+    }
+    verdicts
+        .into_iter()
+        .filter_map(|mut verdict| {
+            let standard = verdict["standard"].clone();
+            let findings = verdict.get_mut("findings")?.as_array_mut()?;
+            findings.retain(|finding| {
+                let key = finding_key(kind, &standard, &finding["rule"], &finding["message"]);
+                !heard.contains(&key)
+            });
+            (!findings.is_empty()).then_some(verdict)
+        })
+        .collect()
+}
+
 /// Whether an answer may be delivered now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Answer {
@@ -410,6 +433,63 @@ mod tests {
         let next = recorded(record, &delivery).expect("record changes");
         validate(&next).expect("valid record");
         next
+    }
+
+    #[test]
+    fn an_edit_hears_only_findings_it_was_not_told_and_a_fixed_one_again() {
+        let standard = json!("docs");
+        let verdicts = |messages: &[&str]| {
+            vec![json!({"standard": standard, "findings": messages
+                .iter()
+                .map(|m| json!({"rule": "r", "message": m}))
+                .collect::<Vec<_>>()})]
+        };
+        let key = |m: &str| finding_key('a', &standard, &json!("r"), &json!(m));
+        let checked = |keys: Vec<String>| Checked {
+            scope: "a.md".into(),
+            kinds: "a".into(),
+            keys,
+        };
+        let told = after(
+            &Value::Null,
+            Delivery {
+                context_bytes: 100,
+                checked: &[checked(vec![key("one"), key("two")])],
+                ..Delivery::default()
+            },
+        );
+        // The same two again: nothing new to say.
+        assert!(unheard(&told, "a.md", 'a', verdicts(&["one", "two"])).is_empty());
+        // A third appears: only it is said.
+        assert_eq!(
+            unheard(&told, "a.md", 'a', verdicts(&["one", "two", "three"])),
+            verdicts(&["three"])
+        );
+        // Another file, kind or no record: said in full.
+        assert_eq!(
+            unheard(&told, "b.md", 'a', verdicts(&["one"])),
+            verdicts(&["one"])
+        );
+        assert_eq!(
+            unheard(&told, "a.md", 'd', verdicts(&["one"])),
+            verdicts(&["one"])
+        );
+        assert_eq!(
+            unheard(&Value::Null, "a.md", 'a', verdicts(&["one"])),
+            verdicts(&["one"])
+        );
+        // Fixed, then back: told again.
+        let fixed = after(
+            &told,
+            Delivery {
+                checked: &[checked(vec![key("two")])],
+                ..Delivery::default()
+            },
+        );
+        assert_eq!(
+            unheard(&fixed, "a.md", 'a', verdicts(&["one", "two"])),
+            verdicts(&["one"])
+        );
     }
 
     #[test]
