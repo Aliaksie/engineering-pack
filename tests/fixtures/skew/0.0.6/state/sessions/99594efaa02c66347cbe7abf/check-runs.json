@@ -1,0 +1,1 @@
+{"formatVersion":1,"runs":[{"at":"2026-11-15T17:46:18.774Z","stage":"commit","result":"passed","source":"f870f52c940c4700a44bde3adb79444a0c5e4f3453de6dc847c3afd226ee4797","treeChanged":false,"checks":[{"id":"core-ok","stage":"commit","result":"passed","reason":"exit-code","exitCode":0,"durationMs":13}],"left":[]}]}

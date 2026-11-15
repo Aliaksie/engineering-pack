@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "updated": "2026-11-15T17:46:18.851Z",
+  "checkout": "refs/heads/main",
+  "head": "10c4f7ea9a936e9d839b757aaa00c55f77d77fbb",
+  "status": [
+    " M src/lib.rs"
+  ],
+  "gitAvailable": true,
+  "fingerprints": {
+    "index": "9e905f0bd14b26c2bc57960a856c7c4e30673ae71fdd834709042709a3ce9e3e",
+    "workingTree": "77041a9de890ad65d68a9536c70e9f674597f862efe57497ef2440441854bbbf",
+    "complete": true,
+    "issues": [],
+    "files": 2,
+    "bytes": 524,
+    "limits": {
+      "files": 2000,
+      "bytes": 16777216,
+      "fileBytes": 2097152,
+      "milliseconds": 5000
+    }
+  }
+}
