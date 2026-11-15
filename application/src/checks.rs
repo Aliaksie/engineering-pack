@@ -11,6 +11,8 @@ use craft_platform::{process, state};
 use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
+pub mod gates;
+
 const HISTORY_BYTES: usize = 262_144;
 const OFF: &str = "routing.projectChecks is false: Craft runs no declared check here";
 const NO_CHANGES: &str = "no changed file: nothing is in scope; name files with --file or run every declared check with --all";
