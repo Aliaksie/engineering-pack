@@ -633,3 +633,10 @@ fn candidates_are_unique_relative_files() {
         );
     }
 }
+
+#[test]
+fn no_file_the_scan_reads_commonly_holds_secrets() {
+    for (path, _) in candidates() {
+        assert!(!crate::safety::secrets::secret_file(path), "{path}");
+    }
+}

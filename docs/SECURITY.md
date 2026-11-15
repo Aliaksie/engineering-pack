@@ -104,6 +104,11 @@ not pass to a hook. For a boundary use the host's own controls: Claude Code
 `permissions.deny` rules such as `Read(./.env)` and its sandbox, Codex's sandbox, Cursor's
 ignore files. Leave the rule out with `"disables": ["read-secret-file"]`.
 
+Craft never reads such a file's content itself, whether the rule is in force or not: `craft
+locate` skips it (counted under `skipped.secret`), Project Intelligence does not index it,
+and standards checks and the stop review do not read it, so no answer or finding quotes a
+line of it. Its name can still appear where Craft lists changed files.
+
 `disables` leaves built-in rules out. `deny` adds the project's own: a command whose leading
 words match is refused, with the executable matched by name and variable assignments or
 wrappers such as `env` skipped. `craft settings` lists the rules in force and where each

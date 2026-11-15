@@ -291,6 +291,23 @@ fn product_and_architecture_work_reach_their_standards_without_files() {
 }
 
 #[test]
+fn a_file_that_commonly_holds_secrets_is_never_read_for_a_check() {
+    let settings = settings(json!([
+        {"id": "env", "anchor": "keep-a-changelog", "scope": {"paths": [".env", "config"]}},
+        {"id": "rings", "anchor": "hexagonal-architecture"}
+    ]));
+    assert!(!file_checks(&settings, "config/CHANGELOG.md").is_empty());
+    for file in [
+        ".env",
+        "config/secrets.yaml",
+        "services/orders/credentials.json",
+    ] {
+        assert!(file_checks(&settings, file).is_empty(), "{file}");
+        assert!(import_checks(&settings, file).is_empty(), "{file}");
+    }
+}
+
+#[test]
 fn anchor_checks_read_the_files_their_standard_names() {
     let settings = settings(json!([
         {"id": "changelog", "anchor": "keep-a-changelog"},

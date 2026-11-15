@@ -82,6 +82,21 @@ test('without Git a binary file is recognised from its start and does not spend 
   assert.deepEqual(result.moreFiles, []);
 });
 
+test('locate never returns a line of a file that commonly holds secrets', t => {
+  for (const git of [true, false]) {
+    const root = fixture(t, git);
+    write(root, 'src/.env', 'TOKEN=needle\n');
+    write(root, 'src/config/secrets.yaml', 'key: needle\n');
+    write(root, 'src/.env.example', 'TOKEN=needle\n');
+    write(root, 'src/app.txt', 'needle\n');
+    const result = locate(root, { terms: ['needle'], paths: ['src'] });
+    assert.deepEqual(result.matches.map(match => match.path), ['src/.env.example', 'src/app.txt'], `git ${git}`);
+    assert.equal(result.skipped.secret, 2, `git ${git}`);
+    const named = locate(root, { terms: ['needle'], paths: ['src/.env'] });
+    assert.deepEqual(named.matches, [], `git ${git}`);
+  }
+});
+
 test('non-Git search requires bounded explicit scope and does not follow symlinks', t => {
   const root = fixture(t, false);
   const outside = fixture(t, false);

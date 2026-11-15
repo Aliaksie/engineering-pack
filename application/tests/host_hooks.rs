@@ -795,6 +795,13 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
     )
     .unwrap();
     fs::write(root.join("src/web/http.ts"), "export const http = 1\n").unwrap();
+    // A secrets file is never read: a finding would quote its line.
+    fs::create_dir_all(root.join("config")).unwrap();
+    fs::write(
+        root.join("config/secrets.yaml"),
+        "# TODO: rotate\ntoken: s3cr3t\n",
+    )
+    .unwrap();
     // While the host continues a held stop, nothing is said.
     assert!(
         lifecycle(root, "turn-end", json!({"stopActive": true}))

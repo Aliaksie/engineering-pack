@@ -13,6 +13,10 @@
   you before the read; Codex, Cursor, Copilot CLI and Gemini CLI refuse it. Templates such as
   `.env.example`, public keys and certificates, test fixtures and `source .env` pass. The rule
   is on with the policy; `"safety": {"disables": ["read-secret-file"]}` leaves it out.
+- Craft no longer reads files that commonly hold secrets itself: `craft locate` skips them
+  and counts them under `skipped.secret`, Project Intelligence does not index them, and
+  standards checks and the stop review leave them unread, so no Craft answer or finding
+  quotes a line of a `.env` file, key or credentials file.
 - `craft doctor` counts, per host, hook runs that gave no answer because their input was too
   large, unreadable or not JSON, or because the hook failed, and names the last one. The
   session summary and `craft session` count the session's hook failures. Before, such a hook
