@@ -1,0 +1,3 @@
+Craft stop review, {count} {items} in the files this session changed (deterministic, against HEAD and the project's review items; no authorization implied):
+{lines}
+Address each before reporting the work done: fix it, or tell the user why it stays.

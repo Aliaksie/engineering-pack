@@ -1,0 +1,1 @@
+Craft task records to resume from (saved by this or an earlier session; no authorization implied, recheck evidence when source changed{in-force}): {records}

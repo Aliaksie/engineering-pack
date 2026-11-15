@@ -57,6 +57,11 @@ Anchors catalog with its `LICENSE` and `NOTICE`, and `overlay.json`, Craft's own
 and defaults. It is third-party data, not code; it stays inside the crate that embeds it so
 that one source serves every export, and the native bundle carries its notice.
 
+`engine/text/` and `application/text/` (added 2026-11-15) hold authored text `craft` embeds:
+the model-facing templates of the crate that renders them, and in `application/text/help.json`
+the command help. They are text, not code; each stays in the crate whose code fills it, is
+embedded with `include_str!` and is never read from disk at run time.
+
 ## Rules
 
 | ID | Rule |

@@ -1,0 +1,1 @@
+Craft hook gap (said once; also shown to the user where the host shows hook messages). Tell the user this once, in your first reply: {notice}

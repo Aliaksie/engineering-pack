@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft`'s version response (`{"formatVersion":1,"operation":"version"}` on stdin) lists
+  `templates`: each model-facing text a hook gives, by a stable id with the SHA-256 of its
+  exact wording. An eval report may record them in `templates`, and `npm run eval:report`
+  checks and echoes them. The wording the model receives is unchanged.
 - The safety policy keeps files that commonly hold secrets out of the model's context: a new
   built-in rule, `read-secret-file`, catches reading `.env` files, private keys, credential
   and token files and Terraform state through a file read, a search, an edit of an existing

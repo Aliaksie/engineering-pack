@@ -41,6 +41,7 @@ mod stop_review;
 mod task;
 mod telemetry;
 mod test_runs;
+mod text;
 mod workers;
 mod workspace;
 
@@ -66,8 +67,10 @@ pub fn serve(request: Value, write: impl FnOnce(&Value)) {
     telemetry::Recorder::deliver(export);
 }
 
+/// The executable's identity; `templates` names the exact model-facing wording it embeds.
 fn version() -> Value {
-    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE})
+    json!({"binaryVersion":env!("CARGO_PKG_VERSION"),"schemaVersion":craft_engine::SCHEMA_VERSION,"provider":craft_platform::javascript::PROVIDER,"providers":*craft_platform::providers::ACTIVE,
+        "templates":craft_engine::text::identities(&text::templates())})
 }
 
 /// One Project Intelligence operation over a single repository or explicit members.

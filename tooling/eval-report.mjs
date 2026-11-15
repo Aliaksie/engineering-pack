@@ -23,8 +23,19 @@ export function evaluateReport(packages, report) {
   for (const entry of report.verdicts) {
     if (typeof entry.passed !== 'boolean' || typeof entry.evidence !== 'string' || !entry.evidence.trim()) throw new Error('boolean verdict and evidence required');
   }
+  // Optional: the `templates` of `craft`'s version response, naming the exact wording the run was given.
+  if (report.templates !== undefined) {
+    const entries = report.templates && typeof report.templates === 'object' && !Array.isArray(report.templates)
+      ? Object.entries(report.templates) : null;
+    if (!entries?.length || entries.some(([id, hash]) => !id.trim() || typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash))) {
+      throw new Error('templates maps template ids to SHA-256 hashes');
+    }
+  }
   const passed = report.verdicts.filter((entry) => entry.passed).length;
-  return { package: report.package, case: report.case, adapter: report.adapter, passed, total: ids.length, success: passed === ids.length };
+  return {
+    package: report.package, case: report.case, adapter: report.adapter, passed, total: ids.length, success: passed === ids.length,
+    ...(report.templates && { templates: report.templates })
+  };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

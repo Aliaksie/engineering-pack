@@ -9,6 +9,7 @@
 //! judged by name: the caller passes each spelling of the project root it knows.
 use crate::contracts::kebab;
 use crate::review::walk;
+use crate::text::Template;
 use crate::values::object;
 use serde_json::{Value, json};
 
@@ -605,6 +606,29 @@ fn builtin(words: &[String], place: &Place) -> Option<&'static str> {
     }
 }
 
+/// Why a shell command is refused, said to the model.
+const REFUSE_COMMAND: Template = Template {
+    id: "safety.refuse-command",
+    slots: &["rule", "refuses"],
+    source: include_str!("../text/safety/refuse-command.txt"),
+};
+
+/// Why a secret file stays out of the model's context, said to the model.
+const REFUSE_SECRET: Template = Template {
+    id: "safety.refuse-secret",
+    slots: &["file", "rule"],
+    source: include_str!("../text/safety/refuse-secret.txt"),
+};
+
+/// The question shown to the user where the host hands a secret read to them.
+const ASK_SECRET: Template = Template {
+    id: "safety.ask-secret",
+    slots: &["file", "rule"],
+    source: include_str!("../text/safety/ask-secret.txt"),
+};
+
+pub(crate) const TEMPLATES: [&Template; 3] = [&REFUSE_COMMAND, &REFUSE_SECRET, &ASK_SECRET];
+
 /// A refusal of `rule`. A secret read also carries `ask`: the words shown to the user
 /// where the host can hand the call to them instead of refusing it.
 fn refusal(rule: &str, refuses: &str, secret: Option<&str>) -> Value {
@@ -612,21 +636,16 @@ fn refusal(rule: &str, refuses: &str, secret: Option<&str>) -> Value {
         return json!({
             "decision": "deny",
             "rule": rule,
-            "reason": format!(
-                "This project's safety policy refuses this command (rule `{rule}`: {refuses}). Do not reword it to get past the rule; tell the user what you wanted to run and why, so they can run it themselves or change the request."
-            ),
+            "reason": REFUSE_COMMAND.render(&[("rule", rule), ("refuses", refuses)]),
         });
     };
+    let values = [("file", file), ("rule", rule)];
     json!({
         "decision": "deny",
         "rule": rule,
         "file": file,
-        "reason": format!(
-            "This project's safety policy keeps `{file}` out of your context: it commonly holds secrets (rule `{rule}`). Do not read it another way (a script, a copy, a search); tell the user which value or setting you need, so they can give it to you or turn the rule off."
-        ),
-        "ask": format!(
-            "Craft: `{file}` commonly holds secrets (safety rule `{rule}`). Allow only if the model should see its content."
-        ),
+        "reason": REFUSE_SECRET.render(&values),
+        "ask": ASK_SECRET.render(&values),
     })
 }
 
