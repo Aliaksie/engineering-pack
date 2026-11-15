@@ -38,7 +38,8 @@ Craft ships working conventions by default and lets your project customize where
   source supplied each piece.
 - **One baseline for every project.** An organization file and a user file declare standards,
   checks and a safety policy once; each project overrides only what differs, and
-  `craft config --explain` shows which layer set each value.
+  `craft config --explain` shows which layer set each value. A committed copy of the
+  organization file carries it to CI runners and teammates who do not have it.
 - **Feedback while the agent works.** Checks that need no model run on what the agent has
   just written, so it corrects course in the same turn, not after review.
 - **Evidence instead of claims.** Test results are read from the runner's own output. What
@@ -256,8 +257,6 @@ OpenTelemetry endpoint; bounded local usage metadata is on by default and can be
 
 - **Verified standards:** more of the project's own standards checked without a model, and
   the same declared check giving the same result in a hook, before a commit and in CI.
-- **A baseline a team can share:** the organization baseline reaching CI runners and
-  teammates, not only the machines that hold the file.
 - **Service recipes:** ready GitHub, GitLab and Jira setups instead of a mapping per project.
 - **Trust and less debt, cost as a guardrail:** Craft should earn its place through standards
   kept and debt avoided, without costing more where it adds nothing.

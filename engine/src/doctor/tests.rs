@@ -340,9 +340,16 @@ fn configuration_names_ignored_fields_an_unusable_file_and_an_unapplied_safety_p
          "values": 1, "ignored": ["routing.futureSwitch", "futureSection"]}]});
     let report = self::report(&facts);
     let found = report["configuration"].as_array().unwrap();
-    assert_eq!(found.len(), 1, "hooks ran on both hosts: {found:?}");
-    assert_eq!(found[0]["status"], "unknown");
-    let detail = found[0]["detail"].as_str().unwrap();
+    assert_eq!(found.len(), 2, "hooks ran on both hosts: {found:?}");
+    assert_eq!(found[0]["status"], "ok");
+    assert!(
+        found[0]["detail"]
+            .as_str()
+            .unwrap()
+            .starts_with("settings read from: user (")
+    );
+    assert_eq!(found[1]["status"], "unknown");
+    let detail = found[1]["detail"].as_str().unwrap();
     assert!(
         detail.starts_with("user layer /home/u/.config/craft/preferences.json: routing.futureSwitch, futureSection not known to craft"),
         "{detail}"
@@ -377,6 +384,50 @@ fn configuration_names_ignored_fields_an_unusable_file_and_an_unapplied_safety_p
             .contains("Fix the configuration file")
     );
     assert_eq!(report["blocking"], false);
+}
+
+#[test]
+fn a_pinned_organization_copy_is_named_and_one_that_differs_is_a_problem() {
+    let mut facts = facts();
+    facts["configuration"] = json!({"safety": false, "layers": [
+        {"name": "bundled", "values": 30},
+        {"name": "organization", "file": "/repo/.craft/organization.json", "state": "pinned", "values": 2},
+        {"name": "user", "file": "/home/u/.config/craft/preferences.json", "state": "absent", "values": 0},
+        {"name": "project", "file": "/repo/.craft/project.json", "state": "loaded", "values": 3}]});
+    let report = self::report(&facts);
+    let found = report["configuration"].as_array().unwrap();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(
+        found[0]["detail"],
+        "settings read from: organization (the project's pinned copy), project (`craft config` explains each value)"
+    );
+
+    facts["configuration"]["layers"][1] = json!({"name": "organization",
+        "file": "/etc/craft/organization.json", "state": "loaded", "values": 2,
+        "pin": {"file": "/repo/.craft/organization.json", "state": "differs"}});
+    let report = self::report(&facts);
+    let drift = &report["configuration"][1];
+    assert_eq!(drift["status"], "problem");
+    assert!(
+        drift["detail"].as_str().unwrap().starts_with(
+            "/repo/.craft/organization.json differs from /etc/craft/organization.json"
+        ),
+        "{drift}"
+    );
+    assert!(
+        report["next"]
+            .to_string()
+            .contains("craft config --sync --apply")
+    );
+    assert_eq!(report["blocking"], false);
+    facts["configuration"]["layers"][1]["pin"]["state"] = json!("matches");
+    assert_eq!(
+        self::report(&facts)["configuration"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[test]

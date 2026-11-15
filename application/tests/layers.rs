@@ -223,6 +223,8 @@ fn shared_baseline(host: &str) {
     );
     assert_eq!(settings["origins"]["efficiency.review.mode"], "user");
     assert_eq!(settings["safety"]["origin"], "organization");
+    assert_eq!(layer(&settings, "organization")["state"], "loaded");
+    assert_eq!(layer(&settings, "user")["state"], "loaded");
 
     // The other repository overrides only what differs; each override names the layer it hid,
     // and the one that changes nothing is said.
@@ -259,6 +261,22 @@ fn shared_baseline(host: &str) {
         settings["entries"]["standards"],
         json!({"commits": "organization", "review": "project", "audit": "organization"})
     );
+    // A route names the layer of each standard the project does not declare itself.
+    let route = machine.json(
+        &differs,
+        &["route", "--intent", "implement", "--file", "src/a.txt"],
+    );
+    let layers: Vec<(&str, Option<&str>)> = route["standards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| (s["id"].as_str().unwrap(), s["layer"].as_str()))
+        .collect();
+    assert!(
+        layers.contains(&("commits", Some("organization"))),
+        "{layers:?}"
+    );
+    assert!(layers.contains(&("review", None)), "{layers:?}");
     let only = machine.json(&differs, &["config", "--explain", "--field", "safety"]);
     assert!(
         only["values"]
@@ -499,4 +517,99 @@ fn without_layer_files_a_project_is_configured_alone() {
     let settings = machine.json(&repo, &["settings"]);
     assert_eq!(ids(&settings["settings"]["standards"]), ["review"]);
     assert!(settings.get("entries").is_none(), "{settings}");
+}
+
+/// CI and a teammate without the organization file: the project commits a copy of it with
+/// `craft config --sync --apply`, and that copy is the organization layer wherever the machine
+/// has none. Where the machine has one, the copy is only compared with it.
+#[test]
+fn a_committed_copy_of_the_organization_file_reaches_a_machine_without_one() {
+    let machine = Machine::new("pin", ORGANIZATION, None);
+    let repo = Repo::new("layers-pin", &[("src/a.txt", "a\n")]);
+    let pin = Path::new(repo.path())
+        .join(".craft")
+        .join("organization.json");
+
+    let preview = machine.json(&repo, &["config", "--sync"]);
+    assert_eq!(preview["sync"]["state"], "absent");
+    assert_eq!(preview["sync"]["applied"], false);
+    assert!(!pin.exists(), "a preview writes nothing");
+    let written = machine.json(&repo, &["config", "--sync", "--apply"]);
+    assert_eq!(written["sync"]["applied"], true);
+    let again = machine.json(&repo, &["config", "--sync", "--apply"]);
+    assert_eq!(
+        (&again["sync"]["state"], &again["sync"]["applied"]),
+        (&json!("matches"), &json!(false))
+    );
+    let config = machine.json(&repo, &["config"]);
+    let organization = layer(&config, "organization");
+    assert_eq!(organization["state"], "loaded");
+    assert_eq!(organization["pin"]["state"], "matches");
+
+    // The runner has no organization file: the copy is the layer, with its checks and rules.
+    fs::remove_file(machine.organization()).unwrap();
+    let config = machine.json(&repo, &["config", "--explain"]);
+    let organization = layer(&config, "organization");
+    assert_eq!(organization["state"], "pinned");
+    let settings = machine.json(&repo, &["settings"]);
+    assert_eq!(layer(&settings, "organization")["state"], "pinned");
+    assert_eq!(organization["file"], pin.to_string_lossy().as_ref());
+    assert_eq!(
+        row(&config, "values", "standards[commits]")["origin"],
+        "organization"
+    );
+    let checked = machine.json(&repo, &["check", "--file", "src/a.txt", "--stage", "ci"]);
+    assert_eq!(checked["result"], "passed", "{checked}");
+    assert_eq!(ids(&checked["checks"]), ["licenses", "audit"]);
+    machine.hook(
+        "claude",
+        &repo,
+        "session-start",
+        json!({"source": "startup"}),
+    );
+    let refused = machine.hook(
+        "claude",
+        &repo,
+        "before-tool",
+        json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+            "tool_input": {"command": "terraform destroy -auto-approve"}}),
+    );
+    assert!(refused.contains("rule `infra-destroy`"), "{refused}");
+    let output = machine.craft(&["config", "--root", repo.path(), "--sync"], "");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("no organization file on this machine"),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // The administrator changes the file: the machine's own wins and the copy is said to differ.
+    let changed = ORGANIZATION.replace("Tests cover the change", "Tests and docs cover it");
+    fs::write(machine.organization(), &changed).unwrap();
+    private(&machine.organization());
+    let config = machine.json(&repo, &["config", "--explain"]);
+    assert_eq!(layer(&config, "organization")["pin"]["state"], "differs");
+    assert_eq!(
+        row(&config, "values", "standards[review]")["value"]["checklist"][0],
+        "Tests and docs cover it"
+    );
+    let text = machine.craft(&["config", "--root", repo.path()], "");
+    assert!(
+        String::from_utf8_lossy(&text.stdout).contains("differs"),
+        "{}",
+        String::from_utf8_lossy(&text.stdout)
+    );
+    let synced = machine.json(&repo, &["config", "--sync", "--apply"]);
+    assert_eq!(synced["sync"]["state"], "differs");
+    assert_eq!(synced["sync"]["applied"], true);
+    let config = machine.json(&repo, &["config"]);
+    assert_eq!(layer(&config, "organization")["pin"]["state"], "matches");
+
+    // A copy that cannot be used is an error naming it, like any layer file.
+    fs::remove_file(machine.organization()).unwrap();
+    fs::write(&pin, r#"{"formatVersion": 1, "modules": []}"#).unwrap();
+    let output = machine.craft(&["config", "--root", repo.path()], "");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("organization layer (pinned)"), "{stderr}");
 }

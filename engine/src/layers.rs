@@ -287,6 +287,9 @@ fn line(row: &Value) -> String {
 /// The `craft config` report as text: the layers, then the values a layer hid, then, when
 /// asked for, every effective value.
 pub fn text(report: &Value) -> String {
+    if let Some(sync) = report.get("sync") {
+        return sync_text(sync);
+    }
     let mut lines = vec![format!(
         "layers, later wins: {}",
         report["order"]
@@ -319,10 +322,26 @@ pub fn text(report: &Value) -> String {
             match layer["state"].as_str() {
                 Some("loaded") if layer["values"] == 1 => "1 value".to_string(),
                 Some("loaded") => format!("{} values", layer["values"]),
+                Some("pinned") => format!(
+                    "pinned by the project, {} value{} (this machine has no organization file)",
+                    layer["values"],
+                    if layer["values"] == 1 { "" } else { "s" },
+                ),
                 Some(state) => state.to_string(),
                 None => "?".to_string(),
             }
         ));
+        match layer["pin"]["state"].as_str() {
+            Some("matches") => lines.push(format!(
+                "    pinned copy {} matches it",
+                layer["pin"]["file"].as_str().unwrap_or("?")
+            )),
+            Some(_) => lines.push(format!(
+                "    pinned copy {} differs: CI and teammates without this file use the pin (`craft config --sync --apply` updates it)",
+                layer["pin"]["file"].as_str().unwrap_or("?")
+            )),
+            None => {}
+        }
         let ignored: Vec<&str> = layer["ignored"]
             .as_array()
             .into_iter()
@@ -353,3 +372,19 @@ pub fn text(report: &Value) -> String {
 
 #[cfg(test)]
 mod tests;
+
+/// `craft config --sync`: what the pin holds against the machine's file and what was done.
+fn sync_text(sync: &Value) -> String {
+    let pin = sync["pin"].as_str().unwrap_or("?");
+    let organization = sync["organization"].as_str().unwrap_or("?");
+    match (sync["state"].as_str(), sync["applied"] == true) {
+        (Some("matches"), _) => format!("{pin} already matches {organization}; nothing to write"),
+        (_, true) => format!(
+            "wrote {pin} from {organization}: commit it so CI and teammates without that file get the same organization layer"
+        ),
+        (Some("absent"), false) => {
+            format!("would write {pin} from {organization} (no pin yet); run again with --apply")
+        }
+        _ => format!("would replace {pin}: it differs from {organization}; run again with --apply"),
+    }
+}

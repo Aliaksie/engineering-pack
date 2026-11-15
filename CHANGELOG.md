@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `craft config --sync` previews copying the machine's organization configuration to
+  `.craft/organization.json`, and writes it with `--apply`. Committed, that copy is the
+  organization layer on machines without the organization file, such as CI runners and
+  teammates' laptops, so its standards, checks and safety rules hold there too. Where the
+  machine has its own file, that file still wins, and `craft config` and `craft doctor` say
+  when the committed copy differs from it.
+- `craft settings` lists the organization and user layers with where each was read from,
+  `craft doctor` names the layers the settings come from, and `craft route` names the layer of
+  each standard the project does not declare itself.
+- `schemas/layer.schema.json` describes an organization or user configuration file for editor
+  completion: the project schema without the fields that name one repository.
 - `craft check --install-hook` previews a Git pre-commit hook that runs the project's declared
   commit-stage checks, and writes it with `--apply`. Where husky, lefthook, the pre-commit
   framework, `core.hooksPath` or another hook owns pre-commit, it prints the line to add there
