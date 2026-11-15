@@ -21,6 +21,8 @@ fn hook_events(root: &Path) -> Value {
         return json!({"local": effective["local"], "lastSeen": [], "readable": false});
     };
     let mut latest: Vec<Value> = Vec::new();
+    // Hook runs that gave no answer, per host and package: input not read, or a failure.
+    let mut unanswered: Vec<Value> = Vec::new();
     let mut first: Option<&str> = None;
     for record in &records {
         let at = record["timestamp"].as_str().unwrap_or_default();
@@ -29,6 +31,28 @@ fn hook_events(root: &Path) -> Value {
         }
         if record["name"] != "host.hook" {
             continue;
+        }
+        let status = record["attributes"]["inputStatus"]
+            .as_str()
+            .unwrap_or("complete");
+        let unread = status != "complete";
+        if unread || record["outcome"] == "failure" {
+            let key = (&record["host"], &record["attributes"]["package"]);
+            let index = unanswered
+                .iter()
+                .position(|row| (&row["host"], &row["package"]) == key)
+                .unwrap_or_else(|| {
+                    unanswered
+                        .push(json!({"host": key.0, "package": key.1, "unread": 0, "failed": 0}));
+                    unanswered.len() - 1
+                });
+            let row = &mut unanswered[index];
+            let field = if unread { "unread" } else { "failed" };
+            row[field] = json!(row[field].as_u64().unwrap_or(0) + 1);
+            if row["at"].as_str().is_none_or(|seen| seen < at) {
+                row["at"] = json!(at);
+                row["lifecycle"] = record["attributes"]["lifecycle"].clone();
+            }
         }
         let row = json!({
             "host": record["host"], "package": record["attributes"]["package"],
@@ -44,7 +68,19 @@ fn hook_events(root: &Path) -> Value {
             None => latest.push(row),
         }
     }
-    json!({"local": effective["local"], "window": {"first": first}, "lastSeen": latest})
+    // Every installed package's hook sees the same event: a host's count is its package's
+    // that saw the most.
+    let mut per_host: Vec<Value> = Vec::new();
+    for row in unanswered {
+        let total =
+            |row: &Value| row["unread"].as_u64().unwrap_or(0) + row["failed"].as_u64().unwrap_or(0);
+        match per_host.iter_mut().find(|seen| seen["host"] == row["host"]) {
+            Some(seen) if total(seen) < total(&row) => *seen = row,
+            Some(_) => {}
+            None => per_host.push(row),
+        }
+    }
+    json!({"local": effective["local"], "window": {"first": first}, "lastSeen": latest, "unanswered": per_host})
 }
 
 /// The launcher a status-line command runs when it is Craft's own (`'<launcher>' statusline

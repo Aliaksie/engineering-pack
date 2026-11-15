@@ -5,7 +5,8 @@
 //!
 //! `{formatVersion: 1, context: {hooks, bytes, dropped}, answers: {delivered, bytes, repeated,
 //! overBudget, window: {bytes, keys}}, findings: {raised, fixed, open: {<scope>: [key]}},
-//! tests: {empty}, resumes, refused, shown?, next?}`; `Null` is no record. `shown` is the last
+//! tests: {empty}, hooks: {failed}, resumes, refused, shown?, next?}`; `Null` is no record.
+//! `hooks.failed` counts delivery hooks that failed to decide and so gave no answer. `shown` is the last
 //! summary line the user was shown and `next` the next step said last.
 use serde_json::{Map, Value, json};
 
@@ -79,6 +80,7 @@ pub fn validate(record: &Value) -> Result<(), String> {
     let window = section(answers, "window", &["bytes", "keys"])?;
     let findings = section(record, "findings", &["raised", "fixed", "open"])?;
     let tests = section(record, "tests", &["empty"])?;
+    let hooks = section(record, "hooks", &["failed"])?;
     let counts = [
         context.get("hooks"),
         context.get("bytes"),
@@ -91,6 +93,7 @@ pub fn validate(record: &Value) -> Result<(), String> {
         findings.get("raised"),
         findings.get("fixed"),
         tests.get("empty"),
+        hooks.get("failed"),
         record.get("resumes"),
         record.get("refused"),
     ];
@@ -341,12 +344,25 @@ pub fn refusal(record: &Value) -> Value {
     next
 }
 
+/// The record after a delivery hook failed to decide: counted, so a hook that gave no answer
+/// is not mistaken for one with nothing to say. (A hook whose input it could not read does not
+/// know its session; `craft doctor` counts those.)
+pub fn hook_failure(record: &Value) -> Value {
+    let mut next = if record.is_object() {
+        record.clone()
+    } else {
+        json!({"formatVersion": 1})
+    };
+    add(&mut next["hooks"]["failed"], 1);
+    next
+}
+
 fn counted(count: u64, one: &str, many: &str) -> String {
     format!("{count} {}", if count == 1 { one } else { many })
 }
 
 /// The counts the session summary shows: `{findingsRaised, findingsFixed, emptyTestRuns,
-/// lookupsAnswered, resumes, commandsRefused}`.
+/// lookupsAnswered, resumes, commandsRefused, hookFailures}`.
 pub fn counts(record: &Value) -> Value {
     json!({
         "findingsRaised": count(&record["findings"]["raised"]),
@@ -355,6 +371,7 @@ pub fn counts(record: &Value) -> Value {
         "lookupsAnswered": count(&record["answers"]["delivered"]),
         "resumes": count(&record["resumes"]),
         "commandsRefused": count(&record["refused"]),
+        "hookFailures": count(&record["hooks"]["failed"]),
     })
 }
 
@@ -401,6 +418,9 @@ pub fn summary(record: &Value) -> Option<String> {
             "{} refused by the safety policy",
             counted(of("commandsRefused"), "command", "commands")
         ));
+    }
+    if of("hookFailures") > 0 {
+        parts.push(counted(of("hookFailures"), "hook failure", "hook failures"));
     }
     (!parts.is_empty()).then(|| format!("Craft this session: {}", parts.join(" · ")))
 }
@@ -472,6 +492,18 @@ mod tests {
         assert_eq!(
             summary(&twice).as_deref(),
             Some("Craft this session: 2 commands refused by the safety policy")
+        );
+    }
+
+    #[test]
+    fn a_failed_hook_is_counted_and_summarized() {
+        let once = hook_failure(&Value::Null);
+        validate(&once).expect("valid record");
+        let twice = hook_failure(&once);
+        assert_eq!(counts(&twice)["hookFailures"], 2);
+        assert_eq!(
+            summary(&twice).as_deref(),
+            Some("Craft this session: 2 hook failures")
         );
     }
 
@@ -742,6 +774,8 @@ mod tests {
             json!({"formatVersion": 1, "findings": {"open": []}}),
             json!({"formatVersion": 1, "context": {"text": "x"}}),
             json!({"formatVersion": 1, "shown": 1}),
+            json!({"formatVersion": 1, "hooks": {"unread": 1}}),
+            json!({"formatVersion": 1, "hooks": {"failed": "1"}}),
         ] {
             assert!(validate(&record).is_err(), "{record}");
         }

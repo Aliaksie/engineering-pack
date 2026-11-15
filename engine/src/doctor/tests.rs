@@ -534,3 +534,31 @@ fn no_status_line_check_without_an_enabled_claude_package_or_a_settings_fact() {
     let report = super::report(&facts);
     assert!(report["next"].as_array().unwrap().is_empty());
 }
+
+#[test]
+fn hook_runs_that_gave_no_answer_are_a_problem_of_their_host_and_not_a_block() {
+    let mut facts = facts();
+    facts["telemetry"]["unanswered"] = json!([
+        {"host": "claude", "package": "craft-delivery", "unread": 2, "failed": 1,
+         "lifecycle": "after-tool", "at": "2026-11-09T10:00:00Z"},
+        {"host": "codex", "package": "craft-delivery", "unread": 0, "failed": 0},
+        {"host": "cursor", "package": "craft-delivery", "unread": 1, "failed": 0}
+    ]);
+    let report = report(&facts);
+    assert_eq!(report["blocking"], false);
+    let claude = host(&report, "claude");
+    assert_eq!(claude["status"], "problem");
+    let found = claude["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == "answers")
+        .unwrap();
+    assert_eq!(
+        found["detail"],
+        "3 hook runs gave no answer since 2026-11-01T00:00:00Z: 2 with input not read (too large, unreadable or not JSON), 1 failed; last after-tool at 2026-11-09T10:00:00Z"
+    );
+    assert_eq!(host(&report, "codex")["status"], "ok");
+    // A host that is not installed here keeps its own status.
+    assert_eq!(host(&report, "cursor")["status"], "not-installed");
+}

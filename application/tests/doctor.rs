@@ -272,3 +272,69 @@ fn doctor_offers_the_claude_status_line_and_finds_one_left_behind() {
         "{report}"
     );
 }
+
+/// A hook that answered nothing because its input was too large to read is counted, so a
+/// silent hook is not taken for one with nothing to say.
+#[test]
+fn doctor_counts_hook_runs_that_gave_no_answer() {
+    use std::io::Write;
+    let repo = Repo::new("doctor-unanswered", &[("README.md", "x\n")]);
+    let homes = homes(&repo);
+    let (_, report) = doctor(&repo, &homes);
+    assert!(!report.to_string().contains("gave no answer"), "{report}");
+
+    let large = format!(
+        r#"{{"tool_name":"Read","cwd":{},"session_id":"S-1","tool_response":"{}"}}"#,
+        json!(repo.path()),
+        "x".repeat(1024 * 1024 + 1)
+    );
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args([
+            "hook",
+            "claude",
+            "after-tool",
+            "--package",
+            "craft-delivery",
+        ])
+        .args(["--handler", "deliver", "--scope", "any"])
+        .current_dir(repo.path())
+        .env("CRAFT_EVIDENCE_WARM", "0")
+        .env_remove("CRAFT_PACKAGE_ROOT")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(large.as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    // Silent to the host: an advisory hook never turns unread input into an error.
+    assert_eq!(
+        (output.status.code(), output.stdout.as_slice()),
+        (Some(0), &b""[..]),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let (_, report) = doctor(&repo, &homes);
+    let claude = host(&report, "claude");
+    let found = claude["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == "answers")
+        .unwrap_or_else(|| panic!("{claude}"));
+    assert_eq!(found["status"], "problem");
+    let detail = found["detail"].as_str().unwrap();
+    assert!(
+        detail.starts_with("1 hook run gave no answer since ")
+            && detail.contains(": 1 with input not read")
+            && detail.contains("; last after-tool at "),
+        "{detail}"
+    );
+    assert_eq!(report["blocking"], false);
+}
