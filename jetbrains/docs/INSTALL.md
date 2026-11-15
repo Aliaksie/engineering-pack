@@ -200,7 +200,11 @@ for the project whether each host would run Craft, from files only:
 
 - Claude Code: Craft packages in the install record that apply to the project, whether
   user, project or local settings enable them, a bundled runtime for this platform matching
-  its manifest digest, and Craft hook commands also registered in settings files;
+  its manifest digest, Craft hook commands also registered in settings files, and the
+  effective status line: Craft's own at the installed version reports context usage; none
+  set is `off` with the `host-setup … --apply` command as an optional next step (doctor
+  writes nothing); a custom one is left alone; one that runs a removed or older Craft bundle
+  (left from an update) is a problem with the command to set instead;
 - Codex: configured and enabled packages at the newest cached version (older cached
   versions are listed, not judged), packages the configuration enables that are not in the
   plugin cache, project trust, the hooks feature switch, a recorded
