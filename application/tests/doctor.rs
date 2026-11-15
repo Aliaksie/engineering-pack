@@ -186,3 +186,89 @@ fn doctor_counts_codex_sessions_that_ran_no_craft_hook() {
         "{report}"
     );
 }
+
+/// Claude's status line is how Craft observes context usage: doctor offers the setup command
+/// when none is set, accepts Craft's own on the installed package, and names a status line
+/// left on an install that is gone. It writes no setting either way.
+#[test]
+fn doctor_offers_the_claude_status_line_and_finds_one_left_behind() {
+    let repo = Repo::new("doctor-statusline", &[("README.md", "x\n")]);
+    let homes = homes(&repo);
+    let settings = Path::new(repo.path()).join(".claude/settings.local.json");
+    fs::create_dir_all(settings.parent().unwrap()).unwrap();
+    let write = |status_line: Option<String>| {
+        let mut value = json!({"enabledPlugins": {"craft-delivery@mp": true}});
+        if let Some(command) = status_line {
+            value["statusLine"] = json!({"type": "command", "command": command});
+        }
+        fs::write(&settings, value.to_string()).unwrap();
+    };
+    let check = |report: &Value| {
+        host(report, "claude")["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "status-line")
+            .cloned()
+            .unwrap_or_else(|| panic!("{report}"))
+    };
+    let installed = homes.claude.join("plugins/cache/mp/craft-delivery/0.0.5");
+
+    write(None);
+    let before = fs::read(&settings).unwrap();
+    let (code, report) = doctor(&repo, &homes);
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(check(&report)["status"], "off");
+    let offer = report["next"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(Value::as_str)
+        .find(|n| n.contains("host-setup --host claude --package craft-delivery"))
+        .unwrap_or_else(|| panic!("{report}"));
+    assert!(offer.contains("bin/craft"), "{offer}");
+    assert_eq!(
+        fs::read(&settings).unwrap(),
+        before,
+        "doctor writes nothing"
+    );
+
+    write(Some(format!(
+        "'{}' statusline claude --package 'craft-delivery' --native-stdin",
+        installed.join("bin/craft").display()
+    )));
+    let (_, report) = doctor(&repo, &homes);
+    assert_eq!(check(&report)["status"], "ok", "{report}");
+
+    write(Some(
+        "'/gone/craft-delivery/0.0.4/bin/craft' statusline claude --package 'craft-delivery' --native-stdin"
+            .into(),
+    ));
+    let (code, report) = doctor(&repo, &homes);
+    assert_eq!(code, 0);
+    assert_eq!(check(&report)["status"], "problem", "{report}");
+    assert!(
+        report.to_string().contains("which no longer exists"),
+        "{report}"
+    );
+
+    // Another copy of the installed version (a marketplace directory) is fine; an older is not.
+    for (version, status) in [("0.0.5", "ok"), ("0.0.4", "problem")] {
+        let copy = homes.claude.join(format!("marketplace-{version}"));
+        support::installed_bundle(&copy, version);
+        write(Some(format!(
+            "'{}' statusline claude --package 'craft-delivery' --native-stdin",
+            copy.join("bin/craft").display()
+        )));
+        let (_, report) = doctor(&repo, &homes);
+        assert_eq!(check(&report)["status"], status, "{report}");
+    }
+
+    write(Some("my-own-status-line".into()));
+    let (_, report) = doctor(&repo, &homes);
+    assert_eq!(check(&report)["status"], "off");
+    assert!(
+        !report.to_string().contains("host-setup --host claude"),
+        "{report}"
+    );
+}
