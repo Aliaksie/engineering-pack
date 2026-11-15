@@ -322,6 +322,11 @@ When a turn ends, the user reads one line on what Craft did in the session so fa
 Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 context restored after compaction
 ```
 
+Hook runs that gave no answer are named too: `1 hook failure` when the runtime could not
+decide (most often a project file it cannot read), counted once per event by the delivery
+hook. A hook whose input was too large or unreadable cannot tell which session sent it, so
+`craft doctor` counts those (see [Checking an installation](INSTALL.md#checking-an-installation)).
+
 Only what happened is named, and a session in which none of it happened shows no line. The
 line appears again only after it changed, and never beside a stop the review holds. It is the
 host's own message to the user (`systemMessage`), not context for the model, on Claude Code,

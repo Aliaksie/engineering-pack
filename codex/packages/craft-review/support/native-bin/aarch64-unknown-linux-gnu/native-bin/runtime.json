@@ -6,7 +6,7 @@
       "platform": "linux",
       "arch": "arm64",
       "executable": "craft",
-      "sha256": "46a32e81aec984a944a3e10e674a74ac3106716b268cb44b9966cf20d30c36fd"
+      "sha256": "62c3bf6ad94b467b839787b46c9861a7c5dc5c5cf06c9d866633e0d318cb186c"
     }
   ]
 }

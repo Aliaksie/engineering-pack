@@ -217,6 +217,9 @@ for the project whether each host would run Craft, from files only:
   it ran, so a session that predates an update is named and an event of another version is
   not taken for the installed one; for a host with no install found, the last event recorded
   for it;
+- per host, the hook runs in the retained telemetry that gave no answer: input too large,
+  unreadable or not JSON, or a failure, with the last one (a problem, not blocking; a hook
+  that stays silent is otherwise taken for one with nothing to say);
 - the configuration layers: a file that cannot be used, fields of the organization or user
   file this build does not know and left out, and a safety policy that is on while no hook of
   an installed host is known to have run in the project.
