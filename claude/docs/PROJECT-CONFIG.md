@@ -18,6 +18,9 @@ An organization file and a user file can declare a baseline every project inheri
 `routing`, `checkpoint`, `workspace`, `efficiency`, `standards`, `anchors`, `skills.disables`,
 `safety`, `execution` and `review`. The project overrides only what differs and
 `craft config` shows which layer won; see [configuration layers](SESSION.md#configuration-layers).
+A layer file links `schemas/layer.schema.json`, this schema without the fields that name one repository.
+`craft config --sync --apply` commits the organization file as `.craft/organization.json`, the
+organization layer on machines without that file, such as CI runners.
 Task overrides take the switch sections only (`routing`, `checkpoint`, `workspace`,
 `efficiency`).
 
