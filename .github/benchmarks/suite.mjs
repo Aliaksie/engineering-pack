@@ -63,7 +63,8 @@ const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.
 
 // Standards fixture: the consumer with declared standards and debt markers, one caller of
 // `item42`, a started session, a routed change, a warm index and an uncommitted edit adding a
-// TODO. Each cell is a hook the session then fires; its check says the feature answered.
+// TODO. Each cell is a hook the session then fires; its check says the feature answered. A
+// held stop is `decision: block`, or on Claude feedback context that continues the turn.
 const standards = consumer(path.join(workspace, 'standards')), standardsSeed = path.join(workspace, 'standards-seed');
 fs.writeFileSync(path.join(standards, 'src/caller.mjs'), "import { item42 } from './item-42.mjs';\nexport const total = value => item42(value);\n");
 fs.writeFileSync(path.join(standards, '.craft/project.json'), JSON.stringify({ formatVersion: 1, routing: { debtMarkers: true }, standards: [
@@ -79,7 +80,7 @@ const SESSION = [
   { cell: 'after-test', event: 'after-tool', payload: { hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { stdout: '✔ guards (1ms)\nℹ tests 1\nℹ pass 1\nℹ fail 0\nℹ skipped 0\n', stderr: '', interrupted: false }, tool_use_id: 'toolu_after_test' },
     answers: (_, root) => fs.readdirSync(path.join(root, '.craft/state/sessions'), { recursive: true }).some(file => String(file).endsWith('test-runs.json')) },
   { cell: 'agent-start', event: 'agent-start', payload: { hook_event_name: 'SubagentStart', agent_id: 'bench-agent', agent_type: 'general-purpose' }, answers: out => out.includes('conventional-commits') },
-  { cell: 'stop-changed', event: 'turn-end', payload: { hook_event_name: 'Stop', stop_hook_active: false }, answers: out => out.includes('"block"') && out.includes('todo-marker') && out.includes('item-review') }
+  { cell: 'stop-changed', event: 'turn-end', payload: { hook_event_name: 'Stop', stop_hook_active: false }, answers: out => /"block"|"additionalContext"/.test(out) && out.includes('todo-marker') && out.includes('item-review') }
 ];
 const payload = (root, cell, body) => {
   const file = path.join(workspace, `${cell}.json`);
