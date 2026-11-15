@@ -7,9 +7,9 @@ the user's `preferences.json`, the project's `.craft/project.json` and its `.cra
 startup, prompt, edit, test run, compaction and turn end, saved a checkpoint and ran a
 commit-stage check.
 
-`capture.sh <released-craft-binary> <new-directory>` records it: an isolated `HOME`, a
-repository committed with a fixed author and date (the replay recreates the same commit),
-then the hook sequence. Copy `home/.config/craft/preferences.json`,
+`node tests/fixtures/skew/capture.mjs <released-craft-binary> <new-directory>` records it:
+an isolated `HOME`, a repository committed with a fixed author and date (the replay recreates
+the same commit), then the hook sequence. Copy `home/.config/craft/preferences.json`,
 `project/.craft/project.json` and `project/.craft/state` without lock files.
 
 State formats are compatibility contracts: a replay failure is a regression to fix in the
