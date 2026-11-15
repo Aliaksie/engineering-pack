@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft doctor` checks Claude Code's status line, through which Craft sees context usage:
+  without one it offers the `host-setup --apply` command (it writes nothing itself), and a
+  status line still running a removed or older Craft after an update is reported with the
+  command to set instead. A custom status line is left alone.
 - At the end of a turn, Claude Code, Codex and Gemini CLI show one next step beside the session
   summary when Craft knows one: `craft check --stage commit` when a declared check covers files
   the turn changed and has not run since; a required acceptance criterion of the session's task

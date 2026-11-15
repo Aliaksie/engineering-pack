@@ -2,7 +2,7 @@
 //! files only, whether its hooks would run. Read-only: nothing is written to host or Craft
 //! state, no host is started and nothing is fetched.
 use crate::failure::Failure;
-use craft_platform::{host_install, state, telemetry};
+use craft_platform::{host_install, host_settings, state, telemetry};
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -47,6 +47,44 @@ fn hook_events(root: &Path) -> Value {
     json!({"local": effective["local"], "window": {"first": first}, "lastSeen": latest})
 }
 
+/// The launcher a status-line command runs when it is Craft's own (`'<launcher>' statusline
+/// claude …`, as `host-setup` writes it); `None` for any other command.
+fn craft_launcher(command: &str) -> Option<&str> {
+    if !command.contains(" statusline claude ") {
+        return None;
+    }
+    match command.strip_prefix('\'') {
+        Some(rest) => rest.split('\'').next(),
+        None => command.split_whitespace().next(),
+    }
+}
+
+/// The effective Claude status line: whether one is set, where, and when it runs Craft,
+/// whether that launcher exists and which Craft version its bundle carries.
+fn status_line(root: &Path) -> Value {
+    let found = match host_settings::inspect(root) {
+        Ok(found) => found,
+        Err(error) => return json!({"error": error.to_string()}),
+    };
+    let mut out = json!({"configured": !found["statusLine"].is_null(), "source": found["source"]});
+    let Some(launcher) = found["statusLine"]["command"]
+        .as_str()
+        .and_then(craft_launcher)
+    else {
+        return out;
+    };
+    // `<bundle>/bin/craft` or `craft.cmd`: the bundle's runtime manifest names its version.
+    let bundle = state::physical(Path::new(launcher))
+        .ok()
+        .and_then(|path| path.parent()?.parent().map(Path::to_path_buf));
+    out["launcher"] = json!(launcher);
+    out["present"] = json!(bundle.is_some());
+    if let Some(bundle) = bundle {
+        out["packVersion"] = host_install::bundle(&bundle)["packVersion"].clone();
+    }
+    out
+}
+
 /// The doctor report for the project at `root`.
 pub fn run(root: &Path) -> Result<Value, Failure> {
     let root = state::canonical_root(root)?;
@@ -77,12 +115,15 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
     if let Some(gap) = crate::hook_gap::found(&root, "codex", None, installed, safety) {
         codex["gap"] = gap;
     }
+    let mut claude = host_install::claude(&root);
+    claude["statusLine"] = status_line(&root);
+    claude["windows"] = json!(cfg!(windows));
     let facts = json!({
         "configuration": configuration,
         "project": root.to_string_lossy(),
         "craftVersion": crate::telemetry::pack_version(),
         "telemetry": hook_events(&root),
-        "claude": host_install::claude(&root),
+        "claude": claude,
         "codex": codex,
         "overlays": overlays,
     });

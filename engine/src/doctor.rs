@@ -219,13 +219,120 @@ struct Report {
     next: Vec<String>,
 }
 
-fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report) -> Value {
+/// A shell word in single quotes, as `host-setup` quotes the launcher.
+fn quoted(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
+/// Claude's status line is how Craft observes context usage there; without it Craft stays
+/// silent about compaction. Doctor offers the setup command and never writes settings.
+fn status_line(
+    facts: &Value,
+    project: &Value,
+    offer: Option<(&str, &str, Option<&str>)>,
+    report: &mut Report,
+) -> Option<Value> {
+    let (id, bundle, installed) = offer?;
+    let found = &facts["statusLine"];
+    if found.is_null() {
+        return None;
+    }
+    if let Some(error) = found["error"].as_str() {
+        return Some(check(
+            "status-line",
+            "unknown",
+            format!("Claude settings not readable: {error}"),
+        ));
+    }
+    let launcher = if facts["windows"] == true {
+        format!("{bundle}/bin/craft.cmd")
+    } else {
+        format!("{bundle}/bin/craft")
+    };
+    let name = package(id);
+    if found["configured"] != true {
+        let setup = format!(
+            "{} host-setup --host claude --package {name} --root {}",
+            quoted(&launcher),
+            quoted(project.as_str().unwrap_or(".")),
+        );
+        report.next.push(if facts["windows"] == true {
+            format!("Optional, so Craft sees context usage and can advise compaction: follow the status-line guidance of {setup}")
+        } else {
+            format!("Optional, so Craft sees context usage and can advise compaction: {setup} --apply (adds Craft's status line to .claude/settings.local.json; run it without --apply to preview)")
+        });
+        return Some(check(
+            "status-line",
+            "off",
+            "no status line: Craft sees no context usage in Claude and says nothing about compaction",
+        ));
+    }
+    let source = found["source"].as_str().unwrap_or("Claude settings");
+    let Some(current) = found["launcher"].as_str() else {
+        return Some(check(
+            "status-line",
+            "off",
+            format!(
+                "a custom status line ({source}) is set: Craft sees no context usage unless it calls `craft statusline claude --native-stdin`"
+            ),
+        ));
+    };
+    let replace = format!(
+        "Set statusLine.command in {source} to: {} statusline claude --package {} --native-stdin",
+        quoted(&launcher),
+        quoted(name),
+    );
+    if found["present"] != true {
+        report.next.push(replace);
+        return Some(check(
+            "status-line",
+            "problem",
+            format!(
+                "the status line runs {current}, which no longer exists: Claude shows no status line and Craft sees no context usage"
+            ),
+        ));
+    }
+    // Any copy of the installed version is fine (a marketplace directory, the host's cache).
+    let ran = found["packVersion"].as_str();
+    match ran {
+        Some(version) if Some(version) == installed => Some(check(
+            "status-line",
+            "ok",
+            format!("Craft's status line ({source}) reports context usage"),
+        )),
+        Some(version) => {
+            report.next.push(replace);
+            Some(check(
+                "status-line",
+                "problem",
+                format!(
+                    "the status line runs craft {version} from {current}, not the installed {}",
+                    installed.unwrap_or("version")
+                ),
+            ))
+        }
+        None => Some(check(
+            "status-line",
+            "unknown",
+            format!("the status line runs {current}, whose version cannot be read"),
+        )),
+    }
+}
+
+fn claude(
+    facts: &Value,
+    project: &Value,
+    seen: &[Value],
+    telemetry: &Value,
+    report: &mut Report,
+) -> Value {
     if facts["installed"] != true || facts["packages"].as_array().is_none_or(Vec::is_empty) {
         return absent("claude", seen);
     }
     let layers = facts["settings"].as_array().cloned().unwrap_or_default();
     let mut packages = Vec::new();
     let mut enabled_ids: Vec<&str> = Vec::new();
+    let mut offer: Option<(&str, &str, Option<&str>)> = None;
     for found in facts["packages"].as_array().into_iter().flatten() {
         let id = found["id"].as_str().unwrap_or_default();
         // Settings merge key by key; the last layer naming the plugin decides.
@@ -259,6 +366,9 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
         };
         if enabled {
             enabled_ids.push(id);
+            if let (None, Some(path)) = (offer, found["bundle"]["path"].as_str()) {
+                offer = Some((id, path, found["bundle"]["packVersion"].as_str()));
+            }
             let (runtime, blocks) = runtime(&found["bundle"]);
             if blocks {
                 report.blocking = true;
@@ -322,6 +432,7 @@ fn claude(facts: &Value, seen: &[Value], telemetry: &Value, report: &mut Report)
             "the same Craft package is enabled from two marketplaces; one copy's hooks do not run",
         ));
     }
+    checks.extend(status_line(facts, project, offer, report));
     let mut all: Vec<Value> = checks.clone();
     for p in &packages {
         all.extend(p["checks"].as_array().cloned().unwrap_or_default());
@@ -675,7 +786,13 @@ pub fn report(facts: &Value) -> Value {
         next: Vec::new(),
     };
     let mut hosts = vec![
-        claude(&facts["claude"], &seen, telemetry, &mut state),
+        claude(
+            &facts["claude"],
+            &facts["project"],
+            &seen,
+            telemetry,
+            &mut state,
+        ),
         codex(&facts["codex"], &seen, telemetry, &mut state),
     ];
     for found in facts["overlays"].as_array().into_iter().flatten() {

@@ -396,3 +396,90 @@ fn nothing_recorded_is_not_held_against_a_safety_policy_or_a_version() {
     let report = report(&facts);
     assert_eq!(host(&report, "codex")["status"], "ok", "{report}");
 }
+
+fn status_line(report: &Value) -> &Value {
+    host(report, "claude")["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check"] == "status-line")
+        .unwrap()
+}
+
+#[test]
+fn without_a_status_line_doctor_offers_the_setup_command_and_writes_nothing() {
+    let mut facts = facts();
+    facts["claude"]["statusLine"] = json!({"configured": false, "source": null});
+    let report = super::report(&facts);
+    assert_eq!(status_line(&report)["status"], "off");
+    assert_eq!(host(&report, "claude")["status"], "ok");
+    assert_eq!(report["readOnly"], true);
+    let next = report["next"].as_array().unwrap();
+    assert_eq!(next.len(), 1);
+    let offer = next[0].as_str().unwrap();
+    assert!(
+        offer.contains("'/p/bin/craft' host-setup --host claude --package craft-delivery --root '/repo' --apply"),
+        "{offer}"
+    );
+    // Windows has no automatic setup: the offer is the preview with its manual guidance.
+    facts["claude"]["windows"] = json!(true);
+    let report = super::report(&facts);
+    let offer = report["next"][0].as_str().unwrap();
+    assert!(offer.contains("'/p/bin/craft.cmd' host-setup"), "{offer}");
+    assert!(!offer.contains("--apply"), "{offer}");
+}
+
+#[test]
+fn a_status_line_is_ok_when_it_runs_an_installed_craft_and_off_when_custom() {
+    let mut facts = facts();
+    facts["claude"]["statusLine"] = json!({"configured": true, "source": "/repo/.claude/settings.local.json",
+        "launcher": "/p/bin/craft", "present": true, "packVersion": "0.0.5"});
+    let report = super::report(&facts);
+    assert_eq!(status_line(&report)["status"], "ok");
+    assert!(report["next"].as_array().unwrap().is_empty());
+
+    facts["claude"]["statusLine"] =
+        json!({"configured": true, "source": "/home/u/.claude/settings.json"});
+    let report = super::report(&facts);
+    assert_eq!(status_line(&report)["status"], "off");
+    assert!(
+        report["next"].as_array().unwrap().is_empty(),
+        "a custom display is the user's choice"
+    );
+}
+
+#[test]
+fn a_status_line_left_on_an_old_or_removed_install_is_a_problem_with_the_replacement() {
+    for present in [true, false] {
+        let mut facts = facts();
+        facts["claude"]["statusLine"] = json!({"configured": true, "source": "/repo/.claude/settings.local.json",
+            "launcher": "/old/bin/craft", "present": present, "packVersion": if present { json!("0.0.4") } else { Value::Null }});
+        let report = super::report(&facts);
+        assert_eq!(status_line(&report)["status"], "problem");
+        assert_eq!(report["blocking"], false);
+        let next = report["next"][0].as_str().unwrap();
+        assert!(
+            next.contains(
+                "'/p/bin/craft' statusline claude --package 'craft-delivery' --native-stdin"
+            ),
+            "{next}"
+        );
+    }
+}
+
+#[test]
+fn no_status_line_check_without_an_enabled_claude_package_or_a_settings_fact() {
+    let mut facts = facts();
+    assert!(
+        host(&report(&facts), "claude")["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c["check"] != "status-line")
+    );
+    facts["claude"]["statusLine"] = json!({"configured": false});
+    facts["claude"]["settings"][1]["enabledPlugins"]["craft-delivery@craft-capabilities"] =
+        json!(false);
+    let report = super::report(&facts);
+    assert!(report["next"].as_array().unwrap().is_empty());
+}
