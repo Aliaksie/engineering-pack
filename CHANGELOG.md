@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft doctor` counts, per host, hook runs that gave no answer because their input was too
+  large, unreadable or not JSON, or because the hook failed, and names the last one. The
+  session summary and `craft session` count the session's hook failures. Before, such a hook
+  was silent and looked like one with nothing to say.
 - `craft config --sync` previews copying the machine's organization configuration to
   `.craft/organization.json`, and writes it with `--apply`. Committed, that copy is the
   organization layer on machines without the organization file, such as CI runners and

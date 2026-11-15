@@ -152,7 +152,7 @@ fn unread_input_fails_the_hook_and_invalid_input_is_diagnosed() {
             r#"diagnostic<host.hook>[INPUT_TOO_LARGE] failure {"inputStatus":"oversized","lifecycle":"before-tool","area":"host","package":"craft-stories","identityScope":"invocation"}"#,
             r#"host.hook<>[HOOK_FAILED] failure {"lifecycle":"before-tool","inputStatus":"oversized","package":"craft-stories","identityScope":"invocation"}"#,
             r#"diagnostic<host.hook>[INVALID_INPUT] failure {"inputStatus":"read-failure","lifecycle":"before-tool","area":"host","package":"craft-stories","identityScope":"invocation"}"#,
-            r#"host.hook<>[HOOK_FAILED] failure {"package":"craft-stories","identityScope":"invocation"}"#,
+            r#"host.hook<>[HOOK_FAILED] failure {"lifecycle":"before-tool","inputStatus":"read-failure","package":"craft-stories","identityScope":"invocation"}"#,
             r#"diagnostic<host.hook>[INVALID_INPUT] failure {"inputStatus":"invalid","lifecycle":"before-tool","area":"host","identityScope":"invocation"}"#,
             r#"host.hook<> success {"lifecycle":"before-tool","inputStatus":"invalid","decision":"allow","identityScope":"invocation"}"#,
         ]
@@ -448,6 +448,36 @@ fn a_failed_policy_outside_shell_enforcement_continues_with_unavailable_context(
     assert_eq!(result["context"]["kind"], "unavailable");
     assert!(result["context"]["data"].is_string());
     assert_eq!(result.get("reason"), None);
+}
+
+/// A delivery hook that fails is counted in its session's record, once per event, and the
+/// session summary says so once the project reads again.
+#[test]
+fn a_failed_delivery_hook_is_counted_for_the_session() {
+    let fixture = project("failed-delivery", Some("{"));
+    let failing = |handler: &str| {
+        hook(facts(
+            &fixture.0,
+            handler,
+            json!({"lifecycle": "after-tool", "tool": "edit", "scope": "any", "package": "craft-delivery"}),
+        ))
+    };
+    assert_eq!(failing("deliver")["failed"], true);
+    // Another package's hook on the same event is not counted again.
+    assert_eq!(failing("review-read-only")["failed"], true);
+    fs::write(
+        fixture.0.join(".craft/project.json"),
+        r#"{"formatVersion":1}"#,
+    )
+    .unwrap();
+    let file =
+        craft_platform::state::file(&fixture.0, "delivered.json", false, Some("S-1")).unwrap();
+    let record: Value = serde_json::from_str(&fs::read_to_string(file).unwrap()).unwrap();
+    assert_eq!(record["hooks"], json!({"failed": 1}));
+    assert_eq!(
+        craft_engine::session::delivered::summary(&record).as_deref(),
+        Some("Craft this session: 1 hook failure")
+    );
 }
 
 const STANDARDS: &str = r#"{"formatVersion":1,"standards":[

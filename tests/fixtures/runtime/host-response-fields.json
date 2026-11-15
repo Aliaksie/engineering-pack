@@ -1,0 +1,58 @@
+{
+  "about": "Hook output fields each host documents, per native event: top-level fields and the fields of a nested hookSpecificOutput. A hook answer may use only these. Read from each host's hooks reference on 2026-11-15.",
+  "sources": {
+    "claude": "https://code.claude.com/docs/en/hooks",
+    "codex": "https://learn.chatgpt.com/docs/hooks",
+    "cursor": "https://cursor.com/docs/agent/hooks",
+    "copilot": "https://docs.github.com/en/copilot/reference/hooks-configuration",
+    "gemini": "https://geminicli.com/docs/hooks/reference"
+  },
+  "hosts": {
+    "claude": {
+      "PreToolUse": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "permissionDecision", "permissionDecisionReason", "additionalContext", "updatedInput"] },
+      "PostToolUse": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "PostToolUseFailure": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "UserPromptSubmit": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "SessionStart": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "PreCompact": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"], "hookSpecificOutput": [] },
+      "Stop": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "SubagentStart": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] }
+    },
+    "codex": {
+      "PreToolUse": { "fields": ["systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "permissionDecision", "permissionDecisionReason", "additionalContext", "updatedInput"] },
+      "PostToolUse": { "fields": ["systemMessage", "continue", "stopReason", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "UserPromptSubmit": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "SessionStart": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "PreCompact": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage"], "hookSpecificOutput": [] },
+      "Stop": { "fields": ["continue", "stopReason", "suppressOutput", "systemMessage", "decision", "reason"], "hookSpecificOutput": [] },
+      "SubagentStart": { "fields": ["systemMessage", "continue", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] }
+    },
+    "cursor": {
+      "preToolUse": { "fields": ["permission", "user_message", "agent_message", "updated_input"], "hookSpecificOutput": [] },
+      "postToolUse": { "fields": ["additional_context", "updated_mcp_tool_output"], "hookSpecificOutput": [] },
+      "postToolUseFailure": { "fields": ["additional_context"], "hookSpecificOutput": [] },
+      "beforeSubmitPrompt": { "fields": ["continue", "user_message"], "hookSpecificOutput": [] },
+      "sessionStart": { "fields": ["env", "additional_context"], "hookSpecificOutput": [] },
+      "preCompact": { "fields": ["user_message"], "hookSpecificOutput": [] },
+      "stop": { "fields": ["followup_message"], "hookSpecificOutput": [] }
+    },
+    "copilot": {
+      "preToolUse": { "fields": ["permissionDecision", "permissionDecisionReason", "modifiedArgs"], "hookSpecificOutput": [] },
+      "postToolUse": { "fields": ["additionalContext", "modifiedResult"], "hookSpecificOutput": [] },
+      "postToolUseFailure": { "fields": ["additionalContext"], "hookSpecificOutput": [] },
+      "userPromptSubmitted": { "fields": [], "hookSpecificOutput": [] },
+      "sessionStart": { "fields": ["additionalContext"], "hookSpecificOutput": [] },
+      "preCompact": { "fields": [], "hookSpecificOutput": [] },
+      "agentStop": { "fields": ["decision", "reason"], "hookSpecificOutput": [] },
+      "subagentStart": { "fields": ["additionalContext"], "hookSpecificOutput": [] }
+    },
+    "gemini": {
+      "BeforeTool": { "fields": ["systemMessage", "suppressOutput", "continue", "stopReason", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "tool_input"] },
+      "AfterTool": { "fields": ["systemMessage", "suppressOutput", "continue", "stopReason", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext", "tailToolCallRequest"] },
+      "BeforeAgent": { "fields": ["systemMessage", "suppressOutput", "continue", "stopReason", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "AfterAgent": { "fields": ["systemMessage", "suppressOutput", "continue", "stopReason", "decision", "reason", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "clearContext"] },
+      "SessionStart": { "fields": ["systemMessage", "suppressOutput", "hookSpecificOutput"], "hookSpecificOutput": ["hookEventName", "additionalContext"] },
+      "PreCompress": { "fields": ["systemMessage", "suppressOutput"], "hookSpecificOutput": [] }
+    }
+  }
+}

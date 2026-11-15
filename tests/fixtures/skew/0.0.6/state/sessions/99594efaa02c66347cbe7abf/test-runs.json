@@ -1,0 +1,1 @@
+{"formatVersion":1,"runs":[{"result":"passed","reason":"summary","runner":"cargo","exitCode":0,"executed":2,"failed":0,"skipped":0,"command":"cargo test","host":"claude","at":"2026-11-15T18:00:39.461Z","source":"e81a3b6e077b88c2343da5b664936d39a9dd0c38bf975597300b10251fc18a23"}]}

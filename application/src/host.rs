@@ -209,12 +209,8 @@ pub fn run(input: &Value) -> Result<Value, String> {
         recorder.report("host", reason, details, &hook);
     }
     if unread {
-        // Policy hooks reject unread input; observation records it and stays silent.
-        let summary = if observational {
-            attributes(&[("lifecycle", lifecycle), ("inputStatus", status)])
-        } else {
-            Map::new()
-        };
+        // Every hook names the event and why it did not read it, so doctor can count it.
+        let summary = attributes(&[("lifecycle", lifecycle), ("inputStatus", status)]);
         // Hosts continue after a failing hook, so an enabled shell guard denies explicitly:
         // the read-only review, and the safety policy, which every package's hook before a
         // tool enforces, before a shell command (or a tool the input did not name) that it
@@ -300,6 +296,19 @@ pub fn run(input: &Value) -> Result<Value, String> {
             Err(Failure { message, .. }) => {
                 recorder.report("host", "HOOK_FAILED", Map::new(), &hook);
                 failed = true;
+                // Counted for the session summary, once per event: by the delivery hook.
+                if facts.handler == Handler::Deliver
+                    && let Some(session) = facts.session.filter(|s| !s.is_empty())
+                    // A project file that cannot be read is the usual cause: still counted.
+                    && project::settings(&root, None)
+                        .map_or(true, |settings| craft_engine::delivery::session_records(&settings))
+                    && crate::delivered::update(&root, session, |record| {
+                        Some(craft_engine::session::delivered::hook_failure(record))
+                    })
+                    .is_err()
+                {
+                    recorder.report("state", "STATE_UNAVAILABLE", Map::new(), &hook);
+                }
                 let enforcement = facts.shell_only && facts.lifecycle == "before-tool";
                 decision = craft_engine::delivery::failure(enforcement, &message);
             }

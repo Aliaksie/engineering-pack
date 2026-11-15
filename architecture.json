@@ -69,7 +69,7 @@
     "tests": {
       "kind": "tests",
       "responsibility": "Repository-level behavior, contract replay and architecture tests.",
-      "allow": ["**/*.mjs", "**/*.json", "**/*.md"],
+      "allow": ["**/*.mjs", "**/*.json", "**/*.md", "fixtures/skew/**"],
       "dependsOn": "*",
       "shipped": false
     },

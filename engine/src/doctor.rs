@@ -810,6 +810,45 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
     checks
 }
 
+/// A host's hook runs that gave no answer in the retained telemetry, as a `problem` check:
+/// a hook that stays silent because it could not read its input or failed is counted, not
+/// taken for one with nothing to say. `None` when every run answered.
+fn unanswered(telemetry: &Value, host: &str) -> Option<Value> {
+    let row = telemetry["unanswered"]
+        .as_array()?
+        .iter()
+        .find(|row| row["host"] == host)?;
+    let count = |field: &str| row[field].as_u64().unwrap_or(0);
+    let (unread, failed) = (count("unread"), count("failed"));
+    if unread + failed == 0 {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if unread > 0 {
+        parts.push(format!(
+            "{unread} with input not read (too large, unreadable or not JSON)"
+        ));
+    }
+    if failed > 0 {
+        parts.push(format!("{failed} failed"));
+    }
+    let since = telemetry["window"]["first"]
+        .as_str()
+        .map_or(String::new(), |first| format!(" since {first}"));
+    Some(check(
+        "answers",
+        "problem",
+        format!(
+            "{} hook run{} gave no answer{since}: {}; last {} at {}",
+            unread + failed,
+            if unread + failed == 1 { "" } else { "s" },
+            parts.join(", "),
+            row["lifecycle"].as_str().unwrap_or("event"),
+            row["at"].as_str().unwrap_or("?"),
+        ),
+    ))
+}
+
 /// The doctor report over observed facts: `{formatVersion, readOnly, project, craftVersion,
 /// hosts, configuration, blocking, next, unknown}`.
 pub fn report(facts: &Value) -> Value {
@@ -834,6 +873,18 @@ pub fn report(facts: &Value) -> Value {
     ];
     for found in facts["overlays"].as_array().into_iter().flatten() {
         hosts.push(overlay(found, &seen, telemetry, &mut state));
+    }
+    for host in &mut hosts {
+        let name = host["host"].as_str().unwrap_or_default().to_owned();
+        if matches!(host["status"].as_str(), Some("not-installed" | "off")) {
+            continue;
+        }
+        if let (Some(found), Some(checks)) =
+            (unanswered(telemetry, &name), host["checks"].as_array_mut())
+        {
+            checks.push(found);
+            host["status"] = json!("problem");
+        }
     }
     let configuration = configuration(facts, &hosts, &mut state);
     state.next.dedup();
