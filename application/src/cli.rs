@@ -1291,7 +1291,14 @@ fn acceptance_view(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    let usage = || Failure::from(format!("usage: craft {}", ACCEPTANCE_VIEW_USAGE));
+    let usage = || {
+        Failure::from(format!(
+            "usage: craft {}",
+            help("acceptance-view")["usage"]
+                .as_str()
+                .unwrap_or_default()
+        ))
+    };
     let mut file = |name: &str| -> Result<Option<Value>, Failure> {
         options
             .get(name)
@@ -1622,184 +1629,24 @@ fn config(options: &Options, _: &mut Recorder, _: &Operation) -> Result<Value, F
     )
 }
 
-/// Command help; commands without an entry get the general list.
-const ACCEPTANCE_VIEW_USAGE: &str = "acceptance-view --view qa|product|architecture --contract contract.json --acceptance-evidence ledger.json --current-kind repository|environment [--current-identity id] [--probes probes.json (qa)] [--focus focus.json (product, architecture)] [--blockers]";
+/// Command help, authored in `application/text/help.json`; commands without an entry get the
+/// general list. Fields the runtime owns are `null` there and filled in here.
+const HELP: &str = include_str!("../text/help.json");
 
 fn help(action: &str) -> Value {
-    let mut help = match action {
-        "host-setup" => {
-            json!({"usage":"host-setup --host name --package name [--bundle installed-package-root] [--root project] [--apply]", "mode":"Preview display, compaction and configuration guidance; --apply connects only the Claude display. Permissions are suggestions only."})
+    let mut table: Value = serde_json::from_str(HELP).unwrap_or_default();
+    let mut help = match table.get_mut(action).map(Value::take) {
+        Some(mut entry) => {
+            match action {
+                "checkpoint-save" => {
+                    entry["continuationFields"] = json!(craft_engine::checkpoint::CONTINUATION);
+                }
+                "session-attempt" => entry["outcomes"] = json!(craft_engine::session::OUTCOMES),
+                _ => {}
+            }
+            entry
         }
-        "permissions" => {
-            json!({"usage":"permissions --host name [--bundle installed-package-root] [--root project]", "mode":"Print optional, command-scoped host permission suggestions. Writes no permission settings."})
-        }
-        "host-observe" => {
-            json!({"usage":"host-observe --host claude|codex --session id --data native-event.json --observed-at receive-time [--root project]", "mode":"Record one fresh native context or compaction event forwarded by a connected host integration."})
-        }
-        "locate" => json!({
-            "usage":"locate --root project --term Foo --term Bar [--path src] [--session id --task task-id] [--max-output-bytes 32768]",
-            "data":"Alternatively --data request.json: terms or independent requests {id,term,dependsOn}, paths, maxFiles, maxMatches, maxBytes, maxOutputBytes",
-            "mode":"bounded literal scan; optional local reuse receipts"
-        }),
-        "standards" => json!({
-            "usage": "standards [--root project] [--propose] [--file CHANGELOG.md ...] [--commit-message .git/COMMIT_EDITMSG]",
-            "mode": "Without files, list declared standards. With --propose, list standards the project's existing convention files support, ready to copy into the configuration; nothing is written. With --file or --commit-message, run the deterministic anchor checks the hooks run; exits 2 when a standard is not met."
-        }),
-        "doctor" => json!({
-            "usage": "doctor [--root project] [--json]",
-            "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
-        }),
-        "check" => json!({
-            "usage": "check [--root project] [--stage step|commit|pr|ci] [--base ref | --file path ... | --all] [--session id] | check [--root project] --install-hook [--apply] | check [--root project] --ci-snippet github|gitlab",
-            "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes (with --base, also the files committed since the ref's merge base with HEAD), the named files or, with --all, every declaration. A project below the top of its checkout reads its own folder; a workspace root reads each member repository. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass. --install-hook previews a Git pre-commit hook running the commit stage and writes it with --apply; where a hook manager (husky, lefthook, pre-commit), core.hooksPath or another hook owns pre-commit it prints the line to add and writes nothing. --ci-snippet prints a GitHub Actions or GitLab CI job that installs this Craft release and runs the ci stage since the target branch."
-        }),
-        "anchors" => json!({
-            "usage": "anchors [--root project] [--search text]",
-            "mode": "Without --search, list the project's and Craft's anchors; with it, search the embedded catalog too by id, title, category or role. Each name shows the source it resolves to."
-        }),
-        "grounded-context" => {
-            json!({"usage":"grounded-context --root project --data input.json", "mode":"Read-only citation composition; no task-state changes or command execution."})
-        }
-        "context-report" => json!({
-            "usage": "context-report --intent implement [--file src/main.py] [--bundle package-root ...]",
-            "mode": "selected guidance accounting; repeat --bundle for verified separately installed packages; no cache discovery or resource loading",
-        }),
-        "checkpoint-save" => json!({
-            "usage": "checkpoint-save --root project --session id [--task task-id] [--repository relative/repo ...] --data handoff.json",
-            "continuationFields": craft_engine::checkpoint::CONTINUATION,
-            "mode": "explicit local checkpoint write",
-        }),
-        "checkpoint-read" => json!({
-            "usage": "checkpoint-read --root project --session id",
-            "mode": "read-only recovery comparison",
-        }),
-        "task-start" => json!({
-            "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
-            "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees",
-        }),
-        "plan" => json!({
-            "usage": "plan [--root project] [--plan id | --reference tracker:PROJ-123] [--json]",
-            "mode": "read-only: one plan as its Markdown view (JSON with --json), the plans linking a reference, or every plan's summary",
-        }),
-        "plan-create" => json!({
-            "usage": "plan-create --plan id --goal \"outcome\" [--reference tracker:PROJ-123 ...] [--data plan.json] [--root project]",
-            "data": {"tasks": [{"id": "a", "goal": "First step", "dependsOn": [], "files": [], "acceptance": []}, {"id": "a1", "goal": "Part of the first step", "parent": "a", "scope": {"paths": ["src/part/**"]}, "contract": "contracts/part.json", "returns": "What changed"}], "decisions": [{"id": "d1", "text": "Decision"}]},
-            "mode": "create a local work plan; references are opaque and nothing is read from a tracker",
-        }),
-        "plan-update" => json!({
-            "usage": "plan-update --plan id --expected-revision N --data changes.json [--session id] [--take-over] [--root project]",
-            "changes": ["goal", "status", "references", "decisions", "tasks"],
-            "taskStates": ["pending", "failed", "abandoned"],
-            "mode": "revision-fenced change; a task another session holds changes only with --take-over",
-        }),
-        "plan-envelope" => json!({
-            "usage": "plan-envelope --plan id --task task-id [--brief] [--root project]",
-            "mode": "read-only: the task's goal, acceptance, owned scope, dependency results, parent checkpoint reference and latest decisions; --brief emits the worker brief",
-        }),
-        "plan-assign" => json!({
-            "usage": "plan-assign --plan id --task task-id --session id [--shared] [--root project]",
-            "mode": "claim a ready task that owns paths for a worker session of this session, in isolated worktrees below .craft/worktrees/<plan>/<task>-<attempt>/ on branch craft/<plan>/<task>-<attempt> unless --shared; refused at efficiency.delegation.maxWorkers or when a running task owns intersecting paths; no worker is started",
-        }),
-        "plan-integrate" => json!({
-            "usage": "plan-integrate --plan id --task task-id --session id [--escalate --reason text | --discard] [--root project]",
-            "mode": "merge a completed worktree task into the coordinator checkout when it merges cleanly (one merge commit per repository, nothing pushed); on conflicts the task runs again in this session to resolve them; --escalate hands it to the user, --discard returns it to pending",
-        }),
-        "task-adopt" => json!({
-            "usage": "task-adopt --session id --from earlier-session [--root project]",
-            "mode": "copy an earlier session's unfinished task and checkpoint into this session and bind it; the earlier session is unchanged and no authorization is renewed",
-        }),
-        "task-decide" => json!({
-            "usage": "task-decide --session id --decision \"what was decided\" --by user|agent [--why \"reason\"] [--rejected \"alternative\" ...] [--supersedes d1] [--root project]",
-            "mode": "record a decision on the session's bound task; it is shown when the task resumes after compaction or in another session. A user decision records what the user said; it grants no authorization",
-        }),
-        "session-attempt" => json!({
-            "usage": "session-attempt --root project --session id --task task-id --data attempt.json",
-            "example": {"operation": "implement", "target": "acceptance:regression", "approach": "bounded-fix", "evidence": "artifacts/check.json", "outcome": "passed"},
-            "outcomes": craft_engine::session::OUTCOMES,
-            "optional": ["profile", "maxAttempts", "escalationReason"],
-            "mode": "receipt only; no retry execution",
-        }),
-        "workspace-open" => json!({
-            "usage": "workspace-open --root project --session id [--task id] [--operation scope]",
-            "mode": "lazily allocate bounded private scratch for the active task; no host temp/cache changes",
-        }),
-        "workspace-write" => json!({
-            "usage": "workspace-write --session id [--operation scope] --data artifact.json",
-            "mode": "write a new bounded scratch file from {name,content}; existing files are never overwritten",
-        }),
-        "workspace-promote" => json!({
-            "usage": "workspace-promote --session id [--operation scope] --data promotion.json",
-            "mode": "intentionally retain bounded evidence from {name,purpose}; never promote secrets or transcripts",
-        }),
-        "workspace-release" => json!({
-            "usage": "workspace-release --session id [--operation scope]",
-            "mode": "release the current owner operation; task completion cleans disposable scratch when no other owner is active",
-        }),
-        "workspace-clean" => json!({
-            "usage": "workspace-clean --root project",
-            "mode": "reclaim closed or stale storage; open operations are retained until stale",
-        }),
-        "state-clean" => json!({
-            "usage": "state-clean --root project [--apply]",
-            "mode": "preview session directories idle for 14 days with no lock or open workspace; --apply removes them; shared records are only reported",
-        }),
-        "task-offer" => json!({
-            "usage": "task-offer --session id --action review|delegate|compact --scope scope --benefit benefit --evidence evidence-id [--data observations.json] [--prior-authorization evidence-id]",
-            "mode": "evaluate and record a recommendation; no dispatch",
-        }),
-        "task-decision" => json!({
-            "usage": "task-decision --session id --offer proposal-id --decision approved|declined --evidence user-decision-id",
-            "mode": "record an explicit scoped user decision; no action execution",
-        }),
-        "task-feature" => json!({
-            "usage": "task-feature --session id --feature feature-id --feature-status used|eligible-but-skipped|disabled|unsupported|not-applicable|failed --reason reason --evidence reference",
-            "mode": "explicit evaluation classification only; normal delivery uses runtime observations and leaves missing evidence unknown",
-        }),
-        "worker-status" => {
-            json!({"usage":"worker-status --root project --session id [--task id]", "mode":"shared task-tree reservations and host observations; no dispatch"})
-        }
-        "task-features" => json!({
-            "usage": "task-features --session id [--task id]",
-            "mode": "all feature outcomes, provenance, missing evidence and stale-source markers",
-        }),
-        "task-action-check" => json!({
-            "usage": "task-action-check --session id --offer proposal-id --data fresh-observations.json",
-            "mode": "revalidate source, approval, policy, support and capacity; no dispatch",
-        }),
-        "task-step" => json!({
-            "usage": "task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result \"observed result\" --next \"next step\" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]",
-            "mode": "agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch",
-        }),
-        "session" => json!({
-            "usage": "session [--root project] [--session id --task task-id] [--data task.json] [--json]",
-            "taskFields": ["id", "revision", "stage", "operation", "status", "files", "safeBoundary", "phaseChanged", "almostComplete", "compacted", "staleAssumptions", "risks", "nextStep"],
-            "mode": "recommendation-only",
-        }),
-        "acceptance-view" => json!({
-            "usage": ACCEPTANCE_VIEW_USAGE,
-            "mode": "read-only reader view of supplied contract, evidence and probes; executes nothing and writes no task state",
-        }),
-        "telemetry-capture" => json!({
-            "usage": "telemetry-capture --root project --session id",
-            "mode": "explicit private immutable report retention; eight captures / 64 KiB; no automatic eviction",
-        }),
-        "telemetry-forget" => json!({
-            "usage": "telemetry-forget --root project --capture id",
-            "mode": "explicitly remove one retained report; ordinary CLI telemetry still applies",
-        }),
-        "telemetry-report" => json!({
-            "usage": "telemetry-report [--root project] [--session id | --capture id]",
-            "mode": "bounded retained observation counts, loss reports and storage limits; no semantic or native execution claims",
-        }),
-        "config" => json!({
-            "usage": "config [--root project] [--explain] [--field routing] [--organization organization.json] [--preferences user.json] [--json] | config [--root project] [--organization organization.json] --sync [--apply]",
-            "mode": "Without --sync --apply, read-only: the organization, user and project layers the settings come from and each value one layer set over another. With --explain, every effective value with its layer and what it hid; --field keeps one field and what lies beneath it. A layer file that cannot be read or is invalid is an error naming the file. Where the machine has no organization file, a committed .craft/organization.json is the organization layer; where it has one, the pin is compared with it. --sync previews copying the machine's organization file to .craft/organization.json, so CI and teammates without it get the same layer; --apply writes it.",
-        }),
-        "settings" => json!({
-            "usage": "settings [--root project] [--organization organization.json] [--preferences user.json] [--data task-overrides.json] [--session id --facts worker-observations.json]",
-            "mode": "effective settings, value origins, applied controls and private state location; no action dispatch",
-        }),
-        _ => json!({
+        None => json!({
             "commands": COMMANDS.iter().map(|command| command.name).collect::<Vec<_>>(),
             "detail": "Use <command> --help or docs/SESSION.md for session policy.",
         }),
@@ -1929,6 +1776,29 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_help_table_parses_and_names_only_commands_whose_help_it_owns() {
+        let table: Value = serde_json::from_str(HELP).expect("help.json is JSON");
+        let table = table.as_object().expect("help.json is an object");
+        assert!(!table.is_empty());
+        for (name, entry) in table {
+            let command = command(name).unwrap_or_else(|| panic!("{name} is not a command"));
+            assert!(
+                !matches!(command.handler, Handler::Review(_) | Handler::Evidence),
+                "{name} has its own help"
+            );
+            assert!(entry["usage"].is_string(), "{name} has a usage line");
+            for (field, value) in entry.as_object().unwrap() {
+                if value.is_null() {
+                    assert!(
+                        help(name)[field.as_str()].is_array(),
+                        "{name}.{field} is filled in"
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn one_command_table_names_help_usage_and_dispatch() {
