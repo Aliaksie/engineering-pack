@@ -250,8 +250,21 @@ includes a tree whose latest run executed no test and no run decided; when that 
 `craft check` runs the commands a project declares: the `checks` of the modules that own the
 changed files and the `run` command of each `check` standard whose scope covers them. The
 changed files are the uncommitted ones, or those named with `--file`; `--all` takes every
-declared check, as a CI job on a clean tree needs. A module check runs in the module's path,
-a standard's command in its `cwd`.
+declared check, as a CI job on a clean tree needs. `--base <ref>` adds the files committed
+since the ref's merge base with `HEAD`, so a pull request's whole change is in scope:
+`craft check --stage pr --base origin/main`. The changed files are read from the project's
+own folder when its root lies below the top of the repository, and from each member
+repository at a workspace root, named from the project root either way. A module check runs
+in the module's path, a standard's command in its `cwd`.
+
+An argument that is exactly `{changedFiles}` becomes the changed files the check covers,
+named from its directory: the module's files for a module check, the files in the standard's
+scope (and below its `cwd`) for a standard's command. A deleted file selects the checks
+but is not passed. A formatter or linter then reads only
+what changed: `{ "command": "npx", "args": ["eslint", "{changedFiles}"] }`. A check with no
+such file is `skipped` and runs nothing, so a run of only skipped checks is `nothing-run`. A
+list longer than 64 KiB is not passed: the check is `not-started` (`argument-bound`) and
+`--file` narrows it.
 
 Each command may name a `stage`: `step`, `commit` (the default), `pr` or `ci`. A run at
 `--stage commit` executes the `step` and `commit` checks and lists the others as

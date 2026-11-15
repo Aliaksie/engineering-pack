@@ -343,6 +343,11 @@ answers held back as repeats or over the session budget ([routing](ROUTING.md));
 them under `delivered`. The counts come from the session's `delivered.json`, which holds
 counts and short hashes, never delivered text, and needs `routing.sessionRecords`.
 
+After a `craft check --session <id>`, `craft session` also shows that run in a `Checks:`
+line: its result and stage, how many checks ran, passed, were skipped and were left to a
+later stage, and whether the tree is still the one the checks ran on (`lastCheck` in
+`--json`; `current` is `null` when the tree cannot be fingerprinted).
+
 ## What is measured
 
 | Measure | Source | Limits |
