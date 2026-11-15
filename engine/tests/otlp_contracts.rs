@@ -1,4 +1,4 @@
-use craft_engine::otlp;
+use craft_engine::telemetry::otlp;
 use serde_json::Value;
 #[test]
 fn frozen_otlp_mapping_and_export_outcomes() {

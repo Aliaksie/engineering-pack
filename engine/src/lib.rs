@@ -18,7 +18,6 @@ pub mod grounding;
 pub mod hook_gap;
 pub mod layers;
 pub mod models;
-pub mod otlp;
 pub mod plan;
 pub mod repository;
 pub mod retention;
