@@ -146,6 +146,24 @@ pub(super) fn session_view(status: &Value) -> String {
             ),
         );
     }
+    let check = &status["lastCheck"];
+    if check.is_object() {
+        lines.push(format!(
+            "Checks: {} at {} ({} run, {} passed, {} skipped, {} left) {}; {}",
+            shown(&check["result"]),
+            shown(&check["stage"]),
+            shown(&check["run"]),
+            shown(&check["passed"]),
+            shown(&check["skipped"]),
+            shown(&check["left"]),
+            shown(&check["at"]),
+            match check["current"].as_bool() {
+                Some(true) => "tree unchanged since",
+                Some(false) => "tree changed since, run craft check again",
+                None => "tree not fingerprinted",
+            }
+        ));
+    }
     lines.extend(acceptance_lines(status, shown));
     let delivered = &status["delivered"];
     if delivered.is_object() {

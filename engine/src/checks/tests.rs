@@ -199,7 +199,7 @@ fn a_report_never_counts_a_left_or_unrun_check_as_passed() {
     assert_eq!(report["left"][0]["result"], "left-to-ci");
     assert_eq!(
         report["summary"],
-        json!({"run": 3, "passed": 3, "notPassed": 0, "left": 1})
+        json!({"run": 3, "passed": 3, "notPassed": 0, "skipped": 0, "left": 1})
     );
     assert!(text(&report).contains("left-to-ci api-3 (ci): cargo test --features slow"));
 
@@ -235,4 +235,93 @@ fn a_session_history_keeps_the_newest_runs_without_output() {
 fn the_switch_is_on_unless_turned_off() {
     assert!(enabled(&json!({})));
     assert!(!enabled(&json!({"routing": {"projectChecks": false}})));
+}
+
+#[test]
+fn changed_files_stand_only_as_a_whole_argument() {
+    let check = |args: Value| validate(json!({"args": args}).as_object().unwrap(), "check");
+    assert!(check(json!(["--fix", CHANGED_FILES])).is_ok());
+    assert!(check(json!(["--files={changedFiles}"])).is_err());
+}
+
+#[test]
+fn a_check_takes_the_changed_files_it_covers_named_from_its_directory() {
+    let mut settings = project();
+    settings["modules"][1]["checks"][0]["args"] = json!(["lint", CHANGED_FILES]);
+    settings["standards"][0]["run"]["args"] = json!(["prettier", CHANGED_FILES]);
+    let changed = [
+        json!("ui/a.ts"),
+        json!("ui/deep/b.ts"),
+        json!("services/api/src/c.rs"),
+        json!("README.md"),
+    ];
+    let scope = routing::scope(&settings, &changed).unwrap();
+    let plan = plan(&settings, &scope, "pr", false).unwrap();
+    let find = |id: &str| -> Value {
+        plan["run"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|check| check["id"] == id)
+            .cloned()
+            .unwrap()
+    };
+    let (module, standard, other) = (find("ui-1"), find("lint"), find("api-1"));
+    assert!(takes_files(&module) && takes_files(&standard) && !takes_files(&other));
+    let files = files_for(&settings, &module, &changed).unwrap();
+    assert_eq!(files, ["a.ts", "deep/b.ts"]);
+    assert_eq!(files_for(&settings, &standard, &changed).unwrap(), files);
+    assert_eq!(
+        arguments(&module, &files).unwrap(),
+        ["lint", "a.ts", "deep/b.ts"]
+    );
+    assert_eq!(arguments(&other, &[]).unwrap(), ["test"]);
+    assert!(
+        files_for(&settings, &module, &[json!("README.md")])
+            .unwrap()
+            .is_empty()
+    );
+
+    let many: Vec<String> = (0..5000).map(|n| format!("src/file-{n:05}.ts")).collect();
+    assert!(arguments(&module, &many).unwrap_err().contains("--file"));
+}
+
+#[test]
+fn a_skipped_check_is_reported_and_never_passed() {
+    let check =
+        json!({"id": "lint", "stage": "commit", "command": "pnpm", "args": [CHANGED_FILES]});
+    let plan = json!({"stage": "commit", "run": [check], "left": []});
+    let report = report(&plan, vec![skipped(&check)], &json!("d"), &json!("d"), "t");
+    assert_eq!(report["result"], "nothing-run");
+    assert_eq!(report["summary"]["skipped"], 1);
+    assert_eq!(report["skipped"][0]["reason"], "no-changed-file");
+    assert!(text(&report).contains("1 skipped with no changed file"));
+    let history = recorded(&json!({}), &report);
+    assert_eq!(history["runs"][0]["skipped"][0]["id"], "lint");
+}
+
+#[test]
+fn the_latest_run_is_counted_and_current_only_on_its_own_tree() {
+    assert!(latest(&json!({}), &json!("A")).is_none());
+    let plan = json!({"stage": "commit", "run": [], "left": [{"id": "slow", "stage": "ci"}]});
+    let passed = verdict(&json!({"id": "fmt"}), &ended(0, "ok"));
+    let older = recorded(
+        &json!({}),
+        &report(&plan, vec![], &json!("A"), &json!("A"), "t1"),
+    );
+    let history = recorded(
+        &older,
+        &report(&plan, vec![passed], &json!("B"), &json!("B"), "t2"),
+    );
+    let last = latest(&history, &json!("B")).unwrap();
+    assert_eq!(
+        last,
+        json!({"at": "t2", "stage": "commit", "result": "passed", "run": 1, "passed": 1,
+            "skipped": 0, "left": 1, "current": true})
+    );
+    assert_eq!(latest(&history, &json!("C")).unwrap()["current"], false);
+    assert_eq!(
+        latest(&history, &Value::Null).unwrap()["current"],
+        Value::Null
+    );
 }

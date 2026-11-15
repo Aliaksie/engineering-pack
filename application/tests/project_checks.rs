@@ -32,7 +32,11 @@ fn repo() -> Repo {
 
 /// The exit code and JSON result of `craft check` with `args`.
 fn check(repo: &Repo, args: &[&str]) -> (i32, Value) {
-    let mut argv: Vec<String> = ["check", "--root", repo.path(), "--json"]
+    check_at(repo.path(), args)
+}
+
+fn check_at(root: &str, args: &[&str]) -> (i32, Value) {
+    let mut argv: Vec<String> = ["check", "--root", root, "--json"]
         .iter()
         .map(|arg| arg.to_string())
         .collect();
@@ -258,4 +262,188 @@ fn an_observed_run_binds_to_the_tree_the_command_started_on() {
     let runs: Value = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
     assert_ne!(report["source"], Value::Null);
     assert_eq!(runs["runs"][0]["source"], report["source"]);
+}
+
+/// Git in `directory`, for a checkout the fixture builds by hand.
+fn git_in(directory: &std::path::Path, args: &[&str]) {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(directory)
+        .args([
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "commit.gpgsign=false",
+        ])
+        .args([
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.test",
+        ])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+}
+
+/// Ids of the checks a report ran.
+fn ran(report: &Value) -> Vec<String> {
+    results(report, "checks")
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect()
+}
+
+#[test]
+fn a_project_below_the_top_of_its_checkout_reads_its_own_changes() {
+    let repo = Repo::new(
+        "checks-below",
+        &[
+            ("web/.craft/project.json", PROJECT),
+            ("web/api/a.txt", "a\n"),
+            ("web/ui/a.txt", "a\n"),
+            ("api/a.txt", "outside the project\n"),
+        ],
+    );
+    let web = repo.root.join("web");
+    let web = web.to_str().unwrap();
+    // A change outside the project's folder is no change of the project, though its path
+    // from the top would name the project's `api` module.
+    repo.write("api/a.txt", "changed\n");
+    let (_, outside) = check_at(web, &[]);
+    assert_eq!(outside["result"], "nothing-run", "{outside}");
+
+    repo.write("web/api/a.txt", "changed\n");
+    let (exit, report) = check_at(web, &[]);
+    assert_eq!(exit, 0, "{report}");
+    assert_eq!(ran(&report), ["api-build", "api-format"]);
+}
+
+#[test]
+fn a_workspace_root_reads_the_changes_of_each_member_repository() {
+    let workspace = Repo::bare("checks-workspace");
+    workspace.write(
+        ".craft/project.json",
+        r#"{"formatVersion":1,"modules":[
+          {"name":"api","path":"api","checks":[{"command":"git","args":["--version"],"id":"api-build"}]},
+          {"name":"web","path":"web","checks":[{"command":"git","args":["--version"],"id":"web-build"}]}]}"#,
+    );
+    for member in ["api", "web"] {
+        workspace.write(&format!("{member}/a.txt"), "a\n");
+        let dir = workspace.root.join(member);
+        git_in(&dir, &["init", "-q"]);
+        git_in(&dir, &["add", "."]);
+        git_in(&dir, &["commit", "-qm", "fixture"]);
+    }
+    let (_, clean) = check_at(workspace.path(), &[]);
+    assert_eq!(clean["result"], "nothing-run", "{clean}");
+
+    workspace.write("web/a.txt", "changed\n");
+    let (exit, report) = check_at(workspace.path(), &[]);
+    assert_eq!(exit, 0, "{report}");
+    assert_eq!(ran(&report), ["web-build"]);
+
+    let plain = Repo::bare("checks-plain");
+    plain.write(".craft/project.json", PROJECT);
+    let (_, none) = check_at(plain.path(), &[]);
+    assert!(
+        none["note"].as_str().unwrap().contains("no Git checkout"),
+        "{none}"
+    );
+}
+
+#[test]
+fn a_base_adds_the_files_committed_since_it() {
+    let repo = repo();
+    repo.git(&["branch", "start"]);
+    repo.write("docs/a.md", "committed\n");
+    repo.git(&["commit", "-qam", "docs"]);
+    let (_, clean) = check(&repo, &["--stage", "pr"]);
+    assert_eq!(
+        clean["result"], "nothing-run",
+        "a clean tree alone: {clean}"
+    );
+
+    repo.write("api/a.txt", "uncommitted\n");
+    let (exit, report) = check(&repo, &["--stage", "pr", "--base", "start"]);
+    assert_eq!(exit, 0, "{report}");
+    assert_eq!(ran(&report), ["api-build", "api-format", "docs-links"]);
+
+    let unknown = repo.cli(&["check", "--base", "no-such-ref"]).unwrap_err();
+    assert!(unknown.contains("no-such-ref"), "{unknown}");
+    assert!(repo.cli(&["check", "--base", "start", "--all"]).is_err());
+    assert!(
+        repo.cli(&["check", "--base", "start", "--file", "api/a.txt"])
+            .is_err()
+    );
+    assert!(repo.cli(&["standards", "--base", "start"]).is_err());
+}
+
+/// `git diff --exit-code` fails only for a file it is given that changed, and prints its path
+/// from the top: a check that fails names the files the argument passed, from its directory.
+#[test]
+fn a_changed_files_argument_passes_the_checks_own_files_and_skips_a_check_without_any() {
+    let repo = Repo::new(
+        "checks-files",
+        &[
+            (
+                ".craft/project.json",
+                r#"{"formatVersion":1,"modules":[
+                  {"name":"api","path":"api","checks":[{"command":"git","args":["diff","--exit-code","--","{changedFiles}"],"id":"api-diff"}]},
+                  {"name":"ui","path":"ui","checks":[{"command":"git","args":["diff","--exit-code","--","{changedFiles}"],"id":"ui-diff"}]}]}"#,
+            ),
+            ("api/a.txt", "a\n"),
+            ("api/b.txt", "b\n"),
+            ("ui/a.txt", "a\n"),
+        ],
+    );
+    repo.write("api/a.txt", "changed\n");
+    std::fs::remove_file(repo.root.join("api/b.txt")).unwrap();
+    let (exit, report) = check(&repo, &[]);
+    assert_eq!(exit, 1, "{report}");
+    // The deleted file is a change of the module, but no file to pass.
+    let diff = &report["checks"][0];
+    assert_eq!(
+        (diff["id"].as_str(), diff["files"].as_u64()),
+        (Some("api-diff"), Some(1))
+    );
+    assert!(
+        diff["output"].as_str().unwrap().contains("api/a.txt"),
+        "{diff}"
+    );
+
+    let (exit, all) = check(&repo, &["--all"]);
+    assert_eq!(exit, 0, "no changed file is named, so nothing ran: {all}");
+    assert_eq!(all["result"], "nothing-run");
+    assert_eq!(all["summary"]["skipped"], 2);
+    assert_eq!(all["skipped"][0]["reason"], "no-changed-file");
+}
+
+#[test]
+fn the_session_shows_its_last_check_run_and_whether_the_tree_moved_since() {
+    let repo = repo();
+    let bundle = support::bundle();
+    let session = |repo: &Repo| {
+        repo.cli(&["session", "--session", "S5", "--bundle", &bundle])
+            .unwrap()
+    };
+    assert!(session(&repo)["lastCheck"].is_null(), "no run, no line");
+
+    repo.write("api/a.txt", "changed\n");
+    let (_, report) = check(&repo, &["--session", "S5"]);
+    assert_eq!(report["recorded"], true);
+    let last = &session(&repo)["lastCheck"];
+    assert_eq!(
+        (
+            &last["result"],
+            &last["stage"],
+            &last["run"],
+            &last["current"]
+        ),
+        (&json!("passed"), &json!("commit"), &json!(2), &json!(true)),
+        "{last}"
+    );
+    repo.write("api/a.txt", "changed again\n");
+    assert_eq!(session(&repo)["lastCheck"]["current"], false);
 }

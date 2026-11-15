@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- `craft session` shows the session's last `craft check` run: its result, stage and counts,
+  and whether the tree changed since, so a passed check is not taken for the current code.
+- A declared check can take the changed files: an argument that is exactly `{changedFiles}`
+  becomes the files the check covers, named from its directory, so a formatter or linter
+  reads only what changed. A check with no such file is reported as skipped and never as
+  passed.
+- `craft check --base <ref>` also checks the files committed since the ref's merge base with
+  `HEAD`, so a pull-request stage run covers the whole change instead of finding nothing on a
+  clean tree. `craft check` now finds the changed files when the project's root is a folder
+  below the top of its repository, or a workspace folder holding several repositories. Before,
+  it read paths from the repository top and could run another module's checks, or none.
+
 - A prompt that only relays text from the host, such as a background task's completion notice,
   a subagent's or another session's report, or a reminder, no longer gets a routing hint or
   changes the session's intent. Before, the relayed text was read as the user's request and

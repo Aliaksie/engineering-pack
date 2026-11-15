@@ -58,7 +58,7 @@ array of objects. Parts of the repository with an owner, stack and checks. Route
 | `modules[].frameworks` | array of string |  | Frameworks in use, such as `react`. Selects framework guidance when Craft has it. Overrides the project value; an empty array clears it. |
 | `modules[].checks` | array of objects |  | Commands that verify this module, run in the module's path. Routes list them as argv; `craft check` runs those of the changed modules without a shell and reports each result. Craft never runs them from a hook or assumes they pass. |
 | `modules[].checks[].command` | string |  | Executable, such as `./gradlew` or `npm`. |
-| `modules[].checks[].args` | array of string |  | Arguments passed to the command. |
+| `modules[].checks[].args` | array of string |  | Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files of the module, named from its path, deleted files left out; `craft check` skips the check when there is none. |
 | `modules[].checks[].id` | string |  | Name of the check in `craft check` results. Default: the module name and the check's position, such as `api-1`. |
 | `modules[].checks[].stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `modules[].checks[].timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
@@ -84,7 +84,7 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].scope.intents` | array of string |  | Kinds of work: story, plan, verify, explore, review, implement and the other routing intents. |
 | `standards[].run` | object |  | A consumer command that checks the standard. The agent is told to run it, and `craft check` runs it without a shell for changed files in the standard's scope. |
 | `standards[].run.command` | string |  | Executable the agent runs to check the standard. |
-| `standards[].run.args` | array of string |  | Arguments passed to the command. |
+| `standards[].run.args` | array of string |  | Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files in the standard's scope, named from `cwd`, deleted files left out; `craft check` skips the command when there is none. |
 | `standards[].run.cwd` | string |  | Project-relative working directory. Default: the project root. |
 | `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |

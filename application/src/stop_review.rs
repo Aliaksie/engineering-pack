@@ -44,11 +44,11 @@ pub(crate) struct Checkout {
     pub(crate) directory: PathBuf,
     /// The member's folder as files are named from the workspace root (`api/`); empty for
     /// the project's own checkout.
-    folder: String,
+    pub(crate) folder: String,
     /// Where `directory` lies beneath the top of its checkout, as Git prints it (`web/` or
     /// empty). Git names changed files from the top; a project whose root is a folder below
     /// it reads them from its own root.
-    prefix: String,
+    pub(crate) prefix: String,
 }
 
 /// The checkouts `root` is reviewed from: its own when Git knows it, otherwise its member

@@ -96,6 +96,7 @@ const OPTIONS: &[&str] = &[
     "search",
     "propose",
     "all",
+    "base",
     "organization",
     "explain",
     "field",
@@ -198,8 +199,10 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     if present("propose") && action != "standards" {
         return Err("--propose is supported by standards".into());
     }
-    if present("all") && action != "check" {
-        return Err("--all is supported by check".into());
+    if let Some(name) = ["all", "base"].iter().find(|name| present(name))
+        && action != "check"
+    {
+        return Err(format!("--{name} is supported by check").into());
     }
     if let Some(name) = ["explain", "field"].iter().find(|name| present(name))
         && action != "config"
