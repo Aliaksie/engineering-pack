@@ -6,6 +6,7 @@
 //! about (code, product artifacts, tests, decisions) names the intent. Statements, chat and
 //! conversation questions name none: a missing hint costs less than a misleading one.
 use crate::values::{js_blank, js_space};
+use std::borrow::Cow;
 
 /// Openers that do not change what is asked: "please", "can you", "I'd like you to".
 const OPENERS: &[&[&str]] = &[
@@ -543,7 +544,12 @@ fn third_party(words: &[String]) -> bool {
 /// The intent one sub-clause leads with.
 fn lead(words: &[String]) -> Option<&'static str> {
     let words = skip_openers(words);
-    if third_party(words) || output_instruction(words) {
+    // "Do not repeat work that is already complete": a prohibition bounds a request, it is
+    // never one.
+    let prohibition = [&["do", "not"][..], &["don", "t"], &["never"]]
+        .iter()
+        .any(|phrase| starts(words, phrase));
+    if prohibition || third_party(words) || output_instruction(words) {
         return None;
     }
     // "…and asked which methods call it": the question someone asked is the request.
@@ -736,12 +742,63 @@ fn artifact(intent: &str, words: &[String]) -> Option<&'static str> {
 }
 
 pub(super) fn request(prompt: &str) -> Option<Request> {
-    requested(own(prompt))
+    requested(&own(prompt))
 }
 
-/// The user's own words: "so we plan this?" followed by pasted text is the question alone.
-/// When the question names no request, the material after it does not decide one either.
-pub(super) fn own(prompt: &str) -> &str {
+/// Text a host relays into the prompt on its own: a background task's completion, another
+/// session's or a subagent's report, a reminder. What it says was not asked by the user.
+const RELAYED: &[&str] = &["task-notification", "agent-message", "system-reminder"];
+
+/// The prompt without relayed blocks: from a line that opens a [`RELAYED`] tag to its closing
+/// tag, or to the end when it is not closed.
+fn unrelayed(prompt: &str) -> Cow<'_, str> {
+    let opens = |line: &str| {
+        let line = line.trim_start();
+        RELAYED.iter().find(|name| {
+            line.strip_prefix('<')
+                .and_then(|rest| rest.strip_prefix(**name))
+                .is_some_and(|rest| rest.starts_with(['>', ' ', '\t']))
+        })
+    };
+    if !prompt.lines().any(|line| opens(line).is_some()) {
+        return Cow::Borrowed(prompt);
+    }
+    let mut out = String::with_capacity(prompt.len());
+    let mut inside: Option<String> = None;
+    for line in prompt.split_inclusive('\n') {
+        match &inside {
+            Some(close) => {
+                if let Some(at) = line.find(close.as_str()) {
+                    out.push_str(&line[at + close.len()..]);
+                    inside = None;
+                }
+            }
+            None => match opens(line) {
+                Some(name) => {
+                    let close = format!("</{name}>");
+                    match line.find(&close) {
+                        Some(at) => out.push_str(&line[at + close.len()..]),
+                        None => inside = Some(close),
+                    }
+                }
+                None => out.push_str(line),
+            },
+        }
+    }
+    Cow::Owned(out)
+}
+
+/// The user's own words: relayed text is left out, and "so we plan this?" followed by pasted
+/// text is the question alone. When the question names no request, the material after it
+/// does not decide one either.
+pub(super) fn own(prompt: &str) -> Cow<'_, str> {
+    match unrelayed(prompt) {
+        Cow::Borrowed(text) => Cow::Borrowed(question(text)),
+        Cow::Owned(text) => Cow::Owned(question(&text).to_owned()),
+    }
+}
+
+fn question(prompt: &str) -> &str {
     match prompt.trim_start().split_once("\n\n") {
         Some((question, material)) if question.trim_end().ends_with('?') && !js_blank(material) => {
             question
@@ -886,6 +943,60 @@ mod tests {
         assert_eq!(
             intent("Fix the retry.\n\nThe sender drops webhooks?"),
             Some("implement")
+        );
+    }
+
+    #[test]
+    fn text_the_host_relays_is_not_the_users_request() {
+        for prompt in [
+            "<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n<summary>Background command \"cargo test\" completed</summary>\n<result>Review the PRD, then fix the rounding bug.</result>\n</task-notification>",
+            "Another Claude session sent a message:\n<agent-message from=\"a83f08e999a615e4d\">\n[Subagent hand-back] The text below is the final report of a subagent.\n\nWrite user stories for each persona. Review the acceptance criteria.\n</agent-message>",
+            "<system-reminder>Write tests for the refund flow.</system-reminder>",
+            "<agent-message from=\"a1\">\nFix the parser",
+        ] {
+            assert_eq!(intent(prompt), None, "{prompt}");
+        }
+        // The user's own words around relayed text still decide.
+        assert_eq!(
+            intent("<system-reminder>Write tests for x.</system-reminder>\nFix the rounding bug"),
+            Some("implement")
+        );
+        assert_eq!(
+            intent(
+                "Plan the migration\n<agent-message from=\"a1\">\nFix the parser\n</agent-message>"
+            ),
+            Some("plan")
+        );
+        // A tag the host does not relay is the user's text.
+        assert_eq!(
+            intent("<notes>\nFix the rounding bug\n</notes>"),
+            Some("implement")
+        );
+    }
+
+    #[test]
+    fn a_prohibition_bounds_a_request_and_is_never_one() {
+        assert_eq!(
+            intent(
+                "Your claude.ai usage limit has reset. Continue the task you were working on when the limit was reached; do not repeat work that is already complete."
+            ),
+            None
+        );
+        assert_eq!(
+            intent("Don't fix it yet, explain why it fails"),
+            Some("investigate")
+        );
+        assert_eq!(
+            intent("Never mind, fix the rounding bug"),
+            Some("implement")
+        );
+        assert_eq!(
+            intent("Fix the parser and do not touch the tests"),
+            Some("implement")
+        );
+        assert_eq!(
+            intent("Does checkout already send an email?"),
+            Some("investigate")
         );
     }
 

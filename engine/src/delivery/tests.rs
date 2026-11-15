@@ -130,6 +130,14 @@ fn a_request_establishes_its_intent_even_where_its_hint_cannot_be_shown() {
     assert_eq!(prompt(question, false, true), (None, Some("locate")));
     assert_eq!(prompt(question, true, false), (Some("locate"), None));
     assert_eq!(prompt("thanks", true, true), (None, None));
+    // A continuation or a relayed report keeps the established intent, so the next edit is
+    // still routed as the change it continues.
+    for text in [
+        "Continue the task you were working on when the limit was reached; do not repeat work that is already complete.",
+        "<task-notification>\n<status>completed</status>\n<summary>Review the PRD</summary>\n</task-notification>",
+    ] {
+        assert_eq!(prompt(text, true, true), (None, None), "{text}");
+    }
 }
 
 #[test]
