@@ -89,6 +89,22 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             return Ok(refused);
         }
     }
+    // A commit the session's own command makes is its change at the stop; one another session
+    // or the user makes in the same checkout is not.
+    if let (Some(session), Some(command)) = (event.session.filter(|s| !s.is_empty()), event.command)
+        && standards::commits(command)
+    {
+        let recorded = match event.lifecycle {
+            "before-tool" => crate::stop_review::commit_started(event.root, session, &settings),
+            "after-tool" | "after-tool-failure" => {
+                crate::stop_review::commit_made(event.root, session, &settings)
+            }
+            _ => Ok(()),
+        };
+        if recorded.is_err() {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
+    }
     let mut decision = decide(event, &settings, recorder, hook)?;
     account(event, &settings, &mut decision, recorder, hook);
     Ok(decision)

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The stop review reads as a short list, one line per finding and per review item, instead of
+  a sentence followed by raw JSON, and is smaller for the same items. In Claude Code it
+  continues the turn as hook feedback (Claude Code 2.1.163 or later) instead of being
+  shown as "Stop hook error".
+- The stop review counts a commit as the session's work only when a shell command of that
+  session made it. A commit another session made in the same checkout, or one the user made by
+  hand, had held this session's stop with review items for files it never touched; a file the
+  session committed that another commit in the same range also changed is left out.
 - `project-evidence` and the status line run from a subfolder without `--root` work on the
   project around it, as other commands and hooks do: they had kept separate state and a
   second Project Intelligence index under that subfolder. `state-clean` now removes idle

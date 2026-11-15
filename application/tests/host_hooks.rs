@@ -813,7 +813,9 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
 }
 
 /// A model can write every file through shell commands and commit before the turn ends: no
-/// edit hook fires and the worktree is clean at the stop. The stop still reviews that work.
+/// edit hook fires and the worktree is clean at the stop. The stop still reviews that work,
+/// and only that work: a commit another session or the user makes in the same checkout is not
+/// this session's change.
 #[test]
 fn a_stop_reviews_files_a_shell_command_wrote_and_work_committed_in_the_turn() {
     let fixture = project(
@@ -842,6 +844,13 @@ fn a_stop_reviews_files_a_shell_command_wrote_and_work_committed_in_the_turn() {
         assert!(output.status.success(), "{output:?}");
     };
     let stop = || lifecycle(root, "turn-end", json!({}));
+    // A commit the session's shell tool makes: its hooks see the command before and after.
+    let commit = |message: &str| {
+        let shell = json!({"tool": "shell", "command": format!("git commit -qm '{message}'")});
+        lifecycle(root, "before-tool", shell.clone());
+        git(&["commit", "-qm", message]);
+        lifecycle(root, "after-tool", shell);
+    };
     let files = |decision: &Value| -> Vec<(String, String)> {
         decision["stop"]["findings"]
             .as_array()
@@ -867,7 +876,7 @@ fn a_stop_reviews_files_a_shell_command_wrote_and_work_committed_in_the_turn() {
     .unwrap();
     fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap();
     git(&["add", "-A"]);
-    git(&["commit", "-qm", "feat: change"]);
+    commit("feat: change");
     let decision = stop();
     let found = files(&decision);
     assert!(
@@ -908,11 +917,51 @@ fn a_stop_reviews_files_a_shell_command_wrote_and_work_committed_in_the_turn() {
     // What the session commits next is reviewed against the commit that stop saw.
     fs::write(root.join("d.ts"), "// HACK: ours\nexport const d = 1\n").unwrap();
     git(&["add", "-A"]);
-    git(&["commit", "-qm", "feat: ours"]);
+    commit("feat: ours");
     let decision = stop();
     assert_eq!(
         files(&decision),
         [("d.ts".to_string(), String::new())],
+        "{decision}"
+    );
+
+    // Another session in the same checkout commits between this session's stops: its work
+    // does not hold this session's stop. Nor does a commit the user makes by hand, nor a
+    // command of this session whose commit failed.
+    fs::write(
+        root.join("e.ts"),
+        "// TODO: other session\nexport const e = 1\n",
+    )
+    .unwrap();
+    git(&["add", "-A"]);
+    let other = json!({"session": "S-2", "tool": "shell", "command": "git commit -qm 'feat: e'"});
+    lifecycle(root, "before-tool", other.clone());
+    git(&["commit", "-qm", "feat: e"]);
+    lifecycle(root, "after-tool", other);
+    fs::write(root.join("f.ts"), "// TODO: by hand\nexport const f = 1\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: f"]);
+    let failed = json!({"tool": "shell", "command": "git commit -qm 'feat: nothing'"});
+    lifecycle(root, "before-tool", failed.clone());
+    lifecycle(root, "after-tool-failure", failed);
+    assert!(
+        stop().get("stop").is_none(),
+        "not this session's commits: {}",
+        stop()
+    );
+    // A file this session committed is left out when another commit in the range changed
+    // it too: its markers could be theirs.
+    fs::write(root.join("g.ts"), "// TODO: theirs\nexport const g = 1\n").unwrap();
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "feat: g"]);
+    fs::write(root.join("g.ts"), "// TODO: theirs\nexport const g = 2\n").unwrap();
+    fs::write(root.join("h.ts"), "// XXX: ours\nexport const h = 1\n").unwrap();
+    git(&["add", "-A"]);
+    commit("feat: g and h");
+    let decision = stop();
+    assert_eq!(
+        files(&decision),
+        [("h.ts".to_string(), String::new())],
         "{decision}"
     );
 }
@@ -1143,7 +1192,10 @@ fn a_project_below_the_top_of_its_checkout_is_reviewed_from_its_own_root() {
     )
     .unwrap();
     git(&["add", "-A"]);
+    let shell = json!({"tool": "shell", "command": "git commit -qm 'feat: change'"});
+    lifecycle(&root, "before-tool", shell.clone());
     git(&["commit", "-qm", "feat: change"]);
+    lifecycle(&root, "after-tool", shell);
     fs::write(root.join("a.ts"), "// FIXME: mine\nexport const a = 2\n").unwrap();
     fs::write(top.join("other/y.ts"), "// TODO: untracked\n").unwrap();
     let decision = lifecycle(&root, "turn-end", json!({}));
@@ -1243,8 +1295,9 @@ fn a_workspace_root_reviews_what_changed_in_each_member_repository() {
     .unwrap();
     fs::write(root.join("notes/n.ts"), "// TODO: a note\n").unwrap();
     git("web", &["add", "b.ts"]);
-    git("web", &["commit", "-qm", "Added b"]);
     let shell = json!({"tool": "shell", "command": "git -C web commit -m 'Added b'"});
+    lifecycle(root, "before-tool", shell.clone());
+    git("web", &["commit", "-qm", "Added b"]);
     let found = written(root, shell);
     assert_eq!(found["standards"][0]["standard"], "commits", "{found}");
 

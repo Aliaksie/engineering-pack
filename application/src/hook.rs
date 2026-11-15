@@ -646,10 +646,67 @@ fn delegation_line(delegation: &Value) -> String {
     )
 }
 
-/// The stop summary a held stop gives the model as the reason to continue.
+/// The stop summary a held stop gives the model as the reason to continue: one line per
+/// finding and per review item, readable by the model and by the user the host shows it to.
 fn stop_line(summary: &Value) -> String {
+    let text = |value: &Value| value.as_str().unwrap_or_default().to_owned();
+    let mut lines = Vec::new();
+    for finding in summary["findings"].as_array().into_iter().flatten() {
+        let mut place = text(&finding["file"]);
+        if let Some(line) = finding["line"].as_u64() {
+            place = format!("{place}:{line}");
+        }
+        let rule = match finding["standard"].as_str() {
+            Some(standard) => format!("{standard} {}", text(&finding["rule"])),
+            None => text(&finding["rule"]),
+        };
+        lines.push(format!("- {place} {rule}: {}", text(&finding["message"])));
+    }
+    if let Some(more) = summary["more"].as_u64() {
+        lines.push(format!("- {more} more findings not listed"));
+    }
+    for item in summary["review"].as_array().into_iter().flatten() {
+        let mut parts: Vec<String> = item["summary"]
+            .as_str()
+            .map(str::to_owned)
+            .into_iter()
+            .collect();
+        let checklist: Vec<String> = item["checklist"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(text)
+            .collect();
+        if !checklist.is_empty() {
+            parts.push(checklist.join("; "));
+        }
+        let mut line = format!("- {}: {}", text(&item["id"]), parts.join(" — "));
+        if let Some(run) = item["run"]["command"].as_str() {
+            let args: Vec<String> = item["run"]["args"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(text)
+                .collect();
+            line = format!(
+                "{line}; run `{}`",
+                [vec![run.to_owned()], args].concat().join(" ")
+            );
+        }
+        for source in ["file", "folder"] {
+            if let Some(reference) = item[source].as_str() {
+                line = format!("{line} (see {reference})");
+            }
+        }
+        lines.push(line);
+    }
+    let count = summary["findings"].as_array().map_or(0, Vec::len)
+        + summary["more"].as_u64().unwrap_or(0) as usize
+        + summary["review"].as_array().map_or(0, Vec::len);
     format!(
-        "Craft stop review of the files this session changed (deterministic findings against HEAD and the project's review items; no authorization implied). Address each before reporting the work done: fix it, or tell the user why it stays: {summary}"
+        "Craft stop review, {count} item{} in the files this session changed (deterministic, against HEAD and the project's review items; no authorization implied):\n{}\nAddress each before reporting the work done: fix it, or tell the user why it stays.",
+        if count == 1 { "" } else { "s" },
+        lines.join("\n")
     )
 }
 
@@ -754,6 +811,10 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         let output = match host {
             "cursor" => json!({"followup_message": reason}),
             "gemini" => json!({"decision": "deny", "reason": reason}),
+            // Continues the turn as feedback, not as a hook error.
+            _ if mapping["holdAsContext"] == true => {
+                json!({"hookSpecificOutput": {"hookEventName": name, "additionalContext": reason}})
+            }
             _ => json!({"decision": "block", "reason": reason}),
         };
         return Wire {
@@ -1151,12 +1212,18 @@ mod tests {
                 .unwrap()
                 .starts_with("Craft stop review")
         };
-        for host in ["claude", "codex", "copilot"] {
+        for host in ["codex", "copilot"] {
             let wire = serialize(&result, host, "turn-end");
             let output: Value = serde_json::from_str(&wire.stdout).unwrap();
             assert_eq!(output["decision"], "block", "{host}");
             assert!(reason(&output, "reason"), "{host}");
         }
+        // Claude continues the turn from feedback without labelling it a hook error.
+        let claude: Value =
+            serde_json::from_str(&serialize(&result, "claude", "turn-end").stdout).unwrap();
+        assert!(claude.get("decision").is_none(), "{claude}");
+        assert_eq!(claude["hookSpecificOutput"]["hookEventName"], "Stop");
+        assert!(reason(&claude["hookSpecificOutput"], "additionalContext"));
         let gemini: Value =
             serde_json::from_str(&serialize(&result, "gemini", "turn-end").stdout).unwrap();
         assert_eq!(gemini["decision"], "deny");
@@ -1171,6 +1238,42 @@ mod tests {
             serialize(&json!({"decision": "allow"}), "claude", "turn-end").stdout,
             ""
         );
+    }
+
+    /// The held stop reads as a short list: one line per finding and per review item, its
+    /// place, rule and what to check; no JSON.
+    #[test]
+    fn a_stop_summary_reads_as_one_line_per_item() {
+        let summary = json!({
+            "findings": [
+                {"file": "src/a.rs", "line": 4, "rule": "todo-marker", "message": "TODO added"},
+                {"file": "CHANGELOG.md", "rule": "unreleased-section", "standard": "changelog",
+                 "message": "no Unreleased section"}],
+            "more": 2,
+            "review": [
+                {"id": "changelog-line", "level": "review", "summary": "Add a line.",
+                 "checklist": ["Observable change has a line", "Merged facts only"]},
+                {"id": "module-map", "level": "review", "file": "docs/adr/0002.md",
+                 "checklist": ["Map and ADR change together"],
+                 "run": {"command": "npm", "args": ["run", "architecture"]}}]
+        });
+        let text = stop_line(&summary);
+        let lines: Vec<&str> = text.lines().collect();
+        assert!(lines[0].starts_with("Craft stop review, 6 items"), "{text}");
+        assert_eq!(
+            &lines[1..6],
+            [
+                "- src/a.rs:4 todo-marker: TODO added",
+                "- CHANGELOG.md changelog unreleased-section: no Unreleased section",
+                "- 2 more findings not listed",
+                "- changelog-line: Add a line. — Observable change has a line; Merged facts only",
+                "- module-map: Map and ADR change together; run `npm run architecture` (see docs/adr/0002.md)",
+            ]
+        );
+        assert!(lines[6].starts_with("Address each"));
+        assert!(!text.contains('{'), "{text}");
+        let one = stop_line(&json!({"review": [{"id": "r", "summary": "s"}]}));
+        assert!(one.starts_with("Craft stop review, 1 item "), "{one}");
     }
 
     #[test]
