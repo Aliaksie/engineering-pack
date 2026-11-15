@@ -1262,7 +1262,7 @@
             "nextStep": {
               "type": "boolean",
               "default": true,
-              "description": "Include a next-step suggestion."
+              "description": "Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands."
             }
           },
           "additionalProperties": false

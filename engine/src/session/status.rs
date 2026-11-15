@@ -160,7 +160,7 @@ fn notice_key(session: Option<&Value>, task: &Value, suggestion: &Value) -> Stri
 }
 
 /// `window` is the observed model's declared window, used only when the host reports none.
-fn usage(
+pub(crate) fn usage(
     observed: Option<&Value>,
     session: Option<&Value>,
     now: i64,

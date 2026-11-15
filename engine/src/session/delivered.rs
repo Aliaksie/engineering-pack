@@ -5,7 +5,8 @@
 //!
 //! `{formatVersion: 1, context: {hooks, bytes, dropped}, answers: {delivered, bytes, repeated,
 //! overBudget, window: {bytes, keys}}, findings: {raised, fixed, open: {<scope>: [key]}},
-//! tests: {empty}, resumes, refused, shown?}`; `Null` is no record.
+//! tests: {empty}, resumes, refused, shown?, next?}`; `Null` is no record. `shown` is the last
+//! summary line the user was shown and `next` the next step said last.
 use serde_json::{Map, Value, json};
 
 /// Bytes of Project Intelligence answers one context window receives. A compaction starts a
@@ -103,9 +104,12 @@ pub fn validate(record: &Value) -> Result<(), String> {
         }
         Some(_) => false,
     };
-    let shown = record
-        .get("shown")
-        .is_none_or(|line| line.as_str().is_some_and(|l| l.len() <= SHOWN_BYTES));
+    let line = |name: &str| {
+        record
+            .get(name)
+            .is_none_or(|line| line.as_str().is_some_and(|l| l.len() <= SHOWN_BYTES))
+    };
+    let shown = line("shown") && line("next");
     if record["formatVersion"] != 1
         || !counts.into_iter().all(valid_count)
         || !valid_keys(window.get("keys"), ANSWER_KEYS)
@@ -404,13 +408,55 @@ pub fn summary(record: &Value) -> Option<String> {
 /// The summary line to show the user now and the record remembering it, or `None` when
 /// there is nothing to say or the same line was the last one shown.
 pub fn summary_due(record: &Value) -> Option<(String, Value)> {
-    let line = summary(record).filter(|line| line.len() <= SHOWN_BYTES)?;
-    if record["shown"] == line.as_str() {
+    match notice_due(record, true, None)? {
+        (Some(line), next) => Some((line, next)),
+        (None, _) => None,
+    }
+}
+
+/// The turn-end notice: the session summary (with `summarize`) when it changed since it was
+/// last shown, and `next` when it is not the next step said last, in one line; and the record
+/// remembering both. A next step that no longer applies is forgotten without a word, so it
+/// is said again when it returns. `None` when the record stays as it is.
+pub fn notice_due(
+    record: &Value,
+    summarize: bool,
+    next: Option<&str>,
+) -> Option<(Option<String>, Value)> {
+    let fits = |line: &str| line.len() <= SHOWN_BYTES;
+    let summary = summarize
+        .then(|| summary(record))
+        .flatten()
+        .filter(|line| fits(line) && record["shown"] != line.as_str());
+    let next = next.filter(|next| fits(next));
+    let said = next.filter(|next| record["next"] != *next);
+    let forget = next.is_none() && record.get("next").is_some();
+    if summary.is_none() && said.is_none() && !forget {
         return None;
     }
-    let mut next = record.clone();
-    next["shown"] = json!(line);
-    Some((line, next))
+    let mut updated = if record.is_null() {
+        json!({"formatVersion": 1})
+    } else {
+        record.clone()
+    };
+    if let Some(line) = &summary {
+        updated["shown"] = json!(line);
+    }
+    match next {
+        Some(next) => updated["next"] = json!(next),
+        None => {
+            updated
+                .as_object_mut()
+                .map(|fields| fields.shift_remove("next"));
+        }
+    }
+    let line = match (summary, said) {
+        (Some(summary), Some(next)) => Some(format!("{summary} · next: {next}")),
+        (Some(summary), None) => Some(summary),
+        (None, Some(next)) => Some(format!("Craft next: {next}")),
+        (None, None) => None,
+    };
+    Some((line, updated))
 }
 
 #[cfg(test)]
@@ -641,6 +687,48 @@ mod tests {
             },
         );
         assert!(summary_due(&record).unwrap().0.contains("raised, 1 fixed"));
+    }
+
+    #[test]
+    fn a_next_step_is_said_once_while_it_applies_and_again_when_it_returns() {
+        let check = Some("craft check --stage commit");
+        assert_eq!(notice_due(&Value::Null, true, None), None);
+        let (line, record) = notice_due(&Value::Null, true, check).unwrap();
+        assert_eq!(
+            line.as_deref(),
+            Some("Craft next: craft check --stage commit")
+        );
+        validate(&record).unwrap();
+        assert_eq!(notice_due(&record, true, check), None);
+        // A new summary is said alone while the same next step still applies.
+        let refused = refusal(&record);
+        let (line, record) = notice_due(&refused, true, check).unwrap();
+        assert_eq!(
+            line.as_deref(),
+            Some("Craft this session: 1 command refused by the safety policy")
+        );
+        // Once it no longer applies it is forgotten quietly, and said when it returns.
+        let (line, record) = notice_due(&record, true, None).unwrap();
+        assert_eq!(line, None);
+        assert!(record.get("next").is_none());
+        assert_eq!(notice_due(&record, true, None), None);
+        let (line, record) = notice_due(&refusal(&record), true, check).unwrap();
+        assert_eq!(
+            line.as_deref(),
+            Some(
+                "Craft this session: 2 commands refused by the safety policy · next: craft check --stage commit"
+            )
+        );
+        validate(&record).unwrap();
+        // Without the summary only the next step speaks.
+        let other = Some("context 80 %: save a checkpoint before compacting");
+        assert_eq!(
+            notice_due(&refusal(&record), false, other)
+                .unwrap()
+                .0
+                .as_deref(),
+            Some("Craft next: context 80 %: save a checkpoint before compacting")
+        );
     }
 
     #[test]
