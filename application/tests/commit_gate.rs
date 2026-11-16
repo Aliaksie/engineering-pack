@@ -53,37 +53,37 @@ fn a_commit_waits_until_the_covering_check_passed_on_the_current_files() {
         ],
     );
     let commit = "git commit -am 'feat: x'";
-    assert_eq!(before(&repo, commit).0, false, "nothing changed");
+    assert!(!before(&repo, commit).0, "nothing changed");
 
     repo.write("docs/a.md", "b\n");
-    assert_eq!(before(&repo, commit).0, false, "no check covers docs");
+    assert!(!before(&repo, commit).0, "no check covers docs");
 
     repo.write("api/a.txt", "b \n");
     let (held, said) = before(&repo, commit);
-    assert_eq!(held, true, "{said}");
+    assert!(held, "{said}");
     assert!(said.contains("api-whitespace"), "{said}");
     assert!(
         said.contains("craft check --stage commit --session S1"),
         "{said}"
     );
     // Other commands are not held.
-    assert_eq!(before(&repo, "git status").0, false);
+    assert!(!before(&repo, "git status").0);
 
     assert_eq!(check(&repo), "failed");
     let (held, said) = before(&repo, commit);
-    assert_eq!(held, true);
+    assert!(held);
     assert!(said.contains("api-whitespace did not pass"), "{said}");
 
     // Fixed but not run again: the passed run must be on these files.
     repo.write("api/a.txt", "b\n");
-    assert_eq!(before(&repo, commit).0, true);
+    assert!(before(&repo, commit).0);
     assert_eq!(check(&repo), "passed");
     let (held, said) = before(&repo, commit);
-    assert_eq!(held, false, "{said}");
+    assert!(!held, "{said}");
 
     // Changed again after the passing run.
     repo.write("api/a.txt", "c\n");
-    assert_eq!(before(&repo, commit).0, true);
+    assert!(before(&repo, commit).0);
 }
 
 #[test]
@@ -100,6 +100,6 @@ fn the_gate_is_off_with_its_switch_or_without_running_checks() {
         );
         repo.write("api/a.txt", "b \n");
         let (held, said) = before(&repo, "git commit -am 'feat: x'");
-        assert_eq!(held, false, "{routing}: {said}");
+        assert!(!held, "{routing}: {said}");
     }
 }
