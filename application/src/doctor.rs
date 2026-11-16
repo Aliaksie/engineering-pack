@@ -126,7 +126,13 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
     let root = state::canonical_root(root)?;
     let overlays: Vec<Value> = OVERLAYS
         .iter()
-        .map(|(host, relative)| host_install::overlay(host, &root, relative))
+        .map(|(host, relative)| {
+            let mut found = host_install::overlay(host, &root, relative);
+            if *host == "cursor" {
+                found["reincluded"] = json!(host_install::cursor_reincluded(&root));
+            }
+            found
+        })
         .collect();
     // The layers as every command reads them; a file that cannot be used is reported, not raised.
     let configuration =

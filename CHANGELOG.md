@@ -6,6 +6,12 @@
   model as a permission denial with Craft's reason. Before, Claude Code showed it as a
   `PreToolUse` hook error that printed the whole hook command in front of the reason. The
   launcher still exits 2 when the bundled runtime cannot start.
+- `craft doctor` also says what Codex and Cursor keep from the model themselves while the
+  secret-file rule is in force: for Codex, whether the permission profile `config.toml`
+  selects by default denies a `.env` path, with the entry to add when it does not; for a
+  Cursor overlay, whether `.cursorignore` takes `.env` files back out of what Cursor ignores
+  by default. The checks are `secret-files-codex` and `secret-files-cursor`. Doctor writes
+  nothing.
 - Prompt routing recognizes five more wordings: "execute the … suite" as a check run, "does
   the test suite cover …" as verification, "give me a charter / test scenarios / options"
   by what is asked for, "what depends on / calls / imports / uses …" as a lookup, and
