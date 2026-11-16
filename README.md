@@ -153,6 +153,7 @@ Codex CLI:
 ```sh
 codex plugin marketplace add Aliaksie/engineering-pack --ref distribution
 codex plugin add craft-engineering@engineering-pack
+codex plugin add craft-delivery@engineering-pack
 ```
 
 Gemini CLI:
