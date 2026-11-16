@@ -387,8 +387,13 @@ fn a_layer_that_cannot_be_used_is_an_error_naming_its_file() {
         "shell",
     ];
     let output = truncated.craft(&guard, &payload.to_string());
-    let refused = String::from_utf8_lossy(&output.stderr);
-    assert_eq!(output.status.code(), Some(2), "{refused}");
+    // Fails closed as a permission decision, not as a failed hook.
+    let refused = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(output.status.code(), Some(0), "{refused}");
+    assert!(
+        refused.contains(r#""permissionDecision":"deny""#),
+        "{refused}"
+    );
     assert!(
         refused.contains("Policy could not be evaluated: organization layer"),
         "{refused}"

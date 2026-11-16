@@ -842,13 +842,6 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
             ..empty
         };
     }
-    if host == "claude" && denied {
-        return Wire {
-            stdout: String::new(),
-            stderr: format!("{}\n", reason.as_str().unwrap_or_default()),
-            exit_code: 2,
-        };
-    }
     let name = &mapping["name"];
     if let Some(reason) = stop {
         let output = match host {

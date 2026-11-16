@@ -146,8 +146,10 @@ test('generated host exports run after relocation without source-tree imports', 
     assert.ok(fs.existsSync(path.join(standalone, 'SETUP.md')));
     assert.ok(fs.existsSync(path.join(standalone, setup.sessionAdvice.entry)));
     const result = runHook(standalone, target, 'read-only', { cwd: repo, input: JSON.stringify({ cwd: repo, tool_name: 'Bash', tool_input: { command: 'gh pr comment 1 --body example' } }) });
-    if (target === 'claude') { assert.equal(result.status, 2); assert.match(result.stderr, /read-only review/); }
-    else { assert.equal(result.status, 0); assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny'); }
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout).hookSpecificOutput;
+    assert.equal(decision.permissionDecision, 'deny');
+    assert.match(decision.permissionDecisionReason, /read-only review/);
   }
 });
 

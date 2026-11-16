@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A command the safety policy or a read-only review refuses on Claude Code now reaches the
+  model as a permission denial with Craft's reason. Before, Claude Code showed it as a
+  `PreToolUse` hook error that printed the whole hook command in front of the reason. The
+  launcher still exits 2 when the bundled runtime cannot start.
 - `craft`'s version response (`{"formatVersion":1,"operation":"version"}` on stdin) lists
   `templates`: each model-facing text a hook gives, by a stable id with the SHA-256 of its
   exact wording. An eval report may record them in `templates`, and `npm run eval:report`
