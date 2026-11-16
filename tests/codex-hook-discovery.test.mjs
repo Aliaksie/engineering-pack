@@ -64,6 +64,7 @@ test('Codex discovers every installed package hook without granting trust', {
   });
   t.diagnostic(`Host: ${initialized.userAgent ?? 'Codex app-server'}`);
   const catalog = JSON.parse(fs.readFileSync(marketplace, 'utf8'));
+  const report = JSON.parse(fs.readFileSync(path.join(source, 'adapter-report.json'), 'utf8'));
   for (const plugin of catalog.plugins) {
     await call('plugin/install', { pluginName: plugin.name, marketplacePath: marketplace });
   }
@@ -78,7 +79,11 @@ test('Codex discovers every installed package hook without granting trust', {
     const detail = await call('plugin/read', { pluginName: plugin.name, marketplacePath: marketplace });
     assert.equal(detail.plugin.skills.length, manifest.skills.length + manifest.workflows.length);
     const hooks = entry.hooks.filter(hook => hook.pluginId === `${plugin.name}@${catalog.name}`);
-    assert.equal(hooks.length, manifest.hooks.length, `${plugin.name}: real host discovery must match declared hooks`);
+    // A declared hook whose event Codex has no mapping for is reported, not exported.
+    const mappings = report.packages.find(entry => entry.package === plugin.name).hookMappings;
+    assert.equal(mappings.length, manifest.hooks.length);
+    const exported = mappings.filter(mapping => mapping.supported !== false);
+    assert.equal(hooks.length, exported.length, `${plugin.name}: real host discovery must match exported hooks`);
     assert.ok(hooks.length > 0);
     assert.ok(hooks.every(hook => hook.source === 'plugin' && hook.trustStatus === 'untrusted'));
     t.diagnostic(`${plugin.name}: ${hooks.length} hooks discovered, awaiting trust`);
