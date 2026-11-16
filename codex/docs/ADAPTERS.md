@@ -39,7 +39,7 @@ any host.
 
 | Target | Before-tool policy | Compaction / recovery |
 |---|---|---|
-| Claude Code | PreToolUse; denial via exit 2 | PreCompact snapshot; SessionStart compact delivers the task resume |
+| Claude Code | PreToolUse JSON denial; exit 2 only when the runtime cannot start | PreCompact snapshot; SessionStart compact delivers the task resume |
 | Codex | PreToolUse JSON denial | PreCompact snapshot; SessionStart compact delivers the task resume |
 | Cursor | preToolUse permission response | preCompact is observational; task resume at the next tool result |
 | Copilot | preToolUse denial; no output otherwise | preCompact is a notification; task resume at the next tool result |
