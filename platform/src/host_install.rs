@@ -475,11 +475,36 @@ pub fn codex(root: &Path) -> Value {
             Err(error) => sources.push(looked(&path, true, Some(error))),
         }
     }
+    // Paths a permission profile keeps commands from reading or writing, as the keys name them.
+    let denied: Vec<&str> = keys
+        .iter()
+        .filter(|(key, access)| key.starts_with("permissions.") && **access == json!("deny"))
+        .map(|(key, _)| key.as_str())
+        .collect();
     json!({
         "host": "codex", "installed": home.is_dir(), "config": home.to_string_lossy(),
         "trust": trust, "hooksFeature": hooks_feature, "packages": packages,
         "configured": configured, "commands": commands, "sources": sources,
+        "defaultPermissions": keys.get("default_permissions").cloned().unwrap_or(Value::Null),
+        "denied": denied,
     })
+}
+
+/// How much of a `.cursorignore` is read.
+const IGNORE_BYTES: usize = 256 * 1024;
+
+/// The lines of the project's `.cursorignore` that take `.env` files back out of what Cursor
+/// ignores by default (`!.env`, `!**/.env.local`). Empty without the file or such a line.
+pub fn cursor_reincluded(root: &Path) -> Vec<String> {
+    let Ok(bytes) = files::read_bounded(&root.join(".cursorignore"), IGNORE_BYTES) else {
+        return Vec::new();
+    };
+    String::from_utf8_lossy(&bytes)
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with('!') && line.contains(".env"))
+        .map(str::to_owned)
+        .collect()
 }
 
 /// How many Codex session records, and how much of each, a session listing reads.
@@ -726,6 +751,27 @@ mod tests {
                 "session_start:1:0",
                 "session_start:1:1"
             ]
+        );
+    }
+
+    #[test]
+    fn a_permission_profile_is_read_with_the_paths_it_denies() {
+        let file =
+            std::env::temp_dir().join(format!("craft-codex-keys-{}.toml", std::process::id()));
+        fs::write(
+            &file,
+            "default_permissions = \"project-edit\"\n\n[permissions.project-edit.filesystem]\n\":minimal\" = \"read\"\n\"~/Documents\" = \"deny\"\n\n[permissions.project-edit.filesystem.\":workspace_roots\"]\n\".\" = \"write\"\n\"**/*.env\" = \"deny\"\n",
+        )
+        .unwrap();
+        let keys = codex_keys(&file).unwrap().unwrap();
+        let _ = fs::remove_file(&file);
+        assert_eq!(keys["default_permissions"], "project-edit");
+        let workspace = "permissions.project-edit.filesystem.:workspace_roots.";
+        assert_eq!(keys[&format!("{workspace}**/*.env")], "deny");
+        assert_eq!(keys[&format!("{workspace}.")], "write");
+        assert_eq!(
+            keys["permissions.project-edit.filesystem.~/Documents"],
+            "deny"
         );
     }
 

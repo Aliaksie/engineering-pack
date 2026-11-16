@@ -814,17 +814,43 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
 /// Claude's own deny rules for secret files, listed for `doctor` to offer; Craft writes none.
 const CLAUDE_SECRET_DENY: &str = r#"{"permissions": {"deny": ["Read(**/.env)", "Read(**/.env.local)", "Read(**/*.key)", "Read(~/.ssh/id_*)", "Read(~/.aws/credentials)"]}}"#;
 
-/// Whether Claude's own settings also keep `.env` files from the model while Craft's
-/// secret-file rule is in force. The rule is a hook guardrail; a host deny rule or sandbox is
-/// the boundary, and only the consumer adds one.
-fn secret_files(facts: &Value, hosts: &[Value], report: &mut Report) -> Option<Value> {
+/// The Codex permission profile entry that keeps `.env` files from commands, for `doctor`
+/// to offer.
+const CODEX_SECRET_DENY: &str =
+    r#""**/*.env" = "deny" under [permissions.<profile>.filesystem.":workspace_roots"]"#;
+
+/// Whether each installed host's own controls also keep `.env` files from the model while
+/// Craft's secret-file rule is in force. The rule is a hook guardrail; a host deny rule,
+/// permission profile or ignore list is the boundary, and only the consumer sets one.
+fn secret_files(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Value> {
     if facts["configuration"]["secretFiles"] != true {
-        return None;
+        return Vec::new();
     }
-    let claude = hosts.iter().find(|host| host["host"] == "claude")?;
-    if matches!(claude["status"].as_str(), Some("not-installed" | "off")) {
-        return None;
+    let installed = |name: &str| {
+        hosts.iter().any(|host| {
+            host["host"] == name
+                && !matches!(host["status"].as_str(), Some("not-installed" | "off"))
+        })
+    };
+    let mut checks = Vec::new();
+    if installed("claude") {
+        checks.push(claude_secret_files(facts, report));
     }
+    if installed("codex") {
+        checks.push(codex_secret_files(&facts["codex"], report));
+    }
+    let cursor = facts["overlays"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|overlay| overlay["host"] == "cursor" && overlay["present"] == true);
+    if let Some(cursor) = cursor {
+        checks.push(cursor_secret_files(cursor, report));
+    }
+    checks
+}
+
+fn claude_secret_files(facts: &Value, report: &mut Report) -> Value {
     let denying: Vec<&str> = facts["claude"]["settings"]
         .as_array()
         .into_iter()
@@ -838,23 +864,88 @@ fn secret_files(facts: &Value, hosts: &[Value], report: &mut Report) -> Option<V
         .filter_map(|layer| layer["layer"].as_str())
         .collect();
     if !denying.is_empty() {
-        return Some(check(
+        return check(
             "secret-files",
             "ok",
             format!(
                 "Claude's own deny rules ({} settings) refuse reading .env files; Craft's rule asks about the other secret files its hook sees",
                 denying.join(", ")
             ),
-        ));
+        );
     }
     report.next.push(format!(
         "Optional, for a boundary on secret files in Claude: add to .claude/settings.json (or your user settings) {CLAUDE_SECRET_DENY}; Craft does not write it"
     ));
-    Some(check(
+    check(
         "secret-files",
         "off",
         "only Craft's hook guards secret files in Claude, a guardrail: no Claude deny rule for .env files in user, project or local settings (managed settings not inspected), so a read the hook cannot see, such as a script, is not stopped",
-    ))
+    )
+}
+
+/// The profile `default_permissions` selects and the `.env` paths it denies. A profile chosen
+/// for one run on the command line or set by managed requirements is not seen.
+fn codex_secret_files(codex: &Value, report: &mut Report) -> Value {
+    let profile = codex["defaultPermissions"].as_str().unwrap_or_default();
+    let prefix = format!("permissions.{profile}.filesystem.");
+    let denied: Vec<&str> = codex["denied"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter_map(|key| key.strip_prefix(&prefix))
+        .filter(|_| !profile.is_empty())
+        .map(|path| path.strip_prefix(":workspace_roots.").unwrap_or(path))
+        .filter(|path| path.contains(".env"))
+        .collect();
+    if !denied.is_empty() {
+        return check(
+            "secret-files-codex",
+            "ok",
+            format!(
+                "Codex's permission profile `{profile}` denies {}; Craft's rule refuses the other secret files its hook sees",
+                denied.join(", ")
+            ),
+        );
+    }
+    report.next.push(format!(
+        "Optional, for a boundary on secret files in Codex (permission profiles, beta): in config.toml set {CODEX_SECRET_DENY} for the profile `default_permissions` selects; Craft does not write it"
+    ));
+    check(
+        "secret-files-codex",
+        "off",
+        "only Craft's hook guards secret files in Codex, a guardrail: the permission profile config.toml selects by default denies no .env path (a profile chosen for one run and managed requirements are not inspected), so a read the hook cannot see, such as a script, is not stopped",
+    )
+}
+
+/// Cursor keeps `.env*` files from its Agent by default; a `.cursorignore` line can take
+/// them back out.
+fn cursor_secret_files(cursor: &Value, report: &mut Report) -> Value {
+    let reincluded: Vec<&str> = cursor["reincluded"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    if reincluded.is_empty() {
+        return check(
+            "secret-files-cursor",
+            "ok",
+            "Cursor ignores .env files for its Agent by default and .cursorignore does not take them back out (user-level ignore settings not inspected); terminal commands and MCP tools are outside Cursor's ignore list, where Craft's rule refuses the reads its hook sees",
+        );
+    }
+    report.next.push(format!(
+        "Optional, for secret files in Cursor: remove {} from .cursorignore so Cursor ignores .env files again; Craft does not write it",
+        reincluded.join(", ")
+    ));
+    check(
+        "secret-files-cursor",
+        "off",
+        format!(
+            "only Craft's hook guards .env files in Cursor, a guardrail: .cursorignore takes them back out of what Cursor ignores ({})",
+            reincluded.join(", ")
+        ),
+    )
 }
 
 /// A host's hook runs that gave no answer in the retained telemetry, as a `problem` check:
