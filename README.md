@@ -4,8 +4,9 @@ Your team's engineering rules, kept by any agent: declared once, checked while i
 enforced where you choose, the same in every project and on every host.
 
 ![What Craft tells the agent and the person during one task: callers from the project index for
-a search, a module dependency finding, an empty test run, a commit message finding, a refused
-force push, a declared check run and the session summary](docs/assets/demo.svg)
+a search, a module dependency finding, an empty test run, a question before a .env file is read,
+a commit held until the declared check has passed, a commit message finding, a refused force
+push and the session summary](docs/assets/demo.svg)
 
 The `craft` lines are what the released executable answered to Claude Code's hook payloads for
 these steps, and to `craft check`; the agent's steps are scripted, not a model run.
