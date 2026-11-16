@@ -1,150 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.0.7
 
-- A command the safety policy or a read-only review refuses on Claude Code now reaches the
-  model as a permission denial with Craft's reason. Before, Claude Code showed it as a
-  `PreToolUse` hook error that printed the whole hook command in front of the reason. The
-  launcher still exits 2 when the bundled runtime cannot start.
-- `craft doctor` also says what Codex and Cursor keep from the model themselves while the
-  secret-file rule is in force: for Codex, whether the permission profile `config.toml`
-  selects by default denies a `.env` path, with the entry to add when it does not; for a
-  Cursor overlay, whether `.cursorignore` takes `.env` files back out of what Cursor ignores
-  by default. The checks are `secret-files-codex` and `secret-files-cursor`. Doctor writes
-  nothing.
-- Prompt routing recognizes five more wordings: "execute the … suite" as a check run, "does
-  the test suite cover …" as verification, "give me a charter / test scenarios / options"
-  by what is asked for, "what depends on / calls / imports / uses …" as a lookup, and
-  "document … in an ADR" as an ADR. Before, these prompts got no routing hint.
-- `craft`'s version response (`{"formatVersion":1,"operation":"version"}` on stdin) lists
-  `templates`: each model-facing text a hook gives, by a stable id with the SHA-256 of its
-  exact wording. An eval report may record them in `templates`, and `npm run eval:report`
-  checks and echoes them. The wording the model receives is unchanged.
-- The safety policy keeps files that commonly hold secrets out of the model's context: a new
-  built-in rule, `read-secret-file`, catches reading `.env` files, private keys, credential
-  and token files and Terraform state through a file read, a search, an edit of an existing
-  one or a shell command such as `cat .env`, inside or outside the project. Claude Code asks
-  you before the read; Codex, Cursor, Copilot CLI and Gemini CLI refuse it. Templates such as
-  `.env.example`, public keys and certificates, test fixtures and `source .env` pass. The rule
-  is on with the policy; `"safety": {"disables": ["read-secret-file"]}` leaves it out.
-- Craft no longer reads files that commonly hold secrets itself: `craft locate` skips them
-  and counts them under `skipped.secret`, Project Intelligence does not index them, and
-  standards checks and the stop review leave them unread, so no Craft answer or finding
-  quotes a line of a `.env` file, key or credentials file.
-- `craft doctor` says whether Claude Code's own deny rules also keep `.env` files from the
-  model while the secret-file rule is in force, and when none does, prints a
-  `permissions.deny` snippet to add. Craft's rule is a hook guardrail; the host's deny rules
-  and sandbox are the boundary. Doctor writes nothing.
-- `craft doctor` counts, per host, hook runs that gave no answer because their input was too
-  large, unreadable or not JSON, or because the hook failed, and names the last one. The
-  session summary and `craft session` count the session's hook failures. Before, such a hook
-  was silent and looked like one with nothing to say.
-- `craft config --sync` previews copying the machine's organization configuration to
-  `.craft/organization.json`, and writes it with `--apply`. Committed, that copy is the
-  organization layer on machines without the organization file, such as CI runners and
-  teammates' laptops, so its standards, checks and safety rules hold there too. Where the
-  machine has its own file, that file still wins, and `craft config` and `craft doctor` say
-  when the committed copy differs from it.
-- `craft settings` lists the organization and user layers with where each was read from,
-  `craft doctor` names the layers the settings come from, and `craft route` names the layer of
-  each standard the project does not declare itself.
-- `schemas/layer.schema.json` describes an organization or user configuration file for editor
-  completion: the project schema without the fields that name one repository.
-- `craft check --install-hook` previews a Git pre-commit hook that runs the project's declared
-  commit-stage checks, and writes it with `--apply`. Where husky, lefthook, the pre-commit
-  framework, `core.hooksPath` or another hook owns pre-commit, it prints the line to add there
-  and writes nothing.
-- `craft check --ci-snippet github` or `gitlab` prints a CI job that installs this Craft
-  release, verifies it and runs the declared checks of the `ci` stage for the pull or merge
-  request's changes.
-- An agent's `git commit` now waits for the project's declared commit-stage checks: while one
-  covers a changed file and has not passed on the current files in a `craft check --session`
-  run, the hook refuses the commit and names the command to run. The hook runs no check
-  itself. `routing.commitGate: false` turns this off; projects that declare no check of the
-  commit or step stage see no change.
-- `craft doctor` checks Claude Code's status line, through which Craft sees context usage:
-  without one it offers the `host-setup --apply` command (it writes nothing itself), and a
-  status line still running a removed or older Craft after an update is reported with the
-  command to set instead. A custom status line is left alone.
-- At the end of a turn, Claude Code, Codex and Gemini CLI show one next step beside the session
-  summary when Craft knows one: `craft check --stage commit` when a declared check covers files
-  the turn changed and has not run since; a required acceptance criterion of the session's task
-  that has no evidence yet; the next ready task of its Craft work plan once its task is
-  completed; or, when the host reports the context window past `efficiency.context.compactAt`,
-  whether to compact now or save a checkpoint first. It is said once while it applies;
-  `efficiency.advice.nextStep: false` turns it off.
-- `craft session` shows the session's last `craft check` run: its result, stage and counts,
-  and whether the tree changed since, so a passed check is not taken for the current code.
-- A declared check can take the changed files: an argument that is exactly `{changedFiles}`
-  becomes the files the check covers, named from its directory, so a formatter or linter
-  reads only what changed. A check with no such file is reported as skipped and never as
-  passed.
-- `craft check --base <ref>` also checks the files committed since the ref's merge base with
-  `HEAD`, so a pull-request stage run covers the whole change instead of finding nothing on a
-  clean tree. `craft check` now finds the changed files when the project's root is a folder
-  below the top of its repository, or a workspace folder holding several repositories. Before,
-  it read paths from the repository top and could run another module's checks, or none.
+This release makes what Craft already shipped work from the first install and hold in real
+sessions. With no configuration, the safety policy is on and a project is held to the
+standards its own files state; files that commonly hold secrets stay out of the model's
+context; a declared check runs the same way in the agent's commit, a Git pre-commit hook and
+CI; organization and user layers reach CI runners and teammates through a committed copy; and
+hooks that had failed, repeated themselves or answered wrongly now stay within what each host
+documents. Each of these is covered by fixtures, and one scenario runs them together through
+Claude Code's and Codex's own hook payloads. That agents keep declared standards more often,
+or leave less debt, with Craft than without it is the goal and has not been measured.
 
-- A prompt that only relays text from the host, such as a background task's completion notice,
-  a subagent's or another session's report, or a reminder, no longer gets a routing hint or
-  changes the session's intent. Before, the relayed text was read as the user's request and
-  could route, say, a finished test run as testing-only work. A prohibition such as "do not
-  repeat work that is already complete" no longer reads as a question either, so a
-  "continue the task" prompt keeps the change it continues and its edits keep their hints.
+Works with no configuration:
 
-- A standards finding for a written file is reported once per session: further writes that
-  leave it in place report only new findings, instead of repeating every finding on every
-  write. A file reverted outside an edit (for example by `git checkout`) or deleted no longer
-  keeps its findings open: the stop review checks it again, and the session summary counts
-  them fixed.
-- The stop review reads as a short list, one line per finding and per review item, instead of
-  a sentence followed by raw JSON, and is smaller for the same items. In Claude Code it
-  continues the turn as hook feedback (Claude Code 2.1.163 or later) instead of being
-  shown as "Stop hook error".
-- The stop review counts a commit as the session's work only when a shell command of that
-  session made it. A commit another session made in the same checkout, or one the user made by
-  hand, had held this session's stop with review items for files it never touched; a file the
-  session committed that another commit in the same range also changed is left out.
-- `project-evidence` and the status line run from a subfolder without `--root` work on the
-  project around it, as other commands and hooks do: they had kept separate state and a
-  second Project Intelligence index under that subfolder. `state-clean` now removes idle
-  sessions that hold a test-run, check-run, stop-review, resume or status-line record; it had
-  kept them as holding an unrecognized file.
-- A file a shell command writes by name (an output redirection, `tee`, `sed -i`, `perl -i`,
-  or the destination of `cp` and `mv`) gets the routing hint and the standards check an edit
-  gets, in the same tool call, instead of waiting for the stop review. Scripts and generators
-  are still checked at the stop.
-- The safety policy holds with any Craft package installed, not only `craft-delivery`; it also
-  refuses `xargs rm -r` (targets read from input), `find -delete` and `find -exec rm -r` from
-  outside the project or from its root with no narrowing test, and a push that deletes a
-  remote branch or tag (new rule `delete-remote-branch`). A recursive delete strictly below a
-  temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`), such as a host's scratch directory, is
-  no longer refused. A project reached through a link is recognized under both of its paths,
-  and on Windows a drive or network path outside the project, which had passed as inside, is
-  refused.
-- In Codex, the first session after Craft's hooks run again says once how many earlier
-  sessions in the project ran without them, and whether a Craft update preceded the gap: Codex
-  skips a plugin's hooks after every update until they are trusted again, and its app and IDE
-  extension do not say so. `craft doctor` reports the same count, and its advice names both
-  places to trust hooks: `/hooks` in the terminal, Settings → Hooks in the app and extension.
-- The stop review no longer reports debt markers that sit inside a string literal (also Rust
-  raw strings) or a Markdown code span: a TODO in a test's fixture text, or documentation
-  naming `eslint-disable` or `#[ignore]`, had been reported as added debt.
-- A hook no longer fails with "hook input exceeds 64 KiB" when the host sends a large payload,
-  such as the text of a large file just read. Hooks read up to 1 MiB; above that, a hook with
-  nothing to enforce stays silent, and before a shell command the safety policy denies what it
-  could not read, where until now such a command was not checked at all.
-- A test command whose output is piped into a filter such as `tail` or `grep` is no longer
-  reported as having executed no test when the summary left in view is an empty one: such a
-  run is `unknown` (`cut-output`) unless the output shows a failure. `cargo test | tail -4`
-  had been reported as checking nothing although its tests ran.
 - The safety policy is on with no configuration: a destructive shell command is refused in a
   project that declares nothing. `"safety": {"enabled": false}` in the project, organization
   or user file turns it off, and `disables` leaves single rules out. A project that relied on
   the policy being off until enabled now sees those commands refused.
-- The safety policy and the read-only review guard no longer refuse a command for what the
-  text of a here-document says: the text is data unless a shell is named on the line that
-  opens it. Substitutions in a document with an unquoted delimiter are still read.
 - A project that declares no standards is held to the ones its own files state: what
   `craft standards --propose` lists is in effect without being copied, as a `detected` layer
   beneath the organization and user files. Commit, changelog and decision-record formats are
@@ -171,6 +44,161 @@
   from the directory the host was opened in, so a shell that moved into another repository no
   longer starts a second session record there. A command run without `--root` from a
   subfolder works on the project around it instead of creating `.craft` in the subfolder.
+
+Files that hold secrets:
+
+- The safety policy keeps files that commonly hold secrets out of the model's context: a new
+  built-in rule, `read-secret-file`, catches reading `.env` files, private keys, credential
+  and token files and Terraform state through a file read, a search, an edit of an existing
+  one or a shell command such as `cat .env`, inside or outside the project. Claude Code asks
+  you before the read; Codex, Cursor, Copilot CLI and Gemini CLI refuse it. Templates such as
+  `.env.example`, public keys and certificates, test fixtures and `source .env` pass. The rule
+  is on with the policy; `"safety": {"disables": ["read-secret-file"]}` leaves it out.
+- Craft no longer reads files that commonly hold secrets itself: `craft locate` skips them
+  and counts them under `skipped.secret`, Project Intelligence does not index them, and
+  standards checks and the stop review leave them unread, so no Craft answer or finding
+  quotes a line of a `.env` file, key or credentials file.
+- `craft doctor` says whether Claude Code's own deny rules also keep `.env` files from the
+  model while the secret-file rule is in force, and when none does, prints a
+  `permissions.deny` snippet to add. Craft's rule is a hook guardrail; the host's deny rules
+  and sandbox are the boundary. Doctor writes nothing.
+- `craft doctor` also says what Codex and Cursor keep from the model themselves while the
+  secret-file rule is in force: for Codex, whether the permission profile `config.toml`
+  selects by default denies a `.env` path, with the entry to add when it does not; for a
+  Cursor overlay, whether `.cursorignore` takes `.env` files back out of what Cursor ignores
+  by default. The checks are `secret-files-codex` and `secret-files-cursor`. Doctor writes
+  nothing.
+
+The same checks at every gate:
+
+- An agent's `git commit` now waits for the project's declared commit-stage checks: while one
+  covers a changed file and has not passed on the current files in a `craft check --session`
+  run, the hook refuses the commit and names the command to run. The hook runs no check
+  itself. `routing.commitGate: false` turns this off; projects that declare no check of the
+  commit or step stage see no change.
+- `craft check --install-hook` previews a Git pre-commit hook that runs the project's declared
+  commit-stage checks, and writes it with `--apply`. Where husky, lefthook, the pre-commit
+  framework, `core.hooksPath` or another hook owns pre-commit, it prints the line to add there
+  and writes nothing.
+- `craft check --ci-snippet github` or `gitlab` prints a CI job that installs this Craft
+  release, verifies it and runs the declared checks of the `ci` stage for the pull or merge
+  request's changes.
+- `craft check --base <ref>` also checks the files committed since the ref's merge base with
+  `HEAD`, so a pull-request stage run covers the whole change instead of finding nothing on a
+  clean tree. `craft check` now finds the changed files when the project's root is a folder
+  below the top of its repository, or a workspace folder holding several repositories. Before,
+  it read paths from the repository top and could run another module's checks, or none.
+- A declared check can take the changed files: an argument that is exactly `{changedFiles}`
+  becomes the files the check covers, named from its directory, so a formatter or linter
+  reads only what changed. A check with no such file is reported as skipped and never as
+  passed.
+- `craft session` shows the session's last `craft check` run: its result, stage and counts,
+  and whether the tree changed since, so a passed check is not taken for the current code.
+
+Layers reach CI and teammates:
+
+- `craft config --sync` previews copying the machine's organization configuration to
+  `.craft/organization.json`, and writes it with `--apply`. Committed, that copy is the
+  organization layer on machines without the organization file, such as CI runners and
+  teammates' laptops, so its standards, checks and safety rules hold there too. Where the
+  machine has its own file, that file still wins, and `craft config` and `craft doctor` say
+  when the committed copy differs from it.
+- `craft settings` lists the organization and user layers with where each was read from,
+  `craft doctor` names the layers the settings come from, and `craft route` names the layer of
+  each standard the project does not declare itself.
+- `schemas/layer.schema.json` describes an organization or user configuration file for editor
+  completion: the project schema without the fields that name one repository.
+
+Feedback during a session:
+
+- At the end of a turn, Claude Code, Codex and Gemini CLI show one next step beside the session
+  summary when Craft knows one: `craft check --stage commit` when a declared check covers files
+  the turn changed and has not run since; a required acceptance criterion of the session's task
+  that has no evidence yet; the next ready task of its Craft work plan once its task is
+  completed; or, when the host reports the context window past `efficiency.context.compactAt`,
+  whether to compact now or save a checkpoint first. It is said once while it applies;
+  `efficiency.advice.nextStep: false` turns it off.
+- `craft doctor` checks Claude Code's status line, through which Craft sees context usage:
+  without one it offers the `host-setup --apply` command (it writes nothing itself), and a
+  status line still running a removed or older Craft after an update is reported with the
+  command to set instead. A custom status line is left alone.
+- The stop review reads as a short list, one line per finding and per review item, instead of
+  a sentence followed by raw JSON, and is smaller for the same items. In Claude Code it
+  continues the turn as hook feedback (Claude Code 2.1.163 or later) instead of being
+  shown as "Stop hook error".
+- A standards finding for a written file is reported once per session: further writes that
+  leave it in place report only new findings, instead of repeating every finding on every
+  write. A file reverted outside an edit (for example by `git checkout`) or deleted no longer
+  keeps its findings open: the stop review checks it again, and the session summary counts
+  them fixed.
+- A file a shell command writes by name (an output redirection, `tee`, `sed -i`, `perl -i`,
+  or the destination of `cp` and `mv`) gets the routing hint and the standards check an edit
+  gets, in the same tool call, instead of waiting for the stop review. Scripts and generators
+  are still checked at the stop.
+- A prompt that only relays text from the host, such as a background task's completion notice,
+  a subagent's or another session's report, or a reminder, no longer gets a routing hint or
+  changes the session's intent. Before, the relayed text was read as the user's request and
+  could route, say, a finished test run as testing-only work. A prohibition such as "do not
+  repeat work that is already complete" no longer reads as a question either, so a
+  "continue the task" prompt keeps the change it continues and its edits keep their hints.
+- Prompt routing recognizes five more wordings: "execute the … suite" as a check run, "does
+  the test suite cover …" as verification, "give me a charter / test scenarios / options"
+  by what is asked for, "what depends on / calls / imports / uses …" as a lookup, and
+  "document … in an ADR" as an ADR. Before, these prompts got no routing hint.
+
+Hooks and the safety policy hold:
+
+- A command the safety policy or a read-only review refuses on Claude Code is answered as a
+  permission decision, so the model sees Craft's reason without the whole hook command printed
+  in front of it. Claude Code (2.1.325) still labels the refusal `PreToolUse:Bash hook error`.
+  The launcher still exits 2 when the bundled runtime cannot start.
+- The safety policy holds with any Craft package installed, not only `craft-delivery`; it also
+  refuses `xargs rm -r` (targets read from input), `find -delete` and `find -exec rm -r` from
+  outside the project or from its root with no narrowing test, and a push that deletes a
+  remote branch or tag (new rule `delete-remote-branch`). A recursive delete strictly below a
+  temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`), such as a host's scratch directory, is
+  no longer refused. A project reached through a link is recognized under both of its paths,
+  and on Windows a drive or network path outside the project, which had passed as inside, is
+  refused.
+- A hook no longer fails with "hook input exceeds 64 KiB" when the host sends a large payload,
+  such as the text of a large file just read. Hooks read up to 1 MiB; above that, a hook with
+  nothing to enforce stays silent, and before a shell command the safety policy denies what it
+  could not read, where until now such a command was not checked at all.
+- The safety policy and the read-only review guard no longer refuse a command for what the
+  text of a here-document says: the text is data unless a shell is named on the line that
+  opens it. Substitutions in a document with an unquoted delimiter are still read.
+- In Codex, the first session after Craft's hooks run again says once how many earlier
+  sessions in the project ran without them, and whether a Craft update preceded the gap: Codex
+  skips a plugin's hooks after every update until they are trusted again, and its app and IDE
+  extension do not say so. `craft doctor` reports the same count, and its advice names both
+  places to trust hooks: `/hooks` in the terminal, Settings → Hooks in the app and extension.
+- `craft doctor` counts, per host, hook runs that gave no answer because their input was too
+  large, unreadable or not JSON, or because the hook failed, and names the last one. The
+  session summary and `craft session` count the session's hook failures. Before, such a hook
+  was silent and looked like one with nothing to say.
+- `craft`'s version response (`{"formatVersion":1,"operation":"version"}` on stdin) lists
+  `templates`: each model-facing text a hook gives, by a stable id with the SHA-256 of its
+  exact wording. An eval report may record them in `templates`, and `npm run eval:report`
+  checks and echoes them. The wording the model receives is unchanged.
+
+Fixed:
+
+- The stop review counts a commit as the session's work only when a shell command of that
+  session made it. A commit another session made in the same checkout, or one the user made by
+  hand, had held this session's stop with review items for files it never touched; a file the
+  session committed that another commit in the same range also changed is left out.
+- `project-evidence` and the status line run from a subfolder without `--root` work on the
+  project around it, as other commands and hooks do: they had kept separate state and a
+  second Project Intelligence index under that subfolder. `state-clean` now removes idle
+  sessions that hold a test-run, check-run, stop-review, resume or status-line record; it had
+  kept them as holding an unrecognized file.
+- The stop review no longer reports debt markers that sit inside a string literal (also Rust
+  raw strings) or a Markdown code span: a TODO in a test's fixture text, or documentation
+  naming `eslint-disable` or `#[ignore]`, had been reported as added debt.
+- A test command whose output is piped into a filter such as `tail` or `grep` is no longer
+  reported as having executed no test when the summary left in view is an empty one: such a
+  run is `unknown` (`cut-output`) unless the output shows a failure. `cargo test | tail -4`
+  had been reported as checking nothing although its tests ran.
 - Fixed: the stop review of a project whose root is a folder below the top of its repository
   read changed files from the wrong place and reviewed nothing. It now reviews that project's
   files and leaves its neighbours' alone.
