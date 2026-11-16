@@ -27,7 +27,7 @@ fn checkout(root: &Path) -> Option<(PathBuf, String)> {
 /// The launcher a hook runs: the installed package's `bin/craft` when this runs from one,
 /// otherwise this executable.
 fn launcher() -> Result<String, Failure> {
-    let package = std::env::var(crate::statusline::PACKAGE_ROOT)
+    let package = std::env::var(crate::PACKAGE_ROOT)
         .ok()
         .filter(|root| !root.is_empty())
         .and_then(|root| state::physical(&Path::new(&root).join("bin/craft")).ok());

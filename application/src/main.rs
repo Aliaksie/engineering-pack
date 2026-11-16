@@ -1,3 +1,4 @@
+//! The `craft` executable: routes hooks, status lines, commands and stdin requests.
 use serde_json::json;
 use std::io::{self, IsTerminal, Read, Write};
 

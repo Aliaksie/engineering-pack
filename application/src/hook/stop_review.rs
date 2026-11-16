@@ -11,12 +11,13 @@
 //! no repository itself, each member repository is read the same way and its files are named
 //! from the workspace root.
 use crate::failure::Failure;
+use crate::project::{Checkout, checkouts};
 use crate::session::read_record;
 use craft_engine::session::delivered::{Checked, finding_key};
 use craft_engine::{debt, hash, routing, standards};
 use craft_platform::state;
 use serde_json::{Map, Value, json};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const RECORD_BYTES: usize = 128 * 1024;
 /// How much `git status` and one file's diff may print; beyond, the stop stays quiet.
@@ -37,47 +38,6 @@ fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::Pa
         create,
         Some(session),
     )?)
-}
-
-/// One Git checkout a stop reads: the project's own, or a member repository of a workspace.
-pub(crate) struct Checkout {
-    pub(crate) directory: PathBuf,
-    /// The member's folder as files are named from the workspace root (`api/`); empty for
-    /// the project's own checkout.
-    pub(crate) folder: String,
-    /// Where `directory` lies beneath the top of its checkout, as Git prints it (`web/` or
-    /// empty). Git names changed files from the top; a project whose root is a folder below
-    /// it reads them from its own root.
-    pub(crate) prefix: String,
-}
-
-/// The checkouts `root` is reviewed from: its own when Git knows it, otherwise its member
-/// repositories; none for a plain folder.
-pub(crate) fn checkouts(root: &Path) -> Vec<Checkout> {
-    let own = |prefix| Checkout {
-        directory: root.to_owned(),
-        folder: String::new(),
-        prefix,
-    };
-    if std::fs::symlink_metadata(root.join(".git")).is_ok() {
-        return vec![own(String::new())];
-    }
-    // Asked only when `root` is not the top itself.
-    let below = craft_platform::process::git(root, &["rev-parse", "--show-prefix"], 4096)
-        .ok()
-        .flatten()
-        .and_then(|output| String::from_utf8(output).ok());
-    if let Some(prefix) = below {
-        return vec![own(prefix.trim_end().to_owned())];
-    }
-    crate::conventions::repositories(root)
-        .into_iter()
-        .map(|member| Checkout {
-            directory: root.join(&member),
-            folder: format!("{member}/"),
-            prefix: String::new(),
-        })
-        .collect()
 }
 
 /// A checkout's files that differ from `HEAD` (modified, added or untracked outside

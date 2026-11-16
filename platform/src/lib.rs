@@ -1,3 +1,4 @@
+//! Effects for `craft`: filesystem, state, Git, processes, search, storage and bounded HTTP.
 pub mod documents;
 mod error;
 pub use error::Error;

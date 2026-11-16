@@ -477,7 +477,7 @@ fn decide(
             };
             // What the host installed beside this hook's package; unknown outside a bundle.
             let packages = event.package.and_then(|package| {
-                let bundle = std::env::var_os(crate::statusline::PACKAGE_ROOT)?;
+                let bundle = std::env::var_os(crate::PACKAGE_ROOT)?;
                 let bundle = std::fs::canonicalize(bundle).ok()?;
                 craft_platform::host_install::packages(event.host, root, &bundle, package)
             });
@@ -626,7 +626,7 @@ fn decide(
     if event.lifecycle == "session-start"
         && (event.context_supported || crate::hook::shows_notice(event.host, event.lifecycle))
     {
-        let installed = std::env::var_os(crate::statusline::PACKAGE_ROOT)
+        let installed = std::env::var_os(crate::PACKAGE_ROOT)
             .and_then(|bundle| craft_platform::host_install::installed_ms(Path::new(&bundle)));
         let safety = craft_engine::safety::enabled(settings);
         if let Some(found) = crate::hook_gap::found(root, event.host, session, installed, safety) {
@@ -960,7 +960,7 @@ fn standard_findings(
     // A failed commit leaves an older HEAD; only a commit made just now is the one written.
     // At a workspace root that is the newest one among its member repositories.
     let now = now_ms() as u64 / 1000;
-    let written = crate::hook::stop_review::checkouts(root)
+    let written = crate::project::checkouts(root)
         .iter()
         .filter_map(|checkout| {
             let output = craft_platform::process::git(

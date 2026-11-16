@@ -1,5 +1,5 @@
-//! Project configuration use cases: effective settings with value origins, private
-//! state placement and the current worker budget.
+//! The project a command or hook works on: its root, its Git checkouts, effective settings
+//! with value origins, private state placement and the current worker budget.
 use crate::failure::Failure;
 use crate::telemetry::{Operation, Recorder, now_ms, observe};
 use craft_engine::layers::{self, Layer};
@@ -63,6 +63,73 @@ pub(crate) fn absolute(path: &str) -> PathBuf {
         }
     }
     resolved
+}
+
+/// The nearest ancestor (at most 30 levels) with project configuration or a Git entry,
+/// else the directory itself.
+pub(crate) fn project_root(cwd: &Path) -> PathBuf {
+    let mut directory = cwd;
+    for _ in 0..30 {
+        if directory.join(".craft/project.json").exists() || directory.join(".git").exists() {
+            return directory.to_path_buf();
+        }
+        match directory.parent() {
+            Some(parent) => directory = parent,
+            None => break,
+        }
+    }
+    cwd.to_path_buf()
+}
+
+/// The project a command works on: `--root` as given, which may name a folder inside a
+/// repository on purpose; without it, the project the current directory is in, as a hook
+/// finds it, so a command run from a subfolder never keeps state of its own there.
+pub(crate) fn resolve_root(given: Option<&str>) -> PathBuf {
+    match given {
+        Some(root) => absolute(root),
+        None => project_root(&absolute(".")),
+    }
+}
+
+/// One Git checkout of a project: its own, or a member repository of a workspace.
+pub(crate) struct Checkout {
+    pub(crate) directory: PathBuf,
+    /// The member's folder as files are named from the workspace root (`api/`); empty for
+    /// the project's own checkout.
+    pub(crate) folder: String,
+    /// Where `directory` lies beneath the top of its checkout, as Git prints it (`web/` or
+    /// empty). Git names changed files from the top; a project whose root is a folder below
+    /// it reads them from its own root.
+    pub(crate) prefix: String,
+}
+
+/// The checkouts `root` reads changes from: its own when Git knows it, otherwise its member
+/// repositories; none for a plain folder.
+pub(crate) fn checkouts(root: &Path) -> Vec<Checkout> {
+    let own = |prefix| Checkout {
+        directory: root.to_owned(),
+        folder: String::new(),
+        prefix,
+    };
+    if std::fs::symlink_metadata(root.join(".git")).is_ok() {
+        return vec![own(String::new())];
+    }
+    // Asked only when `root` is not the top itself.
+    let below = craft_platform::process::git(root, &["rev-parse", "--show-prefix"], 4096)
+        .ok()
+        .flatten()
+        .and_then(|output| String::from_utf8(output).ok());
+    if let Some(prefix) = below {
+        return vec![own(prefix.trim_end().to_owned())];
+    }
+    crate::conventions::repositories(root)
+        .into_iter()
+        .map(|member| Checkout {
+            directory: root.join(&member),
+            folder: format!("{member}/"),
+            prefix: String::new(),
+        })
+        .collect()
 }
 
 /// Paths in the form `stateLocation` reports them; failures are reported, not raised.

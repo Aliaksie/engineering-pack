@@ -1,3 +1,5 @@
+//! Project Intelligence over explicit member repositories: one response across members,
+//! each with its own store.
 use craft_engine::{hash, identity};
 use craft_platform::repository::{eligible, now, read_source};
 use serde_json::{Value, json};

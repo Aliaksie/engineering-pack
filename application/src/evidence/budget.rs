@@ -1,3 +1,5 @@
+//! Extraction limits one Project Intelligence refresh spends per member: files, bytes,
+//! output and time.
 use craft_engine::Extraction;
 use serde_json::Value;
 use std::{io, time::Duration};

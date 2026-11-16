@@ -1,3 +1,5 @@
+//! The `craft` use cases over the engine and platform: one JSON request in, one response
+//! out, plus the command line, host hook and status line entry points.
 use craft_engine::PROTOCOL_VERSION;
 use failure::Failure;
 use serde_json::{Value, json};
@@ -36,6 +38,9 @@ mod telemetry;
 mod test_runs;
 mod workers;
 
+/// Set by the package launcher: the root of the installed package this executable serves.
+pub(crate) const PACKAGE_ROOT: &str = "CRAFT_PACKAGE_ROOT";
+
 /// What one `craft` invocation writes and exits with.
 pub struct Outcome {
     pub exit_code: i32,
@@ -68,7 +73,7 @@ fn version() -> Value {
 fn project_evidence(operation: &str, input: &Value) -> Result<Value, Failure> {
     match operation {
         "version" => Ok(version()),
-        _ if input.get("members").is_some() => evidence::workspace::run(operation, input),
+        _ if input.get("members").is_some() => evidence::members::run(operation, input),
         _ => evidence::run(operation, input),
     }
 }
