@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A command the safety policy or a read-only review refuses on Claude Code now reaches the
+  model as a permission denial with Craft's reason. Before, Claude Code showed it as a
+  `PreToolUse` hook error that printed the whole hook command in front of the reason. The
+  launcher still exits 2 when the bundled runtime cannot start.
 - `craft doctor` also says what Codex and Cursor keep from the model themselves while the
   secret-file rule is in force: for Codex, whether the permission profile `config.toml`
   selects by default denies a `.env` path, with the entry to add when it does not; for a

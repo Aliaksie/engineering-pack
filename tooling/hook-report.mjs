@@ -38,11 +38,19 @@ export function readOnlyHook(repo) {
 }
 const spawnHook = ({ launcher, args }, options) => process.platform === 'win32'
   ? spawnSync(`"${launcher}.cmd"`, args, { ...options, shell: true }) : spawnSync(launcher, args, { ...options, shell: false });
+// What the Claude hook process decided: the runtime answers a denial as a permission decision,
+// the launcher exits 2 when the runtime cannot start. Any other outcome is no decision.
+function decided(result) {
+  if (result.status === 2) return 'deny';
+  if (result.status !== 0) return undefined;
+  if (!result.stdout?.trim()) return 'allow';
+  try { return JSON.parse(result.stdout).hookSpecificOutput?.permissionDecision === 'deny' ? 'deny' : 'allow'; } catch { return undefined; }
+}
 // Decide through the generated Claude read-only hook in a project configured for read-only review.
 export const hookPolicy = (hook, directory, env = process.env) => ({ command }) => {
   const result = spawnHook(hook, { cwd: directory, env, encoding: 'utf8', timeout: 10000,
     input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command } }) });
-  return { decision: result.status === 2 ? 'deny' : result.status === 0 ? 'allow' : undefined };
+  return { decision: decided(result) };
 };
 export function policyReport(policy, cases = CASES) {
   const results = cases.map((entry) => {
@@ -87,7 +95,7 @@ export function localHookReport(repo, iterations = 12) {
         input: JSON.stringify({ cwd: directory, tool_name: 'Bash', tool_input: { command: deny ? 'git push origin feature' : 'git status --short' } })
       });
       const milliseconds = performance.now() - started;
-      if (result.status !== (deny ? 2 : 0)) throw new Error(`unexpected hook process status: ${result.error?.code ?? result.status}`);
+      if (decided(result) !== (deny ? 'deny' : 'allow')) throw new Error(`unexpected hook process status: ${result.error?.code ?? result.status}`);
       samples.push({ decision: deny ? 'deny' : 'allow', milliseconds });
     }
     const sorted = samples.map((sample) => sample.milliseconds).sort((a, b) => a - b);

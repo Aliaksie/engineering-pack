@@ -46,8 +46,8 @@ test('a launcher runs the bundled runtime for this platform without Node or an o
   const env = { ...plain, PATH: windows ? plain.PATH : '/usr/bin:/bin' };
   if (!windows) assert.notEqual(spawnSync('sh', ['-c', 'command -v node'], { env }).status, 0, 'test PATH must not provide node');
   const denied = runHook(packageRoot, 'claude', 'read-only', { cwd: project, env, input: publish(project) });
-  assert.equal(denied.status, 2, denied.stderr);
-  assert.match(denied.stderr, /read-only review/);
+  assert.equal(denied.status, 0, denied.stderr);
+  assert.match(JSON.parse(denied.stdout).hookSpecificOutput.permissionDecisionReason, /read-only review/);
   const allowed = runHook(packageRoot, 'claude', 'read-only', { cwd: project, env, input: JSON.stringify({ cwd: project, tool_name: 'Bash', tool_input: { command: 'git status' } }) });
   assert.equal(allowed.status, 0, allowed.stderr);
   assert.equal(allowed.stdout, '');
@@ -83,9 +83,10 @@ test('registered hook commands start the bundled runtime without the launcher', 
       const [file, args] = form(host === 'claude' ? entry[field].replaceAll('${CLAUDE_PLUGIN_ROOT}', packageRoot) : entry[field]);
       return spawnSync(file, args, { cwd, env, input: publish(cwd), encoding: 'utf8' });
     };
-    const decision = result => host === 'claude' ? (result.status === 2 ? 'deny' : 'allow')
-      : (({ hookSpecificOutput, permissionDecision, permission } = {}) => hookSpecificOutput?.permissionDecision ?? permissionDecision ?? permission)(JSON.parse(result.stdout || '{}'));
-    const reason = result => host === 'claude' ? result.stderr : result.stdout;
+    // Exit 2 on Claude is only the launcher's own answer when the runtime cannot start.
+    const decision = result => host === 'claude' && result.status === 2 ? 'deny'
+      : (({ hookSpecificOutput, permissionDecision, permission } = {}) => hookSpecificOutput?.permissionDecision ?? permissionDecision ?? permission ?? (host === 'claude' ? 'allow' : undefined))(JSON.parse(result.stdout || '{}'));
+    const reason = result => `${result.stderr}${result.stdout}`;
     // A launcher that only records being started.
     const marker = path.join(root, `${host}-launcher-started`);
     const launchers = ['bin/craft', 'bin/craft.cmd'].map(name => [path.join(packageRoot, name), fs.readFileSync(path.join(packageRoot, name))]);
@@ -231,9 +232,8 @@ test('registered hook commands run through host shells', t => {
         const [file, args] = form(command);
         const result = spawnSync(file, args, { cwd, env: { ...process.env, CLAUDE_PLUGIN_ROOT: packageRoot, PLUGIN_ROOT: packageRoot }, input: publish(cwd), encoding: 'utf8', windowsVerbatimArguments: shell === 'cmd' });
         const output = result.stdout?.trim() ? (() => { try { return JSON.parse(result.stdout); } catch { return {}; } })() : {};
-        const reason = host === 'claude' ? result.stderr ?? '' : JSON.stringify(output);
-        const denied = (host === 'claude' ? result.status === 2
-          : (output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision) === 'deny')
+        const reason = `${result.stderr ?? ''}${JSON.stringify(output)}`;
+        const denied = (output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision) === 'deny'
           && /read-only review/.test(reason) && !/could not be evaluated/.test(reason);
         results.push({ host, field, shell, denied, status: result.status, stderr: `${result.stderr ?? result.error?.message ?? ''}`.trim().slice(0, 160) });
         if (shell in required) assert.ok(denied, `${host} ${field} via ${shell}: ${result.status} ${result.stdout} ${result.stderr}`);

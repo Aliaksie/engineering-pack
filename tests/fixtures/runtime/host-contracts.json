@@ -202,9 +202,9 @@
         "context": "Context λ"
       },
       "response": {
-        "output": "",
-        "error": "Blocked λ\n",
-        "exitCode": 2
+        "output": "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked λ\"}}\n",
+        "error": "",
+        "exitCode": 0
       }
     },
     {

@@ -10,8 +10,8 @@ use support::Repo;
 const PROJECT: &str = r#"{"formatVersion":1,
   "modules":[{"name":"api","path":"api","checks":[{"command":"git","args":["diff","--check"],"id":"api-whitespace"}]}]}"#;
 
-/// The Claude hook's answer to a shell command: exit code and what it said.
-fn before(repo: &Repo, command: &str) -> (i32, String) {
+/// The Claude hook's answer to a shell command: whether it holds the command, and what it said.
+fn before(repo: &Repo, command: &str) -> (bool, String) {
     let payload = json!({"session_id": "S1", "cwd": repo.path(), "tool_name": "Bash",
         "tool_input": {"command": command}});
     let args: Vec<String> = [
@@ -26,7 +26,9 @@ fn before(repo: &Repo, command: &str) -> (i32, String) {
     .map(|a| a.to_string())
     .collect();
     let (wire, _) = craft_application::hook::run(&args, &mut payload.to_string().as_bytes());
-    (wire.exit_code, format!("{}{}", wire.stdout, wire.stderr))
+    assert_eq!(wire.exit_code, 0, "{}", wire.stderr);
+    let held = wire.stdout.contains(r#""permissionDecision":"deny""#);
+    (held, wire.stdout)
 }
 
 /// `craft check` for the session: its result (a failed check exits non-zero).
@@ -51,37 +53,37 @@ fn a_commit_waits_until_the_covering_check_passed_on_the_current_files() {
         ],
     );
     let commit = "git commit -am 'feat: x'";
-    assert_eq!(before(&repo, commit).0, 0, "nothing changed");
+    assert!(!before(&repo, commit).0, "nothing changed");
 
     repo.write("docs/a.md", "b\n");
-    assert_eq!(before(&repo, commit).0, 0, "no check covers docs");
+    assert!(!before(&repo, commit).0, "no check covers docs");
 
     repo.write("api/a.txt", "b \n");
-    let (code, said) = before(&repo, commit);
-    assert_eq!(code, 2, "{said}");
+    let (held, said) = before(&repo, commit);
+    assert!(held, "{said}");
     assert!(said.contains("api-whitespace"), "{said}");
     assert!(
         said.contains("craft check --stage commit --session S1"),
         "{said}"
     );
     // Other commands are not held.
-    assert_eq!(before(&repo, "git status").0, 0);
+    assert!(!before(&repo, "git status").0);
 
     assert_eq!(check(&repo), "failed");
-    let (code, said) = before(&repo, commit);
-    assert_eq!(code, 2);
+    let (held, said) = before(&repo, commit);
+    assert!(held);
     assert!(said.contains("api-whitespace did not pass"), "{said}");
 
     // Fixed but not run again: the passed run must be on these files.
     repo.write("api/a.txt", "b\n");
-    assert_eq!(before(&repo, commit).0, 2);
+    assert!(before(&repo, commit).0);
     assert_eq!(check(&repo), "passed");
-    let (code, said) = before(&repo, commit);
-    assert_eq!(code, 0, "{said}");
+    let (held, said) = before(&repo, commit);
+    assert!(!held, "{said}");
 
     // Changed again after the passing run.
     repo.write("api/a.txt", "c\n");
-    assert_eq!(before(&repo, commit).0, 2);
+    assert!(before(&repo, commit).0);
 }
 
 #[test]
@@ -97,7 +99,7 @@ fn the_gate_is_off_with_its_switch_or_without_running_checks() {
             &[(".craft/project.json", &project), ("api/a.txt", "a\n")],
         );
         repo.write("api/a.txt", "b \n");
-        let (code, said) = before(&repo, "git commit -am 'feat: x'");
-        assert_eq!(code, 0, "{routing}: {said}");
+        let (held, said) = before(&repo, "git commit -am 'feat: x'");
+        assert!(!held, "{routing}: {said}");
     }
 }

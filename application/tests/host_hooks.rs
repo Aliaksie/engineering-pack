@@ -1457,15 +1457,24 @@ fn input_too_large_to_read_is_silent_unless_the_safety_policy_must_judge_a_comma
     // Before a write the policy does not judge: silent too.
     let write = run("before-tool", payload(&fixture.0, Some("Write"), &large));
     assert_eq!((write.exit_code, write.stderr.as_str()), (0, ""));
-    // Before a shell command, or a tool the input does not name: denied with the reason, which
-    // Claude Code takes as exit code 2 and the reason on stderr.
+    // Before a shell command, or a tool the input does not name: denied with the reason, as
+    // a permission decision Claude Code gives the model, not as a failed hook.
     for tool in [Some("Bash"), None] {
         let shell = run("before-tool", payload(&fixture.0, tool, &large));
-        assert_eq!(shell.exit_code, 2, "{tool:?}: {}", shell.stderr);
+        assert_eq!(
+            (shell.exit_code, shell.stderr.as_str()),
+            (0, ""),
+            "{tool:?}"
+        );
+        let answer: Value = serde_json::from_str(&shell.stdout).expect("answer");
+        let decision = &answer["hookSpecificOutput"];
+        assert_eq!(decision["permissionDecision"], "deny", "{tool:?}");
         assert!(
-            shell.stderr.contains("could not be read in full"),
+            decision["permissionDecisionReason"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("could not be read in full")),
             "{}",
-            shell.stderr
+            shell.stdout
         );
     }
     // With the policy off there is nothing to enforce. The project is the one the input names,
