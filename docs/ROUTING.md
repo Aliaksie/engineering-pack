@@ -63,30 +63,66 @@ level, source and a one-line `summary`; the content stays in the project.
 ]
 ```
 
-`craft standards --propose` lists the standards a project's existing files already support,
-so the first declarations need no writing by hand. It reads fixed files at the project root,
-each up to 256 KiB, and follows no links:
+A project that declares no standards is held to the ones its existing files state, and
+`craft standards --propose` lists them, so the first session needs no configuration and the
+first declarations no writing by hand. The scan reads fixed files at the project root, each
+up to 256 KiB, and follows no links:
 
 | The project has | Proposed |
 |---|---|
 | Conventional Commits, Keep a Changelog, Semantic Versioning, MADR, Nygard ADRs or Gherkin named in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot or Junie instructions, or `CONTRIBUTING.md`; a changelog preamble naming its format; a commitlint configuration extending `config-conventional` | The anchor, checked. Decision-record anchors are scoped to the first of `docs/adr`, `docs/decisions`, `docs/architecture/decisions`, `doc/adr`, `adr` that exists, and are not proposed without one |
 | A `lint`, `format:check` or `typecheck` script in `package.json` (and the usual spellings) | A `run` standard with the script, through the package manager its lock file names |
-| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, golangci-lint or RuboCop | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Configuration of rustfmt, Clippy, ESLint, Biome, Prettier, Ruff, Black, Flake8, mypy, Pyright, golangci-lint or RuboCop; a `tsconfig.json` | A `run` standard with the tool's check command, scoped to its language; a package script for the same job replaces it |
+| Checkstyle, Spotless, ktlint or detekt configured in the project or named in its Gradle or Maven build | A `run` standard with the build's own task: `./gradlew` when the wrapper is there, else `gradle`, or `mvn`. Not proposed without the build file |
+| `go.mod`; a solution or project file (`.sln`, `.slnx`, `.csproj`, `.fsproj`) at the root | `go vet ./...`; `dotnet format --verify-no-changes`. Advised, not run: the file shows the toolchain, not a request for the check. Declare the standard to have `craft check` run it |
+| At least 20 recent commits of which four in five have a Conventional Commits subject; a changelog whose release headings already pass Keep a Changelog; two or more numbered decision records that all pass MADR or Nygard | The anchor, checked, with what was observed as its evidence. Never proposed when what exists does not pass the check |
 | `CONTRIBUTING.md` (root, `.github/` or `docs/`), `.editorconfig` | A `file` standard, advised; the EditorConfig summary states what `[*]` asks for |
 
 Each proposal carries the declaration to copy and the files, with lines, that support it;
-what the configuration already declares is listed apart. Nothing is active until you copy it
-into `standards`, and Craft never writes the configuration. The scan matches names and
+what the configuration already declares is listed apart. Craft never writes the
+configuration.
+
+While the project's own file declares no `standards`, every proposal is in effect as the
+`detected` layer, beneath the organization and user files: an anchor is checked as a declared
+one is, a `file` standard is advised, and a `run` standard is a check `craft check` runs when
+it is called. No hook starts a command read from the project's files. A standard of the same
+id in the organization or user file wins. Once the project declares a standard of its own,
+only declared standards apply: copy the proposals to keep. Any entry counts, a lone
+`{"id": …, "disabled": true}` included, so one detected standard cannot be removed alone:
+declare the ones to keep. `craft config` shows the layer,
+and what the files state never makes a valid configuration invalid.
+
+A format the project keeps without naming it is read from the last 50 commit subjects
+(merges left out), `CHANGELOG.md` and the five newest numbered records of the decision
+folder. A hook asks Git once per commit the checkout is at and keeps the answer in
+`.craft/state/notices/practice.json`; a command you run keeps nothing.
+
+A root that is no repository and has no `.craft/project.json` is read as a workspace: the
+scan also reads each direct folder that is a Git repository, at most 16, and holds every
+standard it finds there to that folder. The id is led by the folder's name (`api-rustfmt`),
+`scope.paths` and files by the folder, and a command runs in it, so a file is routed and
+checked with its own repository's standards and not its neighbour's. A commit format is
+brought to the workspace only when every member repository has it. A member's standard that
+cannot be held at the workspace (two folders whose names give the same id, no room left) is
+listed under `skipped` with the reason. State stays in the one
+`.craft` at the workspace root. The stop review reads each member repository (its changed
+files, and the commits the session made there) and names files from the workspace root; it
+does so at any root that is no repository, with or without a `.craft/project.json`. The commit
+check reads the newest commit made in the last two minutes among the member repositories. Not
+covered there: a member's own `.craft/project.json`, and a repository deeper than a direct
+folder.
+
+Otherwise the scan matches names and
 configuration files only: it does not parse commands written in prose, does not read nested
-packages, and a file that names a convention in order to reject it is still a match, so read
-the evidence before accepting. Agent instruction files are read for names but never proposed
+packages of one repository, and a file that names a convention in order to reject it is still a match, so read
+the evidence. Agent instruction files are read for names but never proposed
 as standards, since the host loads them itself.
 
-A session that starts in a project declaring no standards runs the same scan and says once
-how many standards the files support, to the user where the host shows a hook's message
+A session that starts in a project declaring no standards says once how many standards
+read from its files are in effect, to the user where the host shows a hook's message
 (Claude Code, Codex, Gemini CLI) and to the agent with the command that lists them. The same
 set is not named again in any session; a changed set is. `routing.conventionProposals: false`
-turns the scan at session start off.
+turns the scan off: nothing is read from the files and nothing is said.
 
 - `scope` narrows where a standard applies: `modules`, `languages`, `layers`, `paths` and
   `intents` (the kind of work: `story`, `plan`, `verify`, `explore`, `review`, `implement`,
@@ -113,8 +149,14 @@ turns the scan at session start off.
   shell command, Craft checks the anchor's required elements without a model and reports
   unmet ones in the same tool result. It never blocks the tool. `keep-a-changelog` reads
   `CHANGELOG.md`, `gherkin` reads `*.feature`, `semver` reads changelogs and package
-  manifests; the others read the files under `scope.paths`. Checks cover structure, not
-  whether the content is right, and an ADR's sections are checked in any order.
+  manifests; the others read the files under `scope.paths`. With `scope.paths`, those three
+  read their own files inside a named folder, and any file a path names exactly. Checks cover
+  structure, not whether the content is right, and an ADR's sections are checked in any
+  order. A file's finding is reported once per session: a later write that leaves it in place
+  reports only what is new, and one fixed and then back is reported again. When the stop
+  review runs, a file with reported findings that no longer differs from `HEAD` (reverted
+  outside any edit, or deleted) is checked again, and what is gone counts as fixed in the
+  session summary.
 - `hexagonal-architecture` and `clean-architecture` check module dependencies instead of
   text. Declare each ring or layer as a module with the `dependsOn` it may import. When a source
   file in such a module is written, Craft reports each import that the change adds (compared with
@@ -144,13 +186,14 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
 
 - module dependency findings (above) for imports the changes add;
 - anchor check findings (above) for a changed file the session was not told about when the
-  file was written: a file a shell command or a script wrote passes no edit hook, so its
+  file was written: a file a script, generator or formatter wrote passes no edit hook, so its
   check runs here;
 - debt markers the changes add, when `routing.debtMarkers` is true: a
   TODO/FIXME/XXX/HACK comment, a lint or type-check suppression (`eslint-disable`,
   `@ts-ignore`, `# noqa`, `#[allow(`, `@SuppressWarnings`, …), a skipped or disabled test
   (`it.skip(`, `#[ignore]`, `@Disabled`, `@pytest.mark.skip`, …) and fewer assertion lines
-  than the change removed. Commented-out code is not detected;
+  than the change removed. Text inside a string literal or a Markdown code span on the same
+  line is not a marker. Commented-out code is not detected;
 - the declared `review` standards whose scope the changed files fall under, with their
   checklist.
 
@@ -179,7 +222,10 @@ source digest of the tree it ran on:
   `all-skipped`), whatever the exit code;
 - `unknown` when the output carries no summary Craft recognizes (another runner, output cut
   before the summary, `cargo test --no-run`), or the host reports a failed call with neither
-  summary nor exit code (`tool-failed`); never `passed`;
+  summary nor exit code (`tool-failed`); never `passed`. Output the command piped into a
+  filter (`| tail -5`, `| grep`, anything but `tee` or `cat`) may show only the last of several
+  summaries: from it a shown failure still fails the run, anything else is `unknown`
+  (`cut-output`);
 - `passed` only with at least one executed test and no failures.
 
 A run that checked nothing (no executed test, or `unknown`) neither confirms nor contradicts
@@ -204,8 +250,21 @@ includes a tree whose latest run executed no test and no run decided; when that 
 `craft check` runs the commands a project declares: the `checks` of the modules that own the
 changed files and the `run` command of each `check` standard whose scope covers them. The
 changed files are the uncommitted ones, or those named with `--file`; `--all` takes every
-declared check, as a CI job on a clean tree needs. A module check runs in the module's path,
-a standard's command in its `cwd`.
+declared check, as a CI job on a clean tree needs. `--base <ref>` adds the files committed
+since the ref's merge base with `HEAD`, so a pull request's whole change is in scope:
+`craft check --stage pr --base origin/main`. The changed files are read from the project's
+own folder when its root lies below the top of the repository, and from each member
+repository at a workspace root, named from the project root either way. A module check runs
+in the module's path, a standard's command in its `cwd`.
+
+An argument that is exactly `{changedFiles}` becomes the changed files the check covers,
+named from its directory: the module's files for a module check, the files in the standard's
+scope (and below its `cwd`) for a standard's command. A deleted file selects the checks
+but is not passed. A formatter or linter then reads only
+what changed: `{ "command": "npx", "args": ["eslint", "{changedFiles}"] }`. A check with no
+such file is `skipped` and runs nothing, so a run of only skipped checks is `nothing-run`. A
+list longer than 64 KiB is not passed: the check is `not-started` (`argument-bound`) and
+`--file` narrows it.
 
 Each command may name a `stage`: `step`, `commit` (the default), `pr` or `ci`. A run at
 `--stage commit` executes the `step` and `commit` checks and lists the others as
@@ -233,6 +292,33 @@ did not pass, from its end. With `--session` the run is kept in the session's re
 test command among the checks counts as an observed test run. Commands start without a shell,
 exactly as declared, and only from this command: no hook runs them.
 `routing.projectChecks: false` makes `craft check` run nothing and say so.
+
+A `git commit` the agent runs waits for these checks. While a declared check of the `commit`
+stage (or the `step` stage) covers a changed file, the host's before-tool hook refuses the
+commit until a `craft check --session <id>` run at the commit stage or later passed every such
+check on the current files; the refusal names the command, and the failed checks once a run
+on these files failed. A file changed after the passing run holds the next commit again. The
+hook only reads the changed files, the session's check runs and the tree digest; it starts no
+command. It needs a session id and a host whose hook can refuse a command (Claude Code, Codex,
+Cursor, Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
+`routing.commitGate: false` lets every commit through.
+
+The same declaration gates commits made outside the agent and pull requests:
+
+- `craft check --install-hook` previews a Git pre-commit hook that runs
+  `craft check --stage commit` (with `--root` for a project below the top of its repository);
+  `--apply` writes it to the repository's hooks directory. A check that does not pass stops
+  the commit; `git commit --no-verify` skips it. Craft writes its own hook only: where husky,
+  lefthook or the pre-commit framework manages the hooks, `core.hooksPath` is set or another
+  pre-commit hook is in place, it prints the line or entry to add there and writes nothing.
+  The hook runs the installed Craft by its path; after Craft moves or updates, it lets the
+  commit through, says the checks did not run, and `--install-hook --apply` points it at the
+  current install. A workspace root is refused: install it from each member repository.
+- `craft check --ci-snippet github` or `--ci-snippet gitlab` prints a CI job for pull or
+  merge requests. It downloads this Craft release's Linux runtime, verifies it against the
+  release checksums (and its attestation on GitHub), and runs
+  `craft check --stage ci --base origin/<target branch>`. The job needs the tools the declared
+  checks run; the snippet says where to add them. Nothing is written.
 
 ## Project anchors
 
@@ -378,7 +464,10 @@ then fix it" is a change, not testing-only work), and statements, chat or questi
 about the conversation get no hint. Where a result goes ("write them to `ANSWER.md`") never
 decides the intent, what someone else wants ("a teammate wants to change…") is context
 while the question they asked is the request, and text pasted after a question that names
-no request does not decide one either. The words are English and matched deterministically;
+no request does not decide one either. Text the host relays into a prompt (a
+`<task-notification>`, `<agent-message>` or `<system-reminder>` block) is not the user's and
+is left out, and a prohibition ("do not repeat work that is already complete") is never a
+request: a prompt with nothing else gets no hint and keeps the session's intent. The words are English and matched deterministically;
 an unrecognized request simply gets none. A lookup prompt gets a hint only when the hook
 answers it (below): a hint that merely pointed at a command cost the model one or two turns
 more than its own search. An answered hint also carries `lookup`: the `craft locate` command
@@ -458,6 +547,13 @@ prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a plann
 `ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
 established another intent, once per file until the next request, and only at one tool hook:
 before the tool runs where the host shows context there, otherwise after it.
+
+A shell command that names the project files it writes is an edit of them: an output
+redirection (`>`, `>>`, `&>`, `2>`), `tee`, `sed -i`, `perl -i`, or the destination of `cp` and
+`mv`. Those files get the edit's routing hint and, after the command, its anchor checks. The
+command is read by its words, as the [safety policy](SECURITY.md) reads it: scripts,
+interpreters, generators, formatters, variables, globs and relative paths after a `cd` are not
+read, and the stop review checks what they wrote.
 
 For requests that create, change or assess something, what they are about decides the
 intent. Feedback and reading requests ("any feedback…", "look at the diff…") are reviews when

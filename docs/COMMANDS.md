@@ -10,6 +10,13 @@ receipts are compact; `--json` or `--verbose` returns the full structured result
 carry a stable error `code` with exit status 1; callers branch on the code, never on the
 message. Git and `gh`/`glab` are prerequisites only for operations that need them.
 
+A command works on the project named by `--root`. Without it, the project is the nearest
+directory at or above the current one that holds `.craft/project.json` or a Git entry, else
+the current directory: a command run from a subfolder reads the same configuration and state
+as the session around it. A hook finds its project the same way, starting from the directory
+the host was opened in where the host names one (Claude Code), else from the directory the
+session's shell is in.
+
 No command grants permission. A routing, service or publication plan describes work; it does
 not execute or authorize it. No command calls a model, switches models, starts workers,
 compacts a host session or posts to a code host.
@@ -20,8 +27,8 @@ compacts a host session or posts to a code host.
 |---|---|---|
 | `route` | Intent, paths and risks → guidance loading plan, owners, checks and execution role | Reads configuration; see [routing](ROUTING.md) |
 | `standards` | Declared project standards; with `--propose`, the standards the project's existing convention files support; with `--file` or `--commit-message`, the deterministic anchor checks the hooks run (for a Git hook or CI) | Reads configuration and the named files; `--propose` reads fixed root files and writes nothing; exits non-zero when a standard is not met |
-| `config` | The organization, user and project layers the settings come from and each value one layer set over another; with `--explain`, every effective value with its layer; `--field` keeps one field | Reads the layer files; exits non-zero naming the layer and file when one cannot be used; see [configuration layers](SESSION.md#configuration-layers) |
-| `check` | The project's declared checks (`modules[].checks`, `standards[].run`) for the uncommitted changes, `--file` paths or `--all`, run at `--stage` (`step`, `commit` by default, `pr`, `ci`) | Starts the declared commands without a shell, each within its time bound; checks of a later stage are listed as left to it; with `--session` keeps the result in the session's records; exits non-zero when a check did not pass |
+| `config` | The organization, user and project layers the settings come from and each value one layer set over another; with `--explain`, every effective value with its layer; `--field` keeps one field. `--sync` previews copying the machine's organization file to `.craft/organization.json` for CI and teammates; `--apply` writes it | Reads the layer files; exits non-zero naming the layer and file when one cannot be used; writes only with `--sync --apply`; see [configuration layers](SESSION.md#configuration-layers) |
+| `check` | The project's declared checks (`modules[].checks`, `standards[].run`) for the uncommitted changes, `--file` paths or `--all`, run at `--stage` (`step`, `commit` by default, `pr`, `ci`) | Starts the declared commands without a shell, each within its time bound; checks of a later stage are listed as left to it; with `--session` keeps the result in the session's records; exits non-zero when a check did not pass. `--install-hook` previews a Git pre-commit hook running the commit stage and writes it with `--apply`, never over a hook or hook manager it does not own; `--ci-snippet github\|gitlab` prints a CI job pinned to this release |
 | `lookup` | Module inventory or owners of paths | Reads configuration |
 | `locate` | Batched literal terms in scoped paths → path/line/snippet evidence | Bounded scan; optional task-scoped reuse receipts |
 | `context-report` | Selected guidance → paths, hashes, bytes, estimated tokens | Reads package resources; never measures live occupancy |

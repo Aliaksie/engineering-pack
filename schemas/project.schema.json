@@ -319,7 +319,7 @@
                 },
                 "args": {
                   "type": "array",
-                  "description": "Arguments passed to the command.",
+                  "description": "Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files of the module, named from its path, deleted files left out; `craft check` skips the check when there is none.",
                   "items": {
                     "type": "string",
                     "minLength": 1
@@ -490,7 +490,7 @@
               "args": {
                 "type": "array",
                 "minItems": 1,
-                "description": "Arguments passed to the command.",
+                "description": "Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files in the standard's scope, named from `cwd`, deleted files left out; `craft check` skips the command when there is none.",
                 "items": {
                   "type": "string",
                   "minLength": 1
@@ -1027,12 +1027,12 @@
     "safety": {
       "type": "object",
       "required": [],
-      "description": "Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "description": "Rules that refuse destructive shell commands, commands that reach outside the project and reads of files that commonly hold secrets, on hosts where a hook can refuse a tool call; Claude Code asks the user about a secret read instead. A rule only refuses: nothing here approves a tool call, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Turn the policy on. Off, no command is refused."
+          "default": true,
+          "description": "Whether the policy is on. Set `false` to turn it off: no command is refused."
         },
         "disables": {
           "type": "array",
@@ -1043,8 +1043,10 @@
               "delete-outside-project",
               "delete-project-root",
               "force-push",
+              "delete-remote-branch",
               "discard-changes",
-              "system-administration"
+              "system-administration",
+              "read-secret-file"
             ]
           }
         },
@@ -1173,12 +1175,17 @@
         "conventionProposals": {
           "type": "boolean",
           "default": true,
-          "description": "When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start."
+          "description": "Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them."
         },
         "projectChecks": {
           "type": "boolean",
           "default": true,
           "description": "Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run."
+        },
+        "commitGate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through."
         }
       },
       "additionalProperties": false
@@ -1261,7 +1268,7 @@
             "nextStep": {
               "type": "boolean",
               "default": true,
-              "description": "Include a next-step suggestion."
+              "description": "Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands."
             }
           },
           "additionalProperties": false

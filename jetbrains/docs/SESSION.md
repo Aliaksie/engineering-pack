@@ -322,12 +322,39 @@ When a turn ends, the user reads one line on what Craft did in the session so fa
 Craft this session: 4 standards findings raised, 2 fixed · 1 test run that ran no test caught · 3 lookups answered from the project index · 1 context restored after compaction
 ```
 
+Hook runs that gave no answer are named too: `1 hook failure` when the runtime could not
+decide (most often a project file it cannot read), counted once per event by the delivery
+hook. A hook whose input was too large or unreadable cannot tell which session sent it, so
+`craft doctor` counts those (see [Checking an installation](INSTALL.md#checking-an-installation)).
+
 Only what happened is named, and a session in which none of it happened shows no line. The
 line appears again only after it changed, and never beside a stop the review holds. It is the
 host's own message to the user (`systemMessage`), not context for the model, on Claude Code,
 Codex and Gemini CLI; Cursor and Copilot have no such message at the end of a turn, so there
 the line is in `craft session` only. Codex shows it in its interactive interface; `codex exec`
 prints no hook message, so a non-interactive run reads the line from `craft session` too. `routing.sessionSummary: false` shows none.
+
+The same message names one next step when Craft holds a fact that calls for it, and only then:
+
+```text
+Craft next: craft check --stage commit (1 declared check covers files changed since it last ran)
+Craft next: context 81 %: compact or start a new session; the session's checkpoint is on this commit
+```
+
+A declared check of the commit stage (or the step stage) that covers a file the turn changed
+comes first, until a `craft check` run of the session at that stage or later follows the
+change. Then the task bound to the session (`task-start`): while it is open, the first required
+acceptance criterion that no evidence record names (`acceptance "value" of task fix has no
+evidence yet`; whether recorded evidence is current is for `craft session` to say); once a task
+of a Craft work plan is completed, the plan's next ready task with the command that starts it
+(`plan task second (Document the API) is ready: craft task-start --plan api --ready`). Nothing
+is claimed or started for you. Otherwise, a context observation of the session at or past
+`efficiency.context.compactAt` names compaction when a saved continuation is on the commit the
+project is on, and asks for a checkpoint first when there is none or it is on another commit.
+Occupancy is never estimated: without a fresh observation, from the Claude Code status line or
+Codex, nothing is said about context. A next step is said once while it applies, after the
+summary when both are new. `efficiency.advice.nextStep: false` or `efficiency.advice.enabled:
+false` turns it off; `routing.projectChecks: false` leaves checks out of it.
 
 | Count | Counted when |
 |---|---|
@@ -342,6 +369,11 @@ returned, the pieces left out to stay under a host's hook output ceiling and the
 answers held back as repeats or over the session budget ([routing](ROUTING.md)); `--json` has
 them under `delivered`. The counts come from the session's `delivered.json`, which holds
 counts and short hashes, never delivered text, and needs `routing.sessionRecords`.
+
+After a `craft check --session <id>`, `craft session` also shows that run in a `Checks:`
+line: its result and stage, how many checks ran, passed, were skipped and were left to a
+later stage, and whether the tree is still the one the checks ran on (`lastCheck` in
+`--json`; `current` is `null` when the tree cannot be fingerprinted).
 
 ## What is measured
 
@@ -451,6 +483,7 @@ The resume is delivered once per compaction, at the first event after it that ca
     intelligence/           # project.sqlite(.lock), project.sqlite.backup
     workspaces/             # guard.json, <workspace-id>/{owner.json,scratch/,evidence/}
     notices/                # conventions.json: the proposals a session start last named
+                            # practice.json: recent commit subjects of the commit checked out
 ```
 
 Session IDs are hashes of the host session; raw names never become paths. Each root, whether
@@ -681,7 +714,7 @@ nothing. `--explain` adds every effective value with its layer; `--field routing
 field and what lies beneath it.
 
 ```text
-layers, later wins: bundled < organization < user < project
+layers, later wins: bundled < detected < organization < user < project
   organization: /etc/craft/organization.json — 3 values
   user: /home/dev/.config/craft/preferences.json — absent
   project: /work/shop/.craft/project.json — 2 values
@@ -698,6 +731,27 @@ field with a value it cannot take, and any unknown field of the project file, st
 file and its folder must belong to the user, the organization file and its folder to the
 administrator or the user, and none may be a symlink or writable by group or others. On
 Windows ownership is not checked: keep the organization file where only administrators can
-write. A machine
-without the baseline files, such as a CI runner, sees the project alone; install the
-organization file there or point `CRAFT_ORGANIZATION_CONFIG` at a checked-out copy.
+write.
+
+### The organization layer on CI and teammates' machines
+
+A machine without the organization file, such as a CI runner or a teammate's laptop, would see
+the project alone. `craft config --sync` previews copying the machine's organization file to
+`.craft/organization.json`; `--apply` writes it, to be committed with the project. Where a
+machine has no organization file, that copy is the organization layer, so the organization's
+standards, checks and safety rules hold in `craft check` on CI and in a teammate's hooks.
+Where the machine has one, its own file wins and the copy is only compared with it:
+
+```text
+  organization: /etc/craft/organization.json — 3 values
+    pinned copy /work/shop/.craft/organization.json differs: CI and teammates without this file use the pin (`craft config --sync --apply` updates it)
+```
+
+`craft doctor` reports a copy that differs, `craft settings` lists where each layer was read
+from, and `craft route` names the layer of each standard the project does not declare itself.
+The copy is repository content like `project.json`: no ownership check, the same field rules
+as an organization file, and the project still overrides every value. A machine with neither
+file sees the project alone; `CRAFT_ORGANIZATION_CONFIG` can also name a checked-out copy.
+
+A layer file can link [`schemas/layer.schema.json`](../schemas/layer.schema.json) for
+completion in an editor: the project schema without the fields that name one repository.

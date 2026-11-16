@@ -55,7 +55,8 @@ normalized events are `session-start`, `before-prompt`, `before-tool`, `after-to
 `before-compact`, `after-compact`, `turn-end`, `agent-start` (the host starts a
 subagent) and `after-tool-failure` (a tool call failed, where the host reports it apart). A denial is mapped only where the host
 supports blocking, context is injected only where its wire schema supports it, and a
-`turn-end` answer holds the stop only where the host continues a turn from it (`continue`). `craft
+`turn-end` answer holds the stop only where the host continues a turn from it (`continue`), as
+feedback rather than a hook error where the host offers that (`holdAsContext`). `craft
 hook` owns payload normalization, event/tool mapping and output; the build owns registration.
 A plain AGENTS bundle has no lifecycle runtime and therefore installs no hooks.
 

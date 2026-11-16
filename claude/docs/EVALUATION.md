@@ -33,6 +33,12 @@ does not call a model or judge the judge. `adapter` names an export (`claude`, `
 `cursor`, `copilot`, `gemini`, `agents`, `gemini-extension`, `jetbrains`). Keep transcripts and
 credentials out of committed results.
 
+A report may also carry `templates`, copied from the `craft` that ran: the `templates` object of
+its version response (`printf '{"formatVersion":1,"operation":"version"}' | craft`), each
+model-facing template's stable id with the SHA-256 of its exact wording. It names the words a
+run was given; the `revision` still identifies the code that filled them in. Reports without
+it stay valid.
+
 ## Decision replay
 
 `tests/decision-replay.test.mjs` replays realistic prompts and session situations through the

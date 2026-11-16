@@ -18,6 +18,9 @@ An organization file and a user file can declare a baseline every project inheri
 `routing`, `checkpoint`, `workspace`, `efficiency`, `standards`, `anchors`, `skills.disables`,
 `safety`, `execution` and `review`. The project overrides only what differs and
 `craft config` shows which layer won; see [configuration layers](SESSION.md#configuration-layers).
+A layer file links `schemas/layer.schema.json`, this schema without the fields that name one repository.
+`craft config --sync --apply` commits the organization file as `.craft/organization.json`, the
+organization layer on machines without that file, such as CI runners.
 Task overrides take the switch sections only (`routing`, `checkpoint`, `workspace`,
 `efficiency`).
 
@@ -58,7 +61,7 @@ array of objects. Parts of the repository with an owner, stack and checks. Route
 | `modules[].frameworks` | array of string |  | Frameworks in use, such as `react`. Selects framework guidance when Craft has it. Overrides the project value; an empty array clears it. |
 | `modules[].checks` | array of objects |  | Commands that verify this module, run in the module's path. Routes list them as argv; `craft check` runs those of the changed modules without a shell and reports each result. Craft never runs them from a hook or assumes they pass. |
 | `modules[].checks[].command` | string |  | Executable, such as `./gradlew` or `npm`. |
-| `modules[].checks[].args` | array of string |  | Arguments passed to the command. |
+| `modules[].checks[].args` | array of string |  | Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files of the module, named from its path, deleted files left out; `craft check` skips the check when there is none. |
 | `modules[].checks[].id` | string |  | Name of the check in `craft check` results. Default: the module name and the check's position, such as `api-1`. |
 | `modules[].checks[].stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `modules[].checks[].timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
@@ -84,7 +87,7 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].scope.intents` | array of string |  | Kinds of work: story, plan, verify, explore, review, implement and the other routing intents. |
 | `standards[].run` | object |  | A consumer command that checks the standard. The agent is told to run it, and `craft check` runs it without a shell for changed files in the standard's scope. |
 | `standards[].run.command` | string |  | Executable the agent runs to check the standard. |
-| `standards[].run.args` | array of string |  | Arguments passed to the command. |
+| `standards[].run.args` | array of string |  | Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files in the standard's scope, named from `cwd`, deleted files left out; `craft check` skips the command when there is none. |
 | `standards[].run.cwd` | string |  | Project-relative working directory. Default: the project root. |
 | `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
@@ -193,12 +196,12 @@ object. Review session safety.
 
 ## `safety`
 
-object. Opt-in rules that refuse destructive shell commands and commands that reach outside the project, on hosts where a hook can refuse a tool call. A rule only refuses: nothing here approves a command, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
+object. Rules that refuse destructive shell commands, commands that reach outside the project and reads of files that commonly hold secrets, on hosts where a hook can refuse a tool call; Claude Code asks the user about a secret read instead. A rule only refuses: nothing here approves a tool call, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `safety.enabled` | boolean | `false` | Turn the policy on. Off, no command is refused. |
-| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `discard-changes`, `system-administration` | `[]` | Built-in rules to leave out. |
+| `safety.enabled` | boolean | `true` | Whether the policy is on. Set `false` to turn it off: no command is refused. |
+| `safety.disables` | array of `delete-outside-project`, `delete-project-root`, `force-push`, `delete-remote-branch`, `discard-changes`, `system-administration`, `read-secret-file` | `[]` | Built-in rules to leave out. |
 | `safety.deny` | array of objects | `[]` | The project's own rules: a command whose leading words match is refused. |
 | `safety.deny[].id` | string |  | Stable handle named in the refusal. |
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
@@ -225,8 +228,9 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.workerStandards` | boolean | `true` | Give a subagent the host starts the checked and reviewed standards of the delegating session's scope. Set false to start workers without them. |
 | `routing.sessionRecords` | boolean | `true` | Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work. |
 | `routing.sessionSummary` | boolean | `true` | When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, contexts restored after compaction), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords. |
-| `routing.conventionProposals` | boolean | `true` | When a session starts in a project that declares no standards, say once how many its own files support (conventions named in agent instructions or the contributor document, lint and format configuration) and that `craft standards --propose` lists them. Said again only when the set changes. Set false to never scan at session start. |
+| `routing.conventionProposals` | boolean | `true` | Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them. |
 | `routing.projectChecks` | boolean | `true` | Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run. |
+| `routing.commitGate` | boolean | `true` | Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through. |
 
 ## `efficiency`
 
@@ -246,7 +250,7 @@ object. Session advice: lookups, attempts, review, context and delegation. Recom
 | `efficiency.advice` | object |  | Next-step advice in session status. |
 | `efficiency.advice.enabled` | boolean | `true` | Give advice. False removes the next-step suggestion. |
 | `efficiency.advice.at` | `meaningful-boundaries` | `meaningful-boundaries` | When advice is given. Only `meaningful-boundaries` exists. |
-| `efficiency.advice.nextStep` | boolean | `true` | Include a next-step suggestion. |
+| `efficiency.advice.nextStep` | boolean | `true` | Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands. |
 | `efficiency.review` | object |  | Review offers. |
 | `efficiency.review.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer. |
 | `efficiency.context` | object |  | Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window. |

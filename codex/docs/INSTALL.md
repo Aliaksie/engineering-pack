@@ -31,10 +31,11 @@ commit of `distribution` (for example `Aliaksie/engineering-pack#<commit>` in Cl
 ```sh
 claude plugin marketplace add Aliaksie/engineering-pack#distribution
 claude plugin install craft-engineering@craft-capabilities
+claude plugin install craft-delivery@craft-capabilities
 ```
 
-In the target project invoke `/craft-engineering:foundations`. Install `craft-delivery`,
-`craft-review` or `craft-stories` from the same marketplace when needed; workflow entry
+In the target project invoke `/craft-engineering:foundations`. Install `craft-review` or
+`craft-stories` from the same marketplace when needed; workflow entry
 points use the `workflow-` prefix, for example `/craft-stories:workflow-prepare-stories`.
 Installation does not configure a task tracker.
 
@@ -54,20 +55,27 @@ Sources: [plugins](https://code.claude.com/docs/en/plugins),
 ```sh
 codex plugin marketplace add Aliaksie/engineering-pack --ref distribution
 codex plugin add craft-engineering@engineering-pack
+codex plugin add craft-delivery@engineering-pack
 codex plugin list
 ```
 
 Restart Codex, verify the skill appears in `/skills` and invoke
-`$craft-engineering-foundations`. Hook-bearing packages install manually; the public plugin
-directory does not accept them. For guidance without plugins or hooks, merge the `agents`
-overlay into the project; Codex discovers `.agents/skills`.
+`$craft-engineering-foundations`. `craft-engineering` carries the engineering guidance and the
+safety policy; `craft-delivery` adds the automatic feedback: prompt and edit routing, standards
+findings, observed test runs, checkpoints and recovery, the stop review and subagent context.
+Add `craft-review` or `craft-stories` the same way when needed. Hook-bearing packages install
+manually; the public plugin directory does not accept them. For guidance without plugins or
+hooks, merge the `agents` overlay into the project; Codex discovers `.agents/skills`.
 
-Plugin hooks need their own trust: open `/hooks`, inspect and trust the current definitions,
-and review again after they change. Codex 0.164 and later binds that approval to the plugin's
-contents, so after every Craft update it skips all Craft hooks, without a message, until you
-trust them again in `/hooks`; a safety policy refuses nothing meanwhile. `craft doctor`
-compares each approval with the installed plugin, the way Codex 0.167 fingerprints one, and
-says when to approve again. Codex 0.150 and later loads no project `AGENTS.md` in an
+Plugin hooks need their own trust: inspect and trust the current definitions with `/hooks` in
+the terminal or under Settings → Hooks in the Codex app and IDE extension, and review again
+after they change. Codex 0.164 and later binds that approval to the plugin's contents, so after
+every Craft update it skips all Craft hooks until you trust them again; a safety policy refuses
+nothing meanwhile. The terminal asks at startup ("Hooks need review"); the app and the IDE
+extension say nothing, and `codex exec` cannot ask. `craft doctor` compares each approval with
+the installed plugin, the way Codex 0.167 fingerprints one, says when to trust again, and
+counts the sessions in the project that ran no Craft hook. Once the hooks run again, the first
+session start says once how many earlier sessions ran without them. Codex 0.150 and later loads no project `AGENTS.md` in an
 untrusted project, so the `agents` overlay's guidance is absent until you trust the project.
 `/status` and `/statusline` show session usage; `craft`
 receives no Codex token counts, so they stay unknown.
@@ -197,7 +205,11 @@ for the project whether each host would run Craft, from files only:
 
 - Claude Code: Craft packages in the install record that apply to the project, whether
   user, project or local settings enable them, a bundled runtime for this platform matching
-  its manifest digest, and Craft hook commands also registered in settings files;
+  its manifest digest, Craft hook commands also registered in settings files, and the
+  effective status line: Craft's own at the installed version reports context usage; none
+  set is `off` with the `host-setup … --apply` command as an optional next step (doctor
+  writes nothing); a custom one is left alone; one that runs a removed or older Craft bundle
+  (left from an update) is a problem with the command to set instead;
 - Codex: configured and enabled packages at the newest cached version (older cached
   versions are listed, not judged), packages the configuration enables that are not in the
   plugin cache, project trust, the hooks feature switch, a recorded
@@ -210,9 +222,20 @@ for the project whether each host would run Craft, from files only:
   it ran, so a session that predates an update is named and an event of another version is
   not taken for the installed one; for a host with no install found, the last event recorded
   for it;
+- per host, the hook runs in the retained telemetry that gave no answer: input too large,
+  unreadable or not JSON, or a failure, with the last one (a problem, not blocking; a hook
+  that stays silent is otherwise taken for one with nothing to say);
 - the configuration layers: a file that cannot be used, fields of the organization or user
   file this build does not know and left out, and a safety policy that is on while no hook of
-  an installed host is known to have run in the project.
+  an installed host is known to have run in the project;
+- with the secret-file rule in force and Claude Code installed, whether Claude's own
+  `permissions.deny` rules in user, project or local settings also refuse reading `.env`
+  files: none is `off` with a deny-rule snippet to add as an optional next step (doctor
+  writes nothing). With Codex installed, whether the permission profile `default_permissions`
+  selects in `config.toml` denies a `.env` path; a profile chosen for one run and managed
+  requirements are not inspected. With a Cursor overlay, whether the project's
+  `.cursorignore` takes `.env` files back out of what Cursor ignores by default; user-level
+  ignore settings are not inspected.
 
 It writes nothing to host configuration or task state and starts no host. Whether a running
 session loaded the current install, whether a Codex hook's declaration still matches its

@@ -28,6 +28,18 @@ Runtime behavior is Rust; JavaScript stays in tooling, tests and the small build
 tables and hook declarations ([ADR 0001](adr/0001-rust-core-runtime.md)). New top-level
 modules follow [ADR 0002](adr/0002-module-map-and-boundaries.md).
 
+Text the model reads from a hook lives in `text/` beside the crate that renders it
+(`engine/text/`, `application/text/`), not in Rust string literals; command help is
+`application/text/help.json`. A template's `{slot}` names are declared in code and checked by
+the crate's tests; its id stays when the wording changes, and `craft`'s version response lists
+each id with the SHA-256 of its bytes. Short errors, labels and messages whose wording depends
+on counts stay beside their code.
+
+Rust tests: private unit tests are a `#[cfg(test)] mod tests`, inline while short and otherwise
+in a `tests.rs` beside their module; cross-crate behavior is in each crate's `tests/`. Neither is built
+into the executable. `test_runs.rs` in `engine` and `application` is runtime code, not tests: it
+recognises the test commands a session runs and records what their output says.
+
 - Keep common principles, language, application-layer and provider guidance independent; a
   stack example does not impose that stack.
 - Change the craft bar in `packages/craft-engineering/standards/craft-bar.md`, then run

@@ -1,0 +1,903 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Consumer project configuration v1",
+  "description": "A configuration layer: an organization file (CRAFT_ORGANIZATION_CONFIG, the managed location, or a project's committed .craft/organization.json) or a user file (~/.config/craft/preferences.json). Every project inherits it and overrides only what differs; fields that name one repository's files or modules belong in the project file.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional link to this schema for editor completion and hover help. Craft ignores the value."
+    },
+    "formatVersion": {
+      "const": 1,
+      "description": "Configuration format. Always 1."
+    },
+    "routing": {
+      "type": "object",
+      "required": [],
+      "description": "Switches for what hooks show the agent or record. Each also takes personal preferences and task overrides; `craft settings` shows where each value came from.",
+      "properties": {
+        "promptHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Routing hints on prompts. Set false to keep the request's intent as session state without showing a hint."
+        },
+        "editHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Routing hints when the agent edits a file: the skills and references for the edited scope."
+        },
+        "dedupeHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Session-scoped routing hint hash state; no prompts or evidence are stored. Set false to disable."
+        },
+        "standardChecks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Deterministic anchor checks after an edit or commit in a declared standard's scope. Set false to keep standards in routes without checking."
+        },
+        "stopReview": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a turn ends after changing files, one summary of new findings (module dependencies, debt markers) and the declared review items of the changed scope; the host continues the turn once to address it. Set false to never hold a stop."
+        },
+        "debtMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report debt markers a change adds against HEAD in the stop summary: TODO/FIXME comments, lint or type-check suppressions, skipped tests, removed assertions."
+        },
+        "testRuns": {
+          "type": "boolean",
+          "default": true,
+          "description": "Record each test command the host runs with its verdict and the tree it ran on, tell the model at once when a run executed no test, and restate the runs on resume. Set false to record and show none; a declared verification pass is then not checked against an observed run."
+        },
+        "workerStandards": {
+          "type": "boolean",
+          "default": true,
+          "description": "Give a subagent the host starts the checked and reviewed standards of the delegating session's scope. Set false to start workers without them."
+        },
+        "sessionRecords": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the session's established intent, its routed files and planning evidence, and the pending-resume mark under .craft/state. Set false to write none; features that read them then see no established work."
+        },
+        "sessionSummary": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a turn ends, show the user one line on what Craft did in the session (standards findings raised and fixed, test runs that ran no test, lookups answered, contexts restored after compaction), where the host displays a hook's message and only when the line changed. Set false to show none; `craft session` still reports the counts. Needs sessionRecords."
+        },
+        "conventionProposals": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them."
+        },
+        "projectChecks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run."
+        },
+        "commitGate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through."
+        }
+      },
+      "additionalProperties": false
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "description": "Automatic task snapshots.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Save a snapshot at turn end and context transitions, and show the session identity and resume lines."
+        }
+      },
+      "additionalProperties": false
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Private scratch directories and promoted evidence under the state directory. `craft settings` shows the limits.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow task scratch workspaces."
+        },
+        "maxSessions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 20,
+          "description": "Most workspaces kept; at capacity the oldest inactive one is evicted first."
+        },
+        "scratch": {
+          "type": "object",
+          "description": "Scratch directory limits.",
+          "properties": {
+            "staleAfterHours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8760,
+              "default": 24,
+              "description": "Hours without a write before `workspace-clean` treats a workspace as stale."
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 67108864,
+              "default": 8388608,
+              "description": "Most bytes in one scratch directory."
+            },
+            "maxFiles": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024,
+              "default": 64,
+              "description": "Most files in one scratch directory."
+            }
+          },
+          "additionalProperties": false
+        },
+        "evidence": {
+          "type": "object",
+          "description": "Files promoted from scratch as evidence.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Allow promoting scratch files as evidence."
+            },
+            "retentionDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 7,
+              "description": "Days promoted evidence is kept."
+            },
+            "maxArtifacts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64,
+              "default": 16,
+              "description": "Most promoted files per workspace."
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 67108864,
+              "default": 1048576,
+              "description": "Most bytes of promoted evidence per workspace."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "efficiency": {
+      "type": "object",
+      "description": "Session advice: lookups, attempts, review, context and delegation. Recommendations only; Craft never acts on them itself.",
+      "properties": {
+        "lookup": {
+          "type": "object",
+          "description": "Hook answers for lookup questions.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Answer certain lookups (callers, declarations, configuration keys, mentions, decision records) in the hook, without a model turn."
+            },
+            "reuse": {
+              "type": "boolean",
+              "default": true,
+              "description": "Reuse earlier `craft locate` results in a task while revision, files and configuration are unchanged."
+            }
+          },
+          "additionalProperties": false
+        },
+        "batching": {
+          "type": "object",
+          "description": "Accepted for policy files. Batching independent tool calls is a workflow instruction; `craft` does not act on these values.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Recorded only."
+            },
+            "maxConcurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64,
+              "default": 3,
+              "description": "Recorded only."
+            }
+          },
+          "additionalProperties": false
+        },
+        "attempts": {
+          "type": "object",
+          "description": "Acceptance attempt budget.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Recorded only; the budget below always applies to recorded attempts."
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "default": 3,
+              "description": "Same failure on unchanged source this many times: return control or escalate."
+            }
+          },
+          "additionalProperties": false
+        },
+        "advice": {
+          "type": "object",
+          "description": "Next-step advice in session status.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Give advice. False removes the next-step suggestion."
+            },
+            "at": {
+              "enum": [
+                "meaningful-boundaries"
+              ],
+              "default": "meaningful-boundaries",
+              "description": "When advice is given. Only `meaningful-boundaries` exists."
+            },
+            "nextStep": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands."
+            }
+          },
+          "additionalProperties": false
+        },
+        "review": {
+          "type": "object",
+          "description": "Review offers.",
+          "properties": {
+            "mode": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend",
+              "description": "`manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer."
+            }
+          },
+          "additionalProperties": false
+        },
+        "context": {
+          "type": "object",
+          "description": "Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window.",
+          "properties": {
+            "elevatedAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.6,
+              "description": "Occupancy at which pressure is elevated."
+            },
+            "compactAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.75,
+              "description": "Occupancy at which advice is \"checkpoint, then compact\"."
+            },
+            "restartAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.85,
+              "description": "Occupancy at which advice is \"checkpoint, then new session\"."
+            },
+            "action": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend",
+              "description": "`manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves."
+            }
+          },
+          "additionalProperties": false
+        },
+        "delegation": {
+          "type": "object",
+          "description": "Worker plans.",
+          "properties": {
+            "mode": {
+              "enum": [
+                "manual",
+                "recommend",
+                "execute-when-authorized"
+              ],
+              "default": "recommend",
+              "description": "`manual`: no worker plans. `recommend`: plan workers where a role and host allow it. `execute-when-authorized`: may proceed once the user approves."
+            },
+            "maxWorkers": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "default": 3,
+              "description": "Most running workers per session. 0 disables worker plans."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "standards": {
+      "type": "array",
+      "maxItems": 64,
+      "description": "Project standards: consumer-owned declarations routed by scope and, for anchors, checked without a model.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "description": "One standard: an `id` and one source (`anchor`, `checklist` or `run`).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "maxLength": 64,
+            "description": "Stable handle shown in routes and check results."
+          },
+          "anchor": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "An established standard by name: a Semantic Anchors catalog id, a Craft alias such as semver, or an id from the project's anchor catalogs. Names with a Craft check are checked deterministically; others are advised or reviewed."
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One line shown in routes instead of the standard's content."
+          },
+          "level": {
+            "enum": [
+              "advise",
+              "check",
+              "review"
+            ],
+            "description": "advise: named when work reaches the scope; check: an anchor check or a run command; review: a checklist. Defaults from the declaration's form."
+          },
+          "scope": {
+            "type": "object",
+            "description": "Where the standard applies; all keys must match, any value within a key. Absent: the whole project.",
+            "properties": {
+              "languages": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Languages of the affected files.",
+                "items": {
+                  "enum": [
+                    "javascript",
+                    "typescript",
+                    "python",
+                    "jvm",
+                    "csharp",
+                    "go",
+                    "java",
+                    "kotlin",
+                    "rust",
+                    "ruby"
+                  ]
+                }
+              },
+              "layers": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Layers of the affected modules.",
+                "items": {
+                  "enum": [
+                    "ui",
+                    "backend",
+                    "agent"
+                  ]
+                }
+              },
+              "paths": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Project-relative path prefixes of the affected files.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "intents": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Kinds of work: story, plan, verify, explore, review, implement and the other routing intents.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "run": {
+            "type": "object",
+            "required": [
+              "command"
+            ],
+            "description": "A consumer command that checks the standard. The agent is told to run it, and `craft check` runs it without a shell for changed files in the standard's scope.",
+            "properties": {
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Executable the agent runs to check the standard."
+              },
+              "args": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Arguments passed to the command. An argument that is exactly `{changedFiles}` becomes the changed files in the standard's scope, named from `cwd`, deleted files left out; `craft check` skips the command when there is none.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "cwd": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Project-relative working directory. Default: the project root."
+              },
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "step",
+                  "commit",
+                  "pr",
+                  "ci"
+                ],
+                "default": "commit",
+                "description": "When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed."
+              },
+              "timeoutSeconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600,
+                "default": 600,
+                "description": "Seconds `craft check` lets the command run before ending it and reporting it as timed out."
+              }
+            },
+            "additionalProperties": false
+          },
+          "checklist": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "description": "Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "One item, one line."
+            }
+          },
+          "disabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "anchors": {
+      "type": "object",
+      "description": "Where the project's own anchors come from and which Craft defaults apply. A project entry replaces the built-in entry with the same id.",
+      "properties": {
+        "defaults": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether Craft adds its anchors for the kind of work to routes, advised and never checked; off unless true. A declared standard for the kind of work replaces them."
+        },
+        "disables": {
+          "type": "array",
+          "default": [],
+          "description": "Anchors Craft must not add as defaults.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Anchor id or alias; it must resolve."
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "skills": {
+      "type": "object",
+      "description": "The project's own skills in routes. Hosts list project skills themselves; a declaration tells Craft which one a route recommends. Routes name them project:<name>; hosts are shown the bare name.",
+      "properties": {
+        "disables": {
+          "type": "array",
+          "minItems": 1,
+          "default": [],
+          "description": "Package skills routes no longer recommend. Hosts may still list them; Craft never edits host configuration.",
+          "items": {
+            "type": "string",
+            "pattern": "^craft-[a-z0-9]+(-[a-z0-9]+)*:[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Logical package skill name, `package:skill`."
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "required": [],
+      "description": "Rules that refuse destructive shell commands, commands that reach outside the project and reads of files that commonly hold secrets, on hosts where a hook can refuse a tool call; Claude Code asks the user about a secret read instead. A rule only refuses: nothing here approves a tool call, and the host's own prompts, sandbox and deny rules keep applying. A guardrail, not a security boundary; `craft settings` lists the rules in force.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the policy is on. Set `false` to turn it off: no command is refused."
+        },
+        "disables": {
+          "type": "array",
+          "default": [],
+          "description": "Built-in rules to leave out.",
+          "items": {
+            "enum": [
+              "delete-outside-project",
+              "delete-project-root",
+              "force-push",
+              "delete-remote-branch",
+              "discard-changes",
+              "system-administration",
+              "read-secret-file"
+            ]
+          }
+        },
+        "deny": {
+          "type": "array",
+          "maxItems": 32,
+          "default": [],
+          "description": "The project's own rules: a command whose leading words match is refused.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "command"
+                ]
+              },
+              {
+                "required": [
+                  "disabled"
+                ]
+              }
+            ],
+            "description": "One rule: an `id`, the leading words of the command and why it is refused.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "maxLength": 64,
+                "description": "Stable handle named in the refusal."
+              },
+              "command": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "description": "Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^\\\\S+$"
+                }
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "What the rule refuses, shown with the refusal."
+              },
+              "disabled": {
+                "type": "boolean",
+                "default": false,
+                "description": "With only `id`: remove the rule of this id that the organization or user layer declares."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": [],
+      "description": "Worker roles, model profiles and host support. Logical names only; nothing vendor-specific is built in, and nothing here starts a worker or switches a model.",
+      "properties": {
+        "roles": {
+          "type": "object",
+          "required": [],
+          "description": "How each kind of work runs. Defaults: `locator` uses a tool with the `economical` profile, `reviewer` runs in the main session with `strong`, the others in the main session with `standard`.",
+          "properties": {
+            "locator": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `locator` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            },
+            "researcher": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `researcher` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            },
+            "implementer": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `implementer` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            },
+            "reviewer": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `reviewer` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            },
+            "planner": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `planner` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            },
+            "verifier": {
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "description": "How `verifier` work runs.",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "main",
+                    "delegate",
+                    "tool"
+                  ],
+                  "description": "`main`: in the current session. `delegate`: a worker, when the host allows it. `tool`: a deterministic tool first."
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Profile name from `profiles`."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "hosts": {
+          "type": "object",
+          "description": "What each host supports, keyed by host name (`claude`, `codex`, ...).",
+          "additionalProperties": {
+            "type": "object",
+            "required": [],
+            "description": "One host.",
+            "properties": {
+              "delegation": {
+                "type": "boolean",
+                "description": "The host can start workers. Delegated roles are planned only when both the role and the host allow it."
+              },
+              "models": {
+                "type": "object",
+                "description": "Exact host model name for each profile name.",
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Exact model name the host accepts."
+                }
+              },
+              "mainModelSwitch": {
+                "type": "boolean",
+                "description": "Explicit host support declaration; never grants permission to switch models."
+              },
+              "contextLimits": {
+                "type": "object",
+                "maxProperties": 16,
+                "propertyNames": {
+                  "minLength": 1
+                },
+                "description": "Context limits by exact host model name, over the bundled host table. windowTokens applies only when the host reports no window; budgetTokens is an optional working budget past which advice suggests resuming from the checkpoint in a new session.",
+                "additionalProperties": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "description": "Limits for one model.",
+                  "properties": {
+                    "windowTokens": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "Context window in tokens."
+                    },
+                    "budgetTokens": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "Working budget in tokens."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "profiles": {
+          "type": "object",
+          "maxProperties": 16,
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "description": "Named model profiles that roles refer to. Defaults: `economical` escalates to `standard`, `standard` to `strong`.",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "capabilities"
+            ],
+            "description": "One profile.",
+            "properties": {
+              "capabilities": {
+                "type": "array",
+                "maxItems": 32,
+                "description": "Capability tags the profile offers, used when advice asks for one.",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                }
+              },
+              "maxAttempts": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "default": 3,
+                "description": "Failed attempts on the same task and revision before advice escalates. Default: 3."
+              },
+              "escalateTo": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Profile to recommend after `maxAttempts`. Absent: advice stops instead of inventing a stronger model."
+              },
+              "class": {
+                "enum": [
+                  "economical",
+                  "standard",
+                  "strong"
+                ],
+                "description": "Logical class: `economical` (lookups, formatting, deterministic checks), `standard` (routine work) or `strong` (hard review and design)."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "readOnly"
+      ],
+      "description": "Review session safety.",
+      "properties": {
+        "readOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Deny common `gh`/`glab` publishing commands and `git push` from the shell in this project. A heuristic, not a replacement for read-only credentials."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
