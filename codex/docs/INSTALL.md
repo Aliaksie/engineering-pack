@@ -31,10 +31,11 @@ commit of `distribution` (for example `Aliaksie/engineering-pack#<commit>` in Cl
 ```sh
 claude plugin marketplace add Aliaksie/engineering-pack#distribution
 claude plugin install craft-engineering@craft-capabilities
+claude plugin install craft-delivery@craft-capabilities
 ```
 
-In the target project invoke `/craft-engineering:foundations`. Install `craft-delivery`,
-`craft-review` or `craft-stories` from the same marketplace when needed; workflow entry
+In the target project invoke `/craft-engineering:foundations`. Install `craft-review` or
+`craft-stories` from the same marketplace when needed; workflow entry
 points use the `workflow-` prefix, for example `/craft-stories:workflow-prepare-stories`.
 Installation does not configure a task tracker.
 
@@ -54,13 +55,17 @@ Sources: [plugins](https://code.claude.com/docs/en/plugins),
 ```sh
 codex plugin marketplace add Aliaksie/engineering-pack --ref distribution
 codex plugin add craft-engineering@engineering-pack
+codex plugin add craft-delivery@engineering-pack
 codex plugin list
 ```
 
 Restart Codex, verify the skill appears in `/skills` and invoke
-`$craft-engineering-foundations`. Hook-bearing packages install manually; the public plugin
-directory does not accept them. For guidance without plugins or hooks, merge the `agents`
-overlay into the project; Codex discovers `.agents/skills`.
+`$craft-engineering-foundations`. `craft-engineering` carries the engineering guidance and the
+safety policy; `craft-delivery` adds the automatic feedback: prompt and edit routing, standards
+findings, observed test runs, checkpoints and recovery, the stop review and subagent context.
+Add `craft-review` or `craft-stories` the same way when needed. Hook-bearing packages install
+manually; the public plugin directory does not accept them. For guidance without plugins or
+hooks, merge the `agents` overlay into the project; Codex discovers `.agents/skills`.
 
 Plugin hooks need their own trust: inspect and trust the current definitions with `/hooks` in
 the terminal or under Settings → Hooks in the Codex app and IDE extension, and review again
