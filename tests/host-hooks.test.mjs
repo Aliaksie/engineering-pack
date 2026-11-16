@@ -36,7 +36,6 @@ function invoke(host, pkg, hook, input, cwd) {
   return runHook(hookPackage(path.join(root, 'dist', host), host, pkg), host, hook, { cwd, input: typeof input === 'string' ? input : JSON.stringify(input) });
 }
 function decision(host, result) {
-  if (host === 'claude') return result.status === 2 ? 'deny' : 'allow';
   const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
   return output.hookSpecificOutput?.permissionDecision ?? output.permissionDecision ?? output.permission ?? output.decision ?? 'allow';
 }
@@ -48,7 +47,7 @@ test('all native wrappers map read-only review denials without imposing a global
     for (const command of ['gh pr comment 42 --body hi', 'glab mr approve 42', 'git push origin main']) {
       const result = invoke(host, 'craft-review', 'read-only', payload(host, guarded, command), guarded);
       assert.equal(decision(host, result), 'deny', `${host}: ${result.stderr}`);
-      assert.equal(result.status, host === 'claude' ? 2 : 0);
+      assert.equal(result.status, 0);
     }
     assert.equal(decision(host, invoke(host, 'craft-review', 'read-only', payload(host, guarded, 'git status --short'), guarded)), 'allow');
     assert.equal(decision(host, invoke(host, 'craft-review', 'read-only', payload(host, unrestricted, 'gh pr comment 42 --body hi'), unrestricted)), 'allow');
@@ -63,7 +62,7 @@ test('read-only review denies shell input it could not read in full', (t) => {
     const command = `gh pr comment 42 --body ${'x'.repeat(1024 * 1024 + 16)}`;
     const result = invoke(host, 'craft-review', 'read-only', payload(host, guarded, command), guarded);
     assert.equal(decision(host, result), 'deny', `${host}: ${result.stderr}`);
-    assert.equal(result.status, host === 'claude' ? 2 : 0, `${host}: ${result.stderr}`);
+    assert.equal(result.status, 0, `${host}: ${result.stderr}`);
     assert.notEqual(decision(host, invoke(host, 'craft-review', 'read-only', payload(host, unrestricted, command), unrestricted)), 'deny');
   }
 });
