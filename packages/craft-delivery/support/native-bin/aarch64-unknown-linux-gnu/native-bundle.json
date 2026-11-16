@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.6",
+  "packVersion": "0.0.7",
   "target": "aarch64-unknown-linux-gnu",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.6",
+  "binaryVersion": "0.0.7",
   "schemaVersion": 5,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
@@ -47,9 +47,9 @@
     "hook.stop": "39fdba062a0d92975a1022aea81d12e9480498872a4c5a757ebde65ae6b6ed56"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "a1762af155bb0ba0a2c5220cd74b77c7ff770434",
+  "sourceRevision": "c86cef176b7cefcd52c1c0c6a16d63c82b7fe1f6",
   "sourceDirty": false,
-  "cargoLockSha256": "ddfe366eee698c68fecb1df187e8294c81699681a854f0ee3c1e70c9fea74497",
+  "cargoLockSha256": "d73a5d7e2b1c4a8786f58908814a577822717362a4de5cdd79083091de35f56f",
   "files": [
     {
       "path": "dependencies.json",
@@ -64,12 +64,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 26980720,
-      "sha256": "c466c35d1faf274c0287491d85ddfb98e0a309c67f6f49838fc32be47dd93de8"
+      "sha256": "9c0617eda694fdb65e2eab966a5d3ccf50a1522a94610072866c4e1099ccd589"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 266,
-      "sha256": "a52d0af8a41b67f7f6a760e06816b25ef57c70f91182c188644f60f98d5c46f6"
+      "sha256": "802e4d77a3fb943779d84fc1a22a3fb4fa1c590fe1b1b6b64458509d47020ea2"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
