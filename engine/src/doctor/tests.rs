@@ -475,7 +475,15 @@ fn secret_files_name_claudes_own_deny_rules_or_offer_them_without_writing() {
     let check = secret(&with).unwrap();
     assert_eq!(check["status"], "ok");
     assert!(check["detail"].as_str().unwrap().contains("user settings"));
-    assert!(with["next"].as_array().unwrap().is_empty(), "{with}");
+    let about_claude = |n: &&Value| n.as_str().is_some_and(|n| n.contains("in Claude"));
+    assert!(
+        !with["next"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| about_claude(&n)),
+        "{with}"
+    );
 
     // Rule left out, or no Claude package here: nothing to say.
     facts["configuration"]["secretFiles"] = json!(false);
@@ -484,6 +492,76 @@ fn secret_files_name_claudes_own_deny_rules_or_offer_them_without_writing() {
     facts["configuration"] = json!({"safety": true, "secretFiles": true, "layers": []});
     facts["claude"] = json!({"installed": false});
     assert!(secret(&report(&facts)).is_none());
+}
+
+#[test]
+fn secret_files_name_what_codex_and_cursor_keep_from_the_model_themselves() {
+    let named = |report: &Value, name: &str| {
+        report["configuration"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == name)
+            .cloned()
+    };
+    let offered = |report: &Value, host: &str| {
+        report["next"].as_array().unwrap().iter().any(|n| {
+            n.as_str()
+                .is_some_and(|n| n.contains(host) && n.contains("does not write"))
+        })
+    };
+    let mut facts = facts();
+    facts["configuration"] = json!({"safety": true, "secretFiles": true, "layers": []});
+
+    // Codex: no profile, a profile that denies something else, then one that denies .env.
+    let without = report(&facts);
+    assert_eq!(
+        named(&without, "secret-files-codex").unwrap()["status"],
+        "off"
+    );
+    assert!(offered(&without, "in Codex"), "{without}");
+    assert_eq!(without["blocking"], false);
+    facts["codex"]["defaultPermissions"] = json!("edit");
+    facts["codex"]["denied"] = json!([
+        "permissions.edit.filesystem.~/Documents",
+        "permissions.other.filesystem.:workspace_roots.**/*.env"
+    ]);
+    let other = report(&facts);
+    assert_eq!(
+        named(&other, "secret-files-codex").unwrap()["status"],
+        "off"
+    );
+    facts["codex"]["denied"] = json!(["permissions.edit.filesystem.:workspace_roots.**/*.env"]);
+    let with = report(&facts);
+    let check = named(&with, "secret-files-codex").unwrap();
+    assert_eq!(check["status"], "ok", "{check}");
+    let detail = check["detail"].as_str().unwrap();
+    assert!(detail.contains("`edit` denies **/*.env"), "{detail}");
+    assert!(!offered(&with, "in Codex"), "{with}");
+
+    // Cursor: nothing said without its overlay; ok by default; off when .cursorignore
+    // takes .env files back out.
+    assert!(named(&with, "secret-files-cursor").is_none());
+    facts["overlays"] = json!([{"host": "cursor", "present": true, "path": ".cursor/hooks.json",
+        "commands": [], "bundles": [], "reincluded": []}]);
+    let default = report(&facts);
+    assert_eq!(
+        named(&default, "secret-files-cursor").unwrap()["status"],
+        "ok"
+    );
+    assert!(!offered(&default, "in Cursor"));
+    facts["overlays"][0]["reincluded"] = json!(["!.env.local"]);
+    let reincluded = report(&facts);
+    let check = named(&reincluded, "secret-files-cursor").unwrap();
+    assert_eq!(check["status"], "off");
+    assert!(check["detail"].as_str().unwrap().contains("!.env.local"));
+    assert!(offered(&reincluded, "in Cursor"), "{reincluded}");
+
+    // Rule left out: nothing to say for any host.
+    facts["configuration"]["secretFiles"] = json!(false);
+    let out = report(&facts);
+    assert!(named(&out, "secret-files-codex").is_none());
+    assert!(named(&out, "secret-files-cursor").is_none());
 }
 
 fn status_line(report: &Value) -> &Value {

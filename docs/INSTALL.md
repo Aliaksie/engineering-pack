@@ -231,7 +231,11 @@ for the project whether each host would run Craft, from files only:
 - with the secret-file rule in force and Claude Code installed, whether Claude's own
   `permissions.deny` rules in user, project or local settings also refuse reading `.env`
   files: none is `off` with a deny-rule snippet to add as an optional next step (doctor
-  writes nothing).
+  writes nothing). With Codex installed, whether the permission profile `default_permissions`
+  selects in `config.toml` denies a `.env` path; a profile chosen for one run and managed
+  requirements are not inspected. With a Cursor overlay, whether the project's
+  `.cursorignore` takes `.env` files back out of what Cursor ignores by default; user-level
+  ignore settings are not inspected.
 
 It writes nothing to host configuration or task state and starts no host. Whether a running
 session loaded the current install, whether a Codex hook's declaration still matches its

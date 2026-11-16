@@ -89,6 +89,54 @@ fn doctor_reads_host_installs_and_blocks_only_on_a_runtime_that_cannot_run() {
     let (_, report) = doctor(&repo, &homes);
     assert_eq!(secret(&report), Some(json!("ok")), "{report}");
     fs::remove_file(Path::new(repo.path()).join(".claude/settings.json")).unwrap();
+    // Codex's selected permission profile and Cursor's ignore list are read the same way.
+    let named = |report: &Value, name: &str| {
+        report["configuration"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == name)
+            .map(|c| c["status"].clone())
+    };
+    assert_eq!(named(&report, "secret-files-codex"), Some(json!("off")));
+    assert_eq!(named(&report, "secret-files-cursor"), None, "no overlay");
+    let config = homes.codex.join("config.toml");
+    let before = fs::read_to_string(&config).unwrap();
+    fs::write(
+        &config,
+        format!(
+            "default_permissions = \"edit\"\n{before}\n[permissions.edit.filesystem.\":workspace_roots\"]\n\".\" = \"write\"\n\"**/*.env\" = \"deny\"\n"
+        ),
+    )
+    .unwrap();
+    let cursor = Path::new(repo.path()).join(".cursor");
+    fs::create_dir_all(&cursor).unwrap();
+    fs::write(cursor.join("hooks.json"), r#"{"version":1,"hooks":{}}"#).unwrap();
+    let (_, report) = doctor(&repo, &homes);
+    assert_eq!(
+        named(&report, "secret-files-codex"),
+        Some(json!("ok")),
+        "{report}"
+    );
+    assert_eq!(
+        named(&report, "secret-files-cursor"),
+        Some(json!("ok")),
+        "{report}"
+    );
+    fs::write(
+        Path::new(repo.path()).join(".cursorignore"),
+        "dist/\n!.env\n",
+    )
+    .unwrap();
+    let (_, report) = doctor(&repo, &homes);
+    assert_eq!(
+        named(&report, "secret-files-cursor"),
+        Some(json!("off")),
+        "{report}"
+    );
+    fs::write(&config, before).unwrap();
+    fs::remove_dir_all(&cursor).unwrap();
+    fs::remove_file(Path::new(repo.path()).join(".cursorignore")).unwrap();
 
     // An altered runtime in the enabled Claude package blocks, and still reports in full.
     let runtime = homes.claude.join(
