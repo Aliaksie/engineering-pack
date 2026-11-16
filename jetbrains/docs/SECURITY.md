@@ -101,9 +101,12 @@ It is a guardrail for the common direct reads, not a boundary. A read that does 
 file is outside it: a script (`python -c "open('.env')"`), `env` or `printenv`, a test or
 build that prints its configuration, a search of a whole directory, and tools the host does
 not pass to a hook. For a boundary use the host's own controls: Claude Code
-`permissions.deny` rules such as `Read(./.env)` and its sandbox, Codex's sandbox, Cursor's
-ignore files. `craft doctor` says whether Claude's settings hold such a deny rule and, when
-none does, prints one to add; Craft does not write it. Leave the rule out with
+`permissions.deny` rules such as `Read(./.env)` and its sandbox, a Codex permission profile
+that denies the paths, Cursor's ignore list. `craft doctor` says whether Claude's settings
+hold such a deny rule, whether Codex's default permission profile denies a `.env` path, and
+whether `.cursorignore` takes `.env` files back out of what Cursor ignores by default (which
+covers its Agent, not terminal commands or MCP tools). Where a host has none it prints what
+to add; Craft does not write it. Leave the rule out with
 `"disables": ["read-secret-file"]`.
 
 Craft never reads such a file's content itself, whether the rule is in force or not: `craft
