@@ -173,16 +173,16 @@ fn command(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|command| command.name == name)
 }
 
-/// The project a command works on; see [`crate::hook::host::resolve_root`].
+/// The project a command works on; see [`crate::project::resolve_root`].
 fn root(options: &Options) -> PathBuf {
-    crate::hook::host::resolve_root(options.get("root"))
+    crate::project::resolve_root(options.get("root"))
 }
 
 fn setup_bundle(options: &Options) -> Result<PathBuf, Failure> {
     let bundles = strings(options, "bundle");
     match bundles.as_slice() {
         [bundle] => Ok(absolute(bundle)),
-        [] => std::env::var(crate::statusline::PACKAGE_ROOT)
+        [] => std::env::var(crate::PACKAGE_ROOT)
             .ok()
             .filter(|s| !s.is_empty())
             .map(|s| absolute(&s))
@@ -1675,7 +1675,7 @@ pub fn main(argv: &[String]) -> i32 {
         return crate::evidence::main(&argv[1..]);
     }
     let mut argv = argv.to_vec();
-    let package = std::env::var(crate::statusline::PACKAGE_ROOT).unwrap_or_default();
+    let package = std::env::var(crate::PACKAGE_ROOT).unwrap_or_default();
     if named.is_some_and(|command| command.bundled)
         && !argv.iter().any(|arg| arg == "--bundle")
         && !package.is_empty()
@@ -1716,7 +1716,7 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
     };
     let mut recorder = Recorder::open(
         // The same project the command itself resolves, before its options are parsed.
-        &crate::hook::host::resolve_root(hint("--root")),
+        &crate::project::resolve_root(hint("--root")),
         hint("--session"),
         hint("--host"),
     );

@@ -1,3 +1,5 @@
+//! Context composition from observed local citations, bound to the repository state it was
+//! composed from; a source or repository that changes meanwhile leaves an open question.
 use crate::{
     failure::Failure,
     project,

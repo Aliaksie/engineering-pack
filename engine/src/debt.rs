@@ -1,5 +1,5 @@
 //! Design debt a change introduces, and the one stop-time summary that reports it. Markers
-//! (DD-0) are read from the lines a change adds or removes against its base revision, never
+//! are read from the lines a change adds or removes against its base revision, never
 //! from the whole file, so existing debt stays quiet. The stop summary collects these, module
 //! dependency findings and the declared `review` items of the changed scope, and speaks only
 //! for what this session has not been told yet.

@@ -2,13 +2,13 @@
 //! hook` derives the facts from the host payload and serializes the decision for its wire
 //! format; observation hooks never supply a permission decision or context.
 use crate::failure::Failure;
-use crate::project::absolute;
+use crate::project::{absolute, project_root};
 use crate::telemetry::Recorder;
 use crate::{hook::delivery, project};
 use craft_engine::review;
 use craft_platform::state;
 use serde_json::{Map, Value, json};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const LIFECYCLES: [&str; 9] = [
     "session-start",
@@ -114,32 +114,6 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
             _ => return Err("invalid hook testRun".into()),
         },
     })
-}
-
-/// The nearest ancestor (at most 30 levels) with project configuration or a Git entry,
-/// else the directory itself.
-pub(crate) fn project_root(cwd: &Path) -> PathBuf {
-    let mut directory = cwd;
-    for _ in 0..30 {
-        if directory.join(".craft/project.json").exists() || directory.join(".git").exists() {
-            return directory.to_path_buf();
-        }
-        match directory.parent() {
-            Some(parent) => directory = parent,
-            None => break,
-        }
-    }
-    cwd.to_path_buf()
-}
-
-/// The project a command works on: `--root` as given, which may name a folder inside a
-/// repository on purpose; without it, the project the current directory is in, as a hook
-/// finds it, so a command run from a subfolder never keeps state of its own there.
-pub(crate) fn resolve_root(given: Option<&str>) -> PathBuf {
-    match given {
-        Some(root) => absolute(root),
-        None => project_root(&absolute(".")),
-    }
 }
 
 /// Whether a compaction is kept in the session's host context. Without session records it

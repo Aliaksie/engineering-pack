@@ -1,3 +1,5 @@
+//! A repository as Project Intelligence reads it: source inventory, bounded source reads and
+//! the store lock.
 use crate::{Error, providers::syntax::MAX_SOURCE_BYTES};
 
 pub mod comparison;

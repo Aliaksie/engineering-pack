@@ -1,4 +1,4 @@
-//! Host setup previews and explicitly applied Claude display configuration. B11 permission
+//! Host setup previews and explicitly applied Claude display configuration. Permission
 //! proposals are output only: no host permissions, trust or compaction settings are changed.
 use crate::{failure::Failure, statusline};
 use craft_platform::{host_settings, state};

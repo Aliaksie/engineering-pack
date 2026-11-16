@@ -19,8 +19,6 @@ const MAX_PAYLOAD: usize = 65_536;
 const REFRESH_BYTES: usize = 1024;
 const HOSTS: &str = include_str!("../../hosts/session.json");
 const USAGE: &str = "usage: craft statusline <host> --package name [--root project] [--data task.json] [--json] [--native-stdin] [--bundle root]";
-/// Set by the package launcher: the installed package whose guidance the status accounts.
-pub(crate) const PACKAGE_ROOT: &str = "CRAFT_PACKAGE_ROOT";
 
 /// The observation, display and native commands a host adapter offers for session advice.
 pub fn capabilities(host: &str) -> Option<Value> {
@@ -91,7 +89,7 @@ fn parse(args: &[String]) -> Result<Request, Failure> {
         return Err(USAGE.into());
     }
     if !request.root_explicit {
-        request.root = crate::hook::host::resolve_root(None)
+        request.root = crate::project::resolve_root(None)
             .to_string_lossy()
             .into_owned();
     }
@@ -182,7 +180,7 @@ fn declared(
             if !std::path::Path::new(root).is_absolute() {
                 return Err("native project root must be absolute".into());
             }
-            request.root = crate::hook::host::project_root(std::path::Path::new(root))
+            request.root = crate::project::project_root(std::path::Path::new(root))
                 .to_string_lossy()
                 .into_owned();
         }
@@ -243,7 +241,7 @@ fn bundle(request: &Request) -> Result<Vec<String>, Failure> {
     request
         .bundle
         .clone()
-        .or_else(|| std::env::var(PACKAGE_ROOT).ok().filter(|root| !root.is_empty()))
+        .or_else(|| std::env::var(crate::PACKAGE_ROOT).ok().filter(|root| !root.is_empty()))
         .map(|root| vec![root])
         .ok_or_else(|| "statusline requires the installed package root: run it through the package's bin/craft or pass --bundle".into())
 }

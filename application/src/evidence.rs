@@ -1,3 +1,5 @@
+//! Project Intelligence over one repository: the opt-in `craft project-evidence` command,
+//! bounded refresh and background warming of its store, lookups and citation verification.
 use crate::failure::Failure;
 use crate::telemetry::Recorder;
 use craft_engine::hash;
@@ -15,7 +17,7 @@ use std::{
 };
 
 pub(crate) mod budget;
-pub(crate) mod workspace;
+pub(crate) mod members;
 
 pub fn run(operation: &str, input: &Value) -> Result<Value, Failure> {
     if operation == "warm" {
@@ -505,7 +507,7 @@ fn request(args: &[String]) -> Result<Request, Failure> {
     if !OPERATIONS.contains(&operation.as_str()) {
         return Err("unknown project evidence operation".into());
     }
-    let root = crate::hook::host::resolve_root(options.get("root").and_then(Value::as_str));
+    let root = crate::project::resolve_root(options.get("root").and_then(Value::as_str));
     input.insert("root".into(), json!(root.to_string_lossy()));
     Ok((json, Some((operation, Value::Object(input)))))
 }

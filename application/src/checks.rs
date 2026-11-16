@@ -81,7 +81,7 @@ fn listing(directory: &Path, args: &[&str], what: &str) -> Result<Vec<String>, F
 /// a removal can break a build) and, with `base`, those committed since its merge base with
 /// `HEAD`. Private state is never a change.
 fn changed_files(
-    checkout: &crate::hook::stop_review::Checkout,
+    checkout: &crate::project::Checkout,
     base: Option<&str>,
 ) -> Result<Vec<String>, Failure> {
     let directory = &checkout.directory;
@@ -149,7 +149,7 @@ pub(crate) fn commit_gate(
         return Ok(None);
     }
     let mut changed = Vec::new();
-    for checkout in &crate::hook::stop_review::checkouts(root) {
+    for checkout in &crate::project::checkouts(root) {
         changed.extend(changed_files(checkout, None)?);
     }
     changed.sort();
@@ -205,7 +205,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     let changed: Vec<Value> = if request.all || !request.files.is_empty() {
         request.files.to_vec()
     } else {
-        let checkouts = crate::hook::stop_review::checkouts(root);
+        let checkouts = crate::project::checkouts(root);
         if checkouts.is_empty() {
             return empty(NO_CHECKOUT);
         }

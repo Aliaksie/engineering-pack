@@ -1,3 +1,5 @@
+//! Bounded file reads, private file and directory creation, change stamps and temporary
+//! directory spellings.
 use std::{fs, fs::File, io, io::Read, path::Path};
 
 #[derive(Debug)]

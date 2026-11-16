@@ -1,5 +1,5 @@
-//! Session records shared with the remaining JS callers: the active task
-//! binding, task state reads and locked task state updates.
+//! Session records: the active task binding, task state reads and locked task state
+//! updates.
 use crate::failure::Failure;
 use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder};

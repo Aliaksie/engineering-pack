@@ -1,5 +1,4 @@
 //! Syntax evidence only: no claims about runtime calls or package resolution.
-pub use crate::providers::syntax::MAX_SOURCE_BYTES;
 use crate::providers::syntax::{Language, Vocabulary};
 use craft_engine::Extraction;
 
