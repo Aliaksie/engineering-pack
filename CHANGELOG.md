@@ -6,6 +6,10 @@
   model as a permission denial with Craft's reason. Before, Claude Code showed it as a
   `PreToolUse` hook error that printed the whole hook command in front of the reason. The
   launcher still exits 2 when the bundled runtime cannot start.
+- Prompt routing recognizes five more wordings: "execute the … suite" as a check run, "does
+  the test suite cover …" as verification, "give me a charter / test scenarios / options"
+  by what is asked for, "what depends on / calls / imports / uses …" as a lookup, and
+  "document … in an ADR" as an ADR. Before, these prompts got no routing hint.
 - `craft`'s version response (`{"formatVersion":1,"operation":"version"}` on stdin) lists
   `templates`: each model-facing text a hook gives, by a stable id with the SHA-256 of its
   exact wording. An eval report may record them in `templates`, and `npm run eval:report`
