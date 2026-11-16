@@ -429,19 +429,21 @@ fn host_runs(host: &str, repo: &Repo, command: &str) -> bool {
 
 /// The attempt, the refusal and the effect are three facts. A command that discards local
 /// changes and then puts the text back leaves a clean comparison behind, so only the file
-/// itself tells whether it ran: Git writes a new file where it discards one.
+/// itself tells whether it ran: Git writes a new file where it discards one. A second name
+/// for the file, kept outside the project, still names the old one afterwards.
 #[cfg(unix)]
 #[test]
 fn a_refused_command_has_no_effect_and_a_restored_file_does_not_hide_one() {
     use std::os::unix::fs::MetadataExt;
     let discard_and_restore =
         "cp src/a.txt kept.tmp && git reset --hard -q && cp kept.tmp src/a.txt && rm kept.tmp";
+    let witness = |repo: &Repo| std::path::PathBuf::from(format!("{}.witness", repo.path()));
+    // Whether the path still names the file the witness names, and its text.
     let observe = |repo: &Repo| {
         let file = std::path::Path::new(repo.path()).join("src/a.txt");
-        (
-            std::fs::metadata(&file).unwrap().ino(),
-            std::fs::read_to_string(&file).unwrap(),
-        )
+        let same = std::fs::metadata(&file).unwrap().ino()
+            == std::fs::metadata(witness(repo)).unwrap().ino();
+        (same, std::fs::read_to_string(&file).unwrap())
     };
     let edited = |name: &str, project: &str| {
         let repo = Repo::new(
@@ -449,20 +451,24 @@ fn a_refused_command_has_no_effect_and_a_restored_file_does_not_hide_one() {
             &[(".craft/project.json", project), ("src/a.txt", "a\n")],
         );
         repo.write("src/a.txt", "a\nlocal work\n");
+        let _ = std::fs::remove_file(witness(&repo));
+        std::fs::hard_link(format!("{}/src/a.txt", repo.path()), witness(&repo)).unwrap();
         repo
     };
+    let local = (true, "a\nlocal work\n".to_string());
     for host in ["claude", "codex", "cursor", "copilot", "gemini"] {
         let repo = edited("safety-effect", ON);
-        let before = observe(&repo);
+        assert_eq!(observe(&repo), local);
         assert!(host_runs(host, &repo, discard_and_restore), "{host}");
-        assert_eq!(observe(&repo), before, "{host}: the file was touched");
+        assert_eq!(observe(&repo), local, "{host}: the file was touched");
+        std::fs::remove_file(witness(&repo)).unwrap();
     }
     // The same attempt where nothing refuses it: the text ends up as it was, the file does not.
     let off = r#"{"formatVersion":1,"safety":{"enabled":false}}"#;
     let repo = edited("safety-effect-off", off);
-    let (file, text) = observe(&repo);
     assert!(!host_runs("claude", &repo, discard_and_restore));
-    let (after, restored) = observe(&repo);
-    assert_eq!(restored, text, "the restored text hides the discard");
-    assert_ne!(after, file, "the discard replaced the file");
+    let (same, restored) = observe(&repo);
+    assert_eq!(restored, local.1, "the restored text hides the discard");
+    assert!(!same, "the discard replaced the file");
+    std::fs::remove_file(witness(&repo)).unwrap();
 }
