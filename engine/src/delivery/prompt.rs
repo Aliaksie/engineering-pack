@@ -373,8 +373,9 @@ fn subject(words: &[String]) -> Subject {
 /// Verbs that produce or change an artifact; the subject names the intent: "add a test" is
 /// verification, "split the epic" product work, "update the module" implementation.
 const CREATE: &[&str] = &[
-    "write", "draft", "prepare", "turn", "record", "produce", "create", "add", "update", "change",
-    "split", "remove", "delete", "edit", "rewrite", "refine", "improve", "extend",
+    "write", "draft", "prepare", "turn", "record", "document", "produce", "create", "add",
+    "update", "change", "split", "remove", "delete", "edit", "rewrite", "refine", "improve",
+    "extend",
 ];
 /// Verbs that assess something; the subject names the intent.
 const ASSESS: &[&str] = &[
@@ -597,8 +598,11 @@ fn lead(words: &[String]) -> Option<&'static str> {
             feedback(about, change)
         }
         "list" => asked(about),
-        "run" if about == Subject::Exploration => Some("explore"),
-        "run" => names(CHECKS).then_some("run-check"),
+        // "Give me a charter for testing the filters": the artifact asked for names the work;
+        // "give me the file list" names none.
+        "give" if next(1) == Some("me") => asked(about),
+        "run" | "execute" if about == Subject::Exploration => Some("explore"),
+        "run" | "execute" => names(CHECKS).then_some("run-check"),
         // "What is the status of the export?"; an HTTP or exit "status code" is no progress.
         "what" | "which"
             if names(&["progress"])
@@ -612,6 +616,8 @@ fn lead(words: &[String]) -> Option<&'static str> {
             Some("investigate")
         }
         "what" if starts(words, &["what", "would", "it", "take"]) => Some("plan"),
+        // "What depends on the legacy API?", "what calls this?"; not "what should I use?".
+        "what" if names(&["depends", "depend", "calls", "imports", "uses"]) => Some("locate"),
         "what"
             if matches!(next(1), Some("does" | "do"))
                 && words.last().is_some_and(|w| w == "do" || w == "does")
@@ -642,6 +648,8 @@ fn lead(words: &[String]) -> Option<&'static str> {
         // "Are the tests in this PR enough?" assesses the change.
         "is" | "are" if about == Subject::Tests && change => Some("review"),
         "is" | "are" => asked(about).filter(|_| about != Subject::Exploration),
+        // "Does our test suite cover expired coupons?"
+        "does" | "do" if about == Subject::Tests && names(&["cover", "covers"]) => Some("verify"),
         "does" | "do" => {
             names(&["support", "supports", "handle", "handles", "already"]).then_some("investigate")
         }

@@ -463,3 +463,34 @@ fn words_end_at_ascii_punctuation_but_not_at_other_letters() {
     assert_eq!(intent("review_x"), None);
     assert_eq!(intent("planning"), None);
 }
+
+#[test]
+fn other_wordings_of_a_known_request_name_the_same_intent() {
+    for (prompt, expected) in [
+        (
+            "Execute the regression suite for payments",
+            Some("run-check"),
+        ),
+        ("Execute the plan we agreed on", None),
+        ("Does our test suite cover expired coupons?", Some("verify")),
+        ("Do the tests pass on your machine?", None),
+        (
+            "Give me a charter for testing the new search filters",
+            Some("explore"),
+        ),
+        ("Give me test scenarios for the refund flow", Some("verify")),
+        ("Give me the list of changed files", None),
+        ("Give me a summary of the session", None),
+        ("What depends on the legacy customer API?", Some("locate")),
+        ("What calls applyDiscount?", Some("locate")),
+        ("What should I use for logging?", None),
+        ("Document the decision to use Kafka in an ADR", Some("plan")),
+        ("Document the retry helper", Some("implement")),
+    ] {
+        assert_eq!(intent(prompt), expected, "{prompt}");
+    }
+    assert_eq!(
+        artifact("Document the decision to use Kafka in an ADR"),
+        Some("adr")
+    );
+}
