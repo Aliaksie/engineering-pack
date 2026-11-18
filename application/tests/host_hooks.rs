@@ -1595,6 +1595,24 @@ fn a_stop_reviews_only_files_written_during_the_sessions_own_tool_calls() {
     fs::write(root.join("theirs.ts"), "// HACK: theirs again\n").unwrap();
     let decision = lifecycle(root, "turn-end", json!({}));
     assert_eq!(files(&decision), ["mine.ts"], "{decision}");
+
+    // A command that keeps a file's old modification time (`cp -p`, an archive) still wrote
+    // it during the call: the status change time says so where the system keeps one.
+    if cfg!(unix) {
+        tool_call(root, json!({}), || {
+            let file = root.join("mine.ts");
+            fs::write(&file, "// XXX: copied\nexport const a = 3\n").unwrap();
+            let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+            fs::File::options()
+                .write(true)
+                .open(&file)
+                .unwrap()
+                .set_modified(old)
+                .unwrap();
+        });
+        let decision = lifecycle(root, "turn-end", json!({}));
+        assert_eq!(files(&decision), ["mine.ts"], "{decision}");
+    }
 }
 
 /// With no configuration at all, a workspace is held at its stops and commits to what its

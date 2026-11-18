@@ -242,7 +242,8 @@ the commit the previous stop saw. Uncommitted work from before the session is no
 and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
 or a reset, the stop takes nothing from the commits in between. On Claude Code and Codex,
 whose hooks see every tool call, an uncommitted file counts only when it was last written
-while one of the session's tool calls ran (a subagent's run is one call): another session
+while one of the session's tool calls ran (a subagent's run is one call; on Windows a command
+that keeps a file's old modification time, such as `cp -p`, is not seen): another session
 editing the same checkout meanwhile, or a person editing by hand, is not this session's
 change. On Claude Code the user sees the summary too, as the hook's message. One stop
 reviews at most 64 files. A finding or review item is

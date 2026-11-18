@@ -218,3 +218,52 @@ fn an_accepted_plan_ends_the_change_with_a_review_offer_said_once() {
         .unwrap_err();
     assert!(refused.contains("--session"), "{refused}");
 }
+
+/// A stop that first names a declared check to run keeps the review due: the next stop names
+/// it, though no file changed since.
+#[test]
+fn a_review_offer_waits_for_a_check_reminder_and_comes_next() {
+    let project = r#"{"formatVersion":1,"modules":[{"name":"engine","path":"engine",
+      "checks":[{"command":"git","args":["--version"],"id":"engine-build"}]}]}"#;
+    let repo = Repo::new(
+        "ticket-review-later",
+        &[
+            (".craft/project.json", project),
+            ("engine/a.rs", "fn a() {}\n"),
+        ],
+    );
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        ISSUE,
+        "--accept",
+        "plan",
+        "--session",
+        "S1",
+    ])
+    .unwrap();
+    let notice = |repo: &Repo| {
+        hook("claude", "turn-end", repo, json!({}))["systemMessage"]
+            .as_str()
+            .map(str::to_owned)
+    };
+    let call = json!({"tool_name": "Bash", "tool_input": {"command": "sh ./write.sh"}});
+    hook("claude", "before-tool", &repo, call.clone());
+    repo.write("engine/a.rs", "fn a() { b() }\n");
+    hook("claude", "after-tool", &repo, call);
+    let first = notice(&repo).unwrap_or_default();
+    assert!(first.contains("craft check --stage commit"), "{first}");
+    repo.cli(&["check", "--session", "S1", "--json"]).unwrap();
+    let second = notice(&repo).unwrap_or_default();
+    assert!(
+        second.contains(&format!("offer the user a review of {ISSUE}")),
+        "{second}"
+    );
+    assert_eq!(notice(&repo), None, "said once");
+}

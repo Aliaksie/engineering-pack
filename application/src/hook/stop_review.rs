@@ -457,13 +457,24 @@ pub fn tool_finished(root: &Path, session: &str, settings: &Value) -> Result<(),
 
 /// Whether `file` was last written while a span of `spans` ran; an open span lasts to `now`.
 fn written_within(root: &Path, file: &str, spans: &[Value], now: i64) -> bool {
-    let Some(modified) = std::fs::symlink_metadata(root.join(file))
-        .and_then(|meta| meta.modified())
+    let Ok(meta) = std::fs::symlink_metadata(root.join(file)) else {
+        return true;
+    };
+    let Some(modified) = meta
+        .modified()
         .ok()
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
         .and_then(|since| i64::try_from(since.as_millis()).ok())
     else {
         return true;
+    };
+    // A command can keep a file's old modification time (`cp -p`, an archive extracted); the
+    // status change time it cannot set says when the content was written. Windows keeps no
+    // such time, so there a file written that way is not counted.
+    #[cfg(unix)]
+    let modified = {
+        use std::os::unix::fs::MetadataExt;
+        modified.max(meta.ctime().saturating_mul(1000) + meta.ctime_nsec() / 1_000_000)
     };
     spans.iter().any(|span| {
         let (Some(start), end) = (span[0].as_i64(), span[1].as_i64().unwrap_or(now)) else {

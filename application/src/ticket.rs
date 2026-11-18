@@ -180,11 +180,43 @@ pub(crate) fn recorded(root: &Path, session: &str) -> Option<String> {
     record["ticket"].as_str().map(str::to_owned)
 }
 
-/// The ticket whose planned delivery the session accepted, `None` without one.
+/// The ticket whose planned delivery the session accepted and whose review was not yet
+/// offered, `None` without one.
 pub(crate) fn planned(root: &Path, session: &str) -> Option<String> {
     let file = record_file(root, session, false).ok()?;
     let record = read_record(&file, RECORD_BYTES).ok()?;
-    (record["delivery"] == "plan")
+    (record["delivery"] == "plan" && record["reviewOffered"] != true)
         .then(|| record["ticket"].as_str().map(str::to_owned))
         .flatten()
+}
+
+/// The ticket whose review is due: the planned change changed files, at this turn (`changed`)
+/// or an earlier one, and the review was not yet offered. A turn whose stop named something
+/// else first, such as a check to run, keeps it due for a later turn.
+pub(crate) fn review_due(
+    root: &Path,
+    session: &str,
+    changed: bool,
+) -> Result<Option<String>, Failure> {
+    let Some(ticket) = planned(root, session) else {
+        return Ok(None);
+    };
+    let file = record_file(root, session, false)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if record["reviewDue"] != true {
+        if !changed {
+            return Ok(None);
+        }
+        record["reviewDue"] = json!(true);
+        state::write(&file, &record, RECORD_BYTES, false)?;
+    }
+    Ok(Some(ticket))
+}
+
+/// The review was offered to the user: it is not offered again.
+pub(crate) fn review_offered(root: &Path, session: &str) -> Result<(), Failure> {
+    let file = record_file(root, session, false)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    record["reviewOffered"] = json!(true);
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
