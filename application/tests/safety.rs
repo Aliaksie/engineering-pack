@@ -211,6 +211,34 @@ fn a_delete_below_the_temporary_directory_is_allowed_and_the_directory_itself_is
     assert!(whole.contains("delete-outside-project"), "{whole}");
 }
 
+#[test]
+fn a_delete_of_a_scratch_directory_passes_written_out_and_is_refused_through_a_variable() {
+    let repo = Repo::new("safety-scratch", &[("README.md", "x\n")]);
+    let temp = std::env::temp_dir();
+    let temp = temp.to_string_lossy();
+    let scratch = format!(
+        "{}/craft-safety-session-{}/scratchpad",
+        temp.trim_end_matches(['/', '\\']),
+        std::process::id()
+    );
+    for host in ["claude", "codex"] {
+        let written = shell(host, repo.path(), &format!("rm -rf {scratch}/clone"));
+        assert!(!written.starts_with("deny"), "{host}: {written}");
+        let variable = shell(
+            host,
+            repo.path(),
+            &format!("SCRATCH={scratch}; rm -rf \"$SCRATCH/clone\""),
+        );
+        assert!(variable.starts_with("deny "), "{host}: {variable}");
+        assert!(
+            variable.contains("rule `delete-outside-project`"),
+            "{variable}"
+        );
+        assert!(variable.contains("$SCRATCH/clone"), "{variable}");
+        assert!(variable.contains("does not expand"), "{variable}");
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn a_project_reached_through_a_link_is_the_same_project() {

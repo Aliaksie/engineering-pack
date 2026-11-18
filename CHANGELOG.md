@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The safety policy still refuses a recursive delete whose target holds a variable or
+  substitution, such as `rm -rf "$SCRATCH/clone"`, because it does not expand them. The
+  refusal now names the target and says that the path written out passes when it lies
+  strictly below a temporary directory, such as the host's scratch directory, or inside the
+  project.
 - `craft doctor` explains that Claude Code shows any refused tool call as
   `PreToolUse:<tool> hook error: <reason>`, for Craft's refusals and other hooks alike: the
   call was refused by policy, not by a failed hook.
