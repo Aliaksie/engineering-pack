@@ -38,7 +38,7 @@ pub fn changes(diff: &str) -> (Vec<(usize, String)>, Vec<String>) {
 }
 
 const TODO: &[&str] = &["TODO", "FIXME", "XXX", "HACK"];
-pub(crate) const COMMENTS: &[&str] = &["//", "#", "/*", "*", "--", "<!--", ";", "%"];
+const COMMENTS: &[&str] = &["//", "#", "/*", "*", "--", "<!--", ";", "%"];
 const SUPPRESSIONS: &[&str] = &[
     "eslint-disable",
     "@ts-ignore",

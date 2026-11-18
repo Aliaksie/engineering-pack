@@ -8,7 +8,6 @@
 //! - `prose`: a comment line or a document line added, or the file is in a commit the session
 //!   made, whose message is prose too.
 use super::{Import, owner};
-use crate::debt::COMMENTS;
 use serde_json::Value;
 
 /// The facts a `when` names.
@@ -67,9 +66,74 @@ fn document(file: &str) -> bool {
         .is_some_and(|(_, extension)| DOCUMENTS.contains(&extension.to_ascii_lowercase().as_str()))
 }
 
-fn comment(line: &str) -> bool {
+/// Languages with C-style comments: `//`, `/*` and a ` * ` line inside a block comment.
+const C_STYLE: &[&str] = &[
+    "c", "cc", "cjs", "cpp", "cs", "css", "cts", "cxx", "dart", "go", "gradle", "groovy", "h",
+    "hpp", "java", "js", "jsx", "kt", "kts", "less", "mjs", "mts", "php", "proto", "rs", "scala",
+    "scss", "sol", "swift", "ts", "tsx", "zig",
+];
+/// Line-comment prefixes of other languages, by extension or by file name.
+const LINE_COMMENTS: &[(&[&str], &[&str])] = &[
+    (
+        &[
+            "bash",
+            "cfg",
+            "cmake",
+            "conf",
+            "coffee",
+            "dockerfile",
+            "ex",
+            "exs",
+            "fish",
+            "jl",
+            "makefile",
+            "mk",
+            "nix",
+            "php",
+            "pl",
+            "pm",
+            "ps1",
+            "py",
+            "pyi",
+            "r",
+            "rb",
+            "sh",
+            "tf",
+            "toml",
+            "yaml",
+            "yml",
+            "zsh",
+        ],
+        &["#"],
+    ),
+    (&["ada", "elm", "hs", "lua", "sql"], &["--"]),
+    (&["asm", "clj", "cljs", "el", "lisp", "s", "scm"], &[";"]),
+    (&["ini"], &[";", "#"]),
+    (&["erl", "hrl", "tex"], &["%"]),
+    (&["htm", "html", "svg", "vue", "xhtml", "xml"], &["<!--"]),
+];
+
+/// Whether `line` of `file` is a comment in the file's language. A prefix means a comment
+/// only in a language where it opens one: `#[derive]` is Rust code, `--i;` JavaScript code
+/// and `*value = 1;` a dereference. A `*` line is a block comment's continuation only when
+/// whitespace, `/` or the line's end follows it. In a language not known here no line is a
+/// comment, so a change is never taken for prose when it may be code.
+fn comment(file: &str, line: &str) -> bool {
     let line = line.trim_start();
-    COMMENTS.iter().any(|prefix| line.starts_with(prefix))
+    let name = file.rsplit('/').next().unwrap_or(file).to_ascii_lowercase();
+    let extension = name
+        .rsplit_once('.')
+        .map_or(name.as_str(), |(_, extension)| extension);
+    let c_style = C_STYLE.contains(&extension)
+        && (line.starts_with("//")
+            || line.starts_with("/*")
+            || line
+                .strip_prefix('*')
+                .is_some_and(|rest| rest.is_empty() || rest.starts_with([' ', '\t', '/'])));
+    c_style
+        || LINE_COMMENTS.iter().any(|(languages, prefixes)| {
+            languages.contains(&extension) && prefixes.iter().any(|prefix| line.starts_with(prefix))
+        })
 }
 
 /// Whether `change` adds an import that resolves into another declared module than the
@@ -103,8 +167,9 @@ pub fn facts(settings: &Value, change: &Change) -> Vec<&'static str> {
     let (behavior, prose) = match change.lines {
         None => (true, true),
         Some((added, removed)) => {
-            let content =
-                |line: &str| !line.trim().is_empty() && (document(change.file) || !comment(line));
+            let content = |line: &str| {
+                !line.trim().is_empty() && (document(change.file) || !comment(change.file, line))
+            };
             let behavior = !test_file(change.file)
                 && added
                     .iter()
@@ -112,7 +177,7 @@ pub fn facts(settings: &Value, change: &Change) -> Vec<&'static str> {
                     .chain(removed.iter().map(String::as_str))
                     .any(content);
             let prose = added.iter().any(|(_, line)| {
-                !line.trim().is_empty() && (document(change.file) || comment(line))
+                !line.trim().is_empty() && (document(change.file) || comment(change.file, line))
             });
             (behavior, prose)
         }

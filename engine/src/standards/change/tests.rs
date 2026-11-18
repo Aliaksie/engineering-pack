@@ -82,6 +82,41 @@ fn lines_tell_behavior_from_prose() {
 }
 
 #[test]
+fn a_comment_is_read_in_the_files_language() {
+    for (file, line) in [
+        ("src/app/a.rs", "*value = 2;"),
+        ("src/app/a.c", "*p++ = c;"),
+        ("src/app/a.rs", "#[derive(Debug)]"),
+        ("src/app/a.c", "#include <stdio.h>"),
+        ("src/app/a.ts", "--count;"),
+        ("src/app/a.ts", "# not a comment here"),
+        ("src/app/a.unknown", "// unknown language"),
+    ] {
+        assert_eq!(
+            facts_of(file, &[line], &[line]),
+            vec!["behavior"],
+            "{file}: {line}"
+        );
+    }
+    for (file, line) in [
+        ("src/app/a.rs", " * continues a block"),
+        ("src/app/a.rs", " */"),
+        ("src/app/a.rs", "*"),
+        ("src/app/a.rs", "/// doc"),
+        ("src/app/a.py", "# why"),
+        ("src/app/a.sql", "-- why"),
+        ("src/app/Dockerfile", "# why"),
+        ("src/app/a.html", "<!-- why -->"),
+    ] {
+        assert_eq!(
+            facts_of(file, &[line], &[]),
+            vec!["prose"],
+            "{file}: {line}"
+        );
+    }
+}
+
+#[test]
 fn unknown_lines_and_session_commits_count_as_holding() {
     let change = |lines, committed| Change {
         file: "src/app/a.ts",

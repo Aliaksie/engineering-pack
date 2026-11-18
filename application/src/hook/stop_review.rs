@@ -506,6 +506,9 @@ pub fn stop(
     // Markers are new against the commit the last stop saw, whether or not they were
     // committed since; without one (an older record, no commit yet), against `HEAD`.
     let mut landed: Vec<Dirty> = Vec::new();
+    // Every file the session committed since its last stop, including one edited again
+    // since: it is dirty, so not in `landed`, and still in a commit the session made.
+    let mut committed_files: Vec<String> = Vec::new();
     let mut bases: Vec<&str> = vec!["HEAD"; checkouts.len()];
     for (index, checkout) in checkouts.iter().enumerate() {
         let (Some(base), Some(current)) = (seen(&record, checkout), heads[index].as_deref()) else {
@@ -516,12 +519,18 @@ pub fn stop(
         }
         let room = MAX_FILES.saturating_sub(files.len() + landed.len());
         let before = landed.len();
-        landed.extend(
+        let from = committed_files.len();
+        committed_files.extend(
             committed(&checkout.directory, base, current, &own)
                 .into_iter()
-                .map(|file| format!("{}{file}", checkout.folder))
-                .filter(|file| !files.iter().any(|dirty| dirty.file == *file))
+                .map(|file| format!("{}{file}", checkout.folder)),
+        );
+        landed.extend(
+            committed_files[from..]
+                .iter()
+                .filter(|file| !files.iter().any(|dirty| dirty.file == **file))
                 .take(room)
+                .cloned()
                 .filter_map(|file| {
                     let bytes = bytes(root, &file)?;
                     let digest = hash(&bytes);
@@ -593,7 +602,7 @@ pub fn stop(
                     created,
                     new_folder: created && new_folder(&within.directory, inside, base),
                     imports: &imports,
-                    committed: landed.iter().any(|dirty| dirty.file == *file),
+                    committed: committed_files.contains(file),
                 };
                 facts.push((file.clone(), standards::change::facts(settings, &change)));
             }

@@ -863,7 +863,8 @@ fn a_stop_lists_a_conditional_review_item_only_when_the_change_holds_its_conditi
             "standards":[
               {"id":"changelog-line","checklist":["A line under Unreleased"],"scope":{"paths":["src"]},"when":["behavior"]},
               {"id":"module-map","checklist":["The module map changes too"],"when":["structure"]},
-              {"id":"public-text","checklist":["No planning vocabulary"],"when":["prose"]}]}"#,
+              {"id":"public-text","checklist":["No planning vocabulary"],"when":["prose"]},
+              {"id":"test-notes","checklist":["The test says why"],"scope":{"paths":["src/core/order.test.ts"]},"when":["prose"]}]}"#,
         ),
     );
     let root = &fixture.0;
@@ -932,6 +933,20 @@ fn a_stop_lists_a_conditional_review_item_only_when_the_change_holds_its_conditi
     )
     .unwrap();
     assert_eq!(listed(), vec!["changelog-line", "module-map"]);
+
+    // A file the session commits and edits again before the stop is still in its commit,
+    // whose message is prose: a test-only edit after it lists the prose item in its scope.
+    let shell = json!({"tool": "shell", "command": "git commit -qm 'test: order'"});
+    lifecycle(root, "before-tool", shell.clone());
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "test: order"]);
+    lifecycle(root, "after-tool", shell);
+    fs::write(
+        root.join("src/core/order.test.ts"),
+        "import { Order } from './order'\nnew Order()\nnew Order()\n",
+    )
+    .unwrap();
+    assert_eq!(listed(), vec!["test-notes"]);
 }
 
 /// A model can write every file through shell commands and commit before the turn ends: no
