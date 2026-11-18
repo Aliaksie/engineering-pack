@@ -509,7 +509,18 @@ fn words(command: &str) -> Option<Vec<String>> {
     while let Some(c) = chars.next() {
         match (quote, c) {
             (Some(open), c) if c == open => quote = None,
-            (Some('"'), '\\') => word.get_or_insert_default().extend(chars.next()),
+            // Inside double quotes Bash keeps a backslash unless it escapes one of these.
+            (Some('"'), '\\') => {
+                let word = word.get_or_insert_default();
+                match chars.next() {
+                    Some('\n') => {}
+                    Some(next @ ('$' | '`' | '"' | '\\')) => word.push(next),
+                    next => {
+                        word.push('\\');
+                        word.extend(next);
+                    }
+                }
+            }
             (Some(_), c) => word.get_or_insert_default().push(c),
             (None, '\'' | '"') => {
                 quote = Some(c);
