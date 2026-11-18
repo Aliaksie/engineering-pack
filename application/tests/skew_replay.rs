@@ -74,7 +74,12 @@ fn git(root: &Path, args: &[&str]) -> String {
 /// The checkout as `release` left it: the same commit, the uncommitted edit, its
 /// `.craft/state` and the user's preferences.
 fn upgraded(release: &str) -> Upgraded {
-    let base = std::env::temp_dir().join(format!("craft-skew-{}-{release}", std::process::id()));
+    // No dots in the name: the home directory beside it replaces the extension.
+    let base = std::env::temp_dir().join(format!(
+        "craft-skew-{}-{}",
+        std::process::id(),
+        release.replace('.', "_")
+    ));
     let _ = fs::remove_dir_all(&base);
     fs::create_dir_all(base.join(".craft")).unwrap();
     // Without Windows' verbatim prefix, as a host names the directory.
