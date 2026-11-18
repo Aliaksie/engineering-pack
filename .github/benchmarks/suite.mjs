@@ -62,8 +62,8 @@ fs.cpSync(path.join(root, '.craft'), seed, { recursive: true });
 const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), seed, path.join(root, '.craft')]);
 
 // Standards fixture: the consumer with declared standards and debt markers, one caller of
-// `item42`, a started session, a routed change, a warm index and an uncommitted edit that adds
-// a debt marker. Each cell is a hook the session then fires; its check says the feature
+// `item42`, a started session, a routed change, a warm index and an uncommitted edit, made by
+// an Edit tool call, that adds a debt marker. Each cell is a hook the session then fires; its check says the feature
 // answered. A held stop is `decision: block`, or on Claude feedback context that continues
 // the turn.
 const standards = consumer(path.join(workspace, 'standards')), standardsSeed = path.join(workspace, 'standards-seed');
@@ -92,7 +92,13 @@ for (const step of SESSION) step.file = payload(standards, step.cell, typeof ste
 run(native, hookArguments('session-start').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(SESSION[0].file) });
 run(native, hookArguments('before-prompt').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'standards-prompt', HOOKS[0].payload)) });
 run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(standards), '--json'], { env: standardsEnv });
+// The edit happens inside an Edit tool call, as on Claude: a stop counts an uncommitted file
+// only when the session's tool calls were running as it was written.
+const edited = slash(path.join(standards, 'src/item-0.mjs'));
+const editCall = { tool_name: 'Edit', tool_input: { file_path: edited, old_string: '', new_string: '// TODO: reject negative values\n' }, tool_use_id: 'toolu_setup_edit' };
+run(native, hookArguments('before-tool').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'setup-edit-before', { hook_event_name: 'PreToolUse', ...editCall })) });
 fs.appendFileSync(path.join(standards, 'src/item-0.mjs'), '// TODO: reject negative values\n');
+run(native, hookArguments('after-tool').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'setup-edit-after', { hook_event_name: 'PostToolUse', ...editCall, tool_response: { filePath: edited } })) });
 fs.cpSync(path.join(standards, '.craft'), standardsSeed, { recursive: true });
 const restoreStandards = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), standardsSeed, path.join(standards, '.craft')]);
 
