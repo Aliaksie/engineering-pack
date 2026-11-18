@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A search command whose double-quoted pattern holds a backslash, such as
+  `grep -n "STANDARDS\b" AGENTS.md`, now reads the pattern as Bash does: inside double quotes
+  a backslash is kept unless it escapes `$`, `` ` ``, `"`, `\` or a newline. The answer after
+  that search names `STANDARDS` instead of looking up `STANDARDSb`.
 - `craft doctor` explains that Claude Code shows any refused tool call as
   `PreToolUse:<tool> hook error: <reason>`, for Craft's refusals and other hooks alike: the
   call was refused by policy, not by a failed hook.

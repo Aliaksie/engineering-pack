@@ -432,6 +432,23 @@ fn a_search_names_one_literal_identifier() {
 }
 
 #[test]
+fn double_quotes_keep_a_backslash_the_way_bash_does() {
+    let word = |command: &str| words(command).and_then(|words| words.into_iter().nth(1));
+    assert_eq!(word(r#"grep "STANDARDS\b""#), Some(r"STANDARDS\b".into()));
+    assert_eq!(word(r#"grep "one\|two""#), Some(r"one\|two".into()));
+    assert_eq!(word(r#"grep "\$HOME""#), Some("$HOME".into()));
+    assert_eq!(word(r#"grep "a\"b\\c\`d""#), Some(r#"a"b\c`d"#.into()));
+    assert_eq!(word("grep \"one\\\ntwo\""), Some("onetwo".into()));
+    assert_eq!(word(r"grep STANDARDS\b"), Some("STANDARDSb".into()));
+    assert_eq!(word(r"grep 'STANDARDS\b'"), Some(r"STANDARDS\b".into()));
+    assert_eq!(
+        searched(None, Some(r#"grep -n "STANDARDS\b" AGENTS.md"#)),
+        Some("STANDARDS".into())
+    );
+    assert_eq!(searched(None, Some(r#"grep -n "one\|two" src"#)), None);
+}
+
+#[test]
 fn a_search_answer_names_the_declaration_and_its_callers() {
     let callers = result(
         vec![row("src/Checkout.java", 14, Some("finish"))],
