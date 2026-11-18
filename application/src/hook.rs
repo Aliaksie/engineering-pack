@@ -93,6 +93,12 @@ fn project_directory(host: &str) -> Option<String> {
         .filter(|directory| std::path::Path::new(directory).is_absolute())
 }
 
+/// The tool `host` gives the model to ask the user a question with choices, where it has one.
+pub(crate) fn question_tool(host: &str) -> Option<String> {
+    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
+    table[host]["questionTool"].as_str().map(str::to_owned)
+}
+
 /// The most UTF-8 bytes of context one hook answer gives `host`: under the cap past which the
 /// host replaces or cuts the answer.
 fn ceiling(host: &str) -> usize {
@@ -571,6 +577,7 @@ pub(crate) const CHECKPOINT: &str = "checkpoint";
 pub(crate) const STANDARDS: &str = "standards findings";
 pub(crate) const TESTS: &str = "test evidence";
 pub(crate) const HOOK_GAP: &str = "hook gap";
+pub(crate) const TICKET: &str = "ticket intake";
 
 /// The host session identity, then what earlier sessions left that it may adopt: each a
 /// piece of its own, so a long list never costs the identity.
@@ -644,6 +651,9 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
     if let Some(found) = result.get("hookGap") {
         push(HOOK_GAP, 4, hook_gap_line(found));
     }
+    if let Some(intake) = result.get("ticket") {
+        push(TICKET, 1, ticket_line(intake));
+    }
     pieces
 }
 
@@ -660,6 +670,15 @@ fn conventions_line(offer: &Value) -> String {
 /// Earlier host sessions here that ran without Craft's hooks; the user may not see the notice.
 fn hook_gap_line(found: &Value) -> String {
     text::HOOK_GAP.render(&[("notice", &craft_engine::hook_gap::line(found))])
+}
+
+/// Work that starts from a ticket: the command that decides how it is delivered.
+fn ticket_line(intake: &Value) -> String {
+    let text = |field: &str| intake[field].as_str().unwrap_or_default().to_owned();
+    text::TICKET.render(&[
+        ("reference", &text("reference")),
+        ("command", &text("command")),
+    ])
 }
 
 /// A test run that exited cleanly without running a test.
@@ -743,6 +762,13 @@ fn stop_line(summary: &Value) -> String {
 /// Whether `host` can hold a stop and continue the turn with a reason.
 pub(crate) fn continues_turn(host: &str) -> bool {
     mapping(host, "turn-end").is_some_and(|m| m["continue"] == true)
+}
+
+/// Whether `host` reports every tool call that writes a file before and after it runs, so a
+/// stop can tell the files the session wrote from those another session or a person wrote
+/// in the same checkout meanwhile.
+pub(crate) fn attributes_writes(host: &str) -> bool {
+    mapping(host, "turn-end").is_some_and(|m| m["attributeWrites"] == true)
 }
 
 /// What a decision gives the host at one event, within the host's output ceiling.
@@ -847,9 +873,14 @@ fn serialize(result: &Value, host: &str, lifecycle: &str) -> Wire {
         let output = match host {
             "cursor" => json!({"followup_message": reason}),
             "gemini" => json!({"decision": "deny", "reason": reason}),
-            // Continues the turn as feedback, not as a hook error.
+            // Continues the turn as feedback, not as a hook error. Context reaches only the
+            // model, so the user is shown the same list where the host shows a message.
             _ if mapping["holdAsContext"] == true => {
-                json!({"hookSpecificOutput": {"hookEventName": name, "additionalContext": reason}})
+                let mut output = json!({"hookSpecificOutput": {"hookEventName": name, "additionalContext": reason}});
+                if mapping["notice"] == true {
+                    output["systemMessage"] = json!(reason);
+                }
+                output
             }
             _ => json!({"decision": "block", "reason": reason}),
         };

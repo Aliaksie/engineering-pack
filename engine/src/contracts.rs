@@ -4,6 +4,9 @@ use crate::layers::Layer;
 use crate::values::{MAX_SAFE_INTEGER, object, safe_integer};
 use serde_json::{Map, Value, json};
 
+mod known;
+pub use known::{ignored_line, known_project};
+
 pub const LAYERS: &[&str] = &["ui", "backend", "agent"];
 pub const LANGUAGES: &[&str] = &[
     "javascript",
@@ -350,6 +353,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "conventionProposals",
                 "projectChecks",
                 "commitGate",
+                "ticketOffer",
             ],
             "routing",
         )?;
@@ -367,6 +371,7 @@ pub fn validate_project(project: &Value) -> Result {
             "conventionProposals",
             "projectChecks",
             "commitGate",
+            "ticketOffer",
         ] {
             boolean(
                 routing.get(field),
@@ -648,7 +653,7 @@ pub fn default_settings() -> Value {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
             "sessionRecords": true, "sessionSummary": true, "conventionProposals": true,
-            "projectChecks": true, "commitGate": true
+            "projectChecks": true, "commitGate": true, "ticketOffer": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {

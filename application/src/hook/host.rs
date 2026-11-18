@@ -261,6 +261,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     package: facts.package,
                     lifecycle: facts.lifecycle,
                     session: facts.session,
+                    tool: facts.tool,
                     edit: facts.tool == "edit",
                     edit_context: crate::hook::delivers_edit_context(facts.host, facts.lifecycle),
                     file: facts.file,

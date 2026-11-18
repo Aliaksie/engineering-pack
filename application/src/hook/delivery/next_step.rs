@@ -30,6 +30,10 @@ pub(crate) fn line(
     if facts.unrun_checks == 0 {
         task(root, session, &mut facts, recorder, hook);
     }
+    // A change the user chose to plan first ends with the review the plan offered.
+    if facts == Facts::default() && !changed.is_empty() {
+        facts.review = crate::ticket::planned(root, session);
+    }
     if facts == Facts::default() {
         facts.context = context(root, settings, session, recorder, hook);
     }

@@ -31,6 +31,7 @@ hook_template!(HOOK_GAP, "hook-gap", ["notice"]);
 hook_template!(TESTS, "tests", ["summary"]);
 hook_template!(DELEGATION, "delegation", ["delegation"]);
 hook_template!(STOP, "stop", ["count", "items", "lines"]);
+hook_template!(TICKET, "ticket", ["reference", "command"]);
 
 /// Every model-facing template `craft` embeds, the engine's included.
 pub fn templates() -> Vec<&'static Template> {
@@ -54,6 +55,7 @@ pub fn templates() -> Vec<&'static Template> {
         &TESTS,
         &DELEGATION,
         &STOP,
+        &TICKET,
     ]);
     all
 }

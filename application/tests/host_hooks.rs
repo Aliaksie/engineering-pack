@@ -360,6 +360,60 @@ fn an_unreadable_project_fails_shell_policy_closed() {
     );
 }
 
+/// A field another Craft build added to the project file leaves this build's hooks working:
+/// the rest of the file still applies, the session start names the field once, and a file
+/// that is invalid for another reason still fails.
+#[test]
+fn an_unknown_project_field_is_named_and_the_rest_of_the_file_applies() {
+    let fixture = project(
+        "unknown-field",
+        Some(
+            r#"{"formatVersion":1,"review":{"readOnly":true},"laterSwitch":true,
+              "standards":[{"id":"notes","checklist":["Keep notes"],"someday":"later"}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    let refused = hook(facts(
+        root,
+        "review-read-only",
+        json!({"command": "git push origin main"}),
+    ));
+    assert_eq!(refused["decision"], "deny", "{refused}");
+    assert_eq!(refused["failed"], false, "{refused}");
+    let started = lifecycle(root, "session-start", json!({}));
+    let notice = started["notice"].as_str().unwrap_or_default();
+    assert!(
+        notice.contains("`laterSwitch`, `standards[0].someday`"),
+        "{started}"
+    );
+    assert!(notice.contains("`craft validate`"), "{notice}");
+    // Said where a session starts, not at every event.
+    let prompted = lifecycle(root, "before-prompt", json!({"prompt": "fix the parser"}));
+    assert!(
+        prompted
+            .get("notice")
+            .is_none_or(|n| !n.as_str().unwrap_or_default().contains("laterSwitch")),
+        "{prompted}"
+    );
+    assert!(
+        !view(&events(root))
+            .iter()
+            .any(|event| event.contains("CONFIG_INVALID"))
+    );
+
+    fs::write(
+        root.join(".craft/project.json"),
+        r#"{"formatVersion":1,"review":{"readOnly":"yes"},"laterSwitch":true}"#,
+    )
+    .unwrap();
+    let failed = hook(facts(
+        root,
+        "review-read-only",
+        json!({"command": "git status"}),
+    ));
+    assert_eq!(failed["failed"], true, "{failed}");
+}
+
 #[test]
 fn hooks_resolve_the_project_from_a_nested_working_directory() {
     let fixture = project(
@@ -732,6 +786,17 @@ fn an_edit_that_adds_an_undeclared_module_import_is_reported_and_old_debt_is_not
     assert_eq!(findings[0]["rule"], "undeclared-dependency");
 }
 
+/// A shell tool call of the session that runs `write`: the host reports it before and after.
+fn tool_call(root: &Path, extra: Value, write: impl FnOnce()) {
+    let mut shell = json!({"tool": "shell", "command": "sh ./write.sh"});
+    for (key, value) in extra.as_object().unwrap() {
+        shell[key] = value.clone();
+    }
+    lifecycle(root, "before-tool", shell.clone());
+    write();
+    lifecycle(root, "after-tool", shell);
+}
+
 fn lifecycle(root: &Path, lifecycle: &str, extra: Value) -> Value {
     let mut input = facts(
         root,
@@ -789,19 +854,21 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
         "nothing changed this session"
     );
 
-    fs::write(
-        &order,
-        "import { http } from '../web/http'\n// TODO: money\nexport class Order {}\n",
-    )
-    .unwrap();
-    fs::write(root.join("src/web/http.ts"), "export const http = 1\n").unwrap();
-    // A secrets file is never read: a finding would quote its line.
-    fs::create_dir_all(root.join("config")).unwrap();
-    fs::write(
-        root.join("config/secrets.yaml"),
-        "# TODO: rotate\ntoken: s3cr3t\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            &order,
+            "import { http } from '../web/http'\n// TODO: money\nexport class Order {}\n",
+        )
+        .unwrap();
+        fs::write(root.join("src/web/http.ts"), "export const http = 1\n").unwrap();
+        // A secrets file is never read: a finding would quote its line.
+        fs::create_dir_all(root.join("config")).unwrap();
+        fs::write(
+            root.join("config/secrets.yaml"),
+            "# TODO: rotate\ntoken: s3cr3t\n",
+        )
+        .unwrap();
+    });
     // While the host continues a held stop, nothing is said.
     assert!(
         lifecycle(root, "turn-end", json!({"stopActive": true}))
@@ -829,11 +896,13 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
     assert_eq!(decision["decision"], "allow");
 
     // The same findings never hold a stop again, even after another edit.
-    fs::write(
-        &order,
-        "import { http } from '../web/http'\n// TODO: money\nexport class Order { id = 1 }\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            &order,
+            "import { http } from '../web/http'\n// TODO: money\nexport class Order { id = 1 }\n",
+        )
+        .unwrap()
+    });
     assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
 
     // Off when the project says so.
@@ -846,7 +915,9 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
         ),
     )
     .unwrap();
-    fs::write(&order, "// FIXME: new\n").unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(&order, "// FIXME: new\n").unwrap()
+    });
     assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
 }
 
@@ -908,30 +979,36 @@ fn a_stop_lists_a_conditional_review_item_only_when_the_change_holds_its_conditi
     lifecycle(root, "session-start", json!({}));
 
     // A test-only change: no behavior outside tests, no comment, no new module dependency.
-    fs::write(
-        root.join("src/core/order.test.ts"),
-        "import { Order } from './order'\nnew Order()\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            root.join("src/core/order.test.ts"),
+            "import { Order } from './order'\nnew Order()\n",
+        )
+        .unwrap()
+    });
     assert!(
         lifecycle(root, "turn-end", json!({})).get("stop").is_none(),
         "no item applies"
     );
 
     // A comment only: prose, and nothing a user can observe.
-    fs::write(
-        root.join("src/core/order.ts"),
-        "// An order.\nexport class Order {}\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            root.join("src/core/order.ts"),
+            "// An order.\nexport class Order {}\n",
+        )
+        .unwrap()
+    });
     assert_eq!(listed(), vec!["public-text"]);
 
     // An import of another module: behavior and structure.
-    fs::write(
-        root.join("src/app/main.ts"),
-        "import { Order } from '../core/order'\nexport const main = new Order()\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            root.join("src/app/main.ts"),
+            "import { Order } from '../core/order'\nexport const main = new Order()\n",
+        )
+        .unwrap()
+    });
     assert_eq!(listed(), vec!["changelog-line", "module-map"]);
 
     // A file the session commits and edits again before the stop is still in its commit,
@@ -941,11 +1018,13 @@ fn a_stop_lists_a_conditional_review_item_only_when_the_change_holds_its_conditi
     git(&["add", "-A"]);
     git(&["commit", "-qm", "test: order"]);
     lifecycle(root, "after-tool", shell);
-    fs::write(
-        root.join("src/core/order.test.ts"),
-        "import { Order } from './order'\nnew Order()\nnew Order()\n",
-    )
-    .unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            root.join("src/core/order.test.ts"),
+            "import { Order } from './order'\nnew Order()\nnew Order()\n",
+        )
+        .unwrap()
+    });
     assert_eq!(listed(), vec!["test-notes"]);
 }
 
@@ -1420,17 +1499,19 @@ fn a_workspace_root_reviews_what_changed_in_each_member_repository() {
 
     // One member's file left dirty, the other's committed in the turn; a plain folder's
     // file belongs to no repository.
-    fs::write(
-        root.join("api/a.ts"),
-        "// FIXME: mine\nexport const a = 2\n",
-    )
-    .unwrap();
-    fs::write(
-        root.join("web/b.ts"),
-        "// TODO: later\nexport const b = 1\n",
-    )
-    .unwrap();
-    fs::write(root.join("notes/n.ts"), "// TODO: a note\n").unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(
+            root.join("api/a.ts"),
+            "// FIXME: mine\nexport const a = 2\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("web/b.ts"),
+            "// TODO: later\nexport const b = 1\n",
+        )
+        .unwrap();
+        fs::write(root.join("notes/n.ts"), "// TODO: a note\n").unwrap();
+    });
     git("web", &["add", "b.ts"]);
     let shell = json!({"tool": "shell", "command": "git -C web commit -m 'Added b'"});
     lifecycle(root, "before-tool", shell.clone());
@@ -1443,9 +1524,77 @@ fn a_workspace_root_reviews_what_changed_in_each_member_repository() {
     // Said once: the next stop without a change is quiet, and a later one names only the new.
     let quiet = lifecycle(root, "turn-end", json!({}));
     assert!(quiet.get("stop").is_none(), "{quiet}");
-    fs::write(root.join("web/a.ts"), "// HACK: next\nexport const a = 3\n").unwrap();
+    tool_call(root, json!({}), || {
+        fs::write(root.join("web/a.ts"), "// HACK: next\nexport const a = 3\n").unwrap()
+    });
     let decision = lifecycle(root, "turn-end", json!({}));
     assert_eq!(files(&decision), ["web/a.ts"], "{decision}");
+}
+
+/// Two sessions in one checkout: what another session (or a person) writes while this one
+/// runs no tool is not this session's change, and its stop says nothing about it. A file this
+/// session writes in a tool call, a subagent's included, is reviewed as before.
+#[test]
+fn a_stop_reviews_only_files_written_during_the_sessions_own_tool_calls() {
+    let fixture = project(
+        "stop-attribution",
+        Some(r#"{"formatVersion":1,"routing":{"debtMarkers":true}}"#),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    fs::write(root.join("mine.ts"), "export const a = 1\n").unwrap();
+    fs::write(root.join("theirs.ts"), "export const b = 1\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "init"]);
+    let files = |decision: &Value| -> Vec<String> {
+        decision["stop"]["findings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|finding| finding["file"].as_str().map(str::to_owned))
+            .collect()
+    };
+    lifecycle(root, "session-start", json!({}));
+    // This session only reads; meanwhile another session writes a marker.
+    lifecycle(
+        root,
+        "before-tool",
+        json!({"tool": "read", "file": "mine.ts"}),
+    );
+    lifecycle(
+        root,
+        "after-tool",
+        json!({"tool": "read", "file": "mine.ts"}),
+    );
+    std::thread::sleep(std::time::Duration::from_millis(2_500));
+    fs::write(
+        root.join("theirs.ts"),
+        "// TODO: theirs\nexport const b = 2\n",
+    )
+    .unwrap();
+    let decision = lifecycle(root, "turn-end", json!({}));
+    assert!(decision.get("stop").is_none(), "{decision}");
+
+    // A subagent's whole run is one tool call of the session: what it writes is this one's.
+    let agent = json!({"tool": "other"});
+    lifecycle(root, "before-tool", agent.clone());
+    fs::write(root.join("mine.ts"), "// FIXME: mine\nexport const a = 2\n").unwrap();
+    lifecycle(root, "after-tool", agent);
+    std::thread::sleep(std::time::Duration::from_millis(2_500));
+    fs::write(root.join("theirs.ts"), "// HACK: theirs again\n").unwrap();
+    let decision = lifecycle(root, "turn-end", json!({}));
+    assert_eq!(files(&decision), ["mine.ts"], "{decision}");
 }
 
 /// With no configuration at all, a workspace is held at its stops and commits to what its
@@ -1494,12 +1643,14 @@ fn an_undeclared_workspace_is_held_to_its_members_formats_at_commit_and_stop() {
     );
 
     // A shell command rewrote one member's changelog out of its format: no edit hook saw it.
-    fs::write(
-        root.join("api/CHANGELOG.md"),
-        log.replace("[Unreleased]", "Next"),
-    )
-    .unwrap();
-    fs::write(root.join("api/README.md"), "# Api\n\n## Install\n").unwrap();
+    tool_call(root, session.clone(), || {
+        fs::write(
+            root.join("api/CHANGELOG.md"),
+            log.replace("[Unreleased]", "Next"),
+        )
+        .unwrap();
+        fs::write(root.join("api/README.md"), "# Api\n\n## Install\n").unwrap();
+    });
     let decision = lifecycle(root, "turn-end", session);
     let files: Vec<&str> = decision["stop"]["findings"]
         .as_array()

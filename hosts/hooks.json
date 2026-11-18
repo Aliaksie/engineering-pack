@@ -12,6 +12,7 @@
     },
     "contextBytes": 9000,
     "projectDirectory": "CLAUDE_PROJECT_DIR",
+    "questionTool": "AskUserQuestion",
     "events": {
       "before-tool": {
         "name": "PreToolUse",
@@ -53,7 +54,8 @@
         "deny": false,
         "continue": true,
         "holdAsContext": true,
-        "notice": true
+        "notice": true,
+        "attributeWrites": true
       },
       "agent-start": {
         "name": "SubagentStart",
@@ -119,7 +121,8 @@
         "context": false,
         "deny": false,
         "continue": true,
-        "notice": true
+        "notice": true,
+        "attributeWrites": true
       },
       "agent-start": {
         "name": "SubagentStart",

@@ -178,6 +178,37 @@ turns the scan off: nothing is read from the files and nothing is said.
   owned paths, selected as for a delegated worker. A bound task's resume carries them too
   when it is adopted in a new session.
 
+## Work from a ticket
+
+When a prompt names a ticket (an issue or merge request URL of a code host, a tracker URL such
+as `/browse/SHOP-12`, or a key or number the prompt calls an issue, ticket, story or bug), the
+prompt hook tells the agent, before any edit, to read the ticket, locate the files the work will
+change and state those facts to `craft ticket`:
+
+```sh
+craft ticket --ticket https://github.com/acme/shop/issues/12 --criteria clear|unclear|missing \
+  --questions 0 --label bug --path src/api/order.ts --path schemas/order.schema.json \
+  --host claude --session <id>
+```
+
+Craft decides without a model call:
+
+- **ask** when the ticket leaves open questions, or carries a label such as `question` or
+  `needs-info`;
+- **plan first** when the files fall under several modules (top-level folders where the project
+  declares none), a file holds a contract (a published schema or interface definition, a
+  migration, host hook wiring or CI; `--affects state` names one no path shows), the acceptance
+  criteria are unclear or missing, or a label such as `epic` or `needs-design` asks for it;
+- **direct** otherwise: one module, no contract change, clear acceptance criteria.
+
+It prints the line for the user, such as `Craft suggests: plan → implement → review (3 modules,
+schema change)`, and the agent's next step on this host. On Claude Code the plan-first offer is
+asked with the host's question tool; on a host without one the agent shows the line and asks in
+its reply. Direct work gets the line and no question. `craft ticket --accept plan|direct
+--session <id>` keeps the user's choice: once a session that accepted a plan has changed files,
+the turn's end names a review offer for the ticket, once. The same ticket in a later prompt of
+the session is not taken in again. `routing.ticketOffer: false` turns the offer off.
+
 ## Stop review
 
 When a turn ends after the session changed files, Craft reviews those files once and, where
@@ -209,8 +240,12 @@ reviewed, whichever tool wrote them: uncommitted changes, and files in commits m
 then, so work committed before the turn ends is still reviewed. Markers are those added since
 the commit the previous stop saw. Uncommitted work from before the session is not reviewed,
 and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
-or a reset, the stop takes nothing from the commits in between. One stop reviews at most 64
-files. A finding or review item is
+or a reset, the stop takes nothing from the commits in between. On Claude Code and Codex,
+whose hooks see every tool call, an uncommitted file counts only when it was last written
+while one of the session's tool calls ran (a subagent's run is one call): another session
+editing the same checkout meanwhile, or a person editing by hand, is not this session's
+change. On Claude Code the user sees the summary too, as the hook's message. One stop
+reviews at most 64 files. A finding or review item is
 said once per session, and a stop is never held while the host is already continuing a held
 one. Nothing is enforced: the agent fixes or tells the user why not. The review runs only
 when the project reports debt markers, declares a `review` standard, checks module

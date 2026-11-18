@@ -35,6 +35,7 @@
     "eval:probes": "node tooling/eval-probes.mjs",
     "overhead": "node tooling/overhead.mjs",
     "route": "node tooling/craft.mjs route",
+    "ticket": "node tooling/craft.mjs ticket",
     "standards": "node tooling/craft.mjs standards",
     "anchors": "node tooling/craft.mjs anchors",
     "operation": "node tooling/craft.mjs operation",

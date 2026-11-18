@@ -103,6 +103,12 @@ const OPTIONS: &[&str] = &[
     "install-hook",
     "ci-snippet",
     "sync",
+    "ticket",
+    "criteria",
+    "questions",
+    "label",
+    "affects",
+    "accept",
 ];
 const FLAGS: &[&str] = &[
     "apply",
@@ -134,6 +140,8 @@ const REPEATED: &[&str] = &[
     "bundle",
     "reference",
     "rejected",
+    "label",
+    "affects",
 ];
 
 #[derive(Default)]
@@ -210,6 +218,20 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
         && action != "check"
     {
         return Err(format!("--{name} is supported by check").into());
+    }
+    if let Some(name) = [
+        "ticket",
+        "criteria",
+        "questions",
+        "label",
+        "affects",
+        "accept",
+    ]
+    .iter()
+    .find(|name| present(name))
+        && action != "ticket"
+    {
+        return Err(format!("--{name} is supported by ticket").into());
     }
     if let Some(name) = ["explain", "field", "sync"]
         .iter()

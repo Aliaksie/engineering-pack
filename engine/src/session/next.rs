@@ -30,6 +30,9 @@ pub struct Facts {
     /// `(criterion, task)`: a required criterion of the session's open task that no evidence
     /// record names.
     pub unevidenced: Option<(String, String)>,
+    /// The ticket whose planned delivery the user accepted, when the turn changed files: the
+    /// change ends with a review offer.
+    pub review: Option<String>,
     /// The ready task the session's work plan offers once its own task is completed.
     pub ready: Option<Ready>,
     /// Observed context occupancy in percent, at or past the compaction threshold, and the
@@ -173,6 +176,11 @@ pub fn line(facts: &Facts) -> Option<String> {
             "acceptance \"{criterion}\" of task {task} has no evidence yet"
         ));
     }
+    if let Some(ticket) = &facts.review {
+        return Some(format!(
+            "offer the user a review of {ticket} before reporting it done (craft-delivery:review-code)"
+        ));
+    }
     if let Some(Ready { plan, task, goal }) = &facts.ready {
         return Some(format!(
             "plan task {task} ({goal}) is ready: craft task-start --plan {plan} --ready"
@@ -244,6 +252,7 @@ mod tests {
         let mut facts = Facts {
             unrun_checks: 1,
             unevidenced: Some(("ac-1".into(), "t1".into())),
+            review: Some("SHOP-12".into()),
             ready: Some(ready),
             context: Some((90, Checkpoint::Missing)),
         };
@@ -254,6 +263,13 @@ mod tests {
             Some("acceptance \"ac-1\" of task t1 has no evidence yet")
         );
         facts.unevidenced = None;
+        assert_eq!(
+            line(&facts).as_deref(),
+            Some(
+                "offer the user a review of SHOP-12 before reporting it done (craft-delivery:review-code)"
+            )
+        );
+        facts.review = None;
         assert_eq!(
             line(&facts).as_deref(),
             Some("plan task t2 (Add the export) is ready: craft task-start --plan p --ready")

@@ -15,6 +15,12 @@ require setup, a structured contract, an ADR, a worker or a tracker. For larger 
 carry the existing criterion IDs and checked source through the flow below; a passing
 unrelated check cannot certify completion.
 
+When the work starts from a ticket (an issue URL or tracker key), read it and locate the files
+the work will change, then run `<package-root>/bin/craft ticket` with its facts before editing:
+whether its acceptance criteria are clear, unclear or missing, its open questions, labels and
+those files. Follow the `next` it prints: work directly, offer the user a plan first, or ask
+the ticket's questions. A plan the user accepts ends with a review offer.
+
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
 current paths/revision and verification evidence. Keep this record private by default; use
