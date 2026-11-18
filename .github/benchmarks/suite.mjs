@@ -2,6 +2,8 @@
 // per supported language, extraction and one structural lookup over a generated fixture.
 // Hooks run in three layers: the native binary, the package launcher, and the registered hook
 // command under the shell hosts use. Writes raw Hyperfine JSON, checked outputs and Bencher Metric Format results.
+// With --check-only, nothing is timed: the fixtures are built and only the correctness checks run,
+// so a pull request learns in seconds that a hook no longer answers what the timings assume.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,9 +15,11 @@ import { consumer, directoryBytes, git, gitBash, measurer, quote, run, slash, ve
 import { LANGUAGES, PROBE, languageFixture } from './languages.mjs';
 import { peakMemory } from './peak-memory.mjs';
 
-const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH]';
+const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH] [--check-only]';
 const options = { runs: '30', 'cold-runs': '10', hyperfine: 'hyperfine' };
+let checkOnly = false;
 for (let i = 2; i < process.argv.length; i += 2) {
+  if (process.argv[i] === '--check-only') { checkOnly = true; i -= 1; continue; }
   const key = process.argv[i]?.replace(/^--/, '');
   if (!['export', 'fixture', 'output', 'runs', 'cold-runs', 'hyperfine', 'bash'].includes(key) || process.argv[i + 1] === undefined) throw new Error(usage);
   options[key] = process.argv[i + 1];
@@ -120,7 +124,7 @@ const languages = Object.fromEntries(Object.entries(LANGUAGES).map(([language, {
     phasesMs: refreshed.phasesMs, wallTimeMs: refreshed.wallTimeMs }];
 }));
 
-const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--version']),
+const results = { formatVersion: 1, checkOnly, hyperfine: checkOnly ? null : version(options.hyperfine, ['--version']),
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
     memoryBytes: os.totalmem(), runner: Object.fromEntries(['RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT']
       .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])) },
@@ -134,7 +138,7 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
 const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
 
 
-const measure = measurer({ hyperfine: options.hyperfine, output, results, save });
+const measure = checkOnly ? () => {} : measurer({ hyperfine: options.hyperfine, output, results, save });
 // Native cells whose peak memory Windows measures separately: Hyperfine records none there.
 const memoryCells = [];
 const remember = (name, cwd, args, input = null, reset = null, cellEnv = null) => memoryCells.push({ name, program: native, args, cwd, input, reset, env: cellEnv && { CRAFT_EVIDENCE_WARM: cellEnv.CRAFT_EVIDENCE_WARM } });
@@ -232,7 +236,7 @@ for (const [language, { file }] of Object.entries(LANGUAGES)) {
     || check.calledFrom?.join() !== PROBE.caller) results.failures.push(`project-intelligence/language/${language}: lookup check failed`);
 }
 // Windows peak working set, per native cell, from the same prepared state the timed runs use.
-if (windows) {
+if (windows && !checkOnly) {
   try {
     results.memory = peakMemory({ cells: memoryCells, runs: Math.min(runs, 5), reset: path.join(benchmarks, 'reset-state.mjs'), workspace, env });
     fs.writeFileSync(path.join(output, 'raw/peak-memory.json'), JSON.stringify(results.memory, null, 2) + '\n');
@@ -243,8 +247,10 @@ results.testbed = testbed(process.env.TESTBED ?? process.platform, results.platf
 fs.writeFileSync(path.join(output, 'testbed.txt'), results.testbed + '\n');
 save();
 
-const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
-fs.writeFileSync(path.join(output, 'bencher.json'), JSON.stringify(metrics, null, 2) + '\n');
+if (!checkOnly) {
+  const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
+  fs.writeFileSync(path.join(output, 'bencher.json'), JSON.stringify(metrics, null, 2) + '\n');
+}
 fs.rmSync(workspace, { recursive: true, force: true });
 for (const failure of results.failures) console.error(`failed: ${failure}`);
 if (results.failures.length) process.exitCode = 1;
