@@ -727,7 +727,10 @@ Layers are defaults, not enforcement: a project can override any of them. Every 
 Craft build reads the same organization and user file, and builds can differ in version, so
 a switch or section a build does not know in those two files is left out, not an error:
 `craft config` and `craft doctor` name each one, which also shows a misspelled name. A known
-field with a value it cannot take, and any unknown field of the project file, stay errors. On POSIX the user
+field with a value it cannot take stays an error. An unknown field of the project file is an
+error for `craft validate`, `craft config` and `craft doctor`; hooks leave it out, read the
+rest of the file and name it once when a session starts, so a field a newer build added does
+not stop an older one. On POSIX the user
 file and its folder must belong to the user, the organization file and its folder to the
 administrator or the user, and none may be a symlink or writable by group or others. On
 Windows ownership is not checked: keep the organization file where only administrators can

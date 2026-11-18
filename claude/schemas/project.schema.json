@@ -1199,6 +1199,11 @@
           "type": "boolean",
           "default": true,
           "description": "Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through."
+        },
+        "ticketOffer": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a prompt starts work from a ticket (an issue or tracker URL, or a key the prompt calls an issue or ticket), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Set false to make no offer."
         }
       },
       "additionalProperties": false

@@ -92,6 +92,7 @@
           "continue": true,
           "holdAsContext": true,
           "notice": true,
+          "attributeWrites": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "deliver"
@@ -401,6 +402,7 @@
           "continue": true,
           "holdAsContext": true,
           "notice": true,
+          "attributeWrites": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -674,6 +676,7 @@
           "continue": true,
           "holdAsContext": true,
           "notice": true,
+          "attributeWrites": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
@@ -939,6 +942,7 @@
           "continue": true,
           "holdAsContext": true,
           "notice": true,
+          "attributeWrites": true,
           "event": "turn-end",
           "tool": "any",
           "handler": "observe"
