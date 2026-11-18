@@ -60,6 +60,11 @@ advisory: it does not override Cursor's allowlist or approval prompts
 ([forum](https://forum.cursor.com/t/support-authoritative-allow-deny-and-ask-verdicts-from-hooks/161342)).
 If Cursor makes it authoritative, this answer changes.
 
+Claude Code shows a denied tool call as `PreToolUse:<tool> hook error: <reason>`. The label is
+Claude Code's: a minimal hook outside Craft gets it for a JSON `permissionDecision: deny` (exit
+0) and for exit code 2, which also prefixes the hook command (checked on 2.1.327). The call is
+refused and the model gets the reason; `craft doctor` names this under `refusals`.
+
 Copilot CLI also runs hooks from `.claude/settings.json` and `.claude/settings.local.json`, and
 Cursor loads Claude Code hooks. No export writes Craft hooks there. Craft hooks added to those
 files, or the Claude plugin installed next to a Cursor or Copilot overlay, run twice per event:
