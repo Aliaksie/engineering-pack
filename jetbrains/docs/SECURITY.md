@@ -75,7 +75,7 @@ rules out, adds the project's own or turns the policy off with `"enabled": false
 
 | Rule | Refuses |
 |---|---|
-| `delete-outside-project` | `rm -r`, `find -delete` or `find -exec rm -r` whose target is outside the project root, under `~`, an unexpanded variable or substitution, or read from input as with `xargs rm -r`; a target strictly below a temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`) passes |
+| `delete-outside-project` | `rm -r`, `find -delete` or `find -exec rm -r` whose target is outside the project root, under `~`, an unexpanded variable or substitution, or read from input as with `xargs rm -r`; a target strictly below a temporary directory (`$TMPDIR`, `/tmp`, `/var/tmp`) passes when written out, and the refusal of a variable target, such as `"$SCRATCH/clone"`, names it and says so |
 | `delete-project-root` | `rm -r` of the project root, of everything in it (`*`, `.`) or of its `.git`; `find` from the project root deleting with no name, path, time or size test |
 | `force-push` | `git push` with `--force`, `-f`, `--mirror` or a `+refspec`; `--force-with-lease` passes |
 | `delete-remote-branch` | `git push` with `--delete`, `-d`, `--prune` or an empty source (`:branch`) |
