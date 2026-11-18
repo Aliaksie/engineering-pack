@@ -146,6 +146,27 @@ fn an_overlay_whose_package_has_no_runtime_blocks() {
 }
 
 #[test]
+fn claude_refusals_are_named_as_policy_not_a_failed_hook_while_a_package_is_enabled() {
+    let refusals = |report: &Value| {
+        host(report, "claude")["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "refusals")
+            .cloned()
+    };
+    let mut facts = facts();
+    let found = refusals(&report(&facts)).expect("refusals check");
+    assert_eq!(found["status"], "ok");
+    let detail = found["detail"].as_str().unwrap();
+    assert!(detail.contains("hook error"), "{detail}");
+    assert!(detail.contains("not a failed hook"), "{detail}");
+    facts["claude"]["settings"][1]["enabledPlugins"]["craft-delivery@craft-capabilities"] =
+        json!(false);
+    assert!(refusals(&report(&facts)).is_none());
+}
+
+#[test]
 fn one_claude_package_at_two_scopes_is_not_two_marketplaces() {
     let mut facts = facts();
     let mut user = facts["claude"]["packages"][0].clone();
