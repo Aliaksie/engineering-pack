@@ -1,8 +1,8 @@
-//! Version skew: a project, user file and state written by the previous release, read by this
+//! Version skew: a project, user file and state written by an earlier release, read by this
 //! build. Its hooks and commands answer as usual, keep the earlier session's records and fail
-//! nothing. The fixture is what the 0.0.6 release binary wrote in one short Claude session:
-//! hooks at startup, prompt, edit, test run, compaction and turn end, a checkpoint and a
-//! commit-stage check (`tests/fixtures/skew/README.md`).
+//! nothing. Each fixture is what one release binary wrote in one short Claude session: hooks at
+//! startup, prompt, edit, test run, compaction and turn end, a checkpoint and a commit-stage
+//! check (`tests/fixtures/skew/README.md`).
 use serde_json::{Value, json};
 use std::fs;
 use std::io::Write;
@@ -11,8 +11,10 @@ use std::process::{Command, Stdio};
 
 const SESSION: &str = "skew-session-1";
 
-fn fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/fixtures/skew/0.0.6")
+fn fixture(release: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../tests/fixtures/skew")
+        .join(release)
 }
 
 fn copy(from: &Path, to: &Path) {
@@ -69,10 +71,15 @@ fn git(root: &Path, args: &[&str]) -> String {
     String::from_utf8(output.stdout).unwrap().trim().to_string()
 }
 
-/// The checkout as the previous release left it: the same commit, the uncommitted edit, its
+/// The checkout as `release` left it: the same commit, the uncommitted edit, its
 /// `.craft/state` and the user's preferences.
-fn upgraded() -> Upgraded {
-    let base = std::env::temp_dir().join(format!("craft-skew-{}", std::process::id()));
+fn upgraded(release: &str) -> Upgraded {
+    // No dots in the name: the home directory beside it replaces the extension.
+    let base = std::env::temp_dir().join(format!(
+        "craft-skew-{}-{}",
+        std::process::id(),
+        release.replace('.', "_")
+    ));
     let _ = fs::remove_dir_all(&base);
     fs::create_dir_all(base.join(".craft")).unwrap();
     // Without Windows' verbatim prefix, as a host names the directory.
@@ -87,7 +94,7 @@ fn upgraded() -> Upgraded {
     let home = root.with_extension("home");
     let _ = fs::remove_dir_all(&home);
     fs::create_dir_all(home.join(".config/craft")).unwrap();
-    let fixture = fixture();
+    let fixture = fixture(release);
     fs::copy(
         fixture.join("preferences.json"),
         home.join(".config/craft/preferences.json"),
@@ -187,11 +194,20 @@ fn reasons(root: &Path, from: usize) -> Vec<String> {
 }
 
 #[test]
-fn a_session_left_by_the_previous_release_continues_on_this_build() {
-    let at = upgraded();
+fn a_session_left_by_0_0_6_continues_on_this_build() {
+    continues("0.0.6");
+}
+
+#[test]
+fn a_session_left_by_0_0_7_continues_on_this_build() {
+    continues("0.0.7");
+}
+
+fn continues(release: &str) {
+    let at = upgraded(release);
     let checkpoint: Value = serde_json::from_str(
         &fs::read_to_string(
-            fixture().join("state/sessions/99594efaa02c66347cbe7abf/checkpoint.json"),
+            fixture(release).join("state/sessions/99594efaa02c66347cbe7abf/checkpoint.json"),
         )
         .unwrap(),
     )
@@ -247,6 +263,13 @@ fn a_session_left_by_the_previous_release_continues_on_this_build() {
         resumed.contains(r#""tests":{"status":"passed""#),
         "{resumed}"
     );
+    // A handoff saved with `checkpoint-save` comes back with it.
+    if let Some(continuation) = checkpoint.get("continuation") {
+        assert!(
+            resumed.contains(&format!(r#""continuation":{continuation}"#)),
+            "{resumed}"
+        );
+    }
     // The turn end continues the earlier summary record and does not raise again the stop
     // review the previous release already delivered.
     let ended = answer("turn-end", "craft-delivery");

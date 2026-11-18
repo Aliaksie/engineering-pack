@@ -9,8 +9,9 @@ commit-stage check.
 
 `node tests/fixtures/skew/capture.mjs <released-craft-binary> <new-directory>` records it:
 an isolated `HOME`, a repository committed with a fixed author and date (the replay recreates
-the same commit), then the hook sequence. Copy `home/.config/craft/preferences.json`,
-`project/.craft/project.json` and `project/.craft/state` without lock files.
+the same commit), then the hook sequence; it stops on any command that exits non-zero. Copy
+`home/.config/craft/preferences.json`, `project/.craft/project.json` and `project/.craft/state`
+without lock files.
 
 State formats are compatibility contracts: a replay failure is a regression to fix in the
 reader, not a reason to recapture.
@@ -18,3 +19,4 @@ reader, not a reason to recapture.
 | Fixture | Binary |
 |---|---|
 | `0.0.6/` | `v0.0.6` release asset, `aarch64-apple-darwin` |
+| `0.0.7/` | `v0.0.7` release asset, `aarch64-apple-darwin`; also an explicit `checkpoint-save` handoff |

@@ -20,12 +20,13 @@ fs.mkdirSync(path.join(project, 'src'));
 const { CRAFT_ORGANIZATION_CONFIG, CRAFT_PACKAGE_ROOT, ...inherited } = process.env;
 const env = { ...inherited, HOME: home, USERPROFILE: home, GIT_CONFIG_NOSYSTEM: '1',
   GIT_AUTHOR_DATE: '2026-11-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-11-01T00:00:00Z' };
-const run = (command, args, input) => spawnSync(command, args, { cwd: project, env, input, encoding: 'utf8' });
-const git = (...args) => {
-  const result = run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false',
-    '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', ...args]);
-  if (result.status !== 0) throw new Error(result.stderr);
+const run = (command, args, input) => {
+  const result = spawnSync(command, args, { cwd: project, env, input, encoding: 'utf8' });
+  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')}: ${result.stderr || result.stdout}`);
+  return result;
 };
+const git = (...args) => run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false',
+  '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', ...args]);
 
 fs.writeFileSync(path.join(home, '.config/craft/preferences.json'),
   JSON.stringify({ formatVersion: 1, routing: { sessionSummary: true, debtMarkers: true }, safety: { enabled: true } }));
@@ -61,7 +62,11 @@ hook('after-tool', { tool_name: 'Edit', tool_input: { file_path: file }, tool_re
 hook('before-tool', { tool_name: 'Bash', tool_input: { command: 'cargo test' } });
 hook('after-tool', { tool_name: 'Bash', tool_input: { command: 'cargo test' },
   tool_response: { stdout: 'running 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored\n', stderr: '' } });
-run(binary, ['checkpoint-save', '--root', project, '--session', session, '--summary', 'second function']);
+const handoff = path.join(out, 'handoff.json');
+fs.writeFileSync(handoff, JSON.stringify({ task: 'second function', continuation: {
+  goal: 'Add b to src/lib.rs', currentState: 'b added', completed: 'b', approach: 'edit', evidence: 'cargo test',
+  filesChanged: 'src/lib.rs', validation: 'cargo test passed', remainingWork: 'finish b', blockers: '', nextStep: 'finish b' } }));
+run(binary, ['checkpoint-save', '--root', project, '--session', session, '--data', handoff]);
 run(binary, ['check', '--root', project, '--stage', 'commit', '--session', session]);
 hook('before-compact', { trigger: 'auto' });
 hook('after-compact', { source: 'compact' });
