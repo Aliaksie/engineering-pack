@@ -412,6 +412,53 @@ fn a_recursive_delete_strictly_below_a_temporary_directory_is_allowed() {
 }
 
 #[test]
+fn a_delete_of_a_variable_target_is_refused_with_the_literal_paths_that_pass() {
+    let roots = [ROOT.to_string()];
+    let temp = ["/private/tmp".to_string()];
+    let place = at(&roots, ROOT, &temp);
+    let scratch = "/private/tmp/claude-501/session/scratchpad";
+    // The host's scratch directory written out passes.
+    assert_eq!(
+        judged(&on(), &place, &format!("rm -rf {scratch}/clone")),
+        None
+    );
+    for (command, target) in [
+        ("rm -rf \"$SCRATCH/clone\"", "$SCRATCH/clone"),
+        ("rm -rf ${SCRATCH}/clone build", "${SCRATCH}/clone"),
+        ("rm -rf \"$(mktemp -d)\"", "$(mktemp -d)"),
+        ("find \"$SCRATCH\" -name '*.o' -delete", "$SCRATCH"),
+        (
+            &format!("SCRATCH={scratch}; rm -rf \"$SCRATCH/clone\""),
+            "$SCRATCH/clone",
+        ),
+    ] {
+        let decision = decision(&on(), &place, command);
+        assert_eq!(decision["rule"], "delete-outside-project", "{command}");
+        let reason = decision["reason"].as_str().expect("reason");
+        assert!(
+            reason.contains(&format!("`{target}`")),
+            "{command}: {reason}"
+        );
+        assert!(reason.contains("does not expand"), "{reason}");
+        assert!(reason.contains("temporary directory"), "{reason}");
+    }
+    // A target outside the project keeps the rule's own wording, before any variable.
+    let outside = decision(&on(), &place, "rm -rf \"$SCRATCH/clone\" /srv");
+    assert_eq!(outside["rule"], "delete-outside-project");
+    assert!(
+        !outside["reason"]
+            .as_str()
+            .unwrap()
+            .contains("does not expand")
+    );
+    let home = decision(&on(), &place, "rm -rf ~/cache");
+    assert!(!home["reason"].as_str().unwrap().contains("does not expand"));
+    // Turning the rule off covers its variable case too.
+    let off = json!({"safety": {"enabled": true, "disables": ["delete-outside-project"]}});
+    assert_eq!(judged(&off, &place, "rm -rf \"$SCRATCH/clone\""), None);
+}
+
+#[test]
 fn the_project_root_is_recognized_under_each_of_its_spellings() {
     let roots = ["/tmp/shop".to_string(), "/private/tmp/shop".to_string()];
     let place = at(&roots, "/private/tmp/shop", &[]);

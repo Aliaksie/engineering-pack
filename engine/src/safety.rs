@@ -353,6 +353,8 @@ enum Target {
     /// The project root, all of its content or its Git directory.
     Root,
     Outside,
+    /// A variable or substitution, which is not expanded here.
+    Unexpanded,
 }
 
 /// A Windows drive segment such as `C:`.
@@ -377,8 +379,11 @@ fn everything(segment: &str) -> bool {
 }
 
 fn target(place: &Place, word: &str) -> Target {
-    if word.starts_with('~') || word.contains('$') || word.contains('`') {
+    if word.starts_with('~') {
         return Target::Outside;
+    }
+    if word.contains('$') || word.contains('`') {
+        return Target::Unexpanded;
     }
     // A Windows drive or network path, with either separator; a bare drive (`D:`, `D:x`)
     // means that drive's own working directory, which is not known here.
@@ -428,9 +433,28 @@ fn recursive(word: &str) -> bool {
     word == "--recursive" || short(word, 'r') || short(word, 'R')
 }
 
+/// A built-in rule a command breaks and, for a delete refused only for a target the policy
+/// cannot expand, that target as written.
+type Broken = (&'static str, Option<String>);
+
+/// The refusal for delete targets judged at `places`: outside the project or read from
+/// `input` first, then a target holding a variable, then the project root unless `narrowed`.
+fn verdict(places: &[(Target, &str)], input: bool, narrowed: bool) -> Option<Broken> {
+    let found = |kind: Target| places.iter().find(|(place, _)| *place == kind);
+    if input || found(Target::Outside).is_some() {
+        Some(("delete-outside-project", None))
+    } else if let Some((_, word)) = found(Target::Unexpanded) {
+        Some(("delete-outside-project", Some((*word).to_string())))
+    } else if found(Target::Root).is_some() && !narrowed {
+        Some(("delete-project-root", None))
+    } else {
+        None
+    }
+}
+
 /// A recursive `rm` judged by its targets; `input` adds targets read from standard input,
 /// which are not known here.
-fn delete(args: &[String], place: &Place, input: bool) -> Option<&'static str> {
+fn delete(args: &[String], place: &Place, input: bool) -> Option<Broken> {
     let mut recursive = false;
     let mut targets = Vec::new();
     let mut options = true;
@@ -446,14 +470,8 @@ fn delete(args: &[String], place: &Place, input: bool) -> Option<&'static str> {
     if !recursive {
         return None;
     }
-    let places: Vec<Target> = targets.iter().map(|t| target(place, t)).collect();
-    if input || places.contains(&Target::Outside) {
-        Some("delete-outside-project")
-    } else if places.contains(&Target::Root) {
-        Some("delete-project-root")
-    } else {
-        None
-    }
+    let places: Vec<(Target, &str)> = targets.iter().map(|t| (target(place, t), *t)).collect();
+    verdict(&places, input, false)
 }
 
 fn git(args: &[String]) -> Option<&'static str> {
@@ -526,7 +544,7 @@ fn system(executable: &str, args: &[String]) -> bool {
 }
 
 /// The command `xargs` runs, with the targets it appends from standard input.
-fn xargs(args: &[String], place: &Place) -> Option<&'static str> {
+fn xargs(args: &[String], place: &Place) -> Option<Broken> {
     let mut index = 0;
     while let Some(word) = args.get(index).filter(|word| word.starts_with('-')) {
         index += if XARGS_VALUE_OPTIONS.contains(&word.as_str()) {
@@ -544,7 +562,7 @@ fn xargs(args: &[String], place: &Place) -> Option<&'static str> {
 
 /// `find … -delete`, or `-exec rm -r`, judged by the places the search starts from: one
 /// outside the project, or the project root with nothing narrowing what is matched.
-fn find(args: &[String], place: &Place) -> Option<&'static str> {
+fn find(args: &[String], place: &Place) -> Option<Broken> {
     let mut index = 0;
     while let Some(word) = args.get(index) {
         match word.as_str() {
@@ -588,26 +606,23 @@ fn find(args: &[String], place: &Place) -> Option<&'static str> {
         .iter()
         .any(|word| FIND_TESTS.contains(&word.as_str()));
     let starts = if starts.is_empty() { vec!["."] } else { starts };
-    let places: Vec<Target> = starts.iter().map(|start| target(place, start)).collect();
-    if places.contains(&Target::Outside) {
-        Some("delete-outside-project")
-    } else if places.contains(&Target::Root) && !narrowed {
-        Some("delete-project-root")
-    } else {
-        None
-    }
+    let places: Vec<(Target, &str)> = starts
+        .iter()
+        .map(|start| (target(place, start), *start))
+        .collect();
+    verdict(&places, false, narrowed)
 }
 
 /// The built-in rule one command segment breaks, if any.
-fn builtin(words: &[String], place: &Place) -> Option<&'static str> {
+fn builtin(words: &[String], place: &Place) -> Option<Broken> {
     let (executable, args) = words.split_first()?;
     let executable = basename(executable);
     match executable {
         "rm" => delete(args, place, false),
         "xargs" => xargs(args, place),
         "find" => find(args, place),
-        "git" => git(args),
-        _ => system(executable, args).then_some("system-administration"),
+        "git" => git(args).map(|id| (id, None)),
+        _ => system(executable, args).then_some(("system-administration", None)),
     }
 }
 
@@ -632,7 +647,22 @@ const ASK_SECRET: Template = Template {
     source: include_str!("../text/safety/ask-secret.txt"),
 };
 
-pub(crate) const TEMPLATES: [&Template; 3] = [&REFUSE_COMMAND, &REFUSE_SECRET, &ASK_SECRET];
+/// Why a recursive delete of a target holding a variable is refused, said to the model.
+const REFUSE_UNEXPANDED: Template = Template {
+    id: "safety.refuse-unexpanded",
+    slots: &["rule", "target"],
+    source: include_str!("../text/safety/refuse-unexpanded.txt"),
+};
+
+pub(crate) const TEMPLATES: [&Template; 4] = [
+    &REFUSE_COMMAND,
+    &REFUSE_UNEXPANDED,
+    &REFUSE_SECRET,
+    &ASK_SECRET,
+];
+
+/// The most characters of a delete target repeated in a refusal.
+const MAX_TARGET: usize = 120;
 
 /// A refusal of `rule`. A secret read also carries `ask`: the words shown to the user
 /// where the host can hand the call to them instead of refusing it.
@@ -651,6 +681,17 @@ fn refusal(rule: &str, refuses: &str, secret: Option<&str>) -> Value {
         "file": file,
         "reason": REFUSE_SECRET.render(&values),
         "ask": ASK_SECRET.render(&values),
+    })
+}
+
+/// The refusal of a recursive delete whose `target` holds a variable or substitution: it
+/// names the target and the literal paths that pass instead.
+fn unexpanded_refusal(rule: &str, target: &str) -> Value {
+    let target: String = target.chars().take(MAX_TARGET).collect();
+    json!({
+        "decision": "deny",
+        "rule": rule,
+        "reason": REFUSE_UNEXPANDED.render(&[("rule", rule), ("target", &target)]),
     })
 }
 
@@ -679,27 +720,26 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
         return json!({"decision": "allow"});
     }
     let secrets_on = !disabled(settings, SECRET_RULE);
-    let mut broken: Option<(String, String, Option<String>)> = None;
+    let mut broken: Option<Value> = None;
     let too_deep = walk(shell, &mut |words| {
         let words = command(words);
-        if let Some(id) = builtin(words, place).filter(|id| !disabled(settings, id)) {
-            let refuses = RULES
-                .iter()
-                .find(|(known, _)| *known == id)
-                .map(|(_, r)| *r);
-            broken = Some((
-                id.to_string(),
-                refuses.unwrap_or_default().to_string(),
-                None,
-            ));
+        if let Some((id, unexpanded)) =
+            builtin(words, place).filter(|(id, _)| !disabled(settings, id))
+        {
+            broken = Some(match unexpanded {
+                Some(target) => unexpanded_refusal(id, &target),
+                None => {
+                    let refuses = RULES
+                        .iter()
+                        .find(|(known, _)| *known == id)
+                        .map(|(_, r)| *r);
+                    refusal(id, refuses.unwrap_or_default(), None)
+                }
+            });
             return true;
         }
         if let Some(file) = secrets::shell_read(words).filter(|_| secrets_on) {
-            broken = Some((
-                SECRET_RULE.to_string(),
-                String::new(),
-                Some(file.to_string()),
-            ));
+            broken = Some(refusal(SECRET_RULE, "", Some(file)));
             return true;
         }
         for rule in project_rules(settings) {
@@ -716,18 +756,15 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
                     || format!("commands starting with `{}`", prefix.join(" ")),
                     str::to_owned,
                 );
-                broken = Some((
-                    rule["id"].as_str().unwrap_or_default().to_string(),
-                    refuses,
-                    None,
-                ));
+                let id = rule["id"].as_str().unwrap_or_default();
+                broken = Some(refusal(id, &refuses, None));
                 return true;
             }
         }
         false
     });
     match broken {
-        Some((rule, refuses, file)) => refusal(&rule, &refuses, file.as_deref()),
+        Some(refused) => refused,
         None if too_deep => refusal(UNREADABLE.0, UNREADABLE.1, None),
         None => json!({"decision": "allow"}),
     }
