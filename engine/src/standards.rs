@@ -9,6 +9,10 @@ use crate::safety::secrets::secret_file;
 use crate::values::object;
 use serde_json::{Map, Value, json};
 
+pub mod change;
+
+pub use change::Change;
+
 type Result<T = ()> = std::result::Result<T, String>;
 
 pub const LEVELS: &[&str] = &["advise", "check", "review"];
@@ -135,6 +139,7 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
                 "scope",
                 "run",
                 "checklist",
+                "when",
                 "disabled",
             ],
             "standard",
@@ -229,6 +234,15 @@ pub fn validate(standards: &Value, modules: &[&str], intents: &[&str]) -> Result
                 ));
             }
         }
+        let when = names(standard.get("when"), "when")?;
+        for (index, fact) in when.iter().enumerate() {
+            if !change::FACTS.contains(fact) || when[..index].contains(fact) {
+                return Err(format!(
+                    "standard {id} when takes distinct facts among {}",
+                    change::FACTS.join(", ")
+                ));
+            }
+        }
         match level {
             Some("check") if !standard.contains_key("run") && !standard.contains_key("anchor") => {
                 return Err(format!(
@@ -261,10 +275,15 @@ pub fn validate_anchors(settings: &Value) -> Result {
         }
     };
     for standard in declared(settings) {
+        let id = standard["id"].as_str().unwrap_or_default();
+        if standard.get("when").is_some() && level(settings, standard) != "review" {
+            return Err(format!(
+                "standard {id}: when applies only to a review standard"
+            ));
+        }
         let Some(name) = standard["anchor"].as_str() else {
             continue;
         };
-        let id = standard["id"].as_str().unwrap_or_default();
         let anchor = offered(name, &format!("standard {id}"))?;
         if standard["level"] == "check" && anchor.check.is_none() && standard.get("run").is_none() {
             return Err(format!(
@@ -442,8 +461,15 @@ pub fn select(settings: &Value, work: &Work) -> Vec<Value> {
 }
 
 /// The declared `review` standards a change falls under, as a route shows them: what the
-/// stop summary asks to be checked before the work is reported done.
-pub fn reviewed(settings: &Value, intent: &str, scope: &crate::routing::Scope) -> Vec<Value> {
+/// stop summary asks to be checked before the work is reported done. A standard with `when`
+/// is listed only when one changed file in its scope holds one of those facts; `facts` gives
+/// each changed file's.
+pub fn reviewed(
+    settings: &Value,
+    intent: &str,
+    scope: &crate::routing::Scope,
+    facts: &[(String, Vec<&str>)],
+) -> Vec<Value> {
     let work = Work {
         intent,
         files: &scope.files,
@@ -451,12 +477,48 @@ pub fn reviewed(settings: &Value, intent: &str, scope: &crate::routing::Scope) -
         languages: &scope.languages,
         layers: &scope.layers,
     };
+    let holds = |standard: &Value| {
+        let Some(when) = standard["when"].as_array() else {
+            return true;
+        };
+        facts.iter().any(|(file, held)| {
+            held.iter().any(|fact| when.iter().any(|w| w == fact))
+                && crate::routing::scope(settings, &[json!(file)]).is_ok_and(|one| {
+                    matches(
+                        settings,
+                        standard,
+                        &Work {
+                            intent,
+                            files: &one.files,
+                            modules: &one.modules,
+                            languages: &one.languages,
+                            layers: &one.layers,
+                        },
+                    )
+                })
+        })
+    };
     declared(settings)
         .iter()
         .filter(|standard| level(settings, standard) == "review")
         .filter(|standard| matches(settings, standard, &work))
+        .filter(|standard| holds(standard))
         .map(|standard| shown(settings, standard))
         .collect()
+}
+
+/// The facts the declared `review` standards' `when` conditions name, so a stop computes
+/// only those.
+pub fn conditions(settings: &Value) -> Vec<&str> {
+    let mut named: Vec<&str> = declared(settings)
+        .iter()
+        .filter(|standard| level(settings, standard) == "review")
+        .flat_map(|standard| standard["when"].as_array().into_iter().flatten())
+        .filter_map(Value::as_str)
+        .collect();
+    named.sort_unstable();
+    named.dedup();
+    named
 }
 
 /// The standards a delegated task's owned scope falls under, for its worker brief: the task's

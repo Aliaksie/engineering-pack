@@ -92,6 +92,7 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
 | `standards[].checklist` | array of string |  | Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`. |
+| `standards[].when` | array of `behavior`, `structure`, `prose` |  | For a `review` standard: the stop review lists it only when a changed file in its scope holds one of these facts. behavior: a line other than a comment or blank line changed in a file that is not a test. structure: an import of another declared module, a new top-level folder, or a new file in a language its module does not declare. prose: a comment or document line added, or a file in a commit the session made. Absent: listed whenever the scope matches. |
 | `standards[].disabled` | boolean | `false` | With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so. |
 
 ## `anchors`

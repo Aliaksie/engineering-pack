@@ -74,6 +74,18 @@ fn declarations_are_validated_before_anything_routes_them() {
             "non-empty scope lists",
         ),
         (json!([{"id": "X", "file": "a.md"}]), "kebab ids"),
+        (
+            json!([{"id": "x", "checklist": ["a"], "when": ["visible"]}]),
+            "known when facts",
+        ),
+        (
+            json!([{"id": "x", "checklist": ["a"], "when": ["prose", "prose"]}]),
+            "distinct when facts",
+        ),
+        (
+            json!([{"id": "x", "checklist": ["a"], "when": []}]),
+            "a non-empty when",
+        ),
     ] {
         assert!(validate(&bad, &modules, INTENTS).is_err(), "{why}");
     }
@@ -576,4 +588,59 @@ fn a_resumed_task_keeps_only_the_checked_and_reviewed_standards_of_its_scope() {
         vec!["commits", "ui-check"]
     );
     assert!(pinned(&project, None, &[], None).is_empty());
+}
+
+#[test]
+fn when_belongs_to_a_review_standard() {
+    let declared = |standard: Value| {
+        validate(&json!([standard.clone()]), &[], INTENTS)?;
+        validate_anchors(&settings(json!([standard])))
+    };
+    assert_eq!(
+        declared(json!({"id": "x", "checklist": ["a"], "when": ["behavior", "prose"]})),
+        Ok(())
+    );
+    for advised in [
+        json!({"id": "x", "file": "a.md", "when": ["prose"]}),
+        json!({"id": "x", "run": {"command": "lint"}, "when": ["prose"]}),
+        json!({"id": "x", "checklist": ["a"], "level": "advise", "when": ["prose"]}),
+    ] {
+        assert!(declared(advised.clone()).is_err(), "{advised}");
+    }
+}
+
+/// A conditional item is listed only when a changed file in its own scope holds one of its
+/// facts: the fact in a file outside the scope does not count.
+#[test]
+fn a_conditional_review_item_needs_its_fact_in_its_scope() {
+    let project = settings(json!([
+        {"id": "always", "checklist": ["a"]},
+        {"id": "changelog", "checklist": ["b"], "scope": {"paths": ["services"]}, "when": ["behavior"]},
+        {"id": "text", "checklist": ["c"], "when": ["prose", "structure"]}
+    ]));
+    let reviewed = |facts: &[(&str, &[&str])]| -> Vec<String> {
+        let files: Vec<Value> = facts.iter().map(|(file, _)| json!(file)).collect();
+        let scope = crate::routing::scope(&project, &files).unwrap();
+        let facts: Vec<(String, Vec<&str>)> = facts
+            .iter()
+            .map(|(file, held)| ((*file).to_owned(), held.to_vec()))
+            .collect();
+        reviewed(&project, "implement", &scope, &facts)
+            .iter()
+            .map(|standard| standard["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert_eq!(reviewed(&[("services/orders/a.rs", &[])]), vec!["always"]);
+    assert_eq!(
+        reviewed(&[
+            ("services/orders/a_test.rs", &[]),
+            ("docs/guide.md", &["behavior", "prose"])
+        ]),
+        vec!["always", "text"],
+        "behavior outside the changelog scope"
+    );
+    assert_eq!(
+        reviewed(&[("services/orders/a.rs", &["behavior", "structure"])]),
+        vec!["always", "changelog", "text"]
+    );
 }

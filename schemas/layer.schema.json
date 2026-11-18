@@ -493,6 +493,19 @@
               "description": "One item, one line."
             }
           },
+          "when": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "description": "For a `review` standard: the stop review lists it only when a changed file in its scope holds one of these facts. behavior: a line other than a comment or blank line changed in a file that is not a test. structure: an import of another declared module, a new top-level folder, or a new file in a language its module does not declare. prose: a comment or document line added, or a file in a commit the session made. Absent: listed whenever the scope matches.",
+            "items": {
+              "enum": [
+                "behavior",
+                "structure",
+                "prose"
+              ]
+            }
+          },
           "disabled": {
             "type": "boolean",
             "default": false,

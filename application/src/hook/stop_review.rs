@@ -371,9 +371,13 @@ pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), F
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
-/// Debt markers `file`, named from its checkout's directory, adds against the commit `base`;
-/// an untracked file adds every line.
-fn markers(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Vec<Value> {
+/// Lines a change adds, each with its line in the new file, and lines it removes.
+type Lines = (Vec<(usize, String)>, Vec<String>);
+
+/// The lines `file`, named within its checkout at `root`, adds and removes against `base`:
+/// every line of an untracked file; `None` when the diff is too large or there is no commit
+/// to compare with.
+fn lines(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Option<Lines> {
     let diff = tracked
         .then(|| {
             craft_platform::process::git(
@@ -392,20 +396,39 @@ fn markers(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> 
             )
         })
         .map(|output| output.ok().flatten());
-    let (added, removed) = match diff {
-        Some(Some(diff)) => debt::changes(&String::from_utf8_lossy(&diff)),
-        // Too large to compare, or no commit to compare with: unchecked.
-        Some(None) => return Vec::new(),
-        None => (
+    match diff {
+        Some(Some(diff)) => Some(debt::changes(&String::from_utf8_lossy(&diff))),
+        // Too large to compare, or no commit to compare with: unknown.
+        Some(None) => None,
+        None => Some((
             String::from_utf8_lossy(bytes)
                 .lines()
                 .enumerate()
                 .map(|(index, line)| (index + 1, line.to_owned()))
                 .collect(),
             Vec::new(),
-        ),
-    };
-    debt::markers(&added, &removed)
+        )),
+    }
+}
+
+/// What `base` held of `file`, named within its checkout at `root`: `Ok(None)` when it held no
+/// such file, `Err` when it cannot be read or compared.
+fn earlier(root: &Path, file: &str, tracked: bool, base: &str) -> Result<Option<Vec<u8>>, ()> {
+    if !tracked {
+        return Ok(None);
+    }
+    craft_platform::process::git(root, &["show", &format!("{base}:./{file}")], DIFF_BYTES)
+        .map_err(|_| ())
+}
+
+/// Whether `base` lacks the top-level folder of `file`, named within its checkout at `root`.
+fn new_folder(root: &Path, file: &str, base: &str) -> bool {
+    file.split_once('/').is_some_and(|(top, _)| {
+        matches!(
+            craft_platform::process::git(root, &["cat-file", "-e", &format!("{base}:{top}")], 1024),
+            Ok(None)
+        )
+    })
 }
 
 /// Files the session was told findings for that the stop does not review because they no
@@ -483,6 +506,9 @@ pub fn stop(
     // Markers are new against the commit the last stop saw, whether or not they were
     // committed since; without one (an older record, no commit yet), against `HEAD`.
     let mut landed: Vec<Dirty> = Vec::new();
+    // Every file the session committed since its last stop, including one edited again
+    // since: it is dirty, so not in `landed`, and still in a commit the session made.
+    let mut committed_files: Vec<String> = Vec::new();
     let mut bases: Vec<&str> = vec!["HEAD"; checkouts.len()];
     for (index, checkout) in checkouts.iter().enumerate() {
         let (Some(base), Some(current)) = (seen(&record, checkout), heads[index].as_deref()) else {
@@ -493,12 +519,18 @@ pub fn stop(
         }
         let room = MAX_FILES.saturating_sub(files.len() + landed.len());
         let before = landed.len();
-        landed.extend(
+        let from = committed_files.len();
+        committed_files.extend(
             committed(&checkout.directory, base, current, &own)
                 .into_iter()
-                .map(|file| format!("{}{file}", checkout.folder))
-                .filter(|file| !files.iter().any(|dirty| dirty.file == *file))
+                .map(|file| format!("{}{file}", checkout.folder)),
+        );
+        landed.extend(
+            committed_files[from..]
+                .iter()
+                .filter(|file| !files.iter().any(|dirty| dirty.file == **file))
                 .take(room)
+                .cloned()
                 .filter_map(|file| {
                     let bytes = bytes(root, &file)?;
                     let digest = hash(&bytes);
@@ -532,7 +564,10 @@ pub fn stop(
     let mut checked = settled(root, settings, &told, &reviewed);
     if !changed.is_empty() {
         let mut findings = Vec::new();
+        let mut facts: Vec<(String, Vec<&str>)> = Vec::new();
         let markers_on = standards::debt_markers(settings);
+        let conditions = standards::conditions(settings);
+        let wants = |fact: &str| conditions.contains(&fact);
         for Dirty {
             checkout,
             file,
@@ -541,6 +576,36 @@ pub fn stop(
             ..
         } in changed.iter().copied()
         {
+            let within = &checkouts[*checkout];
+            let inside = file.strip_prefix(&*within.folder).unwrap_or(file);
+            let base = bases[*checkout];
+            let diff = (markers_on || wants("behavior") || wants("prose"))
+                .then(|| lines(&within.directory, inside, *tracked, bytes, base))
+                .flatten();
+            if !conditions.is_empty() {
+                let (created, imports) = if wants("structure") {
+                    match earlier(&within.directory, inside, *tracked, base) {
+                        Ok(old) => (
+                            old.is_none(),
+                            crate::dependencies::added(root, settings, file, bytes, old.as_deref()),
+                        ),
+                        Err(()) => (false, Vec::new()),
+                    }
+                } else {
+                    (false, Vec::new())
+                };
+                let change = standards::Change {
+                    file,
+                    lines: diff
+                        .as_ref()
+                        .map(|(added, removed)| (&added[..], &removed[..])),
+                    created,
+                    new_folder: created && new_folder(&within.directory, inside, base),
+                    imports: &imports,
+                    committed: committed_files.contains(file),
+                };
+                facts.push((file.clone(), standards::change::facts(settings, &change)));
+            }
             let from = findings.len();
             for verdict in crate::dependencies::verdicts(root, settings, file, bytes) {
                 for finding in verdict["findings"].as_array().into_iter().flatten() {
@@ -550,11 +615,8 @@ pub fn stop(
                     findings.push(finding);
                 }
             }
-            if markers_on {
-                let within = &checkouts[*checkout];
-                let inside = file.strip_prefix(&*within.folder).unwrap_or(file);
-                let base = bases[*checkout];
-                for mut finding in markers(&within.directory, inside, *tracked, bytes, base) {
+            if markers_on && let Some((added, removed)) = &diff {
+                for mut finding in debt::markers(added, removed) {
                     finding["file"] = json!(file);
                     findings.push(finding);
                 }
@@ -619,7 +681,9 @@ pub fn stop(
         }
         let paths: Vec<Value> = changed.iter().map(|dirty| json!(dirty.file)).collect();
         let review = routing::scope(settings, &paths)
-            .map(|scope| standards::reviewed(settings, intent.unwrap_or("implement"), &scope))
+            .map(|scope| {
+                standards::reviewed(settings, intent.unwrap_or("implement"), &scope, &facts)
+            })
             .unwrap_or_default();
         if let Some(stop) = debt::stop(&findings, &review, &delivered) {
             next["delivered"] = json!(debt::delivered(&delivered, &stop.keys));

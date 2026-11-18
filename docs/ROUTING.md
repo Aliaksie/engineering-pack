@@ -195,7 +195,14 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
   than the change removed. Text inside a string literal or a Markdown code span on the same
   line is not a marker. Commented-out code is not detected;
 - the declared `review` standards whose scope the changed files fall under, with their
-  checklist.
+  checklist. A standard with `when` is listed only when a changed file in its scope holds one
+  of the named facts, read from the lines the change adds and removes against the stop's
+  base: `behavior` (a line other than a comment or blank line in a file that is not a test,
+  by its folder or name; a comment is read in the file's language, so `#[derive]` in Rust or
+  `*p = 1;` in C is code, and in a language Craft does not know no line is a comment), `structure` (an import resolved into another declared module, a
+  new top-level folder, a new file in a language its module does not declare) or `prose` (an
+  added comment line or document line, or a file in a commit the session made). A change
+  too large to compare holds `behavior` and `prose`.
 
 Only files whose content changed since the session started, or since the previous stop, are
 reviewed, whichever tool wrote them: uncommitted changes, and files in commits made since
