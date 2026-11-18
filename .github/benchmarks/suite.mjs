@@ -2,6 +2,8 @@
 // per supported language, extraction and one structural lookup over a generated fixture.
 // Hooks run in three layers: the native binary, the package launcher, and the registered hook
 // command under the shell hosts use. Writes raw Hyperfine JSON, checked outputs and Bencher Metric Format results.
+// With --check-only, nothing is timed: the fixtures are built and only the correctness checks run,
+// so a pull request learns in seconds that a hook no longer answers what the timings assume.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,9 +15,11 @@ import { consumer, directoryBytes, git, gitBash, measurer, quote, run, slash, ve
 import { LANGUAGES, PROBE, languageFixture } from './languages.mjs';
 import { peakMemory } from './peak-memory.mjs';
 
-const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH]';
+const usage = 'usage: suite.mjs --export CLAUDE_EXPORT --fixture SOURCE_CHECKOUT --output NEW_DIRECTORY [--runs 30] [--cold-runs 10] [--hyperfine PATH] [--bash PATH] [--check-only]';
 const options = { runs: '30', 'cold-runs': '10', hyperfine: 'hyperfine' };
+let checkOnly = false;
 for (let i = 2; i < process.argv.length; i += 2) {
+  if (process.argv[i] === '--check-only') { checkOnly = true; i -= 1; continue; }
   const key = process.argv[i]?.replace(/^--/, '');
   if (!['export', 'fixture', 'output', 'runs', 'cold-runs', 'hyperfine', 'bash'].includes(key) || process.argv[i + 1] === undefined) throw new Error(usage);
   options[key] = process.argv[i + 1];
@@ -62,8 +66,8 @@ fs.cpSync(path.join(root, '.craft'), seed, { recursive: true });
 const restore = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), seed, path.join(root, '.craft')]);
 
 // Standards fixture: the consumer with declared standards and debt markers, one caller of
-// `item42`, a started session, a routed change, a warm index and an uncommitted edit that adds
-// a debt marker. Each cell is a hook the session then fires; its check says the feature
+// `item42`, a started session, a routed change, a warm index and an uncommitted edit, made by
+// an Edit tool call, that adds a debt marker. Each cell is a hook the session then fires; its check says the feature
 // answered. A held stop is `decision: block`, or on Claude feedback context that continues
 // the turn.
 const standards = consumer(path.join(workspace, 'standards')), standardsSeed = path.join(workspace, 'standards-seed');
@@ -92,7 +96,13 @@ for (const step of SESSION) step.file = payload(standards, step.cell, typeof ste
 run(native, hookArguments('session-start').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(SESSION[0].file) });
 run(native, hookArguments('before-prompt').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'standards-prompt', HOOKS[0].payload)) });
 run(native, ['project-evidence', 'refresh', '--enable', '--root', slash(standards), '--json'], { env: standardsEnv });
+// The edit happens inside an Edit tool call, as on Claude: a stop counts an uncommitted file
+// only when the session's tool calls were running as it was written.
+const edited = slash(path.join(standards, 'src/item-0.mjs'));
+const editCall = { tool_name: 'Edit', tool_input: { file_path: edited, old_string: '', new_string: '// TODO: reject negative values\n' }, tool_use_id: 'toolu_setup_edit' };
+run(native, hookArguments('before-tool').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'setup-edit-before', { hook_event_name: 'PreToolUse', ...editCall })) });
 fs.appendFileSync(path.join(standards, 'src/item-0.mjs'), '// TODO: reject negative values\n');
+run(native, hookArguments('after-tool').split(' '), { cwd: standards, env: standardsEnv, input: fs.readFileSync(payload(standards, 'setup-edit-after', { hook_event_name: 'PostToolUse', ...editCall, tool_response: { filePath: edited } })) });
 fs.cpSync(path.join(standards, '.craft'), standardsSeed, { recursive: true });
 const restoreStandards = () => run(process.execPath, [path.join(benchmarks, 'reset-state.mjs'), standardsSeed, path.join(standards, '.craft')]);
 
@@ -114,7 +124,7 @@ const languages = Object.fromEntries(Object.entries(LANGUAGES).map(([language, {
     phasesMs: refreshed.phasesMs, wallTimeMs: refreshed.wallTimeMs }];
 }));
 
-const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--version']),
+const results = { formatVersion: 1, checkOnly, hyperfine: checkOnly ? null : version(options.hyperfine, ['--version']),
   platform: { os: process.platform, arch: process.arch, release: os.release(), cpu: os.cpus()[0]?.model ?? null, logicalCpus: os.cpus().length,
     memoryBytes: os.totalmem(), runner: Object.fromEntries(['RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT']
       .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]])) },
@@ -128,7 +138,7 @@ const results = { formatVersion: 1, hyperfine: version(options.hyperfine, ['--ve
 const save = () => fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
 
 
-const measure = measurer({ hyperfine: options.hyperfine, output, results, save });
+const measure = checkOnly ? () => {} : measurer({ hyperfine: options.hyperfine, output, results, save });
 // Native cells whose peak memory Windows measures separately: Hyperfine records none there.
 const memoryCells = [];
 const remember = (name, cwd, args, input = null, reset = null, cellEnv = null) => memoryCells.push({ name, program: native, args, cwd, input, reset, env: cellEnv && { CRAFT_EVIDENCE_WARM: cellEnv.CRAFT_EVIDENCE_WARM } });
@@ -226,7 +236,7 @@ for (const [language, { file }] of Object.entries(LANGUAGES)) {
     || check.calledFrom?.join() !== PROBE.caller) results.failures.push(`project-intelligence/language/${language}: lookup check failed`);
 }
 // Windows peak working set, per native cell, from the same prepared state the timed runs use.
-if (windows) {
+if (windows && !checkOnly) {
   try {
     results.memory = peakMemory({ cells: memoryCells, runs: Math.min(runs, 5), reset: path.join(benchmarks, 'reset-state.mjs'), workspace, env });
     fs.writeFileSync(path.join(output, 'raw/peak-memory.json'), JSON.stringify(results.memory, null, 2) + '\n');
@@ -237,8 +247,10 @@ results.testbed = testbed(process.env.TESTBED ?? process.platform, results.platf
 fs.writeFileSync(path.join(output, 'testbed.txt'), results.testbed + '\n');
 save();
 
-const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
-fs.writeFileSync(path.join(output, 'bencher.json'), JSON.stringify(metrics, null, 2) + '\n');
+if (!checkOnly) {
+  const metrics = bencherMetrics(results, file => JSON.parse(fs.readFileSync(path.join(output, file), 'utf8')));
+  fs.writeFileSync(path.join(output, 'bencher.json'), JSON.stringify(metrics, null, 2) + '\n');
+}
 fs.rmSync(workspace, { recursive: true, force: true });
 for (const failure of results.failures) console.error(`failed: ${failure}`);
 if (results.failures.length) process.exitCode = 1;

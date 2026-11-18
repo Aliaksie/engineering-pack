@@ -86,6 +86,12 @@ jobs:
         run: npm run test:unit
       - name: Hook report
         run: npm run hooks:report -- --output .eval-results/hook-report.json
+      # The correctness checks of the performance suite, untimed: a hook that stops answering
+      # fails here, before merge; the timed suite runs after merge in its own workflow.
+      - name: Benchmark checks
+        run: |
+          node tooling/native-install.mjs dist/project-evidence dist/claude --current-target
+          node .github/benchmarks/suite.mjs --check-only --export dist/claude --fixture . --output "$RUNNER_TEMP/benchmark-checks"
       - name: Upload hook report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
