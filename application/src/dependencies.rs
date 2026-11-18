@@ -20,24 +20,41 @@ pub fn verdicts(root: &Path, settings: &Value, file: &str, bytes: &[u8]) -> Vec<
     if checks.is_empty() || !standards::guards_dependencies(settings, file) {
         return Vec::new();
     }
+    let old =
+        match craft_platform::process::git(root, &["show", &format!("HEAD:./{file}")], MAX_BYTES) {
+            // Not in `HEAD` (a new file) or no Git: every import is new.
+            Ok(old) => old,
+            // Too large to compare: unchecked rather than reported as new.
+            Err(_) => return Vec::new(),
+        };
+    let added = added(root, settings, file, bytes, old.as_deref());
+    standards::dependency_verdicts(settings, &checks, file, &added)
+}
+
+/// The imports `file`, now `bytes`, adds over its earlier content `old` (none for a new
+/// file), each resolved to a project path where it can be.
+pub fn added(
+    root: &Path,
+    settings: &Value,
+    file: &str,
+    bytes: &[u8],
+    old: Option<&[u8]>,
+) -> Vec<Import> {
     let current = imports(file, bytes);
     if current.is_empty() {
         return Vec::new();
     }
-    let base =
-        match craft_platform::process::git(root, &["show", &format!("HEAD:./{file}")], MAX_BYTES) {
-            Ok(Some(old)) => imports(file, &old)
+    let base: HashSet<String> = old
+        .map(|old| {
+            imports(file, old)
                 .into_iter()
                 .map(|(_, target, _)| target)
-                .collect(),
-            // Not in `HEAD` (a new file) or no Git: every import is new.
-            Ok(None) => HashSet::new(),
-            // Too large to compare: unchecked rather than reported as new.
-            Err(_) => return Vec::new(),
-        };
+                .collect()
+        })
+        .unwrap_or_default();
     let mut seen = HashSet::new();
     let mut manifests = None;
-    let added: Vec<Import> = current
+    current
         .into_iter()
         .filter(|(_, target, _)| !base.contains(target) && seen.insert(target.clone()))
         .take(MAX_IMPORTS)
@@ -50,8 +67,7 @@ pub fn verdicts(root: &Path, settings: &Value, file: &str, bytes: &[u8]) -> Vec<
                 resolved,
             }
         })
-        .collect();
-    standards::dependency_verdicts(settings, &checks, file, &added)
+        .collect()
 }
 
 /// `(line, target, provider)` for each module import in the source: not the names a named

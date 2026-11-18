@@ -850,6 +850,90 @@ fn a_turn_that_adds_debt_ends_with_one_summary_said_once() {
     assert!(lifecycle(root, "turn-end", json!({})).get("stop").is_none());
 }
 
+/// A review item with `when` is listed only when the change holds its condition: a session
+/// that only edits a test, with no comment, import or folder, is told none of them.
+#[test]
+fn a_stop_lists_a_conditional_review_item_only_when_the_change_holds_its_condition() {
+    let fixture = project(
+        "stop-when",
+        Some(
+            r#"{"formatVersion":1,"modules":[
+              {"name":"core","path":"src/core","languages":["typescript"],"dependsOn":[]},
+              {"name":"app","path":"src/app","languages":["typescript"],"dependsOn":["core"]}],
+            "standards":[
+              {"id":"changelog-line","checklist":["A line under Unreleased"],"scope":{"paths":["src"]},"when":["behavior"]},
+              {"id":"module-map","checklist":["The module map changes too"],"when":["structure"]},
+              {"id":"public-text","checklist":["No planning vocabulary"],"when":["prose"]}]}"#,
+        ),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    let listed = || -> Vec<String> {
+        lifecycle(root, "turn-end", json!({}))["stop"]["review"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|item| item["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    fs::create_dir_all(root.join("src/core")).unwrap();
+    fs::create_dir_all(root.join("src/app")).unwrap();
+    fs::write(root.join("src/core/order.ts"), "export class Order {}\n").unwrap();
+    fs::write(
+        root.join("src/core/order.test.ts"),
+        "import { Order } from './order'\n",
+    )
+    .unwrap();
+    fs::write(root.join("src/app/main.ts"), "export const main = 1\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "-A"]);
+    git(&["commit", "-qm", "init"]);
+    lifecycle(root, "session-start", json!({}));
+
+    // A test-only change: no behavior outside tests, no comment, no new module dependency.
+    fs::write(
+        root.join("src/core/order.test.ts"),
+        "import { Order } from './order'\nnew Order()\n",
+    )
+    .unwrap();
+    assert!(
+        lifecycle(root, "turn-end", json!({})).get("stop").is_none(),
+        "no item applies"
+    );
+
+    // A comment only: prose, and nothing a user can observe.
+    fs::write(
+        root.join("src/core/order.ts"),
+        "// An order.\nexport class Order {}\n",
+    )
+    .unwrap();
+    assert_eq!(listed(), vec!["public-text"]);
+
+    // An import of another module: behavior and structure.
+    fs::write(
+        root.join("src/app/main.ts"),
+        "import { Order } from '../core/order'\nexport const main = new Order()\n",
+    )
+    .unwrap();
+    assert_eq!(listed(), vec!["changelog-line", "module-map"]);
+}
+
 /// A model can write every file through shell commands and commit before the turn ends: no
 /// edit hook fires and the worktree is clean at the stop. The stop still reviews that work,
 /// and only that work: a commit another session or the user makes in the same checkout is not

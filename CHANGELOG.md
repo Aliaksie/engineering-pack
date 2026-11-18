@@ -5,6 +5,11 @@
 - `craft doctor` explains that Claude Code shows any refused tool call as
   `PreToolUse:<tool> hook error: <reason>`, for Craft's refusals and other hooks alike: the
   call was refused by policy, not by a failed hook.
+- A `review` standard can declare `when`: `behavior`, `structure` or `prose`. The stop review
+  then lists it only when a changed file in its scope holds one of those facts, so a
+  test-only change no longer asks for a changelog line and a change without comments or docs
+  no longer asks about its wording. A standard without `when` is listed as before. A Craft
+  build older than this one rejects a project file that uses `when`.
 
 ## 0.0.7
 
