@@ -32,7 +32,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -147,6 +148,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -256,7 +258,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -371,6 +374,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "project",
@@ -479,7 +483,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -559,6 +564,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -647,7 +653,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -762,6 +769,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -880,7 +888,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -995,6 +1004,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1137,7 +1147,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -1269,6 +1280,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1377,7 +1389,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -1492,6 +1505,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1994,7 +2008,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -2109,6 +2124,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -2293,7 +2309,8 @@
               "sessionSummary": true,
               "conventionProposals": true,
               "projectChecks": true,
-              "commitGate": true
+              "commitGate": true,
+              "ticketOffer": true
             },
             "checkpoint": {
               "enabled": true
@@ -2408,6 +2425,7 @@
             "routing.conventionProposals": "bundled",
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
+            "routing.ticketOffer": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",

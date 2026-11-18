@@ -10,6 +10,20 @@
   test-only change no longer asks for a changelog line and a change without comments or docs
   no longer asks about its wording. A standard without `when` is listed as before. A Craft
   build older than this one rejects a project file that uses `when`.
+- A prompt that names a ticket (an issue URL or tracker key) now has the agent state the
+  ticket's facts to the new `craft ticket` command before editing. Craft suggests direct
+  delivery, plan first or asking the ticket's open questions; on Claude Code the plan-first
+  offer is asked with the question dialog. A plan the user accepts ends with a review offer
+  once files changed. `routing.ticketOffer: false` turns it off; a Craft build older than this
+  one rejects a project file that sets it.
+- On Claude Code the user now sees the stop review as the hook's message, not only the agent.
+- On Claude Code and Codex the stop review counts an uncommitted file as the session's change
+  only when it was written while one of the session's tool calls ran. Another session editing
+  the same checkout, or a person editing by hand, no longer gets reviewed as this session's
+  work.
+- A field of `.craft/project.json` that this Craft build does not know no longer makes every
+  hook fail. Hooks leave the field out, apply the rest of the file and name the field once
+  when a session starts. `craft validate`, `craft config` and `craft doctor` still report it.
 
 ## 0.0.7
 

@@ -237,5 +237,9 @@
   "acceptance-view": {
     "usage": "acceptance-view --view qa|product|architecture --contract contract.json --acceptance-evidence ledger.json --current-kind repository|environment [--current-identity id] [--probes probes.json (qa)] [--focus focus.json (product, architecture)] [--blockers]",
     "mode": "read-only reader view of supplied contract, evidence and probes; executes nothing and writes no task state"
+  },
+  "ticket": {
+    "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--root project] | ticket --ticket url-or-key --accept plan|direct --session id",
+    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session; a planned change ends with a review offer. No model call; nothing else is written."
   }
 }

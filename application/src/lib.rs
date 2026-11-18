@@ -36,6 +36,7 @@ pub mod statusline;
 mod task;
 mod telemetry;
 mod test_runs;
+mod ticket;
 mod workers;
 
 /// Set by the package launcher: the root of the installed package this executable serves.

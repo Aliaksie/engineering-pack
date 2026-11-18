@@ -64,6 +64,14 @@ fn observed(repo: &Repo, tokens: u64) {
     std::fs::write(file, record.to_string()).unwrap();
 }
 
+/// A file the session writes in a tool call: the host reports the call before and after.
+fn wrote(repo: &Repo, file: &str, text: &str) {
+    let call = json!({"tool_name": "Bash", "tool_input": {"command": "sh ./write.sh"}});
+    hook("before-tool", repo, call.clone());
+    repo.write(file, text);
+    hook("after-tool", repo, call);
+}
+
 const CHECK: &str = "Craft next: craft check --stage commit (1 declared check covers files changed since it last ran)";
 
 #[test]
@@ -77,15 +85,15 @@ fn a_changed_file_a_check_covers_names_the_check_until_it_runs() {
         ],
     );
     assert_eq!(notice(&repo), None, "nothing changed");
-    repo.write("docs/a.md", "b\n");
+    wrote(&repo, "docs/a.md", "b\n");
     assert_eq!(notice(&repo), None, "no check covers the change");
-    repo.write("api/a.txt", "b\n");
+    wrote(&repo, "api/a.txt", "b\n");
     assert_eq!(notice(&repo).as_deref(), Some(CHECK));
     assert_eq!(notice(&repo), None, "said once");
     let ran = repo.cli(&["check", "--session", "S1", "--json"]).unwrap();
     assert_eq!(ran["result"], "passed", "{ran}");
     std::thread::sleep(std::time::Duration::from_millis(20));
-    repo.write("api/a.txt", "c\n");
+    wrote(&repo, "api/a.txt", "c\n");
     assert_eq!(
         notice(&repo).as_deref(),
         Some(CHECK),
@@ -110,7 +118,7 @@ fn the_switches_of_session_advice_and_project_checks_silence_it() {
             "next-off",
             &[(".craft/project.json", &project), ("api/a.txt", "a\n")],
         );
-        repo.write("api/a.txt", "b\n");
+        wrote(&repo, "api/a.txt", "b\n");
         assert_eq!(notice(&repo), None, "{switch}");
     }
 }

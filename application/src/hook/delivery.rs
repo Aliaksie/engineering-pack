@@ -28,6 +28,8 @@ pub struct Event<'a> {
     pub package: Option<&'a str>,
     pub lifecycle: &'a str,
     pub session: Option<&'a str>,
+    /// The tool's kind: `shell`, `edit`, `read` or `other`.
+    pub tool: &'a str,
     /// The tool writes a file.
     pub edit: bool,
     /// This tool hook delivers an edit's context on the host.
@@ -74,7 +76,7 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
 
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
-    let settings = project::hook_loaded(recorder, hook, event.root)?;
+    let (settings, ignored) = project::hook_loaded_known(recorder, hook, event.root)?;
     // The project's safety policy speaks first: a refused command gets no routing.
     if event.lifecycle == "before-tool" {
         let refused = match (event.command, event.secret) {
@@ -117,6 +119,23 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
     }
+    // When the session's tool calls run, so a stop counts only files written meanwhile as its
+    // own. A read writes nothing; any other tool may, a subagent's call included.
+    if let Some(session) = event.session.filter(|s| !s.is_empty())
+        && event.tool != "read"
+        && crate::hook::attributes_writes(event.host)
+    {
+        let recorded = match event.lifecycle {
+            "before-tool" => crate::hook::stop_review::tool_started(event.root, session, &settings),
+            "after-tool" | "after-tool-failure" => {
+                crate::hook::stop_review::tool_finished(event.root, session, &settings)
+            }
+            _ => Ok(()),
+        };
+        if recorded.is_err() {
+            recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+        }
+    }
     // A commit the session's own command makes is its change at the stop; one another session
     // or the user makes in the same checkout is not.
     if let (Some(session), Some(command)) = (event.session.filter(|s| !s.is_empty()), event.command)
@@ -136,6 +155,36 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     let mut decision = decide(event, &settings, recorder, hook)?;
+    // Fields of the project file this build does not know, said once a session starts.
+    if !ignored.is_empty()
+        && event.lifecycle == "session-start"
+        && crate::hook::shows_notice(event.host, event.lifecycle)
+    {
+        let line = craft_engine::contracts::ignored_line(&ignored);
+        decision["notice"] = json!(match decision["notice"].as_str() {
+            Some(earlier) => format!("{earlier}\n{line}"),
+            None => line,
+        });
+    }
+    // A prompt that starts work from a ticket, once per ticket in a session.
+    if let (Some(prompt), true) = (
+        event.prompt.filter(|_| event.lifecycle == "before-prompt"),
+        event.context_supported && craft_engine::ticket::enabled(&settings),
+    ) && let Some(reference) = craft_engine::ticket::reference(prompt)
+    {
+        let session = event.session.filter(|s| !s.is_empty());
+        let known = session.and_then(|session| crate::ticket::recorded(event.root, session));
+        if known.as_deref() != Some(reference.as_str()) {
+            let mut command = format!(
+                "craft ticket --ticket {reference} --criteria clear|unclear|missing --questions <n> [--label <name>]... [--path <file>]... [--affects schema|config|state|hooks|api]... --host {}",
+                event.host
+            );
+            if let Some(session) = session {
+                command.push_str(&format!(" --session {session}"));
+            }
+            decision["ticket"] = json!({"reference": reference, "command": command});
+        }
+    }
     account(event, &settings, &mut decision, recorder, hook);
     Ok(decision)
 }
@@ -745,7 +794,16 @@ fn decide(
         session,
     ) {
         let intent = record["intent"].as_str();
-        match crate::hook::stop_review::stop(root, session, settings, intent, event.stop_active) {
+        let attribute = crate::hook::attributes_writes(event.host);
+        let stopped = crate::hook::stop_review::stop(
+            root,
+            session,
+            settings,
+            intent,
+            event.stop_active,
+            attribute,
+        );
+        match stopped {
             Ok(stopped) => {
                 if let Some(summary) = stopped.summary {
                     decision["stop"] = summary;

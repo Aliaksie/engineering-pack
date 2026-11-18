@@ -30,7 +30,8 @@ pub(crate) fn member(file: &str, directory: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
-fn modules(settings: &Value) -> &[Value] {
+/// The modules the project declares.
+pub fn modules(settings: &Value) -> &[Value] {
     settings
         .get("modules")
         .and_then(Value::as_array)

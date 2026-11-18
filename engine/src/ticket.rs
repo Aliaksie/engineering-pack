@@ -1,0 +1,199 @@
+//! How work that starts from a ticket is delivered: directly, plan first, or after asking the
+//! ticket's open questions. The agent reads the ticket and states its facts; the decision is
+//! made here from those facts and the paths the work touches, with no model call.
+use serde_json::{Value, json};
+
+/// Whether delivery offers are made: unless `routing.ticketOffer` is false.
+pub fn enabled(settings: &Value) -> bool {
+    settings["routing"]["ticketOffer"] != false
+}
+
+/// The ticket a prompt starts work from: an issue or merge request URL of a code host, a
+/// tracker URL, or a key or number the prompt calls an issue, ticket, story or bug.
+pub fn reference(prompt: &str) -> Option<String> {
+    let words: Vec<&str> = prompt.split_whitespace().collect();
+    for word in &words {
+        let word = word.trim_matches(['<', '>', '(', ')', ',', '.', '"', '\'']);
+        if url(word) {
+            return Some(word.to_owned());
+        }
+    }
+    let named = ["issue", "ticket", "story", "bug", "task"];
+    words.windows(2).find_map(|pair| {
+        let noun = pair[0].trim_end_matches(':').to_ascii_lowercase();
+        let id = pair[1].trim_end_matches([',', '.', ':', ')']);
+        (named.contains(&noun.as_str()) && (number(id) || key(id))).then(|| id.to_owned())
+    })
+}
+
+/// An issue (`/issues/12`, `/-/issues/12`), a work item (`/_workitems/edit/12`) or a tracker
+/// key in a URL (`/browse/SHOP-12`, `/issue/SHOP-12`).
+fn url(word: &str) -> bool {
+    let Some(rest) = word
+        .strip_prefix("https://")
+        .or_else(|| word.strip_prefix("http://"))
+    else {
+        return false;
+    };
+    let parts: Vec<&str> = rest
+        .split(['?', '#'])
+        .next()
+        .unwrap_or_default()
+        .split('/')
+        .collect();
+    parts.windows(2).any(|pair| match pair[0] {
+        "issues" | "work_items" | "edit" => {
+            pair[1].chars().all(|c| c.is_ascii_digit()) && !pair[1].is_empty()
+        }
+        "browse" | "issue" => key(pair[1]),
+        _ => false,
+    })
+}
+
+/// `#12` or `12`.
+fn number(id: &str) -> bool {
+    let digits = id.strip_prefix('#').unwrap_or(id);
+    !digits.is_empty() && digits.len() <= 9 && digits.chars().all(|c| c.is_ascii_digit())
+}
+
+/// A tracker key: `SHOP-12`.
+fn key(id: &str) -> bool {
+    let Some((project, digits)) = id.split_once('-') else {
+        return false;
+    };
+    project.len() >= 2
+        && project
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_uppercase())
+        && project
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        && number(digits)
+}
+
+/// The contract a path holds, which other builds, services or people rely on: a published
+/// schema or interface definition, a database migration, host hook wiring or CI.
+pub fn contract(path: &str) -> Option<&'static str> {
+    let lower = path.to_ascii_lowercase();
+    let name = lower.rsplit('/').next().unwrap_or(&lower);
+    let folders: Vec<&str> = lower.split('/').collect();
+    let folders = &folders[..folders.len().saturating_sub(1)];
+    let within = |names: &[&str]| folders.iter().any(|folder| names.contains(folder));
+    if name.ends_with(".schema.json")
+        || within(&["schemas", "schema"])
+        || [".proto", ".graphql", ".gql", ".avsc", ".thrift"]
+            .iter()
+            .any(|extension| name.ends_with(extension))
+        || name.starts_with("openapi.")
+        || name.starts_with("swagger.")
+    {
+        Some("schema")
+    } else if within(&["migrations", "migration", "migrate"]) {
+        Some("migration")
+    } else if name == "hooks.json"
+        || lower.starts_with(".claude/settings")
+        || lower.starts_with(".codex/")
+        || lower.starts_with(".githooks/")
+    {
+        Some("hooks")
+    } else if lower.starts_with(".github/workflows/") || name == ".gitlab-ci.yml" {
+        Some("ci")
+    } else {
+        None
+    }
+}
+
+/// What the agent states about a ticket, with what the paths it expects to touch show.
+pub struct Facts<'a> {
+    /// `clear`, `unclear` or `missing`.
+    pub criteria: &'a str,
+    pub questions: usize,
+    pub labels: &'a [String],
+    /// The modules the paths fall under; top-level folders where the project declares none.
+    pub modules: &'a [String],
+    /// Each contract the work changes: one a path holds, or one the agent names.
+    pub contracts: &'a [String],
+}
+
+/// Labels that say the ticket is still being discussed, or that it needs a design first.
+const ASK_LABELS: &[&str] = &[
+    "question",
+    "needs-info",
+    "needs info",
+    "needs-triage",
+    "discussion",
+];
+const PLAN_LABELS: &[&str] = &["epic", "breaking", "breaking-change", "needs-design", "rfc"];
+
+/// `direct`, `plan` or `ask`, with the reasons that decided it, in the user's words.
+pub fn decide(facts: &Facts) -> Value {
+    let label = |names: &[&str]| {
+        facts
+            .labels
+            .iter()
+            .find(|label| names.contains(&label.to_ascii_lowercase().as_str()))
+            .cloned()
+    };
+    let plural = |count: usize, one: &str| match count {
+        1 => format!("1 {one}"),
+        _ => format!("{count} {one}s"),
+    };
+    let mut ask = Vec::new();
+    if facts.questions > 0 {
+        ask.push(format!(
+            "{} in the ticket",
+            plural(facts.questions, "open question")
+        ));
+    }
+    if let Some(label) = label(ASK_LABELS) {
+        ask.push(format!("labelled {label}"));
+    }
+    if !ask.is_empty() {
+        return json!({"mode": "ask", "reasons": ask});
+    }
+    let mut plan = Vec::new();
+    if facts.modules.len() > 1 {
+        plan.push(plural(facts.modules.len(), "module"));
+    }
+    let mut kinds: Vec<&str> = facts.contracts.iter().map(String::as_str).collect();
+    kinds.sort_unstable();
+    kinds.dedup();
+    for kind in kinds {
+        plan.push(format!("{kind} change"));
+    }
+    match facts.criteria {
+        "clear" => {}
+        "missing" => plan.push("no acceptance criteria".into()),
+        _ => plan.push("unclear acceptance criteria".into()),
+    }
+    if let Some(label) = label(PLAN_LABELS) {
+        plan.push(format!("labelled {label}"));
+    }
+    if !plan.is_empty() {
+        return json!({"mode": "plan", "reasons": plan});
+    }
+    let mut direct = vec![plural(facts.modules.len().max(1), "module")];
+    direct.push("no contract change".into());
+    direct.push("clear acceptance criteria".into());
+    json!({"mode": "direct", "reasons": direct})
+}
+
+/// The line the user is shown for a decision.
+pub fn line(decision: &Value) -> String {
+    let reasons: Vec<&str> = decision["reasons"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let reasons = reasons.join(", ");
+    match decision["mode"].as_str() {
+        Some("plan") => format!("Craft suggests: plan → implement → review ({reasons})"),
+        Some("ask") => format!("Craft suggests: answer the ticket's questions first ({reasons})"),
+        _ => format!("Craft: direct delivery ({reasons})"),
+    }
+}
+
+#[cfg(test)]
+mod tests;

@@ -23,6 +23,15 @@ pub(crate) fn line(
     if !next::enabled(settings) {
         return None;
     }
+    // A change the user chose to plan first ends with the review the plan offered. It stays
+    // due from the turn that changed files until a stop names it.
+    let review = match crate::ticket::review_due(root, session, !changed.is_empty()) {
+        Ok(review) => review,
+        Err(_) => {
+            recorder.report("state", "STATE_UNAVAILABLE", serde_json::Map::new(), hook);
+            None
+        }
+    };
     let mut facts = Facts {
         unrun_checks: unrun_checks(root, settings, session, changed),
         ..Facts::default()
@@ -31,7 +40,14 @@ pub(crate) fn line(
         task(root, session, &mut facts, recorder, hook);
     }
     if facts == Facts::default() {
+        facts.review = review;
+    }
+    if facts == Facts::default() {
         facts.context = context(root, settings, session, recorder, hook);
+    }
+    // Named now, so said once: the turn-end notice shows it or showed it already.
+    if facts.review.is_some() && crate::ticket::review_offered(root, session).is_err() {
+        recorder.report("state", "STATE_UNAVAILABLE", serde_json::Map::new(), hook);
     }
     next::line(&facts)
 }

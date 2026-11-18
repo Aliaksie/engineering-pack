@@ -5,7 +5,10 @@
 //! command or a script counts like an edited one, and so does one the session committed
 //! before the turn ended. A commit counts as the session's own only when a shell command the
 //! session ran made it: another session working in the same checkout, or the user committing
-//! by hand, is not this session's change. The session remembers each changed file's content
+//! by hand, is not this session's change. Where the host reports every tool call that writes,
+//! an uncommitted file counts only when it was last written while one of the session's tool
+//! calls ran: another session editing the same checkout meanwhile is not this session's
+//! change either. The session remembers each changed file's content
 //! and the commit it stopped on, so a stop reviews only files changed since the last one, and
 //! what it was told, so the same finding never holds a stop twice. At a workspace root, a folder that is
 //! no repository itself, each member repository is read the same way and its files are named
@@ -30,6 +33,15 @@ const MAX_FILES: usize = 64;
 /// own commits a session remembers.
 const REFLOG_ENTRIES: &str = "64";
 const OWN_COMMITS: usize = 64;
+/// How many tool-call spans a session keeps between two stops; beyond, the two earliest
+/// become one that covers both.
+const SPANS: usize = 256;
+/// How far before a span and after it a file's modification time still falls within it: file
+/// systems that keep coarse times round them down.
+const BEFORE_MS: i64 = 2_000;
+const AFTER_MS: i64 = 1_000;
+/// How often a tool hook tries the record's lock before writing without it.
+const LOCK_TRIES: u32 = 50;
 
 fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::PathBuf, Failure> {
     Ok(state::file(
@@ -270,7 +282,7 @@ fn hashes(files: &[Dirty]) -> Value {
 /// Remember what the worktree already holds when a session starts, so the first stop reviews
 /// only what this session changes. A resumed session keeps its record.
 pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !relevant(settings) {
+    if !relevant(root, session, settings) {
         return Ok(());
     }
     let file = record_file(root, session, true)?;
@@ -286,10 +298,13 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
-/// Whether stops follow the session's changes: to review them, or to name a declared check
-/// that covers them.
-fn relevant(settings: &Value) -> bool {
-    standards::stop_relevant(settings) || craft_engine::session::next::tracks_changes(settings)
+/// Whether stops follow the session's changes: to review them, to name a declared check that
+/// covers them, or to offer the review of a planned change.
+fn relevant(root: &Path, session: &str, settings: &Value) -> bool {
+    standards::stop_relevant(settings)
+        || craft_engine::session::next::tracks_changes(settings)
+        // A change the user chose to plan first ends with a review offer once files changed.
+        || crate::ticket::planned(root, session).is_some()
 }
 
 /// The commits a record names as made by the session.
@@ -305,7 +320,7 @@ fn own_commits(record: &Value) -> Vec<&str> {
 /// Before a shell command of the session runs `git commit`: the commit each checkout is on,
 /// so the command's own commit can be told from one another session makes meanwhile.
 pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !relevant(settings) {
+    if !relevant(root, session, settings) {
         return Ok(());
     }
     let file = record_file(root, session, true)?;
@@ -327,7 +342,7 @@ pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<()
 /// After that command: each checkout whose `HEAD` moved by a commit since `commit_started`
 /// adds the commit to the session's own. A failed commit leaves `HEAD` where it was.
 pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
-    if !relevant(settings) {
+    if !relevant(root, session, settings) {
         return Ok(());
     }
     let file = record_file(root, session, false)?;
@@ -369,6 +384,104 @@ pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), F
     own.drain(..excess);
     record["commits"] = json!(own);
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// Change the session's record under its lock. Parallel tool calls of one session write it
+/// at once; a lock still held after a short wait is not waited for.
+fn update(root: &Path, session: &str, change: impl FnOnce(&mut Value)) -> Result<(), Failure> {
+    let file = record_file(root, session, true)?;
+    let mut lock = None;
+    for _ in 0..LOCK_TRIES {
+        lock = state::lock(&file)?;
+        if lock.is_some() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if !record.is_object() {
+        record = json!({"formatVersion": 1});
+    }
+    change(&mut record);
+    state::write(&file, &record, RECORD_BYTES, false)?;
+    drop(lock);
+    Ok(())
+}
+
+/// Before a tool call of the session runs: a span opens, to close when the call ends.
+pub fn tool_started(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
+    if !relevant(root, session, settings) {
+        return Ok(());
+    }
+    let now = crate::telemetry::now_ms();
+    update(root, session, |record| {
+        let mut spans = record["spans"].as_array().cloned().unwrap_or_default();
+        spans.push(json!([now, null]));
+        if spans.len() > SPANS {
+            let (first, second) = (spans.remove(0), spans.remove(0));
+            let end = match (first[1].as_i64(), second[1].as_i64()) {
+                (Some(a), Some(b)) => json!(a.max(b)),
+                _ => Value::Null,
+            };
+            spans.insert(0, json!([first[0], end]));
+        }
+        record["spans"] = json!(spans);
+    })
+}
+
+/// After a tool call of the session: the latest open span closes. Parallel calls close each
+/// other's spans, which covers the same time. A span that never closes (a host that reports
+/// no failed call) lasts until the stop. Without an open span (its start was not recorded),
+/// the call's end stands for it: a write that just finished falls within the slack.
+pub fn tool_finished(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
+    if !relevant(root, session, settings) {
+        return Ok(());
+    }
+    let now = crate::telemetry::now_ms();
+    update(root, session, |record| {
+        let open = record["spans"]
+            .as_array_mut()
+            .and_then(|spans| spans.iter_mut().rev().find(|span| span[1].is_null()));
+        match open {
+            Some(open) => open[1] = json!(now),
+            None => {
+                let mut spans = record["spans"].as_array().cloned().unwrap_or_default();
+                if spans.len() < SPANS {
+                    spans.push(json!([now, now]));
+                }
+                record["spans"] = json!(spans);
+            }
+        }
+    })
+}
+
+/// Whether `file` was last written while a span of `spans` ran; an open span lasts to `now`.
+fn written_within(root: &Path, file: &str, spans: &[Value], now: i64) -> bool {
+    let Ok(meta) = std::fs::symlink_metadata(root.join(file)) else {
+        return true;
+    };
+    let Some(modified) = meta
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .and_then(|since| i64::try_from(since.as_millis()).ok())
+    else {
+        return true;
+    };
+    // A command can keep a file's old modification time (`cp -p`, an archive extracted); the
+    // status change time it cannot set says when the content was written. Windows keeps no
+    // such time, so there a file written that way is not counted.
+    #[cfg(unix)]
+    let modified = {
+        use std::os::unix::fs::MetadataExt;
+        modified.max(meta.ctime().saturating_mul(1000) + meta.ctime_nsec() / 1_000_000)
+    };
+    spans.iter().any(|span| {
+        let (Some(start), end) = (span[0].as_i64(), span[1].as_i64().unwrap_or(now)) else {
+            return false;
+        };
+        start - BEFORE_MS <= modified && modified <= end + AFTER_MS
+    })
 }
 
 /// Lines a change adds, each with its line in the new file, and lines it removes.
@@ -477,15 +590,17 @@ pub struct Stopped {
 /// is said or recorded: a stop is never held twice in a row, and what the continuation
 /// changes is reviewed at the next stop. With it, each changed file as a scope the stop
 /// checked, so a finding that is gone counts as fixed, and the files changed since the last
-/// stop.
+/// stop. With `attribute`, an uncommitted file counts only when the session's tool calls
+/// were running as it was last written.
 pub fn stop(
     root: &Path,
     session: &str,
     settings: &Value,
     intent: Option<&str>,
     stop_active: bool,
+    attribute: bool,
 ) -> Result<Stopped, Failure> {
-    if stop_active || !relevant(settings) {
+    if stop_active || !relevant(root, session, settings) {
         return Ok(Stopped::default());
     }
     let checkouts = checkouts(root);
@@ -547,8 +662,12 @@ pub fn stop(
             bases[index] = base;
         }
     }
+    let spans = record["spans"].as_array().cloned().unwrap_or_default();
+    let now = crate::telemetry::now_ms();
+    let written = |dirty: &Dirty| !attribute || written_within(root, &dirty.file, &spans, now);
     let changed: Vec<&Dirty> = files
         .iter()
+        .filter(|dirty| written(dirty))
         .chain(&landed)
         .filter(|dirty| record["files"][dirty.file.as_str()] != json!(dirty.digest))
         .collect();

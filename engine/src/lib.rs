@@ -31,6 +31,7 @@ pub mod skills;
 pub mod standards;
 pub mod telemetry;
 pub mod text;
+pub mod ticket;
 pub mod timestamp;
 pub mod values;
 pub mod workers;

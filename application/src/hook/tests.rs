@@ -195,11 +195,16 @@ fn the_session_summary_is_a_user_message_where_the_host_shows_one() {
         assert_eq!(serialize(&result, host, "turn-end").stdout, "", "{host}");
     }
     assert_eq!(serialize(&result, "claude", "after-tool").stdout, "");
+    // Beside a held stop the user is shown the stop's list, not the summary.
     let held = json!({"decision": "allow", "notice": "n", "stop": {"findings": [{"rule": "r"}]}});
+    let shown: Value =
+        serde_json::from_str(&serialize(&held, "claude", "turn-end").stdout).unwrap();
     assert!(
-        !serialize(&held, "claude", "turn-end")
-            .stdout
-            .contains("systemMessage")
+        shown["systemMessage"]
+            .as_str()
+            .unwrap()
+            .starts_with("Craft stop review"),
+        "{shown}"
     );
 }
 
@@ -252,6 +257,11 @@ fn a_stop_summary_holds_the_stop_where_the_host_continues() {
     assert!(claude.get("decision").is_none(), "{claude}");
     assert_eq!(claude["hookSpecificOutput"]["hookEventName"], "Stop");
     assert!(reason(&claude["hookSpecificOutput"], "additionalContext"));
+    // Context reaches only the model: the user sees the same list as the hook's message.
+    assert_eq!(
+        claude["systemMessage"],
+        claude["hookSpecificOutput"]["additionalContext"]
+    );
     let gemini: Value =
         serde_json::from_str(&serialize(&result, "gemini", "turn-end").stdout).unwrap();
     assert_eq!(gemini["decision"], "deny");

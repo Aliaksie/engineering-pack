@@ -129,6 +129,7 @@ const COMMANDS: &[Command] = &[
     Command::run("settings", settings),
     Command::run("config", config).receipt(|_, value| craft_engine::layers::text(value)),
     Command::run("route", route),
+    Command::run("ticket", ticket).receipt(|_, value| ticket_receipt(value)),
     Command::run("standards", standards),
     Command::run("anchors", anchors),
     Command::run("check", check)
@@ -602,6 +603,45 @@ fn anchors(
         &settings,
         options.get("search"),
     ))
+}
+
+fn ticket(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    let (labels, paths, affects) = (
+        strings(options, "label"),
+        strings(options, "path"),
+        strings(options, "affects"),
+    );
+    let request = crate::ticket::Request {
+        ticket: options.get("ticket").unwrap_or_default(),
+        criteria: options.get("criteria"),
+        questions: options.get("questions"),
+        labels: &labels,
+        paths: &paths,
+        affects: &affects,
+        host: options.get("host"),
+        session: options.get("session").filter(|s| !s.is_empty()),
+        accept: options.get("accept"),
+    };
+    crate::ticket::run(&root(options), &settings, &request)
+}
+
+/// The user's line and the agent's next step, or the recorded choice.
+fn ticket_receipt(value: &Value) -> String {
+    let text = |field: &str| value[field].as_str().unwrap_or_default();
+    match value.get("line") {
+        Some(_) => format!("{}\nnext: {}\n", text("line"), text("next")),
+        None => format!(
+            "Craft: {} delivery of {} recorded\nnext: {}\n",
+            text("delivery"),
+            text("ticket"),
+            text("next")
+        ),
+    }
 }
 
 fn route(options: &Options, recorder: &mut Recorder, parent: &Operation) -> Result<Value, Failure> {

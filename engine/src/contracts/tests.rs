@@ -218,3 +218,62 @@ fn a_schema_link_is_accepted_and_kept_out_of_settings() {
     let wrong = json!({"formatVersion": 1, "$schema": 1});
     assert!(validate_project(&wrong).is_err());
 }
+
+/// Every project the validator accepts keeps all its fields: the published schema declares
+/// each field the validator knows, so leaving out unknown fields never drops a known one.
+#[test]
+fn a_valid_project_keeps_every_field() {
+    let corpus: Value = serde_json::from_str(SETTINGS).unwrap();
+    let mut projects: Vec<Value> = corpus["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|case| {
+            let mut project = case["request"]["input"].get("project")?.clone();
+            normalize_numbers(&mut project);
+            validate_project(&project).ok().map(|()| project)
+        })
+        .collect();
+    for file in [
+        include_str!("../../../.craft/project.json"),
+        include_str!("../../../examples/project/.craft/project.json"),
+    ] {
+        projects.push(serde_json::from_str(file).unwrap());
+    }
+    assert!(projects.len() > 20, "{}", projects.len());
+    for project in projects {
+        let (kept, ignored) = known_project(&project);
+        assert_eq!(ignored, Vec::<String>::new(), "{project}");
+        assert_eq!(kept, project);
+    }
+}
+
+/// A field another build added, at the top or inside an entry, is left out and named by its
+/// place; what remains validates.
+#[test]
+fn an_unknown_field_is_left_out_and_named_by_place() {
+    let project = json!({
+        "formatVersion": 1,
+        "futureSwitch": true,
+        "routing": {"promptHints": true, "laterHints": false},
+        "standards": [{"id": "notes", "level": "review", "checklist": ["Keep notes"],
+                       "someday": {"when": "later"}}],
+        "services": {"git": {"provider": "git", "transport": "cli", "command": "git",
+                             "extra": 1}}
+    });
+    assert!(validate_project(&project).is_err());
+    let (kept, ignored) = known_project(&project);
+    assert_eq!(
+        ignored,
+        ["futureSwitch", "routing.laterHints", "standards[0].someday"]
+    );
+    // A field under a choice of shapes is kept as written, so it still fails validation.
+    assert_eq!(kept["services"]["git"]["extra"], 1);
+    let mut without = kept.clone();
+    without["services"]["git"]
+        .as_object_mut()
+        .unwrap()
+        .remove("extra");
+    assert_eq!(validate_project(&without), Ok(()), "{without}");
+    assert!(ignored_line(&ignored).contains("`standards[0].someday`"));
+}

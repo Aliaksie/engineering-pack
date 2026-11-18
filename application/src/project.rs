@@ -351,6 +351,19 @@ fn resolve(
 ) -> Result<(Value, [Read; 2]), Failure> {
     let named = |error: Failure| error.about(&project_file(root).to_string_lossy());
     let project = document(documents::project(root)).map_err(named)?;
+    resolve_project(root, project, sources, overrides, explain, detect)
+}
+
+/// `resolve` over a project document already read.
+fn resolve_project(
+    root: &Path,
+    project: Value,
+    sources: Sources,
+    overrides: &Value,
+    explain: bool,
+    detect: Detect,
+) -> Result<(Value, [Read; 2]), Failure> {
+    let named = |error: Failure| error.about(&project_file(root).to_string_lossy());
     let baseline = baseline(root, sources)?;
     // The catalog files are read only once the project names them validly.
     contracts::validate_project(&project).map_err(|error| named(error.into()))?;
@@ -476,11 +489,36 @@ pub(crate) fn hook_loaded(
     parent: &Operation,
     root: &Path,
 ) -> Result<Value, Failure> {
+    hook_loaded_known(recorder, parent, root).map(|(settings, _)| settings)
+}
+
+/// `hook_loaded` with the project file's fields this build does not know, by place. A field
+/// another Craft build added would otherwise turn every hook of every session in the checkout
+/// into a failure: the hook leaves such fields out and reads the rest, while `craft validate`
+/// still reports them. A file that is invalid for any other reason still fails.
+pub(crate) fn hook_loaded_known(
+    recorder: &mut Recorder,
+    parent: &Operation,
+    root: &Path,
+) -> Result<(Value, Vec<String>), Failure> {
     let operation = recorder.start("project.loaded", Some(parent));
-    let loaded = resolve(root, Sources::default(), &json!({}), false, Detect::Kept)
-        .map(|(mut resolved, _)| resolved["settings"].take());
+    let settings = |(mut resolved, _): (Value, [Read; 2])| resolved["settings"].take();
+    let loaded = match resolve(root, Sources::default(), &json!({}), false, Detect::Kept) {
+        Ok(resolved) => Ok((settings(resolved), Vec::new())),
+        Err(error) => match document(documents::project(root))
+            .map(|project| contracts::known_project(&project))
+        {
+            Ok((project, ignored)) if !ignored.is_empty() => {
+                let detect = Detect::Kept;
+                resolve_project(root, project, Sources::default(), &json!({}), false, detect)
+                    .map(|resolved| (settings(resolved), ignored))
+                    .map_err(|_| error)
+            }
+            _ => Err(error),
+        },
+    };
     match &loaded {
-        Ok(settings) => {
+        Ok((settings, _)) => {
             let digest = craft_engine::digest(&craft_engine::canonical(settings));
             if recorder.settings_changed(Some(&digest)) {
                 recorder.complete(operation, Map::new(), None);
