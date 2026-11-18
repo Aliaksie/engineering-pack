@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `craft doctor` explains that Claude Code shows any refused tool call as
+  `PreToolUse:<tool> hook error: <reason>`, for Craft's refusals and other hooks alike: the
+  call was refused by policy, not by a failed hook.
+
 ## 0.0.7
 
 This release makes what Craft already shipped work from the first install and hold in real

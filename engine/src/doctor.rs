@@ -432,6 +432,15 @@ fn claude(
             "the same Craft package is enabled from two marketplaces; one copy's hooks do not run",
         ));
     }
+    // Claude Code labels every PreToolUse denial this way, whether the hook answers with a JSON
+    // permission decision or exit code 2, Craft's or not; the user should not read it as a fault.
+    if !enabled_ids.is_empty() {
+        checks.push(check(
+            "refusals",
+            "ok",
+            "Claude Code shows a refused tool call as \"PreToolUse:<tool> hook error: <reason>\" for any hook (checked on 2.1.327); for Craft it is a refusal by policy, not a failed hook, and the model gets the reason",
+        ));
+    }
     checks.extend(status_line(facts, project, offer, report));
     let mut all: Vec<Value> = checks.clone();
     for p in &packages {
