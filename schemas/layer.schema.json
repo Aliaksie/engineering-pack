@@ -641,6 +641,52 @@
             },
             "additionalProperties": false
           }
+        },
+        "secretFiles": {
+          "type": "array",
+          "maxItems": 32,
+          "default": [],
+          "description": "Secret-file patterns of the organization, user or project, judged with the built-in names by the `read-secret-file` rule and wherever Craft avoids quoting a secret file. Entries merge by `id` across layers; `craft config --explain` shows the layer that added each.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "pattern"
+                ]
+              },
+              {
+                "required": [
+                  "disabled"
+                ]
+              }
+            ],
+            "description": "One pattern: an `id` and the file it names.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "maxLength": 64,
+                "description": "Stable handle a later layer uses to replace or remove the pattern."
+              },
+              "pattern": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^/\\\\]",
+                "description": "A file name such as `*.vault` or `prod-*.json`, matched in any directory, or a path ending such as `.acme/token` or `config/keys/*`, matched against the last segments of a path. `*`, `?` and `{a,b}` stay within one segment; `**`, `.` and `..` segments and a pattern that matches every name are rejected. Case is ignored. A declared pattern also holds for templates and fixture directories the built-in names leave out."
+              },
+              "disabled": {
+                "type": "boolean",
+                "default": false,
+                "description": "With only `id`: remove the pattern of this id that an earlier layer declares."
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false

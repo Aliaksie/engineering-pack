@@ -208,6 +208,10 @@ object. Rules that refuse destructive shell commands, commands that reach outsid
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
 | `safety.deny[].reason` | string |  | What the rule refuses, shown with the refusal. |
 | `safety.deny[].disabled` | boolean | `false` | With only `id`: remove the rule of this id that the organization or user layer declares. |
+| `safety.secretFiles` | array of objects | `[]` | Secret-file patterns of the organization, user or project, judged with the built-in names by the `read-secret-file` rule and wherever Craft avoids quoting a secret file. Entries merge by `id` across layers; `craft config --explain` shows the layer that added each. |
+| `safety.secretFiles[].id` | string |  | Stable handle a later layer uses to replace or remove the pattern. |
+| `safety.secretFiles[].pattern` | string |  | A file name such as `*.vault` or `prod-*.json`, matched in any directory, or a path ending such as `.acme/token` or `config/keys/*`, matched against the last segments of a path. `*`, `?` and `{a,b}` stay within one segment; `**`, `.` and `..` segments and a pattern that matches every name are rejected. Case is ignored. A declared pattern also holds for templates and fixture directories the built-in names leave out. |
+| `safety.secretFiles[].disabled` | boolean | `false` | With only `id`: remove the pattern of this id that an earlier layer declares. |
 
 ## `runtimes`
 
