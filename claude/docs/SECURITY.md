@@ -106,8 +106,10 @@ that denies the paths, Cursor's ignore list. `craft doctor` says whether Claude'
 hold such a deny rule, whether Codex's default permission profile denies a `.env` path, and
 whether `.cursorignore` takes `.env` files back out of what Cursor ignores by default (which
 covers its Agent, not terminal commands or MCP tools). Where a host has none it prints what
-to add; Craft does not write it. Leave the rule out with
-`"disables": ["read-secret-file"]`.
+to add. Only for Claude, and only when you run `craft doctor --deny-secret-files`, does Craft
+write it: the deny rules are merged into `.claude/settings.local.json`, keeping its other
+keys and `allow`, `ask` and `deny` rules. Without that option nothing is written. Leave the
+rule out with `"disables": ["read-secret-file"]`.
 
 Craft never reads such a file's content itself, whether the rule is in force or not: `craft
 locate` skips it (counted under `skipped.secret`), Project Intelligence does not index it,
