@@ -177,8 +177,8 @@
     "mode": "Run the project's declared checks (modules[].checks, standards[].run) for the uncommitted changes (with --base, also the files committed since the ref's merge base with HEAD), the named files or, with --all, every declaration. A project below the top of its checkout reads its own folder; a workspace root reads each member repository. Commands start without a shell, each within its time bound. Checks of the stage (default commit) and earlier run; later ones are listed as left to their stage. Exits 1 when a check did not pass. --install-hook previews a Git pre-commit hook running the commit stage and writes it with --apply; where a hook manager (husky, lefthook, pre-commit), core.hooksPath or another hook owns pre-commit it prints the line to add and writes nothing. --ci-snippet prints a GitHub Actions or GitLab CI job that installs this Craft release and runs the ci stage since the target branch."
   },
   "doctor": {
-    "usage": "doctor [--root project] [--json]",
-    "mode": "Read-only: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
+    "usage": "doctor [--root project] [--deny-secret-files] [--json]",
+    "mode": "Read-only unless asked: whether each host would run Craft for this project, from its install records, settings and Craft's hook telemetry. Writes nothing to host configuration or task state (only its own command telemetry) and starts nothing; only --deny-secret-files writes, merging Claude's secret-file deny rules into .claude/settings.local.json and keeping its other keys and rules. Exits 1 when an enabled package cannot run (missing or altered bundled runtime)."
   },
   "context-report": {
     "usage": "context-report --intent implement [--file src/main.py] [--bundle package-root ...]",

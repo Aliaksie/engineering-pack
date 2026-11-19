@@ -109,9 +109,11 @@ const OPTIONS: &[&str] = &[
     "label",
     "affects",
     "accept",
+    "deny-secret-files",
 ];
 const FLAGS: &[&str] = &[
     "apply",
+    "deny-secret-files",
     "delegate",
     "json",
     "verbose",
@@ -242,6 +244,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("organization") && !["config", "settings"].contains(&action) {
         return Err("--organization is supported by config and settings".into());
+    }
+    if present("deny-secret-files") && action != "doctor" {
+        return Err("--deny-secret-files is supported by doctor".into());
     }
     if present("search") && action != "anchors" {
         return Err("--search is supported by anchors".into());

@@ -141,9 +141,14 @@ const COMMANDS: &[Command] = &[
             }
         })
         .fails_when(|value| value["result"] == "failed"),
-    Command::run("doctor", |options, _, _| crate::doctor::run(&root(options)))
-        .receipt(|_, value| crate::doctor::text(value))
-        .fails_when(|value| value["blocking"] == true),
+    Command::run("doctor", |options, _, _| {
+        crate::doctor::run(
+            &root(options),
+            options.values.contains_key("deny-secret-files"),
+        )
+    })
+    .receipt(|_, value| crate::doctor::text(value))
+    .fails_when(|value| value["blocking"] == true),
     Command::run("context-report", context_report).bundled(),
     Command::run("session", session_status)
         .bundled()

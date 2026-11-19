@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft doctor --deny-secret-files` writes Claude Code's deny rules for secret files
+  (`Read(**/.env)` and the others doctor offers) into `.claude/settings.local.json`. Existing
+  keys and `allow`, `ask` and `deny` rules are kept, and a rule already listed is not added
+  again. Without the option doctor still writes nothing.
 - A search command whose double-quoted pattern holds a backslash, such as
   `grep -n "STANDARDS\b" AGENTS.md`, now reads the pattern as Bash does: inside double quotes
   a backslash is kept unless it escapes `$`, `` ` ``, `"`, `\` or a newline. The answer after

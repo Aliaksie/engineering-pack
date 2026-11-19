@@ -1,6 +1,7 @@
 //! `craft doctor`: observe how each host installed Craft for this project and report, from
-//! files only, whether its hooks would run. Read-only: nothing is written to host or Craft
-//! state, no host is started and nothing is fetched.
+//! files only, whether its hooks would run. Read-only unless asked: only
+//! `--deny-secret-files` writes, merging Claude's secret-file deny rules into the project's
+//! local Claude settings. No host is started and nothing is fetched.
 use crate::failure::Failure;
 use craft_platform::{host_install, host_settings, state, telemetry};
 use serde_json::{Value, json};
@@ -121,9 +122,14 @@ fn status_line(root: &Path) -> Value {
     out
 }
 
-/// The doctor report for the project at `root`.
-pub fn run(root: &Path) -> Result<Value, Failure> {
+/// The doctor report for the project at `root`. With `deny_secret_files`, the consumer's
+/// consent, Claude's secret-file deny rules are merged into `.claude/settings.local.json`
+/// first, so the report reads the settings as written.
+pub fn run(root: &Path, deny_secret_files: bool) -> Result<Value, Failure> {
     let root = state::canonical_root(root)?;
+    let written = deny_secret_files
+        .then(|| host_settings::deny(&root, &craft_engine::doctor::CLAUDE_SECRET_DENY))
+        .transpose()?;
     let overlays: Vec<Value> = OVERLAYS
         .iter()
         .map(|(host, relative)| {
@@ -173,7 +179,11 @@ pub fn run(root: &Path) -> Result<Value, Failure> {
         "codex": codex,
         "overlays": overlays,
     });
-    Ok(craft_engine::doctor::report(&facts))
+    let mut report = craft_engine::doctor::report(&facts);
+    if let Some(written) = written {
+        report["secretFilesWritten"] = written;
+    }
+    Ok(report)
 }
 
 /// One line per host and package, then what to do and what stays unknown.
@@ -226,6 +236,20 @@ pub fn text(report: &Value) -> String {
             out.push_str("configuration\n");
         }
         out.push_str(&format!("  {}\n", line(check)));
+    }
+    let written = &report["secretFilesWritten"];
+    if let Some(file) = written["file"].as_str() {
+        let added: Vec<&str> = written["added"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push_str(&if added.is_empty() {
+            format!("wrote nothing: {file} already denies Claude's secret-file reads\n")
+        } else {
+            format!("wrote to {file}: deny {}\n", added.join(", "))
+        });
     }
     for next in report["next"].as_array().into_iter().flatten() {
         out.push_str(&format!("next: {}\n", next.as_str().unwrap_or_default()));
