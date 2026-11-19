@@ -1189,7 +1189,7 @@
         "editHints": {
           "type": "boolean",
           "default": true,
-          "description": "Routing hints when the agent edits a file: the skills and references for the edited scope."
+          "description": "Routing hints when the agent edits a file: the standards, project skills and references for the edited scope."
         },
         "dedupeHints": {
           "type": "boolean",

@@ -224,7 +224,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `routing.promptHints` | boolean | `true` | Routing hints on prompts. Set false to keep the request's intent as session state without showing a hint. |
-| `routing.editHints` | boolean | `true` | Routing hints when the agent edits a file: the skills and references for the edited scope. |
+| `routing.editHints` | boolean | `true` | Routing hints when the agent edits a file: the standards, project skills and references for the edited scope. |
 | `routing.dedupeHints` | boolean | `true` | Session-scoped routing hint hash state; no prompts or evidence are stored. Set false to disable. |
 | `routing.standardChecks` | boolean | `true` | Deterministic anchor checks after an edit or commit in a declared standard's scope. Set false to keep standards in routes without checking. |
 | `routing.stopReview` | boolean | `true` | When a turn ends after changing files, one summary of new findings (module dependencies, debt markers) and the declared review items of the changed scope; the host continues the turn once to address it. Set false to never hold a stop. |

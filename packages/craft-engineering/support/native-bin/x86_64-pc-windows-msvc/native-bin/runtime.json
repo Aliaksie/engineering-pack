@@ -6,7 +6,7 @@
       "platform": "win32",
       "arch": "x64",
       "executable": "craft.exe",
-      "sha256": "21250bfc010d9716607171a3dbdd32957e91f040ae12f28be097eb6acdc6cab0"
+      "sha256": "512d76c12542aa98e79b58c7fe8b1fb31cbd1029365dd628ac9ef09958dc1349"
     }
   ]
 }
