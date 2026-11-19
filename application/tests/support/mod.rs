@@ -268,8 +268,14 @@ pub fn homes(repo: &Repo) -> Homes {
 
 /// `craft doctor --json` over `homes`: its exit code and report.
 pub fn doctor(repo: &Repo, homes: &Homes) -> (i32, Value) {
+    doctor_with(repo, homes, &[])
+}
+
+/// `craft doctor` with extra options, such as the consent to write.
+pub fn doctor_with(repo: &Repo, homes: &Homes, extra: &[&str]) -> (i32, Value) {
     let output = Command::new(env!("CARGO_BIN_EXE_craft"))
         .args(["doctor", "--root", repo.path(), "--json"])
+        .args(extra)
         .env("CLAUDE_CONFIG_DIR", &homes.claude)
         .env_remove("CLAUDE_CODE_PLUGIN_CACHE_DIR")
         .env("CODEX_HOME", &homes.codex)

@@ -485,8 +485,11 @@ fn secret_files_name_claudes_own_deny_rules_or_offer_them_without_writing() {
     let check = secret(&without).unwrap();
     assert_eq!(check["status"], "off");
     let offer = without["next"].as_array().unwrap().iter().find_map(|n| {
-        n.as_str()
-            .filter(|n| n.contains("Read(**/.env)") && n.contains("does not write"))
+        n.as_str().filter(|n| {
+            n.contains("Read(**/.env)")
+                && n.contains("craft doctor --deny-secret-files")
+                && n.contains("does not write")
+        })
     });
     assert!(offer.is_some(), "{without}");
     assert_eq!(without["blocking"], false);

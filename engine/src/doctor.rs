@@ -820,8 +820,15 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
     checks
 }
 
-/// Claude's own deny rules for secret files, listed for `doctor` to offer; Craft writes none.
-const CLAUDE_SECRET_DENY: &str = r#"{"permissions": {"deny": ["Read(**/.env)", "Read(**/.env.local)", "Read(**/*.key)", "Read(~/.ssh/id_*)", "Read(~/.aws/credentials)"]}}"#;
+/// Claude's own deny rules for secret files, which `doctor` offers and writes to the project's
+/// local Claude settings only when asked with `--deny-secret-files`.
+pub const CLAUDE_SECRET_DENY: [&str; 5] = [
+    "Read(**/.env)",
+    "Read(**/.env.local)",
+    "Read(**/*.key)",
+    "Read(~/.ssh/id_*)",
+    "Read(~/.aws/credentials)",
+];
 
 /// The Codex permission profile entry that keeps `.env` files from commands, for `doctor`
 /// to offer.
@@ -882,8 +889,9 @@ fn claude_secret_files(facts: &Value, report: &mut Report) -> Value {
             ),
         );
     }
+    let snippet = json!({"permissions": {"deny": CLAUDE_SECRET_DENY}});
     report.next.push(format!(
-        "Optional, for a boundary on secret files in Claude: add to .claude/settings.json (or your user settings) {CLAUDE_SECRET_DENY}; Craft does not write it"
+        "Optional, for a boundary on secret files in Claude: run `craft doctor --deny-secret-files` to add {snippet} to .claude/settings.local.json, keeping its other rules, or add it to .claude/settings.json or your user settings yourself; without that option Craft does not write it"
     ));
     check(
         "secret-files",

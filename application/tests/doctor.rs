@@ -5,7 +5,7 @@ mod support;
 use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
-use support::{Repo, doctor, homes};
+use support::{Repo, doctor, doctor_with, homes};
 
 fn host<'a>(report: &'a Value, name: &str) -> &'a Value {
     report["hosts"]
@@ -337,6 +337,75 @@ fn doctor_offers_the_claude_status_line_and_finds_one_left_behind() {
         !report.to_string().contains("host-setup --host claude"),
         "{report}"
     );
+}
+
+/// Claude's secret-file deny rules are written only with `--deny-secret-files`: into the
+/// project's local settings, keeping every other key and rule, once.
+#[test]
+fn doctor_writes_claudes_secret_file_deny_rules_only_on_consent() {
+    let repo = Repo::new("doctor-secret-deny", &[("README.md", "x\n")]);
+    let homes = homes(&repo);
+    let settings = Path::new(repo.path()).join(".claude/settings.local.json");
+    fs::create_dir_all(settings.parent().unwrap()).unwrap();
+    let kept = json!({
+        "enabledPlugins": {"craft-delivery@mp": true},
+        "permissions": {"allow": ["Bash(npm test)"], "ask": ["Bash(git push:*)"], "deny": ["Bash(rm:*)"]}
+    });
+    fs::write(&settings, kept.to_string()).unwrap();
+    let secret = |report: &Value| {
+        report["configuration"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["check"] == "secret-files")
+            .map(|c| c["status"].clone())
+    };
+    let homes_before = (tree(&homes.claude), tree(&homes.codex));
+
+    let before = fs::read(&settings).unwrap();
+    let (code, report) = doctor(&repo, &homes);
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(secret(&report), Some(json!("off")), "{report}");
+    assert!(
+        report
+            .to_string()
+            .contains("craft doctor --deny-secret-files"),
+        "{report}"
+    );
+    assert!(report.get("secretFilesWritten").is_none());
+    assert_eq!(
+        fs::read(&settings).unwrap(),
+        before,
+        "no consent, nothing written"
+    );
+
+    let (code, report) = doctor_with(&repo, &homes, &["--deny-secret-files"]);
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(
+        report["secretFilesWritten"]["status"], "written",
+        "{report}"
+    );
+    assert_eq!(secret(&report), Some(json!("ok")), "{report}");
+    let written: Value = serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
+    assert_eq!(written["enabledPlugins"], kept["enabledPlugins"]);
+    assert_eq!(
+        written["permissions"]["allow"],
+        kept["permissions"]["allow"]
+    );
+    assert_eq!(written["permissions"]["ask"], kept["permissions"]["ask"]);
+    let deny = written["permissions"]["deny"].as_array().unwrap();
+    assert_eq!(deny[0], "Bash(rm:*)");
+    assert!(deny.contains(&json!("Read(**/.env)")), "{written}");
+    assert_eq!(
+        (tree(&homes.claude), tree(&homes.codex)),
+        homes_before,
+        "user settings untouched"
+    );
+
+    let after = fs::read(&settings).unwrap();
+    let (_, report) = doctor_with(&repo, &homes, &["--deny-secret-files"]);
+    assert_eq!(report["secretFilesWritten"]["status"], "already-configured");
+    assert_eq!(fs::read(&settings).unwrap(), after);
 }
 
 /// A hook that answered nothing because its input was too large to read is counted, so a
