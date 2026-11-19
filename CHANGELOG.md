@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A service binding can name a setup instead of writing out its mappings: `github` (issues and
+  pull requests through `gh` or the GitHub MCP server), `github-project` (issues with their
+  Project's status, priority and release through `gh`), `gitlab` (issues and merge requests
+  through `glab`) or `jira` (work items through Atlassian `acli` or the Atlassian MCP server).
+  Each supplies `task.read` and `task.search`, and task plans add `response.fields`, where the
+  shared task fields sit in that tracker's response, so changing trackers changes only the
+  binding. Bindings without a setup plan as before.
 - Routing hints are lines to act on instead of JSON naming skills. A prompt hint says
   `next: open <skill>` for its one workflow skill (or the project skill that replaces it), then
   the project's own skills and each standard with what keeps it: the command and its

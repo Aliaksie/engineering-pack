@@ -62,9 +62,7 @@
       "command": "git"
     },
     "codehost": {
-      "provider": "gitlab",
-      "transport": "cli",
-      "command": "glab",
+      "setup": "gitlab",
       "host": "gitlab.example.com",
       "repository": "team/project"
     },

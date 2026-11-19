@@ -26,7 +26,7 @@ fn service_of(operation: &str) -> &'static str {
 /// The project binding, or the local Git CLI when Git is not configured.
 fn binding(settings: &Value, service: &str) -> Option<(Value, bool)> {
     match settings.pointer(&format!("/services/{service}")) {
-        Some(binding) => Some((binding.clone(), true)),
+        Some(binding) => Some((setups::expand(binding), true)),
         None if service == "git" => Some((
             json!({"provider": "git", "transport": "cli", "command": "git"}),
             false,
@@ -48,6 +48,7 @@ enum Mapping<'a> {
         required: &'static [&'static str],
         optional: &'static [&'static str],
     },
+    Setup,
     Missing(String),
 }
 
@@ -56,6 +57,9 @@ enum Mapping<'a> {
 fn mapping<'a>(service: &str, binding: &'a Value, operation: &str) -> Mapping<'a> {
     if let Some(mapping) = binding.pointer(&format!("/operations/{operation}")) {
         return Mapping::Configured(mapping);
+    }
+    if setups::supplies(binding, operation) {
+        return Mapping::Setup;
     }
     let provider = binding["provider"].as_str().unwrap_or_default();
     let builtin = binding["transport"] == "cli"
@@ -286,6 +290,20 @@ pub fn plan(settings: &Value, operation: &str, params: &Value) -> Result<Value> 
             _ => return Err("CLI arguments must be scalar values".into()),
         },
         Mapping::Builtin { .. } => builtin_args(&binding, operation, params)?,
+        Mapping::Setup => {
+            if let Some(response) = setups::fields(&binding, operation) {
+                result["response"] = response;
+            }
+            match setups::invocation(&binding, operation, params)? {
+                setups::Invocation::Cli(args) => args,
+                setups::Invocation::Mcp { tool, arguments } => {
+                    result["server"] = binding["server"].clone();
+                    result["tool"] = json!(tool);
+                    result["arguments"] = arguments;
+                    return Ok(result);
+                }
+            }
+        }
     };
     result["command"] = binding["command"].clone();
     result["args"] = json!(args);
@@ -375,7 +393,17 @@ pub fn prepare(
                     Mapping::Builtin { required, optional } => {
                         ("builtin", binding["command"].clone(), json!(required), optional)
                     }
+                    Mapping::Setup => {
+                        let name = match setups::tool(binding, operation) {
+                            Some(tool) => json!(tool),
+                            None => binding["command"].clone(),
+                        };
+                        ("setup", name, json!(setups::required(operation)), &[][..])
+                    }
                 };
+                if binding["transport"] == "mcp" && binding.get("server").is_some() {
+                    entry["server"] = binding["server"].clone();
+                }
                 entry["mapping"] = json!(kind);
                 entry[if cli_transport { "command" } else { "tool" }] = name.clone();
                 entry["requiredParameters"] = parameters;
@@ -385,7 +413,12 @@ pub fn prepare(
                 let inventory = if cli_transport { &cli } else { &mcp };
                 entry["availability"] = json!(match inventory {
                     None => "unverified",
-                    Some(names) if name.as_str().is_some_and(|name| names.contains(name)) => "observed-available",
+                    Some(names) if name.as_str().is_some_and(|name| {
+                        names.contains(name)
+                            || (kind == "setup" && !cli_transport && names.iter().any(|seen| {
+                                setups::observed(seen, binding["server"].as_str().unwrap_or_default(), name)
+                            }))
+                    }) => "observed-available",
                     Some(_) => "not-observed",
                 });
                 entry
@@ -394,13 +427,16 @@ pub fn prepare(
         let mut summary = json!({ "service": service, "configured": bound.is_some() });
         if let Some((binding, explicit)) = &bound {
             let mut scope = Map::new();
-            for field in ["host", "repository"] {
+            for field in ["host", "repository", "project", "site"] {
                 if let Some(value) = binding.get(field) {
                     scope.insert(field.into(), value.clone());
                 }
             }
             scope.insert("account".into(), json!("unverified"));
             summary["source"] = json!(if *explicit { "project" } else { "local-default" });
+            if let Some(setup) = binding.get("setup") {
+                summary["setup"] = setup.clone();
+            }
             summary["provider"] = binding["provider"].clone();
             summary["transport"] = binding["transport"].clone();
             summary["scope"] = Value::Object(scope);
@@ -417,6 +453,8 @@ pub fn prepare(
         }
     }))
 }
+
+pub mod setups;
 
 #[cfg(test)]
 mod tests;
