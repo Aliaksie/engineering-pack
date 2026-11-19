@@ -41,8 +41,10 @@ pub struct Event<'a> {
     /// A search tool's pattern and a shell tool's command, for a search the model ran.
     pub pattern: Option<&'a str>,
     pub command: Option<&'a str>,
-    /// A file or search filter the tool call names that reaches secret files.
+    /// A file or search filter the tool call names that reaches secret files by a built-in name.
     pub secret: Option<&'a str>,
+    /// What the call names otherwise, for the secret-file patterns a layer declares.
+    pub named: &'a crate::hook::safety::Named<'a>,
     pub context_supported: bool,
     /// The host is continuing a stop a hook already held.
     pub stop_active: bool,
@@ -79,7 +81,8 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     let (settings, ignored) = project::hook_loaded_known(recorder, hook, event.root)?;
     // The project's safety policy speaks first: a refused command gets no routing.
     if event.lifecycle == "before-tool" {
-        let refused = match (event.command, event.secret) {
+        let secret = crate::hook::safety::secret(&settings, event.secret, event.named);
+        let refused = match (event.command, secret) {
             (Some(command), _) if !command.is_empty() => {
                 crate::hook::safety::decision(&settings, event.root, event.cwd, command)
             }

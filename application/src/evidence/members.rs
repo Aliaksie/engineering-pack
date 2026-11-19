@@ -53,6 +53,12 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
             }
         }
     }
+    // A file another member's source names is read under that member's own secret-file
+    // patterns.
+    let secrets: Vec<_> = selected
+        .iter()
+        .map(|(_, root)| root.as_deref().map(crate::project::secret_files))
+        .collect();
     let mut reports = Vec::new();
     for (id, root) in &selected {
         let Some(root) = root else {
@@ -97,8 +103,8 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
                         let Ok(target) = target.canonicalize() else {
                             continue;
                         };
-                        for (target_id, target_root) in &selected {
-                            let Some(target_root) = target_root else {
+                        for ((target_id, target_root), secrets) in selected.iter().zip(&secrets) {
+                            let (Some(target_root), Some(secrets)) = (target_root, secrets) else {
                                 continue;
                             };
                             let Ok(relative) = target.strip_prefix(target_root) else {
@@ -108,7 +114,7 @@ pub fn run(operation: &str, input: &Value) -> Result<Value, crate::failure::Fail
                                 continue;
                             };
                             let relative = relative.replace('\\', "/");
-                            if !eligible(&relative) {
+                            if !eligible(&relative, secrets) {
                                 continue;
                             }
                             let Ok(bytes) = read_source(target_root, &relative) else {

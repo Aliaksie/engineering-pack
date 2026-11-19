@@ -45,7 +45,7 @@ pub const FIELDS: [&str; 12] = [
 const VERSION: &str = "formatVersion";
 
 /// Lists merged entry by entry on `id`, by dotted field.
-pub const ENTRY_LISTS: [&str; 2] = ["standards", "safety.deny"];
+pub const ENTRY_LISTS: [&str; 3] = ["standards", "safety.deny", "safety.secretFiles"];
 
 type Result<T = ()> = std::result::Result<T, String>;
 

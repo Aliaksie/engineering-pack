@@ -439,6 +439,65 @@ fn writing_a_new_secret_file_is_not_a_read_and_the_rule_can_be_turned_off() {
     }
 }
 
+#[test]
+fn a_secret_file_pattern_the_project_declares_is_guarded_through_every_package() {
+    let project = r#"{"formatVersion":1,"safety":{"secretFiles":[
+        {"id":"vault-files","pattern":"*.vault"}]}}"#;
+    let repo = Repo::new(
+        "secret-declared",
+        &[
+            (".craft/project.json", project),
+            ("conf/prod.vault", "TOKEN=real\n"),
+            ("README.md", "x\n"),
+        ],
+    );
+    for package in ["craft-delivery", "craft-engineering"] {
+        let read = call(
+            "claude",
+            package,
+            repo.path(),
+            "Read",
+            json!({"file_path": "conf/prod.vault"}),
+        );
+        assert!(read.starts_with("ask "), "{package}: {read}");
+        assert!(read.contains("read-secret-file"), "{read}");
+        let search = call(
+            "claude",
+            package,
+            repo.path(),
+            "Grep",
+            json!({"pattern": "TOKEN", "glob": "*.vault"}),
+        );
+        assert!(search.starts_with("ask "), "{package}: {search}");
+        let other = call(
+            "claude",
+            package,
+            repo.path(),
+            "Read",
+            json!({"file_path": "README.md"}),
+        );
+        assert!(!other.contains("permissionDecision"), "{package}: {other}");
+        let shell = call(
+            "codex",
+            package,
+            repo.path(),
+            "Bash",
+            json!({"command": "cat conf/prod.vault"}),
+        );
+        assert!(shell.starts_with("deny "), "{package}: {shell}");
+    }
+    // Elsewhere the pattern is an ordinary name.
+    let bare = Repo::new("secret-undeclared", &[("conf/prod.vault", "T=1\n")]);
+    let read = call(
+        "claude",
+        "craft-engineering",
+        bare.path(),
+        "Read",
+        json!({"file_path": "conf/prod.vault"}),
+    );
+    assert!(!read.contains("permissionDecision"), "{read}");
+}
+
 /// A host that honours the hook: asks before the command and runs it only when the answer
 /// is not a refusal. Returns whether the command was refused.
 #[cfg(unix)]

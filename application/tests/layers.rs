@@ -618,3 +618,116 @@ fn a_committed_copy_of_the_organization_file_reaches_a_machine_without_one() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("organization layer (pinned)"), "{stderr}");
 }
+
+#[test]
+fn each_layer_adds_secret_file_patterns_and_config_explain_names_the_layer() {
+    let organization = r#"{"formatVersion": 1, "safety": {"secretFiles": [
+        {"id": "vault-files", "pattern": "*.vault"},
+        {"id": "legacy-keys", "pattern": "*.keys"}]}}"#;
+    let user = r#"{"safety": {"secretFiles": [{"id": "acme-token", "pattern": ".acme/token"}]}}"#;
+    let project = r#"{"formatVersion": 1, "safety": {"secretFiles": [
+        {"id": "legacy-keys", "disabled": true},
+        {"id": "signing", "pattern": "config/keys/*"}]}}"#;
+    let machine = Machine::new("secret-files", organization, Some(user));
+    let repo = Repo::new(
+        "layers-secret-files",
+        &[
+            (".craft/project.json", project),
+            ("conf/prod.vault", "TOKEN=real\n"),
+            ("old.keys", "k\n"),
+        ],
+    );
+    let config = machine.json(&repo, &["config", "--explain"]);
+    for (field, origin) in [
+        ("safety.secretFiles[vault-files]", "organization"),
+        ("safety.secretFiles[acme-token]", "user"),
+        ("safety.secretFiles[signing]", "project"),
+    ] {
+        assert_eq!(row(&config, "values", field)["origin"], origin, "{field}");
+    }
+    let removed = row(&config, "overrides", "safety.secretFiles[legacy-keys]");
+    assert_eq!(
+        (&removed["origin"], &removed["disabled"]),
+        (&json!("project"), &json!(true))
+    );
+    assert_eq!(removed["overrides"][0]["origin"], "organization");
+    let text = machine.craft(&["config", "--root", repo.path(), "--explain"], "");
+    let text = String::from_utf8_lossy(&text.stdout);
+    assert!(
+        text.contains(r#"safety.secretFiles[vault-files] = {"id":"vault-files","pattern":"*.vault"} (organization)"#),
+        "{text}"
+    );
+    let settings = machine.json(&repo, &["settings"]);
+    assert_eq!(
+        settings["safety"]["secretFiles"],
+        json!([
+            {"id": "vault-files", "pattern": "*.vault", "source": "organization"},
+            {"id": "acme-token", "pattern": ".acme/token", "source": "user"},
+            {"id": "signing", "pattern": "config/keys/*", "source": "project"},
+        ])
+    );
+    // The hooks judge reads against every layer's patterns.
+    let read = |host: &str, command: &str| {
+        machine.hook(
+            host,
+            &repo,
+            "before-tool",
+            json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                "tool_input": {"command": command}}),
+        )
+    };
+    let refused = read("codex", "cat conf/prod.vault");
+    assert!(refused.starts_with("deny "), "{refused}");
+    assert!(refused.contains("read-secret-file"), "{refused}");
+    assert!(read("codex", "cat ~/.acme/token").starts_with("deny "));
+    assert!(!read("codex", "cat old.keys").starts_with("deny"));
+    let asked = machine.hook(
+        "claude",
+        &repo,
+        "before-tool",
+        json!({"hook_event_name": "PreToolUse", "tool_name": "Read",
+            "tool_input": {"file_path": "conf/prod.vault"}}),
+    );
+    assert!(asked.contains(r#""ask""#), "{asked}");
+}
+
+#[test]
+fn an_unusable_layer_leaves_project_intelligence_running_with_the_project_patterns() {
+    let machine = Machine::new(
+        "secret-files-broken",
+        r#"{"formatVersion": 1, "safety": {"enabled": "x"}}"#,
+        None,
+    );
+    let project = r#"{"formatVersion": 1, "safety": {"secretFiles": [
+        {"id": "prod", "pattern": "prod-*.json"}]}}"#;
+    let repo = Repo::new(
+        "layers-secret-files-broken",
+        &[
+            (".craft/project.json", project),
+            ("config/prod-eu.json", "{\"needle\": 1}\n"),
+            ("config/dev-eu.json", "{\"needle\": 2}\n"),
+        ],
+    );
+    let request = |operation: &str, input: Value| {
+        let request = json!({"formatVersion": 1, "operation": operation, "input": input});
+        let output = machine.craft(&[], &request.to_string());
+        let response: Value = serde_json::from_slice(&output.stdout)
+            .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&output.stderr)));
+        assert_eq!(response["ok"], true, "{operation}: {response}");
+        response["result"].clone()
+    };
+    let refreshed = request("refresh", json!({"root": repo.path()}));
+    assert_eq!(refreshed["coverage"]["sources"], 1, "{refreshed}");
+    let located = request(
+        "locate",
+        json!({"root": repo.path(), "request": {"terms": ["needle"], "paths": ["config"]}}),
+    );
+    let paths: Vec<&str> = located["matches"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|found| found["path"].as_str())
+        .collect();
+    assert_eq!(paths, ["config/dev-eu.json"], "{located}");
+    assert_eq!(located["skipped"]["secret"], 1, "{located}");
+}

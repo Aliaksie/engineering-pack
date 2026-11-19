@@ -148,10 +148,18 @@ pub fn guards_secret_files(settings: &Value) -> bool {
     enabled(settings) && !disabled(settings, SECRET_RULE)
 }
 
-/// Validate `safety`: `enabled`, `disables` naming built-in rules, and `deny` rules of the
-/// project's own, each an id, the leading words of a command and an optional reason.
+/// Validate `safety`: `enabled`, `disables` naming built-in rules, `deny` rules of the
+/// project's own, each an id, the leading words of a command and an optional reason, and
+/// `secretFiles`, each an id and a file pattern.
 pub fn validate(safety: &Value) -> Result {
-    let map = object(safety, &["enabled", "disables", "deny"], "safety")?;
+    let map = object(
+        safety,
+        &["enabled", "disables", "deny", "secretFiles"],
+        "safety",
+    )?;
+    if let Some(patterns) = map.get("secretFiles") {
+        validate_secret_files(patterns)?;
+    }
     if !map.get("enabled").is_none_or(Value::is_boolean) {
         return Err("safety.enabled must be boolean".into());
     }
@@ -225,6 +233,53 @@ pub fn validate(safety: &Value) -> Result {
     Ok(())
 }
 
+/// `safety.secretFiles`: at most [`secrets::MAX_DECLARED`] entries of a unique kebab-case id
+/// and a pattern, or an id and `disabled` to remove the entry an earlier layer declared.
+fn validate_secret_files(patterns: &Value) -> Result {
+    let max = secrets::MAX_DECLARED;
+    let entries = patterns
+        .as_array()
+        .filter(|entries| entries.len() <= max)
+        .ok_or_else(|| format!("safety.secretFiles must be an array of at most {max}"))?;
+    let mut ids = Vec::new();
+    for entry in entries {
+        let entry = object(
+            entry,
+            &["id", "pattern", "disabled"],
+            "safety.secretFiles entry",
+        )?;
+        let id = entry
+            .get("id")
+            .and_then(Value::as_str)
+            .filter(|id| kebab(id) && id.len() <= 64)
+            .ok_or("safety.secretFiles entry id must be kebab-case")?;
+        if ids.contains(&id) {
+            return Err(format!("duplicate safety.secretFiles id: {id}"));
+        }
+        ids.push(id);
+        match entry.get("disabled") {
+            None | Some(Value::Bool(false)) => {}
+            Some(Value::Bool(true)) if entry.len() == 2 => continue,
+            Some(Value::Bool(true)) => {
+                return Err(format!(
+                    "safety.secretFiles {id}: a disabled entry takes only its id"
+                ));
+            }
+            Some(_) => {
+                return Err(format!("safety.secretFiles {id}: disabled must be boolean"));
+            }
+        }
+        let pattern = entry
+            .get("pattern")
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("safety.secretFiles {id}: pattern must be text"))?;
+        if let Some(error) = secrets::pattern_error(pattern) {
+            return Err(format!("safety.secretFiles {id}: pattern {error}"));
+        }
+    }
+    Ok(())
+}
+
 fn disabled(settings: &Value, id: &str) -> bool {
     settings["safety"]["disables"]
         .as_array()
@@ -238,7 +293,8 @@ fn project_rules(settings: &Value) -> &[Value] {
 }
 
 /// The policy as `craft settings` shows it: whether it is on, each rule in force with where
-/// it comes from, and the built-in rules the project turned off.
+/// it comes from, the built-in rules the project turned off and the secret-file patterns a
+/// layer added.
 pub fn listing(settings: &Value) -> Value {
     let mut rules: Vec<Value> = RULES
         .iter()
@@ -260,11 +316,19 @@ pub fn listing(settings: &Value) -> Value {
         .map(|(id, _)| *id)
         .filter(|id| disabled(settings, id))
         .collect();
+    let patterns: Vec<Value> = settings["safety"]["secretFiles"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|entry| !crate::layers::disabled(entry))
+        .map(|entry| json!({"id": entry["id"], "pattern": entry["pattern"], "source": "project"}))
+        .collect();
     json!({
         "enabled": enabled(settings),
         "origin": "bundled",
         "rules": rules,
         "disabled": off,
+        "secretFiles": patterns,
         "effect": "Refuses matching shell commands and reads of secret files where the host lets a hook refuse a tool call; where the host can ask the user instead (Claude), a secret read waits for the user. Approves nothing. A guardrail, not a security boundary.",
     })
 }
@@ -281,6 +345,12 @@ pub fn layered_listing(resolved: &Value) -> Value {
         let layer = rule["id"].as_str().and_then(|id| layers[id].as_str());
         if let Some(layer) = layer.filter(|_| rule["source"] == "project") {
             rule["source"] = json!(layer);
+        }
+    }
+    let layers = &resolved["entries"]["safety.secretFiles"];
+    for pattern in listing["secretFiles"].as_array_mut().into_iter().flatten() {
+        if let Some(layer) = pattern["id"].as_str().and_then(|id| layers[id].as_str()) {
+            pattern["source"] = json!(layer);
         }
     }
     listing
@@ -695,13 +765,28 @@ fn unexpanded_refusal(rule: &str, target: &str) -> Value {
     })
 }
 
-/// The first file or search filter a tool call names that reaches secret files.
+/// The first file or search filter a tool call names that reaches secret files by the
+/// built-in names; [`declared_secret`] adds the patterns a layer declared.
 pub fn named_secret<'a>(files: &[&'a str], filters: &[&'a str]) -> Option<&'a str> {
-    files
-        .iter()
-        .find(|file| secrets::secret_file(file))
-        .or_else(|| filters.iter().find(|filter| secrets::secret_filter(filter)))
-        .copied()
+    declared(&secrets::Declared::default(), files, filters)
+}
+
+/// The first file or search filter a tool call names that reaches secret files by the
+/// built-in names or a pattern `settings` declare.
+pub fn declared_secret<'a>(
+    settings: &Value,
+    files: &[&'a str],
+    filters: &[&'a str],
+) -> Option<&'a str> {
+    declared(&secrets::Declared::of(settings), files, filters)
+}
+
+fn declared<'a>(
+    patterns: &secrets::Declared,
+    files: &[&'a str],
+    filters: &[&'a str],
+) -> Option<&'a str> {
+    patterns.named(files, filters)
 }
 
 /// The decision for a tool call that reads, searches or rewrites `secret`, a file or filter
@@ -720,6 +805,7 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
         return json!({"decision": "allow"});
     }
     let secrets_on = !disabled(settings, SECRET_RULE);
+    let patterns = secrets::Declared::of(settings);
     let mut broken: Option<Value> = None;
     let too_deep = walk(shell, &mut |words| {
         let words = command(words);
@@ -738,7 +824,7 @@ pub fn decision(settings: &Value, place: &Place, shell: &str) -> Value {
             });
             return true;
         }
-        if let Some(file) = secrets::shell_read(words).filter(|_| secrets_on) {
+        if let Some(file) = patterns.shell_read(words).filter(|_| secrets_on) {
             broken = Some(refusal(SECRET_RULE, "", Some(file)));
             return true;
         }

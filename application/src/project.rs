@@ -430,6 +430,18 @@ pub(crate) fn declared_settings(root: &Path) -> Result<Value, Failure> {
     Ok(resolve(root, Sources::default(), &json!({}), false, Detect::Nothing)?.0["settings"].take())
 }
 
+/// The secret-file patterns the layers and the project declare, for work that reads the
+/// project's files. Work that never read the organization or user file keeps running when
+/// one cannot be used: it then honours the project file's own patterns, while hooks and
+/// `craft config` report the broken layer.
+pub(crate) fn secret_files(root: &Path) -> craft_engine::safety::secrets::Declared {
+    use craft_engine::safety::secrets::Declared;
+    declared_settings(root)
+        .or_else(|_| configuration(root))
+        .map(|settings| Declared::of(&settings))
+        .unwrap_or_default()
+}
+
 /// Validated effective settings without task overrides, as commands consume them.
 pub fn settings(root: &Path, preferences: Option<&Path>) -> Result<Value, Failure> {
     let sources = Sources {

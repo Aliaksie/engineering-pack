@@ -632,3 +632,82 @@ fn a_tool_call_names_a_secret_by_a_file_or_a_search_filter() {
     assert_eq!(named_secret(&["src"], &["*.pem"]), Some("*.pem"));
     assert_eq!(named_secret(&["src", ".env.example"], &["*.rs", "*"]), None);
 }
+
+fn vault() -> Value {
+    json!({"safety": {"enabled": true,
+        "secretFiles": [{"id": "vault-files", "pattern": "*.vault"}]}})
+}
+
+#[test]
+fn a_declared_secret_file_is_refused_like_a_built_in_one() {
+    let settings = vault();
+    let roots = [ROOT.to_string()];
+    let place = at(&roots, ROOT, &[]);
+    assert_eq!(
+        judged(&settings, &place, "cat conf/prod.vault").as_deref(),
+        Some("read-secret-file")
+    );
+    assert_eq!(judged(&on(), &place, "cat conf/prod.vault"), None);
+    assert_eq!(
+        declared_secret(&settings, &["src/main.rs", "conf/prod.vault"], &[]),
+        Some("conf/prod.vault")
+    );
+    assert_eq!(
+        declared_secret(&settings, &["src"], &["*.vault"]),
+        Some("*.vault")
+    );
+    assert_eq!(
+        declared_secret(&settings, &["app/.env"], &[]),
+        Some("app/.env")
+    );
+    assert_eq!(named_secret(&["conf/prod.vault"], &[]), None);
+    let off = json!({"safety": {"enabled": true, "disables": ["read-secret-file"],
+        "secretFiles": [{"id": "vault-files", "pattern": "*.vault"}]}});
+    assert_eq!(judged(&off, &place, "cat conf/prod.vault"), None);
+    assert_eq!(read_decision(&off, "conf/prod.vault")["decision"], "allow");
+}
+
+#[test]
+fn declared_secret_files_are_validated() {
+    for valid in [
+        json!({"secretFiles": []}),
+        json!({"secretFiles": [{"id": "vault", "pattern": "*.vault"}, {"id": "old", "disabled": true}]}),
+    ] {
+        validate(&valid).unwrap_or_else(|error| panic!("{valid}: {error}"));
+    }
+    let many: Vec<Value> = (0..33)
+        .map(|n| json!({"id": format!("p{n}"), "pattern": format!("{n}.vault")}))
+        .collect();
+    for invalid in [
+        json!({"secretFiles": {"id": "x"}}),
+        json!({"secretFiles": many}),
+        json!({"secretFiles": [{"id": "X", "pattern": "*.vault"}]}),
+        json!({"secretFiles": [{"id": "x"}]}),
+        json!({"secretFiles": [{"id": "x", "pattern": 1}]}),
+        json!({"secretFiles": [{"id": "x", "pattern": "*"}]}),
+        json!({"secretFiles": [{"id": "x", "pattern": "a.vault"}, {"id": "x", "pattern": "b.vault"}]}),
+        json!({"secretFiles": [{"id": "x", "pattern": "a.vault", "disabled": true}]}),
+        json!({"secretFiles": [{"id": "x", "pattern": "a.vault", "reason": "why"}]}),
+    ] {
+        assert!(validate(&invalid).is_err(), "{invalid}");
+    }
+}
+
+#[test]
+fn the_listing_names_the_layer_of_each_declared_secret_file() {
+    let resolved = json!({
+        "settings": {"safety": {"enabled": true, "secretFiles": [
+            {"id": "vault-files", "pattern": "*.vault"},
+            {"id": "acme-token", "pattern": ".acme/token"}]}},
+        "origins": {},
+        "entries": {"safety.secretFiles": {"vault-files": "organization", "acme-token": "user"}},
+    });
+    assert_eq!(
+        layered_listing(&resolved)["secretFiles"],
+        json!([
+            {"id": "vault-files", "pattern": "*.vault", "source": "organization"},
+            {"id": "acme-token", "pattern": ".acme/token", "source": "user"},
+        ])
+    );
+    assert_eq!(listing(&on())["secretFiles"], json!([]));
+}

@@ -168,3 +168,122 @@ fn commands_that_do_not_show_a_secret_file_are_not_reads() {
         assert_eq!(shell_read(&words(command)), None, "{command}");
     }
 }
+
+fn declared(patterns: &[&str]) -> Declared {
+    let entries: Vec<Value> = patterns
+        .iter()
+        .enumerate()
+        .map(|(index, pattern)| serde_json::json!({"id": format!("p{index}"), "pattern": pattern}))
+        .collect();
+    Declared::of(&serde_json::json!({"safety": {"secretFiles": entries}}))
+}
+
+#[test]
+fn a_declared_name_matches_in_any_directory_and_a_path_by_its_last_segments() {
+    let team = declared(&["*.vault", "prod-*.json", ".acme/token", "config/keys/*"]);
+    for path in [
+        "a.vault",
+        "deep/dir/A.VAULT",
+        "C:\\repo\\x.vault",
+        "prod-eu.json",
+        "/home/dev/.acme/token",
+        "./.acme/token",
+        "svc/config/keys/signing",
+    ] {
+        assert!(team.secret_file(path), "{path}");
+    }
+    for path in [
+        "a.vaults",
+        "vault",
+        "dev-eu.json",
+        "token",
+        ".acme/token/old",
+        "keys/signing",
+        "config/keys",
+        "src/main.rs",
+    ] {
+        assert!(!team.secret_file(path), "{path}");
+    }
+    // The built-in names still hold beside the declared ones.
+    assert!(team.secret_file("app/.env"));
+}
+
+#[test]
+fn a_declared_pattern_holds_where_a_built_in_exemption_would_not() {
+    let team = declared(&["*.vault", "*.example"]);
+    assert!(team.secret_file("testdata/a.vault"));
+    assert!(team.secret_file("settings.example"));
+    assert!(!secret_file("testdata/a.vault"));
+    assert!(!Declared::default().secret_file("settings.example"));
+}
+
+#[test]
+fn a_search_filter_reaches_a_declared_pattern_by_its_text_or_a_literal_name() {
+    let team = declared(&["*.vault", ".acme/token"]);
+    assert!(team.secret_filter("*.vault"));
+    assert!(team.secret_filter("**/*.VAULT"));
+    assert!(team.secret_filter("tok*"));
+    assert!(team.secret_filter(".acme/token"));
+    assert!(team.secret_filter("*.env"));
+    assert!(!team.secret_filter("*"));
+    assert!(!team.secret_filter("*.rs"));
+    assert!(!declared(&[]).secret_filter("*.vault"));
+}
+
+#[test]
+fn a_shell_read_of_a_declared_file_is_found() {
+    let team = declared(&["*.vault"]);
+    assert_eq!(
+        team.shell_read(&words("cat conf/a.vault")),
+        Some("conf/a.vault")
+    );
+    assert_eq!(team.shell_read(&words("grep x < a.vault")), Some("a.vault"));
+    assert_eq!(
+        team.shell_read(&words("git show HEAD:a.vault")),
+        Some("a.vault")
+    );
+    assert_eq!(team.shell_read(&words("ls a.vault")), None);
+    assert_eq!(shell_read(&words("cat a.vault")), None);
+}
+
+#[test]
+fn a_disabled_entry_declares_nothing() {
+    let settings = serde_json::json!({"safety": {"secretFiles": [
+        {"id": "vault", "disabled": true}, {"id": "keys", "pattern": "*.keys"}]}});
+    let team = Declared::of(&settings);
+    assert!(team.secret_file("a.keys"));
+    assert!(!team.secret_file("a.vault"));
+    assert!(Declared::of(&serde_json::json!({})).is_empty());
+}
+
+#[test]
+fn a_pattern_that_cannot_name_a_secret_file_is_rejected() {
+    for valid in [
+        "*.vault",
+        "prod-*.json",
+        ".acme/token",
+        "config/keys/*",
+        "keys/*",
+        "{a,b}.key",
+    ] {
+        assert_eq!(pattern_error(valid), None, "{valid}");
+    }
+    let long = "a".repeat(129);
+    for invalid in [
+        "",
+        long.as_str(),
+        "/etc/token",
+        "keys\\token",
+        "a//b",
+        "keys/",
+        "./token",
+        "../token",
+        "**/token",
+        "*",
+        "*.*",
+        "*/*",
+        "a\tb",
+    ] {
+        assert!(pattern_error(invalid).is_some(), "{invalid:?}");
+    }
+}

@@ -353,3 +353,52 @@ fn fields_a_build_does_not_know_are_left_out_and_named() {
     }
     assert_eq!(known(&json!([])), (json!([]), vec![]));
 }
+
+#[test]
+fn each_layer_adds_secret_file_patterns_and_the_explanation_names_its_layer() {
+    let organization = json!({"safety": {"secretFiles": [
+        {"id": "vault-files", "pattern": "*.vault"},
+        {"id": "legacy-keys", "pattern": "*.keys"}]}});
+    let user = json!({"safety": {"secretFiles": [{"id": "acme-token", "pattern": ".acme/token"}]}});
+    let project = json!({"formatVersion": 1, "safety": {"secretFiles": [
+        {"id": "legacy-keys", "disabled": true},
+        {"id": "signing", "pattern": "config/keys/*"}]}});
+    let result = resolved(&organization, &user, &project).unwrap();
+    let patterns: Vec<&str> = result["settings"]["safety"]["secretFiles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["pattern"].as_str().unwrap())
+        .collect();
+    assert_eq!(patterns, ["*.vault", ".acme/token", "config/keys/*"]);
+    assert_eq!(
+        result["entries"]["safety.secretFiles"],
+        json!({"vault-files": "organization", "acme-token": "user", "signing": "project"})
+    );
+    let rows = explanation(result["history"].as_object().unwrap());
+    assert_eq!(
+        row(&rows, "safety.secretFiles[vault-files]")["origin"],
+        "organization"
+    );
+    assert_eq!(
+        row(&rows, "safety.secretFiles[acme-token]")["origin"],
+        "user"
+    );
+    let removed = row(&rows, "safety.secretFiles[legacy-keys]");
+    assert_eq!(
+        (&removed["origin"], &removed["disabled"]),
+        (&json!("project"), &json!(true))
+    );
+    assert_eq!(removed["overrides"][0]["origin"], "organization");
+    let text = text(&json!({"order": ORDER, "layers": [], "overrides": [], "values": rows}));
+    assert!(
+        text.contains(r#"safety.secretFiles[vault-files] = {"id":"vault-files","pattern":"*.vault"} (organization)"#),
+        "{text}"
+    );
+    let settings = &result["settings"];
+    assert!(crate::safety::secrets::Declared::of(settings).secret_file("svc/config/keys/sign"));
+    assert!(!crate::safety::secrets::Declared::of(settings).secret_file("a.keys"));
+    let invalid = json!({"safety": {"secretFiles": [{"id": "all", "pattern": "*"}]}});
+    let error = resolved(&invalid, &json!({}), &json!({"formatVersion": 1})).unwrap_err();
+    assert!(error.starts_with("organization layer"), "{error}");
+}

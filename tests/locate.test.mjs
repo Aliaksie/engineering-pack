@@ -97,6 +97,19 @@ test('locate never returns a line of a file that commonly holds secrets', t => {
   }
 });
 
+test('locate never returns a line of a file a secret-file pattern of the project names', t => {
+  for (const git of [true, false]) {
+    const root = fixture(t, git);
+    write(root, '.craft/project.json', JSON.stringify({ formatVersion: 1,
+      safety: { secretFiles: [{ id: 'vault-files', pattern: '*.vault' }] } }));
+    write(root, 'src/prod.vault', 'TOKEN=needle\n');
+    write(root, 'src/app.txt', 'needle\n');
+    const result = locate(root, { terms: ['needle'], paths: ['src'] });
+    assert.deepEqual(result.matches.map(match => match.path), ['src/app.txt'], `git ${git}`);
+    assert.equal(result.skipped.secret, 1, `git ${git}`);
+  }
+});
+
 test('non-Git search requires bounded explicit scope and does not follow symlinks', t => {
   const root = fixture(t, false);
   const outside = fixture(t, false);
