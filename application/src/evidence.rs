@@ -159,6 +159,7 @@ pub(crate) fn refresh(
     let mut phases = Phases::default();
     let exclusions =
         craft_engine::contracts::evidence_exclusions(&crate::project::configuration(root)?)?;
+    let secrets = crate::project::secret_files(root);
     let retired = phases.time(Phase::Store, || store.retain_providers(&ACTIVE))?;
     let epoch = phases.time(Phase::Store, || store.begin_inventory())?;
     let mut inventory = phases.time(Phase::Inventory, || Inventory::start(root, &exclusions))?;
@@ -172,7 +173,7 @@ pub(crate) fn refresh(
         if !skipped {
             observe(&path, false);
         }
-        if !eligible(&path) {
+        if !eligible(&path, &secrets) {
             continue;
         }
         if skipped {

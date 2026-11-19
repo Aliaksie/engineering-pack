@@ -3,7 +3,7 @@ use crate::process;
 use craft_engine::{
     discovery::{self, MAX_FILE_BYTES, Search},
     routing::private_path,
-    safety::secrets::secret_file,
+    safety::secrets::Declared,
 };
 use serde_json::{Value, json};
 use std::{
@@ -116,6 +116,7 @@ pub(crate) fn open_source(path: &Path) -> std::io::Result<File> {
 
 struct Scan<'a> {
     request: &'a Search,
+    secrets: &'a Declared,
     files: BTreeSet<String>,
     truncation: Vec<&'static str>,
     skipped: Value,
@@ -140,7 +141,7 @@ impl Scan<'_> {
             return;
         }
         // A match line would show the secret itself.
-        if secret_file(&name) {
+        if self.secrets.secret_file(&name) {
             self.skip("secret");
             return;
         }
@@ -251,10 +252,13 @@ fn selected_candidates(
 /// Bytes read to classify a file as binary, as Git does: a NUL among the first 8000 bytes.
 const SNIFF_BYTES: usize = 8000;
 
+/// Search `request` under `root`, never reading a file that commonly holds secrets or that a
+/// pattern in `secrets` names.
 pub fn scan(
     root: &Path,
     request: &Search,
     repositories: Option<&[String]>,
+    secrets: &Declared,
 ) -> Result<Value, SearchError> {
     let root = fs::canonicalize(root)?;
     for scope in &request.scopes {
@@ -275,6 +279,7 @@ pub fn scan(
     }
     let mut scan = Scan {
         request,
+        secrets,
         files: BTreeSet::new(),
         truncation: Vec::new(),
         skipped: json!({"symlink":0,"binary":0,"oversized":0,"unreadable":0,"excludedDirectory":0,"secret":0}),

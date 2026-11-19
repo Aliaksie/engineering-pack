@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- An organization, user or project file can add its own secret-file patterns under
+  `safety.secretFiles`, such as `{"id": "vault-files", "pattern": "*.vault"}` or a path ending
+  like `.acme/token`. The `read-secret-file` rule asks about or refuses reads of those files as
+  it does for `.env`, and `craft locate`, Project Intelligence, standards checks and the stop
+  review do not read them. Entries merge by `id` across layers; `craft settings` and
+  `craft config --explain` show which layer added each one. A Craft build older than this one
+  does not know `secretFiles`: in a project whose file uses it, that build's `craft settings`,
+  `craft config` and Project Intelligence refresh stop with an error, and its hooks keep
+  running without guarding the declared files.
 - `craft doctor --deny-secret-files` writes Claude Code's deny rules for secret files
   (`Read(**/.env)` and the others doctor offers) into `.claude/settings.local.json`. Existing
   keys and `allow`, `ask` and `deny` rules are kept, and a rule already listed is not added

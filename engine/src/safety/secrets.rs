@@ -3,6 +3,8 @@
 //! tools. Nothing is read from disk. Templates such as `.env.example` and public keys are not
 //! secrets. A tool call or shell command that names such a file for reading is caught; a
 //! read that does not name it (a script, `env`, a broad search) is outside what a name shows.
+//! A configuration layer may add names of its own ([`Declared`]).
+use serde_json::Value;
 
 /// Endings that mark a template or a public half rather than a secret.
 const NOT_SECRET: [&str; 7] = [
@@ -176,14 +178,22 @@ fn credential_stem(stem: &str) -> bool {
     }) || stem.starts_with("client_secret")
 }
 
+/// A path's segments as names are judged: `\\` read as `/`, lower case, without empty and
+/// `.` segments.
+fn segments(path: &str) -> Vec<String> {
+    path.replace('\\', "/")
+        .to_ascii_lowercase()
+        .split('/')
+        .filter(|segment| !segment.is_empty() && *segment != ".")
+        .map(str::to_owned)
+        .collect()
+}
+
 /// Whether the file at `path` commonly holds secrets, by its name and the directories
 /// above it. Either separator; case is ignored.
 pub fn secret_file(path: &str) -> bool {
-    let path = path.replace('\\', "/").to_ascii_lowercase();
-    let segments: Vec<&str> = path
-        .split('/')
-        .filter(|segment| !segment.is_empty() && *segment != ".")
-        .collect();
+    let segments = segments(path);
+    let segments: Vec<&str> = segments.iter().map(String::as_str).collect();
     let Some((&name, directories)) = segments.split_last() else {
         return false;
     };
@@ -277,57 +287,186 @@ fn operand(word: &str) -> &str {
     }
 }
 
-/// The secret file one shell command segment reads, if it names one: a reading command's
-/// operand, the source of a copy, a file at a Git revision, or an input redirect (`< .env`)
-/// on any command. Loading a file into the shell (`source .env`) shows the model nothing
-/// and is not a read here.
+/// The secret file one shell command segment reads by the built-in names alone; see
+/// [`Declared::shell_read`].
 pub fn shell_read(words: &[String]) -> Option<&str> {
-    let redirected = words.iter().enumerate().find_map(|(index, word)| {
-        let (_, after) = word.rsplit_once('<')?;
-        if word.contains("<<") || word.contains("<(") {
-            return None;
-        }
-        let file = if after.is_empty() {
-            words.get(index + 1)?.as_str()
-        } else {
-            after
-        };
-        secret_file(file).then_some(file)
-    });
-    if redirected.is_some() {
-        return redirected;
-    }
-    let (executable, args) = words.split_first()?;
-    let executable = basename(executable).to_ascii_lowercase();
-    let executable = executable.strip_suffix(".exe").unwrap_or(&executable);
-    if READERS.contains(&executable) {
-        return args
-            .iter()
-            .map(|word| operand(word))
-            .find(|word| secret_file(word));
-    }
-    if COPIERS.contains(&executable) {
-        let sources: Vec<usize> = (0..args.len())
-            .filter(|index| !args[*index].starts_with('-'))
+    Declared::default().shell_read(words)
+}
+
+/// Most patterns `safety.secretFiles` holds once every layer is merged.
+pub const MAX_DECLARED: usize = 32;
+const MAX_PATTERN: usize = 128;
+
+/// One pattern as matched: its segments, each a list of lower-case characters.
+type Pattern = Vec<Vec<char>>;
+
+fn chars(segments: Vec<String>) -> Pattern {
+    segments
+        .iter()
+        .map(|segment| segment.chars().collect())
+        .collect()
+}
+
+fn wildcard(segment: &[char]) -> bool {
+    segment.iter().any(|c| matches!(c, '*' | '?' | '{'))
+}
+
+/// Secret-file patterns a configuration layer declared in `safety.secretFiles`, judged beside
+/// the built-in names. A pattern without `/` matches a file's name in any directory; one with
+/// `/` matches the last segments of its path. `*`, `?` and `{a,b}` stay within one segment
+/// and case is ignored. A declared pattern holds where a built-in exemption (a template
+/// ending, a fixture directory) would not: the team named those files.
+#[derive(Default)]
+pub struct Declared {
+    patterns: Vec<Pattern>,
+}
+
+impl Declared {
+    /// The patterns resolved settings declare.
+    pub fn of(settings: &Value) -> Self {
+        let patterns = settings["safety"]["secretFiles"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|entry| entry["disabled"] != true)
+            .filter_map(|entry| entry["pattern"].as_str())
+            .map(|pattern| chars(segments(pattern)))
+            .filter(|pattern| !pattern.is_empty())
             .collect();
-        let (_, sources) = sources.split_last()?;
-        return sources
-            .iter()
-            .map(|index| operand(&args[*index]))
-            .find(|word| secret_file(word));
+        Self { patterns }
     }
-    if executable == "git" {
-        let mut verb = 0;
-        while args.get(verb)?.starts_with('-') {
-            verb += 1 + usize::from(super::GIT_VALUE_OPTIONS.contains(&args[verb].as_str()));
+
+    pub fn is_empty(&self) -> bool {
+        self.patterns.is_empty()
+    }
+
+    fn declares(&self, path: &str) -> bool {
+        if self.patterns.is_empty() {
+            return false;
         }
-        if !GIT_READERS.contains(&args.get(verb)?.as_str()) {
-            return None;
+        let path = chars(segments(path));
+        self.patterns.iter().any(|pattern| {
+            path.len() >= pattern.len()
+                && pattern
+                    .iter()
+                    .rev()
+                    .zip(path.iter().rev())
+                    .all(|(pattern, segment)| glob_match(pattern, segment))
+        })
+    }
+
+    /// Whether the file at `path` holds secrets: a declared pattern or a built-in name.
+    pub fn secret_file(&self, path: &str) -> bool {
+        self.declares(path) || secret_file(path)
+    }
+
+    /// [`secret_filter`] with the declared patterns: a filter with wildcards also reaches
+    /// secret files when its last segment is a declared pattern's own, or when it reaches a
+    /// declared name without wildcards and no ordinary name.
+    pub fn secret_filter(&self, filter: &str) -> bool {
+        if !filter.contains(['*', '?', '{']) {
+            return self.secret_file(filter);
         }
-        return args[verb + 1..].iter().find_map(|word| {
-            let file = word.split_once(':').map_or(word.as_str(), |(_, path)| path);
-            secret_file(file).then_some(file)
+        if secret_filter(filter) {
+            return true;
+        }
+        let Some(last) = segments(filter).pop() else {
+            return false;
+        };
+        let last: Vec<char> = last.chars().collect();
+        let broad = PLAIN_SAMPLES
+            .iter()
+            .any(|name| glob_match(&last, &name.chars().collect::<Vec<_>>()));
+        self.patterns
+            .iter()
+            .filter_map(|pattern| pattern.last())
+            .any(|name| *name == last || (!broad && !wildcard(name) && glob_match(&last, name)))
+    }
+
+    /// The secret file one shell command segment reads, if it names one: a reading command's
+    /// operand, the source of a copy, a file at a Git revision, or an input redirect (`< .env`)
+    /// on any command. Loading a file into the shell (`source .env`) shows the model nothing
+    /// and is not a read here.
+    pub fn shell_read<'a>(&self, words: &'a [String]) -> Option<&'a str> {
+        let redirected = words.iter().enumerate().find_map(|(index, word)| {
+            let (_, after) = word.rsplit_once('<')?;
+            if word.contains("<<") || word.contains("<(") {
+                return None;
+            }
+            let file = if after.is_empty() {
+                words.get(index + 1)?.as_str()
+            } else {
+                after
+            };
+            self.secret_file(file).then_some(file)
         });
+        if redirected.is_some() {
+            return redirected;
+        }
+        let (executable, args) = words.split_first()?;
+        let executable = basename(executable).to_ascii_lowercase();
+        let executable = executable.strip_suffix(".exe").unwrap_or(&executable);
+        if READERS.contains(&executable) {
+            return args
+                .iter()
+                .map(|word| operand(word))
+                .find(|word| self.secret_file(word));
+        }
+        if COPIERS.contains(&executable) {
+            let sources: Vec<usize> = (0..args.len())
+                .filter(|index| !args[*index].starts_with('-'))
+                .collect();
+            let (_, sources) = sources.split_last()?;
+            return sources
+                .iter()
+                .map(|index| operand(&args[*index]))
+                .find(|word| self.secret_file(word));
+        }
+        if executable == "git" {
+            let mut verb = 0;
+            while args.get(verb)?.starts_with('-') {
+                verb += 1 + usize::from(super::GIT_VALUE_OPTIONS.contains(&args[verb].as_str()));
+            }
+            if !GIT_READERS.contains(&args.get(verb)?.as_str()) {
+                return None;
+            }
+            return args[verb + 1..].iter().find_map(|word| {
+                let file = word.split_once(':').map_or(word.as_str(), |(_, path)| path);
+                self.secret_file(file).then_some(file)
+            });
+        }
+        None
+    }
+}
+
+/// Why `pattern` cannot be a declared secret-file pattern, if it cannot.
+pub fn pattern_error(pattern: &str) -> Option<String> {
+    if pattern.is_empty() || pattern.chars().count() > MAX_PATTERN {
+        return Some(format!("must be 1..{MAX_PATTERN} characters"));
+    }
+    if pattern.chars().any(char::is_control) || pattern.contains('\\') {
+        return Some(
+            "may not hold control characters or `\\`: separate directories with `/`".into(),
+        );
+    }
+    if pattern.starts_with('/') {
+        return Some("matches the end of a path and may not start with `/`".into());
+    }
+    let parts: Vec<&str> = pattern.split('/').collect();
+    if parts
+        .iter()
+        .any(|part| part.is_empty() || *part == "." || *part == "..")
+    {
+        return Some("may not hold empty, `.` or `..` segments".into());
+    }
+    if pattern.contains("**") {
+        return Some("`**` is not supported: `*` matches within one segment".into());
+    }
+    if parts
+        .iter()
+        .all(|part| part.chars().all(|c| matches!(c, '*' | '?' | '.')))
+    {
+        return Some("matches every file name".into());
     }
     None
 }

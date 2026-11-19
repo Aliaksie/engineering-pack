@@ -97,6 +97,15 @@ and files below `testdata`, `fixtures`, `examples` or `samples` are not secrets.
 file by name and writing a new one are not reads. Loading a file into the shell
 (`source .env`) shows the model nothing and passes.
 
+An organization, user or project file adds its own names under `safety.secretFiles`, each an
+`id` and a `pattern`: `{"id": "vault-files", "pattern": "*.vault"}`. A pattern without `/`
+matches a file name in any directory; one with `/`, such as `.acme/token` or `config/keys/*`,
+matches the last segments of a path. `*`, `?` and `{a,b}` stay within one segment and case
+is ignored. Entries merge by `id`, so a later layer replaces an earlier pattern or removes it
+with `{"id": "vault-files", "disabled": true}`. A declared pattern holds even for a template
+or a fixture directory the built-in names leave out. `craft settings` lists each pattern with
+its layer, and `craft config --explain` shows which layer added or removed it.
+
 It is a guardrail for the common direct reads, not a boundary. A read that does not name the
 file is outside it: a script (`python -c "open('.env')"`), `env` or `printenv`, a test or
 build that prints its configuration, a search of a whole directory, and tools the host does
@@ -111,8 +120,8 @@ write it: the deny rules are merged into `.claude/settings.local.json`, keeping 
 keys and `allow`, `ask` and `deny` rules. Without that option nothing is written. Leave the
 rule out with `"disables": ["read-secret-file"]`.
 
-Craft never reads such a file's content itself, whether the rule is in force or not: `craft
-locate` skips it (counted under `skipped.secret`), Project Intelligence does not index it,
+Craft never reads such a file's content itself, including one a declared pattern names,
+whether the rule is in force or not: `craft locate` skips it (counted under `skipped.secret`), Project Intelligence does not index it,
 and standards checks and the stop review do not read it, so no answer or finding quotes a
 line of it. Its name can still appear where Craft lists changed files.
 

@@ -327,9 +327,18 @@ fn patch_files(patch: &str) -> Vec<String> {
     files
 }
 
-/// The host-neutral event in a host payload: `{event, host, tool, contextSupported, cwd,
-/// command, file?, prompt, session?}`.
+/// The normalized event alone, as the frozen host contracts record it.
+#[cfg(test)]
 fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
+    normalized(payload, host, lifecycle).0
+}
+
+/// The host-neutral event in a host payload: `{event, host, tool, contextSupported, cwd,
+/// command, file?, prompt, session?}`. Beside it, what a tool call names that no built-in
+/// name marks secret (`{files, filters}`, or null): judged against the patterns a
+/// configuration layer declares once settings are loaded.
+fn normalized(payload: &Value, host: &str, lifecycle: &str) -> (Value, Value) {
+    let mut unjudged = Value::Null;
     let mut input = first(payload, &["tool_input", "toolArgs"])
         .cloned()
         .unwrap_or(json!({}));
@@ -362,9 +371,8 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
         event["files"] = json!(files);
     }
     // The first file or search filter a tool call names that reaches secret files, judged
-    // by name alone so a call that names none costs nothing more: `Read`/`view`/`read_file`,
-    // a search's `path` and `glob` or `include`, Gemini `read_many_files`, notebooks and the
-    // files of a patch.
+    // by the built-in names alone: `Read`/`view`/`read_file`, a search's `path` and `glob` or
+    // `include`, Gemini `read_many_files`, notebooks and the files of a patch.
     if lifecycle == "before-tool" && event["tool"] != "shell" {
         let patch = event["files"].as_array().into_iter().flatten();
         let named: Vec<&str> = ["file_path", "path", "absolute_path", "notebook_path"]
@@ -381,6 +389,8 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
             .collect();
         if let Some(secret) = craft_engine::safety::named_secret(&named, &filters) {
             event["secret"] = json!(secret);
+        } else if !named.is_empty() || !filters.is_empty() {
+            unjudged = json!({"files": named, "filters": filters});
         }
     }
     // A search tool's pattern (Claude `Grep`, Gemini `search_file_content`).
@@ -400,7 +410,7 @@ fn normalize(payload: &Value, host: &str, lifecycle: &str) -> Value {
     {
         event["session"] = json!(session);
     }
-    event
+    (event, unjudged)
 }
 
 /// The runner's verdict on a test command the host just ran, from the tool result it reports.
@@ -494,7 +504,7 @@ fn test_run(payload: &Value, host: &str, lifecycle: &str, command: &str) -> Opti
 /// Facts for the native `host` handler; shell-scoped hooks, delivery and any hook before a
 /// shell command (which the safety policy judges) receive the command, and only delivery the
 /// file, prompt and search pattern.
-fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
+fn facts(hook: &Hook, event: &Value, named: &Value, status: &str) -> Value {
     let mut facts = json!({
         "handler": hook.handler, "host": hook.host, "package": hook.package, "lifecycle": hook.lifecycle,
         "scope": if hook.shell { "shell" } else { "any" }, "inputStatus": status, "tool": event["tool"],
@@ -508,6 +518,9 @@ fn facts(hook: &Hook, event: &Value, status: &str) -> Value {
     }
     if let Some(secret) = event.get("secret") {
         facts["secret"] = secret.clone();
+    }
+    if !named.is_null() {
+        facts["named"] = named.clone();
     }
     if hook.handler == "deliver" {
         facts["file"] = event["file"].clone();
@@ -948,7 +961,7 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
     let (payload, status, input_error) = read_payload(input);
     let observational = hook.handler == "observe";
     let enforcement = hook.shell && hook.lifecycle == "before-tool";
-    let mut event = normalize(&payload, &hook.host, &hook.lifecycle);
+    let (mut event, named) = normalized(&payload, &hook.host, &hook.lifecycle);
     if status != "complete" {
         // Unread input whose tool is unknown may be a shell command: a shell policy judges it.
         if payload
@@ -974,7 +987,7 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
     {
         event["testRun"] = verdict;
     }
-    let mut result = host::run(&facts(&hook, &event, status)).unwrap_or_else(|message| {
+    let mut result = host::run(&facts(&hook, &event, &named, status)).unwrap_or_else(|message| {
         // Without a runtime decision, shell enforcement still fails closed and delivery says why.
         if enforcement {
             craft_engine::delivery::failure(true, &message)

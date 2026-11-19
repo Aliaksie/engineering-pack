@@ -5,6 +5,7 @@ use crate::{
     telemetry::{Operation, Recorder},
 };
 use craft_engine::discovery::{self, planning};
+use craft_engine::safety::secrets::Declared;
 use craft_platform::{search, state};
 use serde_json::{Map, Value, json};
 use std::path::Path;
@@ -205,7 +206,13 @@ fn discover(
         options["terms"] = reuse["fresh"].clone();
         let search = discovery::request(&options)?;
         let operation = recorder.start("search.completed", Some(parent));
-        let result = search::scan(&root, &search, repositories.as_deref()).map_err(Failure::from);
+        let result = search::scan(
+            &root,
+            &search,
+            repositories.as_deref(),
+            &Declared::of(&settings),
+        )
+        .map_err(Failure::from);
         let (attributes, failure) = match &result {
             // A search that stops at its declared bounds or skips binary, oversized or linked
             // files did what it promised: the result and `complete` report the limit, which

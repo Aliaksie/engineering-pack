@@ -16,6 +16,7 @@
 use crate::failure::Failure;
 use crate::project::{Checkout, checkouts};
 use crate::session::read_record;
+use craft_engine::safety::secrets::Declared;
 use craft_engine::session::delivered::{Checked, finding_key};
 use craft_engine::{debt, hash, routing, standards};
 use craft_platform::state;
@@ -88,9 +89,10 @@ fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
 }
 
 /// A regular file's bytes, `None` when absent, a link, too large or a file that commonly
-/// holds secrets: a finding quotes the line it is about.
-fn bytes(root: &Path, file: &str) -> Option<Vec<u8>> {
-    if craft_engine::safety::secrets::secret_file(file) {
+/// holds secrets or matches a declared secret-file pattern: a finding quotes the line it is
+/// about.
+fn bytes(root: &Path, secrets: &Declared, file: &str) -> Option<Vec<u8>> {
+    if secrets.secret_file(file) {
         return None;
     }
     match std::fs::symlink_metadata(root.join(file)) {
@@ -197,7 +199,7 @@ struct Dirty {
 
 /// Each dirty file's content now, with its hash and whether Git tracks it. `None` when no
 /// checkout could be read; a member repository that cannot is left out.
-fn observed(root: &Path, checkouts: &[Checkout]) -> Option<Vec<Dirty>> {
+fn observed(root: &Path, secrets: &Declared, checkouts: &[Checkout]) -> Option<Vec<Dirty>> {
     let listed: Vec<(usize, Vec<(String, bool)>)> = checkouts
         .iter()
         .enumerate()
@@ -220,7 +222,7 @@ fn observed(root: &Path, checkouts: &[Checkout]) -> Option<Vec<Dirty>> {
         files
             .into_iter()
             .filter_map(|(checkout, file, tracked)| {
-                let bytes = bytes(root, &file)?;
+                let bytes = bytes(root, secrets, &file)?;
                 let digest = hash(&bytes);
                 Some(Dirty {
                     checkout,
@@ -290,7 +292,8 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
         return Ok(());
     }
     let checkouts = checkouts(root);
-    let Some(files) = observed(root, &checkouts) else {
+    let secrets = Declared::of(settings);
+    let Some(files) = observed(root, &secrets, &checkouts) else {
         return Ok(());
     };
     let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
@@ -604,7 +607,8 @@ pub fn stop(
         return Ok(Stopped::default());
     }
     let checkouts = checkouts(root);
-    let Some(files) = observed(root, &checkouts) else {
+    let secrets = Declared::of(settings);
+    let Some(files) = observed(root, &secrets, &checkouts) else {
         return Ok(Stopped::default());
     };
     let file = record_file(root, session, true)?;
@@ -647,7 +651,7 @@ pub fn stop(
                 .take(room)
                 .cloned()
                 .filter_map(|file| {
-                    let bytes = bytes(root, &file)?;
+                    let bytes = bytes(root, &secrets, &file)?;
                     let digest = hash(&bytes);
                     Some(Dirty {
                         checkout: index,

@@ -1,6 +1,6 @@
 //! The project's safety policy at a hook: the engine judges a shell command against the
 //! project root under each spelling it has on disk and the temporary directories, and a
-//! tool call that names a secret file.
+//! tool call that names a secret file, by a built-in name or a pattern a layer declared.
 use craft_engine::safety::Place;
 use craft_platform::files;
 use serde_json::Value;
@@ -30,4 +30,56 @@ pub(crate) fn read_decision(settings: &Value, cwd: &Path, rewrites: bool, secret
         return serde_json::json!({"decision": "allow"});
     }
     craft_engine::safety::read_decision(settings, secret)
+}
+
+/// What a tool call names that no built-in name marks secret: the files and search filters
+/// judged against the patterns a configuration layer declared.
+#[derive(Default)]
+pub(crate) struct Named<'a> {
+    pub files: Vec<&'a str>,
+    pub filters: Vec<&'a str>,
+}
+
+impl<'a> Named<'a> {
+    /// The `named` hook fact: `{files, filters}`, each a list of text.
+    pub(crate) fn of(fact: &'a Value) -> Result<Self, String> {
+        let list = |name: &str| match &fact[name] {
+            Value::Null => Ok(Vec::new()),
+            Value::Array(items) => items
+                .iter()
+                .map(|item| {
+                    item.as_str()
+                        .ok_or_else(|| "invalid hook named".to_string())
+                })
+                .collect(),
+            _ => Err("invalid hook named".to_string()),
+        };
+        match fact {
+            Value::Null => Ok(Self::default()),
+            Value::Object(_) => Ok(Self {
+                files: list("files")?,
+                filters: list("filters")?,
+            }),
+            _ => Err("invalid hook named".into()),
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.files.is_empty() && self.filters.is_empty()
+    }
+}
+
+/// The file or filter a tool call names that reaches secret files under `settings`: `found`,
+/// matched by a built-in name before settings were loaded, else the first of `named` a
+/// declared pattern matches.
+pub(crate) fn secret<'a>(
+    settings: &Value,
+    found: Option<&'a str>,
+    named: &Named<'a>,
+) -> Option<&'a str> {
+    found.or_else(|| {
+        (!named.is_empty())
+            .then(|| craft_engine::safety::declared_secret(settings, &named.files, &named.filters))
+            .flatten()
+    })
 }

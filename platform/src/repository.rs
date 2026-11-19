@@ -426,16 +426,19 @@ impl Drop for Stream {
     }
 }
 
-pub fn eligible(path: &str) -> bool {
+/// Whether Project Intelligence indexes `path`: a valid, non-generated source a provider
+/// reads that is no secret file by a built-in name or a pattern in `secrets`.
+pub fn eligible(path: &str, secrets: &craft_engine::safety::secrets::Declared) -> bool {
     valid_path(path)
         && !path.split('/').any(|p| GENERATED.contains(&p))
-        && !craft_engine::safety::secrets::secret_file(path)
+        && !secrets.secret_file(path)
         && crate::providers::for_path(path).is_some()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use craft_engine::safety::secrets::Declared;
     use std::process::Command;
 
     struct Fixture(std::path::PathBuf);
@@ -470,10 +473,15 @@ mod tests {
 
     #[test]
     fn files_that_commonly_hold_secrets_are_never_indexed() {
-        assert!(!eligible("config/credentials.json"));
-        assert!(!eligible("ci/secrets.yml"));
-        assert!(eligible("config/settings.json"));
-        assert!(eligible("fixtures/credentials.json"), "test data");
+        let none = Declared::default();
+        assert!(!eligible("config/credentials.json", &none));
+        assert!(!eligible("ci/secrets.yml", &none));
+        assert!(eligible("config/settings.json", &none));
+        assert!(eligible("fixtures/credentials.json", &none), "test data");
+        let declared = Declared::of(&serde_json::json!({"safety": {"secretFiles": [
+            {"id": "prod", "pattern": "prod-*.json"}]}}));
+        assert!(!eligible("config/prod-eu.json", &declared));
+        assert!(eligible("config/dev-eu.json", &declared));
     }
 
     fn inventory(root: &Path) -> (Vec<String>, serde_json::Value) {

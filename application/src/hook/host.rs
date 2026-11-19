@@ -54,8 +54,10 @@ struct Facts<'a> {
     files: Vec<&'a str>,
     prompt: Option<&'a str>,
     pattern: Option<&'a str>,
-    /// A file or search filter the tool call names that reaches secret files.
+    /// A file or search filter the tool call names that reaches secret files by a built-in name.
     secret: Option<&'a str>,
+    /// What the call names otherwise, for the secret-file patterns a layer declares.
+    named: crate::hook::safety::Named<'a>,
     /// The host is continuing a stop a hook already held.
     stop_active: bool,
     /// The runner's verdict on a test command the host just ran.
@@ -107,6 +109,7 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
         prompt: optional("prompt")?,
         pattern: optional("pattern")?,
         secret: optional("secret")?,
+        named: crate::hook::safety::Named::of(&input["named"])?,
         stop_active: input["stopActive"] == true,
         test_run: match &input["testRun"] {
             Value::Null => None,
@@ -231,8 +234,9 @@ pub fn run(input: &Value) -> Result<Value, String> {
             let decision = crate::hook::safety::decision(&settings, &root, &cwd, command);
             refused = (decision["decision"] == "deny").then_some(decision);
         } else if facts.lifecycle == "before-tool"
-            && let Some(secret) = facts.secret
+            && (facts.secret.is_some() || !facts.named.is_empty())
             && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
+            && let Some(secret) = crate::hook::safety::secret(&settings, facts.secret, &facts.named)
         {
             let decision =
                 crate::hook::safety::read_decision(&settings, &cwd, facts.tool == "edit", secret);
@@ -269,6 +273,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     prompt: facts.prompt,
                     pattern: facts.pattern,
                     secret: facts.secret,
+                    named: &facts.named,
                     command: facts.command.as_str(),
                     context_supported: facts.context_supported,
                     stop_active: facts.stop_active,

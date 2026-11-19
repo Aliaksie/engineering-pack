@@ -99,11 +99,9 @@ pub fn evaluate(request: Value) -> Value {
                     .get("repositories")
                     .map(craft_engine::repository::scopes)
                     .transpose()?;
-                craft_platform::search::scan(
-                    std::path::Path::new(root),
-                    &search,
-                    repositories.as_deref(),
-                )
+                let root = std::path::Path::new(root);
+                let secrets = crate::project::secret_files(root);
+                craft_platform::search::scan(root, &search, repositories.as_deref(), &secrets)
             })();
             return match result {
                 Ok(result) => json!({"formatVersion":1,"ok":true,"result":result}),
