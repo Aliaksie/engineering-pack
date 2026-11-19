@@ -21,7 +21,7 @@
             "provider": {
               "type": "string",
               "minLength": 1,
-              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations."
+              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings."
             },
             "transport": {
               "const": "cli",
@@ -93,7 +93,7 @@
             "provider": {
               "type": "string",
               "minLength": 1,
-              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations."
+              "description": "Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings."
             },
             "transport": {
               "const": "mcp",
@@ -155,9 +155,150 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "setup"
+          ],
+          "description": "Setup binding.",
+          "properties": {
+            "setup": {
+              "enum": [
+                "github",
+                "github-project",
+                "gitlab",
+                "jira"
+              ],
+              "description": "Named setup. `github`: issues and pull requests through `gh` or the GitHub MCP server. `github-project`: issues with their GitHub Project's status, priority and release through `gh`. `gitlab`: issues and merge requests through `glab`. `jira`: work items through Atlassian `acli` or the Atlassian MCP server. Each supplies `task.read` and `task.search`; `github` and `gitlab` also `change.read` and `change.diff`."
+            },
+            "transport": {
+              "enum": [
+                "cli",
+                "mcp"
+              ],
+              "default": "cli",
+              "description": "`cli` runs the setup's CLI; `mcp` calls its MCP server, for `github` and `jira` only."
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "description": "CLI executable instead of the setup's own (`gh`, `glab` or `acli`)."
+            },
+            "server": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "description": "MCP server name the host gave the connection, when it is not `github` or `atlassian`."
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "description": "GitHub Enterprise or self-managed GitLab host name. Absent: github.com or gitlab.com. `github-project` takes none: it reads github.com only."
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Repository on the host: `owner/name` for GitHub, `group/project` for GitLab. Required for every setup except `jira`."
+            },
+            "project": {
+              "type": "object",
+              "required": [
+                "owner",
+                "number"
+              ],
+              "description": "GitHub Project whose fields `github-project` reads. Required for that setup only.",
+              "properties": {
+                "owner": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "User or organization login that owns the Project."
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Project number from its URL."
+                },
+                "fields": {
+                  "type": "object",
+                  "description": "Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`.",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": "Status",
+                      "description": "Field read as the task status."
+                    },
+                    "priority": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": "Priority",
+                      "description": "Field read as the task priority."
+                    },
+                    "release": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": "Release",
+                      "description": "Field read as the task release."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "site": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Atlassian site, such as `acme.atlassian.net`; passed as the cloud ID. Required by `jira` over MCP."
+            },
+            "operations": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "git.status",
+                  "git.diff",
+                  "change.read",
+                  "change.diff",
+                  "task.read",
+                  "task.search",
+                  "git.commit",
+                  "git.push",
+                  "change.publish",
+                  "task.transition",
+                  "task.comment"
+                ]
+              },
+              "description": "Exact mappings by operation name, shaped for the binding's transport: `args` for CLI, `tool` and `arguments` for MCP. They take precedence over the setup's own.",
+              "additionalProperties": {
+                "type": "object",
+                "description": "One operation mapping.",
+                "properties": {
+                  "args": {
+                    "type": "array",
+                    "description": "CLI arguments. `{name}` placeholders are filled from the operation parameters; the plan runs without a shell.",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "tool": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Exact MCP tool name the host exposes."
+                  },
+                  "arguments": {
+                    "type": "object",
+                    "description": "Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       ],
-      "description": "One service binding: a CLI (`transport: \"cli\"`) or an MCP server (`transport: \"mcp\"`)."
+      "description": "One service binding: a named setup (`setup`), or a CLI (`transport: \"cli\"`) or MCP server (`transport: \"mcp\"`) written out in full."
     }
   },
   "properties": {
@@ -720,11 +861,11 @@
         },
         "codehost": {
           "$ref": "#/$defs/service",
-          "description": "Pull or merge requests: `gh` for GitHub, `glab` for GitLab, or exact operation mappings. See Service bindings."
+          "description": "Pull or merge requests: the `github` or `gitlab` setup, a `gh`/`glab` CLI binding, or exact operation mappings. See Service bindings."
         },
         "tasks": {
           "$ref": "#/$defs/service",
-          "description": "Task tracker. Always needs explicit operation mappings. See Service bindings."
+          "description": "Task tracker: the `github`, `github-project`, `gitlab` or `jira` setup, or a binding with explicit operation mappings. See Service bindings."
         }
       },
       "additionalProperties": false

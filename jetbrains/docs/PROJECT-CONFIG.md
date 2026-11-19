@@ -130,8 +130,8 @@ object. Git, code host and tracker bindings that `craft operation` turns into CL
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `services.git` | object |  | Local Git. Default: the `git` CLI. See Service bindings. |
-| `services.codehost` | object |  | Pull or merge requests: `gh` for GitHub, `glab` for GitLab, or exact operation mappings. See Service bindings. |
-| `services.tasks` | object |  | Task tracker. Always needs explicit operation mappings. See Service bindings. |
+| `services.codehost` | object |  | Pull or merge requests: the `github` or `gitlab` setup, a `gh`/`glab` CLI binding, or exact operation mappings. See Service bindings. |
+| `services.tasks` | object |  | Task tracker: the `github`, `github-project`, `gitlab` or `jira` setup, or a binding with explicit operation mappings. See Service bindings. |
 
 ## `permissions`
 
@@ -297,13 +297,13 @@ object. Project Intelligence enablement and inventory scope.
 
 ## Service bindings
 
-One service binding: a CLI (`transport: "cli"`) or an MCP server (`transport: "mcp"`).
+One service binding: a named setup (`setup`), or a CLI (`transport: "cli"`) or MCP server (`transport: "mcp"`) written out in full.
 
 ### CLI binding
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations. |
+| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings. |
 | `transport` | `cli` |  | How the operation is invoked. |
 | `command` | string |  | CLI executable, such as `gh`, `glab` or `team-task-cli`. |
 | `host` | string |  | Code host name, such as `gitlab.example.com`. Nothing infers it from remotes. |
@@ -315,11 +315,34 @@ One service binding: a CLI (`transport: "cli"`) or an MCP server (`transport: "m
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations. |
+| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings. |
 | `transport` | `mcp` |  | How the operation is invoked. |
 | `command` | string |  | Not used by MCP bindings; accepted for symmetry. |
 | `host` | string |  | Code host name, such as `gitlab.example.com`. Nothing infers it from remotes. |
 | `repository` | string |  | Repository path on the host, such as `team/project`. |
 | `operations` | map |  | Exact mappings by operation name. They take precedence over built-in mappings. |
+| `operations.<name>.tool` | string |  | Exact MCP tool name the host exposes. |
+| `operations.<name>.arguments` | object |  | Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type. |
+
+### Setup binding
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `setup` | `github`, `github-project`, `gitlab`, `jira` |  | Named setup. `github`: issues and pull requests through `gh` or the GitHub MCP server. `github-project`: issues with their GitHub Project's status, priority and release through `gh`. `gitlab`: issues and merge requests through `glab`. `jira`: work items through Atlassian `acli` or the Atlassian MCP server. Each supplies `task.read` and `task.search`; `github` and `gitlab` also `change.read` and `change.diff`. |
+| `transport` | `cli`, `mcp` | `cli` | `cli` runs the setup's CLI; `mcp` calls its MCP server, for `github` and `jira` only. |
+| `command` | string |  | CLI executable instead of the setup's own (`gh`, `glab` or `acli`). |
+| `server` | string |  | MCP server name the host gave the connection, when it is not `github` or `atlassian`. |
+| `host` | string |  | GitHub Enterprise or self-managed GitLab host name. Absent: github.com or gitlab.com. `github-project` takes none: it reads github.com only. |
+| `repository` | string |  | Repository on the host: `owner/name` for GitHub, `group/project` for GitLab. Required for every setup except `jira`. |
+| `project` | object |  | GitHub Project whose fields `github-project` reads. Required for that setup only. |
+| `project.owner` | string |  | User or organization login that owns the Project. |
+| `project.number` | integer 1– |  | Project number from its URL. |
+| `project.fields` | object |  | Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`. |
+| `project.fields.status` | string | `Status` | Field read as the task status. |
+| `project.fields.priority` | string | `Priority` | Field read as the task priority. |
+| `project.fields.release` | string | `Release` | Field read as the task release. |
+| `site` | string |  | Atlassian site, such as `acme.atlassian.net`; passed as the cloud ID. Required by `jira` over MCP. |
+| `operations` | map |  | Exact mappings by operation name, shaped for the binding's transport: `args` for CLI, `tool` and `arguments` for MCP. They take precedence over the setup's own. |
+| `operations.<name>.args` | array of string |  | CLI arguments. `{name}` placeholders are filled from the operation parameters; the plan runs without a shell. |
 | `operations.<name>.tool` | string |  | Exact MCP tool name the host exposes. |
 | `operations.<name>.arguments` | object |  | Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type. |

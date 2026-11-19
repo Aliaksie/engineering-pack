@@ -18,12 +18,60 @@ untrusted PR head.
 | Service | Operations | Binding |
 |---|---|---|
 | Local Git | `git.status`, `git.diff` | git CLI by default |
-| Codehost | `change.read`, `change.diff` | Explicit gh/GitHub or glab/GitLab binding, or an exact CLI/MCP mapping |
-| Task tracker | `task.read`, `task.search` | Explicit CLI argv template or exact MCP tool and arguments |
+| Codehost | `change.read`, `change.diff` | `github` or `gitlab` setup, gh/glab binding, or an exact CLI/MCP mapping |
+| Task tracker | `task.read`, `task.search` | `github`, `github-project`, `gitlab` or `jira` setup, or an exact CLI/MCP mapping |
 | Mutations | `change.publish`, task transitions/comments, commit/push | Explicit mapping, project write policy and separate authorization |
 
 Codehost reads name the repository and host explicitly; nothing infers the intended account or
-remote. Tracker mappings are always explicit because similarly named CLIs and MCP servers have
+remote.
+
+### Setups
+
+A setup is one name plus its target; it supplies the read operations, so moving a project from
+one tracker to another changes this binding and nothing in skills or workflows:
+
+```json
+{
+  "codehost": { "setup": "github", "repository": "acme/shop" },
+  "tasks": {
+    "setup": "github-project",
+    "repository": "acme/shop",
+    "project": { "owner": "acme", "number": 3 }
+  }
+}
+```
+
+| Setup | Serves | CLI (default) | MCP (`"transport": "mcp"`) |
+|---|---|---|---|
+| `github` | codehost, tasks | `gh pr`, `gh issue` | GitHub MCP server: `pull_request_read`, `issue_read`, `search_issues` |
+| `github-project` | tasks | `gh api graphql` for one issue with its Project fields, `gh project item-list --query=` | — |
+| `gitlab` | codehost, tasks | `glab mr`, `glab issue` | — (use an exact MCP mapping) |
+| `jira` | tasks | Atlassian `acli jira workitem` | Atlassian MCP server: `getJiraIssue`, `searchJiraIssuesUsingJql`; needs `site` |
+
+`task.read` takes `id` (an issue number, or a Jira key such as `TEAM-123`); `task.search` takes
+`query` in the tracker's own syntax: GitHub issue search, Project filters, GitLab search text or
+JQL. A query is passed as one `--flag=value` argument, so it can never become an option.
+
+Task plans carry `response.fields`: where `id`, `title`, `body`, `status`, `priority`,
+`release`, `labels` and `url` sit in that provider's response, as dotted paths with `[]` for
+each element, and for a search `response.list`, the array of results. A field a provider does
+not have is absent. `github-project` returns status, priority and release under those names;
+`project.fields` renames the Project fields it reads, which default to `Status`, `Priority` and
+`Release`. MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
+`server`) and the server's own tool name; the host qualifies it in its own way, and
+`services:prepare` counts a qualified inventory name such as `mcp__github__issue_read` as that
+tool. `github-project` reads github.com only, because `gh project` commands take no host.
+
+A setup supplies no writes. An `operations` entry in a setup binding replaces that one built-in
+mapping, shaped for the binding's transport. The `github` setup and Project reads were verified
+against a live repository and Project; the `gitlab` and `jira` plans follow the
+[glab](https://docs.gitlab.com/cli/issue/view/) and
+[acli](https://developer.atlassian.com/cloud/acli/reference/commands/jira-workitem-view/)
+references and the Atlassian MCP tool schemas without a live read.
+
+### Exact mappings
+
+Any other tracker needs explicit mappings, because similarly named CLIs and MCP servers have
 different schemas:
 
 ```json
