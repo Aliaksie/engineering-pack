@@ -83,7 +83,7 @@ pub fn kebab(text: &str) -> bool {
         })
 }
 
-fn host_name(text: &str) -> bool {
+pub(crate) fn host_name(text: &str) -> bool {
     let (name, port) = match text.split_once(':') {
         Some((name, port)) => (name, Some(port)),
         None => (text, None),
@@ -433,7 +433,8 @@ pub fn excluded(path: &str, prefixes: &[String]) -> bool {
     })
 }
 
-fn validate_binding(service: &str, binding: &Value) -> Result {
+/// The transport of a binding written out in full, without a named setup.
+fn legacy_transport(binding: &Value) -> Result<&'static str> {
     let binding = object(
         binding,
         &[
@@ -446,15 +447,16 @@ fn validate_binding(service: &str, binding: &Value) -> Result {
         ],
         "binding",
     )?;
-    let transport = binding
-        .get("transport")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
+    let transport = match binding.get("transport").and_then(Value::as_str) {
+        Some("cli") => "cli",
+        Some("mcp") => "mcp",
+        _ => "",
+    };
     if !binding
         .get("provider")
         .and_then(Value::as_str)
         .is_some_and(|p| !p.is_empty())
-        || !["cli", "mcp"].contains(&transport)
+        || transport.is_empty()
     {
         return Err("invalid service binding".into());
     }
@@ -466,6 +468,16 @@ fn validate_binding(service: &str, binding: &Value) -> Result {
     {
         return Err("binding command required".into());
     }
+    Ok(transport)
+}
+
+fn validate_binding(service: &str, value: &Value) -> Result {
+    let transport = if value.get("setup").is_some() {
+        crate::services::setups::validate(service, value)?
+    } else {
+        legacy_transport(value)?
+    };
+    let binding = value.as_object().ok_or("binding must be an object")?;
     for field in ["host", "repository"] {
         if binding
             .get(field)
