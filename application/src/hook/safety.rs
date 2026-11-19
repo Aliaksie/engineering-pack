@@ -69,6 +69,19 @@ impl<'a> Named<'a> {
     }
 }
 
+/// The file or filter a tool call names that a secret-file pattern of the project at `root`
+/// matches, read without recording: an observation hook loads, and records, the project's
+/// settings only for a call that names a secret file.
+pub(crate) fn declared<'a>(root: &Path, named: &Named<'a>) -> Option<&'a str> {
+    if named.is_empty() {
+        return None;
+    }
+    let patterns = crate::project::secret_files(root);
+    (!patterns.is_empty())
+        .then(|| patterns.named(&named.files, &named.filters))
+        .flatten()
+}
+
 /// The file or filter a tool call names that reaches secret files under `settings`: `found`,
 /// matched by a built-in name before settings were loaded, else the first of `named` a
 /// declared pattern matches.

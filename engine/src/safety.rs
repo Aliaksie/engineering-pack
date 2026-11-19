@@ -786,11 +786,7 @@ fn declared<'a>(
     files: &[&'a str],
     filters: &[&'a str],
 ) -> Option<&'a str> {
-    files
-        .iter()
-        .find(|file| patterns.secret_file(file))
-        .or_else(|| filters.iter().find(|filter| patterns.secret_filter(filter)))
-        .copied()
+    patterns.named(files, filters)
 }
 
 /// The decision for a tool call that reads, searches or rewrites `secret`, a file or filter

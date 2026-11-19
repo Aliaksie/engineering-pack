@@ -234,9 +234,10 @@ pub fn run(input: &Value) -> Result<Value, String> {
             let decision = crate::hook::safety::decision(&settings, &root, &cwd, command);
             refused = (decision["decision"] == "deny").then_some(decision);
         } else if facts.lifecycle == "before-tool"
-            && (facts.secret.is_some() || !facts.named.is_empty())
+            && let Some(secret) = facts
+                .secret
+                .or_else(|| crate::hook::safety::declared(&root, &facts.named))
             && let Ok(settings) = project::hook_loaded(&mut recorder, &hook, &root)
-            && let Some(secret) = crate::hook::safety::secret(&settings, facts.secret, &facts.named)
         {
             let decision =
                 crate::hook::safety::read_decision(&settings, &cwd, facts.tool == "edit", secret);

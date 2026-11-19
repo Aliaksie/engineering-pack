@@ -355,6 +355,16 @@ impl Declared {
         })
     }
 
+    /// The first of `files`, then of search `filters`, that reaches secret files by a
+    /// declared pattern or a built-in name.
+    pub fn named<'a>(&self, files: &[&'a str], filters: &[&'a str]) -> Option<&'a str> {
+        files
+            .iter()
+            .find(|file| self.secret_file(file))
+            .or_else(|| filters.iter().find(|filter| self.secret_filter(filter)))
+            .copied()
+    }
+
     /// Whether the file at `path` holds secrets: a declared pattern or a built-in name.
     pub fn secret_file(&self, path: &str) -> bool {
         self.declares(path) || secret_file(path)
