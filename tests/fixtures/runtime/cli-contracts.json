@@ -285,6 +285,7 @@
           "mode": "main",
           "role": "implementer"
         },
+        "next": "craft-delivery:workflow-deliver-change",
         "files": [
           "src/α.rs",
           "src/β.rs"
@@ -528,6 +529,7 @@
           "mode": "main",
           "role": "reviewer"
         },
+        "next": "craft-review:review-change",
         "files": [
           "src/main.rs"
         ],

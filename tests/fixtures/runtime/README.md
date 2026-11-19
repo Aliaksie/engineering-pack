@@ -55,7 +55,12 @@ under the caps Claude Code, Codex and Copilot document, so the twenty `long-*` w
 or keep their text at that bound; a
 Copilot before-tool call Craft does not deny gets no output instead of
 `permissionDecision: "allow"`, so Copilot's own permission flow decides; and Copilot
-after-tool carries `additionalContext`, which its hooks reference documents.
+after-tool carries `additionalContext`, which its hooks reference documents. Correction: a
+routing context renders as lines to act on, not as JSON: the intent, its `next` skill, any
+answer and lookup, the project's own skills, each standard with what keeps it, references, and
+the remaining fields as one JSON `data` line. Package skill names other than `next` and a `main` execution are left
+out, and a control character in a value becomes a space. Every `routing*` render and wire case
+follows.
 
 `state-contracts.json` fixes four JSON byte representations verified against the
 unchanged baseline state-file implementation. `cargo test -p craft-platform state::`
@@ -97,7 +102,10 @@ implement workflow selects `craft-delivery:workflow-deliver-change` instead of t
 `craft-delivery:apply-change` primitive; `session-contracts.json` plans and the
 `cli-contracts.json` route case carry the same route. Correction: the story workflow selects
 `craft-stories:workflow-prepare-stories` instead of the `craft-stories:write-stories` skill
-(three route cases and the `plan:stage-story` session plan).
+(three route cases and the `plan:stage-story` session plan). Correction: a route whose
+workflow keeps a skill carries `next`, that skill or the project skill that replaced it, after
+`execution`, for the hint to name as the request's one step; the routes in the twenty
+`session-contracts.json` plans and the two `cli-contracts.json` route cases carry it too.
 
 `locate-contracts.json` freezes 66 bounded literal search cases at `b27ec99` and
 `discovery-contracts.json` freezes 92 discovery planning, reuse and result cases at `266b8d1`,
@@ -117,7 +125,9 @@ with the write-stories skill holds the prepare-stories workflow file with the sa
 at `bb12534` (`cargo test -p craft-engine --lib delivery`). Correction: plan facts now state
 `contextSupported`. The frozen plans are hosts that can show the event's context; each routed
 plan has a `:no-context` copy where the host cannot, which routes nothing and leaves every other
-step unchanged.
+step unchanged. Correction: a routing context that says nothing but its intent is not sent, so
+the `routing:*` decisions carry a hint with `next`, and each `intent-only:*` decision falls
+through to the checkpoint, services or continuation the same case without routing receives.
 
 `checkpoint-contracts.json` freezes 1765 JavaScript engine responses at `c27951a` for
 repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison and change

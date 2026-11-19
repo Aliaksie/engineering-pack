@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Routing hints are lines to act on instead of JSON naming skills. A prompt hint says
+  `next: open <skill>` for its one workflow skill (or the project skill that replaces it), then
+  the project's own skills and each standard with what keeps it: the command and its
+  `craft check --stage`, the anchor it is checked against, or its review checklist. Other
+  package skill names and the default `main` execution are no longer shown, edit hints carry no
+  `next`, and a hint that would say only its intent is not sent. `craft route` adds `next`.
 - An organization, user or project file can add its own secret-file patterns under
   `safety.secretFiles`, such as `{"id": "vault-files", "pattern": "*.vault"}` or a path ending
   like `.acme/token`. The `read-secret-file` rule asks about or refuses reads of those files as

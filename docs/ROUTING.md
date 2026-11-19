@@ -521,8 +521,21 @@ reading the skill, package instructions and setup first.
 A change request (`implement`) gets no prompt hint either, unless a task is bound, the route
 reports a missing input or the hook answers a lookup in it. Its skill names sent models to read
 every skill before a one-line fix, at 1.76 times the tokens of the same fix without Craft. The
-request still establishes the session's intent, so the first edit's hint names the skills and
-references for the edited scope where the change happens.
+request still establishes the session's intent, so the first edit's hint names the standards,
+project skills and references for the edited scope where the change happens.
+
+A hint is a few lines to act on, not a list of skills: in recorded sessions agents followed a
+concrete next step every time and opened none of the skills a hint listed. A prompt hint names
+`next: open <skill>`, the intent's workflow skill (the route's `next`), or the project skill that
+replaces it; it has none once that skill is disabled or not installed, and an edit hint never
+has one, since the edit is already the work. A hook answer and its `lookup` come next, ahead
+of anything the configuration can lengthen: a hint over the host's limit is cut from its end.
+The project's own skills for the scope follow.
+Each standard is one line with what keeps it: a `run` standard's command and the
+`craft check --stage` that runs it, the anchor a `check` standard is checked against, a
+`review` standard's checklist. `read:` lists references, and the rest of the route (modules,
+missing inputs, a delegated execution, the task) stays as one JSON `data` line. The package's other skills and the default `main` execution are left out; `craft route`
+still reports them. A hint with nothing to say beyond its intent is not sent.
 
 A hook hint names only skills and references of packages the host installed. The hook looks
 beside the package it runs from: the other packages of the same marketplace in a plugin cache

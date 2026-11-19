@@ -298,6 +298,44 @@ fn verify(host: &Host, repo: &Repo) -> Result<Value, String> {
 }
 
 /// The JSON object that follows `marker` in a hook's context text.
+/// A routing hint's lines as fields: `intent`, `next`, project `skills`, the ids of its
+/// `standards`, and whatever its `data` line carries.
+fn hint_after(context: &str) -> Value {
+    let marker = "Routing hints";
+    let start = context
+        .find(marker)
+        .unwrap_or_else(|| panic!("{marker} in {context}"));
+    let mut hint = json!({"standards": []});
+    for line in context[start..].lines().skip(1) {
+        if let Some(intent) = line.strip_prefix("intent: ") {
+            hint["intent"] = json!(intent);
+        } else if let Some(next) = line.strip_prefix("next: open ") {
+            hint["next"] = json!(next);
+        } else if let Some(skills) = line.strip_prefix("project skills: ") {
+            hint["skills"] = json!(skills.split(", ").collect::<Vec<_>>());
+        } else if let Some((key, value)) = ["answer", "lookup"]
+            .iter()
+            .find_map(|key| Some((*key, line.strip_prefix(&format!("{key}: "))?)))
+        {
+            hint[key] = serde_json::from_str(value).unwrap();
+        } else if let Some(data) = line.strip_prefix("data: ") {
+            let data: Value = serde_json::from_str(data).unwrap();
+            for (key, value) in data.as_object().unwrap() {
+                hint[key] = value.clone();
+            }
+        } else if let Some(standard) = line.strip_prefix("- ") {
+            let id = standard.split([':', ' ']).next().unwrap();
+            hint["standards"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"id": id}));
+        } else if !line.starts_with("  - ") && line != "standards:" && !line.starts_with("read: ") {
+            break;
+        }
+    }
+    hint
+}
+
 fn data_after(context: &str, marker: &str) -> Value {
     let start = context
         .find(marker)
@@ -423,9 +461,9 @@ fn scenario(host: Host) {
         "before-prompt",
         json!({"prompt": "Review the change in src/web/http.ts"}),
     );
-    let route = data_after(&hint, "Routing hints");
+    let route = hint_after(&hint);
     assert_eq!(route["intent"], "review", "{hint}");
-    assert_eq!(route["skills"][0], "team-review", "{hint}");
+    assert_eq!(route["next"], "team-review", "{hint}");
     assert!(!hint.contains("review-change"), "{hint}");
     assert_eq!(
         ids(&route["standards"]),
@@ -473,7 +511,7 @@ fn scenario(host: Host) {
     // The first edit in the web module carries every standard of its scope.
     let call = host.edit(&repo, &["src/web/refund.ts"]).remove(0);
     let hint = host.hook(&repo, "before-tool", call);
-    let route = data_after(&hint, "Routing hints");
+    let route = hint_after(&hint);
     assert_eq!(route["intent"], "implement", "{hint}");
     assert_eq!(route["modules"][0]["name"], "web", "{hint}");
     let scoped = [
@@ -685,7 +723,7 @@ fn second_repository(host: &Host) {
     assert!(!started.contains("conventions scan"), "{started}");
     let call = host.edit(&repo, &["src/a.ts"]).remove(0);
     let hint = host.hook_in(session, &repo, "before-tool", call);
-    let route = data_after(&hint, "Routing hints");
+    let route = hint_after(&hint);
     assert_eq!(ids(&route["standards"]), ["review", "licenses", "audit"]);
     let refused = host.hook_in(
         session,
@@ -765,7 +803,7 @@ fn untasked(host: Host) {
     let mut modules: Vec<String> = hints
         .iter()
         .flat_map(|hint| {
-            let route = data_after(hint, "Routing hints");
+            let route = hint_after(hint);
             route["modules"]
                 .as_array()
                 .unwrap_or_else(|| panic!("modules in {hint}"))
@@ -788,7 +826,7 @@ fn untasked(host: Host) {
         );
         let call = json!({"tool_name": "apply_patch", "tool_input": {"command": patch}});
         let hint = host.hook(&repo, "before-tool", call);
-        let route = data_after(&hint, "Routing hints");
+        let route = hint_after(&hint);
         assert_eq!(route["modules"][0]["name"], "web", "{hint}");
     }
 

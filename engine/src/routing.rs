@@ -339,6 +339,11 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
         catalog,
     );
     let selections = list(&loading, "selections");
+    // The intent's workflow skill: the one step a hint can name for the request.
+    let workflow = selections
+        .iter()
+        .find(|entry| !loading["workflow"].is_null() && entry["id"] == loading["workflow"])
+        .and_then(|entry| list(entry, "skills").first().cloned());
     let mut skills = Vec::new();
     let mut references = Vec::new();
     for entry in selections {
@@ -464,6 +469,18 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
             &mut references,
         ));
     }
+    let next = workflow.and_then(|skill| {
+        if skills.contains(&skill) {
+            return Some(skill);
+        }
+        // A project skill that replaced it is the project's workflow for the request.
+        skill_sources
+            .iter()
+            .find(|source| {
+                list(source, "replaces").contains(&skill) && source.get("status").is_none()
+            })
+            .map(|source| source["skill"].clone())
+    });
     let mut plan = json!({
         "intent": intent,
         "capability": capability(intent, request.risks),
@@ -471,6 +488,9 @@ pub fn route(settings: &Value, request: &Request) -> Result<Value> {
         "skillAvailability": if request.packages.is_some() { "installed-packages" } else { "not-verified" },
         "execution": execution,
     });
+    if let Some(next) = next {
+        plan["next"] = next;
+    }
     if let Some(artifact) = request.artifact {
         plan["artifact"] = json!(artifact);
     }

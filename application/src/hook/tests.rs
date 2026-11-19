@@ -400,3 +400,25 @@ fn lone_surrogate_escapes_become_replacement_characters() {
         json!({"k": "\u{fffd}\u{fffd}"})
     );
 }
+
+/// A routing hint over the host's ceiling is cut from its end; the lookup answer it carries
+/// comes before the standards a long project configuration adds, so the cut spares it.
+#[test]
+fn a_hint_over_the_ceiling_keeps_its_answer() {
+    let standards: Vec<Value> = (0..60)
+        .map(|n| json!({"id": format!("s{n}"), "level": "review", "summary": "x".repeat(200)}))
+        .collect();
+    let answer = json!({"question": "who calls apply", "rows": ["src/a.rs:3 in run: apply()"]});
+    let result = json!({"decision": "allow", "context": {"kind": "routing", "data": {
+        "intent": "investigate", "answer": answer, "standards": standards}}});
+    // Cursor and Copilot show no context at a prompt.
+    for host in ["claude", "codex", "gemini"] {
+        let shaped = shaped(&result, host, "before-prompt");
+        assert!(shaped.context.len() <= ceiling(host), "{host}");
+        assert!(
+            shaped.context.contains("src/a.rs:3 in run: apply()"),
+            "{host}: {}",
+            shaped.context
+        );
+    }
+}
