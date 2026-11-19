@@ -18,9 +18,9 @@ function replay(t, title, cases, observe) {
   for (const { id, expected, current } of cases) {
     const observed = observe(id);
     assert.deepEqual(observed, current, `${id}: decision changed; update current deliberately`);
-    // The prompt corpus also records the skills a hint names; expectations name the intent and
-    // optionally the leading workflow, the first skill the hint names.
-    const derived = { ...observed, workflow: observed.skills?.[0] ?? null };
+    // The prompt corpus also records the step a hint names; expectations name the intent and
+    // optionally the workflow, the hint's next step.
+    const derived = { ...observed, workflow: observed.next ?? null };
     const relevant = Object.fromEntries(Object.keys(expected).map(key => [key, derived[key]]));
     if (JSON.stringify(relevant) === JSON.stringify(expected)) {
       matched++;
@@ -58,9 +58,9 @@ test('prompt routing replay', t => {
     const before = routed().length;
     const data = deliverHook(root, 'before-prompt', { prompt: prompts.get(id), session: id, host: 'claude' }).context?.data;
     // The routed intent, also where the hint stays silent (a lookup without a verified answer);
-    // a ready lookup names no skill; a prompt the hook answered records the question it answered.
+    // a ready lookup names no step; a prompt the hook answered records the question it answered.
     const intent = routed().slice(before).at(-1)?.attributes?.intent ?? null;
-    return { intent, skills: data?.skills ?? [], ...(data?.answer && { answer: data.answer.question }) };
+    return { intent, next: data?.next ?? null, ...(data?.answer && { answer: data.answer.question }) };
   });
 });
 

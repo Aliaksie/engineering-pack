@@ -555,16 +555,11 @@ fn render(context: &Value, host: &str) -> String {
     match context["kind"].as_str() {
         _ if context.is_string() => context.as_str().unwrap().to_string(),
         Some("routing") => {
-            let mut hint = craft_engine::delivery::shown(context)["data"].take();
-            if let Some(skills) = hint.get_mut("skills").and_then(Value::as_array_mut) {
-                let plugin = plugin_names(host);
-                for skill in skills.iter_mut() {
-                    if let Some(name) = skill.as_str() {
-                        *skill = json!(craft_engine::skills::host_name(name, plugin));
-                    }
-                }
-            }
-            text::ROUTING.render(&[("hint", &hint.to_string())])
+            let plugin = plugin_names(host);
+            let skill = |name: &str| craft_engine::skills::host_name(name, plugin);
+            let hint =
+                craft_engine::delivery::hint_lines(&craft_engine::delivery::shown(context), &skill);
+            text::ROUTING.render(&[("hint", &hint)])
         }
         Some("answer") => text::ANSWER.render(&[("answer", &data.to_string())]),
         Some("resume") => {

@@ -388,3 +388,48 @@ fn a_route_keeps_only_skills_of_packages_the_host_installed() {
     let plan = route(&settings, &request(Some(&all))).unwrap();
     assert_eq!(plan["skills"], unverified["skills"]);
 }
+
+/// The route's one next step is the intent's workflow skill as the project and the host
+/// leave it: the project's replacement, or none once it is disabled or not installed.
+#[test]
+fn the_next_step_follows_the_workflow_skill_the_project_and_host_leave() {
+    let plain = settings(json!({}), None).unwrap();
+    assert_eq!(routed(&plain, "review", &[], "claude")["next"], REVIEW);
+    assert_eq!(
+        routed(&plain, "plan", &[], "claude")["next"],
+        "craft-delivery:plan-change"
+    );
+
+    let replaced = settings(replacing(".claude/skills/team-review"), Some(SKILL)).unwrap();
+    assert_eq!(
+        routed(&replaced, "review", &[], "claude")["next"],
+        "project:team-review"
+    );
+    // A replacement the host cannot read leaves the package skill as the step.
+    let unread = settings(replacing(".claude/skills/team-review"), None).unwrap();
+    assert_eq!(routed(&unread, "review", &[], "claude")["next"], REVIEW);
+
+    let disabled = settings(json!({"disables": [REVIEW]}), None).unwrap();
+    let plan = routed(&disabled, "review", &[], "claude");
+    assert!(plan.get("next").is_none(), "{plan}");
+    assert!(plan["skills"].as_array().is_some_and(|s| !s.is_empty()));
+
+    let files: Vec<Value> = vec![];
+    let packages = vec!["craft-engineering".to_string()];
+    let plan = route(
+        &plain,
+        &Request {
+            intent: Some("review"),
+            files: &files,
+            risks: &[],
+            host: "claude",
+            delegate: false,
+            task: None,
+            verification_mode: None,
+            artifact: None,
+            packages: Some(&packages),
+        },
+    )
+    .unwrap();
+    assert!(plan.get("next").is_none(), "not installed: {plan}");
+}

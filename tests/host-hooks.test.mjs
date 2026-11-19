@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { HOSTS } from '../hosts/registry.mjs';
 import { saveCheckpoint, readCheckpoint } from './checkpoint-cli.mjs';
 import { hookPackage, registeredHook, runHook } from './hook-command.mjs';
+import { routingHint } from './native-hook.mjs';
 
 // Records below the state directory: `<family>/<name>` or `sessions/<id>/<name>`.
 const stateNames = root => {
@@ -120,11 +121,11 @@ test('a declared consumer skill replaces the package skill on every host that ca
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
-    const line = context.split('\n').find(text => text.startsWith('Routing hints')) ?? '';
-    const hint = JSON.parse(line.slice(line.indexOf('{')));
+    const hint = routingHint(context);
     const reads = HOSTS[host].listing.projectSkills.includes('.agents/skills');
-    assert.equal(hint.skills.includes('team-review'), reads, `${host}: ${context}`);
-    assert.equal(hint.skills.some(skill => skill.includes('review-change')), !reads, `${host}: ${context}`);
+    // The replacement is the review's next step where the host reads it.
+    assert.equal(hint.next === 'team-review', reads, `${host}: ${context}`);
+    assert.equal(hint.next.includes('review-change'), !reads, `${host}: ${context}`);
     assert.equal((hint.missing ?? []).some(line => line.includes('project:team-review unavailable')), !reads, `${host}: ${context}`);
   }
 });
@@ -161,12 +162,13 @@ test('a callers prompt gets cited rows only when the name has one declaration', 
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
-    return context && JSON.parse(context.slice(context.indexOf('{')));
+    return context && (routingHint(context) ?? JSON.parse(context.slice(context.indexOf('{'))));
   };
   for (const host of native.filter(host => HOSTS[host].events['before-prompt'].context)) {
     const answered = hint(host, 'Which methods call `Policy.apply`?');
     assert.equal(answered.intent, 'locate', host);
     assert.equal(answered.skills, undefined, `${host}: a ready lookup names no skill`);
+    assert.equal(answered.next, undefined, `${host}: nor a next step`);
     assert.deepEqual(answered.answer.rows, ['Checkout.java:3 in finish: return p.apply(10);', 'Quote.java:3 in preview: return p.apply(5);'], host);
     assert.equal(answered.answer.complete, true);
     assert.equal(answered.answer.basis, 'name', `${host}: callers match the called name only`);
@@ -230,7 +232,7 @@ test('a key, mention or decision-record prompt gets its verified answer on any r
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
-    return context && JSON.parse(context.slice(context.indexOf('{')));
+    return context && (routingHint(context) ?? JSON.parse(context.slice(context.indexOf('{'))));
   };
   const capable = native.filter(host => HOSTS[host].events['before-prompt'].context);
   for (const host of capable) {

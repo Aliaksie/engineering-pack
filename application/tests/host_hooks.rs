@@ -671,14 +671,15 @@ fn the_first_shell_write_of_a_project_file_gets_the_edit_routing_hint() {
             json!({"package": "craft-delivery", "scope": "any", "command": command}),
         ))
     };
-    let first = before("printf 'pub fn f() {}\\n' > deep/lib.rs");
+    // A TypeScript file has a language reference for the hint to name.
+    let first = before("printf 'export const f = 1\\n' > deep/lib.ts");
     assert_eq!(first["context"]["kind"], "routing", "{first}");
     assert_eq!(first["context"]["data"]["intent"], "implement");
-    let again = before("echo '// more' >> deep/lib.rs");
+    let again = before("echo '// more' >> deep/lib.ts");
     assert!(again.get("context").is_none(), "routed once: {again}");
     let outside = before("echo x > /tmp/craft-shell-write-elsewhere.txt");
     assert!(outside.get("context").is_none(), "{outside}");
-    let reads = before("cat deep/lib.rs");
+    let reads = before("cat deep/lib.ts");
     assert!(reads.get("context").is_none(), "{reads}");
 }
 

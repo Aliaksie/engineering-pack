@@ -146,7 +146,9 @@ pub fn decision(
         .filter(|r| r.is_object());
     let context = if let Some(resume) = resume {
         json!({"kind": "resume", "data": resume})
-    } else if let Some(routing) = routing {
+    } else if let Some(routing) =
+        routing.filter(|routing| informative(&shown(&json!({"kind": "routing", "data": routing}))))
+    {
         json!({"kind": "routing", "data": routing})
     } else if let Some(checkpoint) = saved {
         json!({"kind": "checkpoint", "data": checkpoint})
@@ -238,9 +240,11 @@ pub fn validate_hint(state: &Value) -> Result<(), String> {
     Ok(())
 }
 
-/// The part of a routing context a host is shown: the hint fields that carry something, and
-/// the task identity only once a task is bound (the session line already names the session).
-/// Other contexts are shown whole.
+/// The part of a routing context a host is shown: what the model can act on. That is the
+/// intent's next step, the project's own skills, the standards, references and answers, but
+/// not the package's other skill names, which models did not open, nor the default `main`
+/// execution. The task identity shows only once a task is bound (the session line already
+/// names the session). Other contexts are shown whole.
 pub fn shown(context: &Value) -> Value {
     if context["kind"] != "routing" {
         return context.clone();
@@ -255,6 +259,7 @@ pub fn shown(context: &Value) -> Value {
     for key in [
         "intent",
         "execution",
+        "next",
         "skills",
         "answer",
         "lookup",
@@ -264,14 +269,178 @@ pub fn shown(context: &Value) -> Value {
         "missing",
         "taskBoundary",
     ] {
-        if let Some(value) = data.get(key).filter(|value| carries(value)) {
-            hint.insert(key.into(), value.clone());
+        let value = match key {
+            "execution" if data[key]["mode"] == "main" => continue,
+            "skills" => json!(project_skills(data)),
+            _ => data[key].clone(),
+        };
+        if carries(&value) {
+            hint.insert(key.into(), value);
         }
     }
     if crate::values::truthy(&data["taskIdentity"]["task"]) {
         hint.insert("taskIdentity".into(), data["taskIdentity"].clone());
     }
     json!({"kind": "routing", "data": hint})
+}
+
+/// The project's own skills a route selected, other than its next step.
+fn project_skills(route: &Value) -> Vec<&Value> {
+    let prefix = format!("{}:", crate::skills::SOURCE);
+    route["skills"]
+        .as_array()
+        .map_or(&[][..], Vec::as_slice)
+        .iter()
+        .filter(|skill| {
+            skill.as_str().is_some_and(|s| s.starts_with(&prefix)) && **skill != route["next"]
+        })
+        .collect()
+}
+
+/// Whether a shown hint says more than its intent; one that does not stays unsent.
+pub fn informative(hint: &Value) -> bool {
+    hint["data"]
+        .as_object()
+        .is_some_and(|data| data.keys().any(|key| key != "intent"))
+}
+
+/// A shown hint as lines to act on: the next step and any answer, the project's skills, each
+/// standard with what keeps it, then references and the structured rest. `skill` names a skill the way
+/// the host loads it.
+pub fn hint_lines(hint: &Value, skill: &dyn Fn(&str) -> String) -> String {
+    let data = &hint["data"];
+    let mut lines = Vec::new();
+    if let Some(intent) = data["intent"].as_str() {
+        lines.push(format!("intent: {}", one_line(intent)));
+    }
+    if let Some(next) = data["next"].as_str() {
+        lines.push(format!("next: open {}", one_line(&skill(next))));
+    }
+    // An answer comes before anything a project's configuration can lengthen: a hint over
+    // the host's ceiling is cut from its end, and the answer is what the request asked for.
+    for key in ["answer", "lookup"] {
+        if let Some(value) = data.get(key) {
+            lines.push(format!("{key}: {value}"));
+        }
+    }
+    let names = |field: &str| -> Vec<String> {
+        data[field]
+            .as_array()
+            .map_or(&[][..], Vec::as_slice)
+            .iter()
+            .filter_map(Value::as_str)
+            .map(|name| {
+                one_line(&if field == "skills" {
+                    skill(name)
+                } else {
+                    name.to_string()
+                })
+            })
+            .collect()
+    };
+    let project = names("skills");
+    if !project.is_empty() {
+        lines.push(format!("project skills: {}", project.join(", ")));
+    }
+    if let Some(standards) = data["standards"].as_array() {
+        lines.push("standards:".into());
+        for standard in standards {
+            lines.extend(standard_lines(standard));
+        }
+    }
+    let references = names("references");
+    if !references.is_empty() {
+        lines.push(format!("read: {}", references.join(", ")));
+    }
+    let mut rest = serde_json::Map::new();
+    for key in [
+        "execution",
+        "modules",
+        "missing",
+        "taskBoundary",
+        "taskIdentity",
+    ] {
+        if let Some(value) = data.get(key) {
+            rest.insert(key.into(), value.clone());
+        }
+    }
+    if !rest.is_empty() {
+        lines.push(format!("data: {}", Value::Object(rest)));
+    }
+    lines.join("\n")
+}
+
+/// A value as part of one hint line: a line break or control character in configured text
+/// cannot start a line of its own.
+fn one_line(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            if c.is_control() || c == '\u{2028}' || c == '\u{2029}' {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
+/// When `craft check` runs a declared command, in words.
+const STAGES: [(&str, &str); 4] = [
+    ("step", "at each step"),
+    ("commit", "before a commit"),
+    ("pr", "before a pull request"),
+    ("ci", "in CI"),
+];
+
+/// One standard as the item to act on: the command and the `craft check` stage that runs
+/// it, the anchor its check holds the work to, or the checklist a review keeps.
+fn standard_lines(standard: &Value) -> Vec<String> {
+    let id = one_line(standard["id"].as_str().unwrap_or_default());
+    let summary = match (standard["summary"].as_str(), standard["file"].as_str()) {
+        (Some(summary), Some(file)) => format!("{summary} (see {file})"),
+        (Some(summary), None) => summary.to_string(),
+        (None, Some(file)) => format!("see {file}"),
+        (None, None) => String::new(),
+    };
+    let summary = one_line(&summary);
+    let level = standard["level"].as_str().unwrap_or("advise");
+    let mut head = format!("- {id}");
+    if let Some(run) = standard.get("run") {
+        let command = std::iter::once(&run["command"])
+            .chain(run["args"].as_array().map_or(&[][..], Vec::as_slice))
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let command = one_line(&command);
+        let stage = one_line(
+            run["stage"]
+                .as_str()
+                .unwrap_or(crate::checks::DEFAULT_STAGE),
+        );
+        let when = STAGES
+            .iter()
+            .find(|(name, _)| *name == stage)
+            .map_or(stage.as_str(), |(_, words)| words);
+        head.push_str(&format!(
+            ": run `{command}` {when} (`craft check --stage {stage}`)"
+        ));
+    } else if let Some(anchor) = standard["anchor"].as_str().filter(|_| level == "check") {
+        head.push_str(&format!(": {summary} (checked: {})", one_line(anchor)));
+    } else if level == "review" {
+        head.push_str(&format!(" (review): {summary}"));
+    } else {
+        head.push_str(&format!(": {summary}"));
+    }
+    let mut lines = vec![head];
+    for item in standard["checklist"]
+        .as_array()
+        .map_or(&[][..], Vec::as_slice)
+    {
+        if let Some(item) = item.as_str() {
+            lines.push(format!("  - {}", one_line(item)));
+        }
+    }
+    lines
 }
 
 /// The identity of a routing hint: the routing rules, the invalidation `generation`, the

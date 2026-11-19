@@ -555,7 +555,13 @@ fn decide(
                 // skill, then the package instructions and setup, before one command.
                 if let Some(plan) = plan.as_object_mut() {
                     plan.remove("skills");
+                    plan.remove("next");
                 }
+            }
+            // An edit is already the work: its hint keeps the scope's standards and
+            // references, not the step that starts the work.
+            if edit && let Some(plan) = plan.as_object_mut() {
+                plan.remove("next");
             }
             // A verified answer serves any route: a question about decision records reads as
             // planning, one about a configuration key may route nowhere else.
