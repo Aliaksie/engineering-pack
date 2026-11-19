@@ -125,7 +125,7 @@ fn status_line(root: &Path) -> Value {
 /// The doctor report for the project at `root`. With `deny_secret_files`, the consumer's
 /// consent, Claude's secret-file deny rules are merged into `.claude/settings.local.json`
 /// first, so the report reads the settings as written.
-pub fn run(root: &Path, deny_secret_files: bool) -> Result<Value, Failure> {
+pub fn run(root: &Path, deny_secret_files: bool, host: Option<&str>) -> Result<Value, Failure> {
     let root = state::canonical_root(root)?;
     let written = deny_secret_files
         .then(|| host_settings::deny(&root, &craft_engine::doctor::CLAUDE_SECRET_DENY))
@@ -171,6 +171,7 @@ pub fn run(root: &Path, deny_secret_files: bool) -> Result<Value, Failure> {
     claude["statusLine"] = status_line(&root);
     claude["windows"] = json!(cfg!(windows));
     let facts = json!({
+        "currentHost": host.map(str::to_owned).or_else(invoking_host),
         "configuration": configuration,
         "project": root.to_string_lossy(),
         "craftVersion": crate::telemetry::pack_version(),
@@ -210,6 +211,13 @@ pub fn text(report: &Value) -> String {
         let name = host["host"].as_str().unwrap_or("?");
         if host["status"] == "not-installed" {
             out.push_str(&format!("{name:<9} not installed\n"));
+        } else if host["status"] == "install-not-visible" {
+            let setting = host["configurationVariable"]
+                .as_str()
+                .map_or(String::new(), |setting| format!("; check {setting}"));
+            out.push_str(&format!(
+                "{name:<9} install not visible from this environment{setting}\n"
+            ));
         } else {
             out.push_str(&format!(
                 "{name:<9} {}\n",
@@ -265,4 +273,15 @@ pub fn text(report: &Value) -> String {
         out.push_str("blocking: an enabled package cannot run here\n");
     }
     out
+}
+
+/// Host launch markers identify this invocation; configuration homes alone do not.
+/// In a nested environment with both markers, leave the identity unknown unless supplied.
+fn invoking_host() -> Option<String> {
+    let present = |key| std::env::var_os(key).is_some_and(|value| !value.is_empty());
+    match (present("CLAUDECODE"), present("CODEX_THREAD_ID")) {
+        (true, false) => Some("claude".into()),
+        (false, true) => Some("codex".into()),
+        _ => None,
+    }
 }

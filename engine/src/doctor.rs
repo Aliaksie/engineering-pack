@@ -140,8 +140,7 @@ fn firing(
     )
 }
 
-/// A host with no install found: `not-installed`, still naming hook events this project
-/// recorded for it, which came from an install these files do not show.
+/// Hook evidence distinguishes an install outside this view from one never observed here.
 fn absent(host: &str, seen: &[Value]) -> Value {
     let checks: Vec<Value> = seen
         .iter()
@@ -162,7 +161,17 @@ fn absent(host: &str, seen: &[Value]) -> Value {
         })
         .into_iter()
         .collect();
-    json!({"host": host, "status": "not-installed", "packages": [], "checks": checks})
+    let status = if checks.is_empty() {
+        "not-installed"
+    } else {
+        "install-not-visible"
+    };
+    let setting = match host {
+        "claude" => Some("CLAUDE_CONFIG_DIR"),
+        "codex" => Some("CODEX_HOME"),
+        _ => None,
+    };
+    json!({"host": host, "status": status, "configurationVariable": setting, "packages": [], "checks": checks})
 }
 
 /// A host's report from its checks: `problem` beats `unknown` beats `ok`.
@@ -790,7 +799,10 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
     // With telemetry off nothing is recorded, so nothing is known either way.
     if found["safety"] == true && facts["telemetry"]["local"] != false {
         for host in hosts {
-            if matches!(host["status"].as_str(), Some("not-installed" | "off")) {
+            if matches!(
+                host["status"].as_str(),
+                Some("not-installed" | "install-not-visible" | "off")
+            ) {
                 continue;
             }
             let own = host["checks"].as_array().into_iter().flatten();
@@ -845,7 +857,10 @@ fn secret_files(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Valu
     let installed = |name: &str| {
         hosts.iter().any(|host| {
             host["host"] == name
-                && !matches!(host["status"].as_str(), Some("not-installed" | "off"))
+                && !matches!(
+                    host["status"].as_str(),
+                    Some("not-installed" | "install-not-visible" | "off")
+                )
         })
     };
     let mut checks = Vec::new();
@@ -1031,7 +1046,10 @@ pub fn report(facts: &Value) -> Value {
     }
     for host in &mut hosts {
         let name = host["host"].as_str().unwrap_or_default().to_owned();
-        if matches!(host["status"].as_str(), Some("not-installed" | "off")) {
+        if matches!(
+            host["status"].as_str(),
+            Some("not-installed" | "install-not-visible" | "off")
+        ) {
             continue;
         }
         if let (Some(found), Some(checks)) =
@@ -1041,11 +1059,14 @@ pub fn report(facts: &Value) -> Value {
             host["status"] = json!("problem");
         }
     }
+    if let Some(current) = facts["currentHost"].as_str() {
+        hosts.sort_by_key(|host| host["host"] != current);
+    }
     let configuration = configuration(facts, &hosts, &mut state);
     state.next.dedup();
     json!({
         "formatVersion": 1, "readOnly": true, "project": facts["project"], "craftVersion": facts["craftVersion"],
-        "hosts": hosts, "configuration": configuration, "blocking": state.blocking, "next": state.next,
+        "currentHost": facts["currentHost"], "hosts": hosts, "configuration": configuration, "blocking": state.blocking, "next": state.next,
         "unknown": [
             "whether a running host session loaded the current install (hosts keep no record on disk)",
             "whether a Codex hook's declaration still matches its approval (only the plugin content is compared)",

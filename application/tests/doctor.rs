@@ -473,3 +473,77 @@ fn doctor_counts_hook_runs_that_gave_no_answer() {
     );
     assert_eq!(report["blocking"], false);
 }
+
+/// Each host can leave hook evidence while its custom home is invisible to the other.
+#[test]
+fn doctor_distinguishes_cross_host_visibility_and_starts_with_the_invoking_host() {
+    for (current, hidden, marker, setting) in [
+        ("codex", "claude", "CODEX_THREAD_ID", "CLAUDE_CONFIG_DIR"),
+        ("claude", "codex", "CLAUDECODE", "CODEX_HOME"),
+    ] {
+        let repo = Repo::new("doctor-cross-host", &[("README.md", "x\n")]);
+        let homes = homes(&repo);
+        assert!(craft_platform::telemetry::append(
+            Path::new(repo.path()),
+            &[json!({
+                "schemaVersion": 1, "name": "host.hook", "host": hidden, "timestamp": "2026-11-18T09:00:00Z",
+                "packVersion": "0.0.5", "outcome": "success",
+                "attributes": {"package": "craft-delivery", "lifecycle": "session-start"}
+            })]
+        ));
+        let command = || {
+            let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_craft"));
+            command
+                .args(["doctor", "--root", repo.path()])
+                .env("CLAUDE_CONFIG_DIR", &homes.claude)
+                .env("CODEX_HOME", &homes.codex)
+                .env_remove("CLAUDE_CODE_PLUGIN_CACHE_DIR")
+                .env_remove("CLAUDECODE")
+                .env_remove("CODEX_THREAD_ID")
+                .env(marker, "fixture")
+                .env(setting, Path::new(repo.path()).join("unseen-home"));
+            command
+        };
+        let output = command().arg("--json").output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["currentHost"], current);
+        assert_eq!(report["hosts"][0]["host"], current);
+        assert_eq!(host(&report, hidden)["status"], "install-not-visible");
+        assert_eq!(host(&report, hidden)["configurationVariable"], setting);
+        assert_eq!(host(&report, "cursor")["status"], "not-installed");
+        assert_eq!(report["blocking"], false);
+        let output = command().output().unwrap();
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(text.lines().nth(1).unwrap().starts_with(current), "{text}");
+        let line = text.lines().find(|line| line.starts_with(hidden)).unwrap();
+        assert!(
+            line.contains("install not visible from this environment") && line.contains(setting),
+            "{text}"
+        );
+        assert!(!line.contains("not installed"));
+        // An explicit identity overrides inherited markers; ambiguous or absent markers
+        // must not turn historical hook activity into a claim about this invocation.
+        let output = command()
+            .args(["--host", hidden, "--json"])
+            .output()
+            .unwrap();
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["hosts"][0]["host"], hidden);
+        for both in [false, true] {
+            let mut cmd = command();
+            cmd.env_remove("CLAUDECODE").env_remove("CODEX_THREAD_ID");
+            if both {
+                cmd.env("CLAUDECODE", "1").env("CODEX_THREAD_ID", "fixture");
+            }
+            let output = cmd.arg("--json").output().unwrap();
+            let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+            assert!(report["currentHost"].is_null());
+            assert_eq!(report["hosts"][0]["host"], "claude");
+        }
+    }
+}
