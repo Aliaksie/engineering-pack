@@ -205,8 +205,21 @@ It prints the line for the user, such as `Craft suggests: plan → implement →
 schema change)`, and the agent's next step on this host. On Claude Code the plan-first offer is
 asked with the host's question tool; on a host without one the agent shows the line and asks in
 its reply. Direct work gets the line and no question. `craft ticket --accept plan|direct
---session <id>` keeps the user's choice: once a session that accepted a plan has changed files,
-the turn's end names a review offer for the ticket, once. The same ticket in a later prompt of
+--session <id>` keeps the user's choice.
+
+A planned ticket gets a [work plan](SESSION.md#work-plans) named after it (`issue-12`,
+`shop-12`) and linked by its reference: the next step gives the exact `plan-create` command,
+then asks the agent to show the user the plan and get their approval through the host's
+question tool where it has one, unless the user already approved it. `craft ticket --ticket
+<ref> --approve --session <id>` records that approval against the plan as it stands; it is
+refused for a missing plan or one without tasks. Until then, in that session, every host whose
+hooks can refuse a tool (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI) refuses edit
+tools that write a file of the repository, in the project or any of its worktrees, with a
+reason naming the next step. Files elsewhere, such as the plan's task list in a scratch
+folder, and shell commands are not refused. Task progress keeps
+the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
+lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
+review offer for the ticket, once. The same ticket in a later prompt of
 the session is not taken in again. `routing.ticketOffer: false` turns the offer off.
 
 ## Stop review

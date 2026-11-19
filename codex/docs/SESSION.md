@@ -229,7 +229,12 @@ craft plan-integrate --root <project> --plan checkout-retry --task api --session
 - A worker assignment recorded through the [host control](HOST-CONTROL.md) with scope
   `plan:<plan>:<task>` that ends `failed`, `cancelled` or `not-started` releases its task.
 
-Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
+Plans live in `.craft/state/plans/<plan-id>/` of the repository's main checkout, which its
+linked worktrees share: a plan created in one worktree is read and claimed from the others
+and survives the worktree's removal. Craft finds the main checkout from Git's own files
+without starting Git; a main checkout, a bare repository's worktree, a submodule, a folder
+outside Git, or a link that does not lead back keeps its own plans. Sessions and other
+records stay with each worktree. `plan.json` is the record; `plan.md` beside
 it is regenerated after every change for people to read and is never read back.
 `plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
 `craft` versions refuse it, so stop them before upgrading, as for other state changes. A
