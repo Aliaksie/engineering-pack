@@ -58,9 +58,10 @@ change ordering and the limits of recovery. Distinguish undoing a code edit from
 external effect. Preserve durable rationale in `craft-delivery:write-adr` only when it needs
 its own maintained record.
 
-Keep the plan internal by default: use the conversation or an existing private task/checkpoint
-store; with the bundled runtime, a `craft plan-create` work plan is that store and sessions
-claim its tasks; child tasks carry their owned `scope.paths`, acceptance or `contract` and
+Keep the plan internal by default. With the bundled runtime, a `craft plan-create` work plan
+is the store: when `craft ticket` names a plan for the work, record the plan there with its
+tasks, show it to the user and follow the approval step it gives. Otherwise use an existing
+private task/checkpoint store or the conversation. Sessions claim the work plan's tasks; child tasks carry their owned `scope.paths`, acceptance or `contract` and
 expected `returns`. Track scope, acceptance, decisions, completed/remaining units, checks and commit IDs in
 one compact record. Use a requested file location when supplied; a checkout-local `.plan/`
 requires verified exclusion from version control, or use storage outside the checkout.

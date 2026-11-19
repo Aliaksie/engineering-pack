@@ -109,6 +109,7 @@ const OPTIONS: &[&str] = &[
     "label",
     "affects",
     "accept",
+    "approve",
     "deny-secret-files",
 ];
 const FLAGS: &[&str] = &[
@@ -130,6 +131,7 @@ const FLAGS: &[&str] = &[
     "explain",
     "install-hook",
     "sync",
+    "approve",
 ];
 const REPEATED: &[&str] = &[
     "repository",

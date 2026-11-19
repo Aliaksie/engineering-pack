@@ -113,3 +113,31 @@ fn the_offer_is_on_until_the_project_turns_it_off() {
     assert!(enabled(&json!({"routing": {}})));
     assert!(!enabled(&json!({"routing": {"ticketOffer": false}})));
 }
+
+#[test]
+fn a_ticket_names_its_plan_and_the_reference_linking_it() {
+    for (reference, id, link) in [
+        (
+            "https://github.com/acme/shop/issues/145",
+            "issue-145",
+            "link:https://github.com/acme/shop/issues/145",
+        ),
+        (
+            "https://gitlab.example/acme/shop/-/issues/12/?tab=x",
+            "issue-12",
+            "link:https://gitlab.example/acme/shop/-/issues/12/?tab=x",
+        ),
+        (
+            "https://acme.atlassian.net/browse/SHOP-12",
+            "shop-12",
+            "link:https://acme.atlassian.net/browse/SHOP-12",
+        ),
+        ("SHOP-12", "shop-12", "tracker:SHOP-12"),
+        ("#145", "issue-145", "tracker:#145"),
+        ("145", "issue-145", "tracker:145"),
+    ] {
+        assert_eq!(plan_id(reference), id, "{reference}");
+        assert!(crate::plan::slug(&plan_id(reference)));
+        assert_eq!(plan_reference(reference), link);
+    }
+}

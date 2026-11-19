@@ -159,7 +159,7 @@ pub fn session(root: &Path, id: &str) -> Result<Option<Directory>, Error> {
 
 /// Up to `limit` plan folder names of the worktree, and whether that was all of them.
 pub fn plans(root: &Path, limit: usize) -> Result<(Vec<String>, bool), Error> {
-    let folder = base(root)?.join(super::PLANS);
+    let folder = super::plans(root, None, false)?;
     let (names, complete) = listing(&folder, limit)?;
     let plans = names
         .into_iter()

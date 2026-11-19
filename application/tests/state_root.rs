@@ -142,6 +142,56 @@ fn a_command_run_from_a_subfolder_works_on_the_checkout() {
     assert_eq!(state_folders(&repo.root), [repo.root.join(".craft")]);
 }
 
+#[test]
+fn a_plan_made_in_a_linked_worktree_is_read_from_every_checkout_of_the_repository() {
+    let repo = Repo::new("state-root-worktree", &[("a.txt", "a\n")]);
+    let outside = repo.root.with_extension("inputs");
+    let worktree = outside.join("wt");
+    let other = outside.join("other");
+    for (path, branch) in [(&worktree, "work"), (&other, "more")] {
+        repo.git(&[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            branch,
+            path.to_str().unwrap(),
+        ]);
+    }
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [{"id": "a", "goal": "Do it"}]}),
+    );
+    let made = craft(
+        &worktree,
+        &[
+            "plan-create",
+            "--plan",
+            "shared",
+            "--goal",
+            "Ship",
+            "--data",
+            &tasks,
+            "--json",
+        ],
+        None,
+    );
+    let made: Value = serde_json::from_str(&made).unwrap();
+    // Compared as paths: Windows separators differ from the spelling here.
+    let view = repo.root.join(".craft/state/plans/shared/plan.md");
+    assert_eq!(Path::new(made["view"].as_str().unwrap()), view);
+    for checkout in [&repo.root, &other] {
+        let listed: Value =
+            serde_json::from_str(&craft(checkout, &["plan", "--json"], None)).unwrap();
+        assert_eq!(listed["plans"][0]["id"], "shared", "{}", checkout.display());
+    }
+    // Sessions and every other record stay with the worktree they ran in.
+    prompt(&worktree, "S-wt");
+    assert!(has_session(&worktree, "S-wt"));
+    assert!(!has_session(&repo.root, "S-wt"));
+    assert!(!worktree.join(".craft/state/plans").exists());
+}
+
 /// Date a file or directory `days` back.
 fn age(path: &Path, days: u64) {
     let when = SystemTime::now() - Duration::from_secs(days * 86_400);

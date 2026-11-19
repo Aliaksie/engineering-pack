@@ -189,7 +189,7 @@ fn an_accepted_plan_ends_the_change_with_a_review_offer_said_once() {
         accepted["next"]
             .as_str()
             .unwrap()
-            .contains("craft-delivery:review-code"),
+            .contains("--approve --session S1"),
         "{accepted}"
     );
     // The same ticket in a later prompt is not taken in again.
@@ -266,4 +266,213 @@ fn a_review_offer_waits_for_a_check_reminder_and_comes_next() {
         "{second}"
     );
     assert_eq!(notice(&repo), None, "said once");
+}
+
+/// One host's tool call before it runs, as the deny it answers with or its plain output.
+fn before(host: &str, repo: &Repo, tool: &str, input: Value) -> String {
+    let args: Vec<String> = [
+        host,
+        "before-tool",
+        "--package",
+        "craft-delivery",
+        "--handler",
+        "deliver",
+    ]
+    .iter()
+    .map(|a| a.to_string())
+    .collect();
+    let payload = json!({"session_id": "S1", "cwd": repo.path(), "hook_event_name": "PreToolUse",
+        "tool_name": tool, "tool_input": input});
+    let (wire, _) = craft_application::hook::run(&args, &mut payload.to_string().as_bytes());
+    match wire.exit_code {
+        2 => format!("deny {}", wire.stderr),
+        0 if wire.stdout.contains(r#""deny""#) => format!("deny {}", wire.stdout),
+        0 => wire.stdout,
+        code => panic!("exit {code}: {}", wire.stderr),
+    }
+}
+
+#[test]
+fn a_planned_ticket_holds_file_edits_until_the_user_approves_its_plan() {
+    let repo = Repo::new(
+        "ticket-approval",
+        &[
+            (".craft/project.json", PROJECT),
+            ("engine/a.rs", "fn a() {}\n"),
+        ],
+    );
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    let ticket = |extra: &[&str]| {
+        let mut args = vec!["ticket", "--ticket", ISSUE, "--session", "S1"];
+        args.extend(extra);
+        repo.cli(&args)
+    };
+    let accepted = ticket(&["--accept", "plan", "--host", "claude"]).unwrap();
+    assert_eq!(accepted["plan"], "issue-145", "{accepted}");
+    let next = accepted["next"].as_str().unwrap();
+    assert!(
+        next.contains(&format!(
+            "craft plan-create --plan issue-145 --reference link:{ISSUE} --goal"
+        )),
+        "{next}"
+    );
+    assert!(
+        next.contains("ask the user with AskUserQuestion to approve the plan"),
+        "{next}"
+    );
+
+    let edit = json!({"file_path": "engine/a.rs", "old_string": "a", "new_string": "b"});
+    let held = before("claude", &repo, "Edit", edit.clone());
+    assert!(held.starts_with("deny "), "{held}");
+    assert!(
+        held.contains("plan issue-145 is not recorded yet"),
+        "{held}"
+    );
+    assert!(held.contains("--accept direct"), "{held}");
+    // Shell commands are not held.
+    let shell = before("claude", &repo, "Bash", json!({"command": "git status"}));
+    assert!(!shell.starts_with("deny "), "{shell}");
+    // The plan's own task list outside the repository is not held; another worktree of the
+    // repository is.
+    let outside = repo.root.with_extension("inputs");
+    let scratch = outside.join("scratch/tasks.json");
+    let list = json!({"file_path": scratch, "content": "{}"});
+    let written = before("claude", &repo, "Write", list);
+    assert!(!written.starts_with("deny "), "{written}");
+    let worktree = outside.join("wt");
+    repo.git(&[
+        "worktree",
+        "add",
+        "-q",
+        "-b",
+        "work",
+        worktree.to_str().unwrap(),
+    ]);
+    let there =
+        json!({"file_path": worktree.join("engine/a.rs"), "old_string": "a", "new_string": "b"});
+    let held_there = before("claude", &repo, "Edit", there);
+    assert!(held_there.starts_with("deny "), "{held_there}");
+
+    let missing = ticket(&["--approve"]).unwrap_err();
+    assert!(missing.contains("no plan issue-145"), "{missing}");
+    let empty = repo.input("empty.json", &json!({"tasks": []}));
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "issue-145",
+        "--goal",
+        "Ship",
+        "--data",
+        &empty,
+    ])
+    .unwrap();
+    assert!(before("claude", &repo, "Edit", edit.clone()).contains("has no tasks yet"));
+    let bare = ticket(&["--approve"]).unwrap_err();
+    assert!(bare.contains("no tasks to approve"), "{bare}");
+
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [{"id": "a", "goal": "Change a"}, {"id": "b", "goal": "Test a", "dependsOn": ["a"]}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "1",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+    assert!(before("claude", &repo, "Edit", edit.clone()).contains("has not approved plan"));
+    let approved = ticket(&["--approve"]).unwrap();
+    assert_eq!(approved["approved"]["revision"], 2, "{approved}");
+    assert!(
+        approved["next"]
+            .as_str()
+            .unwrap()
+            .contains("craft task-start --session S1 --plan issue-145 --ready"),
+        "{approved}"
+    );
+    assert!(!before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+
+    // Progress keeps the approval; a changed plan needs it again.
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "a",
+        "--plan",
+        "issue-145",
+    ])
+    .unwrap();
+    assert!(!before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+    let added = repo.input(
+        "added.json",
+        &json!({"tasks": [{"id": "c", "goal": "Document a"}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "3",
+        "--data",
+        &added,
+    ])
+    .unwrap();
+    let changed = before("claude", &repo, "Edit", edit.clone());
+    assert!(
+        changed.contains("changed since the user approved it"),
+        "{changed}"
+    );
+
+    // Every host whose hooks can refuse a tool refuses its own edit tool the same way.
+    for (host, tool, input) in [
+        (
+            "codex",
+            "apply_patch",
+            json!({"command": "*** Begin Patch\n*** Update File: engine/a.rs\n@@\n-a\n+b\n*** End Patch"}),
+        ),
+        (
+            "cursor",
+            "Write",
+            json!({"file_path": "engine/a.rs", "content": "b"}),
+        ),
+        (
+            "copilot",
+            "edit",
+            json!({"path": "engine/a.rs", "old_str": "a", "new_str": "b"}),
+        ),
+        (
+            "gemini",
+            "replace",
+            json!({"file_path": "engine/a.rs", "old_string": "a", "new_string": "b"}),
+        ),
+    ] {
+        let output = before(host, &repo, tool, input);
+        assert!(output.starts_with("deny "), "{host} {tool}: {output}");
+        assert!(
+            output.contains("changed since the user approved it"),
+            "{host}: {output}"
+        );
+    }
+    ticket(&["--approve"]).unwrap();
+    assert!(!before("codex", &repo, "apply_patch", json!({"command": "*** Begin Patch\n*** Update File: engine/a.rs\n@@\n-a\n+b\n*** End Patch"})).starts_with("deny "));
+
+    // Implementing directly holds nothing.
+    ticket(&["--accept", "direct"]).unwrap();
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    assert!(!before("claude", &repo, "Edit", edit).starts_with("deny "));
 }
