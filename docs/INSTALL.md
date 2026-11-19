@@ -221,7 +221,8 @@ for the project whether each host would run Craft, from files only:
 - per host and package, the last hook event Craft recorded in this project and the version
   it ran, so a session that predates an update is named and an event of another version is
   not taken for the installed one; for a host with no install found, the last event recorded
-  for it;
+  for it; that host reports `install-not-visible` instead of `not-installed`, with
+  `CLAUDE_CONFIG_DIR` or `CODEX_HOME` naming where to point the check;
 - per host, the hook runs in the retained telemetry that gave no answer: input too large,
   unreadable or not JSON, or a failure, with the last one (a problem, not blocking; a hook
   that stays silent is otherwise taken for one with nothing to say);
@@ -237,6 +238,10 @@ for the project whether each host would run Craft, from files only:
   requirements are not inspected. With a Cursor overlay, whether the project's
   `.cursorignore` takes `.env` files back out of what Cursor ignores by default; user-level
   ignore settings are not inspected.
+
+The invoking host is listed first when identified by `CLAUDECODE` or `CODEX_THREAD_ID`.
+Use `--host <host>` to select it explicitly, including when both markers are inherited;
+without an unambiguous identity, the default order stays unchanged.
 
 Apart from `--deny-secret-files`, it writes nothing to host configuration or task state; it
 starts no host. Whether a running

@@ -145,6 +145,7 @@ const COMMANDS: &[Command] = &[
         crate::doctor::run(
             &root(options),
             options.values.contains_key("deny-secret-files"),
+            options.get("host"),
         )
     })
     .receipt(|_, value| crate::doctor::text(value))

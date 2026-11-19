@@ -257,6 +257,7 @@ fn codex_plugins_enabled_but_not_in_the_cache_are_a_problem_with_the_install_com
     // Nothing configured and nothing cached stays not installed.
     let mut none = self::facts();
     none["codex"]["packages"] = json!([]);
+    none["telemetry"]["lastSeen"] = json!([]);
     assert_eq!(
         host(&self::report(&none), "codex")["status"],
         "not-installed"
@@ -269,7 +270,8 @@ fn a_host_without_an_install_still_names_the_hook_events_recorded_for_it() {
     facts["claude"]["packages"] = json!([]);
     let report = report(&facts);
     let claude = host(&report, "claude");
-    assert_eq!(claude["status"], "not-installed");
+    assert_eq!(claude["status"], "install-not-visible");
+    assert_eq!(claude["configurationVariable"], "CLAUDE_CONFIG_DIR");
     let detail = claude["checks"][0]["detail"].as_str().unwrap();
     assert!(detail.starts_with("last hook before-tool at 2026-11-09T10:00:00Z ran craft-delivery 0.0.5, but no install was found"), "{detail}");
     // A host that never ran a hook here has nothing to add.
@@ -701,4 +703,44 @@ fn hook_runs_that_gave_no_answer_are_a_problem_of_their_host_and_not_a_block() {
     assert_eq!(host(&report, "codex")["status"], "ok");
     // A host that is not installed here keeps its own status.
     assert_eq!(host(&report, "cursor")["status"], "not-installed");
+}
+
+#[test]
+fn unseen_installs_do_not_imply_that_the_visible_settings_control_them() {
+    for (current, hidden, setting) in [
+        ("codex", "claude", "CLAUDE_CONFIG_DIR"),
+        ("claude", "codex", "CODEX_HOME"),
+    ] {
+        let mut facts = facts();
+        facts["currentHost"] = json!(current);
+        facts[hidden]["packages"] = json!([]);
+        facts["configuration"] = json!({"safety": true, "secretFiles": true});
+        facts["telemetry"]["unanswered"] = json!([{"host": hidden, "failed": 1}]);
+        let report = report(&facts);
+        assert_eq!(report["hosts"][0]["host"], current);
+        assert_eq!(host(&report, hidden)["status"], "install-not-visible");
+        assert_eq!(host(&report, hidden)["configurationVariable"], setting);
+        assert_eq!(report["blocking"], false);
+        assert!(
+            !report["configuration"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|check| {
+                    check["check"] == "safety" && check["detail"].as_str().unwrap().contains(hidden)
+                })
+        );
+        let secret_check = if hidden == "claude" {
+            "secret-files"
+        } else {
+            "secret-files-codex"
+        };
+        assert!(
+            !report["configuration"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|check| check["check"] == secret_check)
+        );
+    }
 }

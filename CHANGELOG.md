@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft doctor` reports an install as not visible from this environment when retained hook
+  runs show the host was used, naming `CLAUDE_CONFIG_DIR` or `CODEX_HOME` instead of saying
+  not installed. The invoking host is listed first when identified, with `--host` to override.
+
 - A service binding can name a setup instead of writing out its mappings: `github` (issues and
   pull requests through `gh` or the GitHub MCP server), `github-project` (issues with their
   Project's status, priority and release through `gh`), `gitlab` (issues and merge requests
