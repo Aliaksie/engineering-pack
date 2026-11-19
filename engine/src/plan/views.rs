@@ -219,8 +219,9 @@ pub fn summary(plan: &Value) -> Value {
     })
 }
 
-/// Open plans as a starting session sees them, newest first: ready tasks and held tasks
-/// with how long since their last step. `own` is this session's directory id.
+/// Open plans as a starting session sees them, newest first: completed of the tasks not
+/// abandoned, ready tasks and held tasks with how long since their last step. `own` is this
+/// session's directory id.
 pub fn listing(mut plans: Vec<Value>, own: &str, now: i64) -> Vec<Value> {
     plans.retain(|p| p["status"] == "open");
     plans.sort_by(|a, b| {
@@ -242,7 +243,10 @@ pub fn listing(mut plans: Vec<Value>, own: &str, now: i64) -> Vec<Value> {
                     json!({"task": t["id"], "state": t["state"], "here": t["owner"]["session"] == own, "idleMinutes": idle, "stale": idle >= STALE_MINUTES})
                 })
                 .collect();
-            let mut entry = json!({"plan": plan["id"], "goal": plan["goal"], "ready": ready, "held": held});
+            let counted: Vec<&Value> = tasks(plan).iter().filter(|t| t["state"] != "abandoned").collect();
+            let done = counted.iter().filter(|t| t["state"] == "completed").count();
+            let mut entry = json!({"plan": plan["id"], "goal": plan["goal"], "done": done,
+                "total": counted.len(), "ready": ready, "held": held});
             let escalated: Vec<&Value> = tasks(plan)
                 .iter()
                 .filter(|t| t["integration"]["state"] == "escalated")

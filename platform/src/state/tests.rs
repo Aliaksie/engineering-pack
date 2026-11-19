@@ -405,3 +405,100 @@ fn a_new_session_directory_is_described_once_without_raw_identities() {
             .exists()
     );
 }
+
+/// A main checkout `main/` with a linked worktree `wt/` laid out as Git writes them: the
+/// worktree's `.git` file names `main/.git/worktrees/wt`, which names its common directory
+/// and the worktree's `.git` file back.
+fn linked(fixture: &Fixture, relative: bool) -> (PathBuf, PathBuf) {
+    let main = fixture.0.join("main");
+    let worktree = fixture.0.join("wt");
+    let admin = main.join(".git/worktrees/wt");
+    fs::create_dir_all(&admin).unwrap();
+    fs::create_dir_all(&worktree).unwrap();
+    let (link, back) = if relative {
+        (
+            "../main/.git/worktrees/wt".to_string(),
+            "../../../../wt/.git".to_string(),
+        )
+    } else {
+        (
+            admin.to_str().unwrap().to_string(),
+            worktree.join(".git").to_str().unwrap().to_string(),
+        )
+    };
+    fs::write(worktree.join(".git"), format!("gitdir: {link}\n")).unwrap();
+    fs::write(admin.join("commondir"), "../..\n").unwrap();
+    fs::write(admin.join("gitdir"), format!("{back}\n")).unwrap();
+    (main, worktree)
+}
+
+#[test]
+fn a_linked_worktree_keeps_its_plans_in_the_main_checkout() {
+    for relative in [false, true] {
+        let fixture = Fixture::new();
+        let (main, worktree) = linked(&fixture, relative);
+        assert_eq!(main_checkout(&worktree), Some(main.clone()));
+        assert_eq!(
+            plans(&worktree, Some("p"), true).unwrap(),
+            main.join(".craft/state/plans/p")
+        );
+        assert_eq!(sweep::plans(&main, 8).unwrap().0, vec!["p".to_string()]);
+        // Sessions stay with the worktree.
+        let session = location(&worktree, SESSION).unwrap();
+        assert!(session.directory.starts_with(&worktree));
+    }
+}
+
+#[test]
+fn plans_stay_in_the_checkout_unless_git_leads_back_to_it() {
+    let fixture = Fixture::new();
+    let (main, worktree) = linked(&fixture, false);
+    // A main checkout and a folder outside Git keep their own plans.
+    assert_eq!(main_checkout(&main), None);
+    assert_eq!(main_checkout(&fixture.0), None);
+    let admin = main.join(".git/worktrees/wt");
+    // The worktree's folder does not name this worktree back.
+    fs::write(admin.join("gitdir"), "/elsewhere/.git\n").unwrap();
+    assert_eq!(main_checkout(&worktree), None);
+    assert_eq!(
+        plans(&worktree, None, false).unwrap(),
+        worktree.join(".craft/state/plans")
+    );
+    // A `.git` file naming a folder outside `<common>/worktrees`, such as a submodule's.
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", worktree.join(".git").display()),
+    )
+    .unwrap();
+    let module = main.join(".git/modules/wt");
+    fs::create_dir_all(&module).unwrap();
+    fs::write(module.join("commondir"), "../..\n").unwrap();
+    fs::write(
+        worktree.join(".git"),
+        format!("gitdir: {}\n", module.display()),
+    )
+    .unwrap();
+    assert_eq!(main_checkout(&worktree), None);
+}
+
+#[test]
+fn a_bare_repository_worktree_keeps_its_own_plans() {
+    let fixture = Fixture::new();
+    let common = fixture.0.join("repo.git");
+    let admin = common.join("worktrees/wt");
+    let worktree = fixture.0.join("wt");
+    fs::create_dir_all(&admin).unwrap();
+    fs::create_dir_all(&worktree).unwrap();
+    fs::write(
+        worktree.join(".git"),
+        format!("gitdir: {}\n", admin.display()),
+    )
+    .unwrap();
+    fs::write(admin.join("commondir"), "../..\n").unwrap();
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", worktree.join(".git").display()),
+    )
+    .unwrap();
+    assert_eq!(main_checkout(&worktree), None);
+}

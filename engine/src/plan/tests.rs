@@ -204,6 +204,10 @@ fn a_listing_shows_open_plans_newest_first() {
         json!([{"task": "a", "state": "running", "here": true, "idleMinutes": 2, "stale": false}])
     );
     assert_eq!(listed[1]["ready"], json!([]));
+    assert_eq!(
+        (listed[1]["done"].clone(), listed[1]["total"].clone()),
+        (json!(0), json!(3))
+    );
 }
 
 #[test]
@@ -974,4 +978,29 @@ fn worker_fields_write_the_fourth_version_only_when_used() {
             .unwrap_err()
             .contains("worktree record is invalid")
     );
+}
+
+#[test]
+fn approval_follows_authored_tasks_not_their_progress() {
+    let mut plan = sample();
+    let approved = approval(&plan).unwrap();
+    claim(&mut plan, "a", ONE, false, None, NOW).unwrap();
+    progress(
+        &mut plan,
+        "a",
+        ONE,
+        &step("verify", "passed", true),
+        NOW + 1,
+    )
+    .unwrap();
+    assert_eq!(approval(&plan).as_deref(), Some(approved.as_str()));
+    let added = json!({"tasks": [{"id": "d", "goal": "Fourth"}]});
+    apply(&mut plan, &added, None, false, NOW + 2).unwrap();
+    let changed = approval(&plan).unwrap();
+    assert_ne!(changed, approved);
+    let abandoned = json!({"tasks": [{"id": "d", "state": "abandoned"}]});
+    apply(&mut plan, &abandoned, None, false, NOW + 3).unwrap();
+    assert_eq!(approval(&plan).as_deref(), Some(approved.as_str()));
+    let empty = create(&json!({"id": "empty", "goal": "Nothing yet"}), NOW).unwrap();
+    assert_eq!(approval(&empty), None);
 }

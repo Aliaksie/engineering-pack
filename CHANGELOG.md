@@ -5,7 +5,14 @@
 - `craft doctor` reports an install as not visible from this environment when retained hook
   runs show the host was used, naming `CLAUDE_CONFIG_DIR` or `CODEX_HOME` instead of saying
   not installed. The invoking host is listed first when identified, with `--host` to override.
-
+- Choosing "Plan first" for a ticket now leads to a saved work plan named after the ticket:
+  `craft ticket` gives the exact `plan-create` command, and `craft ticket --approve` records the
+  user's approval of the plan as it stands. Until then, edit tools that write the repository's
+  files, in the project or any of its worktrees, are refused in that session on Claude Code,
+  Codex, Cursor, Copilot CLI and Gemini CLI; shell commands are not.
+  A changed plan needs approval again. Work plans created in a linked Git worktree are kept in
+  the main checkout's `.craft/state/plans`, shared by every worktree of the repository, and
+  session start shows each open plan's tasks done of total.
 - A service binding can name a setup instead of writing out its mappings: `github` (issues and
   pull requests through `gh` or the GitHub MCP server), `github-project` (issues with their
   Project's status, priority and release through `gh`), `gitlab` (issues and merge requests

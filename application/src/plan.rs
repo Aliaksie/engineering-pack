@@ -1,6 +1,7 @@
-//! Work plans of the worktree under `.craft/state/plans/<id>/`: created, changed and shown on
-//! request, claimed by `task-start --plan` and advanced by `task-step`. One lock serializes
-//! every plan write and the rebuildable index; `plan.md` is regenerated beside each record.
+//! Work plans under `.craft/state/plans/<id>/` of the repository's main checkout, which its
+//! linked worktrees share: created, changed and shown on request, claimed by `task-start
+//! --plan` and advanced by `task-step`. One lock serializes every plan write and the
+//! rebuildable index; `plan.md` is regenerated beside each record.
 use crate::failure::Failure;
 use crate::session::read_record;
 use crate::telemetry::now_ms;

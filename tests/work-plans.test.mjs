@@ -84,7 +84,7 @@ test('a plan is worked on across sessions: claim, progress, readiness and take-o
   // Session 2 sees the plan at its start (not a handoff) and starts B.
   const second = started(root, 'second');
   assert.deepEqual(handoffs(second), []);
-  assert.deepEqual(plans(second), [{ plan: 'work', goal: 'Ship the value', ready: ['b'], held: [] }]);
+  assert.deepEqual(plans(second), [{ plan: 'work', goal: 'Ship the value', done: 1, total: 3, ready: ['b'], held: [] }]);
   run(['task-start', '--root', root, '--session', 'second', '--plan', 'work', '--task', 'b']);
   step(root, 'second', 'implement', 'Write the release note');
 

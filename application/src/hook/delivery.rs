@@ -76,6 +76,34 @@ fn project_file(root: &Path, cwd: &Path, file: Option<&str>) -> Option<String> {
     Some(parts.join("/"))
 }
 
+/// Whether an edit writes a file of the project's repository: below the project root, or in
+/// any worktree of the same repository. An edit naming no file counts as one.
+fn repository_edit(event: &Event) -> bool {
+    let named: Vec<&str> = match (event.files, event.file) {
+        ([], Some(file)) => vec![file],
+        ([], None) => return true,
+        (files, _) => files.to_vec(),
+    };
+    let Ok(root) = state::canonical_root(event.root) else {
+        return true;
+    };
+    let home = |dir: &Path| state::main_checkout(dir).unwrap_or_else(|| dir.to_path_buf());
+    let repository = home(&root);
+    named.iter().any(|file| {
+        if project_file(event.root, event.cwd, Some(file)).is_some_and(|f| !f.is_empty()) {
+            return true;
+        }
+        // The nearest checkout holding the file, read from where Git keeps its records.
+        let path = event.cwd.join(file);
+        let checkout = path
+            .ancestors()
+            .skip(1)
+            .find(|dir| dir.join(".git").exists())
+            .and_then(|dir| state::canonical_root(dir).ok());
+        checkout.is_some_and(|dir| dir == root || home(&dir) == repository)
+    })
+}
+
 /// The hook decision `{decision, context?, warning?}` for one delivery event.
 pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<Value, Failure> {
     let (settings, ignored) = project::hook_loaded_known(recorder, hook, event.root)?;
@@ -121,6 +149,19 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             Ok(None) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
+    }
+    // A ticket the user chose to plan first: edits of the repository's files wait until the
+    // user approved its plan as it stands. Files elsewhere, such as the plan's own task list
+    // in a scratch folder, and shell commands are not held; a missing record or plan holds
+    // nothing.
+    if let ("before-tool", true, Some(session)) = (
+        event.lifecycle,
+        event.edit,
+        event.session.filter(|s| !s.is_empty()),
+    ) && repository_edit(event)
+        && let Some(reason) = crate::ticket::approval_due(event.root, session, event.host)
+    {
+        return Ok(json!({"decision": "deny", "rule": "plan-approval", "reason": reason}));
     }
     // When the session's tool calls run, so a stop counts only files written meanwhile as its
     // own. A read writes nothing; any other tool may, a subagent's call included.

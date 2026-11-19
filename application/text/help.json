@@ -239,7 +239,7 @@
     "mode": "read-only reader view of supplied contract, evidence and probes; executes nothing and writes no task state"
   },
   "ticket": {
-    "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--root project] | ticket --ticket url-or-key --accept plan|direct --session id",
-    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session; a planned change ends with a review offer. No model call; nothing else is written."
+    "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--root project] | ticket --ticket url-or-key --accept plan|direct --session id [--host name] | ticket --ticket url-or-key --approve --session id",
+    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until --approve records the user's approval of it as it stands, and ends with a review offer. No model call; nothing else is written."
   }
 }

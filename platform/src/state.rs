@@ -174,18 +174,47 @@ pub fn shared(root: &Path, family: &str, create: bool) -> Result<PathBuf, Error>
 /// Work plans, one folder each beside `sessions/`.
 pub const PLANS: &str = "plans";
 
-/// The plans folder, or the folder of the plan named `plan`.
+/// The plans folder, or the folder of the plan named `plan`. Every worktree of a repository
+/// shares the main checkout's plans; other state stays with each worktree.
 pub fn plans(root: &Path, plan: Option<&str>, create: bool) -> Result<PathBuf, Error> {
     if plan.is_some_and(|id| !craft_engine::plan::slug(id)) {
         return Err("invalid plan id".into());
     }
     let canonical = canonical_root(root)?;
-    let base = location_at(&canonical, None, create)?.directory;
+    let home = main_checkout(&canonical).unwrap_or(canonical);
+    let base = location_at(&home, None, create)?.directory;
     let folder = descend(&base, &[PLANS], create)?;
     match plan {
         Some(id) => descend(&folder, &[id], create),
         None => Ok(folder),
     }
+}
+
+/// The main checkout of the repository `worktree` is a linked worktree of, read from Git's
+/// own files without starting Git. `None` for a main checkout, a bare repository's worktree,
+/// a submodule, or any record that does not lead back to `worktree`.
+pub fn main_checkout(worktree: &Path) -> Option<PathBuf> {
+    let named = |file: &Path| -> Option<String> {
+        let bytes = crate::files::read_bounded(file, 4096).ok()?;
+        Some(String::from_utf8(bytes).ok()?.trim().to_string())
+    };
+    let dot = worktree.join(".git");
+    let link = named(&dot)?;
+    // Git writes these paths absolute, or relative to the file's folder.
+    let gitdir = physical(&worktree.join(link.strip_prefix("gitdir:")?.trim())).ok()?;
+    let common = physical(&gitdir.join(named(&gitdir.join("commondir"))?)).ok()?;
+    // A linked worktree's folder is `<common>/worktrees/<name>` and names its `.git` file.
+    if gitdir.parent()? != common.join("worktrees") {
+        return None;
+    }
+    if physical(&gitdir.join(named(&gitdir.join("gitdir"))?)).ok()? != physical(&dot).ok()? {
+        return None;
+    }
+    let main = common.parent()?;
+    let own = main.join(".git");
+    let real = fs::symlink_metadata(&own).is_ok_and(|meta| meta.is_dir());
+    (common.file_name()? == ".git" && real && physical(&own).ok()? == common)
+        .then(|| main.to_path_buf())
 }
 
 fn segment(name: &str) -> bool {

@@ -632,6 +632,7 @@ fn ticket(
         host: options.get("host"),
         session: options.get("session").filter(|s| !s.is_empty()),
         accept: options.get("accept"),
+        approve: options.values.contains_key("approve"),
     };
     crate::ticket::run(&root(options), &settings, &request)
 }
@@ -639,6 +640,15 @@ fn ticket(
 /// The user's line and the agent's next step, or the recorded choice.
 fn ticket_receipt(value: &Value) -> String {
     let text = |field: &str| value[field].as_str().unwrap_or_default();
+    if value.get("approved").is_some() {
+        return format!(
+            "Craft: plan {} of {} approved at revision {}\nnext: {}\n",
+            text("plan"),
+            text("ticket"),
+            value["approved"]["revision"],
+            text("next")
+        );
+    }
     match value.get("line") {
         Some(_) => format!("{}\nnext: {}\n", text("line"), text("next")),
         None => format!(

@@ -25,6 +25,8 @@ pub struct Request<'a> {
     pub session: Option<&'a str>,
     /// The delivery the user chose: `plan` or `direct`.
     pub accept: Option<&'a str>,
+    /// The user approved the ticket's work plan as it stands.
+    pub approve: bool,
 }
 
 fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::PathBuf, Failure> {
@@ -37,8 +39,11 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     if reference.is_empty() || !craft_engine::values::line_text(reference, 512) {
         return Err("ticket requires --ticket with the issue URL or key".into());
     }
+    if request.approve {
+        return approve(root, reference, request.session);
+    }
     if let Some(choice) = request.accept {
-        return accept(root, reference, choice, request.session);
+        return accept(root, reference, choice, request.session, request.host);
     }
     let criteria = match request.criteria {
         Some(criteria @ ("clear" | "unclear" | "missing")) => criteria,
@@ -81,8 +86,9 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     let keep = |then: &str| {
         match request.session {
         Some(session) => {
+            let host = request.host.map(|host| format!(" --host {host}")).unwrap_or_default();
             let accept = |choice| {
-                format!("craft ticket --ticket {reference} --accept {choice} --session {session}")
+                format!("craft ticket --ticket {reference} --accept {choice} --session {session}{host}")
             };
             format!("{then} run `{}` or `{}`.", accept("plan"), accept("direct"))
         }
@@ -141,12 +147,14 @@ fn modules(settings: &Value, paths: &[String]) -> Result<Vec<String>, Failure> {
     Ok(names)
 }
 
-/// Keep the user's choice for the session: a planned change ends with a review offer.
+/// Keep the user's choice for the session. A planned change is recorded as a work plan the
+/// user approves before any file is edited, and ends with a review offer.
 fn accept(
     root: &Path,
     reference: &str,
     choice: &str,
     session: Option<&str>,
+    host: Option<&str>,
 ) -> Result<Value, Failure> {
     if !matches!(choice, "plan" | "direct") {
         return Err("--accept takes plan or direct".into());
@@ -154,23 +162,123 @@ fn accept(
     let session = session
         .filter(|session| !session.is_empty())
         .ok_or("--accept requires --session")?;
-    let record = json!({"formatVersion": 1, "ticket": reference, "delivery": choice,
+    let mut record = json!({"formatVersion": 1, "ticket": reference, "delivery": choice,
         "acceptedAt": crate::telemetry::now_ms()});
+    if choice == "direct" {
+        state::write(
+            &record_file(root, session, true)?,
+            &record,
+            RECORD_BYTES,
+            false,
+        )?;
+        let next = "Implement with craft-delivery:apply-change and verify against the ticket's acceptance criteria.";
+        return Ok(
+            json!({"ticket": reference, "delivery": choice, "recorded": true, "next": next}),
+        );
+    }
+    let plan = ticket::plan_id(reference);
+    record["plan"] = json!(plan);
     state::write(
         &record_file(root, session, true)?,
         &record,
         RECORD_BYTES,
         false,
     )?;
-    let next = match choice {
-        "plan" => {
-            "Plan with craft-delivery:plan-change (steps, acceptance, checks), implement with craft-delivery:apply-change, and when the change is done offer the user a review with craft-delivery:review-code before reporting it complete."
+    let saved = crate::plan::read(root, &plan).ok().flatten();
+    let write = match &saved {
+        Some(saved) => format!(
+            "Plan {plan} exists (revision {}): read it with `craft plan --plan {plan}` and change it with `craft plan-update --plan {plan} --expected-revision {} --data <changes.json>` where the ticket needs it.",
+            saved["revision"], saved["revision"]
+        ),
+        None => format!(
+            "Plan with craft-delivery:plan-change and record it with `craft plan-create --plan {plan} --reference {} --goal \"<outcome>\" --data <tasks.json>`, tasks as {{\"tasks\": [{{\"id\", \"goal\", \"dependsOn\", \"acceptance\"}}]}}.",
+            ticket::plan_reference(reference)
+        ),
+    };
+    let next = format!(
+        "{write} Then {} Edits wait for that approval.",
+        approval_step(reference, session, host)
+    );
+    Ok(
+        json!({"ticket": reference, "delivery": choice, "recorded": true, "plan": plan, "next": next}),
+    )
+}
+
+/// How the agent gets and records the user's approval of the plan on this host.
+fn approval_step(reference: &str, session: &str, host: Option<&str>) -> String {
+    let asked = match host.and_then(crate::hook::question_tool) {
+        Some(tool) => format!("ask the user with {tool} to approve the plan"),
+        None => "ask the user in your reply to approve the plan".to_owned(),
+    };
+    format!(
+        "show the user the plan and {asked}, unless they already approved this plan; with their approval run `craft ticket --ticket {reference} --approve --session {session}`."
+    )
+}
+
+/// Record the user's approval of the ticket's plan as it stands now. A plan changed later
+/// needs approval again.
+fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value, Failure> {
+    let session = session
+        .filter(|session| !session.is_empty())
+        .ok_or("--approve requires --session")?;
+    let file = record_file(root, session, false)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if record["ticket"] != reference || record["delivery"] != "plan" {
+        return Err(format!(
+            "no planned delivery of {reference} in this session; run `craft ticket --ticket {reference} --accept plan --session {session}` first"
+        )
+        .into());
+    }
+    let plan = record["plan"]
+        .as_str()
+        .map_or_else(|| ticket::plan_id(reference), str::to_owned);
+    let saved = crate::plan::read(root, &plan)?.ok_or_else(|| {
+        format!("no plan {plan} yet; record it with `craft plan-create --plan {plan}` first")
+    })?;
+    let digest = craft_engine::plan::approval(&saved).ok_or_else(|| {
+        format!("plan {plan} has no tasks to approve; add them with `craft plan-update`")
+    })?;
+    record["plan"] = json!(plan);
+    record["approved"] = json!({"revision": saved["revision"], "digest": digest,
+        "at": crate::telemetry::now_ms()});
+    state::write(&file, &record, RECORD_BYTES, false)?;
+    let next = format!(
+        "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --outcome passed --result \"<what changed>\" --next \"<next>\" --complete`. When the change is done, offer the user a review with craft-delivery:review-code before reporting it complete."
+    );
+    Ok(json!({"ticket": reference, "plan": plan, "approved": record["approved"], "next": next}))
+}
+
+/// Why file edits wait in this session, with the step that lets them through: its ticket was
+/// planned and the plan is missing, has no tasks, or changed since the user approved it.
+/// `None` when nothing waits, including when the record or plan cannot be read.
+pub(crate) fn approval_due(root: &Path, session: &str, host: &str) -> Option<String> {
+    let file = record_file(root, session, false).ok()?;
+    let record = read_record(&file, RECORD_BYTES).ok()?;
+    if record["delivery"] != "plan" || record["plan"].is_null() {
+        return None;
+    }
+    let reference = record["ticket"].as_str()?;
+    let plan = record["plan"].as_str()?;
+    let saved = crate::plan::read(root, plan).ok()?;
+    let current = saved.as_ref().and_then(craft_engine::plan::approval);
+    let approved = record["approved"]["digest"].as_str();
+    let why = match (&saved, &current, approved) {
+        (_, Some(current), Some(approved)) if current == approved => return None,
+        (None, _, _) => {
+            format!("the user chose to plan {reference} first and plan {plan} is not recorded yet")
         }
-        _ => {
-            "Implement with craft-delivery:apply-change and verify against the ticket's acceptance criteria."
+        (Some(_), None, _) => format!("plan {plan} for {reference} has no tasks yet"),
+        (Some(_), Some(_), None) => {
+            format!("the user has not approved plan {plan} for {reference} yet")
+        }
+        (Some(_), Some(_), Some(_)) => {
+            format!("plan {plan} for {reference} changed since the user approved it")
         }
     };
-    Ok(json!({"ticket": reference, "delivery": choice, "recorded": true, "next": next}))
+    Some(format!(
+        "Craft holds file edits: {why}. Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",
+        approval_step(reference, session, Some(host))
+    ))
 }
 
 /// The ticket whose delivery the session recorded, `None` without one.

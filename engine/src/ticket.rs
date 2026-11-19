@@ -72,6 +72,55 @@ fn key(id: &str) -> bool {
         && number(digits)
 }
 
+/// The work plan id a ticket's planned delivery uses: `issue-145` for an issue number or a
+/// URL ending in one, the lowercased key for a tracker key (`shop-12`).
+pub fn plan_id(reference: &str) -> String {
+    let path = reference
+        .trim()
+        .split(['?', '#'])
+        .next()
+        .unwrap_or_default();
+    let last = path
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or_default();
+    let last = match reference.trim().strip_prefix('#') {
+        Some(number) => number,
+        None => last,
+    };
+    let base = if !last.is_empty() && last.chars().all(|c| c.is_ascii_digit()) {
+        format!("issue-{last}")
+    } else {
+        last.to_ascii_lowercase()
+    };
+    let id: String = base
+        .chars()
+        .map(|c| match c {
+            'a'..='z' | '0'..='9' | '-' | '_' | '.' => c,
+            _ => '-',
+        })
+        .take(64)
+        .collect();
+    let id = id.trim_start_matches('.');
+    if id.is_empty() {
+        "ticket".to_owned()
+    } else {
+        id.to_owned()
+    }
+}
+
+/// The plan reference that links a work plan to its ticket: `link:<url>` for a URL,
+/// `tracker:<key>` otherwise.
+pub fn plan_reference(reference: &str) -> String {
+    let reference = reference.trim();
+    if reference.starts_with("https://") || reference.starts_with("http://") {
+        format!("link:{reference}")
+    } else {
+        format!("tracker:{reference}")
+    }
+}
+
 /// The contract a path holds, which other builds, services or people rely on: a published
 /// schema or interface definition, a database migration, host hook wiring or CI.
 pub fn contract(path: &str) -> Option<&'static str> {

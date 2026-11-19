@@ -124,6 +124,39 @@ const AUTHORED: &[&str] = &[
 const CHANGE_FIELDS: &[&str] = &["goal", "status", "references", "decisions", "tasks"];
 const BLOCKERS: &[&str] = &["permission-denied", "tool-unavailable", "blocked"];
 
+/// What a user approves of a plan: its goal and each task that is not abandoned, as
+/// authored. Task progress leaves it unchanged; a changed, added or abandoned task changes
+/// it. `None` for a plan with no such task, which there is nothing to approve of.
+pub fn approval(plan: &Value) -> Option<String> {
+    let authored: Vec<Value> = tasks(plan)
+        .iter()
+        .filter(|t| t["state"] != "abandoned")
+        .map(|t| {
+            let keys = [
+                "id",
+                "goal",
+                "dependsOn",
+                "acceptance",
+                "files",
+                "parent",
+                "scope",
+                "contract",
+            ];
+            let fields: serde_json::Map<String, Value> = keys
+                .iter()
+                .filter_map(|key| Some((key.to_string(), t.get(*key)?.clone())))
+                .collect();
+            Value::Object(fields)
+        })
+        .collect();
+    if authored.is_empty() {
+        return None;
+    }
+    Some(crate::digest(
+        &serde_json::json!({"goal": plan["goal"], "tasks": authored}),
+    ))
+}
+
 fn tasks(plan: &Value) -> &[Value] {
     plan["tasks"].as_array().map_or(&[], Vec::as_slice)
 }
