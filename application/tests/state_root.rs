@@ -177,8 +177,9 @@ fn a_plan_made_in_a_linked_worktree_is_read_from_every_checkout_of_the_repositor
         None,
     );
     let made: Value = serde_json::from_str(&made).unwrap();
+    // Compared as paths: Windows separators differ from the spelling here.
     let view = repo.root.join(".craft/state/plans/shared/plan.md");
-    assert_eq!(made["view"], view.to_str().unwrap());
+    assert_eq!(Path::new(made["view"].as_str().unwrap()), view);
     for checkout in [&repo.root, &other] {
         let listed: Value =
             serde_json::from_str(&craft(checkout, &["plan", "--json"], None)).unwrap();
