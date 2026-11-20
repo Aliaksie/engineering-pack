@@ -212,12 +212,12 @@
     },
     {
       "name": "libsqlite3-sys",
-      "version": "0.39.1",
+      "version": "0.40.0",
       "license": "MIT",
       "repository": "https://github.com/rusqlite/rusqlite",
       "notices": [
-        "notices/libsqlite3-sys-0.39.1/LICENSE",
-        "notices/libsqlite3-sys-0.39.1/SQLite-NOTICE"
+        "notices/libsqlite3-sys-0.40.0/LICENSE",
+        "notices/libsqlite3-sys-0.40.0/SQLite-NOTICE"
       ]
     },
     {
@@ -323,11 +323,11 @@
     },
     {
       "name": "rusqlite",
-      "version": "0.41.1",
+      "version": "0.43.0",
       "license": "MIT",
       "repository": "https://github.com/rusqlite/rusqlite",
       "notices": [
-        "notices/rusqlite-0.41.1/LICENSE"
+        "notices/rusqlite-0.43.0/LICENSE"
       ]
     },
     {

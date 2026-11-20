@@ -49,14 +49,14 @@
     "hook.ticket": "8eefb0ca045cab89124f7f3e434a62254fca69c3a4a741de0efb2e9526174fc9"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "a7d29d26a700125895b7c4fd9f7457c4cdb75aeb",
+  "sourceRevision": "fdfe422576e4cdfddf6d90b8ecc99131648f451f",
   "sourceDirty": false,
-  "cargoLockSha256": "28aa87568e0199253be27c8077d2c9075f56042d9cf1aefd6e18436810500236",
+  "cargoLockSha256": "ebbacf5e0563865493cbbccf5f22cd16325103f7647e51bbfdb3976166888576",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 21140,
-      "sha256": "99aaeeb3899675fb55d4cb11da80f2f3fac6b00be2d86c3b0122ee469f551528"
+      "sha256": "5d4e0b7fabd186be68817a89bb52dea982fd9be453f360c09072d6554912acaa"
     },
     {
       "path": "LICENSE",
@@ -65,13 +65,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 28803192,
-      "sha256": "7e192abf5f311f2b9f901d2e1dcf3a9edcfac690869ec58bfb268944faae694f"
+      "bytes": 28803320,
+      "sha256": "8c344a37b4524b7afe72c865b65b4101eb3cba0865152153ac83b5064d0ef3c0"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 263,
-      "sha256": "e9b158f4d7bf95aaa179383934a91708eda86eb860ae069aebbed9a028f35dd8"
+      "sha256": "eb4f6ea5fafbe6b311f96cf2dfe5857d58100d0e71d238e8f5be50368b8eb5d8"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -299,12 +299,12 @@
       "sha256": "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e"
     },
     {
-      "path": "notices/libsqlite3-sys-0.39.1/LICENSE",
+      "path": "notices/libsqlite3-sys-0.40.0/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/libsqlite3-sys-0.39.1/SQLite-NOTICE",
+      "path": "notices/libsqlite3-sys-0.40.0/SQLite-NOTICE",
       "bytes": 1807,
       "sha256": "da28f825239a49750ea24eb6e28095a2e3e6426740d214e0c9e6067fd28882d5"
     },
@@ -439,7 +439,7 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.41.1/LICENSE",
+      "path": "notices/rusqlite-0.43.0/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
