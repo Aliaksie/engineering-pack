@@ -66,6 +66,7 @@ The **CI** workflow runs on pushes, pull requests and manual dispatch:
 | Security / CodeQL | Rust, JavaScript and GitHub Actions security analysis |
 | Native (linux/macos/windows, Node 24) | Clippy, Rust tests, release bundle, full CLI suite and relocated-install tests |
 | Package | Bundles with all native runtimes, uploaded as `craft-capabilities-<sha>` |
+| CI result | The check the `main` ruleset requires: fails unless every job above succeeded |
 | Publish | `distribution-next`, on `main` only ([releasing](RELEASING.md)) |
 
 The fast gate must pass before Node compatibility, native platform checks and CodeQL start.
@@ -73,6 +74,9 @@ Those checks then run in parallel, with the Node jobs waiting for their shared L
 Package waits for all of them. Native jobs own the Node 24 platform coverage and hook reports;
 separate macOS/Windows core jobs are unnecessary. Node versions remain Linux-only because
 Node supports build tooling and the test harness; consumers run the bundled Rust executable.
+A change to only `docs/`, `examples/`, `evals/` or top-level Markdown skips Native, Security and
+Package; `CI result` accepts those skips only then. Pushes to `main` that change only
+documentation or eval tasks do not run CI.
 
 Actions are pinned by SHA and permissions default to read-only. Rust builds are cached per OS
 and `Cargo.lock`. Locally, run `npm run lint:workflows` and `npm run test:workflows` with
