@@ -144,13 +144,26 @@ fn the_bundled_executable_finds_its_package_without_the_launcher() {
     let executable = package.join("support/native-bin/test-target/native-bin/craft");
     fs::copy(env!("CARGO_BIN_EXE_craft"), &executable).unwrap();
     let run = |args: &[&str]| {
-        let output = Command::new(&executable)
-            .arg(args[0])
-            .args(["--root", repo.path()])
-            .args(&args[1..])
-            .env_remove("CRAFT_PACKAGE_ROOT")
-            .output()
-            .unwrap();
+        // A process another test starts while the copy is open for writing holds that handle
+        // until it executes, and Linux refuses to run a file open for writing meanwhile.
+        let mut tries = 0;
+        let output = loop {
+            match Command::new(&executable)
+                .arg(args[0])
+                .args(["--root", repo.path()])
+                .args(&args[1..])
+                .env_remove("CRAFT_PACKAGE_ROOT")
+                .output()
+            {
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::ExecutableFileBusy && tries < 50 =>
+                {
+                    tries += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                other => break other.unwrap(),
+            }
+        };
         (
             output.status.code(),
             String::from_utf8_lossy(&output.stderr).into_owned(),
