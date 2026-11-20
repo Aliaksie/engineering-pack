@@ -193,3 +193,60 @@ fn an_approval_saved_without_a_source_reads_as_unknown_never_the_users() {
     );
     assert_eq!(approval_view(&json!(null), Some("d1")), None);
 }
+
+#[test]
+fn only_an_approve_answer_to_this_plans_question_is_an_observed_approval() {
+    let question = approval_question("issue-7", 3);
+    assert_eq!(question, "Approve plan issue-7 revision 3?");
+    let seen = |question: &str, answer: &str| {
+        observed_approval(
+            &json!([{"question": question, "answer": answer}]),
+            "issue-7",
+        )
+    };
+    assert_eq!(seen(&question, "Approve"), Some(3));
+    assert_eq!(seen(&question, "Approve (Recommended)"), Some(3));
+    assert_eq!(
+        seen("Approve plan issue-7 revision 12? Tasks: a, b", "Approve"),
+        Some(12)
+    );
+    for (question, answer) in [
+        (question.as_str(), "Change the plan"),
+        (question.as_str(), "Approve, but drop task b"),
+        (question.as_str(), "Approve,Change the plan"),
+        ("Approve plan issue-70 revision 3?", "Approve"),
+        ("Approve plan issue-7 revision ?", "Approve"),
+        ("Approve plan issue-7 revision 3x?", "Approve"),
+        ("Plan first?", "Approve"),
+    ] {
+        assert_eq!(seen(question, answer), None, "{question} / {answer}");
+    }
+    // Another pair in the same question tool call may carry the approval.
+    let pairs = json!([{"question": "Scope?", "answer": "All"},
+        {"question": question, "answer": "Approve"}]);
+    assert_eq!(observed_approval(&pairs, "issue-7"), Some(3));
+    assert_eq!(observed_approval(&json!(null), "issue-7"), None);
+}
+
+#[test]
+fn a_host_observed_approval_is_the_users_answer_never_unknown() {
+    let seen = json!({"revision": 1, "digest": "d", "source": HOST_OBSERVED});
+    assert_eq!(approval_source(&seen), HOST_OBSERVED);
+    assert!(approved_by(HOST_OBSERVED).starts_with("the user approved"));
+}
+
+#[test]
+fn an_agent_shell_command_records_a_delivery_choice_however_it_is_wrapped() {
+    for (command, expected) in [
+        ("craft ticket --ticket 7 --accept plan --session s", true),
+        (
+            "npm run ticket -- --ticket 7 --accept=direct --session s",
+            true,
+        ),
+        ("craft ticket --ticket 7 --approve --session s", false),
+        ("craft ticket --ticket 7 --accepted plan", false),
+        ("echo --accept plan", false),
+    ] {
+        assert_eq!(accept_command(command), expected, "{command}");
+    }
+}

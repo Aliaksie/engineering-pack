@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- On Claude Code, a ticket's plan is approved through the host's own question: the agent asks
+  `Approve plan <id> revision <n>?` and Craft records the user's `Approve` answer against that
+  revision with the source `host-observed`, without asking the agent to run `craft ticket
+  --approve`. An answer for an older revision approves nothing. Other hosts keep the approval
+  command, and task progress stays with `craft task-step` on every host. Each export's
+  `SETUP.json` and `adapter-report.json` list the host's question, approval and task list
+  support as `planningSupport`, with what Craft observes and controls kept apart.
 - A ticket's plan approval names its source. `craft ticket --approve` records `user` when the
   session's hooks are seen to run and no agent shell command ran it, as when the user runs it
   themselves, and `agent` otherwise. The hold on edits after a plan changes, `craft plan --plan

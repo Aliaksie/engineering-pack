@@ -58,7 +58,7 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `engine` | Rust crate: pure decisions over explicit facts (routing and its catalog, discovery, sessions, budgets, policy) |
 | `application` | Rust crate: the `craft` executable and use-case orchestration over engine and platform |
 | `platform` | Rust crate: filesystem, state, Git, processes, search and bounded HTTP |
-| `hosts` | Host hook mapping, session and feature tables read by the build and embedded in `craft` |
+| `hosts` | Host hook mapping, session, feature and planning tables read by the build and embedded in `craft` |
 | `tooling` | Build, export, validation, release and evaluation tooling |
 | `examples/project` | Consumer configuration skeleton; no live connections |
 | `schemas` | Published local authoring schema; runtime validator is dependency-free |

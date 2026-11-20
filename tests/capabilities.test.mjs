@@ -10,7 +10,7 @@ import { files, frontmatter, json, loadCapabilities, validateCapability } from '
 import { evaluateReport } from '../tooling/eval-report.mjs';
 import { copy, PERMISSION } from '../tooling/export/export.mjs';
 import { HOSTS } from '../hosts/registry.mjs';
-import { featureSupport } from '../hosts/capabilities.mjs';
+import { featureSupport, planningSupport } from '../hosts/capabilities.mjs';
 import { runHook } from './hook-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,6 +75,24 @@ test('every adapter describes each feature with its support, activation and evid
   }
 });
 
+test('each host states what Craft observes and controls of its own planning features, one active path each', () => {
+  const evidence = ['observed', 'documented', 'unverified', 'none'];
+  for (const host of Object.keys(HOSTS)) {
+    const table = planningSupport(host);
+    assert.deepEqual(Object.keys(table).sort(), ['approval', 'question', 'tasks'], host);
+    for (const [responsibility, entry] of Object.entries(table)) {
+      const where = `${host} ${responsibility}`;
+      assert.ok(evidence.includes(entry.observe.evidence) && entry.observe.what, where);
+      assert.equal(typeof entry.control, 'string', where);
+      assert.ok(['host', 'command'].includes(entry.path), where);
+      // The host's own path is active only on observation evidence and a tool hooks can name.
+      if (entry.path === 'host') assert.ok(entry.tool && ['observed', 'documented'].includes(entry.observe.evidence), where);
+      // Hooks that never run observe nothing.
+      if (Object.keys(HOSTS[host].events).length === 0) assert.equal(entry.observe.evidence, 'none', where);
+    }
+  }
+});
+
 test('all adapters preserve resources, separate names, and report actual feature coverage', () => {
   for (const target of ['claude', 'codex', 'cursor', 'copilot', 'gemini', 'agents']) {
     assert.deepEqual(checkBuild(root, target), []);
@@ -91,6 +109,8 @@ test('all adapters preserve resources, separate names, and report actual feature
       const setup = json(path.join(directory, 'SETUP.json'));
       assert.equal(setup.adapter, target);
       assert.deepEqual(setup.featureSupport, featureSupport(target));
+      assert.deepEqual(setup.planningSupport, planningSupport(target));
+      assert.deepEqual(entry.planningSupport, planningSupport(target));
       assert.equal(setup.hooks, entry.hooks);
       assert.ok(fs.existsSync(path.join(directory, setup.sessionAdvice.entry)));
       const setupPage = fs.readFileSync(path.join(directory, 'SETUP.md'), 'utf8');

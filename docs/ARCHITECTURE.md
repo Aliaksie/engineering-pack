@@ -24,7 +24,7 @@ flowchart TD
 | `engine/` (`craft-engine`) | Pure decisions over explicit JSON facts: project contracts and effective settings, routing and the embedded catalog, discovery plans, sessions, tasks, attempts and acceptance coverage, checkpoints, workers and actions, review artifacts and the read-only guard, model advice, service plans, telemetry envelopes and OTLP mapping |
 | `platform/` (`craft-platform`) | Filesystem, bounded documents, state records and their lock protocol, Git observation, processes, literal search, Project Intelligence storage and syntax providers, bounded HTTP, the local telemetry store |
 | `application/` (`craft-application`) | The `craft` executable: CLI parsing and rendering, host hook payloads and wire output, the status line, and each use case that combines observations, decisions and persistence |
-| `hosts/` | Host hook mapping, session and feature tables; the build reads them and `craft` embeds them |
+| `hosts/` | Host hook mapping, session, feature and planning tables; the build reads them and `craft` embeds them |
 | `tooling/` | Build, export, release, validation and evaluation drivers |
 | `schemas/` | Published authoring schemas for capability manifests, the catalog and project configuration |
 

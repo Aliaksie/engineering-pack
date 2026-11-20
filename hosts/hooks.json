@@ -12,7 +12,6 @@
     },
     "contextBytes": 9000,
     "projectDirectory": "CLAUDE_PROJECT_DIR",
-    "questionTool": "AskUserQuestion",
     "events": {
       "before-tool": {
         "name": "PreToolUse",

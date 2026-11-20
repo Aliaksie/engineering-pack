@@ -248,15 +248,62 @@ pub fn line(decision: &Value) -> String {
 /// `--approve` as words, however it is wrapped (`craft ticket`, `npm run ticket --`). A
 /// false match only labels a user's approval as the agent's report.
 pub fn approval_command(command: &str) -> bool {
+    ticket_command(command, "--approve")
+}
+
+/// Whether an agent's shell command records the user's delivery choice for a ticket
+/// (`ticket --accept`), matched as [`approval_command`] matches an approval.
+pub fn accept_command(command: &str) -> bool {
+    ticket_command(command, "--accept")
+}
+
+/// Whether `command` names `ticket` and `flag` as words, however it is wrapped.
+fn ticket_command(command: &str, flag: &str) -> bool {
     let words = command.split(|c: char| {
         c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '\'' | '"' | '`')
     });
-    let (mut ticket, mut approve) = (false, false);
+    let (mut ticket, mut named) = (false, false);
     for word in words {
         ticket |= word == "ticket" || word.ends_with("/ticket");
-        approve |= word == "--approve" || word.starts_with("--approve=");
+        named |= word == flag
+            || word
+                .strip_prefix(flag)
+                .is_some_and(|rest| rest.starts_with('='));
     }
-    ticket && approve
+    ticket && named
+}
+
+/// The source of an approval Craft read from the user's answer to the host's own question.
+pub const HOST_OBSERVED: &str = "host-observed";
+/// The option that approves a plan in the host's question.
+pub const APPROVE: &str = "Approve";
+
+/// The question that asks the user to approve revision `revision` of plan `plan`, which a
+/// hook that sees the answer records as the approval of that revision.
+pub fn approval_question(plan: &str, revision: impl std::fmt::Display) -> String {
+    format!("Approve plan {plan} revision {revision}?")
+}
+
+/// The revision of plan `plan` the user approved in one host question, from the
+/// `[{question, answer}]` pairs a hook saw: a question that starts with
+/// [`approval_question`]'s words for this plan, answered with exactly [`APPROVE`] (a host may
+/// mark it recommended). Another answer, a free-text one, several options or another plan
+/// approve nothing.
+pub fn observed_approval(answers: &Value, plan: &str) -> Option<u64> {
+    let prefix = format!("Approve plan {plan} revision ");
+    answers.as_array()?.iter().find_map(|pair| {
+        let rest = pair["question"]
+            .as_str()?
+            .trim_start()
+            .strip_prefix(&prefix)?;
+        let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+        if !rest[digits.len()..].starts_with('?') {
+            return None;
+        }
+        let answer = pair["answer"].as_str()?.trim();
+        let approves = answer == APPROVE || answer == format!("{APPROVE} (Recommended)");
+        approves.then(|| digits.parse().ok()).flatten()
+    })
 }
 
 /// Who `craft ticket --approve` records as giving the approval: the user only when the
@@ -276,6 +323,7 @@ pub fn approval_source(approved: &Value) -> &'static str {
     match approved["source"].as_str() {
         Some("user") => "user",
         Some("agent") => "agent",
+        Some(HOST_OBSERVED) => HOST_OBSERVED,
         _ => "unknown",
     }
 }
@@ -285,6 +333,7 @@ pub fn approved_by(source: &str) -> &'static str {
     match source {
         "user" => "the user approved it",
         "agent" => "the agent reported the user's approval",
+        HOST_OBSERVED => "the user approved it in the host's question",
         _ => "its approval, whose source is unknown",
     }
 }

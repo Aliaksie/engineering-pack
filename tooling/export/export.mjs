@@ -4,7 +4,7 @@ import { files, frontmatter, stringify } from '../lib/capabilities.mjs';
 import { HOSTS, hookMapping } from '../../hosts/registry.mjs';
 import { emitLaunchers, hookArguments, powershellHook, shellHook } from './launcher.mjs';
 import { setupControls } from '../../hosts/onboarding.mjs';
-import { featureSupport } from '../../hosts/capabilities.mjs';
+import { featureSupport, planningSupport } from '../../hosts/capabilities.mjs';
 
 // Session observation, display and native commands per host; `craft statusline` embeds the same table.
 const SESSION = JSON.parse(fs.readFileSync(new URL('../../hosts/session.json', import.meta.url), 'utf8'));
@@ -157,6 +157,7 @@ export function report(manifest, platform, skills, hookStatus, mcpStatus) {
     runtime: 'bin/craft',
     executionControls: setupControls(platform).execution,
     featureSupport: featureSupport(platform),
+    planningSupport: planningSupport(platform),
     sessionAdvice: sessionAdvice(platform, manifest.name),
     limitations: platform === 'agents' ? ['Lifecycle hooks are not installed.', 'MCP declarations require host-specific registration.']
       : platform === 'codex' ? ['Local plugin export; hooks require host support and trust. Live host loading has not been tested.']

@@ -26,7 +26,7 @@ content, schemas, docs, tests and examples sit around the crates.
 | `engine/` | rust-crate | — | yes | Pure decisions, contracts, identities and transitions; the routing and anchor catalogs |
 | `platform/` | rust-crate | engine | yes | Filesystem, state, locks, Git, processes, search, SQLite, HTTP, syntax providers |
 | `application/` | rust-crate | engine, platform | yes | Use cases, CLI, host-neutral lifecycle handling, `craft` executable |
-| `hosts/` | host-adapter | — | no | Host hook mapping, session and feature capability tables read by the build and embedded in `craft` |
+| `hosts/` | host-adapter | — | no | Host hook mapping, session, feature and planning capability tables read by the build and embedded in `craft` |
 | `packages/` | content | — | yes | Capability guidance and hook declarations |
 | `tooling/` | build-tooling | * | no | Build, export, release, validation, benchmarks, eval drivers |
 | `schemas/` | schema | — | yes | Published authoring schemas |

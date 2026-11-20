@@ -25,6 +25,10 @@ const CONTEXT_BYTES: usize = 9_000;
 /// How much of a long test output's end is read for the runner's summary.
 const RUN_TAIL_BYTES: usize = 65_536;
 const HOSTS: &str = include_str!("../../hosts/hooks.json");
+const PLANNING: &str = include_str!("../../hosts/planning.json");
+/// How many answered questions of one question tool call are read, and how long each text.
+const ANSWERS: usize = 8;
+const ANSWER_CHARS: usize = 2048;
 
 pub struct Wire {
     pub stdout: String,
@@ -93,10 +97,37 @@ fn project_directory(host: &str) -> Option<String> {
         .filter(|directory| std::path::Path::new(directory).is_absolute())
 }
 
+/// The host's own tool for a planning `responsibility` (`question`, `approval`, `tasks`) when
+/// the planning table makes the host's path the active one; otherwise Craft's own path is.
+pub(crate) fn host_path(host: &str, responsibility: &str) -> Option<String> {
+    let table: Value = serde_json::from_str(PLANNING).expect("embedded host planning table");
+    let entry = &table[host][responsibility];
+    (entry["path"] == "host")
+        .then(|| entry["tool"].as_str().map(str::to_owned))
+        .flatten()
+}
+
 /// The tool `host` gives the model to ask the user a question with choices, where it has one.
 pub(crate) fn question_tool(host: &str) -> Option<String> {
-    let table: Value = serde_json::from_str(HOSTS).expect("embedded host hook table");
-    table[host]["questionTool"].as_str().map(str::to_owned)
+    host_path(host, "question")
+}
+
+/// The questions a host's approval tool asked and the answers the user chose, as
+/// `[{question, answer}]`, from the payload after it ran: Claude's `AskUserQuestion` reports
+/// `answers` as an object from each question to the chosen label. Bounded in count and length.
+fn answers(payload: &Value) -> Option<Value> {
+    let response = first(payload, &["tool_response", "tool_output", "toolResult"])?;
+    let pairs: Vec<Value> = response["answers"]
+        .as_object()?
+        .iter()
+        .filter_map(|(question, answer)| Some((question, answer.as_str()?)))
+        .filter(|(question, answer)| {
+            js_length(question) <= ANSWER_CHARS && js_length(answer) <= ANSWER_CHARS
+        })
+        .take(ANSWERS)
+        .map(|(question, answer)| json!({"question": question, "answer": answer}))
+        .collect();
+    (!pairs.is_empty()).then(|| json!(pairs))
 }
 
 /// The most UTF-8 bytes of context one hook answer gives `host`: under the cap past which the
@@ -535,6 +566,9 @@ fn facts(hook: &Hook, event: &Value, named: &Value, status: &str) -> Value {
         }
         if let Some(run) = event.get("testRun") {
             facts["testRun"] = run.clone();
+        }
+        if let Some(answers) = event.get("answers") {
+            facts["answers"] = answers.clone();
         }
         if event["stopActive"] == true {
             facts["stopActive"] = json!(true);
@@ -992,6 +1026,15 @@ pub fn run(args: &[String], input: &mut dyn Read) -> (Wire, Option<Value>) {
             .and_then(|command| test_run(&payload, &hook.host, &hook.lifecycle, command))
     {
         event["testRun"] = verdict;
+    }
+    // Only delivery reads the user's answer to the host's own plan approval question.
+    if hook.handler == "deliver"
+        && hook.lifecycle == "after-tool"
+        && let Some(tool) = host_path(&hook.host, "approval")
+        && first(&payload, &["tool_name", "toolName"]).and_then(Value::as_str) == Some(&tool)
+        && let Some(answers) = answers(&payload)
+    {
+        event["answers"] = answers;
     }
     let mut result = host::run(&facts(&hook, &event, &named, status)).unwrap_or_else(|message| {
         // Without a runtime decision, shell enforcement still fails closed and delivery says why.

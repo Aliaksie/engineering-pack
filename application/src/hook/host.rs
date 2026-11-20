@@ -62,6 +62,8 @@ struct Facts<'a> {
     stop_active: bool,
     /// The runner's verdict on a test command the host just ran.
     test_run: Option<&'a Value>,
+    /// The questions the host's approval tool asked and the user's answers.
+    answers: Option<&'a Value>,
 }
 
 fn one_of<'a>(input: &'a Value, name: &str, allowed: &[&str]) -> Result<&'a str, String> {
@@ -115,6 +117,11 @@ fn facts(input: &Value) -> Result<Facts<'_>, String> {
             Value::Null => None,
             run @ Value::Object(_) => Some(run),
             _ => return Err("invalid hook testRun".into()),
+        },
+        answers: match &input["answers"] {
+            Value::Null => None,
+            answers @ Value::Array(_) => Some(answers),
+            _ => return Err("invalid hook answers".into()),
         },
     })
 }
@@ -279,6 +286,7 @@ pub fn run(input: &Value) -> Result<Value, String> {
                     context_supported: facts.context_supported,
                     stop_active: facts.stop_active,
                     test_run: facts.test_run,
+                    answers: facts.answers,
                 };
                 delivery::run(&event, &mut recorder, &hook)
             }

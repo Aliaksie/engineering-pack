@@ -1,0 +1,258 @@
+{
+  "claude": {
+    "question": {
+      "feature": "question tool with choices",
+      "tool": "AskUserQuestion",
+      "observe": {
+        "evidence": "documented",
+        "what": "the after-tool payload carries each question asked and the option the user chose; the session transcript shows this result shape, a live hook payload is not yet recorded"
+      },
+      "control": "none: Craft asks the agent to use it; it cannot show a question itself",
+      "path": "host"
+    },
+    "approval": {
+      "feature": "plan shown in the question tool",
+      "tool": "AskUserQuestion",
+      "observe": {
+        "evidence": "documented",
+        "what": "the answer to a question that names the plan and its revision; plan mode's approval names no revision and is not used"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "host"
+    },
+    "tasks": {
+      "feature": "in-session task list",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "hooks see tool calls, but no recorded session shows the task list's payload or a reliable match to plan tasks"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "codex": {
+    "question": {
+      "feature": "question tool in plan mode",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no recorded session shows a hook run for the question tool"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no question tool whose answer a hook is seen to receive"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": "update_plan task list",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no recorded session shows a hook run for update_plan"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "cursor": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no question tool Craft can name"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no hook event carries a question's answer"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": "in-session task list",
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no hook event carries the task list"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "copilot": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "tool hooks run for every tool, but no recorded session shows a question tool's answer"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no question tool whose answer a hook is seen to receive"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no recorded session shows a task list in a hook payload"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "gemini": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "tool hooks run for every tool, but no recorded session shows a question tool's answer"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no question tool whose answer a hook is seen to receive"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": "write_todos task list",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "no recorded session shows write_todos in a hook payload"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "gemini-extension": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no question tool Craft can name"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "jetbrains": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no question tool Craft can name"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  },
+  "agents": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no question tool Craft can name"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    }
+  }
+}
