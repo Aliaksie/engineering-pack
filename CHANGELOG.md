@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When Git does not answer in time, commands that need the session's task binding fail with
+  "Git did not answer in time; the task binding to the current checkout could not be
+  confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an
+  action proposal says the repository source could not be observed instead of calling the
+  proposal stale.
 - The commits a session's shell command makes are told from the reflog's times, so the
   turn-end review covers every commit the command made, not only the last. When Git does
   not answer in time after the command, its commits are read at the next turn end instead
