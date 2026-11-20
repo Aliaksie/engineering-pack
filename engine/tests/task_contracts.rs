@@ -65,3 +65,30 @@ fn frozen_task_start_contracts() {
         failures.join("\n")
     );
 }
+
+/// A step recorded while Git could not be read keeps its freshness unknown: once Git answers
+/// again the task is not current, and its source is not reported as changed.
+#[test]
+fn a_step_recorded_without_observed_source_is_unknown_not_stale() {
+    let corpus: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/runtime/task-contracts.json"
+    ))
+    .unwrap();
+    let case = corpus["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == "task-start:accepted-repeat")
+        .unwrap();
+    let mut request = case["request"].clone();
+    let current = start(&request).unwrap()["context"].clone();
+    assert_eq!(current["stale"], false);
+    assert_eq!(current["task"]["verification"], "passed");
+
+    request["state"]["taskRecord"]["source"] = Value::Null;
+    let unobserved = start(&request).unwrap()["context"].clone();
+    assert_eq!(unobserved["stale"], false);
+    assert!(unobserved.get("staleBecause").is_none());
+    assert_eq!(unobserved["task"]["verification"], "unknown");
+    assert_eq!(unobserved["task"]["status"], "working");
+}

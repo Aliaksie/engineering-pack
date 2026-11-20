@@ -840,10 +840,13 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
     };
     // Stale names what is known to have changed since the evidence was recorded; source that
     // cannot be observed leaves freshness unknown: not current, and not reported as stale.
+    // A step recorded while Git could not be read has no source to compare: its freshness is
+    // unknown, never a source change.
     let recorded = truthy(&record["summary"]);
+    let recorded_source = record.get("source").filter(|s| !s.is_null());
     let stale_because = if !recorded {
         None
-    } else if !source.is_null() && record.get("source") != Some(&source) {
+    } else if !source.is_null() && recorded_source.is_some_and(|s| *s != source) {
         Some("source")
     } else if record.get("acceptedContract") != Some(&task_contract) {
         Some("contract")
@@ -853,7 +856,7 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
         None
     };
     let stale = stale_because.is_some();
-    let unknown = recorded && source.is_null();
+    let unknown = recorded && (source.is_null() || recorded_source.is_none());
     let mut task: Map<String, Value> = CONTEXT_FIELDS
         .iter()
         .filter_map(|k| {
