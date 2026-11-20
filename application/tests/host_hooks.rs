@@ -1828,56 +1828,58 @@ fn a_codex_session_hears_once_how_many_earlier_sessions_ran_without_craft_hooks(
     assert!(!said(&again), "said once: {again}");
 }
 
-/// A stop whose Git query does not answer in time says nothing and records nothing: the next
-/// stop still reviews the same change instead of taking it as reviewed.
+/// A committed `a.ts` in a fresh project with debt markers on, its Git, and a started session.
 #[cfg(unix)]
-#[test]
-fn a_stop_that_cannot_read_git_leaves_its_change_to_the_next_stop() {
-    use std::io::Write;
-    use std::os::unix::fs::PermissionsExt;
+fn marked_repo(name: &str) -> (Scratch, impl Fn(&[&str])) {
     let fixture = project(
-        "stop-unread",
+        name,
         Some(r#"{"formatVersion":1,"routing":{"debtMarkers":true}}"#),
     );
-    let root = &fixture.0;
+    let root = fixture.0.clone();
     fs::remove_dir_all(root.join(".git")).unwrap();
-    let git = |args: &[&str]| {
+    let git = move |args: &[&str]| {
         let output = std::process::Command::new("git")
             .args(["-c", "user.name=t", "-c", "user.email=t@t"])
             .args(["-c", "commit.gpgsign=false"])
             .args(args)
-            .current_dir(root)
+            .current_dir(&root)
             .output()
             .unwrap();
         assert!(output.status.success(), "{output:?}");
     };
-    fs::write(root.join("a.ts"), "export const a = 1\n").unwrap();
+    fs::write(fixture.0.join("a.ts"), "export const a = 1\n").unwrap();
     git(&["init", "-q"]);
     git(&["add", "a.ts"]);
     git(&["commit", "-qm", "init"]);
-    lifecycle(root, "session-start", json!({}));
-    tool_call(root, json!({}), || {
-        fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap()
-    });
+    lifecycle(&fixture.0, "session-start", json!({}));
+    (fixture, git)
+}
 
-    // A Git whose `diff` outlives the runtime's Git timeout.
+/// The built `craft` running Claude's hook for `lifecycle` with `payload`, behind a Git that
+/// outlives the runtime's Git timeout whenever its arguments contain `slow`; its output.
+#[cfg(unix)]
+fn slow_hook(root: &Path, slow: &str, lifecycle: &str, payload: Value) -> String {
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
     let real = std::process::Command::new("sh")
         .args(["-c", "command -v git"])
         .output()
         .unwrap();
     let real = String::from_utf8(real.stdout).unwrap().trim().to_owned();
-    let slow = root.with_extension("slow-git");
-    fs::create_dir_all(&slow).unwrap();
-    let wrapper = slow.join("git");
+    let dir = root.with_extension("slow-git");
+    fs::create_dir_all(&dir).unwrap();
+    let wrapper = dir.join("git");
     fs::write(
         &wrapper,
-        format!("#!/bin/sh\ncase \" $* \" in *\" diff \"*) sleep 8;; esac\nexec '{real}' \"$@\"\n"),
+        format!(
+            "#!/bin/sh\ncase \" $* \" in *\" {slow} \"*) sleep 8;; esac\nexec '{real}' \"$@\"\n"
+        ),
     )
     .unwrap();
     fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
-    let path = format!("{}:{}", slow.display(), std::env::var("PATH").unwrap());
+    let path = format!("{}:{}", dir.display(), std::env::var("PATH").unwrap());
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
-        .args(["hook", "claude", "turn-end"])
+        .args(["hook", "claude", lifecycle])
         .args(["--package", "craft-delivery", "--handler", "deliver"])
         .env("PATH", path)
         .env("CRAFT_EVIDENCE_WARM", "0")
@@ -1886,28 +1888,82 @@ fn a_stop_that_cannot_read_git_leaves_its_change_to_the_next_stop() {
         .stderr(std::process::Stdio::piped())
         .spawn()
         .unwrap();
-    let payload = json!({"session_id": "S-1", "cwd": root, "hook_event_name": "Stop"});
+    let mut input = json!({"session_id": "S-1", "cwd": root});
+    for (key, value) in payload.as_object().unwrap() {
+        input[key] = value.clone();
+    }
     child
         .stdin
         .take()
         .unwrap()
-        .write_all(payload.to_string().as_bytes())
+        .write_all(input.to_string().as_bytes())
         .unwrap();
     let output = child.wait_with_output().unwrap();
-    let said = String::from_utf8_lossy(&output.stdout);
+    let _ = fs::remove_dir_all(&dir);
     assert!(output.status.success(), "{output:?}");
-    assert!(!said.contains("TODO"), "{said}");
-    let _ = fs::remove_dir_all(&slow);
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
 
-    let decision = lifecycle(root, "turn-end", json!({}));
-    let findings = decision["stop"]["findings"]
+/// Whether a stop now reports the TODO marker in `a.ts`.
+fn todo_reported(root: &Path) -> bool {
+    lifecycle(root, "turn-end", json!({}))["stop"]["findings"]
         .as_array()
-        .cloned()
-        .unwrap_or_default();
-    assert!(
-        findings
-            .iter()
-            .any(|f| f["file"] == "a.ts" && f["rule"] == "todo-marker"),
-        "{decision}"
+        .into_iter()
+        .flatten()
+        .any(|f| f["file"] == "a.ts" && f["rule"] == "todo-marker")
+}
+
+/// A stop whose Git query does not answer in time says nothing and records nothing: the next
+/// stop still reviews the same change instead of taking it as reviewed.
+#[cfg(unix)]
+#[test]
+fn a_stop_that_cannot_read_git_leaves_its_change_to_the_next_stop() {
+    let (fixture, _git) = marked_repo("stop-unread");
+    let root = &fixture.0;
+    tool_call(root, json!({}), || {
+        fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap()
+    });
+    let said = slow_hook(root, "diff", "turn-end", json!({"hook_event_name": "Stop"}));
+    assert!(!said.contains("TODO"), "{said}");
+    assert!(todo_reported(root));
+}
+
+/// A commit whose reflog Git could not list after the command is still the session's own:
+/// the next stop reads the command's time window and reviews what it committed.
+#[cfg(unix)]
+#[test]
+fn a_commit_git_could_not_list_is_still_the_sessions_own() {
+    let (fixture, git) = marked_repo("commit-unread");
+    let root = &fixture.0;
+    let shell = json!({"tool": "shell", "command": "git commit -qm 'feat: change'"});
+    lifecycle(root, "before-tool", shell.clone());
+    fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap();
+    git(&["commit", "-qam", "feat: change"]);
+    let after = json!({"hook_event_name": "PostToolUse", "tool_name": "Bash",
+        "tool_input": {"command": "git commit -qm 'feat: change'"}, "tool_response": {}});
+    slow_hook(root, "reflog", "after-tool", after);
+    assert!(todo_reported(root));
+}
+
+/// When Git does not say where `HEAD` is before a commit command that then commits nothing,
+/// an earlier commit someone else made is not taken as the session's.
+#[cfg(unix)]
+#[test]
+fn a_failed_commit_does_not_claim_an_earlier_commit_when_head_was_unread() {
+    let (fixture, git) = marked_repo("commit-head-unread");
+    let root = &fixture.0;
+    // Another person's commit, made outside the session's commands and before it.
+    fs::write(root.join("a.ts"), "// TODO: theirs\nexport const a = 2\n").unwrap();
+    git(&["commit", "-qam", "feat: theirs"]);
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    let command = "git commit -qm 'feat: nothing'";
+    let before = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+        "tool_input": {"command": command}});
+    slow_hook(root, "rev-parse --verify", "before-tool", before);
+    lifecycle(
+        root,
+        "after-tool",
+        json!({"tool": "shell", "command": command}),
     );
+    assert!(!todo_reported(root));
 }
