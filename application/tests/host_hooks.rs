@@ -1905,6 +1905,7 @@ fn slow_hook(root: &Path, slow: &str, lifecycle: &str, payload: Value) -> String
 }
 
 /// Whether a stop now reports the TODO marker in `a.ts`.
+#[cfg(unix)]
 fn todo_reported(root: &Path) -> bool {
     lifecycle(root, "turn-end", json!({}))["stop"]["findings"]
         .as_array()
