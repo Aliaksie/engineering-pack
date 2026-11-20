@@ -200,19 +200,26 @@ fn hanging_inventory_is_killed_and_reaped() {
 /// A capture never waits for a long-lived child another thread starts meanwhile: its
 /// pipe reaches end-of-file when its own child exits. An inherited pipe would hold it
 /// until the bound, since every sleeper outlives the bound; a merely slow start would not.
+/// Captures run while a fixed number of sleepers start, so a slow machine runs fewer
+/// captures instead of starting more processes than a user may run.
 #[cfg(unix)]
 #[test]
 fn captures_do_not_wait_for_children_other_threads_start() {
     use std::sync::atomic::{AtomicBool, Ordering};
-    let stop = AtomicBool::new(false);
+    const SLEEPERS: usize = 400;
+    let (started, finished) = (AtomicBool::new(false), AtomicBool::new(false));
     thread::scope(|scope| {
         scope.spawn(|| {
             let mut sleepers = Vec::new();
-            while !stop.load(Ordering::Relaxed) {
+            for _ in 0..SLEEPERS {
                 let mut sleeper = Command::new("sleep");
                 sleeper.arg("30").stdin(Stdio::null()).stdout(Stdio::null());
                 sleepers.push(spawn(&mut sleeper).unwrap());
                 thread::sleep(Duration::from_millis(5));
+            }
+            started.store(true, Ordering::Relaxed);
+            while !finished.load(Ordering::Relaxed) {
+                thread::sleep(Duration::from_millis(10));
             }
             for mut sleeper in sleepers {
                 let _ = sleeper.kill();
@@ -222,15 +229,23 @@ fn captures_do_not_wait_for_children_other_threads_start() {
         let captures: Vec<_> = (0..6)
             .map(|_| {
                 scope.spawn(|| {
-                    (0..400)
-                        .map(|_| capture("Test", shell("printf abc"), 3, Duration::from_secs(10)))
-                        .find(Result::is_err)
+                    let mut runs = 0;
+                    while !started.load(Ordering::Relaxed) {
+                        runs += 1;
+                        let ran = capture("Test", shell("printf abc"), 3, Duration::from_secs(10));
+                        if ran.is_err() {
+                            return (runs, Some(ran));
+                        }
+                    }
+                    (runs, None)
                 })
             })
             .collect();
-        let failed = captures.into_iter().find_map(|c| c.join().unwrap());
-        stop.store(true, Ordering::Relaxed);
+        let results: Vec<_> = captures.into_iter().map(|c| c.join().unwrap()).collect();
+        finished.store(true, Ordering::Relaxed);
+        let failed = results.iter().find_map(|(_, failed)| failed.clone());
         assert_eq!(failed, None, "a capture waited for an unrelated child");
+        assert!(results.iter().all(|(runs, _)| *runs > 0));
     });
 }
 #[test]
