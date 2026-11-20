@@ -26,7 +26,7 @@ craft session    --root <project> --session <host-id>
 - With `--session`, `route`, `locate`, `context-report`, `session`, `session-attempt` and
   `checkpoint-save` adopt the bound task. One-off work needs no task.
 - `task-step` records an agent-declared receipt: target, approach, evidence reference,
-  outcome, result and next step. Outcomes are `passed`, `quality-failure`,
+  outcome, result and next step; a completed task (`--complete`) needs no next step. Outcomes are `passed`, `quality-failure`,
   `permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. `craft`
   does not read or judge the evidence; shell success never creates a receipt.
 - `--complete` declares accepted completion and is refused while a failure or blocker is
@@ -388,9 +388,10 @@ later stage, and whether the tree is still the one the checks ran on (`lastCheck
 | Context occupancy | A fresh, session-bound host observation (`usage.kind: "current-context"`) | Cumulative or billing tokens never count; otherwise unknown |
 | Pack activity | Receipts of pack commands for the session | Not host tools or provider usage |
 
-For separately installed packages, pass each package root with `--bundle`. `task-features`
-and `task-feature` show and declare feature outcomes for evaluations; declarations are
-marked as such.
+Commands that measure installed guidance (`context-report`, `task-step`, `session`,
+`task-offer`, `task-action-check`) find the packages the host installed beside the running
+runtime; `--bundle` names other package roots. `task-features` and `task-feature` show and
+declare feature outcomes for evaluations; declarations are marked as such.
 
 ## Context pressure and continuation
 
