@@ -1,13 +1,13 @@
 name: CI
 
 # Eval tasks have their own workflow and documentation is checked with the next code change;
-# changing only them needs nothing here. A manual run rebuilds published documentation.
+# pushing only them needs nothing here. Every pull request runs so that `CI result`, the check
+# the `main` ruleset requires, always reports. A manual run rebuilds published documentation.
 on:
   push:
     branches: [main]
-    paths-ignore: &unchecked ['evals/**', 'docs/**', '*.md']
+    paths-ignore: ['evals/**', 'docs/**', '*.md']
   pull_request:
-    paths-ignore: *unchecked
   workflow_dispatch:
 
 permissions:
@@ -194,6 +194,30 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+  # The one check the `main` ruleset requires. Native, security and package may be skipped only
+  # when the change touches no runtime files; every other job must succeed.
+  result:
+    name: CI result
+    needs: [changes, fast, native, security, linux-runtime, check, package]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job
+        env:
+          RUNTIME: ${{ needs.changes.outputs.runtime }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          failed=$(jq -r --arg runtime "$RUNTIME" 'to_entries[]
+            | select(.value.result != "success"
+                and ($runtime == "true" or (.value.result != "skipped")
+                  or (.key | IN("native", "security", "package") | not)))
+            | "\(.key): \(.value.result)"' <<<"$RESULTS")
+          if [[ -n "$failed" ]]; then
+            echo "::error::Jobs did not succeed: ${failed//$'\n'/, }"
+            exit 1
+          fi
 
   publish:
     name: Publish
