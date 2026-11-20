@@ -99,9 +99,18 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
   since `--expected-revision`, when dependencies are unknown or cyclic, and for a task held
   in another session unless `--take-over` is given. A plan is `completed` only when every
   task is completed or abandoned.
-- When a session starts, the session line lists up to three open plans, newest first, with
-  ready tasks and held tasks (`here` when this session holds one, and minutes since its last
-  step). To continue a task held in another session, repeat `task-start` with `--take-over`:
+- Craft closes a plan itself in the write that finishes its work: the `task-step`,
+  `plan-integrate` or `plan-update` that leaves every task completed (and integrated, for a
+  worktree task) or abandoned, with at least one completed, sets the plan `completed` and
+  says so in its output with what is left: report the outcome; closing the ticket or opening
+  a pull request stays the user's call. A plan with a ready, held, blocked, failed, escalated
+  or unintegrated task stays open, as does one with nothing completed. A `plan-update` that
+  adds a task or sets one back to `pending` reopens a completed plan, for example when a
+  review adds work; `"status": "open"` reopens it explicitly, and a plan reopened without
+  work left is closed again at the next session start. An abandoned plan stays abandoned.
+- When a session starts, it first closes open plans whose work is done, then lists up to
+  three open plans, newest first, with ready tasks and held tasks (`here` when this session
+  holds one, and minutes since its last step). To continue a task held in another session, repeat `task-start` with `--take-over`:
   continue the same work only after verifying that its owner stopped or handed it off,
   or when the user explicitly requests reassignment. A similar task or stale timestamp
   alone is insufficient. Taking over the record does not stop earlier tools or writers;
