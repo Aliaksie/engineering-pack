@@ -713,7 +713,7 @@ fn context_report(
     let budget = options.get("budget-bytes").map(crate::discovery::number);
     let mut report = crate::guidance::report(
         &plan,
-        &strings(options, "bundle"),
+        &installed_bundles(options),
         budget.as_ref(),
         recorder,
         parent,
@@ -1270,10 +1270,41 @@ fn bound_task(options: &Options) -> Result<Option<String>, Failure> {
     crate::session::active_task(&root(options), options.get("session"))
 }
 
+/// The explicit `--bundle` roots, else the packages installed beside this runtime: from the
+/// package whose launcher started it, or the package its executable was bundled in
+/// (`<package>/support/native-bin/<target>/native-bin/craft`), as a host that runs the bundled
+/// executable directly does.
+fn installed_bundles(options: &Options) -> Vec<String> {
+    let explicit = strings(options, "bundle");
+    if !explicit.is_empty() {
+        return explicit;
+    }
+    let launched = std::env::var_os(crate::PACKAGE_ROOT)
+        .filter(|root| !root.is_empty())
+        .map(PathBuf::from);
+    let bundled = || {
+        std::env::current_exe()
+            .ok()
+            .and_then(|exe| std::fs::canonicalize(exe).ok())
+            .and_then(|exe| exe.ancestors().nth(5).map(Path::to_path_buf))
+    };
+    launched
+        .or_else(bundled)
+        .and_then(|root| std::fs::canonicalize(root).ok())
+        .and_then(|root| craft_platform::host_install::package_roots(&root))
+        .unwrap_or_default()
+        .iter()
+        .map(|root| root.to_string_lossy().into_owned())
+        .collect()
+}
+
 fn required_bundles(options: &Options, command: &str) -> Result<Vec<String>, Failure> {
-    let bundles = strings(options, "bundle");
+    let bundles = installed_bundles(options);
     if bundles.is_empty() {
-        return Err(format!("{command} requires --bundle with the installed package root").into());
+        return Err(format!(
+            "{command} found no installed package beside this runtime; pass --bundle with the installed package root"
+        )
+        .into());
     }
     Ok(bundles)
 }
@@ -1289,6 +1320,23 @@ fn task_step(
             "task-step requires --session and an explicit --task or a task-start binding".into(),
         );
     };
+    let complete = options.values.get("complete") == Some(&json!(true));
+    let given = |flag: &str| options.get(flag).is_some_and(|value| !value.is_empty());
+    let missing: Vec<String> = [
+        "target", "approach", "evidence", "outcome", "result", "next",
+    ]
+    .into_iter()
+    .filter(|flag| !given(flag) && !(*flag == "next" && complete))
+    .map(|flag| format!("--{flag}"))
+    .collect();
+    if !missing.is_empty() {
+        let done = if missing.iter().any(|flag| flag == "--next") {
+            "; a finished task takes --complete instead of --next"
+        } else {
+            ""
+        };
+        return Err(format!("task-step requires {}{done}", missing.join(", ")).into());
+    }
     let mut input = Map::new();
     for (name, flag) in [
         ("stage", "stage"),
@@ -1320,10 +1368,7 @@ fn task_step(
     if let Some(profile) = options.get("profile") {
         input.insert("profile".into(), json!(profile));
     }
-    input.insert(
-        "complete".into(),
-        json!(options.values.get("complete") == Some(&json!(true))),
-    );
+    input.insert("complete".into(), json!(complete));
     let bundles = required_bundles(options, "task-step")?;
     let request = crate::task::Step {
         root: &root(options),
@@ -1543,10 +1588,7 @@ fn session_status(
         return Err("session input must be a JSON object".into());
     }
     let settings = loaded(options, recorder, parent)?;
-    let bundles = strings(options, "bundle");
-    if bundles.is_empty() {
-        return Err("session requires --bundle with the installed package root".into());
-    }
+    let bundles = required_bundles(options, "session")?;
     let request = crate::status::Request {
         root: &root(options),
         input: &data,

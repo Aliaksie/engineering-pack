@@ -838,11 +838,22 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
         Value::Null => Value::Null,
         other => other.clone(),
     };
-    let stale = truthy(&record["summary"])
-        && (source.is_null()
-            || record.get("source") != Some(&source)
-            || record.get("acceptedContract") != Some(&task_contract)
-            || record.get("checkout") != Some(&checkout));
+    // Stale names what is known to have changed since the evidence was recorded; source that
+    // cannot be observed leaves freshness unknown: not current, and not reported as stale.
+    let recorded = truthy(&record["summary"]);
+    let stale_because = if !recorded {
+        None
+    } else if !source.is_null() && record.get("source") != Some(&source) {
+        Some("source")
+    } else if record.get("acceptedContract") != Some(&task_contract) {
+        Some("contract")
+    } else if record.get("checkout") != Some(&checkout) {
+        Some("checkout")
+    } else {
+        None
+    };
+    let stale = stale_because.is_some();
+    let unknown = recorded && source.is_null();
     let mut task: Map<String, Value> = CONTEXT_FIELDS
         .iter()
         .filter_map(|k| {
@@ -853,7 +864,10 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
         })
         .collect();
     let acceptance = task_acceptance(state, repository)?;
-    if stale || (truthy(&record["engineeringContract"]) && acceptance["complete"] != true) {
+    if stale
+        || unknown
+        || (truthy(&record["engineeringContract"]) && acceptance["complete"] != true)
+    {
         task.insert("status".into(), json!("working"));
         task.insert("goalComplete".into(), json!(false));
         task.insert("verification".into(), json!("unknown"));
@@ -861,7 +875,7 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
         task.insert("safeBoundary".into(), json!(false));
     }
     let nullable = |name: &str| record.get(name).cloned().unwrap_or(Value::Null);
-    Ok(json!({
+    let mut context = json!({
         "task": task,
         "stale": stale,
         "acceptance": acceptance,
@@ -870,5 +884,9 @@ pub fn context(state: &Value, repository: &Value) -> Result<Value> {
         "binding": {"kind": "repository", "identity": source},
         "summary": nullable("summary"),
         "nextStep": nullable("nextStep"),
-    }))
+    });
+    if let Some(because) = stale_because {
+        context["staleBecause"] = json!(because);
+    }
+    Ok(context)
 }

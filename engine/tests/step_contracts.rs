@@ -10,7 +10,18 @@ use craft_engine::{session, values};
 use serde_json::{Value, json};
 
 /// Intentional message corrections over the captured JavaScript, by case ID.
-const CORRECTIONS: &[(&str, &str)] = &[];
+/// The next step is named as a reader knows it, not by its internal field.
+const NEXT_STEP: &str = "task step next step must be 1..512 characters without control characters";
+const CORRECTIONS: &[(&str, &str)] = &[
+    ("step:nextStep-missing", NEXT_STEP),
+    ("step:nextStep-null", NEXT_STEP),
+    ("step:nextStep-empty", NEXT_STEP),
+    ("step:nextStep-control", NEXT_STEP),
+    ("step:nextStep-tab", NEXT_STEP),
+    ("step:nextStep-long513", NEXT_STEP),
+    ("step:nextStep-astral", NEXT_STEP),
+    ("step:nextStep-number", NEXT_STEP),
+];
 
 fn serialized(value: &Value) -> String {
     serde_json::to_string(value).unwrap()
@@ -129,4 +140,45 @@ fn frozen_step_contracts() {
         cases.len(),
         failures.join("\n")
     );
+}
+
+/// A completed task needs no next step: its continuation names the hand-back. Unfinished work
+/// still needs one, named as a reader knows it.
+#[test]
+fn a_completion_without_a_next_step_names_the_hand_back() {
+    let state = json!({"formatVersion": 1, "activity": {}, "lookups": {}, "attempts": [],
+        "taskRecord": {"id": "t", "goal": "Fix the value", "stage": "verify", "status": "working",
+            "goalComplete": false, "files": [], "risks": [], "checkout": "refs/heads/main"}});
+    let repository = json!({"gitAvailable": true, "head": "1111111111111111111111111111111111111111",
+        "checkout": "refs/heads/main",
+        "fingerprints": {"complete": true, "index": "i", "workingTree": "w"}});
+    let input = |complete: bool| {
+        json!({"stage": "verify", "target": "acceptance:value", "approach": "manual-check",
+            "evidence": "checks/value", "outcome": "passed", "result": "Value checked",
+            "complete": complete})
+    };
+    let mut done = state.clone();
+    let step = session::step::step(
+        &mut done,
+        &input(true),
+        &repository,
+        "a1",
+        "2026-11-19T00:00:00.000Z",
+    )
+    .unwrap();
+    assert_eq!(
+        step.continuation["nextStep"],
+        "Return the outcome and its evidence."
+    );
+    assert_eq!(step.continuation["remainingWork"], "");
+    assert_eq!(done["taskRecord"]["goalComplete"], true);
+    let mut open = state.clone();
+    let refused = session::step::step(
+        &mut open,
+        &input(false),
+        &repository,
+        "a1",
+        "2026-11-19T00:00:00.000Z",
+    );
+    assert!(matches!(refused, Err(message) if message == NEXT_STEP));
 }

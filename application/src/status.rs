@@ -222,8 +222,16 @@ fn observe(
     );
     if needs.recover {
         let recovered = match &observations.repository {
-            Some(current) => Ok(checkpoint::compare(&observations.saved, current)),
-            None => identity(session_id.as_ref())
+            Some(current)
+                if !craft_platform::repository::snapshot::earlier_only(
+                    &observations.saved,
+                    current,
+                ) =>
+            {
+                Ok(checkpoint::compare(&observations.saved, current))
+            }
+            // Unobserved, or saved by an earlier release: recovery reads it afresh.
+            _ => identity(session_id.as_ref())
                 .and_then(|s| crate::checkpoint::recover(root, s, recorder, operation)),
         };
         match recovered {
@@ -367,8 +375,9 @@ fn observe(
     }
     result["task"] = input["task"].clone();
     result["featureOutcomes"] = features;
-    if context.as_ref().is_some_and(|c| c["stale"] == true) {
+    if let Some(context) = context.as_ref().filter(|c| c["stale"] == true) {
         result["taskEvidenceStale"] = json!(true);
+        result["taskEvidenceStaleBecause"] = context["staleBecause"].clone();
     }
     if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
         match crate::hook::delivery::planning(root, session) {

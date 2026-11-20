@@ -88,7 +88,7 @@
     "mode": "record a decision on the session's bound task; it is shown when the task resumes after compaction or in another session. A user decision records what the user said; it grants no authorization"
   },
   "task-step": {
-    "usage": "task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result \"observed result\" --next \"next step\" [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--complete]",
+    "usage": "task-step --session id --stage verify --target acceptance:id --approach bounded-check --evidence evidence-id --outcome passed --result \"observed result\" (--next \"next step\" | --complete) [--acceptance-evidence ledger.json --expected-task-contract digest --expected-evidence-digest digest] [--bundle package-root ...]",
     "mode": "agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch"
   },
   "plan": {

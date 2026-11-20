@@ -6797,7 +6797,8 @@
             "identity": "b1436cf6760a014375635c2661cecf61b81b605ac23fcef911b27d678a8c76fc"
           },
           "summary": "Frozen replay passed",
-          "nextStep": "Continue migration"
+          "nextStep": "Continue migration",
+          "staleBecause": "source"
         }
       }
     },

@@ -1,6 +1,8 @@
 //! Replay of the frozen corpus (`tests/fixtures/runtime/task-contracts.json`) captured
 //! from the JS engine `task-start` decision. Results compare as serialized JSON, so key order
 //! is part of the contract; error messages reach stderr and compare exactly.
+//!
+//! Edited in the corpus itself: a stale task context names what changed (`staleBecause`).
 use craft_engine::{session, values};
 use serde_json::{Value, json};
 

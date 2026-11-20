@@ -346,7 +346,18 @@ pub(super) fn action_receipt(action: &str, result: &Value) -> String {
         lines.push(format!("Workspace retained: {reason}"));
     }
     if truthy(&status["taskEvidenceStale"]) {
-        lines.push("Warning: task evidence is stale.".into());
+        let changed = match status["taskEvidenceStaleBecause"].as_str() {
+            Some("contract") => "the task contract",
+            Some("checkout") => "the checked-out branch",
+            _ => "the source",
+        };
+        let checks = nonempty(&result["recorded"]["evidence"])
+            .map_or("the task's checks".to_string(), |evidence| {
+                format!("the checks for {evidence}")
+            });
+        lines.push(format!(
+            "Warning: task evidence is stale: {changed} changed after it was recorded; rerun {checks} and record the result with task-step."
+        ));
     }
     let mut warnings: Vec<&Value> = vec![
         &result["activityDiagnostic"],
@@ -766,6 +777,28 @@ pub(super) fn receipt(saved: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_stale_warning_names_what_changed_and_what_to_rerun() {
+        let receipt = |status: Value| {
+            action_receipt(
+                "task-step",
+                &json!({"recorded": {"operation": "verify", "target": "acceptance:a",
+                    "outcome": "passed", "evidence": "unit-tests"},
+                    "checkpoint": {"status": "saved"}, "complete": false, "status": status}),
+            )
+        };
+        let source =
+            receipt(json!({"taskEvidenceStale": true, "taskEvidenceStaleBecause": "source"}));
+        assert!(source.contains(
+            "Warning: task evidence is stale: the source changed after it was recorded; rerun the checks for unit-tests and record the result with task-step."
+        ));
+        let contract =
+            receipt(json!({"taskEvidenceStale": true, "taskEvidenceStaleBecause": "contract"}));
+        assert!(contract.contains("the task contract changed"));
+        // Freshness that could not be observed is not reported as stale.
+        assert!(!receipt(json!({})).contains("stale"));
+    }
 
     #[test]
     fn compact_receipts_keep_failed_outcomes_storage_diagnostics_and_action_boundaries() {

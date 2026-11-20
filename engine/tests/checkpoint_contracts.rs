@@ -2,7 +2,9 @@
 //! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons are.
 //!
 //! Edited in the corpus itself: `acceptance-evidence-validate:formatVersion=two` is accepted
-//! since ledger format 2 (test counts per record) was introduced.
+//! since ledger format 2 (test counts per record) was introduced. `task-context` names why
+//! evidence is stale (`staleBecause`), and source that cannot be observed
+//! (`task-context:stale-incomplete`) leaves freshness unknown instead of stale.
 mod support;
 
 use serde_json::{Map, Value};
