@@ -110,7 +110,22 @@ fn save_locked(
     }
     .filter(|r| truthy(Some(r)));
     let repository = snapshot::workspace(root, repositories.as_ref(), false)?;
-    if expected_source.is_some_and(|expected| *expected != session::source(&repository)) {
+    // Git that could not be read is unobserved source, not changed source.
+    let current = session::source(&repository);
+    let refused = match expected_source {
+        Some(expected) if *expected == current => None,
+        Some(expected) if expected.is_null() => {
+            Some("Accepted source was not observed; continuation was not bound to current source")
+        }
+        Some(_) if current.is_null() => {
+            Some("Source could not be observed; continuation was not bound to accepted source")
+        }
+        _ => None,
+    };
+    if let Some(message) = refused {
+        return Err(message.into());
+    }
+    if expected_source.is_some_and(|expected| *expected != current) {
         return Err(
             "Source changed after acceptance; continuation was not rebound to newer source".into(),
         );
@@ -260,7 +275,7 @@ mod tests {
         let mut recorder = Recorder::open(&root, Some("s1"), None);
         let parent = recorder.start("cli.command", None);
         let metadata = json!({"taskId": "t1"});
-        // A non-Git root has no comparable source, so any accepted source differs.
+        // A non-Git root has no observable source, so no accepted source can be confirmed.
         let accepted = json!("a".repeat(64));
         let refused = save(
             &root,
@@ -273,7 +288,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(
             refused.message,
-            "Source changed after acceptance; continuation was not rebound to newer source"
+            "Source could not be observed; continuation was not bound to accepted source"
         );
         assert!(read(&root, "s1", &mut recorder, &parent).unwrap().is_null());
         let saved = save(
