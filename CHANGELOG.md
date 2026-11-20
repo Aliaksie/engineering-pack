@@ -6,6 +6,10 @@
   so the next turn end reviews the same changes. It used to record them as reviewed with some
   or all findings missing: an unread diff dropped a file's markers, and an unread reflog or
   `HEAD` dropped the files the session had committed.
+- When Git answers too slowly for Craft to read the repository, the source is no longer
+  reported as changed. A `task-step` recorded without a readable source leaves the task's
+  freshness unknown instead of stale, and a checkpoint is refused with "Source could not be
+  observed" or "Accepted source was not observed" instead of "Source changed after acceptance".
 - On Claude Code, a ticket's plan is approved through the host's own question: the agent asks
   `Approve plan <id> revision <n>?` and Craft records the user's `Approve` answer against that
   revision with the source `host-observed`, without asking the agent to run `craft ticket
