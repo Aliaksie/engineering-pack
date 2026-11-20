@@ -7,6 +7,11 @@
   confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an
   action proposal says the repository source could not be observed instead of calling the
   proposal stale.
+- The commits a session's shell command makes are told from the reflog's times, so the
+  turn-end review covers every commit the command made, not only the last. When Git does
+  not answer in time after the command, its commits are read at the next turn end instead
+  of being taken as someone else's. When Git did not say where `HEAD` was before a commit
+  command that then failed, an earlier commit is no longer taken as the session's.
 - A turn-end review whose Git query does not answer in time says nothing and records nothing,
   so the next turn end reviews the same changes. It used to record them as reviewed with some
   or all findings missing: an unread diff dropped a file's markers, and an unread reflog or
