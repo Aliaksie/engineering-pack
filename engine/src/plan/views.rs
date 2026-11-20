@@ -210,6 +210,26 @@ fn counts(plan: &Value) -> Value {
     Value::Object(counts)
 }
 
+/// Completed tasks of those not abandoned, and how many are not abandoned.
+fn tally(plan: &Value) -> (usize, usize) {
+    let counted: Vec<&Value> = tasks(plan)
+        .iter()
+        .filter(|t| t["state"] != "abandoned")
+        .collect();
+    let done = counted.iter().filter(|t| t["state"] == "completed").count();
+    (done, counted.len())
+}
+
+/// What a write that closed `plan` reports: its status, completed of the tasks not
+/// abandoned, and what is left for the agent.
+pub fn closed(plan: &Value) -> Value {
+    let (done, total) = tally(plan);
+    json!({
+        "status": plan["status"], "done": done, "total": total,
+        "next": "Report the outcome to the user; closing the ticket or opening a pull request stays their call.",
+    })
+}
+
 /// The plans index entry: what a listing or a reference lookup needs without the plan.
 pub fn summary(plan: &Value) -> Value {
     json!({
@@ -243,10 +263,9 @@ pub fn listing(mut plans: Vec<Value>, own: &str, now: i64) -> Vec<Value> {
                     json!({"task": t["id"], "state": t["state"], "here": t["owner"]["session"] == own, "idleMinutes": idle, "stale": idle >= STALE_MINUTES})
                 })
                 .collect();
-            let counted: Vec<&Value> = tasks(plan).iter().filter(|t| t["state"] != "abandoned").collect();
-            let done = counted.iter().filter(|t| t["state"] == "completed").count();
+            let (done, total) = tally(plan);
             let mut entry = json!({"plan": plan["id"], "goal": plan["goal"], "done": done,
-                "total": counted.len(), "ready": ready, "held": held});
+                "total": total, "ready": ready, "held": held});
             let escalated: Vec<&Value> = tasks(plan)
                 .iter()
                 .filter(|t| t["integration"]["state"] == "escalated")

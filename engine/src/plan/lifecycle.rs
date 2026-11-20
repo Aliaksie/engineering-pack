@@ -60,6 +60,33 @@ pub fn completable(plan: &Value) -> bool {
         .all(|t| done(t) || t["state"] == "abandoned")
 }
 
+/// Whether an open plan's work is done: every task is completed and integrated or
+/// abandoned, and at least one is completed. A plan with nothing completed is left to its
+/// author to abandon.
+pub fn finished(plan: &Value) -> bool {
+    plan["status"] == "open" && completable(plan) && tasks(plan).iter().any(done)
+}
+
+/// Close an open plan whose work is done in the write under way; returns whether it closed.
+fn close_when_done(plan: &mut Value) -> bool {
+    let closing = finished(plan);
+    if closing {
+        plan["status"] = json!("completed");
+    }
+    closing
+}
+
+/// Close a plan left open with its work done, as one write; returns whether it closed.
+/// Reopening stays explicit, through [`apply`] with `status: open`.
+pub fn settle(plan: &mut Value, now: i64) -> Result<bool> {
+    if !close_when_done(plan) {
+        return Ok(false);
+    }
+    touch(plan, now);
+    validate(plan)?;
+    Ok(true)
+}
+
 /// Claims `task` has started and the most it allows.
 pub(super) fn attempts(task: &Value) -> (i64, i64) {
     let count = |key: &str, default: i64| safe_integer(&task[key]).unwrap_or(default);
@@ -136,6 +163,8 @@ pub fn apply(
             None => decisions.push(decided),
         }
     }
+    // Work a completed plan gets again: a new task, or one set back to pending.
+    let mut more_work = false;
     for item in changes
         .get("tasks")
         .map(|t| t.as_array().ok_or("plan tasks must be a list"))
@@ -148,6 +177,10 @@ pub fn apply(
             .filter(|m| m.keys().all(|k| AUTHORED.contains(&k.as_str())))
             .ok_or("an authored task is {id, goal, state?, dependsOn?, files?, repositories?, acceptance?, nextStep?, parent?, scope?, contract?, returns?}")?;
         let id = identity(fields.get("id"), "task")?;
+        more_work |= match fields.get("state") {
+            Some(state) => state == "pending",
+            None => find(plan, &id).is_none(),
+        };
         if let Some(state) = fields.get("state")
             && !state.as_str().is_some_and(|s| EDITABLE_STATES.contains(&s))
         {
@@ -207,6 +240,12 @@ pub fn apply(
             Some(status) if PLAN_STATUSES.contains(&status) => plan["status"] = json!(status),
             _ => return Err("plan status must be open, completed or abandoned".into()),
         }
+    } else if more_work && plan["status"] == "completed" {
+        // A review that adds a task reopens the plan; an abandoned plan stays abandoned.
+        plan["status"] = json!("open");
+    } else if changes.contains_key("tasks") {
+        // Abandoning the last open task finishes the plan; an explicit status is kept.
+        close_when_done(plan);
     }
     touch(plan, now);
     validate(plan)
@@ -490,6 +529,7 @@ pub fn merged(
         entry["integration"] = integration_entry("integrated", &[], None, now);
     }
     entry["updated"] = json!(timestamp::format(now));
+    close_when_done(plan);
     touch(plan, now);
     validate(plan)?;
     Ok(all)
@@ -675,6 +715,7 @@ pub fn progress(plan: &mut Value, task: &str, owner: &str, step: &Progress, now:
         }
     }
     entry["updated"] = json!(at);
+    close_when_done(plan);
     touch(plan, now);
     validate(plan)
 }

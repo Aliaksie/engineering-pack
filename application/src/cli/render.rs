@@ -297,6 +297,9 @@ pub(super) fn action_receipt(action: &str, result: &Value) -> String {
                 ),
             });
         }
+        if let Some(id) = nonempty(&plan["plan"]) {
+            lines.extend(closed_line(id, &plan["closed"]));
+        }
         if receipt["outcome"] != "passed" {
             lines.push(format!("Result: {}", shown(&result["result"])));
         }
@@ -461,12 +464,31 @@ pub(super) fn adopt_receipt(result: &Value) -> String {
     format!("{}\n", lines.join("\n"))
 }
 
+/// The plan a write closed and what is left for the agent; nothing when the write left the
+/// plan's status as it was.
+fn closed_line(id: &str, closed: &Value) -> Option<String> {
+    closed.is_object().then(|| {
+        format!(
+            "Plan {id}: {} ({} of {} tasks) — {}",
+            shown(&closed["status"]),
+            shown(&closed["done"]),
+            shown(&closed["total"]),
+            shown(&closed["next"])
+        )
+    })
+}
+
 /// A plan as its Markdown view, or one line per plan of a listing.
 pub(super) fn plan_receipt(result: &Value) -> String {
     let Some(plans) = result["plans"].as_array() else {
         let mut text = craft_engine::plan::markdown(result);
         if let Some(view) = nonempty(&result["view"]) {
             text.push_str(&format!("\nView: {view}\n"));
+        }
+        if let Some(id) = nonempty(&result["id"])
+            && let Some(line) = closed_line(id, &result["closed"])
+        {
+            text.push_str(&format!("{line}\n"));
         }
         return text;
     };
@@ -626,6 +648,7 @@ pub(super) fn integrate_receipt(result: &Value) -> String {
             .cloned()
             .unwrap_or_default();
         lines.extend(kept.iter().map(|k| format!("Kept: {}", text(k))));
+        lines.extend(closed_line(&text(&result["plan"]), &result["closed"]));
     } else if result["conflicts"].is_array() {
         let paths: Vec<String> = result["conflicts"]
             .as_array()

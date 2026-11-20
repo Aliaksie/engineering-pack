@@ -9,10 +9,11 @@ mod views;
 pub use format::{reference, slug, validate};
 pub use lifecycle::{
     Assignment, Claim, Progress, apply, assign, claim, completable, conflicted, create, discard,
-    escalate, integrable, merged, owned, progress, ready, release_task, state_after,
+    escalate, finished, integrable, merged, owned, progress, ready, release_task, settle,
+    state_after,
 };
 pub use scope::{Observed, baseline, changed, completion, covers, overlaps};
-pub use views::{brief, envelope, listing, markdown, queue, summary, view};
+pub use views::{brief, closed, envelope, listing, markdown, queue, summary, view};
 
 use serde_json::Value;
 

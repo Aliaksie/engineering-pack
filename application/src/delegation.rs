@@ -447,10 +447,13 @@ pub fn integrate(
     } else {
         Value::Null
     };
-    Ok(json!({
+    let mut integrated = json!({
         "plan": id, "task": task, "integrated": all,
         "merges": commits.iter().map(|(path, commit)| json!({"path": path, "commit": commit})).collect::<Vec<_>>(),
         "worktrees": worktrees, "revision": saved["revision"],
         "authorization": "Merged locally under the approved integration rule; nothing was pushed.",
-    }))
+    });
+    // A plan is completed only once every task is integrated, so this merge closed it.
+    crate::plan::closing(&mut integrated, all == true, &saved);
+    Ok(integrated)
 }

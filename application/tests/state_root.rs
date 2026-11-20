@@ -192,6 +192,281 @@ fn a_plan_made_in_a_linked_worktree_is_read_from_every_checkout_of_the_repositor
     assert!(!worktree.join(".craft/state/plans").exists());
 }
 
+/// A repository with a linked worktree outside it, which shares its plans.
+fn linked(name: &str) -> (Repo, PathBuf) {
+    let repo = Repo::new(name, &[("a.txt", "a\n")]);
+    let worktree = repo.root.with_extension("inputs").join("wt");
+    repo.git(&[
+        "worktree",
+        "add",
+        "-q",
+        "-b",
+        "work",
+        worktree.to_str().unwrap(),
+    ]);
+    (repo, worktree)
+}
+
+/// A plan `id` with the tasks `ids`, made from `cwd`.
+fn plan(repo: &Repo, cwd: &Path, id: &str, ids: &[&str]) {
+    let tasks: Vec<Value> = ids
+        .iter()
+        .map(|t| json!({"id": t, "goal": "Do it"}))
+        .collect();
+    let data = repo.input(&format!("{id}.json"), &json!({"tasks": tasks}));
+    craft(
+        cwd,
+        &[
+            "plan-create",
+            "--plan",
+            id,
+            "--goal",
+            "Ship",
+            "--data",
+            &data,
+        ],
+        None,
+    );
+}
+
+/// Claim and complete `task` of `id` in session `session`; returns the step's receipt.
+fn finish(cwd: &Path, session: &str, id: &str, task: &str) -> String {
+    craft(
+        cwd,
+        &[
+            "task-start",
+            "--session",
+            session,
+            "--plan",
+            id,
+            "--task",
+            task,
+        ],
+        None,
+    );
+    craft(
+        cwd,
+        &[
+            "task-step",
+            "--session",
+            session,
+            "--stage",
+            "verify",
+            "--target",
+            &format!("task:{task}"),
+            "--approach",
+            "direct",
+            "--evidence",
+            "e1",
+            "--outcome",
+            "passed",
+            "--result",
+            "Done",
+            "--next",
+            "Report",
+            "--complete",
+            "--bundle",
+            &support::bundle(),
+        ],
+        None,
+    )
+}
+
+fn status(cwd: &Path, id: &str) -> Value {
+    let shown: Value =
+        serde_json::from_str(&craft(cwd, &["plan", "--plan", id, "--json"], None)).unwrap();
+    shown["status"].clone()
+}
+
+#[test]
+fn completing_the_last_task_closes_the_plan_from_any_checkout() {
+    let (repo, worktree) = linked("state-root-close");
+    for (cwd, id) in [(&repo.root, "main"), (&worktree, "linked")] {
+        plan(&repo, cwd, id, &["a", "b"]);
+        let first = finish(cwd, "S-close", id, "a");
+        assert!(!first.contains("tasks)"), "{first}");
+        assert_eq!(status(cwd, id), "open");
+        let last = finish(cwd, "S-close", id, "b");
+        assert!(
+            last.contains(&format!("Plan {id}: completed (2 of 2 tasks)")),
+            "{last}"
+        );
+        assert!(
+            last.contains("closing the ticket or opening a pull request stays their call"),
+            "{last}"
+        );
+        // One plan store: the other checkout reads it closed.
+        assert_eq!(status(&repo.root, id), "completed");
+        assert_eq!(status(&worktree, id), "completed");
+    }
+    let _ = fs::remove_dir_all(repo.root.with_extension("inputs"));
+}
+
+#[test]
+fn a_session_start_closes_plans_left_open_with_their_work_done() {
+    let (repo, worktree) = linked("state-root-settle");
+    plan(&repo, &repo.root, "finished", &["a"]);
+    finish(&repo.root, "S-old", "finished", "a");
+    // Reopened, as an earlier build left a plan whose work was done.
+    let reopen = repo.input("reopen.json", &json!({"status": "open"}));
+    let shown: Value = serde_json::from_str(&craft(
+        &repo.root,
+        &["plan", "--plan", "finished", "--json"],
+        None,
+    ))
+    .unwrap();
+    let revision = shown["revision"].to_string();
+    craft(
+        &repo.root,
+        &[
+            "plan-update",
+            "--plan",
+            "finished",
+            "--expected-revision",
+            &revision,
+            "--data",
+            &reopen,
+        ],
+        None,
+    );
+    assert_eq!(status(&repo.root, "finished"), "open");
+    plan(&repo, &repo.root, "left", &["a", "b"]);
+    finish(&repo.root, "S-old", "left", "a");
+    for (cwd, session) in [(&worktree, "S-wt"), (&repo.root, "S-main")] {
+        let payload = json!({"session_id": session, "cwd": cwd, "source": "startup"});
+        let args = [
+            "hook",
+            "claude",
+            "session-start",
+            "--package",
+            "craft-delivery",
+            "--handler",
+            "deliver",
+        ];
+        let started = craft(cwd, &args, Some(&payload));
+        assert!(!started.contains("finished"), "{started}");
+        assert!(started.contains(r#"\"plan\":\"left\""#), "{started}");
+    }
+    assert_eq!(status(&repo.root, "finished"), "completed");
+    assert_eq!(status(&repo.root, "left"), "open");
+    let _ = fs::remove_dir_all(repo.root.with_extension("inputs"));
+}
+
+/// `plan-update` of `id` at its current revision with `changes`; returns its receipt.
+fn update(repo: &Repo, id: &str, changes: &Value) -> String {
+    let shown: Value =
+        serde_json::from_str(&craft(&repo.root, &["plan", "--plan", id, "--json"], None)).unwrap();
+    let data = repo.input(&format!("{id}-{}.json", shown["revision"]), changes);
+    let revision = shown["revision"].to_string();
+    craft(
+        &repo.root,
+        &[
+            "plan-update",
+            "--plan",
+            id,
+            "--expected-revision",
+            &revision,
+            "--data",
+            &data,
+        ],
+        None,
+    )
+}
+
+#[test]
+fn a_plan_update_closes_a_finished_plan_and_new_work_reopens_it() {
+    let repo = Repo::new("state-root-update", &[("a.txt", "a\n")]);
+    plan(&repo, &repo.root, "reviewed", &["a", "b"]);
+    finish(&repo.root, "S-up", "reviewed", "a");
+    let dropped = update(
+        &repo,
+        "reviewed",
+        &json!({"tasks": [{"id": "b", "state": "abandoned"}]}),
+    );
+    assert!(
+        dropped.contains("Plan reviewed: completed (1 of 1 tasks)"),
+        "{dropped}"
+    );
+    assert_eq!(status(&repo.root, "reviewed"), "completed");
+    let added = update(
+        &repo,
+        "reviewed",
+        &json!({"tasks": [{"id": "c", "goal": "Fix the review finding"}]}),
+    );
+    assert!(!added.contains("tasks) —"), "{added}");
+    assert_eq!(status(&repo.root, "reviewed"), "open");
+    // The reopened plan has work left, so a session start keeps it open.
+    let payload = json!({"session_id": "S-next", "cwd": repo.root, "source": "startup"});
+    let args = [
+        "hook",
+        "claude",
+        "session-start",
+        "--package",
+        "craft-delivery",
+        "--handler",
+        "deliver",
+    ];
+    let started = craft(&repo.root, &args, Some(&payload));
+    assert!(started.contains(r#"\"ready\":[\"c\"]"#), "{started}");
+    let last = finish(&repo.root, "S-up", "reviewed", "c");
+    assert!(
+        last.contains("Plan reviewed: completed (2 of 2 tasks)"),
+        "{last}"
+    );
+    let _ = fs::remove_dir_all(repo.root.with_extension("inputs"));
+}
+
+#[test]
+fn a_plan_that_cannot_close_at_session_start_stays_listed_and_is_reported() {
+    let repo = Repo::new("state-root-busy", &[("a.txt", "a\n")]);
+    plan(&repo, &repo.root, "finished", &["a"]);
+    finish(&repo.root, "S-old", "finished", "a");
+    let shown: Value = serde_json::from_str(&craft(
+        &repo.root,
+        &["plan", "--plan", "finished", "--json"],
+        None,
+    ))
+    .unwrap();
+    let reopen = repo.input("reopen.json", &json!({"status": "open"}));
+    let revision = shown["revision"].to_string();
+    craft(
+        &repo.root,
+        &[
+            "plan-update",
+            "--plan",
+            "finished",
+            "--expected-revision",
+            &revision,
+            "--data",
+            &reopen,
+        ],
+        None,
+    );
+    // Another writer holds the plans lock for the whole session start.
+    let index = state::plans(&repo.root, None, false)
+        .unwrap()
+        .join("index.json");
+    let held = state::lock(&index).unwrap().expect("plans lock");
+    let payload = json!({"session_id": "S-busy", "cwd": repo.root, "source": "startup"});
+    let args = [
+        "hook",
+        "claude",
+        "session-start",
+        "--package",
+        "craft-delivery",
+        "--handler",
+        "deliver",
+    ];
+    let started = craft(&repo.root, &args, Some(&payload));
+    drop(held);
+    assert!(started.contains(r#"\"plan\":\"finished\""#), "{started}");
+    assert_eq!(status(&repo.root, "finished"), "open");
+    let log = state::file(&repo.root, "telemetry/events.jsonl", false, None).unwrap();
+    let events = fs::read_to_string(&log).unwrap_or_default();
+    assert!(events.contains("STATE_UNAVAILABLE"), "{events}");
+    let _ = fs::remove_dir_all(repo.root.with_extension("inputs"));
+}
+
 /// Date a file or directory `days` back.
 fn age(path: &Path, days: u64) {
     let when = SystemTime::now() - Duration::from_secs(days * 86_400);
