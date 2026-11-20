@@ -141,3 +141,55 @@ fn a_ticket_names_its_plan_and_the_reference_linking_it() {
         assert_eq!(plan_reference(reference), link);
     }
 }
+
+#[test]
+fn an_agent_shell_command_records_an_approval_however_it_is_wrapped() {
+    for (command, expected) in [
+        ("craft ticket --ticket '#7' --approve --session s1", true),
+        (
+            "/opt/bin/craft ticket --approve --ticket 7 --session s",
+            true,
+        ),
+        (
+            "cd repo && npm run ticket -- --ticket 7 --approve --session s",
+            true,
+        ),
+        ("sh -c \"craft ticket --ticket 7 --approve=yes\"", true),
+        ("craft ticket --ticket 7 --accept plan --session s", false),
+        ("craft plan --plan ticket-7", false),
+        ("echo --approve", false),
+    ] {
+        assert_eq!(approval_command(command), expected, "{command}");
+    }
+}
+
+#[test]
+fn only_an_approval_no_agent_command_recorded_under_running_hooks_is_the_users() {
+    assert_eq!(command_source(false, true), "user");
+    assert_eq!(command_source(true, true), "agent");
+    // Without hooks seen in the session nothing shows the user ran it.
+    assert_eq!(command_source(false, false), "agent");
+    assert_eq!(command_source(true, false), "agent");
+}
+
+#[test]
+fn an_approval_saved_without_a_source_reads_as_unknown_never_the_users() {
+    let legacy = json!({"revision": 2, "digest": "d1", "at": 1});
+    assert_eq!(approval_source(&legacy), "unknown");
+    assert_eq!(
+        approval_source(&json!({"digest": "d1", "source": "bogus"})),
+        "unknown"
+    );
+    assert!(!approved_by("unknown").contains("user approved"));
+    assert!(!approved_by("agent").starts_with("the user"));
+    assert_eq!(
+        approval_view(&legacy, Some("d1")),
+        Some(json!({"revision": 2, "source": "unknown", "current": true}))
+    );
+    let reported = json!({"revision": 3, "digest": "d1", "source": "agent"});
+    assert_eq!(
+        approval_view(&reported, Some("d2")),
+        Some(json!({"revision": 3, "source": "agent", "current": false}))
+    );
+    assert_eq!(approval_view(&json!(null), Some("d1")), None);
+}

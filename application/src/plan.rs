@@ -221,11 +221,23 @@ pub fn update(
     Ok(view)
 }
 
-/// `plan`: one plan, the plans linking a reference, or every plan's summary.
-pub fn show(root: &Path, id: Option<&str>, reference: Option<&str>) -> Result<Value, Failure> {
+/// `plan`: one plan, with `session` its approval in that session and who gave it, the plans
+/// linking a reference, or every plan's summary.
+pub fn show(
+    root: &Path,
+    id: Option<&str>,
+    reference: Option<&str>,
+    session: Option<&str>,
+) -> Result<Value, Failure> {
     if let Some(id) = id {
         let saved = read(root, id)?.ok_or_else(|| format!("no plan {id}"))?;
-        return shown(root, &saved);
+        let mut view = shown(root, &saved)?;
+        if let Some(approval) =
+            session.and_then(|session| crate::ticket::approval(root, session, &saved))
+        {
+            view["approval"] = approval;
+        }
+        return Ok(view);
     }
     let mut summaries = summaries(root)?;
     if let Some(reference) = reference {
@@ -571,7 +583,18 @@ pub fn listing(root: &Path, session: &str) -> Result<Vec<Value>, Failure> {
         .take(plan::LISTED)
         .filter_map(|s| read(root, s["id"].as_str()?).ok().flatten())
         .collect();
-    Ok(plan::listing(plans, &owner(root, session)?, now_ms()))
+    let mut listed = plan::listing(plans.clone(), &owner(root, session)?, now_ms());
+    // The plan this session's ticket approved names who approved it.
+    for entry in &mut listed {
+        if let Some(approval) = plans
+            .iter()
+            .find(|saved| saved["id"] == entry["plan"])
+            .and_then(|saved| crate::ticket::approval(root, session, saved))
+        {
+            entry["approval"] = approval;
+        }
+    }
+    Ok(listed)
 }
 
 /// Session directories that hold a task of an open plan, so cleanup keeps what a take-over

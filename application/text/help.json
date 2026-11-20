@@ -92,8 +92,8 @@
     "mode": "agent-declared semantic receipt, bounded continuation and next-step advice; no action dispatch"
   },
   "plan": {
-    "usage": "plan [--root project] [--plan id | --reference tracker:PROJ-123] [--json]",
-    "mode": "read-only: one plan as its Markdown view (JSON with --json), the plans linking a reference, or every plan's summary"
+    "usage": "plan [--root project] [--plan id [--session id] | --reference tracker:PROJ-123] [--json]",
+    "mode": "read-only: one plan as its Markdown view (JSON with --json), with --session its approval in that session and who gave it; the plans linking a reference, or every plan's summary"
   },
   "plan-create": {
     "usage": "plan-create --plan id --goal \"outcome\" [--reference tracker:PROJ-123 ...] [--data plan.json] [--root project]",
@@ -240,6 +240,6 @@
   },
   "ticket": {
     "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--root project] | ticket --ticket url-or-key --accept plan|direct --session id [--host name] | ticket --ticket url-or-key --approve --session id",
-    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until --approve records the user's approval of it as it stands, and ends with a review offer. No model call; nothing else is written."
+    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until --approve records the approval of it as it stands, and ends with a review offer. An approval names its source: the user when the session's hooks run and saw no agent shell command record it, otherwise the agent reporting the user's answer. No model call; nothing else is written."
   }
 }

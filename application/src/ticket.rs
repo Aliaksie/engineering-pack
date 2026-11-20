@@ -172,6 +172,16 @@ fn accept(
         .ok_or("--accept requires --session")?;
     let mut record = json!({"formatVersion": 1, "ticket": reference, "delivery": choice,
         "acceptedAt": crate::telemetry::now_ms()});
+    // What the session's hooks saw before this command ran stays evidence of who approves.
+    if let Ok(earlier) =
+        record_file(root, session, false).and_then(|f| read_record(&f, RECORD_BYTES))
+    {
+        for key in [HOOKS_SEEN, AGENT_APPROVAL] {
+            if let Some(seen) = earlier.get(key) {
+                record[key] = seen.clone();
+            }
+        }
+    }
     if choice == "direct" {
         state::write(
             &record_file(root, session, true)?,
@@ -197,7 +207,7 @@ fn accept(
     let saved = crate::plan::read(root, &plan).ok().flatten();
     let write = match &saved {
         Some(saved) => format!(
-            "Plan {plan} exists (revision {}): read it with `craft plan --plan {plan}` and change it with `craft plan-update --plan {plan} --expected-revision {} --data <changes.json>` where the ticket needs it.",
+            "Plan {plan} exists (revision {}): read it with `craft plan --plan {plan} --session {session}` and change it with `craft plan-update --plan {plan} --expected-revision {} --data <changes.json>` where the ticket needs it.",
             saved["revision"], saved["revision"]
         ),
         None => format!(
@@ -248,14 +258,62 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     let digest = craft_engine::plan::approval(&saved).ok_or_else(|| {
         format!("plan {plan} has no tasks to approve; add them with `craft plan-update`")
     })?;
+    let source = ticket::command_source(
+        record.get(AGENT_APPROVAL).is_some(),
+        record[HOOKS_SEEN] == true,
+    );
+    if let Some(fields) = record.as_object_mut() {
+        fields.remove(AGENT_APPROVAL);
+    }
     record["plan"] = json!(plan);
     record["approved"] = json!({"revision": saved["revision"], "digest": digest,
-        "at": crate::telemetry::now_ms()});
+        "source": source, "at": crate::telemetry::now_ms()});
     state::write(&file, &record, RECORD_BYTES, false)?;
     let next = format!(
         "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --outcome passed --result \"<what changed>\" --next \"<next>\" --complete`. When the change is done, offer the user a review with craft-delivery:review-code before reporting it complete."
     );
     Ok(json!({"ticket": reference, "plan": plan, "approved": record["approved"], "next": next}))
+}
+
+/// Set on the session's ticket record once one of its hooks saw a tool call: from then on an
+/// approval no agent shell command recorded is the user's own run.
+const HOOKS_SEEN: &str = "hooksSeen";
+/// When the session's hook saw an agent shell command record a plan approval; the approval
+/// it records takes it as its source.
+const AGENT_APPROVAL: &str = "agentApproval";
+
+/// Before one of the session's tool calls runs: what its hook sees of who approves the plan
+/// of a ticket delivered plan first. A session without such a ticket keeps no record.
+pub(crate) fn tool_seen(root: &Path, session: &str, command: Option<&str>) -> Result<(), Failure> {
+    // A session with no state yet has no ticket record.
+    let Ok(file) = record_file(root, session, false) else {
+        return Ok(());
+    };
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if record["delivery"] != "plan" {
+        return Ok(());
+    }
+    let agent = command.is_some_and(ticket::approval_command);
+    if record[HOOKS_SEEN] == true && !agent {
+        return Ok(());
+    }
+    record[HOOKS_SEEN] = json!(true);
+    if agent {
+        record[AGENT_APPROVAL] = json!(crate::telemetry::now_ms());
+    }
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// The session's approval of plan `plan` as views show it, with who gave it; `None` when the
+/// session approved no such plan or its record cannot be read.
+pub(crate) fn approval(root: &Path, session: &str, plan: &Value) -> Option<Value> {
+    let file = record_file(root, session, false).ok()?;
+    let record = read_record(&file, RECORD_BYTES).ok()?;
+    if record["delivery"] != "plan" || record["plan"] != plan["id"] {
+        return None;
+    }
+    let current = craft_engine::plan::approval(plan);
+    ticket::approval_view(&record["approved"], current.as_deref())
 }
 
 /// Why file edits wait in this session and the step that lets them through.
@@ -293,9 +351,10 @@ pub(crate) fn awaiting(root: &Path, session: &str, host: &str) -> Option<Due> {
         (Some(_), Some(_), None) => {
             format!("the user has not approved plan {plan} for {reference} yet")
         }
-        (Some(_), Some(_), Some(_)) => {
-            format!("plan {plan} for {reference} changed since the user approved it")
-        }
+        (Some(_), Some(_), Some(_)) => format!(
+            "plan {plan} for {reference} changed since {}",
+            ticket::approved_by(ticket::approval_source(&record["approved"]))
+        ),
     };
     let next = format!(
         "Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",

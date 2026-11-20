@@ -478,12 +478,34 @@ fn closed_line(id: &str, closed: &Value) -> Option<String> {
     })
 }
 
+/// A plan's approval in the session: the revision approved, who gave it and whether the plan
+/// still stands as approved.
+fn approval_line(approval: &Value) -> Option<String> {
+    let by = match approval["source"].as_str()? {
+        "user" => "approved by the user",
+        "agent" => "approval reported by the agent",
+        _ => "approved, source unknown",
+    };
+    let state = if approval["current"] == true {
+        "the plan is unchanged since"
+    } else {
+        "the plan changed since and needs approval again"
+    };
+    Some(format!(
+        "Approval: revision {} {by}; {state}",
+        approval["revision"]
+    ))
+}
+
 /// A plan as its Markdown view, or one line per plan of a listing.
 pub(super) fn plan_receipt(result: &Value) -> String {
     let Some(plans) = result["plans"].as_array() else {
         let mut text = craft_engine::plan::markdown(result);
         if let Some(view) = nonempty(&result["view"]) {
             text.push_str(&format!("\nView: {view}\n"));
+        }
+        if let Some(line) = approval_line(&result["approval"]) {
+            text.push_str(&format!("{line}\n"));
         }
         if let Some(id) = nonempty(&result["id"])
             && let Some(line) = closed_line(id, &result["closed"])
@@ -913,5 +935,22 @@ mod tests {
             acceptance_lines(&result, text)[..2],
             ["Acceptance: ", "Criterion: value —  (optional)"]
         );
+    }
+
+    #[test]
+    fn a_plan_shows_who_approved_it_never_an_agent_report_as_the_users() {
+        let line = |source: &str, current: bool| {
+            approval_line(&json!({"revision": 2, "source": source, "current": current}))
+        };
+        assert_eq!(
+            line("user", true).unwrap(),
+            "Approval: revision 2 approved by the user; the plan is unchanged since"
+        );
+        assert_eq!(
+            line("agent", false).unwrap(),
+            "Approval: revision 2 approval reported by the agent; the plan changed since and needs approval again"
+        );
+        assert!(line("unknown", true).unwrap().contains("source unknown"));
+        assert_eq!(approval_line(&Value::Null), None);
     }
 }

@@ -1140,6 +1140,7 @@ fn plan_show(
         &root(options),
         options.get("plan"),
         references.first().map(String::as_str),
+        options.get("session"),
     )
 }
 

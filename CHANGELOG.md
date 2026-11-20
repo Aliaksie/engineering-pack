@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A ticket's plan approval names its source. `craft ticket --approve` records `user` when the
+  session's hooks are seen to run and no agent shell command ran it, as when the user runs it
+  themselves, and `agent` otherwise. The hold on edits after a plan changes, `craft plan --plan
+  <id> --session <id>` and the open plans a session start lists show the source, and an
+  approval the agent reported is no longer worded as the user's. Approvals saved by an earlier
+  version read as source unknown. The plan's approval digest and revision rules are unchanged.
 - While a ticket's plan waits for the user's approval, the turn's end names repository files
   a shell command or script changed, which the hold on edit tools does not stop, with the step
   that lets work go on. Each change is named once; files already changed when the user chose

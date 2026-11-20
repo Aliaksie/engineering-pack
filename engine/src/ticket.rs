@@ -244,5 +244,61 @@ pub fn line(decision: &Value) -> String {
     }
 }
 
+/// Whether an agent's shell command records a plan approval: it names `ticket` and
+/// `--approve` as words, however it is wrapped (`craft ticket`, `npm run ticket --`). A
+/// false match only labels a user's approval as the agent's report.
+pub fn approval_command(command: &str) -> bool {
+    let words = command.split(|c: char| {
+        c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '\'' | '"' | '`')
+    });
+    let (mut ticket, mut approve) = (false, false);
+    for word in words {
+        ticket |= word == "ticket" || word.ends_with("/ticket");
+        approve |= word == "--approve" || word.starts_with("--approve=");
+    }
+    ticket && approve
+}
+
+/// Who `craft ticket --approve` records as giving the approval: the user only when the
+/// session's hooks are seen to run and saw no agent shell command record it; otherwise the
+/// agent, whose report is its statement, not evidence that the user answered.
+pub fn command_source(agent_ran: bool, hooks_seen: bool) -> &'static str {
+    if hooks_seen && !agent_ran {
+        "user"
+    } else {
+        "agent"
+    }
+}
+
+/// The source an approval record names: `user`, `agent`, or `unknown` for an approval an
+/// earlier build saved without one.
+pub fn approval_source(approved: &Value) -> &'static str {
+    match approved["source"].as_str() {
+        Some("user") => "user",
+        Some("agent") => "agent",
+        _ => "unknown",
+    }
+}
+
+/// An approval as prose names it after "since": never the user's for one the agent reported.
+pub fn approved_by(source: &str) -> &'static str {
+    match source {
+        "user" => "the user approved it",
+        "agent" => "the agent reported the user's approval",
+        _ => "its approval, whose source is unknown",
+    }
+}
+
+/// An approval as views show it: the revision approved, who gave it, and whether the plan
+/// is still as approved (`current`). `None` without an approval.
+pub fn approval_view(approved: &Value, current: Option<&str>) -> Option<Value> {
+    let digest = approved["digest"].as_str()?;
+    Some(json!({
+        "revision": approved["revision"],
+        "source": approval_source(approved),
+        "current": current == Some(digest),
+    }))
+}
+
 #[cfg(test)]
 mod tests;
