@@ -7,6 +7,10 @@
   confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an
   action proposal says the repository source could not be observed instead of calling the
   proposal stale.
+- A turn-end review whose Git query does not answer in time says nothing and records nothing,
+  so the next turn end reviews the same changes. It used to record them as reviewed with some
+  or all findings missing: an unread diff dropped a file's markers, and an unread reflog or
+  `HEAD` dropped the files the session had committed.
 - When Git answers too slowly for Craft to read the repository, the source is no longer
   reported as changed. A `task-step` recorded without a readable source leaves the task's
   freshness unknown instead of stale, and a checkpoint is refused with "Source could not be
