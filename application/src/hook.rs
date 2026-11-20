@@ -757,9 +757,20 @@ fn stop_line(summary: &Value) -> String {
         }
         lines.push(line);
     }
+    let waiting = &summary["approval"];
+    if let Some(files) = waiting["files"].as_array() {
+        let files: Vec<String> = files.iter().map(text).collect();
+        lines.push(format!(
+            "- {} changed while edits wait for approval ({}). Tell the user these changed before they approved the plan. {}",
+            files.join(", "),
+            text(&waiting["why"]),
+            text(&waiting["next"])
+        ));
+    }
     let count = summary["findings"].as_array().map_or(0, Vec::len)
         + summary["more"].as_u64().unwrap_or(0) as usize
-        + summary["review"].as_array().map_or(0, Vec::len);
+        + summary["review"].as_array().map_or(0, Vec::len)
+        + usize::from(waiting.is_object());
     text::STOP.render(&[
         ("count", &count.to_string()),
         ("items", if count == 1 { "item" } else { "items" }),

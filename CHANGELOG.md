@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- While a ticket's plan waits for the user's approval, the turn's end names repository files
+  a shell command or script changed, which the hold on edit tools does not stop, with the step
+  that lets work go on. Each change is named once; files already changed when the user chose
+  to plan first, files outside the repository, and changes after approval or after choosing to
+  implement directly are not named.
 - A work plan closes itself when its last task finishes: the `task-step`, `plan-integrate`
   or `plan-update` that leaves every task completed and integrated, or abandoned, marks the
   plan `completed` and shows `Plan <id>: completed (n of m tasks)`. Plans an earlier version

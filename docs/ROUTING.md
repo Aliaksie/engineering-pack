@@ -216,7 +216,10 @@ refused for a missing plan or one without tasks. Until then, in that session, ev
 hooks can refuse a tool (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI) refuses edit
 tools that write a file of the repository, in the project or any of its worktrees, with a
 reason naming the next step. Files elsewhere, such as the plan's task list in a scratch
-folder, and shell commands are not refused. Task progress keeps
+folder, and shell commands are not refused. A turn that ends with repository files a shell
+command or script changed while the plan waits names those files and the step that lets work go
+on, once per change; files already changed when the user chose to plan first are not named.
+Task progress keeps
 the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
 lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
 review offer for the ticket, once. The same ticket in a later prompt of

@@ -158,6 +158,26 @@ fn the_decision_follows_the_tickets_facts_and_the_hosts_question_tool() {
     assert!(elsewhere.contains("supported by ticket"), "{elsewhere}");
 }
 
+/// The ticket's plan recorded with one task and approved by the user, so files may change.
+fn approved_plan(repo: &Repo) {
+    let tasks = repo.input(
+        "approved.json",
+        &json!({"tasks": [{"id": "a", "goal": "Change a"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "issue-145",
+        "--goal",
+        "Ship",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+    repo.cli(&["ticket", "--ticket", ISSUE, "--approve", "--session", "S1"])
+        .unwrap();
+}
+
 #[test]
 fn an_accepted_plan_ends_the_change_with_a_review_offer_said_once() {
     let repo = Repo::new(
@@ -201,6 +221,7 @@ fn an_accepted_plan_ends_the_change_with_a_review_offer_said_once() {
             .map(str::to_owned)
     };
     assert_eq!(notice(&repo), None, "nothing changed yet");
+    approved_plan(&repo);
     let call = json!({"tool_name": "Bash", "tool_input": {"command": "sh ./write.sh"}});
     hook("claude", "before-tool", &repo, call.clone());
     repo.write("engine/a.rs", "fn a() { b() }\n");
@@ -253,6 +274,7 @@ fn a_review_offer_waits_for_a_check_reminder_and_comes_next() {
             .as_str()
             .map(str::to_owned)
     };
+    approved_plan(&repo);
     let call = json!({"tool_name": "Bash", "tool_input": {"command": "sh ./write.sh"}});
     hook("claude", "before-tool", &repo, call.clone());
     repo.write("engine/a.rs", "fn a() { b() }\n");
@@ -475,4 +497,112 @@ fn a_planned_ticket_holds_file_edits_until_the_user_approves_its_plan() {
         json!({"source": "startup"}),
     );
     assert!(!before("claude", &repo, "Edit", edit).starts_with("deny "));
+}
+
+/// The reason a turn-end hook holds the stop with, `None` when it lets the turn end. Claude
+/// Code continues the turn with it as context, Cursor with a follow-up message, Codex with a
+/// blocking reason.
+fn held_stop(host: &str, repo: &Repo) -> Option<String> {
+    let output = hook(host, "turn-end", repo, json!({}));
+    let reason = match output["decision"].as_str() {
+        Some("block") => output["reason"].as_str(),
+        _ => output["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .or(output["followup_message"].as_str()),
+    };
+    reason
+        .filter(|reason| reason.contains("Craft stop review"))
+        .map(str::to_owned)
+}
+
+/// A shell command passes the hold on edit tools: the stop names what it changed in the
+/// repository while the plan waits for approval, once, and nothing once the plan is approved,
+/// for files elsewhere, or for files that were already changed when the plan was chosen.
+#[test]
+fn a_stop_names_repository_changes_made_while_the_plan_awaits_approval() {
+    let repo = Repo::new(
+        "ticket-unapproved",
+        &[
+            (".craft/project.json", PROJECT),
+            ("engine/a.rs", "fn a() {}\n"),
+            ("engine/b.rs", "fn b() {}\n"),
+        ],
+    );
+    for host in ["claude", "codex"] {
+        hook(host, "session-start", &repo, json!({"source": "startup"}));
+    }
+    // Already changed before the user chose to plan first: not the plan's change.
+    repo.write("engine/b.rs", "fn b() { 1 }\n");
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        ISSUE,
+        "--accept",
+        "plan",
+        "--session",
+        "S1",
+    ])
+    .unwrap();
+    // Cursor tells no session's writes from others': only the baseline keeps engine/b.rs out.
+    assert_eq!(held_stop("cursor", &repo), None, "nothing changed since");
+
+    let call =
+        json!({"tool_name": "Bash", "tool_input": {"command": "sed -i '' s/a/c/ engine/a.rs"}});
+    hook("claude", "before-tool", &repo, call.clone());
+    repo.write("engine/a.rs", "fn c() {}\n");
+    let outside = repo.root.with_extension("inputs").join("scratch.txt");
+    std::fs::create_dir_all(outside.parent().unwrap()).unwrap();
+    std::fs::write(&outside, "notes").unwrap();
+    hook("claude", "after-tool", &repo, call);
+    let reason = held_stop("claude", &repo).expect("the stop is held");
+    assert!(
+        reason.contains("engine/a.rs changed while edits wait for approval"),
+        "{reason}"
+    );
+    assert!(
+        reason.contains("plan issue-145 is not recorded yet"),
+        "{reason}"
+    );
+    assert!(reason.contains("--accept direct"), "{reason}");
+    assert!(!reason.contains("engine/b.rs"), "{reason}");
+    assert!(!reason.contains("scratch"), "{reason}");
+    assert_eq!(held_stop("claude", &repo), None, "said once per change");
+
+    // Codex: a further change is named the same way.
+    let call = json!({"tool_name": "shell", "tool_input": {"command": "./write.sh"}});
+    hook("codex", "before-tool", &repo, call.clone());
+    repo.write("engine/a.rs", "fn d() {}\n");
+    hook("codex", "after-tool", &repo, call);
+    let codex = held_stop("codex", &repo).expect("codex holds the stop");
+    assert!(
+        codex.contains("engine/a.rs changed while edits wait for approval"),
+        "{codex}"
+    );
+
+    // Approved: a change goes unreported by this check.
+    approved_plan(&repo);
+    let call = json!({"tool_name": "Bash", "tool_input": {"command": "./write.sh"}});
+    hook("claude", "before-tool", &repo, call.clone());
+    repo.write("engine/a.rs", "fn e() {}\n");
+    hook("claude", "after-tool", &repo, call);
+    let after = held_stop("claude", &repo).unwrap_or_default();
+    assert!(!after.contains("wait for approval"), "{after}");
+
+    // Implementing directly: nothing waits.
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        ISSUE,
+        "--accept",
+        "direct",
+        "--session",
+        "S1",
+    ])
+    .unwrap();
+    let call = json!({"tool_name": "Bash", "tool_input": {"command": "./write.sh"}});
+    hook("claude", "before-tool", &repo, call.clone());
+    repo.write("engine/a.rs", "fn f() {}\n");
+    hook("claude", "after-tool", &repo, call);
+    let direct = held_stop("claude", &repo).unwrap_or_default();
+    assert!(!direct.contains("wait for approval"), "{direct}");
 }
