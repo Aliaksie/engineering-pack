@@ -176,6 +176,12 @@ fn captured_output_limits_and_failure_are_distinct() {
             .unwrap_err()
             .contains("output exceeds bound")
     );
+    assert!(overflowed(
+        &capture("Test", shell("printf abcd"), 3, Duration::from_secs(2)).unwrap_err()
+    ));
+    assert!(!overflowed(
+        &capture("Test", shell("sleep 5"), 3, Duration::from_millis(50)).unwrap_err()
+    ));
     assert_eq!(
         capture("Test", shell("exit 1"), 3, Duration::from_secs(2)).unwrap(),
         None

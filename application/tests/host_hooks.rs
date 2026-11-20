@@ -1827,3 +1827,87 @@ fn a_codex_session_hears_once_how_many_earlier_sessions_ran_without_craft_hooks(
     let again = support::codex_started(root, &home, "S-next");
     assert!(!said(&again), "said once: {again}");
 }
+
+/// A stop whose Git query does not answer in time says nothing and records nothing: the next
+/// stop still reviews the same change instead of taking it as reviewed.
+#[cfg(unix)]
+#[test]
+fn a_stop_that_cannot_read_git_leaves_its_change_to_the_next_stop() {
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
+    let fixture = project(
+        "stop-unread",
+        Some(r#"{"formatVersion":1,"routing":{"debtMarkers":true}}"#),
+    );
+    let root = &fixture.0;
+    fs::remove_dir_all(root.join(".git")).unwrap();
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+    };
+    fs::write(root.join("a.ts"), "export const a = 1\n").unwrap();
+    git(&["init", "-q"]);
+    git(&["add", "a.ts"]);
+    git(&["commit", "-qm", "init"]);
+    lifecycle(root, "session-start", json!({}));
+    tool_call(root, json!({}), || {
+        fs::write(root.join("a.ts"), "// TODO: later\nexport const a = 2\n").unwrap()
+    });
+
+    // A Git whose `diff` outlives the runtime's Git timeout.
+    let real = std::process::Command::new("sh")
+        .args(["-c", "command -v git"])
+        .output()
+        .unwrap();
+    let real = String::from_utf8(real.stdout).unwrap().trim().to_owned();
+    let slow = root.with_extension("slow-git");
+    fs::create_dir_all(&slow).unwrap();
+    let wrapper = slow.join("git");
+    fs::write(
+        &wrapper,
+        format!("#!/bin/sh\ncase \" $* \" in *\" diff \"*) sleep 8;; esac\nexec '{real}' \"$@\"\n"),
+    )
+    .unwrap();
+    fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    let path = format!("{}:{}", slow.display(), std::env::var("PATH").unwrap());
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args(["hook", "claude", "turn-end"])
+        .args(["--package", "craft-delivery", "--handler", "deliver"])
+        .env("PATH", path)
+        .env("CRAFT_EVIDENCE_WARM", "0")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let payload = json!({"session_id": "S-1", "cwd": root, "hook_event_name": "Stop"});
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(payload.to_string().as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    let said = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "{output:?}");
+    assert!(!said.contains("TODO"), "{said}");
+    let _ = fs::remove_dir_all(&slow);
+
+    let decision = lifecycle(root, "turn-end", json!({}));
+    let findings = decision["stop"]["findings"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        findings
+            .iter()
+            .any(|f| f["file"] == "a.ts" && f["rule"] == "todo-marker"),
+        "{decision}"
+    );
+}

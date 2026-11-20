@@ -283,6 +283,14 @@ fn listed(csv: &[u8]) -> Option<std::collections::HashSet<u32>> {
     (!pids.is_empty()).then_some(pids)
 }
 
+const OVERFLOW: &str = "output exceeds bound";
+
+/// Whether a capture error says the output outgrew its bound: an answer that repeats, unlike
+/// a process that could not start or did not complete in time.
+pub fn overflowed(error: &str) -> bool {
+    error.ends_with(OVERFLOW)
+}
+
 fn capture(
     what: &str,
     command: Command,
@@ -330,7 +338,7 @@ fn capture_status(
             // that instead of polling for it.
             match rx.recv_timeout(timeout.saturating_sub(start.elapsed())) {
                 Ok(Ok(bytes)) if bytes.len() <= max_bytes => output = Some(bytes),
-                Ok(Ok(_)) => break Err(format!("{what} failed: output exceeds bound")),
+                Ok(Ok(_)) => break Err(format!("{what} failed: {OVERFLOW}")),
                 Ok(Err(error)) => break Err(format!("{what} failed: {error}")),
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
                     break Err(format!("{what} reader failed"));
