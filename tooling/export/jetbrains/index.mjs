@@ -3,10 +3,12 @@ import path from 'node:path';
 import { emitBundle } from '../agents/index.mjs';
 import { frontmatter } from '../../lib/capabilities.mjs';
 import { rewriteLinks, sessionAdvice, write } from '../export.mjs';
+import { planningSupport } from '../../../hosts/capabilities.mjs';
 
 export function emit(item, packages, output, adapterRoot) {
   const result = emitBundle(item, packages, output, adapterRoot);
-  return { ...result, adapter: 'jetbrains', sessionAdvice: sessionAdvice('jetbrains', item.manifest.name) };
+  return { ...result, adapter: 'jetbrains', sessionAdvice: sessionAdvice('jetbrains', item.manifest.name),
+    planningSupport: planningSupport('jetbrains') };
 }
 export function finish(packages, output) {
   const item = packages.find(({ manifest }) => manifest.name === 'craft-engineering');

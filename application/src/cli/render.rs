@@ -484,6 +484,7 @@ fn approval_line(approval: &Value) -> Option<String> {
     let by = match approval["source"].as_str()? {
         "user" => "approved by the user",
         "agent" => "approval reported by the agent",
+        "host-observed" => "approved by the user in the host's question",
         _ => "approved, source unknown",
     };
     let state = if approval["current"] == true {
@@ -951,6 +952,11 @@ mod tests {
             "Approval: revision 2 approval reported by the agent; the plan changed since and needs approval again"
         );
         assert!(line("unknown", true).unwrap().contains("source unknown"));
+        assert!(
+            line("host-observed", true)
+                .unwrap()
+                .contains("approved by the user in the host's question")
+        );
         assert_eq!(approval_line(&Value::Null), None);
     }
 }

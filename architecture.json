@@ -32,8 +32,8 @@
     },
     "hosts": {
       "kind": "host-adapter",
-      "responsibility": "Host hook mapping, session and feature capability tables read by the build and embedded in craft.",
-      "allow": ["*.mjs", "capabilities.json", "hooks.json", "session.json"],
+      "responsibility": "Host hook mapping, session, feature and planning capability tables read by the build and embedded in craft.",
+      "allow": ["*.mjs", "capabilities.json", "hooks.json", "planning.json", "session.json"],
       "maxFileLines": 300,
       "dependsOn": [],
       "shipped": false

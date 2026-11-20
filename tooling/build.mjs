@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { synchronizeVersion } from './version.mjs';
 import { files, loadCapabilities } from './lib/capabilities.mjs';
 import { setupControls } from '../hosts/onboarding.mjs';
-import { featureSupport } from '../hosts/capabilities.mjs';
+import { featureSupport, planningSupport } from '../hosts/capabilities.mjs';
 
 import { copy, rewriteLinks, skillName, write, writeJson } from './export/export.mjs';
 import * as claude from './export/claude/index.mjs';
@@ -45,7 +45,8 @@ export function build(repo, target) {
       fs.appendFileSync(path.join(destination, 'AGENTS.md'), `\n${setupNotice(adapter.hooks, setupControls(target))}\n`);
       const setup = {
         formatVersion: 1, adapter: target, hooks: adapter.hooks, sessionAdvice: adapter.sessionAdvice,
-        controls: setupControls(target), featureSupport: featureSupport(target)
+        controls: setupControls(target), featureSupport: featureSupport(target),
+        planningSupport: planningSupport(target)
       };
       writeJson(destination, 'SETUP.json', setup);
       // First-use notices need small adapter facts, not the full feature support matrix.

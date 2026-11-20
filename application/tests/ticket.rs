@@ -721,3 +721,222 @@ fn a_plan_approval_names_whether_the_user_gave_it_or_the_agent_reported_it() {
         "{legacy}"
     );
 }
+
+/// The user's answer to the host's question tool, as Claude Code reports it after the tool ran.
+fn answered(host: &str, repo: &Repo, question: &str, answer: &str) {
+    let asked = json!([{"question": question, "header": "Plan", "multiSelect": false,
+        "options": [{"label": "Approve", "description": "Implement it"},
+                    {"label": "Change the plan", "description": "Revise it first"}]}]);
+    hook(
+        host,
+        "after-tool",
+        repo,
+        json!({"hook_event_name": "PostToolUse", "tool_name": "AskUserQuestion",
+            "tool_input": {"questions": asked},
+            "tool_response": {"questions": asked, "answers": {question: answer}, "annotations": {}}}),
+    );
+}
+
+#[test]
+fn the_users_answer_to_the_hosts_question_approves_the_plan_revision_it_showed() {
+    let repo = Repo::new(
+        "ticket-host-approval",
+        &[
+            (".craft/project.json", PROJECT),
+            ("engine/a.rs", "fn a() {}\n"),
+        ],
+    );
+    let ticket = |extra: &[&str]| {
+        let mut args = vec!["ticket", "--ticket", ISSUE, "--session", "S1"];
+        args.extend(extra);
+        repo.cli(&args)
+    };
+    let approval = || {
+        repo.cli(&["plan", "--plan", "issue-145", "--session", "S1", "--json"])
+            .unwrap()["approval"]
+            .clone()
+    };
+    let edit = json!({"file_path": "engine/a.rs", "old_string": "a", "new_string": "b"});
+    // The session's hook sees the agent record the user's choice: the host's question is the
+    // one approval path, and no approval command is asked for.
+    let accept = format!("craft ticket --ticket {ISSUE} --accept plan --session S1 --host claude");
+    assert!(!before("claude", &repo, "Bash", json!({"command": accept})).starts_with("deny "));
+    let accepted = ticket(&["--accept", "plan", "--host", "claude"]).unwrap();
+    let next = accepted["next"].as_str().unwrap();
+    assert!(
+        next.contains(
+            "ask with AskUserQuestion the question \"Approve plan issue-145 revision <revision>?\""
+        ),
+        "{next}"
+    );
+    assert!(next.contains("run no approval command"), "{next}");
+    assert!(!next.contains("--approve"), "{next}");
+    assert!(next.contains("craft task-start"), "{next}");
+
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [{"id": "a", "goal": "Change a"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "issue-145",
+        "--goal",
+        "Ship",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+    let held = before("claude", &repo, "Edit", edit.clone());
+    assert!(held.starts_with("deny "), "{held}");
+    assert!(
+        held.contains("Approve plan issue-145 revision 1?"),
+        "{held}"
+    );
+    assert!(!held.contains("--approve"), "{held}");
+
+    // Another answer, another revision or another plan approves nothing.
+    let question = "Approve plan issue-145 revision 1?";
+    answered("claude", &repo, question, "Change the plan");
+    answered(
+        "claude",
+        &repo,
+        "Approve plan issue-145 revision 2?",
+        "Approve",
+    );
+    answered(
+        "claude",
+        &repo,
+        "Approve plan issue-146 revision 1?",
+        "Approve",
+    );
+    assert!(before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+    assert_eq!(approval(), Value::Null);
+
+    // The approving answer to the revision shown is recorded as the host observed it.
+    answered("claude", &repo, question, "Approve");
+    assert!(!before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+    assert_eq!(
+        approval(),
+        json!({"revision": 1, "source": "host-observed", "current": true})
+    );
+    // An agent's approval command afterwards does not replace the user's own answer.
+    let approve = format!("craft ticket --ticket {ISSUE} --approve --session S1");
+    assert!(!before("claude", &repo, "Bash", json!({"command": approve})).starts_with("deny "));
+    let again = ticket(&["--approve"]).unwrap();
+    assert_eq!(again["approved"]["source"], "host-observed", "{again}");
+
+    // A plan changed after the answer waits for a new one, named as the user's.
+    let added = repo.input(
+        "added.json",
+        &json!({"tasks": [{"id": "b", "goal": "Test a"}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "1",
+        "--data",
+        &added,
+    ])
+    .unwrap();
+    let changed = before("claude", &repo, "Edit", edit.clone());
+    assert!(
+        changed.contains("changed since the user approved it in the host's question"),
+        "{changed}"
+    );
+    assert!(
+        changed.contains("Approve plan issue-145 revision 2?"),
+        "{changed}"
+    );
+    // The earlier revision's answer, given late, does not approve the changed plan.
+    answered("claude", &repo, question, "Approve");
+    assert!(before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+    // The agent's earlier command was consumed: the user's own run is the user's approval.
+    let own = ticket(&["--approve"]).unwrap();
+    assert_eq!(own["approved"]["source"], "user", "{own}");
+    assert!(!before("claude", &repo, "Edit", edit.clone()).starts_with("deny "));
+    // A host-observed answer to a later revision is recorded as the host saw it.
+    let more = repo.input(
+        "more.json",
+        &json!({"tasks": [{"id": "c", "goal": "Document a"}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "2",
+        "--data",
+        &more,
+    ])
+    .unwrap();
+    answered(
+        "claude",
+        &repo,
+        "Approve plan issue-145 revision 3?",
+        "Approve (Recommended)",
+    );
+    assert!(!before("claude", &repo, "Edit", edit).starts_with("deny "));
+    assert_eq!(approval()["source"], "host-observed");
+}
+
+#[test]
+fn a_host_whose_question_craft_cannot_observe_keeps_the_approval_command() {
+    let repo = Repo::new(
+        "ticket-command-approval",
+        &[
+            (".craft/project.json", PROJECT),
+            ("engine/a.rs", "fn a() {}\n"),
+        ],
+    );
+    let accept = format!("craft ticket --ticket {ISSUE} --accept plan --session S1 --host codex");
+    before("codex", &repo, "Bash", json!({"command": accept}));
+    let accepted = repo
+        .cli(&[
+            "ticket",
+            "--ticket",
+            ISSUE,
+            "--session",
+            "S1",
+            "--accept",
+            "plan",
+            "--host",
+            "codex",
+        ])
+        .unwrap();
+    let next = accepted["next"].as_str().unwrap();
+    assert!(
+        next.contains(&format!(
+            "craft ticket --ticket {ISSUE} --approve --session S1"
+        )),
+        "{next}"
+    );
+    assert!(!next.contains("Approve plan issue-145"), "{next}");
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [{"id": "a", "goal": "Change a"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "issue-145",
+        "--goal",
+        "Ship",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+    // A question tool's answer on a host whose table keeps the command path records nothing.
+    answered(
+        "codex",
+        &repo,
+        "Approve plan issue-145 revision 1?",
+        "Approve",
+    );
+    let edit = json!({"file_path": "engine/a.rs", "old_string": "a", "new_string": "b"});
+    let held = before("codex", &repo, "Edit", edit);
+    assert!(held.starts_with("deny "), "{held}");
+    assert!(held.contains("--approve --session S1"), "{held}");
+}

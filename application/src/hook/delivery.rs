@@ -50,6 +50,8 @@ pub struct Event<'a> {
     pub stop_active: bool,
     /// The runner's verdict on a test command the host just ran.
     pub test_run: Option<&'a Value>,
+    /// The questions the host's approval tool asked and the user's answers.
+    pub answers: Option<&'a Value>,
 }
 
 /// The project-relative form of a tool path, resolved against the hook's working
@@ -141,6 +143,16 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     if let ("before-tool", Some(session)) =
         (event.lifecycle, event.session.filter(|s| !s.is_empty()))
         && crate::ticket::tool_seen(event.root, session, event.command).is_err()
+    {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+    }
+    // The user answered the host's own approval question: the approval of the plan revision
+    // it named is recorded as the host observed it.
+    if let ("after-tool", Some(session), Some(answers)) = (
+        event.lifecycle,
+        event.session.filter(|s| !s.is_empty()),
+        event.answers,
+    ) && crate::ticket::answered(event.root, session, answers).is_err()
     {
         recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
     }

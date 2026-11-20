@@ -215,23 +215,70 @@ fn accept(
             ticket::plan_reference(reference)
         ),
     };
+    let observed = host.and_then(|host| observed_approval_tool(host, &record));
     let next = format!(
         "{write} Then {} Edits wait for that approval.",
-        approval_step(reference, session, host)
+        approval_step(
+            reference,
+            session,
+            &plan,
+            saved.as_ref().and_then(|s| s["revision"].as_u64()),
+            host,
+            observed.as_deref()
+        )
     );
     Ok(
         json!({"ticket": reference, "delivery": choice, "recorded": true, "plan": plan, "next": next}),
     )
 }
 
-/// How the agent gets and records the user's approval of the plan on this host.
-fn approval_step(reference: &str, session: &str, host: Option<&str>) -> String {
+/// The host's own tool whose answer Craft records as the plan's approval in this session: the
+/// planning table makes the host's path active and the session's hooks are seen to run.
+/// Otherwise the approval is recorded by command.
+fn observed_approval_tool(host: &str, record: &Value) -> Option<String> {
+    (record[HOOKS_SEEN] == true)
+        .then(|| crate::hook::host_path(host, "approval"))
+        .flatten()
+}
+
+/// How the agent gets the user's approval of the plan on this host and how it is recorded:
+/// from the answer to the host's own question when Craft observes it (`observed`), otherwise
+/// by the agent's command. One path only, so the agent is never asked for both.
+fn approval_step(
+    reference: &str,
+    session: &str,
+    plan: &str,
+    revision: Option<u64>,
+    host: Option<&str>,
+    observed: Option<&str>,
+) -> String {
+    if let Some(tool) = observed {
+        let (question, named) = match revision {
+            Some(revision) => (ticket::approval_question(plan, revision), ""),
+            None => (
+                ticket::approval_question(plan, "<revision>"),
+                " with the plan's current revision",
+            ),
+        };
+        return format!(
+            "show the user the plan and ask with {tool} the question \"{question}\"{named}, options \"{}\" and \"Change the plan\", unless they already approved this revision. Craft records the approval from their answer; run no approval command. Once it is approved: {}",
+            ticket::APPROVE,
+            implement_step(session, plan)
+        );
+    }
     let asked = match host.and_then(crate::hook::question_tool) {
         Some(tool) => format!("ask the user with {tool} to approve the plan"),
         None => "ask the user in your reply to approve the plan".to_owned(),
     };
     format!(
         "show the user the plan and {asked}, unless they already approved this plan; with their approval run `craft ticket --ticket {reference} --approve --session {session}`."
+    )
+}
+
+/// How the approved plan is implemented, task by task, and the review offered at the end.
+fn implement_step(session: &str, plan: &str) -> String {
+    format!(
+        "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --target \"<task>\" --approach \"<how>\" --evidence \"<check run>\" --outcome passed --result \"<what changed>\" --complete`. When the change is done, offer the user a review with craft-delivery:review-code before reporting it complete."
     )
 }
 
@@ -258,6 +305,22 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     let digest = craft_engine::plan::approval(&saved).ok_or_else(|| {
         format!("plan {plan} has no tasks to approve; add them with `craft plan-update`")
     })?;
+    let next = implement_step(session, &plan);
+    // The user's answer the host showed already approved the plan as it stands: an agent's
+    // command does not replace it with its report. The agent's run is consumed all the same,
+    // so it never labels a later approval.
+    if record["approved"]["digest"] == digest.as_str()
+        && ticket::approval_source(&record["approved"]) == ticket::HOST_OBSERVED
+    {
+        if let Some(fields) = record.as_object_mut()
+            && fields.remove(AGENT_APPROVAL).is_some()
+        {
+            state::write(&file, &record, RECORD_BYTES, false)?;
+        }
+        return Ok(
+            json!({"ticket": reference, "plan": plan, "approved": record["approved"], "next": next}),
+        );
+    }
     let source = ticket::command_source(
         record.get(AGENT_APPROVAL).is_some(),
         record[HOOKS_SEEN] == true,
@@ -269,9 +332,6 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     record["approved"] = json!({"revision": saved["revision"], "digest": digest,
         "source": source, "at": crate::telemetry::now_ms()});
     state::write(&file, &record, RECORD_BYTES, false)?;
-    let next = format!(
-        "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --outcome passed --result \"<what changed>\" --next \"<next>\" --complete`. When the change is done, offer the user a review with craft-delivery:review-code before reporting it complete."
-    );
     Ok(json!({"ticket": reference, "plan": plan, "approved": record["approved"], "next": next}))
 }
 
@@ -285,13 +345,23 @@ const AGENT_APPROVAL: &str = "agentApproval";
 /// Before one of the session's tool calls runs: what its hook sees of who approves the plan
 /// of a ticket delivered plan first. A session without such a ticket keeps no record.
 pub(crate) fn tool_seen(root: &Path, session: &str, command: Option<&str>) -> Result<(), Failure> {
+    // The agent records the user's delivery choice: the step it is told next depends on
+    // whether this session's hooks run, so the record keeps that they do.
+    let accepting = command.is_some_and(ticket::accept_command);
     // A session with no state yet has no ticket record.
-    let Ok(file) = record_file(root, session, false) else {
+    let Ok(file) = record_file(root, session, accepting) else {
         return Ok(());
     };
     let mut record = read_record(&file, RECORD_BYTES)?;
     if record["delivery"] != "plan" {
-        return Ok(());
+        if !accepting || record[HOOKS_SEEN] == true {
+            return Ok(());
+        }
+        if record.is_null() {
+            record = json!({"formatVersion": 1});
+        }
+        record[HOOKS_SEEN] = json!(true);
+        return Ok(state::write(&file, &record, RECORD_BYTES, false)?);
     }
     let agent = command.is_some_and(ticket::approval_command);
     if record[HOOKS_SEEN] == true && !agent {
@@ -301,6 +371,35 @@ pub(crate) fn tool_seen(root: &Path, session: &str, command: Option<&str>) -> Re
     if agent {
         record[AGENT_APPROVAL] = json!(crate::telemetry::now_ms());
     }
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// After the host's own approval question ran: the user's answer approving the revision of
+/// the session's ticket plan it named is recorded as observed by the host. An answer for a
+/// revision the plan has moved past, another answer or another plan records nothing.
+pub(crate) fn answered(root: &Path, session: &str, answers: &Value) -> Result<(), Failure> {
+    let Ok(file) = record_file(root, session, false) else {
+        return Ok(());
+    };
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    let Some(plan) = record["plan"]
+        .as_str()
+        .filter(|_| record["delivery"] == "plan")
+    else {
+        return Ok(());
+    };
+    let Some(revision) = ticket::observed_approval(answers, plan) else {
+        return Ok(());
+    };
+    let Some(saved) = crate::plan::read(root, plan)? else {
+        return Ok(());
+    };
+    let digest = craft_engine::plan::approval(&saved);
+    let Some(digest) = digest.filter(|_| saved["revision"].as_u64() == Some(revision)) else {
+        return Ok(());
+    };
+    record["approved"] = json!({"revision": revision, "digest": digest,
+        "source": ticket::HOST_OBSERVED, "at": crate::telemetry::now_ms()});
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
@@ -356,9 +455,18 @@ pub(crate) fn awaiting(root: &Path, session: &str, host: &str) -> Option<Due> {
             ticket::approved_by(ticket::approval_source(&record["approved"]))
         ),
     };
+    let observed = observed_approval_tool(host, &record);
+    let revision = saved.as_ref().and_then(|s| s["revision"].as_u64());
     let next = format!(
         "Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",
-        approval_step(reference, session, Some(host))
+        approval_step(
+            reference,
+            session,
+            plan,
+            revision,
+            Some(host),
+            observed.as_deref()
+        )
     );
     Some(Due { why, next })
 }

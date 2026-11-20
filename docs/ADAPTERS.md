@@ -1,7 +1,7 @@
 # Host adapters and hook support
 
 `tooling/export/` builds one bundle per host from `packages/`; `hosts/` holds the hook,
-session and feature tables the build reads and `craft` embeds. Every bundle carries the native
+session, feature and planning tables the build reads and `craft` embeds. Every bundle carries the native
 runtime and reports per-feature support in `SETUP.json` and `adapter-report.json`; missing host
 capabilities are reported as unsupported, not simulated. Installation is in
 [INSTALL](INSTALL.md); worker, review and compaction controls are [native phases](HOST-CONTROL.md)
@@ -84,6 +84,27 @@ Failure behavior:
   names are normalized, so the read-only review policy also covers them.
 - Context and observational handlers stay advisory and exit 0 on failure.
 - Set `checkpoint.enabled` to `false` to turn off milestone snapshots.
+
+## Host planning features
+
+Hosts have their own question tools, plan approvals and in-session task lists. For each host,
+`hosts/planning.json` records, per responsibility (`question`, `approval`, `tasks`), the host's
+feature and tool, what Craft can observe of it with its evidence (`observed`, `documented`,
+`unverified`, `none`), what Craft can control, and the one active `path`: `host` or Craft's
+`command`. The table is listed as `planningSupport` in `SETUP.json` and `adapter-report.json`.
+A host path needs a tool the hooks can name and observation evidence; everywhere else Craft's
+command stays the one path.
+
+| Host | Question | Plan approval | Task progress |
+|---|---|---|---|
+| Claude Code | host: `AskUserQuestion` (documented) | host: the user's answer to the plan's question (documented) | command: `task-step`; task list payload unverified |
+| Codex | command: asked in the reply | command: `ticket --approve` | command: `task-step`; `update_plan` in hooks unverified |
+| Copilot CLI, Gemini CLI | command | command | command; unverified |
+| Cursor | command | command | command; no hook sees the list |
+| JetBrains, Gemini extension, AGENTS | command | command | command; no hooks |
+
+Edits wait for the approval on every host whose hooks can refuse a tool, whichever path
+records it.
 
 ## Repository instructions
 
