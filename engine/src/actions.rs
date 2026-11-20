@@ -346,7 +346,14 @@ fn offer<'a>(
         .and_then(|id| state["recommendations"].get(id))
         .filter(|offer| truthy(*offer));
     let offer = known.ok_or("unknown action proposal")?;
-    if offer.get("source") != Some(&session::source(repository))
+    let current = session::source(repository);
+    // Source that cannot be observed is not changed source.
+    if current.is_null() && offer.get("source").is_some_and(|source| !source.is_null()) {
+        return Err(
+            "action proposal cannot be confirmed; repository source could not be observed".into(),
+        );
+    }
+    if offer.get("source") != Some(&current)
         || offer.get("policy") != Some(&json!(digest(settings)))
     {
         return Err("action proposal is stale; source or effective policy changed".into());

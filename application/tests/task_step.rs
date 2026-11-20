@@ -172,3 +172,53 @@ fn the_bundled_executable_finds_its_package_without_the_launcher() {
     assert_eq!(stepped.0, Some(0), "{}", stepped.1);
     let _ = fs::remove_dir_all(package.parent().unwrap());
 }
+
+/// When Git does not say which checkout is current in time, the task binding is reported as
+/// unconfirmed, not as missing: the agent is not told to start the task again.
+#[cfg(unix)]
+#[test]
+fn a_binding_git_cannot_confirm_is_not_reported_missing() {
+    let repo = Repo::new("step-unread", &[("file.txt", "source")]);
+    repo.cli(&[
+        "task-start",
+        "--session",
+        SESSION,
+        "--task",
+        "T1",
+        "--goal",
+        "Check binding",
+    ])
+    .unwrap();
+    let slow = repo.root.with_extension("slow-git");
+    let path = support::slow_git(&slow, "--symbolic-full-name HEAD");
+    let output = Command::new(env!("CARGO_BIN_EXE_craft"))
+        .args([
+            "task-step",
+            "--root",
+            repo.path(),
+            "--session",
+            SESSION,
+            "--task",
+            "T1",
+        ])
+        .args([
+            "--stage",
+            "verify",
+            "--target",
+            "binding",
+            "--approach",
+            "check",
+        ])
+        .args(["--evidence", "checks:current", "--outcome", "passed"])
+        .args(["--result", "Checked", "--next", "Review"])
+        .args(["--bundle", &support::bundle()])
+        .env("PATH", path)
+        .env_remove("CRAFT_PACKAGE_ROOT")
+        .output()
+        .unwrap();
+    let _ = fs::remove_dir_all(&slow);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success());
+    assert!(stderr.contains("could not be confirmed"), "{stderr}");
+    assert!(!stderr.contains("task-start"), "{stderr}");
+}

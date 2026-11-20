@@ -42,6 +42,10 @@ fn frozen_action_contracts() {
         let correction = match case["id"].as_str().unwrap() {
             "33" | "37" | "41" | "45" => Some("worker execution uses the shared worker controller"),
             "legacy:action-finish:empty" => Some("unknown action execution"),
+            // An unobservable repository is not a changed source.
+            "55" => {
+                Some("action proposal cannot be confirmed; repository source could not be observed")
+            }
             _ => None,
         };
         let matches = match &result {

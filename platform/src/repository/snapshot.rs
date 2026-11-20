@@ -31,8 +31,16 @@ fn git(root: &Path, args: &[&str], max_bytes: usize) -> Option<String> {
 
 /// The symbolic ref of `HEAD` (`HEAD` when detached), or `null`.
 pub fn checkout(root: &Path) -> Value {
-    git(root, &["rev-parse", "--symbolic-full-name", "HEAD"], 16384)
-        .map_or(Value::Null, |text| json!(text.trim()))
+    checkout_of(root).unwrap_or(Value::Null)
+}
+
+/// [`checkout`], or `None` when Git gave no answer: it could not start or did not complete.
+fn checkout_of(root: &Path) -> Option<Value> {
+    match process::git(root, &["rev-parse", "--symbolic-full-name", "HEAD"], 16384) {
+        Ok(Some(bytes)) => Some(json!(String::from_utf8_lossy(&bytes).trim())),
+        Ok(None) => Some(Value::Null),
+        Err(_) => None,
+    }
 }
 
 fn hex(text: &str) -> bool {
@@ -525,9 +533,14 @@ fn workspace_of(
     checkout_only: bool,
     earlier: bool,
 ) -> Result<Value, SearchError> {
+    // A checkout Git gave no answer for is marked `checkoutUnread`: its `null` is not the
+    // `null` of a directory without Git.
     let Some(repositories) = repositories else {
         return Ok(if checkout_only {
-            json!({"checkout": checkout(root)})
+            match checkout_of(root) {
+                Some(checkout) => json!({"checkout": checkout}),
+                None => json!({"checkout": null, "checkoutUnread": true}),
+            }
         } else {
             state_of(root, earlier)
         });
@@ -535,11 +548,22 @@ fn workspace_of(
     let scopes = repository::scopes(repositories)?;
     let roots = roots(root, &scopes)?;
     if checkout_only {
+        let mut unread = false;
         let entries: Vec<_> = roots
             .iter()
-            .map(|(path, root)| (path.clone(), checkout(root)))
+            .map(|(path, root)| {
+                let checkout = checkout_of(root).unwrap_or_else(|| {
+                    unread = true;
+                    Value::Null
+                });
+                (path.clone(), checkout)
+            })
             .collect();
-        return Ok(json!({"checkout": repository::checkout(&entries)}));
+        let mut current = json!({"checkout": repository::checkout(&entries)});
+        if unread {
+            current["checkoutUnread"] = json!(true);
+        }
+        return Ok(current);
     }
     let entries: Vec<Value> = roots
         .iter()

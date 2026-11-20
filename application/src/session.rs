@@ -48,13 +48,20 @@ pub fn active_task(root: &Path, session: Option<&str>) -> Result<Option<String>,
         .and_then(|binding| binding["task"].as_str().map(str::to_string)))
 }
 
-/// The binding of `session` for the current checkout: its task, and its plan if any.
+const UNCONFIRMED: &str =
+    "Git did not answer in time; the task binding to the current checkout could not be confirmed";
+
+/// The binding of `session` for the current checkout: its task, and its plan if any. An
+/// error, not `None`, when Git gave no answer about the checkout.
 pub fn active_binding(root: &Path, session: &str) -> Result<Option<Value>, Failure> {
     let saved = read_record(&binding_file(root, session, false)?, BINDING_BYTES)?;
     let Some(binding) = session::binding(&saved, None)? else {
         return Ok(None);
     };
     let current = snapshot::workspace(root, binding.get("repositories"), true)?;
+    if current["checkoutUnread"] == true {
+        return Err(UNCONFIRMED.into());
+    }
     Ok(session::binding(&binding, Some(&current["checkout"]))?)
 }
 

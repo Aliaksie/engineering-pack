@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When Git does not answer in time, commands that need the session's task binding fail with
+  "Git did not answer in time; the task binding to the current checkout could not be
+  confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an
+  action proposal says the repository source could not be observed instead of calling the
+  proposal stale.
 - When Git answers too slowly for Craft to read the repository, the source is no longer
   reported as changed. A `task-step` recorded without a readable source leaves the task's
   freshness unknown instead of stale, and a checkpoint is refused with "Source could not be

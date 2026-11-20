@@ -345,3 +345,26 @@ pub fn codex_session(home: &Path, id: &str, cwd: &Path, turned: bool) {
     let stamp = started[..19].replace(':', "-");
     fs::write(day.join(format!("rollout-{stamp}-{id}.jsonl")), text).unwrap();
 }
+
+/// A `PATH` whose first `git` sleeps past the runtime's Git timeout whenever its arguments
+/// contain `words`, and otherwise runs the real Git. The wrapper lives in `dir`.
+#[cfg(unix)]
+pub fn slow_git(dir: &Path, words: &str) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    let real = Command::new("sh")
+        .args(["-c", "command -v git"])
+        .output()
+        .unwrap();
+    let real = String::from_utf8(real.stdout).unwrap().trim().to_owned();
+    fs::create_dir_all(dir).unwrap();
+    let wrapper = dir.join("git");
+    fs::write(
+        &wrapper,
+        format!(
+            "#!/bin/sh\ncase \" $* \" in *\" {words} \"*) sleep 8;; esac\nexec '{real}' \"$@\"\n"
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    format!("{}:{}", dir.display(), std::env::var("PATH").unwrap())
+}
