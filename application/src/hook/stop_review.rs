@@ -402,6 +402,8 @@ pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<()
     if !record.is_object() {
         record = json!({"formatVersion": 1});
     }
+    // A `HEAD` Git gave no answer for stays `null`: the reflog's times still tell the
+    // command's commits apart.
     let heads: Map<String, Value> = checkouts(root)
         .iter()
         .map(|checkout| {
@@ -410,54 +412,144 @@ pub fn commit_started(root: &Path, session: &str, settings: &Value) -> Result<()
         })
         .collect();
     record["committing"] = Value::Object(heads);
+    record["committingAt"] = json!(crate::telemetry::now_ms() / 1000);
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
-/// After that command: each checkout whose `HEAD` moved by a commit since `commit_started`
-/// adds the commit to the session's own. A failed commit leaves `HEAD` where it was.
+/// After that command: each checkout's commits since `commit_started` join the session's own.
+/// A failed commit adds none. Where Git gave no answer, the command's time window is kept and
+/// the next stop reads it.
 pub fn commit_made(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
     if !relevant(root, session, settings) {
         return Ok(());
     }
     let file = record_file(root, session, false)?;
     let mut record = read_record(&file, RECORD_BYTES)?;
-    let Some(before) = record
-        .as_object_mut()
-        .and_then(|record| record.remove("committing"))
-    else {
+    let Some(fields) = record.as_object_mut() else {
         return Ok(());
     };
+    let Some(before) = fields.remove("committing") else {
+        return Ok(());
+    };
+    // A record an earlier version wrote has no start time: only `HEAD` tells a commit then.
+    let since = fields.remove("committingAt").and_then(|at| at.as_i64());
+    let until = crate::telemetry::now_ms() / 1000;
     let mut own: Vec<String> = own_commits(&record)
         .into_iter()
         .map(str::to_owned)
         .collect();
+    let mut pending = pending_commits(&record);
     for checkout in checkouts(root) {
-        let Some(now) = head(&checkout.directory) else {
-            continue;
-        };
-        if before[checkout.folder.as_str()].as_str() == Some(now.as_str()) {
+        let before = before[checkout.folder.as_str()].as_str();
+        if since.is_none() && before.is_none() {
             continue;
         }
-        let latest = craft_platform::process::git(
-            &checkout.directory,
-            &["reflog", "-n", "1", "--format=%H %gs", "HEAD"],
-            4096,
-        )
-        .ok()
-        .flatten()
-        .map(|line| String::from_utf8_lossy(&line).into_owned())
-        .unwrap_or_default();
-        let made = latest
-            .strip_prefix(&format!("{now} "))
-            .is_some_and(|action| action.starts_with("commit"));
-        if made && !own.contains(&now) {
-            own.push(now);
+        let window = Window {
+            folder: checkout.folder.clone(),
+            since: since.unwrap_or(0),
+            until,
+            before: before.map(str::to_owned),
+        };
+        match window.commits(&checkout.directory) {
+            Ok(made) => own.extend(made),
+            Err(Unread) => pending.push(window),
         }
     }
+    record["commits"] = json!(bounded(own));
+    let excess = pending.len().saturating_sub(PENDING_WINDOWS);
+    pending.drain(..excess);
+    match record.as_object_mut() {
+        Some(fields) if pending.is_empty() => drop(fields.remove("pendingCommits")),
+        _ => {
+            record["pendingCommits"] = json!(pending.iter().map(Window::value).collect::<Vec<_>>())
+        }
+    }
+    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+}
+
+/// How many commit commands whose commits Git could not list a record keeps for its next stop.
+const PENDING_WINDOWS: usize = 16;
+
+/// The time a commit command ran in one checkout, in seconds, and the commit `HEAD` named
+/// before it when Git said.
+struct Window {
+    folder: String,
+    since: i64,
+    until: i64,
+    before: Option<String>,
+}
+
+impl Window {
+    fn value(&self) -> Value {
+        json!({"folder": self.folder, "since": self.since, "until": self.until, "before": self.before})
+    }
+
+    /// The commits the reflog of `directory` records within the window, newest first, ending
+    /// at `before`.
+    fn commits(&self, directory: &Path) -> Result<Vec<String>, Unread> {
+        let moves = git(
+            directory,
+            &[
+                "reflog",
+                "-n",
+                REFLOG_ENTRIES,
+                "--date=unix",
+                "--format=%H %gd %gs",
+                "HEAD",
+            ],
+            STATUS_BYTES,
+        )?;
+        let Some(moves) = moves.output() else {
+            return Ok(Vec::new());
+        };
+        let mut made = Vec::new();
+        for entry in String::from_utf8_lossy(&moves).lines() {
+            let mut parts = entry.splitn(3, ' ');
+            let (Some(id), Some(at)) = (parts.next(), parts.next()) else {
+                break;
+            };
+            let Some(at) = at
+                .strip_prefix("HEAD@{")
+                .and_then(|at| at.strip_suffix('}'))
+                .and_then(|at| at.parse::<i64>().ok())
+            else {
+                break;
+            };
+            if self.before.as_deref() == Some(id) || at < self.since {
+                break;
+            }
+            let action = parts.next().unwrap_or_default();
+            if at <= self.until && action.starts_with("commit") {
+                made.push(id.to_owned());
+            }
+        }
+        Ok(made)
+    }
+}
+
+fn pending_commits(record: &Value) -> Vec<Window> {
+    record["pendingCommits"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|window| {
+            Some(Window {
+                folder: window["folder"].as_str()?.to_owned(),
+                since: window["since"].as_i64()?,
+                until: window["until"].as_i64()?,
+                before: window["before"].as_str().map(str::to_owned),
+            })
+        })
+        .collect()
+}
+
+/// The session's own commits without repeats, the latest [`OWN_COMMITS`].
+fn bounded(mut own: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    own.retain(|id| seen.insert(id.clone()));
     let excess = own.len().saturating_sub(OWN_COMMITS);
     own.drain(..excess);
-    record["commits"] = json!(own);
-    Ok(state::write(&file, &record, RECORD_BYTES, false)?)
+    own
 }
 
 /// Change the session's record under its lock. Parallel tool calls of one session write it
@@ -765,7 +857,19 @@ fn review(
         .flatten()
         .filter_map(|key| key.as_str().map(str::to_owned))
         .collect();
-    let own = own_commits(&record);
+    // Commit commands whose commits Git could not list then are read now; still unread, the
+    // stop waits for the next one.
+    let mut own: Vec<String> = own_commits(&record)
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    for window in pending_commits(&record) {
+        if let Some(checkout) = checkouts.iter().find(|c| c.folder == window.folder) {
+            own.extend(window.commits(&checkout.directory)?);
+        }
+    }
+    let own = bounded(own);
+    let own: Vec<&str> = own.iter().map(String::as_str).collect();
     let heads = heads(&checkouts)?;
     // Work the session committed since its last stop is clean now, and still its change.
     // Markers are new against the commit the last stop saw, whether or not they were
