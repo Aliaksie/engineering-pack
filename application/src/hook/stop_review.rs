@@ -12,7 +12,9 @@
 //! and the commit it stopped on, so a stop reviews only files changed since the last one, and
 //! what it was told, so the same finding never holds a stop twice. At a workspace root, a folder that is
 //! no repository itself, each member repository is read the same way and its files are named
-//! from the workspace root.
+//! from the workspace root. While a ticket's plan waits for the user's approval, files the
+//! session changed since the plan was chosen are named too: a shell command writes past the
+//! hold on edit tools.
 use crate::failure::Failure;
 use crate::project::{Checkout, checkouts};
 use crate::session::read_record;
@@ -301,13 +303,26 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
 
+/// Remember what the worktree holds when the user chooses to plan a ticket first: those files
+/// were not changed while the plan waits for approval. A worktree that cannot be read keeps
+/// no baseline.
+pub fn approval_baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
+    let secrets = Declared::of(settings);
+    let held = observed(root, &secrets, &checkouts(root)).map(|files| hashes(&files));
+    update(root, session, |record| match held {
+        Some(held) => record["beforeApproval"] = held,
+        None => drop(record.as_object_mut().map(|r| r.remove("beforeApproval"))),
+    })
+}
+
 /// Whether stops follow the session's changes: to review them, to name a declared check that
 /// covers them, or to offer the review of a planned change.
 fn relevant(root: &Path, session: &str, settings: &Value) -> bool {
     standards::stop_relevant(settings)
         || craft_engine::session::next::tracks_changes(settings)
-        // A change the user chose to plan first ends with a review offer once files changed.
-        || crate::ticket::planned(root, session).is_some()
+        // A change the user chose to plan first waits for approval of its plan and ends with a
+        // review offer once files changed.
+        || crate::ticket::plan_first(root, session)
 }
 
 /// The commits a record names as made by the session.
@@ -579,6 +594,28 @@ fn settled(root: &Path, settings: &Value, told: &Value, reviewed: &[&str]) -> Ve
         .collect()
 }
 
+/// The files of `changed` written while the session's ticket plan waits for the user's
+/// approval, with why it waits and the step that lets work go on; `None` when nothing waits or
+/// every changed file held the same content when the plan was chosen.
+fn unapproved(
+    root: &Path,
+    session: &str,
+    host: &str,
+    record: &Value,
+    changed: &[&Dirty],
+) -> Option<Value> {
+    let files: Vec<&str> = changed
+        .iter()
+        .filter(|dirty| record["beforeApproval"][dirty.file.as_str()] != json!(dirty.digest))
+        .map(|dirty| dirty.file.as_str())
+        .collect();
+    if files.is_empty() {
+        return None;
+    }
+    let crate::ticket::Due { why, next } = crate::ticket::awaiting(root, session, host)?;
+    Some(json!({"files": files, "why": why, "next": next}))
+}
+
 /// What one stop found.
 #[derive(Default)]
 pub struct Stopped {
@@ -602,6 +639,7 @@ pub fn stop(
     intent: Option<&str>,
     stop_active: bool,
     attribute: bool,
+    host: &str,
 ) -> Result<Stopped, Failure> {
     if stop_active || !relevant(root, session, settings) {
         return Ok(Stopped::default());
@@ -676,6 +714,9 @@ pub fn stop(
         .filter(|dirty| record["files"][dirty.file.as_str()] != json!(dirty.digest))
         .collect();
     let mut next = self::record(&files, &delivered, &own, &checkouts, &heads);
+    if let Some(held) = record.get("beforeApproval") {
+        next["beforeApproval"] = held.clone();
+    }
     // Anchor findings the session heard when it edited the file are not said again.
     let told = crate::hook::delivered::read(root, session).unwrap_or(Value::Null);
     let mut summary = None;
@@ -811,6 +852,9 @@ pub fn stop(
         if let Some(stop) = debt::stop(&findings, &review, &delivered) {
             next["delivered"] = json!(debt::delivered(&delivered, &stop.keys));
             summary = Some(stop.summary);
+        }
+        if let Some(waiting) = unapproved(root, session, host, &record, &changed) {
+            summary.get_or_insert_with(|| json!({}))["approval"] = waiting;
         }
     }
     if next != record {

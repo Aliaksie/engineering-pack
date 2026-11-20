@@ -43,7 +43,14 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         return approve(root, reference, request.session);
     }
     if let Some(choice) = request.accept {
-        return accept(root, reference, choice, request.session, request.host);
+        return accept(
+            root,
+            settings,
+            reference,
+            choice,
+            request.session,
+            request.host,
+        );
     }
     let criteria = match request.criteria {
         Some(criteria @ ("clear" | "unclear" | "missing")) => criteria,
@@ -151,6 +158,7 @@ fn modules(settings: &Value, paths: &[String]) -> Result<Vec<String>, Failure> {
 /// user approves before any file is edited, and ends with a review offer.
 fn accept(
     root: &Path,
+    settings: &Value,
     reference: &str,
     choice: &str,
     session: Option<&str>,
@@ -178,6 +186,8 @@ fn accept(
     }
     let plan = ticket::plan_id(reference);
     record["plan"] = json!(plan);
+    // What the worktree holds now is not a change made while the plan waits for approval.
+    crate::hook::stop_review::approval_baseline(root, session, settings)?;
     state::write(
         &record_file(root, session, true)?,
         &record,
@@ -248,10 +258,22 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     Ok(json!({"ticket": reference, "plan": plan, "approved": record["approved"], "next": next}))
 }
 
+/// Why file edits wait in this session and the step that lets them through.
+pub(crate) struct Due {
+    pub why: String,
+    pub next: String,
+}
+
 /// Why file edits wait in this session, with the step that lets them through: its ticket was
 /// planned and the plan is missing, has no tasks, or changed since the user approved it.
 /// `None` when nothing waits, including when the record or plan cannot be read.
 pub(crate) fn approval_due(root: &Path, session: &str, host: &str) -> Option<String> {
+    let Due { why, next } = awaiting(root, session, host)?;
+    Some(format!("Craft holds file edits: {why}. {next}"))
+}
+
+/// The plan approval the session waits for, `None` when nothing waits.
+pub(crate) fn awaiting(root: &Path, session: &str, host: &str) -> Option<Due> {
     let file = record_file(root, session, false).ok()?;
     let record = read_record(&file, RECORD_BYTES).ok()?;
     if record["delivery"] != "plan" || record["plan"].is_null() {
@@ -275,10 +297,18 @@ pub(crate) fn approval_due(root: &Path, session: &str, host: &str) -> Option<Str
             format!("plan {plan} for {reference} changed since the user approved it")
         }
     };
-    Some(format!(
-        "Craft holds file edits: {why}. Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",
+    let next = format!(
+        "Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",
         approval_step(reference, session, Some(host))
-    ))
+    );
+    Some(Due { why, next })
+}
+
+/// Whether the session's ticket is delivered by a plan, whether or not its review was offered.
+pub(crate) fn plan_first(root: &Path, session: &str) -> bool {
+    record_file(root, session, false)
+        .and_then(|file| read_record(&file, RECORD_BYTES))
+        .is_ok_and(|record| record["delivery"] == "plan")
 }
 
 /// The ticket whose delivery the session recorded, `None` without one.

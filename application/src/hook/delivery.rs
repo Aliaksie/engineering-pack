@@ -856,6 +856,7 @@ fn decide(
             intent,
             event.stop_active,
             attribute,
+            event.host,
         );
         match stopped {
             Ok(stopped) => {
