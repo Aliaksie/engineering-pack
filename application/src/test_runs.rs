@@ -121,8 +121,13 @@ pub fn status(
     if history.is_null() {
         return Ok(None);
     }
-    Ok(Some(test_runs::status(
-        &history,
-        &source(root, repositories)?,
-    )))
+    let status = test_runs::status(&history, &source(root, repositories)?);
+    // Runs an earlier release recorded carry the source as it fingerprinted the tree.
+    if status["status"] == "not-run" {
+        let earlier = session::source(&snapshot::earlier(root, repositories)?);
+        if test_runs::current(&history, &earlier).is_some() {
+            return Ok(Some(test_runs::status(&history, &earlier)));
+        }
+    }
+    Ok(Some(status))
 }

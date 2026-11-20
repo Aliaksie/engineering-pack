@@ -6,8 +6,9 @@
   snapshots now read only the files Git reports as changed or untracked, so checkpoints in
   repositories larger than 16 MB are complete instead of "repository inspection incomplete".
   The warning appears only when the source, task contract or checked-out branch changed after
-  the evidence was recorded, and says what changed and what to rerun. Saved tasks and
-  checkpoints from earlier versions read as changed once.
+  the evidence was recorded, and says what changed and what to rerun. Checkpoints and test
+  runs saved by earlier versions still compare as unchanged; task evidence recorded by them
+  reads as stale once.
 - `craft task-step --complete` no longer needs `--next`, and a missing option is named by its
   option, such as `--next` or `--target`.
 - `task-step`, `session`, `context-report`, `task-offer` and `task-action-check` find the

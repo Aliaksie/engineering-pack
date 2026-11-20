@@ -146,10 +146,12 @@ pub fn adopt(
     let repository = snapshot::workspace(root, state["taskRecord"].get("repositories"), false)?;
     let recovery = match &checkpoint {
         Some(saved) => {
-            let current = if saved.get("repositories") == state["taskRecord"].get("repositories") {
+            let current = if saved.get("repositories") == state["taskRecord"].get("repositories")
+                && !snapshot::earlier_only(saved, &repository)
+            {
                 repository.clone()
             } else {
-                snapshot::workspace(root, saved.get("repositories"), false)?
+                snapshot::against(root, saved)?
             };
             craft_engine::checkpoint::compare(saved, &current)
         }
@@ -214,7 +216,7 @@ pub fn carry(
         // The task start that follows saves a fresh checkpoint when this one is refused.
         Some(saved) => match crate::checkpoint::adopt(root, session, &saved, task) {
             Ok(()) => {
-                let current = snapshot::workspace(root, saved.get("repositories"), false)?;
+                let current = snapshot::against(root, &saved)?;
                 craft_engine::checkpoint::compare(&saved, &current)
             }
             Err(failure) => json!({"carried": false, "reason": failure.message}),

@@ -160,7 +160,7 @@ pub fn recover(
     let operation = recorder.start("checkpoint.recovered", Some(parent));
     let result = (|| -> Result<Value, Failure> {
         let saved = read(root, session, recorder, &operation)?;
-        let current = snapshot::workspace(root, saved.get("repositories"), false)?;
+        let current = snapshot::against(root, &saved)?;
         let mut recovered = checkpoint::compare(&saved, &current);
         let current = recovered["current"].clone();
         // Planning evidence is referenced, never copied into the checkpoint.
