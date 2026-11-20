@@ -1004,3 +1004,169 @@ fn approval_follows_authored_tasks_not_their_progress() {
     let empty = create(&json!({"id": "empty", "goal": "Nothing yet"}), NOW).unwrap();
     assert_eq!(approval(&empty), None);
 }
+
+fn pair() -> Value {
+    create(
+        &json!({"id": "pair", "goal": "Two tasks", "tasks": [
+            {"id": "a", "goal": "A"}, {"id": "b", "goal": "B"}]}),
+        NOW,
+    )
+    .unwrap()
+}
+
+#[test]
+fn completing_the_last_task_closes_the_plan_in_the_same_write() {
+    let mut plan = pair();
+    complete(&mut plan, "a", ONE);
+    assert_eq!(plan["status"], "open");
+    claim(&mut plan, "b", ONE, false, None, NOW).unwrap();
+    let revision = plan["revision"].as_i64().unwrap();
+    progress(&mut plan, "b", ONE, &step("verify", "passed", true), NOW).unwrap();
+    assert_eq!(plan["status"], "completed");
+    assert_eq!(plan["revision"], revision + 1);
+    assert_eq!(
+        closed(&plan),
+        json!({"status": "completed", "done": 2, "total": 2,
+            "next": "Report the outcome to the user; closing the ticket or opening a pull request stays their call."})
+    );
+    assert!(listing(vec![plan.clone()], ONE, NOW).is_empty());
+    // Reopening stays explicit, for example when a review adds a task.
+    apply(&mut plan, &json!({"status": "open"}), None, false, NOW).unwrap();
+    assert_eq!(plan["status"], "open");
+    apply(
+        &mut plan,
+        &json!({"status": "open", "tasks": [{"id": "c", "goal": "Review finding"}]}),
+        None,
+        false,
+        NOW,
+    )
+    .unwrap();
+    assert_eq!(plan["status"], "open");
+    validate(&plan).unwrap();
+}
+
+#[test]
+fn new_work_reopens_a_completed_plan_but_not_an_abandoned_one() {
+    let mut plan = pair();
+    complete(&mut plan, "a", ONE);
+    complete(&mut plan, "b", ONE);
+    assert_eq!(plan["status"], "completed");
+    // Decisions or an abandoned task are no new work.
+    let note = json!({"decisions": [{"id": "d1", "text": "Shipped"}],
+        "tasks": [{"id": "x", "goal": "Dropped idea", "state": "abandoned"}]});
+    apply(&mut plan, &note, None, false, NOW).unwrap();
+    assert_eq!(plan["status"], "completed");
+    let review = json!({"tasks": [{"id": "c", "goal": "Review finding"}]});
+    let mut added = plan.clone();
+    apply(&mut added, &review, None, false, NOW).unwrap();
+    assert_eq!(added["status"], "open");
+    claim(&mut added, "c", ONE, false, None, NOW).unwrap();
+    let mut again = plan.clone();
+    apply(
+        &mut again,
+        &json!({"tasks": [{"id": "b", "state": "pending"}]}),
+        None,
+        false,
+        NOW,
+    )
+    .unwrap();
+    assert_eq!(again["status"], "open");
+    // At the next session start a reopened plan with new work stays open.
+    assert!(!settle(&mut again, NOW).unwrap());
+    let mut abandoned = plan.clone();
+    apply(
+        &mut abandoned,
+        &json!({"status": "abandoned"}),
+        None,
+        false,
+        NOW,
+    )
+    .unwrap();
+    apply(&mut abandoned, &review, None, false, NOW).unwrap();
+    assert_eq!(abandoned["status"], "abandoned");
+}
+
+#[test]
+fn a_plan_with_unfinished_work_stays_open() {
+    let open = |plan: &Value| !finished(plan) && plan["status"] == "open";
+    // Ready, held, blocked and failed tasks are work left.
+    let mut plan = pair();
+    complete(&mut plan, "a", ONE);
+    assert!(open(&plan));
+    claim(&mut plan, "b", ONE, false, None, NOW).unwrap();
+    assert!(open(&plan));
+    progress(
+        &mut plan,
+        "b",
+        ONE,
+        &step("implement", "blocked", false),
+        NOW,
+    )
+    .unwrap();
+    assert!(open(&plan));
+    let mut failed = pair();
+    complete(&mut failed, "a", ONE);
+    claim(&mut failed, "b", ONE, false, None, NOW).unwrap();
+    let mut spent = step("verify", "quality-failure", false);
+    spent.exhausted = true;
+    progress(&mut failed, "b", ONE, &spent, NOW).unwrap();
+    assert_eq!(failed["tasks"][1]["state"], "failed");
+    assert!(open(&failed));
+    assert!(!settle(&mut failed, NOW).unwrap());
+    // Nothing completed: an all-abandoned or empty plan is its author's to close.
+    let mut abandoned = pair();
+    let all =
+        json!({"tasks": [{"id": "a", "state": "abandoned"}, {"id": "b", "state": "abandoned"}]});
+    apply(&mut abandoned, &all, None, false, NOW).unwrap();
+    assert!(open(&abandoned));
+    let empty = create(&json!({"id": "empty", "goal": "G"}), NOW).unwrap();
+    assert!(open(&empty));
+    // Abandoning the last open task finishes the work in that plan-update.
+    let rest = json!({"tasks": [{"id": "b", "state": "abandoned"}]});
+    apply(&mut plan, &rest, Some(ONE), false, NOW).unwrap();
+    assert_eq!(plan["status"], "completed");
+    assert_eq!(closed(&plan)["done"], 1);
+    assert_eq!(closed(&plan)["total"], 1);
+}
+
+#[test]
+fn a_worktree_task_closes_its_plan_only_once_integrated() {
+    let mut plan = create(
+        &json!({"id": "parallel", "goal": "Parallel", "tasks": [
+            {"id": "a", "goal": "A", "scope": {"paths": ["src/a/**"]}}]}),
+        NOW,
+    )
+    .unwrap();
+    assign(&mut plan, "a", assigned(TWO, 3, Some(worktrees("a"))), NOW).unwrap();
+    finish(&mut plan, "a", TWO);
+    assert_eq!(plan["status"], "open");
+    assert!(!settle(&mut plan, NOW).unwrap());
+    let mut escalated = plan.clone();
+    escalate(&mut escalated, "a", ONE, "needs the user", NOW).unwrap();
+    assert!(!settle(&mut escalated, NOW).unwrap());
+    assert_eq!(
+        listing(vec![escalated], ONE, NOW)[0]["needsUser"],
+        json!(["a"])
+    );
+    assert!(merged(&mut plan, "a", &[(String::new(), BASE.to_string())], NOW).unwrap());
+    assert_eq!(plan["status"], "completed");
+}
+
+#[test]
+fn a_plan_left_open_with_its_work_done_settles_once() {
+    let mut plan = pair();
+    complete(&mut plan, "a", ONE);
+    complete(&mut plan, "b", ONE);
+    // As an earlier build left it.
+    plan["status"] = json!("open");
+    let revision = plan["revision"].as_i64().unwrap();
+    assert!(finished(&plan));
+    assert!(settle(&mut plan, NOW + 5).unwrap());
+    assert_eq!(
+        (plan["status"].as_str(), plan["revision"].as_i64()),
+        (Some("completed"), Some(revision + 1))
+    );
+    assert_eq!(plan["updated"], timestamp::format(NOW + 5));
+    assert!(!settle(&mut plan, NOW + 6).unwrap());
+    assert_eq!(plan["revision"], revision + 1);
+}

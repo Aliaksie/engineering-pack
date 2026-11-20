@@ -811,6 +811,10 @@ fn decide(
             }
         }
         if plan.offer_handoff {
+            // Plans whose work is done are closed first; one that fails to close stays listed.
+            if crate::plan::settle(root).is_err() {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            }
             match crate::plan::listing(root, session) {
                 Ok(plans) if !plans.is_empty() => identity["plans"] = json!(plans),
                 Ok(_) => {}

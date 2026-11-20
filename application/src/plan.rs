@@ -193,6 +193,8 @@ pub fn update(
     }
     let before = saved.clone();
     plan::apply(&mut saved, changes, caller.as_deref(), take_over, now_ms())?;
+    // Closed by the change itself, not by an explicit status.
+    let open = before["status"] == "open" && changes.get("status").is_none();
     writer.save(root, &saved)?;
     drop(writer);
     // Tasks set back for new work leave their worktrees; remove what is safe to remove.
@@ -212,6 +214,7 @@ pub fn update(
         }
     }
     let mut view = shown(root, &saved)?;
+    closing(&mut view, open, &saved);
     if !removed.is_empty() {
         view["worktrees"] = json!(removed);
     }
@@ -494,11 +497,57 @@ pub fn advance(
     let owner = owner(root, session)?;
     let writer = writer(root)?;
     let mut saved = writer.read(id)?.ok_or_else(|| format!("no plan {id}"))?;
+    let open = saved["status"] == "open";
     plan::progress(&mut saved, task, &owner, step, now_ms())?;
     writer.save(root, &saved)?;
-    Ok(
-        json!({"plan": id, "task": task, "state": plan::state_after(step), "revision": saved["revision"]}),
-    )
+    let mut advanced = json!({"plan": id, "task": task, "state": plan::state_after(step), "revision": saved["revision"]});
+    closing(&mut advanced, open, &saved);
+    Ok(advanced)
+}
+
+/// Add what closed the plan to a write's `result` when the plan was `open` before it.
+pub(crate) fn closing(result: &mut Value, open: bool, saved: &Value) {
+    if open && saved["status"] == "completed" {
+        result["closed"] = plan::closed(saved);
+    }
+}
+
+/// Whether a summary may be of an open plan whose work is done: only completed and
+/// abandoned tasks, at least one completed. The record decides; see [`plan::finished`].
+fn maybe_finished(summary: &Value) -> bool {
+    let Some(counts) = summary["counts"].as_object() else {
+        return false;
+    };
+    summary["status"] == "open"
+        && counts.get("completed").and_then(Value::as_i64) > Some(0)
+        && counts.iter().all(|(state, count)| {
+            matches!(state.as_str(), "completed" | "abandoned" | "ready") || count == 0
+        })
+}
+
+/// Close the open plans an earlier build left with their work done, before a starting
+/// session lists them. Reads only records the index shows may be done, and takes the lock
+/// only for them.
+pub fn settle(root: &Path) -> Result<(), Failure> {
+    let candidates: Vec<String> = summaries(root)?
+        .iter()
+        .filter(|s| maybe_finished(s))
+        .filter_map(|s| s["id"].as_str().map(str::to_string))
+        .collect();
+    if candidates.is_empty() {
+        return Ok(());
+    }
+    let writer = writer(root)?;
+    for id in candidates {
+        // An unreadable record is left for `plan` to report; the others still close.
+        let Ok(Some(mut saved)) = writer.read(&id) else {
+            continue;
+        };
+        if plan::settle(&mut saved, now_ms())? {
+            writer.save(root, &saved)?;
+        }
+    }
+    Ok(())
 }
 
 /// Open plans a starting session is shown, newest first; reads at most [`plan::LISTED`]

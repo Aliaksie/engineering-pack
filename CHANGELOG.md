@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A work plan closes itself when its last task finishes: the `task-step`, `plan-integrate`
+  or `plan-update` that leaves every task completed and integrated, or abandoned, marks the
+  plan `completed` and shows `Plan <id>: completed (n of m tasks)`. Plans an earlier version
+  left open with every task done are closed at the next session start and no longer listed
+  as open work. A plan with a ready, held, escalated or unintegrated task stays open, and a
+  `plan-update` that adds a task or sets one back to `pending` reopens a completed plan.
 - `craft task-step` no longer warns "task evidence is stale" after every step. Repository
   snapshots now read only the files Git reports as changed or untracked, so checkpoints in
   repositories larger than 16 MB are complete instead of "repository inspection incomplete".
