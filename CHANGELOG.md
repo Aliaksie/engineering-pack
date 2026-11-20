@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A turn-end review whose Git query does not answer in time says nothing and records nothing,
+  so the next turn end reviews the same changes. It used to record them as reviewed with some
+  or all findings missing: an unread diff dropped a file's markers, and an unread reflog or
+  `HEAD` dropped the files the session had committed.
 - On Claude Code, a ticket's plan is approved through the host's own question: the agent asks
   `Approve plan <id> revision <n>?` and Craft records the user's `Approve` answer against that
   revision with the source `host-observed`, without asking the agent to run `craft ticket

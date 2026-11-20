@@ -55,11 +55,43 @@ fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::Pa
     )?)
 }
 
+/// A Git query that gave no answer: it could not start or did not complete in time. The stop
+/// writes nothing and leaves its changes to the next stop, instead of reading an empty answer
+/// and recording the changes as reviewed.
+struct Unread;
+
+/// What one Git query answered.
+enum Answer {
+    Output(Vec<u8>),
+    /// Git exited with an error or is not installed.
+    Failed,
+    /// The output outgrew its bound; asking again gives the same answer.
+    Overflow,
+}
+
+impl Answer {
+    fn output(self) -> Option<Vec<u8>> {
+        match self {
+            Answer::Output(bytes) => Some(bytes),
+            Answer::Failed | Answer::Overflow => None,
+        }
+    }
+}
+
+fn git(directory: &Path, args: &[&str], max_bytes: usize) -> Result<Answer, Unread> {
+    match craft_platform::process::git(directory, args, max_bytes) {
+        Ok(Some(bytes)) => Ok(Answer::Output(bytes)),
+        Ok(None) => Ok(Answer::Failed),
+        Err(error) if craft_platform::process::overflowed(&error) => Ok(Answer::Overflow),
+        Err(_) => Err(Unread),
+    }
+}
+
 /// A checkout's files that differ from `HEAD` (modified, added or untracked outside
 /// ignores), named from the project root, each with whether Git tracks it; `None` without
 /// Git or when the listing overflows.
-fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
-    let output = craft_platform::process::git(
+fn dirty(checkout: &Checkout) -> Result<Option<Vec<(String, bool)>>, Unread> {
+    let output = git(
         &checkout.directory,
         &[
             "status",
@@ -71,9 +103,11 @@ fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
             ".",
         ],
         STATUS_BYTES,
-    )
-    .ok()??;
-    Some(
+    )?;
+    let Some(output) = output.output() else {
+        return Ok(None);
+    };
+    Ok(Some(
         output
             .split(|byte| *byte == 0)
             .filter_map(|entry| {
@@ -87,7 +121,7 @@ fn dirty(checkout: &Checkout) -> Option<Vec<(String, bool)>> {
                     .then(|| (format!("{}{path}", checkout.folder), code != "??"))
             })
             .collect(),
-    )
+    ))
 }
 
 /// A regular file's bytes, `None` when absent, a link, too large or a file that commonly
@@ -105,12 +139,19 @@ fn bytes(root: &Path, secrets: &Declared, file: &str) -> Option<Vec<u8>> {
     }
 }
 
-/// The commit `HEAD` names, `None` without Git or before the first commit.
+/// The commit `HEAD` names, `None` without Git, before the first commit or when Git gave no
+/// answer.
 pub(crate) fn head(root: &Path) -> Option<String> {
-    let output = craft_platform::process::git(root, &["rev-parse", "--verify", "-q", "HEAD"], 256)
-        .ok()??;
-    let id = String::from_utf8(output).ok()?.trim().to_owned();
-    (!id.is_empty()).then_some(id)
+    head_of(root).ok().flatten()
+}
+
+/// The commit `HEAD` names, `None` without Git or before the first commit.
+fn head_of(root: &Path) -> Result<Option<String>, Unread> {
+    let output = git(root, &["rev-parse", "--verify", "-q", "HEAD"], 256)?.output();
+    Ok(output
+        .and_then(|output| String::from_utf8(output).ok())
+        .map(|id| id.trim().to_owned())
+        .filter(|id| !id.is_empty()))
 }
 
 /// Files the session committed since `base`, the commit its last stop saw: only when every
@@ -118,14 +159,14 @@ pub(crate) fn head(root: &Path) -> Option<String> {
 /// the difference holds other people's work, so nothing is taken from it. Of the commits, only
 /// those in `own` (made by a command this session ran) count, and a file another commit in
 /// the range also changed is left out: its markers could be someone else's.
-fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Vec<String> {
-    let moves = craft_platform::process::git(
+fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Result<Vec<String>, Unread> {
+    let moves = git(
         root,
         &["reflog", "-n", REFLOG_ENTRIES, "--format=%H %gs", "HEAD"],
         STATUS_BYTES,
-    );
-    let Ok(Some(moves)) = moves else {
-        return Vec::new();
+    )?;
+    let Some(moves) = moves.output() else {
+        return Ok(Vec::new());
     };
     let moves = String::from_utf8_lossy(&moves);
     let mut reached = false;
@@ -138,14 +179,14 @@ fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Vec<String
         // A merge concluded by hand is a commit too, and brings other people's work.
         let kinds = ["commit:", "commit (initial):", "commit (amend):"];
         if !kinds.iter().any(|kind| action.starts_with(kind)) {
-            return Vec::new();
+            return Ok(Vec::new());
         }
     }
     if !reached {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     let range = format!("{base}..{current}");
-    let listed = craft_platform::process::git(
+    let listed = git(
         root,
         &[
             "-c",
@@ -160,9 +201,9 @@ fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Vec<String
             &range,
         ],
         STATUS_BYTES,
-    );
-    let Ok(Some(listed)) = listed else {
-        return Vec::new();
+    )?;
+    let Some(listed) = listed.output() else {
+        return Ok(Vec::new());
     };
     let listed = String::from_utf8_lossy(&listed);
     let (mut ours, mut theirs): (Vec<&str>, Vec<&str>) = (Vec::new(), Vec::new());
@@ -186,7 +227,7 @@ fn committed(root: &Path, base: &str, current: &str, own: &[&str]) -> Vec<String
         .collect();
     files.sort();
     files.dedup();
-    files
+    Ok(files)
 }
 
 /// One changed file as a stop sees it.
@@ -201,14 +242,19 @@ struct Dirty {
 
 /// Each dirty file's content now, with its hash and whether Git tracks it. `None` when no
 /// checkout could be read; a member repository that cannot is left out.
-fn observed(root: &Path, secrets: &Declared, checkouts: &[Checkout]) -> Option<Vec<Dirty>> {
-    let listed: Vec<(usize, Vec<(String, bool)>)> = checkouts
-        .iter()
-        .enumerate()
-        .filter_map(|(index, checkout)| Some((index, dirty(checkout)?)))
-        .collect();
+fn observed(
+    root: &Path,
+    secrets: &Declared,
+    checkouts: &[Checkout],
+) -> Result<Option<Vec<Dirty>>, Unread> {
+    let mut listed: Vec<(usize, Vec<(String, bool)>)> = Vec::new();
+    for (index, checkout) in checkouts.iter().enumerate() {
+        if let Some(files) = dirty(checkout)? {
+            listed.push((index, files));
+        }
+    }
     if listed.is_empty() {
-        return None;
+        return Ok(None);
     }
     let mut files: Vec<(usize, String, bool)> = listed
         .into_iter()
@@ -220,7 +266,7 @@ fn observed(root: &Path, secrets: &Declared, checkouts: &[Checkout]) -> Option<V
         .collect();
     files.sort_by(|a, b| a.1.cmp(&b.1));
     files.truncate(MAX_FILES);
-    Some(
+    Ok(Some(
         files
             .into_iter()
             .filter_map(|(checkout, file, tracked)| {
@@ -235,7 +281,7 @@ fn observed(root: &Path, secrets: &Declared, checkouts: &[Checkout]) -> Option<V
                 })
             })
             .collect(),
-    )
+    ))
 }
 
 /// The commit a record keeps for a checkout: `head` for the project's own, `heads` by
@@ -295,10 +341,13 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
     }
     let checkouts = checkouts(root);
     let secrets = Declared::of(settings);
-    let Some(files) = observed(root, &secrets, &checkouts) else {
+    // Without an answer from Git no baseline is kept, as without Git.
+    let Ok(Some(files)) = observed(root, &secrets, &checkouts) else {
         return Ok(());
     };
-    let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
+    let Ok(heads) = heads(&checkouts) else {
+        return Ok(());
+    };
     let record = record(&files, &[], &[], &checkouts, &heads);
     Ok(state::write(&file, &record, RECORD_BYTES, false)?)
 }
@@ -308,11 +357,18 @@ pub fn baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Fail
 /// no baseline.
 pub fn approval_baseline(root: &Path, session: &str, settings: &Value) -> Result<(), Failure> {
     let secrets = Declared::of(settings);
-    let held = observed(root, &secrets, &checkouts(root)).map(|files| hashes(&files));
+    let held = observed(root, &secrets, &checkouts(root))
+        .ok()
+        .flatten()
+        .map(|files| hashes(&files));
     update(root, session, |record| match held {
         Some(held) => record["beforeApproval"] = held,
         None => drop(record.as_object_mut().map(|r| r.remove("beforeApproval"))),
     })
+}
+
+fn heads(checkouts: &[Checkout]) -> Result<Vec<Option<String>>, Unread> {
+    checkouts.iter().map(|c| head_of(&c.directory)).collect()
 }
 
 /// Whether stops follow the session's changes: to review them, to name a declared check that
@@ -508,10 +564,16 @@ type Lines = (Vec<(usize, String)>, Vec<String>);
 /// The lines `file`, named within its checkout at `root`, adds and removes against `base`:
 /// every line of an untracked file; `None` when the diff is too large or there is no commit
 /// to compare with.
-fn lines(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Option<Lines> {
+fn lines(
+    root: &Path,
+    file: &str,
+    tracked: bool,
+    bytes: &[u8],
+    base: &str,
+) -> Result<Option<Lines>, Unread> {
     let diff = tracked
         .then(|| {
-            craft_platform::process::git(
+            git(
                 root,
                 &[
                     "diff",
@@ -526,8 +588,9 @@ fn lines(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Op
                 DIFF_BYTES,
             )
         })
-        .map(|output| output.ok().flatten());
-    match diff {
+        .transpose()?
+        .map(Answer::output);
+    Ok(match diff {
         Some(Some(diff)) => Some(debt::changes(&String::from_utf8_lossy(&diff))),
         // Too large to compare, or no commit to compare with: unknown.
         Some(None) => None,
@@ -539,27 +602,38 @@ fn lines(root: &Path, file: &str, tracked: bool, bytes: &[u8], base: &str) -> Op
                 .collect(),
             Vec::new(),
         )),
-    }
+    })
 }
 
 /// What `base` held of `file`, named within its checkout at `root`: `Ok(None)` when it held no
-/// such file, `Err` when it cannot be read or compared.
-fn earlier(root: &Path, file: &str, tracked: bool, base: &str) -> Result<Option<Vec<u8>>, ()> {
+/// such file, `Err` when it is too large to compare.
+fn earlier(
+    root: &Path,
+    file: &str,
+    tracked: bool,
+    base: &str,
+) -> Result<Result<Option<Vec<u8>>, ()>, Unread> {
     if !tracked {
-        return Ok(None);
+        return Ok(Ok(None));
     }
-    craft_platform::process::git(root, &["show", &format!("{base}:./{file}")], DIFF_BYTES)
-        .map_err(|_| ())
+    Ok(
+        match git(root, &["show", &format!("{base}:./{file}")], DIFF_BYTES)? {
+            Answer::Output(bytes) => Ok(Some(bytes)),
+            Answer::Failed => Ok(None),
+            Answer::Overflow => Err(()),
+        },
+    )
 }
 
 /// Whether `base` lacks the top-level folder of `file`, named within its checkout at `root`.
-fn new_folder(root: &Path, file: &str, base: &str) -> bool {
-    file.split_once('/').is_some_and(|(top, _)| {
-        matches!(
-            craft_platform::process::git(root, &["cat-file", "-e", &format!("{base}:{top}")], 1024),
-            Ok(None)
-        )
-    })
+fn new_folder(root: &Path, file: &str, base: &str) -> Result<bool, Unread> {
+    let Some((top, _)) = file.split_once('/') else {
+        return Ok(false);
+    };
+    Ok(matches!(
+        git(root, &["cat-file", "-e", &format!("{base}:{top}")], 1024)?,
+        Answer::Failed
+    ))
 }
 
 /// Files the session was told findings for that the stop does not review because they no
@@ -644,9 +718,43 @@ pub fn stop(
     if stop_active || !relevant(root, session, settings) {
         return Ok(Stopped::default());
     }
+    match review(root, session, settings, intent, attribute, host) {
+        Ok(stopped) => Ok(stopped),
+        // Nothing was written: the next stop reviews the same changes.
+        Err(Stop::Unread) => Ok(Stopped::default()),
+        Err(Stop::Failed(failure)) => Err(failure),
+    }
+}
+
+/// Why a stop's review ended without a result.
+enum Stop {
+    Unread,
+    Failed(Failure),
+}
+
+impl From<Unread> for Stop {
+    fn from(_: Unread) -> Self {
+        Stop::Unread
+    }
+}
+
+impl From<Failure> for Stop {
+    fn from(failure: Failure) -> Self {
+        Stop::Failed(failure)
+    }
+}
+
+fn review(
+    root: &Path,
+    session: &str,
+    settings: &Value,
+    intent: Option<&str>,
+    attribute: bool,
+    host: &str,
+) -> Result<Stopped, Stop> {
     let checkouts = checkouts(root);
     let secrets = Declared::of(settings);
-    let Some(files) = observed(root, &secrets, &checkouts) else {
+    let Some(files) = observed(root, &secrets, &checkouts)? else {
         return Ok(Stopped::default());
     };
     let file = record_file(root, session, true)?;
@@ -658,7 +766,7 @@ pub fn stop(
         .filter_map(|key| key.as_str().map(str::to_owned))
         .collect();
     let own = own_commits(&record);
-    let heads: Vec<Option<String>> = checkouts.iter().map(|c| head(&c.directory)).collect();
+    let heads = heads(&checkouts)?;
     // Work the session committed since its last stop is clean now, and still its change.
     // Markers are new against the commit the last stop saw, whether or not they were
     // committed since; without one (an older record, no commit yet), against `HEAD`.
@@ -678,7 +786,7 @@ pub fn stop(
         let before = landed.len();
         let from = committed_files.len();
         committed_files.extend(
-            committed(&checkout.directory, base, current, &own)
+            committed(&checkout.directory, base, current, &own)?
                 .into_iter()
                 .map(|file| format!("{}{file}", checkout.folder)),
         );
@@ -743,12 +851,14 @@ pub fn stop(
             let within = &checkouts[*checkout];
             let inside = file.strip_prefix(&*within.folder).unwrap_or(file);
             let base = bases[*checkout];
-            let diff = (markers_on || wants("behavior") || wants("prose"))
-                .then(|| lines(&within.directory, inside, *tracked, bytes, base))
-                .flatten();
+            let diff = if markers_on || wants("behavior") || wants("prose") {
+                lines(&within.directory, inside, *tracked, bytes, base)?
+            } else {
+                None
+            };
             if !conditions.is_empty() {
                 let (created, imports) = if wants("structure") {
-                    match earlier(&within.directory, inside, *tracked, base) {
+                    match earlier(&within.directory, inside, *tracked, base)? {
                         Ok(old) => (
                             old.is_none(),
                             crate::dependencies::added(root, settings, file, bytes, old.as_deref()),
@@ -764,7 +874,7 @@ pub fn stop(
                         .as_ref()
                         .map(|(added, removed)| (&added[..], &removed[..])),
                     created,
-                    new_folder: created && new_folder(&within.directory, inside, base),
+                    new_folder: created && new_folder(&within.directory, inside, base)?,
                     imports: &imports,
                     committed: committed_files.contains(file),
                 };
@@ -858,7 +968,7 @@ pub fn stop(
         }
     }
     if next != record {
-        state::write(&file, &next, RECORD_BYTES, false)?;
+        state::write(&file, &next, RECORD_BYTES, false).map_err(Failure::from)?;
     }
     let changed = changed.iter().map(|dirty| dirty.file.clone()).collect();
     Ok(Stopped {
