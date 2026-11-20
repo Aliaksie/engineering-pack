@@ -606,3 +606,118 @@ fn a_stop_names_repository_changes_made_while_the_plan_awaits_approval() {
     let direct = held_stop("claude", &repo).unwrap_or_default();
     assert!(!direct.contains("wait for approval"), "{direct}");
 }
+
+#[test]
+fn a_plan_approval_names_whether_the_user_gave_it_or_the_agent_reported_it() {
+    let repo = Repo::new(
+        "ticket-approval-source",
+        &[
+            (".craft/project.json", PROJECT),
+            ("engine/a.rs", "fn a() {}\n"),
+        ],
+    );
+    let ticket = |extra: &[&str]| {
+        let mut args = vec!["ticket", "--ticket", ISSUE, "--session", "S1"];
+        args.extend(extra);
+        repo.cli(&args)
+    };
+    let approval = || {
+        repo.cli(&["plan", "--plan", "issue-145", "--session", "S1", "--json"])
+            .unwrap()["approval"]
+            .clone()
+    };
+    let approve =
+        "craft ticket --ticket https://github.com/acme/shop/issues/145 --approve --session S1";
+    let edit = json!({"file_path": "engine/a.rs", "old_string": "a", "new_string": "b"});
+    ticket(&["--accept", "plan", "--host", "claude"]).unwrap();
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [{"id": "a", "goal": "Change a"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "issue-145",
+        "--goal",
+        "Ship",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+
+    // No hook of the session was seen: nothing shows the user ran it.
+    let unseen = ticket(&["--approve"]).unwrap();
+    assert_eq!(unseen["approved"]["source"], "agent", "{unseen}");
+
+    // The session's hooks run and saw the agent's shell command record it.
+    assert!(!before("claude", &repo, "Bash", json!({"command": approve})).starts_with("deny "));
+    let reported = ticket(&["--approve"]).unwrap();
+    assert_eq!(reported["approved"]["source"], "agent", "{reported}");
+    assert_eq!(
+        approval(),
+        json!({"revision": 1, "source": "agent", "current": true})
+    );
+
+    // A session start lists the plan with who approved it.
+    let started = context(&hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    ));
+    assert!(started.contains(r#""source":"agent""#), "{started}");
+
+    // A changed plan is held with the agent's report named, never as the user's approval.
+    let added = repo.input(
+        "added.json",
+        &json!({"tasks": [{"id": "b", "goal": "Test a"}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "1",
+        "--data",
+        &added,
+    ])
+    .unwrap();
+    let held = before("claude", &repo, "Edit", edit.clone());
+    assert!(
+        held.contains("changed since the agent reported the user's approval"),
+        "{held}"
+    );
+    assert!(!held.contains("the user approved"), "{held}");
+    assert_eq!(approval()["current"], false);
+
+    // Hooks run and the agent ran no approval: the user ran it themselves.
+    let own = ticket(&["--approve"]).unwrap();
+    assert_eq!(own["approved"]["source"], "user", "{own}");
+    assert_eq!(approval()["source"], "user");
+
+    // An approval an earlier build saved has no source and reads as unknown.
+    let file = craft_platform::state::file(&repo.root, "ticket.json", false, Some("S1")).unwrap();
+    let mut record: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    record["approved"].as_object_mut().unwrap().remove("source");
+    std::fs::write(&file, record.to_string()).unwrap();
+    assert_eq!(approval()["source"], "unknown");
+    let more = repo.input(
+        "more.json",
+        &json!({"tasks": [{"id": "c", "goal": "Document a"}]}),
+    );
+    repo.cli(&[
+        "plan-update",
+        "--plan",
+        "issue-145",
+        "--expected-revision",
+        "2",
+        "--data",
+        &more,
+    ])
+    .unwrap();
+    let legacy = before("claude", &repo, "Edit", edit);
+    assert!(
+        legacy.contains("changed since its approval, whose source is unknown"),
+        "{legacy}"
+    );
+}

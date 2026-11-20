@@ -136,6 +136,14 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             return Ok(refused);
         }
     }
+    // Who approves a ticket's plan: this session's hooks run, and an agent shell command
+    // that records the approval makes it the agent's report, not the user's own run.
+    if let ("before-tool", Some(session)) =
+        (event.lifecycle, event.session.filter(|s| !s.is_empty()))
+        && crate::ticket::tool_seen(event.root, session, event.command).is_err()
+    {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+    }
     // An agent's commit waits for the declared commit-stage checks to pass on its files. A
     // gate that cannot read its facts lets the commit through and says so in telemetry.
     if let ("before-tool", Some(session), Some(command)) = (
