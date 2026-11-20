@@ -212,7 +212,12 @@ A planned ticket gets a [work plan](SESSION.md#work-plans) named after it (`issu
 then asks the agent to show the user the plan and get their approval through the host's
 question tool where it has one, unless the user already approved it. `craft ticket --ticket
 <ref> --approve --session <id>` records that approval against the plan as it stands; it is
-refused for a missing plan or one without tasks. Until then, in that session, every host whose
+refused for a missing plan or one without tasks. Each approval names its source: `user` when
+the session's hooks are seen to run and no agent shell command recorded it, as when the user
+runs the command themselves; `agent` otherwise, since the agent's report is its statement, not
+evidence that the user answered. Approvals saved by an earlier version read as `unknown`. The
+hold's reason, `craft plan --plan <id> --session <id>` and the plans a session start lists name
+the source; an approval the agent reported is never shown as the user's. Until then, in that session, every host whose
 hooks can refuse a tool (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI) refuses edit
 tools that write a file of the repository, in the project or any of its worktrees, with a
 reason naming the next step. Files elsewhere, such as the plan's task list in a scratch
