@@ -131,21 +131,22 @@ impl Content {
     }
 }
 
-/// The working-tree inventory Git would list with `ls-files --cached --others
-/// --exclude-standard`: every index path (any stage) and every untracked, not ignored path
-/// from `status --untracked-files=all`, without starting a third Git process. A rename or
-/// copy entry is followed by its source path, which is not untracked.
-fn inventory<'a>(status: &'a [u8], index: &'a [u8]) -> Vec<&'a [u8]> {
-    let mut paths: Vec<&[u8]> = index
-        .split(|b| *b == 0)
-        .filter_map(|entry| Some(&entry[entry.iter().position(|b| *b == b'\t')? + 1..]))
-        .filter(|path| !path.is_empty())
-        .collect();
+/// The paths whose working-tree content may differ from the index: untracked, not ignored
+/// paths and tracked paths Git reports changed, deleted or unmerged in the worktree. Every
+/// other tracked path matches its index entry, which the index digest already identifies by
+/// blob, so its content is not read again; a repository's size no longer decides whether its
+/// snapshot is complete. A rename or copy entry is followed by its source path.
+fn inventory(status: &[u8]) -> Vec<&[u8]> {
+    let mut paths = Vec::new();
     let mut entries = status.split(|b| *b == 0);
     while let Some(entry) = entries.next() {
-        if let Some(path) = entry.strip_prefix(b"?? ") {
-            paths.push(path);
-        } else if entry.len() > 3 && (entry[..2].contains(&b'R') || entry[..2].contains(&b'C')) {
+        if entry.len() < 4 {
+            continue;
+        }
+        if entry[1] != b' ' {
+            paths.push(&entry[3..]);
+        }
+        if entry[..2].contains(&b'R') || entry[..2].contains(&b'C') {
             entries.next();
         }
     }
@@ -189,10 +190,11 @@ pub fn state(root: &Path) -> Value {
             self::checkout(root),
         ),
     };
+    // Without the index, clean content has no identity, so the inventory needs both.
     let inventory = status_bytes
         .as_deref()
         .zip(index_bytes.as_deref())
-        .map(|(status, index)| inventory(status, index));
+        .map(|(status, _)| inventory(status));
     let text = |bytes: &Option<Vec<u8>>| {
         bytes
             .as_deref()
@@ -578,7 +580,54 @@ mod tests {
             snapshot["fingerprints"]["issues"],
             json!(["Working-tree inspection failed: f"])
         );
-        assert_eq!(snapshot["fingerprints"]["files"], 2);
+        assert_eq!(snapshot["fingerprints"]["files"], 1);
+    }
+
+    /// A clean worktree larger than the content limits is identified by its index: the
+    /// snapshot stays complete, reads no clean file and still sees each later edit.
+    #[test]
+    fn a_large_clean_repository_has_a_complete_snapshot_that_sees_edits() {
+        let names: Vec<String> = (0..10).map(|i| format!("big-{i}.bin")).collect();
+        let repository = Repository::new(&[]);
+        let root = &repository.0;
+        let block = vec![b'x'; (FILE_BYTES - 1) as usize];
+        for name in &names {
+            fs::write(root.join(name), &block).unwrap();
+        }
+        fs::write(root.join("small.txt"), "one\n").unwrap();
+        let git = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(["-c", "user.name=n", "-c", "user.email=n@x", "-C"])
+                    .arg(root)
+                    .args(args)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        };
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "large"]);
+        assert!(names.len() as u64 * (FILE_BYTES - 1) > BYTES);
+        let clean = state(root);
+        assert_eq!(clean["fingerprints"]["complete"], true);
+        assert_eq!(clean["fingerprints"]["files"], 0);
+        fs::write(root.join("small.txt"), "two\n").unwrap();
+        let edited = state(root);
+        assert_eq!(edited["fingerprints"]["complete"], true);
+        assert_eq!(edited["fingerprints"]["files"], 1);
+        assert_ne!(
+            edited["fingerprints"]["workingTree"],
+            clean["fingerprints"]["workingTree"]
+        );
+        fs::write(root.join("small.txt"), "three\n").unwrap();
+        assert_ne!(
+            state(root)["fingerprints"]["workingTree"],
+            edited["fingerprints"]["workingTree"]
+        );
+        // Content equal to the index again is the clean snapshot again.
+        fs::write(root.join("small.txt"), "one\n").unwrap();
+        assert_eq!(state(root)["fingerprints"], clean["fingerprints"]);
     }
 
     // The JS snapshot decoded such a name lossily, hashed it as missing and reported a
@@ -646,21 +695,18 @@ mod inventory_tests {
         output.stdout
     }
 
+    /// What Git lists as differing from the index in the worktree, plus untracked paths.
     fn listed(root: &Path) -> Vec<Vec<u8>> {
-        let mut paths: Vec<Vec<u8>> = git(
+        let mut listing = git(root, &["diff", "--name-only", "--no-renames", "-z"]);
+        listing.extend(git(
             root,
-            &[
-                "ls-files",
-                "--cached",
-                "--others",
-                "--exclude-standard",
-                "-z",
-            ],
-        )
-        .split(|b| *b == 0)
-        .filter(|p| !p.is_empty())
-        .map(<[u8]>::to_vec)
-        .collect();
+            &["ls-files", "--others", "--exclude-standard", "-z"],
+        ));
+        let mut paths: Vec<Vec<u8>> = listing
+            .split(|b| *b == 0)
+            .filter(|p| !p.is_empty())
+            .map(<[u8]>::to_vec)
+            .collect();
         paths.sort();
         paths.dedup();
         paths
@@ -671,20 +717,17 @@ mod inventory_tests {
             root,
             &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
         );
-        let index = git(root, &["ls-files", "--stage", "-z"]);
-        let mut paths: Vec<Vec<u8>> = inventory(&status, &index)
-            .into_iter()
-            .map(<[u8]>::to_vec)
-            .collect();
+        let mut paths: Vec<Vec<u8>> = inventory(&status).into_iter().map(<[u8]>::to_vec).collect();
         paths.sort();
         paths.dedup();
         paths
     }
 
-    /// The derived inventory names exactly what the `ls-files` inventory it replaces named,
-    /// through renames, deletions, ignored and nested content and a merge conflict.
+    /// The inventory names exactly the paths whose worktree content Git reports as differing
+    /// from the index, through renames, deletions, ignored and nested content and a merge
+    /// conflict; staged-only changes are identified by the index digest instead.
     #[test]
-    fn the_inventory_matches_the_git_listing_it_replaces() {
+    fn the_inventory_is_what_differs_from_the_index() {
         let root = std::env::temp_dir().join(format!("craft-inventory-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(root.join("src/deep")).unwrap();
@@ -744,6 +787,9 @@ mod inventory_tests {
         );
         let expected = listed(&root);
         assert!(expected.contains(&b"nested/".to_vec()));
+        for clean in ["renamed.txt", "staged.txt", "src/deep/c.txt"] {
+            assert!(!expected.contains(&clean.as_bytes().to_vec()), "{clean}");
+        }
         assert_eq!(derived(&root), expected);
         let _ = fs::remove_dir_all(&root);
     }

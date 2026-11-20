@@ -25,6 +25,8 @@ const FIELDS: &[&str] = &[
     "expectedTaskContract",
     "expectedEvidenceDigest",
 ];
+/// The next step of a task completed without one.
+const COMPLETED_NEXT: &str = "Return the outcome and its evidence.";
 /// The bound on accumulated completed work and on the continuation's changed files.
 const TEXT_BOUND: usize = 1024;
 
@@ -97,18 +99,23 @@ pub fn step(
             .or(record.get("stage"))
             .unwrap_or(&Value::Null),
     )?;
-    for name in ["result", "nextStep"] {
-        if !text(field(name).unwrap_or(&Value::Null)) {
-            return Err(format!(
-                "task step {name} must be 1..512 characters without control characters"
-            ));
-        }
-    }
     let complete = match field("complete") {
         None => false,
         Some(Value::Bool(complete)) => *complete,
         Some(_) => return Err("task completion must be boolean".into()),
     };
+    // A completed task has nothing left to do; its continuation names the hand-back.
+    let next_given = given(field("nextStep")).is_some();
+    for (name, label) in [("result", "result"), ("nextStep", "next step")] {
+        if name == "nextStep" && complete && !next_given {
+            continue;
+        }
+        if !text(field(name).unwrap_or(&Value::Null)) {
+            return Err(format!(
+                "task step {label} must be 1..512 characters without control characters"
+            ));
+        }
+    }
     let outcome = field("outcome").and_then(Value::as_str);
     if complete && outcome != Some("passed") {
         return Err("task completion requires a passed acceptance receipt".into());
@@ -164,7 +171,7 @@ pub fn step(
     let result = field("result").and_then(Value::as_str).unwrap_or_default();
     let next = field("nextStep")
         .and_then(Value::as_str)
-        .unwrap_or_default();
+        .unwrap_or(COMPLETED_NEXT);
     let record = state["taskRecord"]
         .as_object_mut()
         .ok_or("invalid session state")?;

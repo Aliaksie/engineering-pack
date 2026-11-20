@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- `craft task-step` no longer warns "task evidence is stale" after every step. Repository
+  snapshots now read only the files Git reports as changed or untracked, so checkpoints in
+  repositories larger than 16 MB are complete instead of "repository inspection incomplete".
+  The warning appears only when the source, task contract or checked-out branch changed after
+  the evidence was recorded, and says what changed and what to rerun. Saved tasks and
+  checkpoints from earlier versions read as changed once.
+- `craft task-step --complete` no longer needs `--next`, and a missing option is named by its
+  option, such as `--next` or `--target`.
+- `task-step`, `session`, `context-report`, `task-offer` and `task-action-check` find the
+  packages the host installed beside the running runtime, including when a host runs the
+  bundled executable directly, as Codex does; `--bundle` is needed only for a package
+  installed elsewhere.
 - `craft doctor` reports an install as not visible from this environment when retained hook
   runs show the host was used, naming `CLAUDE_CONFIG_DIR` or `CODEX_HOME` instead of saying
   not installed. The invoking host is listed first when identified, with `--host` to override.

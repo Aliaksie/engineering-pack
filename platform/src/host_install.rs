@@ -692,6 +692,64 @@ pub fn packages(host: &str, project: &Path, bundle: &Path, package: &str) -> Opt
     Some(found)
 }
 
+/// The package a bundle carries, by the name in its manifest.
+fn bundle_package(bundle: &Path) -> Option<String> {
+    ["source-capability.json", "capability.json"]
+        .iter()
+        .find_map(|manifest| json_file(&bundle.join(manifest)).ok().flatten())
+        .and_then(|manifest| manifest["name"].as_str().map(str::to_owned))
+}
+
+/// The roots of the Craft packages installed beside the running `bundle`, itself first, or
+/// `None` when it sits in no layout a host installs. Side by side, each sibling folder that is
+/// a bundle; in a plugin cache (`<marketplace>/<package>/<version>`), each other package's
+/// folder of the same version, else its only version. A package with several other versions
+/// is left out rather than guessed.
+pub fn package_roots(bundle: &Path) -> Option<Vec<PathBuf>> {
+    if !is_bundle(bundle) {
+        return None;
+    }
+    let package = bundle_package(bundle)?;
+    let name = |path: &Path| path.file_name().map(|n| n.to_string_lossy().into_owned());
+    let folders = |path: &Path| -> Vec<PathBuf> {
+        let mut found: Vec<PathBuf> = fs::read_dir(path)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        found.sort();
+        found
+    };
+    let parent = bundle.parent()?;
+    let mut roots = vec![bundle.to_path_buf()];
+    if name(bundle).as_deref() == Some(&package) {
+        roots.extend(
+            folders(parent)
+                .into_iter()
+                .filter(|sibling| sibling != bundle && is_bundle(sibling)),
+        );
+    } else if name(parent).as_deref() == Some(&package) {
+        let version = name(bundle);
+        for sibling in folders(parent.parent()?)
+            .into_iter()
+            .filter(|s| s != parent)
+        {
+            let versions: Vec<PathBuf> = folders(&sibling)
+                .into_iter()
+                .filter(|v| is_bundle(v))
+                .collect();
+            let same = versions.iter().find(|v| name(v) == version);
+            let only = (versions.len() == 1).then(|| &versions[0]);
+            roots.extend(same.or(only).cloned());
+        }
+    } else {
+        return None;
+    }
+    Some(roots)
+}
+
 /// A project overlay a host loads from the repository, with the bundle each of its commands
 /// starts from (commands run from the project root): `{host, path, present, commands, bundles}`.
 pub fn overlay(host: &str, root: &Path, relative: &str) -> Value {
@@ -809,6 +867,57 @@ mod tests {
         let error = codex_content_hash(&root).unwrap_err();
         assert_eq!(error, "link is neither a file nor a folder");
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn installed_package_roots_are_found_beside_the_running_bundle() {
+        let base = std::env::temp_dir().join(format!("craft-roots-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let package = |path: &Path, name: &str| {
+            fs::create_dir_all(path.join("support/native-bin")).unwrap();
+            fs::write(path.join("support/native-bin/runtime.json"), "{}").unwrap();
+            fs::write(
+                path.join("source-capability.json"),
+                format!("{{\"name\":\"{name}\"}}"),
+            )
+            .unwrap();
+        };
+        // Side by side: a marketplace checkout or an export's plugins folder.
+        let plugins = base.join("export/plugins");
+        for name in ["craft-delivery", "craft-engineering"] {
+            package(&plugins.join(name), name);
+        }
+        fs::create_dir_all(plugins.join("notes")).unwrap();
+        let delivery = plugins.join("craft-delivery");
+        assert_eq!(
+            package_roots(&delivery).unwrap(),
+            [delivery.clone(), plugins.join("craft-engineering")]
+        );
+        // A plugin cache: the same version of each other package, else its only version;
+        // several other versions are not guessed.
+        let cache = base.join("cache/market");
+        package(&cache.join("craft-delivery/0.0.8"), "craft-delivery");
+        package(&cache.join("craft-delivery/0.0.7"), "craft-delivery");
+        package(&cache.join("craft-engineering/0.0.7"), "craft-engineering");
+        package(&cache.join("craft-engineering/0.0.8"), "craft-engineering");
+        package(&cache.join("craft-review/0.0.6"), "craft-review");
+        package(&cache.join("craft-stories/0.0.5"), "craft-stories");
+        package(&cache.join("craft-stories/0.0.6"), "craft-stories");
+        let running = cache.join("craft-delivery/0.0.8");
+        assert_eq!(
+            package_roots(&running).unwrap(),
+            [
+                running.clone(),
+                cache.join("craft-engineering/0.0.8"),
+                cache.join("craft-review/0.0.6")
+            ]
+        );
+        // Not a bundle, or in no host layout.
+        assert!(package_roots(&base.join("export")).is_none());
+        let loose = base.join("loose/elsewhere");
+        package(&loose, "craft-delivery");
+        assert!(package_roots(&loose).is_none());
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]

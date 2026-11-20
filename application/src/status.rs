@@ -367,8 +367,9 @@ fn observe(
     }
     result["task"] = input["task"].clone();
     result["featureOutcomes"] = features;
-    if context.as_ref().is_some_and(|c| c["stale"] == true) {
+    if let Some(context) = context.as_ref().filter(|c| c["stale"] == true) {
         result["taskEvidenceStale"] = json!(true);
+        result["taskEvidenceStaleBecause"] = context["staleBecause"].clone();
     }
     if let Some(session) = session_id.as_ref().and_then(Value::as_str) {
         match crate::hook::delivery::planning(root, session) {

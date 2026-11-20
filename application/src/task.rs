@@ -431,7 +431,8 @@ pub fn step(
             verified,
             heads: &heads,
             result: text("result"),
-            next_step: text("nextStep"),
+            // The recorded one: a completion without `--next` names its hand-back.
+            next_step: record["nextStep"].as_str(),
             evidence: text("evidence"),
         };
         crate::plan::advance(root, &plan, task, name, &progress).unwrap_or_else(
