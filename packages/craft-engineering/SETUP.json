@@ -156,5 +156,37 @@
       "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
       "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
     ]
+  },
+  "planningSupport": {
+    "question": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no question tool Craft can name"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "approval": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    },
+    "tasks": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no lifecycle hooks are installed on this host"
+      },
+      "control": "none",
+      "path": "command"
+    }
   }
 }

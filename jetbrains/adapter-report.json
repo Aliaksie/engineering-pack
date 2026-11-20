@@ -196,6 +196,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -417,6 +449,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -629,6 +693,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -837,6 +933,38 @@
         "limitations": [
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
+      },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
       },
       "sessionAdvice": {
         "entry": "bin/craft",

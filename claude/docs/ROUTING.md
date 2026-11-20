@@ -209,10 +209,17 @@ its reply. Direct work gets the line and no question. `craft ticket --accept pla
 
 A planned ticket gets a [work plan](SESSION.md#work-plans) named after it (`issue-12`,
 `shop-12`) and linked by its reference: the next step gives the exact `plan-create` command,
-then asks the agent to show the user the plan and get their approval through the host's
-question tool where it has one, unless the user already approved it. `craft ticket --ticket
+then asks the agent to show the user the plan and get their approval, unless the user already
+approved it. One path records the approval on each host, as its
+[planning table](ADAPTERS.md#host-planning-features) says. Where Craft observes the host's
+question tool and the session's hooks are seen to run (Claude Code), the agent asks
+`Approve plan <id> revision <n>?` with the options `Approve` and `Change the plan`, and the
+after-tool hook records an `Approve` answer against that revision with the source
+`host-observed`; no approval command is asked for. An answer for a revision the plan has moved
+past, another answer or another plan records nothing, and a later `--approve` does not replace
+an approval the host observed for the plan as it stands. Elsewhere `craft ticket --ticket
 <ref> --approve --session <id>` records that approval against the plan as it stands; it is
-refused for a missing plan or one without tasks. Each approval names its source: `user` when
+refused for a missing plan or one without tasks. Each command approval names its source: `user` when
 the session's hooks are seen to run and no agent shell command recorded it, as when the user
 runs the command themselves; `agent` otherwise, since the agent's report is its statement, not
 evidence that the user answered. Approvals saved by an earlier version read as `unknown`. The
@@ -224,7 +231,8 @@ reason naming the next step. Files elsewhere, such as the plan's task list in a 
 folder, and shell commands are not refused. A turn that ends with repository files a shell
 command or script changed while the plan waits names those files and the step that lets work go
 on, once per change; files already changed when the user chose to plan first are not named.
-Task progress keeps
+Task progress is recorded by `task-step` on every host, since no host's task list is yet
+seen reliably by its hooks; no turn-end reminder repeats it. Task progress keeps
 the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
 lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
 review offer for the ticket, once. The same ticket in a later prompt of

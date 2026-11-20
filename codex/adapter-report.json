@@ -243,6 +243,38 @@
           "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": "question tool in plan mode",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for the question tool"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no question tool whose answer a hook is seen to receive"
+          },
+          "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": "update_plan task list",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for update_plan"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -509,6 +541,38 @@
           "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": "question tool in plan mode",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for the question tool"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no question tool whose answer a hook is seen to receive"
+          },
+          "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": "update_plan task list",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for update_plan"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -771,6 +835,38 @@
           "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": "question tool in plan mode",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for the question tool"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no question tool whose answer a hook is seen to receive"
+          },
+          "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": "update_plan task list",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for update_plan"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -1024,6 +1120,38 @@
           "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
           "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
         ]
+      },
+      "planningSupport": {
+        "question": {
+          "feature": "question tool in plan mode",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for the question tool"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no question tool whose answer a hook is seen to receive"
+          },
+          "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": "update_plan task list",
+          "tool": null,
+          "observe": {
+            "evidence": "unverified",
+            "what": "no recorded session shows a hook run for update_plan"
+          },
+          "control": "none",
+          "path": "command"
+        }
       },
       "sessionAdvice": {
         "entry": "bin/craft",
