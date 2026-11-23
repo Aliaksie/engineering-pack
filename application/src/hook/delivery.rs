@@ -247,10 +247,51 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                 command.push_str(&format!(" --session {session}"));
             }
             decision["ticket"] = json!({"reference": reference, "command": command});
+            // The ticket's intake is the session's delivery choice: no work offer follows it.
+            if let Some(session) = session
+                && crate::ticket::work_offer_due(event.root, session, || true).is_err()
+            {
+                recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+            }
+        }
+    } else if let (Some(session), true) = (
+        event.session.filter(|s| !s.is_empty()),
+        event.context_supported && craft_engine::ticket::enabled(&settings),
+    ) && starts_work(event)
+        && delivery::session_records(&settings)
+    {
+        // Work no ticket names is offered the same delivery choice, once per session: only
+        // where the session keeps the record that says it was offered.
+        let bound = || {
+            crate::session::active_task(event.root, Some(session))
+                .map_or(true, |task| task.is_some())
+        };
+        match crate::ticket::work_offer_due(event.root, session, bound) {
+            Ok(true) => {
+                decision["work"] = json!({"command": format!(
+                    "craft ticket --work <name> --criteria clear|unclear|missing --questions <n> --path <file>... --host {} --session {session}",
+                    event.host
+                )});
+            }
+            Ok(false) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
         }
     }
     account(event, &settings, &mut decision, recorder, hook);
     Ok(decision)
+}
+
+/// Whether this event starts work on a change: a prompt that asks for one, or an edit the
+/// host delivers context for.
+fn starts_work(event: &Event) -> bool {
+    match event.lifecycle {
+        "before-prompt" => event
+            .prompt
+            .and_then(delivery::requested_intent)
+            .is_some_and(|intent| intent == "implement"),
+        "before-tool" => event.edit && event.edit_context,
+        _ => false,
+    }
 }
 
 /// The answer budget of the session's context window: Project Intelligence answers stay

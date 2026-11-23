@@ -940,3 +940,164 @@ fn a_host_whose_question_craft_cannot_observe_keeps_the_approval_command() {
     assert!(held.starts_with("deny "), "{held}");
     assert!(held.contains("--approve --session S1"), "{held}");
 }
+
+#[test]
+fn work_a_prompt_names_by_number_reaches_the_ticket_step() {
+    let repo = Repo::new("ticket-number", &[(".craft/project.json", PROJECT)]);
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    let said = prompted(&repo, "yes, go ahead with 176");
+    assert!(
+        said.contains("craft ticket --ticket 176 --criteria"),
+        "{said}"
+    );
+    // The ticket's intake was the session's choice: its first edit is not offered another.
+    let edit = before(
+        "claude",
+        &repo,
+        "Edit",
+        json!({"file_path": format!("{}/engine/a.rs", repo.path())}),
+    );
+    assert!(!edit.contains("work intake"), "{edit}");
+}
+
+#[test]
+fn work_no_ticket_names_is_offered_the_delivery_choice_once_per_session() {
+    let repo = Repo::new("ticket-work", &[(".craft/project.json", PROJECT)]);
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    let said = prompted(&repo, "fix the parser");
+    assert!(said.contains("Craft work intake"), "{said}");
+    assert!(
+        said.contains("craft ticket --work <name> --criteria"),
+        "{said}"
+    );
+    assert!(said.contains("--host claude --session S1"), "{said}");
+    assert!(!said.contains("ticket intake"), "{said}");
+    assert!(!prompted(&repo, "fix the lexer too").contains("work intake"));
+
+    // Work the agent picked itself: no prompt asked for a change, so its first edit is offered.
+    let picked = Repo::new("ticket-work-edit", &[(".craft/project.json", PROJECT)]);
+    hook(
+        "claude",
+        "session-start",
+        &picked,
+        json!({"source": "startup"}),
+    );
+    assert!(!prompted(&picked, "what is next on the board?").contains("work intake"));
+    let file = json!({"file_path": format!("{}/engine/a.rs", picked.path())});
+    let first = before("claude", &picked, "Edit", file.clone());
+    assert!(first.contains("Craft work intake"), "{first}");
+    assert!(!before("claude", &picked, "Edit", file).contains("work intake"));
+
+    // A session already bound to a task is in the chain: nothing is offered.
+    let bound = Repo::new("ticket-work-bound", &[(".craft/project.json", PROJECT)]);
+    hook(
+        "claude",
+        "session-start",
+        &bound,
+        json!({"source": "startup"}),
+    );
+    bound
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "t1",
+            "--goal",
+            "Fix the parser",
+        ])
+        .unwrap();
+    assert!(!prompted(&bound, "fix the parser").contains("work intake"));
+
+    // Turned off with ticket offers.
+    let off = Repo::new(
+        "ticket-work-off",
+        &[(
+            ".craft/project.json",
+            r#"{"formatVersion":1,"routing":{"ticketOffer":false}}"#,
+        )],
+    );
+    hook(
+        "claude",
+        "session-start",
+        &off,
+        json!({"source": "startup"}),
+    );
+    assert!(!prompted(&off, "fix the parser").contains("work intake"));
+}
+
+#[test]
+fn work_with_no_ticket_is_decided_and_planned_by_its_name() {
+    let repo = Repo::new("ticket-work-plan", &[(".craft/project.json", PROJECT)]);
+    let plan = repo
+        .cli(&[
+            "ticket",
+            "--work",
+            "parser-quotes",
+            "--criteria",
+            "clear",
+            "--path",
+            "engine/a.rs",
+            "--path",
+            "application/b.rs",
+            "--host",
+            "claude",
+            "--session",
+            "S1",
+        ])
+        .unwrap();
+    assert_eq!(plan["mode"], "plan", "{plan}");
+    let next = plan["next"].as_str().unwrap();
+    assert!(
+        next.contains("craft ticket --work parser-quotes --accept plan --session S1"),
+        "{next}"
+    );
+    let accepted = repo
+        .cli(&[
+            "ticket",
+            "--work",
+            "parser-quotes",
+            "--accept",
+            "plan",
+            "--session",
+            "S1",
+        ])
+        .unwrap();
+    let next = accepted["next"].as_str().unwrap();
+    assert!(
+        next.contains("craft plan-create --plan work-parser-quotes --goal"),
+        "{next}"
+    );
+    assert!(!next.contains("--reference"), "{next}");
+    assert!(
+        next.contains("craft ticket --work parser-quotes --approve --session S1"),
+        "{next}"
+    );
+
+    let both = repo
+        .cli(&[
+            "ticket",
+            "--ticket",
+            ISSUE,
+            "--work",
+            "x",
+            "--criteria",
+            "clear",
+        ])
+        .unwrap_err();
+    assert!(both.contains("not both"), "{both}");
+    let spaced = repo
+        .cli(&["ticket", "--work", "two words", "--criteria", "clear"])
+        .unwrap_err();
+    assert!(spaced.contains("short name"), "{spaced}");
+}

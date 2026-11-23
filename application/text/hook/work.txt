@@ -1,0 +1,1 @@
+Craft work intake (no authorization implied): no ticket is recorded for this work. For an issue or tracker item, decide with `craft ticket --ticket <its URL or key>` instead. Otherwise, before editing further, run `{command}`, naming the work and stating whether its acceptance is clear, unclear or missing, its open questions and the files it changes. Follow the `next` it prints.

@@ -22,11 +22,28 @@ fn a_prompt_names_its_ticket_by_url_or_by_a_key_it_calls_a_ticket() {
         ("start ticket SHOP-12", Some("SHOP-12")),
         ("Issue #42: the parser drops quotes", Some("#42")),
         ("please do story 7.", Some("7")),
+        // Named by the phrase that starts work on it, or as `#12`.
+        ("go ahead with 176", Some("176")),
+        ("start work on 164", Some("164")),
+        ("yes, close 132 and start on 133", Some("133")),
+        ("yes go ahead with 132 and clean the board", Some("132")),
+        ("pick up SHOP-12 next", Some("SHOP-12")),
+        ("do 176 next", Some("176")),
+        ("let's look at #176 today", Some("#176")),
+        ("work on #9: the parser", Some("#9")),
         // Not a ticket: a pull request, a commit, an encoding name, a bare number.
         ("review https://github.com/acme/shop/pull/9", None),
         ("convert the files to UTF-8 and SHA-256", None),
         ("bump the limit to 145", None),
         ("the issues page is slow", None),
+        // A number that counts things, one no start-work phrase names, or a request's `#12`.
+        ("fix 3 failing tests", None),
+        ("fix UTF-8 handling in the parser", None),
+        ("start 2 workers and retry", None),
+        ("177 merged, what next?", None),
+        ("close 132", None),
+        ("check PR #57 for security issues", None),
+        ("review merge request #8", None),
     ] {
         assert_eq!(reference(prompt).as_deref(), expected, "{prompt}");
     }
@@ -138,7 +155,7 @@ fn a_ticket_names_its_plan_and_the_reference_linking_it() {
     ] {
         assert_eq!(plan_id(reference), id, "{reference}");
         assert!(crate::plan::slug(&plan_id(reference)));
-        assert_eq!(plan_reference(reference), link);
+        assert_eq!(plan_reference(reference).as_deref(), Some(link));
     }
 }
 
@@ -248,5 +265,21 @@ fn an_agent_shell_command_records_a_delivery_choice_however_it_is_wrapped() {
         ("echo --accept plan", false),
     ] {
         assert_eq!(accept_command(command), expected, "{command}");
+    }
+}
+
+#[test]
+fn work_with_no_ticket_has_a_plan_and_is_named_again_by_its_option() {
+    let reference = work_reference("flaky-stop-review").unwrap();
+    assert_eq!(plan_id(&reference), "work-flaky-stop-review");
+    assert_eq!(plan_reference(&reference), None);
+    assert_eq!(selector(&reference), "--work flaky-stop-review");
+    assert_eq!(selector("#42"), "--ticket #42");
+    assert_eq!(
+        plan_reference("SHOP-12").as_deref(),
+        Some("tracker:SHOP-12")
+    );
+    for name in ["", "two words", "a/b", "$(x)"] {
+        assert_eq!(work_reference(name), None, "{name}");
     }
 }

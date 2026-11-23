@@ -620,6 +620,7 @@ pub(crate) const STANDARDS: &str = "standards findings";
 pub(crate) const TESTS: &str = "test evidence";
 pub(crate) const HOOK_GAP: &str = "hook gap";
 pub(crate) const TICKET: &str = "ticket intake";
+pub(crate) const WORK: &str = "work intake";
 
 /// The host session identity, then what earlier sessions left that it may adopt: each a
 /// piece of its own, so a long list never costs the identity.
@@ -696,6 +697,9 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
     if let Some(intake) = result.get("ticket") {
         push(TICKET, 1, ticket_line(intake));
     }
+    if let Some(offer) = result.get("work") {
+        push(WORK, 1, work_line(offer));
+    }
     pieces
 }
 
@@ -721,6 +725,11 @@ fn ticket_line(intake: &Value) -> String {
         ("reference", &text("reference")),
         ("command", &text("command")),
     ])
+}
+
+/// Work no ticket names: the command that decides how it is delivered.
+fn work_line(offer: &Value) -> String {
+    text::WORK.render(&[("command", offer["command"].as_str().unwrap_or_default())])
 }
 
 /// A test run that exited cleanly without running a test.

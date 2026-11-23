@@ -4,7 +4,7 @@
   "hosts": {
     "claude": {
       "always": 4657,
-      "hooks": 1791,
+      "hooks": 2109,
       "session": 5266,
       "guidance": {
         "implement": 16241,
@@ -18,7 +18,7 @@
     },
     "codex": {
       "always": 5942,
-      "hooks": 1790,
+      "hooks": 2106,
       "session": 5264,
       "guidance": {
         "implement": 16241,
@@ -32,8 +32,8 @@
     },
     "cursor": {
       "always": 6877,
-      "hooks": 551,
-      "session": 1849,
+      "hooks": 321,
+      "session": 1543,
       "guidance": {
         "implement": 16293,
         "verify": 11676,
@@ -46,8 +46,8 @@
     },
     "copilot": {
       "always": 6941,
-      "hooks": 549,
-      "session": 1847,
+      "hooks": 320,
+      "session": 1541,
       "guidance": {
         "implement": 16293,
         "verify": 11676,
@@ -60,7 +60,7 @@
     },
     "gemini": {
       "always": 6553,
-      "hooks": 1784,
+      "hooks": 2098,
       "session": 2831,
       "guidance": {
         "implement": 16293,

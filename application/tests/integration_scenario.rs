@@ -478,15 +478,22 @@ fn scenario(host: Host) {
         "the baseline first, then the project's: {hint}"
     );
 
-    // Work the host does alone gets nothing: a chore at the prompt, a change request, which
-    // names no skills there, and a shell command no rule concerns.
-    for prompt in [
-        "Fix the typo in the README",
-        "Add a refund endpoint to the web module",
-    ] {
-        let asked = host.hook(&repo, "before-prompt", json!({"prompt": prompt}));
-        assert_eq!(asked, "", "{prompt}");
-    }
+    // The session's first change request, with no ticket named, is offered the delivery
+    // choice once; then work the host does alone gets nothing: a later change request, which
+    // names no skills at the prompt, and a shell command no rule concerns.
+    let typo = host.hook(
+        &repo,
+        "before-prompt",
+        json!({"prompt": "Fix the typo in the README"}),
+    );
+    assert!(typo.starts_with("Craft work intake"), "{typo}");
+    assert!(typo.contains("craft ticket --work <name>"), "{typo}");
+    let asked = host.hook(
+        &repo,
+        "before-prompt",
+        json!({"prompt": "Add a refund endpoint to the web module"}),
+    );
+    assert_eq!(asked, "");
     assert_eq!(host.hook(&repo, "before-tool", host.run("git status")), "");
     assert_eq!(
         host.hook(&repo, "after-tool", host.shell("git status", "clean")),

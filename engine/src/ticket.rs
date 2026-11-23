@@ -9,7 +9,9 @@ pub fn enabled(settings: &Value) -> bool {
 }
 
 /// The ticket a prompt starts work from: an issue or merge request URL of a code host, a
-/// tracker URL, or a key or number the prompt calls an issue, ticket, story or bug.
+/// tracker URL, a key or number the prompt calls an issue, ticket, story or bug, one a
+/// start-work phrase names ("start on 164", "go ahead with #176"), or a `#12` no pull or merge
+/// request owns.
 pub fn reference(prompt: &str) -> Option<String> {
     let words: Vec<&str> = prompt.split_whitespace().collect();
     for word in &words {
@@ -18,13 +20,81 @@ pub fn reference(prompt: &str) -> Option<String> {
             return Some(word.to_owned());
         }
     }
+    let id = |word: &str| {
+        word.trim_end_matches([',', '.', ':', ';', ')', '!', '?'])
+            .to_owned()
+    };
+    let lower: Vec<String> = words
+        .iter()
+        .map(|word| {
+            word.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '#')
+                .to_ascii_lowercase()
+        })
+        .collect();
     let named = ["issue", "ticket", "story", "bug", "task"];
-    words.windows(2).find_map(|pair| {
-        let noun = pair[0].trim_end_matches(':').to_ascii_lowercase();
-        let id = pair[1].trim_end_matches([',', '.', ':', ')']);
-        (named.contains(&noun.as_str()) && (number(id) || key(id))).then(|| id.to_owned())
-    })
+    let called = (1..words.len()).find_map(|at| {
+        let id = id(words[at]);
+        (named.contains(&lower[at - 1].as_str()) && (number(&id) || key(&id))).then_some(id)
+    });
+    // After a start-work phrase, a bare number or key must end its clause: "fix 3 tests" counts
+    // things and "fix UTF-8 handling" names an encoding.
+    let started = (0..words.len()).find_map(|at| {
+        let id = id(words[at]);
+        let after = START.iter().any(|phrase| {
+            at >= phrase.len()
+                && lower[at - phrase.len()..at]
+                    .iter()
+                    .zip(phrase.iter())
+                    .all(|(word, start)| word == start)
+        });
+        let ends = id.len() < words[at].len()
+            || lower
+                .get(at + 1)
+                .is_none_or(|next| CLAUSE.contains(&next.as_str()));
+        let item = id.starts_with('#') && number(&id) || (key(&id) || number(&id)) && ends;
+        (after && item).then_some(id)
+    });
+    let hashed = || {
+        (0..words.len()).find_map(|at| {
+            let id = id(words[at]);
+            let owned = at > 0 && OWNERS.contains(&lower[at - 1].as_str());
+            (id.starts_with('#') && number(&id) && !owned).then_some(id)
+        })
+    };
+    called.or(started).or_else(hashed)
 }
+
+/// Phrases that start work on the item named right after them.
+const START: &[&[&str]] = &[
+    &["start"],
+    &["start", "on"],
+    &["start", "work", "on"],
+    &["started", "on"],
+    &["begin"],
+    &["work", "on"],
+    &["working", "on"],
+    &["go", "ahead", "with"],
+    &["go", "with"],
+    &["proceed", "with"],
+    &["continue"],
+    &["continue", "with"],
+    &["resume"],
+    &["pick", "up"],
+    &["move", "on", "to"],
+    &["implement"],
+    &["fix"],
+    &["tackle"],
+    &["do"],
+];
+
+/// Words that may follow a bare number a start-work phrase names: "fix 3 tests" counts things,
+/// "start on 133 and close 132" names an item.
+const CLAUSE: &[&str] = &[
+    "and", "then", "next", "now", "please", "first", "too", "also", "as", "from", "with",
+];
+
+/// Words whose `#12` is a pull or merge request, not a ticket.
+const OWNERS: &[&str] = &["pr", "mr", "pull", "pulls", "merge", "request"];
 
 /// An issue (`/issues/12`, `/-/issues/12`), a work item (`/_workitems/edit/12`) or a tracker
 /// key in a URL (`/browse/SHOP-12`, `/issue/SHOP-12`).
@@ -111,13 +181,42 @@ pub fn plan_id(reference: &str) -> String {
 }
 
 /// The plan reference that links a work plan to its ticket: `link:<url>` for a URL,
-/// `tracker:<key>` otherwise.
-pub fn plan_reference(reference: &str) -> String {
+/// `tracker:<key>` otherwise, none for work with no ticket.
+pub fn plan_reference(reference: &str) -> Option<String> {
     let reference = reference.trim();
-    if reference.starts_with("https://") || reference.starts_with("http://") {
-        format!("link:{reference}")
+    if work_name(reference).is_some() {
+        None
+    } else if reference.starts_with("https://") || reference.starts_with("http://") {
+        Some(format!("link:{reference}"))
     } else {
-        format!("tracker:{reference}")
+        Some(format!("tracker:{reference}"))
+    }
+}
+
+/// Work with no ticket is decided and recorded under `work:<name>`; its plan is `work-<name>`.
+const WORK: &str = "work:";
+
+/// The reference of work with no ticket named `name`: a short name of letters, digits, `-`,
+/// `_` or `.`, so the commands that carry it need no quoting.
+pub fn work_reference(name: &str) -> Option<String> {
+    let valid = !name.is_empty()
+        && name.len() <= 64
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'));
+    valid.then(|| format!("{WORK}{name}"))
+}
+
+/// The name of work with no ticket, `None` for a ticket.
+pub fn work_name(reference: &str) -> Option<&str> {
+    reference.strip_prefix(WORK)
+}
+
+/// The `craft ticket` option that names `reference` again: `--work <name>` or `--ticket <ref>`.
+pub fn selector(reference: &str) -> String {
+    match work_name(reference) {
+        Some(name) => format!("--work {name}"),
+        None => format!("--ticket {reference}"),
     }
 }
 

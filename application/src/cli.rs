@@ -624,6 +624,7 @@ fn ticket(
     );
     let request = crate::ticket::Request {
         ticket: options.get("ticket").unwrap_or_default(),
+        work: options.get("work"),
         criteria: options.get("criteria"),
         questions: options.get("questions"),
         labels: &labels,

@@ -104,6 +104,7 @@ const OPTIONS: &[&str] = &[
     "ci-snippet",
     "sync",
     "ticket",
+    "work",
     "criteria",
     "questions",
     "label",
@@ -225,6 +226,7 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if let Some(name) = [
         "ticket",
+        "work",
         "criteria",
         "questions",
         "label",
