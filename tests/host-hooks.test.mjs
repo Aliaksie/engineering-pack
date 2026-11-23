@@ -263,7 +263,8 @@ test('explicit verify prompts select testing-only context rather than feature im
     const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, prompt: 'verify this feature' }, dir);
     assert.equal(result.status, 0, result.stderr);
     const capable = HOSTS[host].events['before-prompt'].context;
-    assert.equal(result.stdout.includes('workflow-verify-feature'), capable, host);
+    // The testing-only boundary is shown; the package workflow is not named.
+    assert.ok(!result.stdout.includes('workflow-verify-feature'), host);
     assert.equal(result.stdout.includes('testing-only'), capable, host);
     assert.ok(!/apply-change|deliver-change/.test(result.stdout), host);
   }
@@ -287,7 +288,7 @@ test('edit routing defaults on and can be disabled and prompt hints omit the ful
 
 test('opted-in native hooks reuse only emitted hints and re-emit after compaction', (t) => {
   for (const host of native) {
-    const dir = fixture(t, { routing: { dedupeHints: true } });
+    const dir = fixture(t, { routing: { dedupeHints: true }, standards: [{ id: 'commits', anchor: 'conventional-commits' }] });
     const input = { cwd: dir, session_id: 'hint-session', sessionId: 'hint-session', prompt: 'review the scoped change' };
     const first = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
     const next = invoke(host, 'craft-delivery', 'prompt-routing', input, dir);
