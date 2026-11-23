@@ -219,16 +219,22 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
         }
     }
     let mut decision = decide(event, &settings, recorder, hook)?;
-    // Fields of the project file this build does not know, said once a session starts.
-    if !ignored.is_empty()
-        && event.lifecycle == "session-start"
-        && crate::hook::shows_notice(event.host, event.lifecycle)
+    // Fields of the project file this build does not know or no longer has, said once a
+    // session starts.
+    if event.lifecycle == "session-start" && crate::hook::shows_notice(event.host, event.lifecycle)
     {
-        let line = craft_engine::contracts::ignored_line(&ignored);
-        decision["notice"] = json!(match decision["notice"].as_str() {
-            Some(earlier) => format!("{earlier}\n{line}"),
-            None => line,
-        });
+        let retired = crate::project::retired(event.root);
+        let lines = [
+            (!ignored.is_empty()).then(|| craft_engine::contracts::ignored_line(&ignored)),
+            (!retired.is_empty())
+                .then(|| craft_engine::contracts::retired_line(&retired, ".craft/project.json")),
+        ];
+        for line in lines.into_iter().flatten() {
+            decision["notice"] = json!(match decision["notice"].as_str() {
+                Some(earlier) => format!("{earlier}\n{line}"),
+                None => line,
+            });
+        }
     }
     // A prompt that starts work from a ticket, once per ticket in a session.
     if let (Some(prompt), true) = (

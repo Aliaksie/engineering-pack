@@ -3,7 +3,7 @@
 //! switches models, writes state or reads a transcript.
 use super::{attempt_status, contract, text};
 use crate::values::{safe_integer, truthy};
-use crate::{digest, models, routing, timestamp};
+use crate::{digest, routing, timestamp};
 use serde_json::{Map, Value, json};
 
 type Result<T = ()> = std::result::Result<T, String>;
@@ -225,10 +225,10 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
     if session.is_some_and(|s| !text(s)) {
         return Err("invalid sessionId".into());
     }
-    let context = &settings["efficiency"]["context"];
+    // The context bands are fixed; a caller's policy may still name its own.
     let threshold = |name: &str, fallback: f64| match field("policy").and_then(|p| p.get(name)) {
         Some(value) => value.clone(),
-        None => or(context.get(name), &json!(fallback)).clone(),
+        None => json!(fallback),
     };
     let elevated = threshold("elevatedAt", 0.6);
     let compact = threshold("compactAt", 0.75);
@@ -449,9 +449,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
             "return-control",
             "The declared attempt budget is exhausted or three attempts made no progress.",
             "read",
-            &[
-                "Preserve failure evidence. Use model-advice for evidence-bound escalation; do not repeat the same attempt.",
-            ],
+            &["Preserve failure evidence; do not repeat the same attempt."],
             json!({}),
         ))
     } else if text_of("status") == Some("failed") || text_of("verification") == Some("failed") {
@@ -642,17 +640,7 @@ pub fn advice(input: &Value, settings: &Value, now: i64) -> Result<Value> {
         }
         None => None,
     };
-    let advice_settings = &settings["efficiency"]["advice"];
-    if advice_settings["enabled"] == false || advice_settings["nextStep"] == false {
-        suggestion = None;
-    }
-    if context["action"] == "manual"
-        && suggestion.as_ref().is_some_and(|s| {
-            ["compact", "start-new-session", "save-handoff"]
-                .iter()
-                .any(|a| s["action"] == *a)
-        })
-    {
+    if !super::next::enabled(settings) {
         suggestion = None;
     }
     let key = suggestion
@@ -1194,87 +1182,12 @@ pub fn status(request: Request) -> Result<Value> {
     capability["currentProfile"] = current_profile.clone().map_or(Value::Null, Value::String);
     capability["currentClass"] = current_class;
     capability["recommendation"] = recommendation;
-    let role = role(task["operation"].as_str()).or_else(|| {
-        if economical {
-            Some("locator")
-        } else {
-            role(task["stage"].as_str())
-        }
-    });
-    let records = attempts
-        .as_ref()
-        .and_then(|a| a["records"].as_array())
-        .map_or(&[][..], Vec::as_slice);
-    let attempted = attempts
-        .as_ref()
-        .and_then(|a| a["attempts"].as_u64())
-        .unwrap_or(0)
-        > 0;
-    let mut model = Value::Null;
-    if let Some(role) = role
-        && truthy(task_id.as_ref())
-        && truthy(task.get("revision"))
-        && truthy(host.get("name"))
-    {
-        let mut current_source = Value::Null;
-        if !records.is_empty() && truthy(settings["execution"]["roles"][role].get("profile")) {
-            repository_evidence = repository_evidence.or(observations.repository.as_ref());
-            current_source = source(repository_evidence);
-        }
-        let revision = &task["revision"];
-        let cited: Vec<Value> = records
-            .iter()
-            .filter(|r| {
-                truthy(r.get("profile"))
-                    && !current_source.is_null()
-                    && r["source"] == current_source
-                    && &r["revision"] == revision
-                    && !["blocked", "prerequisite-resolved"].iter().any(|o| r["outcome"] == *o)
-            })
-            .map(|r| json!({"id": r["id"], "profile": r["profile"], "task": task_id, "revision": r["revision"], "outcome": r["outcome"], "evidence": r["evidence"]}))
-            .collect();
-        let mut advice = json!({"host": host["name"], "role": role, "task": task_id, "revision": revision, "capabilityClass": capability["class"]});
-        if let Some(profile) = &current_profile {
-            advice["currentProfile"] = json!(profile);
-        }
-        advice["attempts"] = json!(cited);
-        model = models::advise(settings, &advice)?;
-    }
     let blocked = attempts.as_ref().is_some_and(|a| a["blocked"] == true);
-    let stopped = model["decision"] == "stop" && attempted;
-    let last_profile = records
-        .last()
-        .and_then(|r| r.get("profile"))
-        .filter(|p| truthy(*p));
-    let reasons = || {
-        model["reasons"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .collect::<Vec<_>>()
-            .join(" ")
-    };
     if blocked {
         status["recommendation"] = json!({"action": "stop-blocked", "reason": "A recorded permission, tool or prerequisite blocker requires resolution.", "effect": "read", "prerequisites": []});
-    } else if stopped {
-        status["recommendation"] = json!({"action": "return-control", "reason": reasons(), "effect": "read", "prerequisites": ["Configured quality/escalation limits are exhausted; preserve evidence and return control."]});
-    } else if ["return-control", "retry-differently"]
-        .iter()
-        .any(|a| status["recommendation"]["action"] == *a)
-        && model["decision"] == "recommend"
-        && last_profile.is_some_and(|p| model.get("profile") != Some(p))
-        && (model["mainModel"]["switchSupported"] == true
-            || model["workerMappingAvailable"] == true)
-    {
-        status["recommendation"] = json!({"action": "escalate-model", "reason": reasons(), "effect": "recommendation-only", "prerequisites": ["Use only the configured host mapping and existing authorization; no switch was performed."]});
     }
     let action = status["recommendation"]["action"].clone();
-    if ["stop-blocked", "escalate-model"]
-        .iter()
-        .any(|a| action == *a)
-        || stopped
-    {
+    if action == "stop-blocked" {
         let key = notice_key(session_id.as_ref(), &task, &status["recommendation"]);
         let previous = input.get("previous");
         let at = previous
@@ -1347,7 +1260,6 @@ pub fn status(request: Request) -> Result<Value> {
     for (key, value) in [
         ("checkpoint", checkpoint),
         ("capability", capability),
-        ("modelAdvice", model),
         ("discovery", discovery),
         ("packReport", pack.cloned().unwrap_or(Value::Null)),
         ("attemptEvidence", evidence),
@@ -1370,7 +1282,6 @@ pub fn refresh_key(status: &Value) -> String {
         status["recommendation"]["action"],
         status["suggestion"]["action"],
         status["checkpoint"]["status"],
-        status["modelAdvice"]["decision"],
         status["budget"]["exceeded"],
         status["task"]["stage"],
         status["task"]["status"],

@@ -33,7 +33,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -66,19 +67,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -149,6 +139,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -165,14 +156,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -204,8 +188,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -259,7 +241,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -292,19 +275,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -375,6 +347,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "project",
@@ -391,14 +364,7 @@
             "efficiency.batching.maxConcurrency": "user",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -430,8 +396,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -484,7 +448,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -517,19 +482,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -565,6 +519,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -581,14 +536,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -601,8 +549,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -654,7 +600,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -687,19 +634,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -770,6 +706,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -786,14 +723,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -825,8 +755,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -837,267 +765,6 @@
             "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
           ],
           "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
-        }
-      }
-    },
-    {
-      "id": "settings:layered-thresholds",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1,
-            "efficiency": {
-              "context": {
-                "restartAt": 0.95
-              }
-            }
-          },
-          "preferences": {
-            "efficiency": {
-              "context": {
-                "compactAt": 0.8
-              }
-            }
-          },
-          "overrides": {
-            "efficiency": {
-              "context": {
-                "elevatedAt": 0.7
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "settings": {
-            "routing": {
-              "promptHints": true,
-              "editHints": true,
-              "dedupeHints": true,
-              "standardChecks": true,
-              "stopReview": true,
-              "debtMarkers": false,
-              "testRuns": true,
-              "workerStandards": true,
-              "sessionRecords": true,
-              "sessionSummary": true,
-              "conventionProposals": true,
-              "projectChecks": true,
-              "commitGate": true,
-              "ticketOffer": true
-            },
-            "checkpoint": {
-              "enabled": true
-            },
-            "workspace": {
-              "enabled": true,
-              "maxSessions": 20,
-              "scratch": {
-                "staleAfterHours": 24,
-                "maxBytes": 8388608,
-                "maxFiles": 64
-              },
-              "evidence": {
-                "enabled": true,
-                "retentionDays": 7,
-                "maxArtifacts": 16,
-                "maxBytes": 1048576
-              }
-            },
-            "efficiency": {
-              "lookup": {
-                "enabled": true,
-                "reuse": true
-              },
-              "batching": {
-                "enabled": true,
-                "maxConcurrency": 3
-              },
-              "attempts": {
-                "enabled": true,
-                "maxAttempts": 3
-              },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
-              "review": {
-                "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.7,
-                "compactAt": 0.8,
-                "restartAt": 0.95,
-                "action": "recommend"
-              },
-              "delegation": {
-                "mode": "recommend",
-                "maxWorkers": 3
-              }
-            },
-            "safety": {
-              "enabled": true
-            },
-            "execution": {
-              "profiles": {
-                "economical": {
-                  "class": "economical",
-                  "capabilities": [],
-                  "escalateTo": "standard"
-                },
-                "standard": {
-                  "class": "standard",
-                  "capabilities": [],
-                  "escalateTo": "strong"
-                },
-                "strong": {
-                  "class": "strong",
-                  "capabilities": []
-                }
-              },
-              "roles": {
-                "locator": {
-                  "mode": "tool",
-                  "profile": "economical"
-                },
-                "researcher": {
-                  "mode": "main",
-                  "profile": "standard"
-                },
-                "implementer": {
-                  "mode": "main",
-                  "profile": "standard"
-                },
-                "reviewer": {
-                  "mode": "main",
-                  "profile": "strong"
-                },
-                "planner": {
-                  "mode": "main",
-                  "profile": "standard"
-                },
-                "verifier": {
-                  "mode": "main",
-                  "profile": "standard"
-                }
-              }
-            },
-            "formatVersion": 1
-          },
-          "origins": {
-            "routing.promptHints": "bundled",
-            "routing.editHints": "bundled",
-            "routing.dedupeHints": "bundled",
-            "routing.standardChecks": "bundled",
-            "routing.stopReview": "bundled",
-            "routing.debtMarkers": "bundled",
-            "routing.testRuns": "bundled",
-            "routing.workerStandards": "bundled",
-            "routing.sessionRecords": "bundled",
-            "routing.sessionSummary": "bundled",
-            "routing.conventionProposals": "bundled",
-            "routing.projectChecks": "bundled",
-            "routing.commitGate": "bundled",
-            "routing.ticketOffer": "bundled",
-            "checkpoint.enabled": "bundled",
-            "workspace.enabled": "bundled",
-            "workspace.maxSessions": "bundled",
-            "workspace.scratch.staleAfterHours": "bundled",
-            "workspace.scratch.maxBytes": "bundled",
-            "workspace.scratch.maxFiles": "bundled",
-            "workspace.evidence.enabled": "bundled",
-            "workspace.evidence.retentionDays": "bundled",
-            "workspace.evidence.maxArtifacts": "bundled",
-            "workspace.evidence.maxBytes": "bundled",
-            "efficiency.lookup.enabled": "bundled",
-            "efficiency.lookup.reuse": "bundled",
-            "efficiency.batching.enabled": "bundled",
-            "efficiency.batching.maxConcurrency": "bundled",
-            "efficiency.attempts.enabled": "bundled",
-            "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
-            "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "task",
-            "efficiency.context.compactAt": "user",
-            "efficiency.context.restartAt": "project",
-            "efficiency.context.action": "bundled",
-            "efficiency.delegation.mode": "bundled",
-            "efficiency.delegation.maxWorkers": "bundled",
-            "safety.enabled": "bundled",
-            "execution.profiles.economical.class": "bundled",
-            "execution.profiles.economical.capabilities": "bundled",
-            "execution.profiles.economical.escalateTo": "bundled",
-            "execution.profiles.standard.class": "bundled",
-            "execution.profiles.standard.capabilities": "bundled",
-            "execution.profiles.standard.escalateTo": "bundled",
-            "execution.profiles.strong.class": "bundled",
-            "execution.profiles.strong.capabilities": "bundled",
-            "execution.roles.locator.mode": "bundled",
-            "execution.roles.locator.profile": "bundled",
-            "execution.roles.researcher.mode": "bundled",
-            "execution.roles.researcher.profile": "bundled",
-            "execution.roles.implementer.mode": "bundled",
-            "execution.roles.implementer.profile": "bundled",
-            "execution.roles.reviewer.mode": "bundled",
-            "execution.roles.reviewer.profile": "bundled",
-            "execution.roles.planner.mode": "bundled",
-            "execution.roles.planner.profile": "bundled",
-            "execution.roles.verifier.mode": "bundled",
-            "execution.roles.verifier.profile": "bundled",
-            "formatVersion": "project"
-          },
-          "runtimeApplied": [
-            "routing",
-            "checkpoint",
-            "workspace",
-            "efficiency.lookup",
-            "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
-            "efficiency.review.mode",
-            "efficiency.delegation.maxWorkers",
-            "efficiency.delegation.mode"
-          ],
-          "prerequisites": [
-            "Automatic semantic acceptance and continuation require agent-supplied task evidence.",
-            "Native dispatch, worker-tree lifecycle observations and model switching need verified host integration; supplied facts and decision receipts do not establish execution.",
-            "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
-          ],
-          "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
-        }
-      }
-    },
-    {
-      "id": "settings:equal-thresholds",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "overrides": {
-            "efficiency": {
-              "context": {
-                "compactAt": 0.6
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
         }
       }
     },
@@ -1148,7 +815,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -1181,19 +849,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -1281,6 +938,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1297,14 +955,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -1338,8 +989,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -1390,7 +1039,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -1423,19 +1073,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -1506,6 +1145,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -1522,14 +1162,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "task",
             "safety.enabled": "bundled",
@@ -1561,8 +1194,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -1699,110 +1330,6 @@
             "efficiency": {
               "review": {
                 "mode": "auto"
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "settings:preferences-bad-at",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "preferences": {
-            "efficiency": {
-              "advice": {
-                "at": "always"
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "settings:preferences-zero-threshold",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "preferences": {
-            "efficiency": {
-              "context": {
-                "elevatedAt": 0
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "settings:preferences-threshold-above-one",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "preferences": {
-            "efficiency": {
-              "context": {
-                "restartAt": 1.01
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
-      "id": "settings:preferences-threshold-string",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "preferences": {
-            "efficiency": {
-              "context": {
-                "compactAt": "0.7"
               }
             }
           }
@@ -2009,7 +1536,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -2042,19 +1570,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -2125,6 +1642,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -2141,14 +1659,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -2180,8 +1691,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -2310,7 +1819,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -2343,19 +1853,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -2426,6 +1925,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -2442,14 +1942,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "bundled",
             "safety.enabled": "bundled",
@@ -2481,8 +1974,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"

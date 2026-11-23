@@ -104,9 +104,9 @@ fn a_changed_file_a_check_covers_names_the_check_until_it_runs() {
 }
 
 #[test]
-fn the_switches_of_session_advice_and_project_checks_silence_it() {
+fn the_next_steps_and_project_checks_switches_silence_it() {
     for switch in [
-        r#""efficiency":{"advice":{"nextStep":false}}"#,
+        r#""routing":{"nextSteps":false}"#,
         r#""routing":{"projectChecks":false}"#,
     ] {
         let project = PROJECT.replacen(

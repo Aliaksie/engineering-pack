@@ -237,6 +237,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.projectChecks` | boolean | `true` | Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run. |
 | `routing.commitGate` | boolean | `true` | Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through. |
 | `routing.ticketOffer` | boolean | `true` | When a prompt starts work from a ticket (an issue or tracker URL, a key or number the prompt calls an issue or ticket or names after a start-work phrase such as `start on 12`, or a `#12`), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Work no ticket names gets the same offer once per session, at its first prompt asking for a change or else its first edit, through `craft ticket --work <name>`. Set false to make no offer. |
+| `routing.nextSteps` | boolean | `true` | Name a next step at the end of a turn and in session advice: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past 75% of the window with where the saved continuation stands. Set false to name none. |
 
 ## `efficiency`
 
@@ -253,17 +254,8 @@ object. Session advice: lookups, attempts, review, context and delegation. Recom
 | `efficiency.attempts` | object |  | Acceptance attempt budget. |
 | `efficiency.attempts.enabled` | boolean | `true` | Recorded only; the budget below always applies to recorded attempts. |
 | `efficiency.attempts.maxAttempts` | integer 1–5 | `3` | Same failure on unchanged source this many times: return control or escalate. |
-| `efficiency.advice` | object |  | Next-step advice in session status. |
-| `efficiency.advice.enabled` | boolean | `true` | Give advice. False removes the next-step suggestion. |
-| `efficiency.advice.at` | `meaningful-boundaries` | `meaningful-boundaries` | When advice is given. Only `meaningful-boundaries` exists. |
-| `efficiency.advice.nextStep` | boolean | `true` | Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands. |
 | `efficiency.review` | object |  | Review offers. |
 | `efficiency.review.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer. |
-| `efficiency.context` | object |  | Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window. |
-| `efficiency.context.elevatedAt` | number 0–1 | `0.6` | Occupancy at which pressure is elevated. |
-| `efficiency.context.compactAt` | number 0–1 | `0.75` | Occupancy at which advice is "checkpoint, then compact". |
-| `efficiency.context.restartAt` | number 0–1 | `0.85` | Occupancy at which advice is "checkpoint, then new session". |
-| `efficiency.context.action` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves. |
 | `efficiency.delegation` | object |  | Worker plans. |
 | `efficiency.delegation.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no worker plans. `recommend`: plan workers where a role and host allow it. `execute-when-authorized`: may proceed once the user approves. |
 | `efficiency.delegation.maxWorkers` | integer 0– | `3` | Most running workers per session. 0 disables worker plans. |

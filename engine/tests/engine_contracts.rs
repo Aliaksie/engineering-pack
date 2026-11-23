@@ -4,8 +4,7 @@ mod support;
 
 use craft_engine::session::status::{self, Observations};
 use craft_engine::{
-    context, contracts, digest, models, routing, routing::catalog, services, session, values,
-    workers,
+    context, contracts, digest, routing, routing::catalog, services, session, values, workers,
 };
 use serde_json::{Value, json};
 
@@ -99,7 +98,6 @@ fn run(operation: &str, input: &Value) -> Result<Value, String> {
             input["operation"].as_str().unwrap_or_default(),
             input.get("params").unwrap_or(&empty),
         ),
-        "model-advice" => models::advise(&settings(&input["project"])?, &input["input"]),
         "attempt-status" => match (input["records"].as_array(), input["operation"].as_str()) {
             (Some(records), operation) => Ok(session::attempt_status(
                 records,
@@ -215,5 +213,5 @@ fn frozen_engine_contracts() {
         cases.len(),
         failures.join("\n")
     );
-    assert_eq!(cases.len(), 102);
+    assert_eq!(cases.len(), 97);
 }

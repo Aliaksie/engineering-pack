@@ -124,8 +124,8 @@ pub(crate) fn run(
         .ok_or("setup requires a single-line UTF-8 project path")?;
     let mut report = json!({"formatVersion":1,"host":host,"package":package,"mode":if apply {"apply-display"} else {"preview"},
         "capabilities":capabilities,"connection":"unverified","usage":"unknown until a fresh native observation arrives",
-        "configuration":[{"file":".craft/project.json","keys":["efficiency.context.elevatedAt","efficiency.context.compactAt","efficiency.context.restartAt","efficiency.context.action","execution.hosts.<host>.contextLimits.<exact-model>.windowTokens","execution.hosts.<host>.contextLimits.<exact-model>.budgetTokens"],
-            "purpose":"Craft advice thresholds and optional per-model working budget. Window limits cannot establish current usage or change the model's actual capacity."}],
+        "configuration":[{"file":".craft/project.json","keys":["execution.hosts.<host>.contextLimits.<exact-model>.windowTokens","execution.hosts.<host>.contextLimits.<exact-model>.budgetTokens"],
+            "purpose":"Optional per-model working budget. Window limits cannot establish current usage or change the model's actual capacity."}],
         "permissions":permissions(host,bundle)?,
         "compaction":{"nativeAutoCompact":capabilities["nativeAutoCompact"],"control":"not-connected","completion":"not-observed","next":"Use native auto-compaction or the host's manual command. Preserve a task checkpoint; verify continuation after compaction. Craft does not trigger compaction through setup."}});
     match host {

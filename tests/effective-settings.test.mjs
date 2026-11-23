@@ -30,12 +30,11 @@ test('nested precedence retains false, zero and sibling defaults', t => {
   assert.equal(result.origins['routing.editHints'], 'project');
 });
 
-test('invalid limits, unknown fields, permission preferences and thresholds fail', t => {
+test('invalid limits, unknown fields and permission preferences fail', t => {
   for (const maxWorkers of [-1, 1.5, '3', null, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => fixture(t, { overrides: { efficiency: { delegation: { maxWorkers } } } }).resolve(), /maxWorkers/, String(maxWorkers));
   }
   assert.throws(() => fixture(t, { preferences: { permissions: { writeOperations: ['git.push'] } } }).resolve(), /unknown/);
-  assert.throws(() => fixture(t, { overrides: { efficiency: { context: { compactAt: 0.9 } } } }).resolve(), /thresholds/);
   assert.throws(() => fixture(t, { project: { formatVersion: 1, efficiency: { unknown: true } } }).resolve(), /unknown/);
   assert.throws(() => fixture(t, { overrides: { bogus: 1 } }).resolve(), /unknown overrides field: bogus/);
 });

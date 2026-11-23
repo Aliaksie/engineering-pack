@@ -54,7 +54,7 @@ fn frozen_settings_cases_replay() {
         }
         replayed += 1;
     }
-    assert_eq!(replayed, 133);
+    assert_eq!(replayed, 127);
 }
 
 #[test]
@@ -119,8 +119,8 @@ fn result_key_order_matches_javascript() {
         "formatVersion"
     );
     assert_eq!(
-        serde_json::to_string(&result["settings"]["efficiency"]["context"]).unwrap(),
-        r#"{"elevatedAt":0.6,"compactAt":0.75,"restartAt":0.85,"action":"recommend"}"#
+        serde_json::to_string(&result["settings"]["efficiency"]["attempts"]).unwrap(),
+        r#"{"enabled":true,"maxAttempts":3}"#
     );
 }
 
@@ -231,7 +231,8 @@ fn a_valid_project_keeps_every_field() {
         .filter_map(|case| {
             let mut project = case["request"]["input"].get("project")?.clone();
             normalize_numbers(&mut project);
-            validate_project(&project).ok().map(|()| project)
+            // A retired setting is valid and read without it, but no longer known.
+            (validate_project(&project).is_ok() && retired(&project).is_empty()).then_some(project)
         })
         .collect();
     for file in [
@@ -276,4 +277,29 @@ fn an_unknown_field_is_left_out_and_named_by_place() {
         .remove("extra");
     assert_eq!(validate_project(&without), Ok(()), "{without}");
     assert!(ignored_line(&ignored).contains("`standards[0].someday`"));
+}
+
+#[test]
+fn a_retired_setting_is_read_without_it() {
+    let project = json!({"formatVersion": 1,
+        "efficiency": {"advice": {"nextStep": false}, "context": {"compactAt": 0.7}, "attempts": {"maxAttempts": 2}}});
+    assert_eq!(validate_project(&project), Ok(()));
+    assert_eq!(
+        retired(&project),
+        ["efficiency.advice", "efficiency.context"]
+    );
+    let settings = effective_settings(&project, &json!({}), &json!({})).unwrap();
+    let efficiency = &settings["settings"]["efficiency"];
+    assert!(efficiency.get("advice").is_none() && efficiency.get("context").is_none());
+    assert_eq!(efficiency["attempts"]["maxAttempts"], 2);
+    assert!(
+        settings["origins"]
+            .get("efficiency.advice.nextStep")
+            .is_none()
+    );
+    assert_eq!(settings["origins"]["routing.nextSteps"], "bundled");
+    assert_eq!(
+        retired_line(&retired(&project), ".craft/project.json"),
+        "Craft: `efficiency.advice` and `efficiency.context` in .craft/project.json no longer exist and are ignored; `routing.nextSteps: false` turns off the next steps a turn's end names."
+    );
 }

@@ -354,6 +354,7 @@ pub fn validate_project(project: &Value) -> Result {
                 "projectChecks",
                 "commitGate",
                 "ticketOffer",
+                "nextSteps",
             ],
             "routing",
         )?;
@@ -372,6 +373,7 @@ pub fn validate_project(project: &Value) -> Result {
             "projectChecks",
             "commitGate",
             "ticketOffer",
+            "nextSteps",
         ] {
             boolean(
                 routing.get(field),
@@ -656,6 +658,48 @@ fn validate_execution(execution: &Map<String, Value>) -> Result {
     Ok(())
 }
 
+/// Settings this build no longer has. A project or layer file that still sets one is read
+/// without it, and a session start names it once.
+pub const RETIRED: &[&str] = &["efficiency.advice", "efficiency.context"];
+
+/// Whether a validated field (`efficiency.advice`, or `settings.efficiency.context` in a
+/// layer) is a retired setting.
+fn retired_field(field: &str) -> bool {
+    RETIRED
+        .iter()
+        .any(|name| field == *name || field.ends_with(&format!(".{name}")))
+}
+
+/// The retired settings `document` still sets, by name.
+pub fn retired(document: &Value) -> Vec<String> {
+    RETIRED
+        .iter()
+        .filter(|name| {
+            document
+                .pointer(&format!("/{}", name.replace('.', "/")))
+                .is_some()
+        })
+        .map(|name| (*name).to_owned())
+        .collect()
+}
+
+/// The line a session start shows for retired settings a file still sets.
+pub fn retired_line(names: &[String], file: &str) -> String {
+    let named = names
+        .iter()
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(" and ");
+    let (exist, are) = if names.len() == 1 {
+        ("exists", "is")
+    } else {
+        ("exist", "are")
+    };
+    format!(
+        "Craft: {named} in {file} no longer {exist} and {are} ignored; `routing.nextSteps: false` turns off the next steps a turn's end names."
+    )
+}
+
 /// Bundled defaults. Preferences select behavior; authorization and host support stay separate facts.
 pub fn default_settings() -> Value {
     json!({
@@ -665,7 +709,7 @@ pub fn default_settings() -> Value {
             "promptHints": true, "editHints": true, "dedupeHints": true, "standardChecks": true,
             "stopReview": true, "debtMarkers": false, "testRuns": true, "workerStandards": true,
             "sessionRecords": true, "sessionSummary": true, "conventionProposals": true,
-            "projectChecks": true, "commitGate": true, "ticketOffer": true
+            "projectChecks": true, "commitGate": true, "ticketOffer": true, "nextSteps": true
         },
         "checkpoint": { "enabled": true },
         "workspace": {
@@ -677,9 +721,7 @@ pub fn default_settings() -> Value {
             "lookup": { "enabled": true, "reuse": true },
             "batching": { "enabled": true, "maxConcurrency": 3 },
             "attempts": { "enabled": true, "maxAttempts": 3 },
-            "advice": { "enabled": true, "at": "meaningful-boundaries", "nextStep": true },
             "review": { "mode": "recommend" },
-            "context": { "elevatedAt": 0.60, "compactAt": 0.75, "restartAt": 0.85, "action": "recommend" },
             "delegation": { "mode": "recommend", "maxWorkers": 3 }
         }
     })
@@ -738,19 +780,19 @@ fn validate_settings(value: &Value, template: &Value, label: &str) -> Result {
         .as_object()
         .ok_or_else(|| format!("{label} must be an object"))?;
     for (key, item) in map {
+        let field = format!("{label}.{key}");
+        if retired_field(&field) {
+            continue;
+        }
         let expected = template
             .get(key)
             .ok_or_else(|| format!("unknown {label} field: {key}"))?;
-        let field = format!("{label}.{key}");
         match expected {
             Value::Object(_) => validate_settings(item, expected, &field)?,
             Value::Bool(_) if !item.is_boolean() => return Err(format!("{field} must be boolean")),
             Value::Bool(_) => {}
             Value::String(_) => {
-                let allowed: &[&str] = match key.as_str() {
-                    "at" => &["meaningful-boundaries"],
-                    _ => &["manual", "recommend", "execute-when-authorized"],
-                };
+                let allowed = ["manual", "recommend", "execute-when-authorized"];
                 if !item.as_str().is_some_and(|text| allowed.contains(&text)) {
                     return Err(format!("invalid {field}"));
                 }
@@ -862,6 +904,9 @@ fn merge(
         } else {
             format!("{prefix}.{key}")
         };
+        if RETIRED.contains(&field.as_str()) {
+            continue;
+        }
         match value {
             Value::Array(source) if crate::layers::ENTRY_LISTS.contains(&field.as_str()) => {
                 let entry = target.entry(key.clone()).or_insert_with(|| json!([]));
@@ -1057,13 +1102,6 @@ pub fn layered_settings(
             "",
         );
     }
-    let context = &settings["efficiency"]["context"];
-    let threshold = |name: &str| context[name].as_f64().unwrap_or(f64::NAN);
-    if !(threshold("elevatedAt") < threshold("compactAt")
-        && threshold("compactAt") < threshold("restartAt"))
-    {
-        return Err("context thresholds must satisfy elevatedAt < compactAt < restartAt".into());
-    }
     let mut settings = Value::Object(settings);
     // Layers that are valid alone can still disagree: an entry limit, a rule id two of them
     // use, a role naming a profile the project's own profile set leaves out.
@@ -1104,7 +1142,7 @@ pub fn layered_settings(
         "origins": trace.origins,
         "runtimeApplied": [
             "routing", "checkpoint", "workspace", "efficiency.lookup", "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds", "efficiency.context.action", "efficiency.review.mode",
+            "efficiency.review.mode",
             "efficiency.delegation.maxWorkers", "efficiency.delegation.mode"
         ],
         "prerequisites": [

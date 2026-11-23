@@ -510,7 +510,7 @@ whose lines no longer fit the match bound, and reports truncation and skips; `--
 full receipt. It neither classifies definitions nor proves absence. Session reuse is described
 in [sessions](SESSION.md#lookup-reuse).
 
-## Delegation and model advice
+## Delegation
 
 `--delegate` selects a configured worker role only when both the role and the host enable
 it. Roles map to logical profiles, and profiles map to exact model names per host in
@@ -527,17 +527,6 @@ prompt, so nothing is guessed from it; a session with no established work and no
 adds nothing, and so does a project without standards. The delegating instructions still
 define the subagent's task. Cursor's subagent hook cannot add context, and Gemini CLI and
 JetBrains have none. `routing.workerStandards: false` starts subagents without them.
-
-```sh
-craft model-advice --root <project> --data request.json
-```
-
-`model-advice` recommends a configured profile for `host`, `role`, `task`, `revision`, and
-optionally `capabilityClass`, `currentProfile` and `attempts`. Profiles declare capabilities,
-`maxAttempts` (1–5, default 3), `class` (`economical|standard|strong`) and `escalateTo`.
-Only quality failures on the same task and revision count toward escalation. A
-`permission-denied` or `tool-unavailable` attempt stops advice until it is resolved. Without
-a chain, advice stops rather than inventing a stronger model.
 
 ## Hints and guidance size
 

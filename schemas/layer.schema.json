@@ -86,6 +86,11 @@
           "type": "boolean",
           "default": true,
           "description": "When a prompt starts work from a ticket (an issue or tracker URL, a key or number the prompt calls an issue or ticket or names after a start-work phrase such as `start on 12`, or a `#12`), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Work no ticket names gets the same offer once per session, at its first prompt asking for a change or else its first edit, through `craft ticket --work <name>`. Set false to make no offer."
+        },
+        "nextSteps": {
+          "type": "boolean",
+          "default": true,
+          "description": "Name a next step at the end of a turn and in session advice: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past 75% of the window with where the saved continuation stands. Set false to name none."
         }
       },
       "additionalProperties": false
@@ -244,30 +249,6 @@
           },
           "additionalProperties": false
         },
-        "advice": {
-          "type": "object",
-          "description": "Next-step advice in session status.",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": true,
-              "description": "Give advice. False removes the next-step suggestion."
-            },
-            "at": {
-              "enum": [
-                "meaningful-boundaries"
-              ],
-              "default": "meaningful-boundaries",
-              "description": "When advice is given. Only `meaningful-boundaries` exists."
-            },
-            "nextStep": {
-              "type": "boolean",
-              "default": true,
-              "description": "Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands."
-            }
-          },
-          "additionalProperties": false
-        },
         "review": {
           "type": "object",
           "description": "Review offers.",
@@ -280,43 +261,6 @@
               ],
               "default": "recommend",
               "description": "`manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer."
-            }
-          },
-          "additionalProperties": false
-        },
-        "context": {
-          "type": "object",
-          "description": "Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window.",
-          "properties": {
-            "elevatedAt": {
-              "type": "number",
-              "exclusiveMinimum": 0,
-              "maximum": 1,
-              "default": 0.6,
-              "description": "Occupancy at which pressure is elevated."
-            },
-            "compactAt": {
-              "type": "number",
-              "exclusiveMinimum": 0,
-              "maximum": 1,
-              "default": 0.75,
-              "description": "Occupancy at which advice is \"checkpoint, then compact\"."
-            },
-            "restartAt": {
-              "type": "number",
-              "exclusiveMinimum": 0,
-              "maximum": 1,
-              "default": 0.85,
-              "description": "Occupancy at which advice is \"checkpoint, then new session\"."
-            },
-            "action": {
-              "enum": [
-                "manual",
-                "recommend",
-                "execute-when-authorized"
-              ],
-              "default": "recommend",
-              "description": "`manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves."
             }
           },
           "additionalProperties": false

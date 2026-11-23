@@ -23,14 +23,18 @@ bundled defaults (`standardChecks` through `projectChecks`), each with its `bund
 as `settings-contracts.json` does. Correction: effective settings carry `safety.enabled: true` with
 a `bundled` origin unless a layer or the project sets it, here and in the nine
 `settings-contracts.json` cases that return settings: the safety policy is on by default.
+Correction: the `efficiency.advice` and `efficiency.context` settings are retired, so effective
+settings no longer carry them or their origins, carry `routing.nextSteps: true` with a `bundled`
+origin, and list no `efficiency.context.*` entries as runtime-applied; the four `model-advice`
+cases and `settings:invalid-threshold-order` were removed with them.
 
 The corpus holds empty-input requests, UTF-8 hashes, digest ordering, routing,
 continuation, blocked attempts, checkpoint binding, context selection and budgets,
-repository scopes and snapshots, settings, model advice and service plans over explicit
+repository scopes and snapshots, settings and service plans over explicit
 observations and a fixed clock. Empty-input rejection is not successful
 operation coverage; each use case still needs its own success, state and installed checks.
 
-`cli-contracts.json` freezes 25 executable cases after verifying CLI, application,
+`cli-contracts.json` freezes 24 executable cases after verifying CLI, application,
 platform, engine and review executable sources unchanged against the same baseline.
 Run `npm run build` then `node --test tests/runtime-cli-replay.test.mjs` to replay
 source and relocated AGENTS exports from disposable working directories with isolated
@@ -77,6 +81,10 @@ concurrent-process safety or acceptance on other operating systems.
 They cover precedence and origins, every project validation family, preference bounds,
 null coalescing, integral floats, and worker freshness at a fixed clock. The Rust
 engine replays this corpus (`cargo test -p craft-engine frozen_settings_cases_replay`).
+Correction: the `efficiency.advice` and `efficiency.context` settings are retired. A file that
+still sets them is read without them, so the six cases that validated their values were
+removed, and the settings the other cases return drop them and their origins and carry
+`routing.nextSteps: true` with a `bundled` origin.
 
 `services-contracts.json` freezes 63 JavaScript responses for the `operation` and
 `prepare-services` use cases at `7352220`: effective settings from a project, built-in
@@ -84,10 +92,6 @@ CLI mappings and the engine decision, with error messages omitted. The Rust repl
 seven intentional corrections by case ID: built-in arguments are not substituted again,
 placeholders inside text take only scalar parameters, a change number is a string or safe
 integer, and built-in mappings come only from the operation's own service.
-
-`models-contracts.json` freezes 83 JavaScript responses for the `model-advice` use case at
-`dc5c447`: effective settings from a project and the engine decision over the request, with
-error messages omitted. The Rust engine replays every case unchanged.
 
 `lookup-contracts.json` freezes 42 JavaScript responses for the `lookup` use case at
 `dc47bf2`, including the three non-empty `lookup` cases retired from `engine-contracts.json`
@@ -179,7 +183,16 @@ are stored once per name. Results compare as serialized JSON and error messages 
 Rust replay (`cargo test -p craft-engine --test session_contracts`) lists two corrections: a
 previous notice time without `Z` or an offset, which JavaScript read in the machine's time zone,
 is invalid; and a stage without a guidance observation, which the application never produces,
-reports a diagnostic instead of a JavaScript `TypeError`.
+reports a diagnostic instead of a JavaScript `TypeError`. Correction: model advice and the
+`efficiency.advice` and `efficiency.context` settings are gone. Status carries no
+`modelAdvice` and recommends no model escalation, so the nine `status:model-*` cases that
+expected an escalation or a stop from a profile chain were removed; the other `status:model-*`
+cases replay unchanged. The context bands are fixed at 60/75/85%, so the four
+`advice:pressure-project-*` cases and the three `advice:context-manual-*` cases were removed.
+The `advice-off` and `next-step-off` settings turn next steps off through `routing.nextSteps:
+false`. The return-control prerequisite no longer names `model-advice`, which changes the notice
+key of the eight attempt-budget cases that show it. Stored effective settings keep the retired
+fields as captured: they are read without them.
 
 `step-contracts.json` freezes 208 JavaScript engine responses at `8ca3cc4` for the `task-step`
 receipt (input validation, every outcome, verification, completion with and without an
@@ -190,7 +203,9 @@ legacy lifecycle step used by `engine/tests/acceptance_contract.rs` and the reco
 case formerly in `action-execution.test.mjs`, and absorbs the nine `task-step`, `action-propose`
 and `action-decide` cases retired from `engine-contracts.json`. Results, including the updated state, compare as
 serialized JSON and error messages exactly. The Rust replay
-(`cargo test -p craft-engine --test step_contracts`) has no corrections.
+(`cargo test -p craft-engine --test step_contracts`) has no corrections. The
+`propose:compact-manual` case was removed with the `efficiency.context.action` setting it
+turned off.
 
 `review-tool-contracts.json` freezes the JavaScript review tools at `a84479e`: 25
 `prepare-review` runs over a repository built from recorded steps with fixed identities and
@@ -216,8 +231,10 @@ empty declaration reports (JavaScript failed to parse it, and waited on a termin
 non-object payload, declaration or declared host is refused (JavaScript accepted arrays
 and scalars, spread a string host into indexed fields and threw a `TypeError` on a `null`
 payload); a `null` declared host counts as absent, as before. A stale checkpoint, unknown
-occupancy, unavailable model advice and an exhausted attempt budget are session states on
-the status observations, no longer also failure diagnostics on every refresh. The native
+occupancy and an exhausted attempt budget are session states on the status observations, no
+longer also failure diagnostics on every refresh. Correction: status output carries no
+`modelAdvice` field and the telemetry records no `model.advice` observation, since model
+advice is gone. The native
 replay excludes additive host capability fields and `hostContext` from this historical stdout comparison.
 Saved host observations now resolve JSON session identities, including live status-line
 payloads; `application/tests/host_setup.rs` checks that CLI, JSON and status-line reads

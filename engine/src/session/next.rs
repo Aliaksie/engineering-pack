@@ -51,11 +51,10 @@ pub struct Ready {
 /// Longest part of a task's goal a next step quotes.
 const GOAL_CHARS: usize = 80;
 
-/// Whether turn-end notices name a next step: unless `efficiency.advice.enabled` or
-/// `efficiency.advice.nextStep` is false, the switches session advice already has.
+/// Whether turn-end notices and session advice name a next step: unless
+/// `routing.nextSteps` is false.
 pub fn enabled(settings: &Value) -> bool {
-    let advice = &settings["efficiency"]["advice"];
-    advice["enabled"] != false && advice["nextStep"] != false
+    settings["routing"]["nextSteps"] != false
 }
 
 /// Whether a turn's changed files can call for a check: next steps are on, Craft runs
@@ -70,13 +69,11 @@ pub fn tracks_changes(settings: &Value) -> bool {
             .is_ok_and(|plan| plan["run"].as_array().is_some_and(|run| !run.is_empty()))
 }
 
-/// The observed context occupancy in percent when it is at or past `efficiency.context
-/// .compactAt`; `None` without a fresh current-context observation of this session, which is
-/// never estimated.
-pub fn pressure(settings: &Value, usage: &Value, session: &str, now: i64) -> Option<u64> {
-    let compact_at = settings["efficiency"]["context"]["compactAt"]
-        .as_f64()
-        .unwrap_or(COMPACT_AT);
+/// The observed context occupancy in percent when it is at or past the compaction band;
+/// `None` without a fresh current-context observation of this session, which is never
+/// estimated.
+pub fn pressure(usage: &Value, session: &str, now: i64) -> Option<u64> {
+    let compact_at = COMPACT_AT;
     let observed = status::usage(
         Some(usage).filter(|u| !u.is_null()),
         Some(&json!(session)),
@@ -323,14 +320,11 @@ mod tests {
 
     #[test]
     fn pressure_needs_a_fresh_observation_of_this_session_past_the_threshold() {
-        let settings = json!({});
-        assert_eq!(pressure(&settings, &usage(780), "S1", NOW), Some(78));
-        assert_eq!(pressure(&settings, &usage(700), "S1", NOW), None);
-        assert_eq!(pressure(&settings, &usage(780), "S2", NOW), None);
-        assert_eq!(pressure(&settings, &usage(780), "S1", NOW + 600_000), None);
-        assert_eq!(pressure(&settings, &Value::Null, "S1", NOW), None);
-        let lower = json!({"efficiency": {"context": {"compactAt": 0.6}}});
-        assert_eq!(pressure(&lower, &usage(700), "S1", NOW), Some(70));
+        assert_eq!(pressure(&usage(780), "S1", NOW), Some(78));
+        assert_eq!(pressure(&usage(700), "S1", NOW), None);
+        assert_eq!(pressure(&usage(780), "S2", NOW), None);
+        assert_eq!(pressure(&usage(780), "S1", NOW + 600_000), None);
+        assert_eq!(pressure(&Value::Null, "S1", NOW), None);
     }
 
     #[test]
@@ -357,12 +351,11 @@ mod tests {
     }
 
     #[test]
-    fn both_switches_of_session_advice_silence_it() {
+    fn the_next_steps_switch_silences_them() {
         assert!(enabled(&json!({})));
-        assert!(!enabled(
-            &json!({"efficiency": {"advice": {"enabled": false}}})
-        ));
-        assert!(!enabled(
+        assert!(!enabled(&json!({"routing": {"nextSteps": false}})));
+        // The retired advice switch no longer does.
+        assert!(enabled(
             &json!({"efficiency": {"advice": {"nextStep": false}}})
         ));
     }

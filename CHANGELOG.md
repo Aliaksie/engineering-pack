@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `craft model-advice` and the `efficiency.advice` and `efficiency.context` settings are
+  removed. Session status and `task-start` no longer carry `modelAdvice` or recommend a model
+  escalation, and `craft host-setup` no longer lists the context thresholds. The next steps a
+  turn's end and session advice name stay; `routing.nextSteps: false` turns them off, and the
+  context bands are fixed at 60, 75 and 85% of the window. A project file that still sets a
+  removed setting is read without it, and a session start names it once. An action proposal
+  recorded before this change reads as stale once, since the effective settings changed.
 - A prompt that names its issue after a start-work phrase, such as `start on 164` or `go ahead
   with #176`, or as a `#164` outside a pull or merge request, gets the ticket intake an issue
   link gets. Work no ticket names is offered the same plan-or-direct choice once per session,

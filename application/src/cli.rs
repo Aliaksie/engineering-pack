@@ -13,7 +13,7 @@ use crate::telemetry::observe;
 use crate::telemetry::{Operation, Recorder, retained};
 use craft_engine::session::views::{self, Reader};
 use craft_engine::values::normalize_numbers;
-use craft_engine::{models, routing, services, values};
+use craft_engine::{routing, services, values};
 use options::{Options, parse};
 use render::{
     action_receipt, adopt_receipt, assign_receipt, attempt_receipt, decide_receipt,
@@ -158,7 +158,6 @@ const COMMANDS: &[Command] = &[
         .bundled()
         .receipt(|_, value| session_view(value)),
     Command::run("session-attempt", session_attempt).receipt(|_, value| attempt_receipt(value)),
-    Command::run("model-advice", model_advice),
     Command::run("lookup", lookup),
     Command {
         render: Render::Line,
@@ -205,7 +204,8 @@ fn host_setup(
     recorder: &mut Recorder,
     parent: &Operation,
 ) -> Result<Value, Failure> {
-    let settings = loaded(options, recorder, parent)?;
+    // The project's settings must load; setup reports nothing from them.
+    loaded(options, recorder, parent)?;
     let mut report = crate::setup::run(
         &root(options),
         options.get("host").ok_or("host-setup requires --host")?,
@@ -215,7 +215,6 @@ fn host_setup(
         &setup_bundle(options)?,
         options.values.contains_key("apply"),
     )?;
-    report["configuration"][0]["effective"] = settings["efficiency"]["context"].clone();
     if let Some(session) = options.get("session") {
         match crate::host_context::read(&root(options), session) {
             Ok(mut saved) if saved["host"] == report["host"] => {
@@ -334,39 +333,6 @@ fn prepare_services(
     let commands = options.values.get("available-command");
     let tools = options.values.get("available-mcp-tool");
     crate::integration::prepared(&settings, commands, tools, recorder, parent)
-}
-
-fn model_advice(
-    options: &Options,
-    recorder: &mut Recorder,
-    parent: &Operation,
-) -> Result<Value, Failure> {
-    let file = options
-        .get("data")
-        .ok_or("model-advice requires --data <request.json>")?;
-    let request = read_input(recorder, parent, file)?;
-    let settings = loaded(options, recorder, parent)?;
-    let operation = recorder.start("model.advice", Some(parent));
-    let result = models::advise(&settings, &request);
-    let (attributes, failure) = match &result {
-        Ok(advice) => {
-            if advice["decision"] == "unavailable" {
-                recorder.report("model", "MODEL_ADVICE_UNAVAILABLE", Map::new(), &operation);
-            }
-            let class = advice
-                .get("capabilityClass")
-                .or_else(|| request.get("capabilityClass"));
-            let mut attributes =
-                Map::from_iter([("decision".to_string(), advice["decision"].clone())]);
-            if let Some(class) = class {
-                attributes.insert("capabilityClass".into(), class.clone());
-            }
-            (attributes, None)
-        }
-        Err(_) => (Map::new(), Some("OPERATION_FAILED")),
-    };
-    recorder.complete(operation, attributes, failure);
-    Ok(result?)
 }
 
 fn lookup(

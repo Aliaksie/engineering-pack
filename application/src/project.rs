@@ -504,6 +504,14 @@ pub(crate) fn hook_loaded(
     hook_loaded_known(recorder, parent, root).map(|(settings, _)| settings)
 }
 
+/// The settings this build no longer has that the project file still sets; none when the
+/// file is missing or unreadable.
+pub(crate) fn retired(root: &Path) -> Vec<String> {
+    document(documents::project(root))
+        .map(|project| craft_engine::contracts::retired(&project))
+        .unwrap_or_default()
+}
+
 /// `hook_loaded` with the project file's fields this build does not know, by place. A field
 /// another Craft build added would otherwise turn every hook of every session in the checkout
 /// into a failure: the hook leaves such fields out and reads the rest, while `craft validate`

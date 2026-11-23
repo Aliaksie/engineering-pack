@@ -111,9 +111,6 @@ fn eligibility(action: &str, input: &Value, state: &Value, context: &Context) ->
     }
     if action == "compact" {
         let task = &status["task"];
-        if efficiency["context"]["action"] == "manual" {
-            return Ok(fail("Automatic context recommendations are disabled."));
-        }
         if observed["host"]["reliableCompaction"] != true {
             return Ok(fail(
                 "Reliable host compaction is unsupported or unverified.",

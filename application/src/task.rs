@@ -6,20 +6,10 @@ use crate::scratch::{self, Action};
 use crate::session::{self as records, BINDING_BYTES};
 use crate::telemetry::{Operation, Recorder};
 use craft_engine::values::{safe_integer, truthy};
-use craft_engine::{actions, models, repository, routing, session};
+use craft_engine::{actions, repository, routing, session};
 use craft_platform::{repository::snapshot, state};
 use serde_json::{Map, Value, json};
 use std::path::Path;
-
-/// Execution roles with model profiles; others keep the current execution.
-const ADVISED_ROLES: &[&str] = &[
-    "locator",
-    "researcher",
-    "implementer",
-    "reviewer",
-    "planner",
-    "verifier",
-];
 
 pub struct Start<'a> {
     pub root: &'a Path,
@@ -117,16 +107,6 @@ pub fn start(
         packages: None,
     };
     let plan = crate::guidance::route(settings, &route, recorder, parent)?;
-    let role = plan["execution"]["role"].as_str().unwrap_or_default();
-    let model_advice = if truthy(&repository["head"]) && ADVISED_ROLES.contains(&role) {
-        let advice = json!({
-            "host": host.unwrap_or("unknown"), "role": role, "task": task,
-            "revision": repository["head"], "capabilityClass": plan["capability"]["class"],
-        });
-        models::advise(settings, &advice)?
-    } else {
-        json!({"decision": "unavailable", "reasons": ["A supported role and source revision are required; retain current execution."]})
-    };
     // Revalidate under the task-state lock; a concurrent step must not be overwritten.
     records::update_state(root, name, task, recorder, parent, |state| {
         session::start(state, &input, &repository)?;
@@ -186,7 +166,6 @@ pub fn start(
     }
     for (key, value) in [
         ("routing", plan),
-        ("modelAdvice", model_advice),
         ("acceptance", context["acceptance"].clone()),
         ("evidenceDigest", context["evidenceDigest"].clone()),
         ("taskContract", context["taskContract"].clone()),

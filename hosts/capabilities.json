@@ -39,9 +39,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -149,9 +149,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -259,9 +259,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "underlying-agent-dependent",
@@ -368,9 +368,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -478,9 +478,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -588,9 +588,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -698,9 +698,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "integration-owned-transport",
@@ -808,9 +808,9 @@
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "model-advice": {
-        "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
-        "evidence": "runtime receipts or explicit declarations; export alone proves no use"
+        "support": "removed",
+        "activation": "none; model advice is no longer offered",
+        "evidence": "none"
       },
       "delegation": {
         "support": "underlying-agent-dependent",

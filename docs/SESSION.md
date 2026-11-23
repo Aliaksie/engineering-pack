@@ -362,13 +362,13 @@ acceptance criterion that no evidence record names (`acceptance "value" of task 
 evidence yet`; whether recorded evidence is current is for `craft session` to say); once a task
 of a Craft work plan is completed, the plan's next ready task with the command that starts it
 (`plan task second (Document the API) is ready: craft task-start --plan api --ready`). Nothing
-is claimed or started for you. Otherwise, a context observation of the session at or past
-`efficiency.context.compactAt` names compaction when a saved continuation is on the commit the
+is claimed or started for you. Otherwise, a context observation of the session at or past 75%
+of the window names compaction when a saved continuation is on the commit the
 project is on, and asks for a checkpoint first when there is none or it is on another commit.
 Occupancy is never estimated: without a fresh observation, from the Claude Code status line or
 Codex, nothing is said about context. A next step is said once while it applies, after the
-summary when both are new. `efficiency.advice.nextStep: false` or `efficiency.advice.enabled:
-false` turns it off; `routing.projectChecks: false` leaves checks out of it.
+summary when both are new. `routing.nextSteps: false` turns it off, in session advice too;
+`routing.projectChecks: false` leaves checks out of it.
 
 | Count | Counted when |
 |---|---|
@@ -555,7 +555,7 @@ chain. Permission and tool failures stop as blocked; a stronger model never retr
 | strong | Architecture, ambiguous debugging, distributed consistency, security-sensitive work |
 
 Classes are recommendations, not price rankings. Exact model names live in the consumer's
-`execution` configuration; see [model advice](ROUTING.md#testing-only-scope-and-model-advice).
+`execution` configuration; see [delegation](ROUTING.md#delegation).
 
 ## Host support
 

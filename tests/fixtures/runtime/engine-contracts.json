@@ -285,21 +285,6 @@
       }
     },
     {
-      "id": "model-advice:empty",
-      "request": {
-        "formatVersion": 1,
-        "operation": "model-advice",
-        "input": {}
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
-        }
-      }
-    },
-    {
       "id": "capability:empty",
       "request": {
         "formatVersion": 1,
@@ -5585,7 +5570,8 @@
               "conventionProposals": true,
               "projectChecks": true,
               "commitGate": true,
-              "ticketOffer": true
+              "ticketOffer": true,
+              "nextSteps": true
             },
             "checkpoint": {
               "enabled": true
@@ -5618,19 +5604,8 @@
                 "enabled": true,
                 "maxAttempts": 3
               },
-              "advice": {
-                "enabled": true,
-                "at": "meaningful-boundaries",
-                "nextStep": true
-              },
               "review": {
                 "mode": "recommend"
-              },
-              "context": {
-                "elevatedAt": 0.6,
-                "compactAt": 0.75,
-                "restartAt": 0.85,
-                "action": "recommend"
               },
               "delegation": {
                 "mode": "recommend",
@@ -5701,6 +5676,7 @@
             "routing.projectChecks": "bundled",
             "routing.commitGate": "bundled",
             "routing.ticketOffer": "bundled",
+            "routing.nextSteps": "bundled",
             "checkpoint.enabled": "bundled",
             "workspace.enabled": "bundled",
             "workspace.maxSessions": "bundled",
@@ -5717,14 +5693,7 @@
             "efficiency.batching.maxConcurrency": "bundled",
             "efficiency.attempts.enabled": "bundled",
             "efficiency.attempts.maxAttempts": "bundled",
-            "efficiency.advice.enabled": "bundled",
-            "efficiency.advice.at": "bundled",
-            "efficiency.advice.nextStep": "bundled",
             "efficiency.review.mode": "bundled",
-            "efficiency.context.elevatedAt": "bundled",
-            "efficiency.context.compactAt": "bundled",
-            "efficiency.context.restartAt": "bundled",
-            "efficiency.context.action": "bundled",
             "efficiency.delegation.mode": "bundled",
             "efficiency.delegation.maxWorkers": "task",
             "safety.enabled": "bundled",
@@ -5756,8 +5725,6 @@
             "workspace",
             "efficiency.lookup",
             "efficiency.attempts.maxAttempts",
-            "efficiency.context.thresholds",
-            "efficiency.context.action",
             "efficiency.review.mode",
             "efficiency.delegation.maxWorkers",
             "efficiency.delegation.mode"
@@ -5768,32 +5735,6 @@
             "Independent tool batching remains a workflow instruction; preferences never dispatch actions."
           ],
           "authorization": "Preferences do not grant permissions, host support, hook trust or execution authorization."
-        }
-      }
-    },
-    {
-      "id": "settings:invalid-threshold-order",
-      "request": {
-        "formatVersion": 1,
-        "operation": "effective-settings",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "overrides": {
-            "efficiency": {
-              "context": {
-                "elevatedAt": 0.8
-              }
-            }
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": false,
-        "error": {
-          "code": "INVALID_INPUT"
         }
       }
     },
@@ -5883,179 +5824,6 @@
           "reason": "The declared operation requires architecture or difficult cross-boundary reasoning.",
           "pricing": "unknown; classes are not measured cost or capability",
           "authorization": "no model switch or delegation executed"
-        }
-      }
-    },
-    {
-      "id": "model:default-recommendation",
-      "request": {
-        "formatVersion": 1,
-        "operation": "model-advice",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "input": {
-            "host": "fixture",
-            "role": "implementer",
-            "task": "migration",
-            "revision": "r1"
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "formatVersion": 1,
-          "host": "fixture",
-          "role": "implementer",
-          "task": "migration",
-          "revision": "r1",
-          "requiredCapabilities": [],
-          "ignoredAttempts": 0,
-          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
-          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
-          "decision": "recommend",
-          "profile": "standard",
-          "execution": {
-            "mode": "main",
-            "role": "implementer"
-          },
-          "mainModel": {
-            "profile": "standard",
-            "model": null,
-            "evidence": "Consumer-declared model mapping/support; native switching and authorization must be verified separately.",
-            "switchSupported": false,
-            "decision": "retain-current-until-authorized",
-            "limitation": "Exact host model mapping is unavailable; keep current execution."
-          },
-          "workerMappingAvailable": false,
-          "capabilityClass": "standard",
-          "currentProfile": null,
-          "comparison": "unknown",
-          "attemptsRemaining": 3,
-          "reasons": [
-            "Continue in main; a worker requires supported role/model mapping, positive capacity and scoped authorization.",
-            "Exact host model mapping is unavailable; keep current execution."
-          ]
-        }
-      }
-    },
-    {
-      "id": "model:stale-blocker-ignored",
-      "request": {
-        "formatVersion": 1,
-        "operation": "model-advice",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "input": {
-            "host": "fixture",
-            "role": "implementer",
-            "task": "migration",
-            "revision": "r1",
-            "attempts": [
-              {
-                "id": "old",
-                "profile": "standard",
-                "task": "migration",
-                "revision": "r0",
-                "outcome": "permission-denied",
-                "evidence": "old-evidence"
-              }
-            ]
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "formatVersion": 1,
-          "host": "fixture",
-          "role": "implementer",
-          "task": "migration",
-          "revision": "r1",
-          "requiredCapabilities": [],
-          "ignoredAttempts": 1,
-          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
-          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
-          "decision": "recommend",
-          "profile": "standard",
-          "execution": {
-            "mode": "main",
-            "role": "implementer"
-          },
-          "mainModel": {
-            "profile": "standard",
-            "model": null,
-            "evidence": "Consumer-declared model mapping/support; native switching and authorization must be verified separately.",
-            "switchSupported": false,
-            "decision": "retain-current-until-authorized",
-            "limitation": "Exact host model mapping is unavailable; keep current execution."
-          },
-          "workerMappingAvailable": false,
-          "capabilityClass": "standard",
-          "currentProfile": null,
-          "comparison": "unknown",
-          "attemptsRemaining": 3,
-          "reasons": [
-            "Continue in main; a worker requires supported role/model mapping, positive capacity and scoped authorization.",
-            "Exact host model mapping is unavailable; keep current execution."
-          ]
-        }
-      }
-    },
-    {
-      "id": "model:permission-blocker",
-      "request": {
-        "formatVersion": 1,
-        "operation": "model-advice",
-        "input": {
-          "project": {
-            "formatVersion": 1
-          },
-          "input": {
-            "host": "fixture",
-            "role": "implementer",
-            "task": "migration",
-            "revision": "r1",
-            "attempts": [
-              {
-                "id": "blocked",
-                "profile": "standard",
-                "task": "migration",
-                "revision": "r1",
-                "outcome": "permission-denied",
-                "evidence": "permission-evidence"
-              }
-            ]
-          }
-        }
-      },
-      "response": {
-        "formatVersion": 1,
-        "ok": true,
-        "result": {
-          "formatVersion": 1,
-          "host": "fixture",
-          "role": "implementer",
-          "task": "migration",
-          "revision": "r1",
-          "requiredCapabilities": [],
-          "ignoredAttempts": 0,
-          "evidencePolicy": "Capabilities are consumer declarations; cited attempt outcomes are not independently judged. Stale/other-task attempts do not justify escalation.",
-          "authorization": "recommendation-only; no model switch, worker, retry or tool permission was executed",
-          "decision": "stop",
-          "profile": "standard",
-          "reasons": [
-            "Resolve permission-denied; changing models does not remove this boundary."
-          ],
-          "evidence": [
-            "permission-evidence"
-          ]
         }
       }
     },
@@ -7178,7 +6946,6 @@
             "currentClass": "unknown",
             "recommendation": null
           },
-          "modelAdvice": null,
           "discovery": {
             "requested": null,
             "reused": null,

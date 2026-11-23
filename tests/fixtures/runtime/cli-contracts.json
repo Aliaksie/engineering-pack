@@ -54,7 +54,6 @@
           "session",
           "session-advice",
           "session-attempt",
-          "model-advice",
           "lookup",
           "locate",
           "prepare-services",
@@ -94,7 +93,7 @@
       ],
       "mode": "failure",
       "status": 2,
-      "diagnostic": "usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|model-advice|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]"
+      "diagnostic": "usage: cli.mjs <telemetry-capture|telemetry-forget|telemetry-report|route|context-report|session|session-advice|session-attempt|lookup|locate|prepare-services|operation|checkpoint-save|checkpoint-read> [--root project] [options]"
     },
     {
       "id": "positional-argument",
@@ -224,16 +223,6 @@
       "mode": "failure",
       "status": 2,
       "diagnostic": "session-attempt requires --session, --task and --data"
-    },
-    {
-      "id": "model-required-input",
-      "entry": "craft",
-      "args": [
-        "model-advice"
-      ],
-      "mode": "failure",
-      "status": 2,
-      "diagnostic": "model-advice requires --data <request.json>"
     },
     {
       "id": "exclusive-telemetry-input",

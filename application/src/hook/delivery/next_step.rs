@@ -43,7 +43,7 @@ pub(crate) fn line(
         facts.review = review;
     }
     if facts == Facts::default() {
-        facts.context = context(root, settings, session, recorder, hook);
+        facts.context = context(root, session, recorder, hook);
     }
     // Named now, so said once: the turn-end notice shows it or showed it already.
     if facts.review.is_some() && crate::ticket::review_offered(root, session).is_err() {
@@ -116,13 +116,12 @@ fn unrun_checks(root: &Path, settings: &Value, session: &str, changed: &[String]
 /// continuation stands against the commit the project is on.
 fn context(
     root: &Path,
-    settings: &Value,
     session: &str,
     recorder: &mut Recorder,
     hook: &Operation,
 ) -> Option<(u64, Checkpoint)> {
     let saved = crate::host_context::read(root, session).ok()?;
-    let percent = next::pressure(settings, &saved["usage"], session, now_ms())?;
+    let percent = next::pressure(&saved["usage"], session, now_ms())?;
     // Hooks keep an automatic snapshot too; only a saved continuation says where to resume.
     let checkpoint = match crate::checkpoint::read(root, session, recorder, hook) {
         Ok(saved) if saved["continuationSource"].is_object() => {

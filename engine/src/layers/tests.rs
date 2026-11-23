@@ -24,7 +24,7 @@ fn row<'a>(rows: &'a [Value], field: &str) -> &'a Value {
 fn a_later_layer_wins_field_by_field_and_names_what_it_hid() {
     let organization = json!({"formatVersion": 1,
         "routing": {"debtMarkers": true, "stopReview": false},
-        "efficiency": {"context": {"compactAt": 0.7}},
+        "efficiency": {"attempts": {"maxAttempts": 2}},
         "safety": {"enabled": true, "disables": ["force-push", "discard-changes"]}});
     let user = json!({"routing": {"stopReview": true}});
     let project = json!({"formatVersion": 1, "routing": {"debtMarkers": false},
@@ -33,14 +33,14 @@ fn a_later_layer_wins_field_by_field_and_names_what_it_hid() {
     let settings = &result["settings"];
     assert_eq!(settings["routing"]["debtMarkers"], false);
     assert_eq!(settings["routing"]["stopReview"], true);
-    assert_eq!(settings["efficiency"]["context"]["compactAt"], 0.7);
+    assert_eq!(settings["efficiency"]["attempts"]["maxAttempts"], 2);
     // An object merges key by key; a plain list is replaced whole.
     assert_eq!(settings["safety"]["enabled"], true);
     assert_eq!(settings["safety"]["disables"], json!(["force-push"]));
     let origins = &result["origins"];
     assert_eq!(origins["routing.debtMarkers"], "project");
     assert_eq!(origins["routing.stopReview"], "user");
-    assert_eq!(origins["efficiency.context.compactAt"], "organization");
+    assert_eq!(origins["efficiency.attempts.maxAttempts"], "organization");
     assert_eq!(origins["routing.editHints"], "bundled");
     let rows = explanation(result["history"].as_object().unwrap());
     let markers = row(&rows, "routing.debtMarkers");
@@ -321,21 +321,23 @@ fn a_field_filter_keeps_the_field_and_what_lies_beneath_it() {
 fn fields_a_build_does_not_know_are_left_out_and_named() {
     let document = json!({"formatVersion": 1, "futureSection": {"a": 1},
         "routing": {"debtMarkers": true, "futureSwitch": true},
-        "efficiency": {"context": {"compactAt": 0.7, "futureAt": 0.9}},
+        "efficiency": {"attempts": {"maxAttempts": 2, "futureAt": 0.9}, "context": {"compactAt": 0.7}},
         "safety": {"enabled": true}});
     let (kept, ignored) = known(&document);
+    // A setting this build no longer has is named like one it does not know yet.
     assert_eq!(
         ignored,
         [
             "futureSection",
             "routing.futureSwitch",
-            "efficiency.context.futureAt"
+            "efficiency.attempts.futureAt",
+            "efficiency.context"
         ]
     );
     assert_eq!(
         kept,
         json!({"formatVersion": 1, "routing": {"debtMarkers": true},
-            "efficiency": {"context": {"compactAt": 0.7}}, "safety": {"enabled": true}})
+            "efficiency": {"attempts": {"maxAttempts": 2}}, "safety": {"enabled": true}})
     );
     let settings = resolved(&kept, &json!({}), &json!({"formatVersion": 1})).unwrap();
     assert_eq!(settings["settings"]["routing"]["debtMarkers"], true);
