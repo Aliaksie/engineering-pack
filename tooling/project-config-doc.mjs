@@ -64,10 +64,15 @@ function type(node) {
   return `${node.type ?? 'value'}${range(node)}`;
 }
 
+// Settings the schema still accepts, so existing files keep validating in an editor, but the
+// reference leaves out: no guidance offers them and no recorded session set them.
+export const HIDDEN = ['efficiency.attempts', 'efficiency.review', 'efficiency.delegation'];
+
 function rows(schema, node, prefix, out) {
   for (const [name, raw] of Object.entries(node.properties ?? {})) {
     const field = resolve(schema, raw);
     const key = `${prefix}${name}`;
+    if (HIDDEN.includes(key)) continue;
     if (raw.$ref) { out.push([key, 'object', '', raw.description ?? field.description]); continue; }
     out.push([key, type(field), field.default === undefined ? '' : code(field.default), field.description ?? '']);
     if (field.properties) rows(schema, field, `${key}.`, out);

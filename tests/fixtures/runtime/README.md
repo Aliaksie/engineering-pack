@@ -42,6 +42,9 @@ Project Intelligence with an unavailable binary. Compare exit
 status, stdout/stderr separation, structured results and native error codes; recorded
 diagnostic prose is evidence only. These checks do not establish signal cancellation,
 enabled native execution, automatic host hook dispatch or other platform support.
+Correction: the `command-catalog` case no longer lists `checkpoint-save`, `checkpoint-read`,
+`worker-status`, `task-offer`, `workspace-clean`, `grounded-context`, `session-attempt` and
+`model-advice`; they still run and answer `--help`, but the general help leaves them out.
 
 `host-contracts.json` freezes 120 host translation cases from the same baseline,
 after verifying hosts and their runtime dependencies unchanged. The native hook

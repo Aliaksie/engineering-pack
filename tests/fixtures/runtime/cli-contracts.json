@@ -18,16 +18,12 @@
           "workspace-write",
           "workspace-promote",
           "workspace-release",
-          "workspace-clean",
           "state-clean",
-          "grounded-context",
-          "worker-status",
           "task-feature",
           "task-features",
           "telemetry-capture",
           "telemetry-forget",
           "telemetry-report",
-          "task-offer",
           "task-decision",
           "task-action-check",
           "task-start",
@@ -53,14 +49,10 @@
           "context-report",
           "session",
           "session-advice",
-          "session-attempt",
-          "model-advice",
           "lookup",
           "locate",
           "prepare-services",
           "operation",
-          "checkpoint-save",
-          "checkpoint-read",
           "review-prepare",
           "review-check",
           "review-publication",
@@ -69,7 +61,7 @@
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs; host-setup, permissions and host-observe expose explicit setup and native context intake"
+      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs; host-setup, permissions and host-observe expose explicit setup and native context intake; checkpoint-save, checkpoint-read, worker-status, task-offer, workspace-clean, grounded-context, session-attempt and model-advice still run but leave the list"
     },
     {
       "id": "help-before-validation",

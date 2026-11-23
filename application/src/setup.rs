@@ -14,7 +14,6 @@ const COMMANDS: &[&str] = &[
     "context-report",
     "locate",
     "lookup",
-    "checkpoint-read",
 ];
 
 fn quote(value: &str) -> String {

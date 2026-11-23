@@ -50,6 +50,9 @@ struct Command {
     handler: Handler,
     /// Accounts the installed package's guidance; the launcher names its root.
     bundled: bool,
+    /// Runs and answers `--help`, but the general help and the usage line leave it out: no
+    /// guidance offers it and no recorded session used it.
+    hidden: bool,
     render: Render,
     /// A result that still prints but exits 1: a fact the caller must act on.
     fails: Option<fn(&Value) -> bool>,
@@ -61,6 +64,7 @@ impl Command {
             name,
             handler,
             bundled: false,
+            hidden: false,
             render: Render::Json,
             fails: None,
         }
@@ -70,6 +74,10 @@ impl Command {
     }
     const fn bundled(mut self) -> Self {
         self.bundled = true;
+        self
+    }
+    const fn hidden(mut self) -> Self {
+        self.hidden = true;
         self
     }
     const fn receipt(mut self, receipt: fn(&str, &Value) -> String) -> Self {
@@ -91,10 +99,10 @@ const COMMANDS: &[Command] = &[
     Command::new("workspace-write", Handler::Workspace(Action::Write)),
     Command::new("workspace-promote", Handler::Workspace(Action::Promote)),
     Command::new("workspace-release", Handler::Workspace(Action::Release)),
-    Command::new("workspace-clean", Handler::Workspace(Action::Maintain)),
+    Command::new("workspace-clean", Handler::Workspace(Action::Maintain)).hidden(),
     Command::run("state-clean", state_clean),
-    Command::run("grounded-context", grounded_context),
-    Command::run("worker-status", worker_status),
+    Command::run("grounded-context", grounded_context).hidden(),
+    Command::run("worker-status", worker_status).hidden(),
     Command::run("task-feature", |o, r, p| task_features(true, o, r, p)),
     Command::run("task-features", |o, r, p| task_features(false, o, r, p)),
     Command::run("telemetry-capture", telemetry_capture),
@@ -102,6 +110,7 @@ const COMMANDS: &[Command] = &[
     Command::run("telemetry-report", telemetry_report),
     Command::run("task-offer", |o, r, p| task_action(Kind::Offer, o, r, p))
         .bundled()
+        .hidden()
         .receipt(action_receipt),
     Command::run("task-decision", |o, r, p| {
         task_action(Kind::Decision, o, r, p)
@@ -157,8 +166,10 @@ const COMMANDS: &[Command] = &[
     Command::run("session-advice", session_status)
         .bundled()
         .receipt(|_, value| session_view(value)),
-    Command::run("session-attempt", session_attempt).receipt(|_, value| attempt_receipt(value)),
-    Command::run("model-advice", model_advice),
+    Command::run("session-attempt", session_attempt)
+        .hidden()
+        .receipt(|_, value| attempt_receipt(value)),
+    Command::run("model-advice", model_advice).hidden(),
     Command::run("lookup", lookup),
     Command {
         render: Render::Line,
@@ -166,8 +177,10 @@ const COMMANDS: &[Command] = &[
     },
     Command::run("prepare-services", prepare_services),
     Command::run("operation", plan_operation),
-    Command::run("checkpoint-save", checkpoint_save).receipt(|_, value| receipt(value)),
-    Command::run("checkpoint-read", checkpoint_read),
+    Command::run("checkpoint-save", checkpoint_save)
+        .hidden()
+        .receipt(|_, value| receipt(value)),
+    Command::run("checkpoint-read", checkpoint_read).hidden(),
     Command::new("review-prepare", Handler::Review(Review::Prepare)),
     Command::new("review-check", Handler::Review(Review::Check)),
     Command::new("review-publication", Handler::Review(Review::Publication)),
@@ -178,6 +191,15 @@ const COMMANDS: &[Command] = &[
 
 fn command(name: &str) -> Option<&'static Command> {
     COMMANDS.iter().find(|command| command.name == name)
+}
+
+/// The commands the general help and the usage line name.
+fn listed() -> Vec<&'static str> {
+    COMMANDS
+        .iter()
+        .filter(|command| !command.hidden)
+        .map(|command| command.name)
+        .collect()
 }
 
 /// The project a command works on; see [`crate::project::resolve_root`].
@@ -1747,7 +1769,7 @@ fn help(action: &str) -> Value {
             entry
         }
         None => json!({
-            "commands": COMMANDS.iter().map(|command| command.name).collect::<Vec<_>>(),
+            "commands": listed(),
             "detail": "Use <command> --help or docs/SESSION.md for session policy.",
         }),
     };
@@ -1823,7 +1845,7 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
     let operation = recorder.start("cli.command", None);
     let Some(command) = command else {
         recorder.complete(operation, Map::new(), Some("INVALID_INPUT"));
-        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
+        let names = listed();
         return Outcome {
             exit_code: 2,
             stdout: String::new(),
@@ -1902,9 +1924,10 @@ mod tests {
 
     #[test]
     fn one_command_table_names_help_usage_and_dispatch() {
-        let names: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
-        let unique: std::collections::BTreeSet<_> = names.iter().collect();
-        assert_eq!(unique.len(), names.len(), "command names are unique");
+        let all: Vec<_> = COMMANDS.iter().map(|command| command.name).collect();
+        let unique: std::collections::BTreeSet<_> = all.iter().collect();
+        assert_eq!(unique.len(), all.len(), "command names are unique");
+        let names = listed();
         assert_eq!(help("")["commands"], json!(names));
         let unknown = run(&["no-such-command".to_string()]);
         assert_eq!(unknown.exit_code, 2);
@@ -1912,6 +1935,13 @@ mod tests {
             unknown.stderr,
             format!("usage: craft <{}> [options]\n", names.join("|"))
         );
+        // A hidden command leaves both lists, yet runs and answers its own help.
+        for hidden in ["checkpoint-save", "session-attempt", "worker-status"] {
+            assert!(!names.contains(&hidden), "{hidden} is listed");
+            assert!(help(hidden)["usage"].is_string(), "{hidden} has its help");
+            let ran = run(&[hidden.to_string()]);
+            assert!(!ran.stderr.starts_with("usage: craft <"), "{hidden} runs");
+        }
         // Evidence streams through `main`; `run` cannot host it and treats it as unknown.
         assert_eq!(run(&["project-evidence".to_string()]).exit_code, 2);
     }

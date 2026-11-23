@@ -250,23 +250,15 @@ object. Session advice: lookups, attempts, review, context and delegation. Recom
 | `efficiency.batching` | object |  | Accepted for policy files. Batching independent tool calls is a workflow instruction; `craft` does not act on these values. |
 | `efficiency.batching.enabled` | boolean | `true` | Recorded only. |
 | `efficiency.batching.maxConcurrency` | integer 1–64 | `3` | Recorded only. |
-| `efficiency.attempts` | object |  | Acceptance attempt budget. |
-| `efficiency.attempts.enabled` | boolean | `true` | Recorded only; the budget below always applies to recorded attempts. |
-| `efficiency.attempts.maxAttempts` | integer 1–5 | `3` | Same failure on unchanged source this many times: return control or escalate. |
 | `efficiency.advice` | object |  | Next-step advice in session status. |
 | `efficiency.advice.enabled` | boolean | `true` | Give advice. False removes the next-step suggestion. |
 | `efficiency.advice.at` | `meaningful-boundaries` | `meaningful-boundaries` | When advice is given. Only `meaningful-boundaries` exists. |
 | `efficiency.advice.nextStep` | boolean | `true` | Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands. |
-| `efficiency.review` | object |  | Review offers. |
-| `efficiency.review.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer. |
 | `efficiency.context` | object |  | Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window. |
 | `efficiency.context.elevatedAt` | number 0–1 | `0.6` | Occupancy at which pressure is elevated. |
 | `efficiency.context.compactAt` | number 0–1 | `0.75` | Occupancy at which advice is "checkpoint, then compact". |
 | `efficiency.context.restartAt` | number 0–1 | `0.85` | Occupancy at which advice is "checkpoint, then new session". |
 | `efficiency.context.action` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves. |
-| `efficiency.delegation` | object |  | Worker plans. |
-| `efficiency.delegation.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no worker plans. `recommend`: plan workers where a role and host allow it. `execute-when-authorized`: may proceed once the user approves. |
-| `efficiency.delegation.maxWorkers` | integer 0– | `3` | Most running workers per session. 0 disables worker plans. |
 
 ## `workspace`
 

@@ -6,6 +6,12 @@
   recommends a model escalation: an exhausted attempt budget returns control with its failure
   evidence. `craft model-advice` still answers when run, but is no longer listed among the
   commands or named in guidance.
+- `checkpoint-save`, `checkpoint-read`, `worker-status`, `task-offer`, `workspace-clean`,
+  `grounded-context`, `session-attempt` and `model-advice` leave `craft --help`, the usage line
+  and the command reference, and `craft permissions` no longer suggests `checkpoint-read`. The
+  `efficiency.attempts`, `efficiency.review` and `efficiency.delegation` settings leave the
+  configuration reference. All of them still work as before when called or set; the automatic
+  checkpoint is unchanged.
 - A prompt that names its issue after a start-work phrase, such as `start on 164` or `go ahead
   with #176`, or as a `#164` outside a pull or merge request, gets the ticket intake an issue
   link gets. Work no ticket names is offered the same plan-or-direct choice once per session,
