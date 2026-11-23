@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- With a tasks service setup (`github`, `github-project`, `gitlab` or `jira`), the ticket
+  intake names the setup's read for the issue, and `craft ticket --issue-data <file>` keeps the
+  issue's id, title, status and URL from the JSON that read returned. The task the session
+  starts carries the issue, `craft session` shows it, and `review-prepare --session <id>` and its
+  publication plan name it; `task-start --issue` and `review-prepare --issue` name another one.
+  Craft never reads the tracker itself.
 - Session status and `task-start` no longer carry `modelAdvice`, and status no longer
   recommends a model escalation: an exhausted attempt budget returns control with its failure
   evidence. `craft model-advice` still answers when run, but is no longer listed among the

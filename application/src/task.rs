@@ -21,6 +21,8 @@ pub struct Start<'a> {
     pub settings: &'a Value,
     /// The work plan the task belongs to.
     pub plan: Option<Planned<'a>>,
+    /// The issue the task implements, named by its URL, number or key.
+    pub issue: Option<&'a str>,
 }
 
 /// A plan task to claim: `take_over` moves it from the session that holds it.
@@ -43,7 +45,11 @@ pub fn start(
         host,
         settings,
         plan: planned,
+        issue: named,
     } = request;
+    if named.is_some_and(|reference| craft_engine::ticket::issue_id(reference).is_none()) {
+        return Err("--issue takes the issue's URL, number or key".into());
+    }
     input.insert("id".into(), json!(task));
     let input = Value::Object(input);
     let file = records::binding_file(root, name, true)?;
@@ -107,9 +113,13 @@ pub fn start(
         packages: None,
     };
     let plan = crate::guidance::route(settings, &route, recorder, parent)?;
+    let issue = issue(root, name, named, planned.as_ref().map(|p| p.id));
     // Revalidate under the task-state lock; a concurrent step must not be overwritten.
     records::update_state(root, name, task, recorder, parent, |state| {
         session::start(state, &input, &repository)?;
+        if let Some(issue) = &issue {
+            state["issue"] = issue.clone();
+        }
         let routed = Map::from_iter([("routingDecisions".to_string(), json!(1))]);
         Ok(session::add_activity(state, &routed)?)
     })?;
@@ -151,6 +161,9 @@ pub fn start(
         json!({"status": "disabled"})
     };
     let mut result = json!({"session": name, "task": task});
+    if let Some(issue) = &current.get("issue").filter(|i| i.is_object()) {
+        result["issue"] = (*issue).clone();
+    }
     if let Some(repositories) = repositories.filter(|r| truthy(r)) {
         result["repositories"] = repositories;
     }
@@ -182,6 +195,70 @@ pub fn start(
         result[key] = value;
     }
     Ok(result)
+}
+
+/// The issue a starting task implements: the one `named`, else the ticket its plan links,
+/// else the issue the session linked last. A linked issue of the same id brings what its
+/// tracker returned; otherwise the task carries the reference alone.
+fn issue(root: &Path, session: &str, named: Option<&str>, plan: Option<&str>) -> Option<Value> {
+    use craft_engine::ticket::issue_id;
+    let linked = crate::ticket::linked_issue(root, session);
+    let planned = || -> Option<String> {
+        let saved = crate::plan::read(root, plan?).ok()??;
+        saved["references"]
+            .as_array()?
+            .iter()
+            .find_map(|reference| {
+                let text = reference.as_str()?;
+                text.strip_prefix("link:")
+                    .or_else(|| text.strip_prefix("tracker:"))
+                    .map(str::to_owned)
+            })
+    };
+    let Some(reference) = named.map(str::to_owned).or_else(planned) else {
+        return linked;
+    };
+    let same = |issue: &&Value| {
+        issue["reference"]
+            .as_str()
+            .and_then(issue_id)
+            .zip(issue_id(&reference))
+            .is_some_and(|(a, b)| a.eq_ignore_ascii_case(&b))
+    };
+    Some(
+        linked
+            .as_ref()
+            .filter(same)
+            .cloned()
+            .unwrap_or_else(|| json!({"reference": reference})),
+    )
+}
+
+/// The issue a reviewed change implements: the one `named`, else the issue of the task the
+/// session holds, else the issue the session linked last.
+pub(crate) fn change_issue(
+    root: &Path,
+    session: Option<&str>,
+    named: Option<&str>,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Option<Value>, Failure> {
+    if named.is_some_and(|reference| craft_engine::ticket::issue_id(reference).is_none()) {
+        return Err("--issue takes the issue's URL, number or key".into());
+    }
+    let Some(session) = session else {
+        return Ok(named.map(|reference| json!({"reference": reference})));
+    };
+    if named.is_some() {
+        return Ok(issue(root, session, named, None));
+    }
+    // A task or checkout Craft cannot read leaves the session's own link.
+    let bound = records::active_task(root, Some(session))
+        .ok()
+        .flatten()
+        .and_then(|task| records::read_state(root, session, &task, recorder, parent).ok())
+        .and_then(|state| state.get("issue").filter(|i| i.is_object()).cloned());
+    Ok(bound.or_else(|| crate::ticket::linked_issue(root, session)))
 }
 
 pub struct Step<'a> {

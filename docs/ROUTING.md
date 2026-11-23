@@ -251,6 +251,24 @@ craft ticket --work parser-quotes --criteria clear --path src/parser.ts --host c
 A planned change of such work gets the plan `work-<name>` with no reference, and every later
 step names it again by `--work <name>`. `routing.ticketOffer: false` turns both offers off.
 
+### The linked issue
+
+With a tasks [service setup](INTEGRATIONS.md) (`github`, `github-project`, `gitlab` or `jira`),
+the intake also names how to read the ticket: the setup's `task.read` command, such as `gh issue
+view 12 --repo acme/shop --json …`, or its MCP tool. Craft never reads the tracker itself. The
+agent runs the read and hands Craft the JSON it returned:
+
+```sh
+craft ticket --ticket https://github.com/acme/shop/issues/12 --issue-data issue.json --session <id>
+```
+
+Craft keeps the issue's id, title, status and URL for the session, from where the setup says they
+sit in the response; a response for another issue is refused. The task the session starts
+carries it (`task-start` prints it and `craft session` shows it), as does the snapshot
+`review-prepare --session <id>` writes and the publication plan made from it. `task-start
+--issue <ref>` and `review-prepare --issue <ref>` name another issue; a plan task carries the
+ticket its plan links. An issue Craft was not handed is carried by its reference alone.
+
 ## Stop review
 
 When a turn ends after the session changed files, Craft reviews those files once and, where

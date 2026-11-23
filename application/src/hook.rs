@@ -723,6 +723,7 @@ fn ticket_line(intake: &Value) -> String {
     let text = |field: &str| intake[field].as_str().unwrap_or_default().to_owned();
     text::TICKET.render(&[
         ("reference", &text("reference")),
+        ("read", &text("read")),
         ("command", &text("command")),
     ])
 }

@@ -365,3 +365,102 @@ fn a_github_project_refuses_a_host_its_search_cannot_reach() {
             .contains(&json!("--hostname"))
     );
 }
+
+fn linked(tasks: Value, reference: &str, response: Value) -> Result<Value, String> {
+    crate::services::issue(&settings(tasks)?, reference, &response)
+}
+
+#[test]
+fn each_setup_reads_an_issue_identity_from_its_own_response() {
+    let github = linked(
+        json!({"setup": "github", "repository": "acme/shop"}),
+        "#135",
+        json!({"number": 135, "title": "Link an issue", "state": "OPEN", "body": "…",
+               "labels": [], "milestone": null, "url": "https://github.com/acme/shop/issues/135"}),
+    )
+    .unwrap();
+    assert_eq!(
+        github,
+        json!({"reference": "#135", "service": "github", "id": "135", "title": "Link an issue",
+               "status": "OPEN", "url": "https://github.com/acme/shop/issues/135"})
+    );
+    let mcp = linked(
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        "135",
+        json!({"number": 135, "title": "Link", "state": "open",
+               "html_url": "https://github.com/acme/shop/issues/135"}),
+    )
+    .unwrap();
+    assert_eq!(mcp["url"], "https://github.com/acme/shop/issues/135");
+    let board = linked(
+        project(),
+        "https://github.com/acme/shop/issues/135",
+        json!({"number": 135, "title": "Link", "state": "OPEN", "status": "In Progress",
+               "url": "https://github.com/acme/shop/issues/135", "labels": []}),
+    )
+    .unwrap();
+    assert_eq!(
+        (board["service"].as_str(), board["status"].as_str()),
+        (Some("github-project"), Some("In Progress"))
+    );
+    let gitlab = linked(
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+        "7",
+        json!({"iid": 7, "id": 9001, "title": "Fix", "state": "opened",
+               "web_url": "https://gitlab.com/acme/shop/-/issues/7"}),
+    )
+    .unwrap();
+    assert_eq!(
+        (gitlab["id"].as_str(), gitlab["url"].as_str()),
+        (Some("7"), Some("https://gitlab.com/acme/shop/-/issues/7"))
+    );
+    let jira = linked(
+        json!({"setup": "jira", "site": "acme.atlassian.net"}),
+        "SHOP-12",
+        json!({"key": "SHOP-12", "fields": {"summary": "Checkout\nfails", "status": {"name": "To Do"}}}),
+    )
+    .unwrap();
+    assert_eq!(
+        jira,
+        json!({"reference": "SHOP-12", "service": "jira", "id": "SHOP-12", "title": "Checkout fails",
+               "status": "To Do", "url": "https://acme.atlassian.net/browse/SHOP-12"})
+    );
+    let siteless = linked(
+        json!({"setup": "jira"}),
+        "SHOP-12",
+        json!({"key": "SHOP-12", "fields": {}}),
+    )
+    .unwrap();
+    assert_eq!(
+        (siteless["url"].is_null(), siteless["title"].is_null()),
+        (true, true)
+    );
+}
+
+#[test]
+fn an_issue_link_refuses_another_issue_work_and_bindings_without_a_setup() {
+    let tasks = json!({"setup": "github", "repository": "acme/shop"});
+    let other = linked(
+        tasks.clone(),
+        "#135",
+        json!({"number": 134, "title": "Other"}),
+    );
+    assert!(other.unwrap_err().contains("issue 134, not 135"));
+    assert!(linked(tasks.clone(), "work:cleanup", json!({"number": 1})).is_err());
+    assert!(
+        linked(tasks.clone(), "#135", json!([{"number": 135}]))
+            .unwrap_err()
+            .contains("no issue id")
+    );
+    let plain = json!({"provider": "github", "transport": "cli", "command": "gh",
+                       "operations": {"task.read": {"args": ["issue", "view", "{id}"]}}});
+    assert!(
+        linked(plain, "#135", json!({"number": 135}))
+            .unwrap_err()
+            .contains("names no setup")
+    );
+    let settings = settings(json!({"setup": "jira"})).unwrap();
+    let unconfigured = crate::services::issue(&json!({"services": {}}), "#1", &json!({}));
+    assert!(unconfigured.unwrap_err().contains("no tasks service"));
+    assert!(crate::services::issue(&settings, "SHOP-12", &json!({"key": "SHOP-13"})).is_err());
+}

@@ -59,6 +59,12 @@ pub fn validate_snapshot(snapshot: &Value) -> Result<(), String> {
     {
         return Err("invalid review snapshot".into());
     }
+    if snapshot
+        .get("issue")
+        .is_some_and(|issue| !nonblank(&issue["reference"]))
+    {
+        return Err("a linked issue needs its reference".into());
+    }
     if text("provider") != Some("local")
         && (!change_id(&snapshot["changeId"]) || !nonblank(&snapshot["repository"]))
     {
@@ -170,6 +176,9 @@ pub fn publication_plan(
     let mut plan = Map::new();
     for name in ["provider", "repository", "changeId", "headSha"] {
         plan.insert(name.into(), snapshot[name].clone());
+    }
+    if let Some(issue) = snapshot.get("issue") {
+        plan.insert("issue".into(), issue.clone());
     }
     for name in [
         "summary",
@@ -288,5 +297,31 @@ mod tests {
         let empty = publication_plan(&snapshot(), &review("context", json!([])), &target).unwrap();
         assert_eq!(empty["context"], json!([]));
         assert_eq!(empty["execution"], "not-published");
+    }
+
+    #[test]
+    fn the_issue_a_change_implements_reaches_the_publication_plan() {
+        let target = Target {
+            current_base: &"a".repeat(40),
+            current_head: &"b".repeat(40),
+            authorized: true,
+        };
+        let review = review("findings", json!([]));
+        let mut linked = snapshot();
+        linked["issue"] = json!({"reference": "#7", "id": "7", "title": "Fix"});
+        let plan = publication_plan(&linked, &review, &target).unwrap();
+        assert_eq!(plan["issue"]["title"], "Fix");
+        assert!(
+            publication_plan(&snapshot(), &review, &target)
+                .unwrap()
+                .get("issue")
+                .is_none()
+        );
+        linked["issue"] = json!({"id": "7"});
+        assert!(
+            validate_snapshot(&linked)
+                .unwrap_err()
+                .contains("reference")
+        );
     }
 }

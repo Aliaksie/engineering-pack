@@ -656,6 +656,10 @@ fn ticket(
         session: options.get("session").filter(|s| !s.is_empty()),
         accept: options.get("accept"),
         approve: options.values.contains_key("approve"),
+        issue: match options.get("issue-data") {
+            Some(file) => Some(project::read_input(recorder, parent, file)?),
+            None => None,
+        },
     };
     crate::ticket::run(&root(options), &settings, &request)
 }
@@ -663,6 +667,32 @@ fn ticket(
 /// The user's line and the agent's next step, or the recorded choice.
 fn ticket_receipt(value: &Value) -> String {
     let text = |field: &str| value[field].as_str().unwrap_or_default();
+    let linked = issue_line(&value["issue"]).map_or(String::new(), |line| format!("{line}\n"));
+    if value["linked"] == true {
+        return linked;
+    }
+    format!("{linked}{}", ticket_lines(value, text))
+}
+
+/// `Craft: linked issue 135 "Title" (OPEN) https://…`, `None` without a linked issue.
+pub(crate) fn issue_line(issue: &Value) -> Option<String> {
+    let id = issue["id"]
+        .as_str()
+        .or_else(|| issue["reference"].as_str())?;
+    let mut line = format!("Craft: linked issue {id}");
+    if let Some(title) = issue["title"].as_str() {
+        line.push_str(&format!(" \"{title}\""));
+    }
+    if let Some(status) = issue["status"].as_str() {
+        line.push_str(&format!(" ({status})"));
+    }
+    if let Some(url) = issue["url"].as_str() {
+        line.push_str(&format!(" {url}"));
+    }
+    Some(line)
+}
+
+fn ticket_lines<'a>(value: &'a Value, text: impl Fn(&str) -> &'a str) -> String {
     if value.get("approved").is_some() {
         return format!(
             "Craft: plan {} of {} approved at revision {}\nnext: {}\n",
@@ -1008,6 +1038,7 @@ fn task_start(
             id,
             take_over: options.values.contains_key("take-over"),
         }),
+        issue: given("issue"),
     };
     crate::task::start(request, recorder, parent)
 }

@@ -21,6 +21,7 @@ const OPTIONS: &[&str] = &[
     "reason",
     "capture",
     "review-authorization",
+    "issue",
     "action",
     "scope",
     "benefit",
@@ -111,6 +112,7 @@ const OPTIONS: &[&str] = &[
     "affects",
     "accept",
     "approve",
+    "issue-data",
     "deny-secret-files",
 ];
 const FLAGS: &[&str] = &[
@@ -232,6 +234,7 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
         "label",
         "affects",
         "accept",
+        "issue-data",
     ]
     .iter()
     .find(|name| present(name))
@@ -283,6 +286,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("take-over") && !["task-start", "plan-update", "plan-release"].contains(&action) {
         return Err("--take-over is supported by task-start, plan-update and plan-release".into());
+    }
+    if present("issue") && !["task-start", "review-prepare"].contains(&action) {
+        return Err("--issue is supported by task-start and review-prepare".into());
     }
     if present("ready") && action != "task-start" {
         return Err("--ready is supported by task-start".into());

@@ -142,6 +142,27 @@ fn key(id: &str) -> bool {
         && number(digits)
 }
 
+/// The id a tracker gives the ticket `reference` names: the number of `#12`, `12` or a URL
+/// ending in one, or a key such as `SHOP-12`, alone or ending a URL. `None` for work with no
+/// ticket and for anything else.
+pub fn issue_id(reference: &str) -> Option<String> {
+    let reference = reference.trim();
+    if work_name(reference).is_some() {
+        return None;
+    }
+    let last = if url(reference) {
+        let path = reference.split(['?', '#']).next().unwrap_or_default();
+        path.trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or_default()
+    } else {
+        reference
+    };
+    let id = last.strip_prefix('#').unwrap_or(last);
+    (number(id) || key(id)).then(|| id.to_owned())
+}
+
 /// The work plan id a ticket's planned delivery uses: `issue-145` for an issue number or a
 /// URL ending in one, the lowercased key for a tracker key (`shop-12`).
 pub fn plan_id(reference: &str) -> String {

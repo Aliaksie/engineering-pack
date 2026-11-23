@@ -74,7 +74,7 @@ See [integrations](INTEGRATIONS.md).
 
 | Command | Purpose | Effects |
 |---|---|---|
-| `review-prepare` | Committed base/head → snapshot with identities and diff | Bounded Git reads; writes a new artifact only |
+| `review-prepare` | Committed base/head → snapshot with identities, diff and the [issue](ROUTING.md#the-linked-issue) the change implements | Bounded Git reads; writes a new artifact only |
 | `review-check` | Snapshot and review result → structural verdict | Reads artifacts; does not judge findings |
 | `review-publication` | Checked review, current remote revisions and authorization → comment plan | Reads artifacts; never contacts a code host |
 | `review-followup` | Fetched pull request observation → next follow-up status | Reads one file; stores nothing |

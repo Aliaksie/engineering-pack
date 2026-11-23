@@ -29,6 +29,8 @@ pub struct Request<'a> {
     pub accept: Option<&'a str>,
     /// The user approved the ticket's work plan as it stands.
     pub approve: bool,
+    /// The response the tasks service's `task.read` gave the agent for this ticket.
+    pub issue: Option<Value>,
 }
 
 fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::PathBuf, Failure> {
@@ -53,8 +55,18 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
                 .into(),
         );
     }
+    let linked = match &request.issue {
+        Some(response) => Some(link(root, settings, reference, response, request.session)?),
+        None => None,
+    };
+    let with_issue = |mut result: Value| {
+        if let Some(linked) = &linked {
+            result["issue"] = linked.clone();
+        }
+        result
+    };
     if request.approve {
-        return approve(root, reference, request.session);
+        return approve(root, reference, request.session).map(with_issue);
     }
     if let Some(choice) = request.accept {
         return accept(
@@ -64,7 +76,11 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
             choice,
             request.session,
             request.host,
-        );
+        )
+        .map(with_issue);
+    }
+    if let (Some(linked), None) = (&linked, request.criteria) {
+        return Ok(json!({"ticket": reference, "issue": linked, "linked": true}));
     }
     let criteria = match request.criteria {
         Some(criteria @ ("clear" | "unclear" | "missing")) => criteria,
@@ -142,7 +158,99 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     decision["contracts"] = json!(contracts);
     decision["line"] = json!(line);
     decision["next"] = json!(next);
-    Ok(decision)
+    Ok(with_issue(decision))
+}
+
+const ISSUE_BYTES: usize = 4096;
+
+/// A read the hint spells out in full; a longer one is named by the `craft operation` that
+/// plans it.
+const READ_LINE: usize = 200;
+
+/// How the agent reads the issue `reference` names through the configured tasks setup, for
+/// the intake hint: ` with <the read> (save …)`. `None` without a setup that reads issues.
+pub(crate) fn read_step(settings: &Value, reference: &str) -> Option<String> {
+    let id = ticket::issue_id(reference)?;
+    let plan = craft_engine::services::plan(settings, "task.read", &json!({"id": id})).ok()?;
+    plan.get("response")?;
+    let how = match plan["tool"].as_str() {
+        Some(tool) => format!(
+            "the `{tool}` tool of the `{}` MCP server with `{}`",
+            plan["server"].as_str().unwrap_or("configured"),
+            plan["arguments"]
+        ),
+        None => {
+            let words: Vec<String> = std::iter::once(plan["command"].as_str()?.to_owned())
+                .chain(
+                    plan["args"]
+                        .as_array()?
+                        .iter()
+                        .filter_map(|arg| arg.as_str().map(shell_word)),
+                )
+                .collect();
+            let line = words.join(" ");
+            if line.len() <= READ_LINE {
+                format!("`{line}`")
+            } else {
+                format!(
+                    "the read `craft operation --operation task.read --params '{{\"id\":\"{id}\"}}'` plans"
+                )
+            }
+        }
+    };
+    Some(format!(
+        " with {how} (save the JSON it returns to a file for `--issue-data`)"
+    ))
+}
+
+/// `word` as one POSIX shell word.
+fn shell_word(word: &str) -> String {
+    let plain = !word.is_empty()
+        && word
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_./:=,@%+-".contains(&b));
+    if plain {
+        word.to_owned()
+    } else {
+        format!("'{}'", word.replace('\'', "'\"'\"'"))
+    }
+}
+
+fn issue_file(root: &Path, session: &str, create: bool) -> Result<std::path::PathBuf, Failure> {
+    Ok(state::file(root, "issue.json", create, Some(session))?)
+}
+
+/// Keep the issue `reference` names, as its tracker returned it, for the session: the task the
+/// session starts and the review it prepares carry it.
+fn link(
+    root: &Path,
+    settings: &Value,
+    reference: &str,
+    response: &Value,
+    session: Option<&str>,
+) -> Result<Value, Failure> {
+    let session = session.ok_or("--issue-data requires --session")?;
+    let mut linked = craft_engine::services::issue(settings, reference, response)?;
+    linked["linkedAt"] = json!(crate::telemetry::now_ms());
+    let mut record = json!({"formatVersion": 1});
+    record["issue"] = linked.clone();
+    state::write(
+        &issue_file(root, session, true)?,
+        &record,
+        ISSUE_BYTES,
+        false,
+    )?;
+    Ok(linked)
+}
+
+/// The issue the session linked last, `None` without one or when it cannot be read.
+pub(crate) fn linked_issue(root: &Path, session: &str) -> Option<Value> {
+    let file = issue_file(root, session, false).ok()?;
+    let record = read_record(&file, ISSUE_BYTES).ok()?;
+    record
+        .get("issue")
+        .filter(|issue| issue.is_object())
+        .cloned()
 }
 
 /// The modules `paths` fall under. Where the project declares none, each top-level folder

@@ -45,6 +45,8 @@ enabled native execution, automatic host hook dispatch or other platform support
 Correction: the `command-catalog` case no longer lists `checkpoint-save`, `checkpoint-read`,
 `worker-status`, `task-offer`, `workspace-clean`, `grounded-context`, `session-attempt` and
 `model-advice`; they still run and answer `--help`, but the general help leaves them out.
+Correction: the `help-before-validation` usage line names `--issue`, the issue the task
+implements.
 
 `host-contracts.json` freezes 120 host translation cases from the same baseline,
 after verifying hosts and their runtime dependencies unchanged. The native hook
