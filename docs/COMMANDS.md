@@ -32,7 +32,6 @@ compacts a host session or posts to a code host.
 | `lookup` | Module inventory or owners of paths | Reads configuration |
 | `locate` | Batched literal terms in scoped paths → path/line/snippet evidence | Bounded scan; optional task-scoped reuse receipts |
 | `context-report` | Selected guidance → paths, hashes, bytes, estimated tokens | Reads package resources; never measures live occupancy |
-| `model-advice` | Attempts and configured profiles → profile recommendation | Pure decision; no model call |
 
 ## Tasks and sessions
 

@@ -188,7 +188,7 @@ test('session receipts remain opt-in while normal commands record only supportin
   assert.equal(status.usage.status, 'unknown');
 });
 
-test('configured quality escalation is offered, access failures stop, and escalation receipts retain reasons', t => {
+test('an exhausted attempt budget returns control, access failures stop, and escalation receipts retain reasons', t => {
   const { root, git, write } = fixture(t);
   const project = { formatVersion: 1, execution: {
     roles: { implementer: { mode: 'delegate', profile: 'routine' } },
@@ -200,13 +200,11 @@ test('configured quality escalation is offered, access failures stop, and escala
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision } };
   for (let index = 0; index < 3; index++) recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
   let status = sessionStatus(input, project, { root });
-  assert.equal(status.recommendation.action, 'escalate-model');
-  assert.equal(status.modelAdvice.profile, 'deep');
-  assert.match(status.recommendation.reason, /quality-attempt limit/);
+  assert.equal(status.recommendation.action, 'return-control');
+  assert.equal(status.modelAdvice, undefined);
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'deep', escalationReason: 'routine quality budget exhausted', outcome: 'tool-unavailable' }));
   status = sessionStatus(input, project, { root });
   assert.equal(status.recommendation.action, 'stop-blocked');
-  assert.equal(status.modelAdvice.decision, 'stop');
   assert.equal(status.activity.modelEscalations, 1);
   assert.equal(readSessionState(root, scope.session, scope.task).attempts.at(-1).escalationReason, 'routine quality budget exhausted');
 });
@@ -276,7 +274,6 @@ test('known host mappings identify an unnecessarily strong profile for mechanica
   const status = sessionStatus({ host: { name: 'fixture', model: 'consumer-b' }, task: { id: scope.task, stage: 'locate', revision: 'r1' } }, project, { root });
   assert.equal(status.capability.currentClass, 'strong');
   assert.equal(status.capability.recommendation, 'use-deterministic-tool-or-economical-profile');
-  assert.equal(status.modelAdvice.profile, 'small');
   assert.equal(status.host.model, 'consumer-b');
 });
 
@@ -294,28 +291,6 @@ test('unavailable optional activity storage does not suppress the routing plan',
 test('empty discovery remains invalid', t => {
   const { root } = fixture(t);
   assert.throws(() => discover(root, { terms: [] }), /terms/);
-});
-
-test('escalation starts the new tier budget and configured terminal limits stop before the generic ceiling', t => {
-  const { root, git, write } = fixture(t);
-  const project = { formatVersion: 1, execution: {
-    roles: { implementer: { mode: 'delegate', profile: 'routine' } },
-    profiles: { routine: { capabilities: [], class: 'standard', maxAttempts: 1, escalateTo: 'deep' }, deep: { capabilities: [], class: 'strong', maxAttempts: 2 } },
-    hosts: { fixture: { delegation: true, models: { routine: 'consumer-a', deep: 'consumer-b' } } }
-  } };
-  write('.craft/project.json', JSON.stringify(project));
-  const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision: git('rev-parse', 'HEAD') } };
-  recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
-  assert.equal(sessionStatus(input, project, { root }).recommendation.action, 'escalate-model');
-  recordAttempt(root, scope.session, scope.task, receipt({ profile: 'deep' }));
-  let status = sessionStatus(input, project, { root });
-  assert.equal(status.activity.attempts, 1);
-  assert.equal(status.recommendation.action, 'retry-differently');
-  recordAttempt(root, scope.session, scope.task, receipt({ profile: 'deep' }));
-  status = sessionStatus(input, project, { root });
-  assert.equal(status.activity.attempts, 2);
-  assert.equal(status.recommendation.action, 'return-control');
-  assert.match(status.recommendation.reason, /No further escalation/);
 });
 
 test('a mechanical operation within implementation receives economical capability advice', t => {
@@ -349,7 +324,7 @@ function retryProject() {
   } };
 }
 
-test('a completed series cannot suppress escalation or retain a resolved denial in a later series', t => {
+test('a completed series cannot suppress a later exhausted budget or retain a resolved denial', t => {
   const { root, git } = fixture(t);
   const project = retryProject();
   fs.mkdirSync(path.join(root, ".craft"), { recursive: true });
@@ -357,20 +332,17 @@ test('a completed series cannot suppress escalation or retain a resolved denial 
   const input = { sessionId: scope.session, host: { name: 'fixture' }, task: { id: scope.task, stage: 'implement', revision: git('rev-parse', 'HEAD') } };
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine', outcome: 'permission-denied' }));
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine', outcome: 'passed' }));
-  assert.equal(sessionStatus(input, project, { root }).modelAdvice.decision, 'completed');
   recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
   let status = sessionStatus(input, project, { root });
   assert.equal(status.activity.attempts, 1);
   assert.equal(status.recommendation.action, 'retry-differently');
-  assert.equal(status.modelAdvice.decision, 'recommend');
   for (let i = 0; i < 2; i++) recordAttempt(root, scope.session, scope.task, receipt({ profile: 'routine' }));
   status = sessionStatus(input, project, { root });
   assert.equal(status.activity.attempts, 3);
-  assert.equal(status.recommendation.action, 'escalate-model');
-  assert.equal(status.modelAdvice.profile, 'deep');
+  assert.equal(status.recommendation.action, 'return-control');
 });
 
-test('unrelated completed operations cannot evict active blockers or escalation evidence', t => {
+test('unrelated completed operations cannot evict active blockers or attempt evidence', t => {
   const { root, git } = fixture(t);
   const project = retryProject();
   fs.mkdirSync(path.join(root, ".craft"), { recursive: true });
@@ -391,8 +363,7 @@ test('unrelated completed operations cannot evict active blockers or escalation 
   const status = sessionStatus(input, project, { root });
   assert.equal(status.activity.attempts, 3);
   assert.equal(status.activity.noProgressAttempts, 3);
-  assert.equal(status.recommendation.action, 'escalate-model');
-  assert.equal(status.modelAdvice.profile, 'deep');
+  assert.equal(status.recommendation.action, 'return-control');
 });
 
 test('active receipt capacity fails explicitly without changing persisted evidence and success releases it', t => {

@@ -298,19 +298,9 @@ fn observe(
             "Repository observation unavailable: {error}"
         )));
     }
-    // A stale checkpoint, unknown occupancy, unavailable advice and an exhausted attempt
-    // budget are session states, recorded on `session.observed`, `host.observed`,
-    // `model.advice` and `session.advice` below; none is a failure of this status read.
-    let mut advised = Map::new();
-    for (name, value) in [
-        ("capabilityClass", &result["capability"]["class"]),
-        ("decision", &result["modelAdvice"]["decision"]),
-    ] {
-        if !value.is_null() {
-            advised.insert(name.into(), value.clone());
-        }
-    }
-    recorder.observe("model.advice", advised, operation, &[]);
+    // A stale checkpoint, unknown occupancy and an exhausted attempt budget are session
+    // states, recorded on `session.observed`, `host.observed` and `session.advice` below;
+    // none is a failure of this status read.
     let activity = &result["activity"];
     let exhausted = matches!((activity["attempts"].as_f64(), activity["maxAttempts"].as_f64()), (Some(a), Some(m)) if a >= m);
     let mut advice = Map::new();
