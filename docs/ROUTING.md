@@ -181,8 +181,9 @@ turns the scan off: nothing is read from the files and nothing is said.
 ## Work from a ticket
 
 When a prompt names a ticket (an issue or merge request URL of a code host, a tracker URL such
-as `/browse/SHOP-12`, or a key or number the prompt calls an issue, ticket, story or bug), the
-prompt hook tells the agent, before any edit, to read the ticket, locate the files the work will
+as `/browse/SHOP-12`, a key or number the prompt calls an issue, ticket, story or bug, one a
+start-work phrase names, as in `start on 164` or `go ahead with SHOP-12`, or a `#164` that no
+pull or merge request owns), the prompt hook tells the agent, before any edit, to read the ticket, locate the files the work will
 change and state those facts to `craft ticket`:
 
 ```sh
@@ -236,7 +237,19 @@ seen reliably by its hooks; no turn-end reminder repeats it. Task progress keeps
 the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
 lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
 review offer for the ticket, once. The same ticket in a later prompt of
-the session is not taken in again. `routing.ticketOffer: false` turns the offer off.
+the session is not taken in again.
+
+Work no ticket names gets the same choice once per session: at the first prompt that asks for a
+change, or, when no prompt did, as when the agent picks the work itself, at the session's first
+edit. A session that already named a ticket or bound a task gets no offer. The agent names the
+work and states its facts the same way:
+
+```sh
+craft ticket --work parser-quotes --criteria clear --path src/parser.ts --host claude --session <id>
+```
+
+A planned change of such work gets the plan `work-<name>` with no reference, and every later
+step names it again by `--work <name>`. `routing.ticketOffer: false` turns both offers off.
 
 ## Stop review
 

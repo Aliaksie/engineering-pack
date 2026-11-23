@@ -1390,7 +1390,7 @@
         "ticketOffer": {
           "type": "boolean",
           "default": true,
-          "description": "When a prompt starts work from a ticket (an issue or tracker URL, or a key the prompt calls an issue or ticket), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Set false to make no offer."
+          "description": "When a prompt starts work from a ticket (an issue or tracker URL, a key or number the prompt calls an issue or ticket or names after a start-work phrase such as `start on 12`, or a `#12`), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Work no ticket names gets the same offer once per session, at its first prompt asking for a change or else its first edit, through `craft ticket --work <name>`. Set false to make no offer."
         }
       },
       "additionalProperties": false
