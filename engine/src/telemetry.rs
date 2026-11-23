@@ -46,6 +46,7 @@ const FLAGS: &[&str] = &[
     "available",
     "complete",
     "contextSupported",
+    "workflow",
 ];
 const ENUMS: &[(&str, &[&str])] = &[
     (
@@ -516,6 +517,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(named["attributes"], skill);
+        let workflow = json!({"skill": "craft-review:review-change", "workflow": true});
+        let flagged = envelope(
+            &event("guidance.selected", workflow.clone()),
+            &["craft-review:review-change"],
+        )
+        .unwrap();
+        assert_eq!(flagged["attributes"], workflow);
         let mut unknown = event("arbitrary", json!({}));
         assert!(envelope(&unknown, &[]).is_err());
         unknown.name = "routing.completed";

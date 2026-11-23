@@ -56,9 +56,9 @@ or keep their text at that bound; a
 Copilot before-tool call Craft does not deny gets no output instead of
 `permissionDecision: "allow"`, so Copilot's own permission flow decides; and Copilot
 after-tool carries `additionalContext`, which its hooks reference documents. Correction: a
-routing context renders as lines to act on, not as JSON: the intent, its `next` skill, any
-answer and lookup, the project's own skills, each standard with what keeps it, references, and
-the remaining fields as one JSON `data` line. Package skill names other than `next` and a `main` execution are left
+routing context renders as lines to act on, not as JSON: the intent, its `next` skill when it
+is the project's own, any answer and lookup, the project's own skills, each standard with what keeps it, references, and
+the remaining fields as one JSON `data` line. Package skill names and a `main` execution are left
 out, and a control character in a value becomes a space. Every `routing*` render and wire case
 follows.
 
@@ -127,7 +127,9 @@ at `bb12534` (`cargo test -p craft-engine --lib delivery`). Correction: plan fac
 plan has a `:no-context` copy where the host cannot, which routes nothing and leaves every other
 step unchanged. Correction: a routing context that says nothing but its intent is not sent, so
 the `routing:*` decisions carry a hint with `next`, and each `intent-only:*` decision falls
-through to the checkpoint, services or continuation the same case without routing receives.
+through to the checkpoint, services or continuation the same case without routing receives. Correction: a package's
+workflow skill is not shown as `next` either; only the project's own skill that replaced it is,
+so the `routing:*` decisions carry `project:team-delivery` as `next`.
 
 `checkpoint-contracts.json` freezes 1765 JavaScript engine responses at `c27951a` for
 repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison and change

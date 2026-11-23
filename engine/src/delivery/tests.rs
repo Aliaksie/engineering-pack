@@ -378,8 +378,9 @@ fn a_resume_comes_before_routing_and_raw_checkpoint_data() {
     );
 }
 
-/// A hint names what the model acts on: the next step, the project's own skills and each
-/// standard with what keeps it, not the package's other skills or the default execution.
+/// A hint names what the model acts on: the project's own skills and each standard with what
+/// keeps it, not the package's skills, its workflow skill as next step included, or the
+/// default execution.
 #[test]
 fn a_hint_names_what_to_act_on_instead_of_skill_names() {
     let route = json!({
@@ -402,7 +403,6 @@ fn a_hint_names_what_to_act_on_instead_of_skill_names() {
         text,
         [
             "intent: review",
-            "next: open craft-review-review-change",
             "project skills: project-team-lint",
             "standards:",
             "- commits: Conventional Commits. (checked: conventional-commits)",
@@ -414,6 +414,22 @@ fn a_hint_names_what_to_act_on_instead_of_skill_names() {
         .join("\n")
     );
     assert!(!text.contains("foundations"), "{text}");
+    assert!(!text.contains("review-change"), "{text}");
+
+    // The project's own skill in place of the package workflow is the next step.
+    let mut replaced = route.clone();
+    replaced["next"] = json!("project:team-review");
+    replaced["skills"] = json!(["project:team-review", "project:team-lint"]);
+    let text = hint_lines(
+        &shown(&json!({"kind": "routing", "data": replaced})),
+        &|name| name.replace(':', "-"),
+    );
+    assert!(
+        text.starts_with(
+            "intent: review\nnext: open project-team-review\nproject skills: project-team-lint\n"
+        ),
+        "{text}"
+    );
 
     // A delegated execution is a step of its own and stays.
     let delegated =

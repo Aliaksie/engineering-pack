@@ -20,7 +20,11 @@ pub(crate) fn route(
             // Route skills are already unique.
             let skills = plan["skills"].as_array().map_or(&[][..], Vec::as_slice);
             for skill in skills.iter().take(32) {
-                let attributes = Map::from_iter([("skill".to_string(), skill.clone())]);
+                let mut attributes = Map::from_iter([("skill".to_string(), skill.clone())]);
+                // The route's one next step, which a hint no longer names for a package skill.
+                if *skill == plan["next"] {
+                    attributes.insert("workflow".to_string(), json!(true));
+                }
                 recorder.observe("guidance.selected", attributes, &operation, &known);
             }
             let attributes = Map::from_iter([

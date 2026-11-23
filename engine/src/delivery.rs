@@ -241,10 +241,10 @@ pub fn validate_hint(state: &Value) -> Result<(), String> {
 }
 
 /// The part of a routing context a host is shown: what the model can act on. That is the
-/// intent's next step, the project's own skills, the standards, references and answers, but
-/// not the package's other skill names, which models did not open, nor the default `main`
-/// execution. The task identity shows only once a task is bound (the session line already
-/// names the session). Other contexts are shown whole.
+/// project's own skills (its workflow skill as the next step), the standards, references and
+/// answers, but not the package's skill names, which models did not open even as the one
+/// next step, nor the default `main` execution. The task identity shows only once a task is
+/// bound (the session line already names the session). Other contexts are shown whole.
 pub fn shown(context: &Value) -> Value {
     if context["kind"] != "routing" {
         return context.clone();
@@ -271,6 +271,7 @@ pub fn shown(context: &Value) -> Value {
     ] {
         let value = match key {
             "execution" if data[key]["mode"] == "main" => continue,
+            "next" if !project_skill(&data[key]) => continue,
             "skills" => json!(project_skills(data)),
             _ => data[key].clone(),
         };
@@ -286,15 +287,20 @@ pub fn shown(context: &Value) -> Value {
 
 /// The project's own skills a route selected, other than its next step.
 fn project_skills(route: &Value) -> Vec<&Value> {
-    let prefix = format!("{}:", crate::skills::SOURCE);
     route["skills"]
         .as_array()
         .map_or(&[][..], Vec::as_slice)
         .iter()
-        .filter(|skill| {
-            skill.as_str().is_some_and(|s| s.starts_with(&prefix)) && **skill != route["next"]
-        })
+        .filter(|skill| project_skill(skill) && **skill != route["next"])
         .collect()
+}
+
+/// Whether a skill name is one of the project's own skills rather than a package's.
+fn project_skill(skill: &Value) -> bool {
+    skill
+        .as_str()
+        .and_then(|s| s.strip_prefix(crate::skills::SOURCE))
+        .is_some_and(|rest| rest.starts_with(':'))
 }
 
 /// Whether a shown hint says more than its intent; one that does not stays unsent.

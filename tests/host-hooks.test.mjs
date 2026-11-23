@@ -98,19 +98,23 @@ test('a tool call Craft does not deny keeps the host permission flow', (t) => {
 });
 
 test('prompt routing hints appear only where the native context schema supports them', (t) => {
-  const dir = fixture(t);
+  const dir = fixture(t, { standards: [{ id: 'commits', anchor: 'conventional-commits' }] });
   for (const host of native) {
     const result = invoke(host, 'craft-delivery', 'prompt-routing', { cwd: dir, session_id: 'fixture-session', prompt: 'review this change' }, dir);
     assert.equal(result.status, 0, result.stderr);
     const output = result.stdout.trim() ? JSON.parse(result.stdout) : {};
     const context = output.hookSpecificOutput?.additionalContext ?? output.additionalContext ?? output.additional_context ?? '';
     assert.equal(context.includes('Routing hints'), HOSTS[host].events['before-prompt'].context, host);
-    if (context) assert.ok(context.includes(HOSTS[host].listing.names === 'plugin' ? 'craft-review:review-change' : 'craft-review-review-change'), host);
+    if (context) {
+      assert.ok(routingHint(context).standards.some(standard => standard.id === 'commits'), `${host}: ${context}`);
+      // A package skill is not named, not even as the next step.
+      assert.ok(!context.includes('review-change'), `${host}: ${context}`);
+    }
   }
 });
 
 // One declared replacement in `.agents/skills`: hosts that read the folder are sent to the
-// consumer skill by its bare name; Claude Code does not read it, so keeps the package skill.
+// consumer skill by its bare name; Claude Code does not read it, so its hint names no next step.
 test('a declared consumer skill replaces the package skill on every host that can load it', (t) => {
   const dir = fixture(t, { skills: { declared: [{ name: 'team-review', path: '.agents/skills/team-review', replaces: ['craft-review:review-change'] }] } });
   fs.mkdirSync(path.join(dir, '.agents/skills/team-review'), { recursive: true });
@@ -124,8 +128,7 @@ test('a declared consumer skill replaces the package skill on every host that ca
     const hint = routingHint(context);
     const reads = HOSTS[host].listing.projectSkills.includes('.agents/skills');
     // The replacement is the review's next step where the host reads it.
-    assert.equal(hint.next === 'team-review', reads, `${host}: ${context}`);
-    assert.equal(hint.next.includes('review-change'), !reads, `${host}: ${context}`);
+    assert.equal(hint.next, reads ? 'team-review' : undefined, `${host}: ${context}`);
     assert.equal((hint.missing ?? []).some(line => line.includes('project:team-review unavailable')), !reads, `${host}: ${context}`);
   }
 });
