@@ -537,7 +537,8 @@ optionally `capabilityClass`, `currentProfile` and `attempts`. Profiles declare 
 `maxAttempts` (1–5, default 3), `class` (`economical|standard|strong`) and `escalateTo`.
 Only quality failures on the same task and revision count toward escalation. A
 `permission-denied` or `tool-unavailable` attempt stops advice until it is resolved. Without
-a chain, advice stops rather than inventing a stronger model.
+a chain, advice stops rather than inventing a stronger model. Session status, `task-start`
+and guidance do not offer it; it answers only when run.
 
 ## Hints and guidance size
 

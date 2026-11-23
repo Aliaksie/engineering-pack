@@ -128,7 +128,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -383,7 +383,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -629,7 +629,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -872,7 +872,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
