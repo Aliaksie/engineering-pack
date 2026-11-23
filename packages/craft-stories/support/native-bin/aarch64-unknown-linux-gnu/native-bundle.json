@@ -46,11 +46,11 @@
     "hook.tests": "7ea7fd9adf29d72861450ca098e394537ef913dd6747b49a41158868cebdc18b",
     "hook.delegation": "c8a73bddc84a58d8f977a5a1fac65d6f0f897e64995157b44a1bc82d286ebea3",
     "hook.stop": "39fdba062a0d92975a1022aea81d12e9480498872a4c5a757ebde65ae6b6ed56",
-    "hook.ticket": "8eefb0ca045cab89124f7f3e434a62254fca69c3a4a741de0efb2e9526174fc9",
+    "hook.ticket": "eefc86bc620a471f46deaeb56f5409740d6b7c12699ffeaac72a57d80d47b40d",
     "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "70e4c205c3146f66898663390bb310f6d9ed6015",
+  "sourceRevision": "72b583b0b6ea703484373ae473b4af154ea67c53",
   "sourceDirty": false,
   "cargoLockSha256": "ebbacf5e0563865493cbbccf5f22cd16325103f7647e51bbfdb3976166888576",
   "files": [
@@ -67,12 +67,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 27308400,
-      "sha256": "a6459ab8ee78a984413a1443aa8aa8cb2e233d4c3459d18f285491164080f7df"
+      "sha256": "c3064a3a11ff01dbd555375e0048b130d6745f1ad03413b7f2d4057040ac14a4"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 266,
-      "sha256": "4d8ad44d30f73a6cce721be40d4363a05ab11fbe8056d4598f1ee852538bba9c"
+      "sha256": "a2efe1db06f44321bfbb11033f027ea847a67485be7e5e34b598e91018534c52"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",

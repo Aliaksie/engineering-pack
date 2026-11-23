@@ -16,8 +16,8 @@ and bounded lookup results can be reused across turns.
 Use `task-start` once for a multi-step task and `task-step` at semantic acceptance boundaries;
 ordinary discovery/status calls reuse the session binding without per-feature task JSON.
 Use the bundled CLI's `session` command for context occupancy, selected-guidance estimates,
-pack activity and next-step advice; `session-attempt` records explicit acceptance outcomes.
-Missing host telemetry stays unknown. Neither command compacts a session or switches models.
+pack activity and next-step advice. Missing host telemetry stays unknown. It never compacts a
+session or switches models.
 See [session status](https://github.com/Aliaksie/engineering-pack/blob/v0.0.7/docs/SESSION.md) for receipts, bounded continuation and reuse.
 
 Implementation requests go through `workflow-deliver-change`, which uses `implement-story`
