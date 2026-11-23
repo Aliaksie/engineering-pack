@@ -52,15 +52,21 @@ test('prompt routing replay', t => {
   const prompts = new Map(cases.map(({ id, prompt }) => [id, prompt]));
   // A separate session per case: an identical hint is suppressed within one session.
   const log = path.join(root, '.craft/state/telemetry/events.jsonl');
-  const routed = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [])
-    .map(line => JSON.parse(line)).filter(event => event.name === 'routing.completed');
+  const events = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [])
+    .map(line => JSON.parse(line));
+  const routed = () => events().filter(event => event.name === 'routing.completed');
   replay(t, 'prompt routing', cases, id => {
-    const before = routed().length;
+    const before = events().length;
     const data = deliverHook(root, 'before-prompt', { prompt: prompts.get(id), session: id, host: 'claude' }).context?.data;
     // The routed intent, also where the hint stays silent (a lookup without a verified answer);
     // a ready lookup names no step; a prompt the hook answered records the question it answered.
-    const intent = routed().slice(before).at(-1)?.attributes?.intent ?? null;
-    return { intent, next: data?.next ?? null, ...(data?.answer && { answer: data.answer.question }) };
+    // The next step is the route's workflow skill, also where no hint is sent; a hint names it
+    // only when it is the project's own skill.
+    const recorded = events().slice(before);
+    const intent = recorded.filter(event => event.name === 'routing.completed').at(-1)?.attributes?.intent ?? null;
+    const workflow = recorded.find(event => event.name === 'guidance.selected' && event.attributes?.workflow)?.attributes.skill;
+    const next = data?.next ?? workflow ?? null;
+    return { intent, next, ...(data?.answer && { answer: data.answer.question }) };
   });
 });
 

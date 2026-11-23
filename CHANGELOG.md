@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A prompt's routing hint no longer names a Craft package skill as `next: open …`; it names
+  the next step only when it is the project's own skill. A hint that would say nothing else
+  is not sent. `craft route` still reports the route's `next`.
 - When Git does not answer in time, commands that need the session's task binding fail with
   "Git did not answer in time; the task binding to the current checkout could not be
   confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an

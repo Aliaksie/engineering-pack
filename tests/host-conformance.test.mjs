@@ -176,7 +176,8 @@ test('session start restores the same checkpoint and session identity on every h
 
 // The same events in the same order, limited to lifecycle events every host maps.
 function sequence(t, host) {
-  const dir = fixture(t, { checkpoint: { enabled: true } });
+  // A standard gives the prompt's hint something to say; a package workflow alone is not shown.
+  const dir = fixture(t, { checkpoint: { enabled: true }, standards: [{ id: 'commits', anchor: 'conventional-commits' }] });
   for (const lifecycle of order.filter(name => native.every(other => HOSTS[other].events[name]))) {
     for (const hook of sources.filter(entry => entry.event === lifecycle)) {
       const result = invoke(host, hook, dir, 'sequence-session');

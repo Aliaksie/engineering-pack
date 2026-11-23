@@ -1300,8 +1300,22 @@ fn prompted(host: &str, project: &Path, bundle: &Path, home: &Path, prompt: &str
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
-/// A prompt hook names only skills of packages the host installed beside it: a route into a
-/// package that is not there says nothing instead of naming skills nobody can load.
+/// The workflow skill the last prompt routed to, as the session's telemetry records it; a hint
+/// does not name a package skill.
+fn routed_workflow(root: &Path) -> Option<String> {
+    let events = fs::read_to_string(root.join(".craft/state/telemetry/events.jsonl")).ok()?;
+    events
+        .lines()
+        .rev()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|event| {
+            event["name"] == "guidance.selected" && event["attributes"]["workflow"] == true
+        })
+        .and_then(|event| event["attributes"]["skill"].as_str().map(str::to_string))
+}
+
+/// A prompt hook routes only into packages the host installed beside it: a route into a
+/// package that is not there names no skill nobody can load.
 #[test]
 fn a_prompt_routes_only_into_packages_the_host_installed() {
     let fixture = project("installed-packages", Some(r#"{"formatVersion": 1}"#));
@@ -1320,6 +1334,7 @@ fn a_prompt_routes_only_into_packages_the_host_installed() {
         bundle(&market, "craft-engineering");
         let silent = prompted(host, &fixture.0, &delivery, &home, prompt);
         assert_eq!(silent, "", "{host}");
+        assert_eq!(routed_workflow(&fixture.0), None, "{host}");
         // With the stories package beside it, the same prompt names its workflow.
         bundle(&market, "craft-stories");
         fs::create_dir_all(home.join("codex")).unwrap();
@@ -1331,9 +1346,11 @@ fn a_prompt_routes_only_into_packages_the_host_installed() {
         // The prompt changed nothing about the session; a new one hears the route.
         let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
         let routed = prompted(host, &fixture.0, &delivery, &home, prompt);
-        assert!(
-            routed.contains("craft-stories:workflow-prepare-stories"),
-            "{host}: {routed}"
+        assert!(!routed.contains("craft-stories"), "{host}: {routed}");
+        assert_eq!(
+            routed_workflow(&fixture.0).as_deref(),
+            Some("craft-stories:workflow-prepare-stories"),
+            "{host}"
         );
         // Turned off in the host's settings, it is as good as absent.
         let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
@@ -1349,14 +1366,15 @@ fn a_prompt_routes_only_into_packages_the_host_installed() {
         .unwrap();
         let off = prompted(host, &fixture.0, &delivery, &home, prompt);
         assert_eq!(off, "", "{host}");
+        assert_eq!(routed_workflow(&fixture.0), None, "{host}");
         let _ = fs::remove_file(home.join("claude/settings.json"));
         let _ = fs::remove_dir_all(fixture.0.join(".craft/state"));
     }
     // Outside an installed bundle nothing is known, so the route is the catalog's.
-    let loose = prompted("claude", &fixture.0, &fixture.0, &home, prompt);
-    assert!(
-        loose.contains("craft-stories:workflow-prepare-stories"),
-        "{loose}"
+    let _ = prompted("claude", &fixture.0, &fixture.0, &home, prompt);
+    assert_eq!(
+        routed_workflow(&fixture.0).as_deref(),
+        Some("craft-stories:workflow-prepare-stories")
     );
 }
 
