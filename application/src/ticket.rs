@@ -170,6 +170,13 @@ const READ_LINE: usize = 200;
 /// How the agent reads the issue `reference` names through the configured tasks setup, for
 /// the intake hint: ` with <the read> (save …)`. `None` without a setup that reads issues.
 pub(crate) fn read_step(settings: &Value, reference: &str) -> Option<String> {
+    read_with(settings, reference)
+        .map(|with| format!("{with} (save the JSON it returns to a file for `--issue-data`)"))
+}
+
+/// How the agent reads the issue `reference` names through the configured tasks setup:
+/// ` with <the read>`. `None` without a setup that reads issues.
+pub(crate) fn read_with(settings: &Value, reference: &str) -> Option<String> {
     let id = ticket::issue_id(reference)?;
     let plan = craft_engine::services::plan(settings, "task.read", &json!({"id": id})).ok()?;
     plan.get("response")?;
@@ -198,9 +205,7 @@ pub(crate) fn read_step(settings: &Value, reference: &str) -> Option<String> {
             }
         }
     };
-    Some(format!(
-        " with {how} (save the JSON it returns to a file for `--issue-data`)"
-    ))
+    Some(format!(" with {how}"))
 }
 
 /// `word` as one POSIX shell word.
@@ -608,15 +613,17 @@ pub(crate) fn plan_first(root: &Path, session: &str) -> bool {
 /// Whether the session's work with no ticket is offered its delivery choice now: once per
 /// session, never after a ticket's or work's delivery was recorded, and never while
 /// `bound` says a task is already bound. The offer, or the reason it is not due, is kept so
-/// later prompts and edits read one small record.
+/// later prompts and edits read one small record. An event `applies` says is no change
+/// leaves the offer for a later one.
 pub(crate) fn work_offer_due(
     root: &Path,
     session: &str,
+    applies: impl FnOnce() -> bool,
     bound: impl FnOnce() -> bool,
 ) -> Result<bool, Failure> {
     let file = record_file(root, session, true)?;
     let mut record = read_record(&file, RECORD_BYTES)?;
-    if record.get("ticket").is_some() || record[WORK_OFFERED] == true {
+    if record.get("ticket").is_some() || record[WORK_OFFERED] == true || !applies() {
         return Ok(false);
     }
     let due = !bound();

@@ -1,0 +1,1 @@
+Craft ticket (no authorization implied): this request is about the ticket {reference} and changes no code, so it needs no delivery choice. Read the ticket{read}.

@@ -202,6 +202,12 @@ Craft decides without a model call:
   criteria are unclear or missing, or a label such as `epic` or `needs-design` asks for it;
 - **direct** otherwise: one module, no contract change, clear acceptance criteria.
 
+A request about the ticket that changes no code, one whose [intent](#hints-and-guidance-size)
+is `story`, `plan`, `explore`, `verify`, `review` or `locate` ("Write user stories for issue
+#12", "What acceptance criteria of #12 have no evidence yet?"), is told only to read it, with
+the setup's read when there is one. No delivery choice is asked and nothing is recorded, so a
+later request to change the ticket still gets the intake.
+
 It prints the line for the user, such as `Craft suggests: plan → implement → review (3 modules,
 schema change)`, and the agent's next step on this host. On Claude Code the plan-first offer is
 asked with the host's question tool; on a host without one the agent shows the line and asks in
@@ -241,7 +247,10 @@ the session is not taken in again.
 
 Work no ticket names gets the same choice once per session: at the first prompt that asks for a
 change, or, when no prompt did, as when the agent picks the work itself, at the session's first
-edit. A session that already named a ticket or bound a task gets no offer. The agent names the
+edit. A session that already named a ticket or bound a task gets no offer. An edit is not
+offered it while a request that changes no code established the session's intent (the story,
+decision record or charter it writes is that request's document), nor for a file Git ignores or
+excludes; the offer stays for a later change. The agent names the
 work and states its facts the same way:
 
 ```sh

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A request about a ticket that changes no code, such as writing its stories, auditing it,
+  preparing a testing charter, reviewing it or asking about it, is told only to read the
+  ticket, without the plan-or-direct choice; a later request to change it still gets that
+  choice. The story, decision record or charter such a request writes, and a file Git ignores
+  or excludes, are no longer offered the delivery choice for work with no ticket.
 - With a tasks service setup (`github`, `github-project`, `gitlab` or `jira`), the ticket
   intake names the setup's read for the issue, and `craft ticket --issue-data <file>` keeps the
   issue's id, title, status and URL from the JSON that read returned. The task the session

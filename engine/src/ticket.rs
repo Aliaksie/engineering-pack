@@ -8,6 +8,16 @@ pub fn enabled(settings: &Value) -> bool {
     settings["routing"]["ticketOffer"] != false
 }
 
+/// Intents whose work writes no code: stories, decisions and plans, testing charters and
+/// testing-only work, reviews and lookups.
+const NO_CHANGE: [&str; 6] = ["story", "plan", "explore", "verify", "review", "locate"];
+
+/// Whether work under the session's `intent` is a change delivered directly or by a plan:
+/// any intent but one that writes no code, and none at all, which may be a change.
+pub fn delivers_change(intent: Option<&str>) -> bool {
+    intent.is_none_or(|intent| !NO_CHANGE.contains(&intent))
+}
+
 /// The ticket a prompt starts work from: an issue or merge request URL of a code host, a
 /// tracker URL, a key or number the prompt calls an issue, ticket, story or bug, one a
 /// start-work phrase names ("start on 164", "go ahead with #176"), or a `#12` no pull or merge
