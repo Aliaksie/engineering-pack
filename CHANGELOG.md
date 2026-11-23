@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A prompt that names its issue after a start-work phrase, such as `start on 164` or `go ahead
+  with #176`, or as a `#164` outside a pull or merge request, gets the ticket intake an issue
+  link gets. Work no ticket names is offered the same plan-or-direct choice once per session,
+  at the first prompt asking for a change or else the first edit, and `craft ticket --work
+  <name>` decides and plans it like a ticket, with the plan `work-<name>`.
 - A prompt's routing hint no longer names a Craft package skill as `next: open …`; it names
   the next step only when it is the project's own skill. A hint that would say nothing else
   is not sent. `craft route` still reports the route's `next`.

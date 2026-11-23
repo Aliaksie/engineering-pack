@@ -16,6 +16,8 @@ const LABELS: usize = 32;
 /// What the agent states about the ticket, from the command line.
 pub struct Request<'a> {
     pub ticket: &'a str,
+    /// The name of work with no ticket, in place of `ticket`.
+    pub work: Option<&'a str>,
     pub criteria: Option<&'a str>,
     pub questions: Option<&'a str>,
     pub labels: &'a [String],
@@ -35,9 +37,21 @@ fn record_file(root: &Path, session: &str, create: bool) -> Result<std::path::Pa
 
 /// The decision for a ticket, or with `accept`, the user's choice recorded for the session.
 pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Failure> {
-    let reference = request.ticket.trim();
+    let named = match request.work {
+        Some(_) if !request.ticket.trim().is_empty() => {
+            return Err("ticket takes --ticket or --work, not both".into());
+        }
+        Some(name) => ticket::work_reference(name.trim()).ok_or(
+            "--work takes a short name of letters, digits, '-', '_' or '.' for work with no ticket",
+        )?,
+        None => request.ticket.trim().to_owned(),
+    };
+    let reference = named.as_str();
     if reference.is_empty() || !craft_engine::values::line_text(reference, 512) {
-        return Err("ticket requires --ticket with the issue URL or key".into());
+        return Err(
+            "ticket requires --ticket with the issue URL or key, or --work with a name for work with no ticket"
+                .into(),
+        );
     }
     if request.approve {
         return approve(root, reference, request.session);
@@ -95,7 +109,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         Some(session) => {
             let host = request.host.map(|host| format!(" --host {host}")).unwrap_or_default();
             let accept = |choice| {
-                format!("craft ticket --ticket {reference} --accept {choice} --session {session}{host}")
+                format!("craft ticket {} --accept {choice} --session {session}{host}", ticket::selector(reference))
             };
             format!("{then} run `{}` or `{}`.", accept("plan"), accept("direct"))
         }
@@ -113,12 +127,12 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
             keep("With their answer,")
         ),
         (Some("ask"), _) => format!(
-            "Ask the user the ticket's open questions{} and edit no file until they are answered; then decide again with `craft ticket`.",
+            "Ask the user the open questions{} and edit no file until they are answered; then decide again with `craft ticket`.",
             tool.map(|tool| format!(" with {tool}")).unwrap_or_default()
         ),
         _ => {
             let kept = request.session.map_or(String::new(), |session| {
-                format!(" Run `craft ticket --ticket {reference} --accept direct --session {session}` so the session keeps the choice.")
+                format!(" Run `craft ticket {} --accept direct --session {session}` so the session keeps the choice.", ticket::selector(reference))
             });
             format!("Tell the user this line as is, then implement directly: {line}.{kept}")
         }
@@ -176,7 +190,7 @@ fn accept(
     if let Ok(earlier) =
         record_file(root, session, false).and_then(|f| read_record(&f, RECORD_BYTES))
     {
-        for key in [HOOKS_SEEN, AGENT_APPROVAL] {
+        for key in [HOOKS_SEEN, AGENT_APPROVAL, WORK_OFFERED] {
             if let Some(seen) = earlier.get(key) {
                 record[key] = seen.clone();
             }
@@ -211,8 +225,10 @@ fn accept(
             saved["revision"], saved["revision"]
         ),
         None => format!(
-            "Plan with craft-delivery:plan-change and record it with `craft plan-create --plan {plan} --reference {} --goal \"<outcome>\" --data <tasks.json>`, tasks as {{\"tasks\": [{{\"id\", \"goal\", \"dependsOn\", \"acceptance\"}}]}}.",
+            "Plan with craft-delivery:plan-change and record it with `craft plan-create --plan {plan}{} --goal \"<outcome>\" --data <tasks.json>`, tasks as {{\"tasks\": [{{\"id\", \"goal\", \"dependsOn\", \"acceptance\"}}]}}.",
             ticket::plan_reference(reference)
+                .map(|linked| format!(" --reference {linked}"))
+                .unwrap_or_default()
         ),
     };
     let observed = host.and_then(|host| observed_approval_tool(host, &record));
@@ -271,7 +287,8 @@ fn approval_step(
         None => "ask the user in your reply to approve the plan".to_owned(),
     };
     format!(
-        "show the user the plan and {asked}, unless they already approved this plan; with their approval run `craft ticket --ticket {reference} --approve --session {session}`."
+        "show the user the plan and {asked}, unless they already approved this plan; with their approval run `craft ticket {} --approve --session {session}`.",
+        ticket::selector(reference)
     )
 }
 
@@ -292,7 +309,8 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     let mut record = read_record(&file, RECORD_BYTES)?;
     if record["ticket"] != reference || record["delivery"] != "plan" {
         return Err(format!(
-            "no planned delivery of {reference} in this session; run `craft ticket --ticket {reference} --accept plan --session {session}` first"
+            "no planned delivery of {reference} in this session; run `craft ticket {} --accept plan --session {session}` first",
+            ticket::selector(reference)
         )
         .into());
     }
@@ -458,7 +476,7 @@ pub(crate) fn awaiting(root: &Path, session: &str, host: &str) -> Option<Due> {
     let observed = observed_approval_tool(host, &record);
     let revision = saved.as_ref().and_then(|s| s["revision"].as_u64());
     let next = format!(
-        "Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket --ticket {reference} --accept direct --session {session}` instead.",
+        "Record the plan's tasks, {} Only if the user now chooses to implement directly, run `craft ticket {} --accept direct --session {session}` instead.",
         approval_step(
             reference,
             session,
@@ -466,7 +484,8 @@ pub(crate) fn awaiting(root: &Path, session: &str, host: &str) -> Option<Due> {
             revision,
             Some(host),
             observed.as_deref()
-        )
+        ),
+        ticket::selector(reference)
     );
     Some(Due { why, next })
 }
@@ -477,6 +496,33 @@ pub(crate) fn plan_first(root: &Path, session: &str) -> bool {
         .and_then(|file| read_record(&file, RECORD_BYTES))
         .is_ok_and(|record| record["delivery"] == "plan")
 }
+
+/// Whether the session's work with no ticket is offered its delivery choice now: once per
+/// session, never after a ticket's or work's delivery was recorded, and never while
+/// `bound` says a task is already bound. The offer, or the reason it is not due, is kept so
+/// later prompts and edits read one small record.
+pub(crate) fn work_offer_due(
+    root: &Path,
+    session: &str,
+    bound: impl FnOnce() -> bool,
+) -> Result<bool, Failure> {
+    let file = record_file(root, session, true)?;
+    let mut record = read_record(&file, RECORD_BYTES)?;
+    if record.get("ticket").is_some() || record[WORK_OFFERED] == true {
+        return Ok(false);
+    }
+    let due = !bound();
+    if record.is_null() {
+        record = json!({"formatVersion": 1});
+    }
+    record[WORK_OFFERED] = json!(true);
+    state::write(&file, &record, RECORD_BYTES, false)?;
+    Ok(due)
+}
+
+/// Set on the session's ticket record once its work with no ticket was offered a delivery
+/// choice, or found already bound to a task.
+const WORK_OFFERED: &str = "workOffered";
 
 /// The ticket whose delivery the session recorded, `None` without one.
 pub(crate) fn recorded(root: &Path, session: &str) -> Option<String> {

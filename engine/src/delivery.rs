@@ -131,6 +131,11 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     }
 }
 
+/// The intent a prompt's own words ask for, whether or not its hint is shown.
+pub fn requested_intent(prompt: &str) -> Option<&'static str> {
+    prompt::request(prompt).map(|request| request.intent)
+}
+
 /// The hook decision: a bound task's resume first, then routing, a saved checkpoint,
 /// configured services, or the continuation reminder before context changes.
 pub fn decision(
