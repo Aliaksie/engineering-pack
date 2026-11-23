@@ -30,6 +30,13 @@ test('nested precedence retains false, zero and sibling defaults', t => {
   assert.equal(result.origins['routing.editHints'], 'project');
 });
 
+test('a retired setting in the project file is read without it', t => {
+  const result = fixture(t, { project: { formatVersion: 1, efficiency: { context: { compactAt: 0.9 }, attempts: { maxAttempts: 2 } } } }).resolve();
+  assert.equal(result.settings.efficiency.context, undefined);
+  assert.equal(result.settings.efficiency.attempts.maxAttempts, 2);
+  assert.equal(result.settings.routing.nextSteps, true);
+});
+
 test('invalid limits, unknown fields and permission preferences fail', t => {
   for (const maxWorkers of [-1, 1.5, '3', null, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => fixture(t, { overrides: { efficiency: { delegation: { maxWorkers } } } }).resolve(), /maxWorkers/, String(maxWorkers));
