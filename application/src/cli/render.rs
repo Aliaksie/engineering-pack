@@ -162,6 +162,10 @@ pub(super) fn session_view(status: &Value) -> String {
             }
         ));
     }
+    if let Some(issue) = super::issue_line(&status["task"]["issue"]) {
+        let at = lines.iter().position(|line| line.starts_with("Task: "));
+        lines.insert(at.map_or(0, |at| at + 1), issue);
+    }
     lines.extend(acceptance_lines(status, shown));
     let delivered = &status["delivered"];
     if delivered.is_object() {
@@ -722,6 +726,7 @@ pub(super) fn task_receipt(result: &Value) -> String {
     let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
     let mut lines = vec![
         format!("Task bound: {}", text(&result["task"])),
+        super::issue_line(&result["issue"]).unwrap_or_default(),
         nonempty(&result["plan"]["id"]).map_or(String::new(), |plan| {
             let taken = nonempty(&result["plan"]["takenOver"]["from"])
                 .map_or(String::new(), |from| format!(" (taken over from {from})"));

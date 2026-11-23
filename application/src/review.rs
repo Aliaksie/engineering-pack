@@ -51,6 +51,8 @@ impl Command {
                 "repository",
                 "change-id",
                 "output",
+                "session",
+                "issue",
             ],
             Self::Check => &["snapshot", "review"],
             Self::Publication => &["snapshot", "review", "current-base", "current-head"],
@@ -67,7 +69,7 @@ impl Command {
     fn usage(self) -> &'static str {
         match self {
             Self::Prepare => {
-                "review-prepare --base ref --head ref --output file [--root repo] [--provider local|github|gitlab --repository name --change-id n]"
+                "review-prepare --base ref --head ref --output file [--root repo] [--provider local|github|gitlab --repository name --change-id n] [--session id] [--issue url-or-key]"
             }
             Self::Check => "review-check --snapshot snapshot.json --review review.json",
             Self::Publication => {
@@ -219,6 +221,14 @@ fn prepare(
         summary,
         |_, _| snapshot(options),
     )?;
+    let mut snapshot = snapshot;
+    let root = absolute(options.get("root").unwrap_or("."));
+    let session = options.get("session").filter(|s| !s.is_empty());
+    if let Some(issue) =
+        crate::task::change_issue(&root, session, options.get("issue"), recorder, parent)?
+    {
+        snapshot["issue"] = issue;
+    }
     let file = absolute(output);
     let text = format!(
         "{}\n",
@@ -231,6 +241,10 @@ fn prepare(
         "headSha": snapshot["headSha"],
         "files": snapshot["files"].as_array().map_or(0, Vec::len),
     });
+    let mut receipt = receipt;
+    if let Some(issue) = snapshot.get("issue") {
+        receipt["issue"] = issue.clone();
+    }
     Ok(format!("{receipt}\n"))
 }
 

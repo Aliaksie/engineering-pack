@@ -162,6 +162,12 @@ fn observe(
             }
         }
     }
+    let issue = observations
+        .state
+        .as_ref()
+        .and_then(|s| s.get("issue"))
+        .filter(|issue| issue.is_object())
+        .cloned();
     let repositories = observations
         .state
         .as_ref()
@@ -364,6 +370,9 @@ fn observe(
         diagnostics(&mut result).push(json!(format!("Task binding unavailable: {error}")));
     }
     result["task"] = input["task"].clone();
+    if let Some(issue) = issue {
+        result["task"]["issue"] = issue;
+    }
     result["featureOutcomes"] = features;
     if let Some(context) = context.as_ref().filter(|c| c["stale"] == true) {
         result["taskEvidenceStale"] = json!(true);

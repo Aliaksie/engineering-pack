@@ -74,9 +74,9 @@
       "mode": "usage",
       "status": 0,
       "response": {
-        "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]"
+        "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json] [--issue url-or-key]"
       },
-      "correction": "a plan task supplies its goal, so task-start takes --goal or --plan"
+      "correction": "a plan task supplies its goal, so task-start takes --goal or --plan; it also takes --issue for the issue the task implements"
     },
     {
       "id": "unknown-command",

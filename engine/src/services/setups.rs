@@ -529,6 +529,57 @@ fn project_items_filter(binding: &Value) -> String {
     )
 }
 
+/// The value at a dotted `path` of `value`; paths with `[]` name lists and are not read here.
+fn at<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+    path.split('.')
+        .try_fold(value, |value, step| value.get(step))
+}
+
+/// Single-line text of at most `limit` characters, `None` when blank.
+fn line(value: Option<&Value>, limit: usize) -> Option<String> {
+    let text: String = value?
+        .as_str()?
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .take(limit)
+        .collect();
+    let text = text.trim();
+    (!text.is_empty()).then(|| text.to_owned())
+}
+
+/// The identity of the one issue a `task.read` response holds: the setup, the tracker's id,
+/// title, status and an `https` URL, where the response or the binding's site gives one.
+pub fn identity(binding: &Value, response: &Value) -> Result<Value> {
+    let setup = setup(binding).ok_or("binding names no setup")?;
+    let located = fields(binding, "task.read").ok_or("setup has no task.read")?;
+    let field = |name: &str| {
+        located["fields"][name]
+            .as_str()
+            .and_then(|path| at(response, path))
+    };
+    let id = match field("id") {
+        Some(Value::Number(number)) => safe_integer(&Value::Number(number.clone()))
+            .filter(|n| *n > 0)
+            .map(|n| n.to_string()),
+        other => line(other, 64),
+    }
+    .ok_or("the response holds no issue id; pass the JSON task.read returned for one issue")?;
+    let url = line(field("url"), 2048)
+        .or_else(|| {
+            binding["site"]
+                .as_str()
+                .map(|site| format!("https://{site}/browse/{id}"))
+        })
+        .filter(|url| url.starts_with("https://"));
+    Ok(json!({
+        "service": setup.name,
+        "id": id,
+        "title": line(field("title"), 256),
+        "status": line(field("status"), 64),
+        "url": url,
+    }))
+}
+
 /// Where the shared task fields sit in the response: dotted paths, `[]` for each element,
 /// and `list` for the array of results a search returns. Absent fields are not provided.
 pub fn fields(binding: &Value, operation: &str) -> Option<Value> {

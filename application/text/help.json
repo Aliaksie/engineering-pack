@@ -76,8 +76,8 @@
     "mode": "revalidate source, approval, policy, support and capacity; no dispatch"
   },
   "task-start": {
-    "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json]",
-    "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees"
+    "usage": "task-start --session id --task stable-id (--goal \"outcome\" | --plan id [--take-over]) [--stage implement] [--file src/path] [--repository relative/repo ...] [--contract contract.json] [--issue url-or-key]",
+    "mode": "bind task identity and optional selected repository roots within the workspace; route guidance and snapshot selected Git worktrees. The task carries the issue it implements: --issue, else the ticket its plan links, else the issue the session linked with ticket --issue-data"
   },
   "task-adopt": {
     "usage": "task-adopt --session id --from earlier-session [--root project]",
@@ -239,7 +239,7 @@
     "mode": "read-only reader view of supplied contract, evidence and probes; executes nothing and writes no task state"
   },
   "ticket": {
-    "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--root project] | ticket --ticket url-or-key --accept plan|direct --session id [--host name] | ticket --ticket url-or-key --approve --session id",
-    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until its approval as it stands is recorded, and ends with a review offer. Where Craft observes the host's question tool, the user's Approve answer to the plan's question is recorded by the hook (source host-observed); elsewhere --approve records it and names its source: the user when the session's hooks run and saw no agent shell command record it, otherwise the agent reporting the user's answer. No model call; nothing else is written."
+    "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--issue-data response.json] [--root project] | ticket --ticket url-or-key --issue-data response.json --session id | ticket --ticket url-or-key --accept plan|direct --session id [--host name] | ticket --ticket url-or-key --approve --session id",
+    "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until its approval as it stands is recorded, and ends with a review offer. Where Craft observes the host's question tool, the user's Approve answer to the plan's question is recorded by the hook (source host-observed); elsewhere --approve records it and names its source: the user when the session's hooks run and saw no agent shell command record it, otherwise the agent reporting the user's answer. --issue-data links the issue: the JSON the configured tasks setup's task.read returned for it, from which its id, title, status and URL are kept for the session's task and review; Craft never reads the tracker itself. No model call; nothing else is written."
   }
 }

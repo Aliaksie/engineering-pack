@@ -246,7 +246,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             if let Some(session) = session {
                 command.push_str(&format!(" --session {session}"));
             }
-            decision["ticket"] = json!({"reference": reference, "command": command});
+            let read = crate::ticket::read_step(&settings, &reference);
+            if read.is_some() {
+                command.push_str(" --issue-data <file>");
+            }
+            decision["ticket"] = json!({"reference": reference, "command": command,
+                                        "read": read.unwrap_or_default()});
             // The ticket's intake is the session's delivery choice: no work offer follows it.
             if let Some(session) = session
                 && crate::ticket::work_offer_due(event.root, session, || true).is_err()

@@ -283,3 +283,19 @@ fn work_with_no_ticket_has_a_plan_and_is_named_again_by_its_option() {
         assert_eq!(work_reference(name), None, "{name}");
     }
 }
+
+#[test]
+fn a_ticket_reference_gives_the_id_its_tracker_uses() {
+    for (reference, id) in [
+        ("135", Some("135")),
+        ("#135", Some("135")),
+        ("https://github.com/acme/shop/issues/135", Some("135")),
+        ("https://gitlab.com/acme/shop/-/issues/7?x=1", Some("7")),
+        ("SHOP-12", Some("SHOP-12")),
+        ("https://acme.atlassian.net/browse/SHOP-12", Some("SHOP-12")),
+        ("work:cleanup", None),
+        ("shop", None),
+    ] {
+        assert_eq!(issue_id(reference).as_deref(), id, "{reference}");
+    }
+}

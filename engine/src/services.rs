@@ -246,6 +246,37 @@ fn builtin_args(
     }
 }
 
+/// The issue `reference` names, as the tasks service's `task.read` returned it to the host:
+/// its setup says where the id, title, status and URL sit. The response must be that issue's.
+pub fn issue(settings: &Value, reference: &str, response: &Value) -> Result<Value> {
+    let id = crate::ticket::issue_id(reference)
+        .ok_or("an issue is linked by its URL, number or key; work with no ticket has none")?;
+    let (binding, _) = binding(settings, "tasks")
+        .ok_or("no tasks service is configured; add one with craft-delivery:configure-service")?;
+    if !matches!(mapping("tasks", &binding, "task.read"), Mapping::Setup) {
+        return Err(
+            "the tasks service names no setup; only a setup says where an issue's fields are"
+                .into(),
+        );
+    }
+    let identity = setups::identity(&binding, response)?;
+    if !identity["id"]
+        .as_str()
+        .is_some_and(|read| read.eq_ignore_ascii_case(&id))
+    {
+        return Err(format!(
+            "the response is issue {}, not {id}",
+            identity["id"].as_str().unwrap_or("without an id")
+        ));
+    }
+    let mut linked = json!({"reference": reference});
+    linked
+        .as_object_mut()
+        .expect("object")
+        .extend(identity.as_object().expect("identity is an object").clone());
+    Ok(linked)
+}
+
 /// An invocation plan for one operation; the host runs it, if at all, under its own permissions.
 pub fn plan(settings: &Value, operation: &str, params: &Value) -> Result<Value> {
     if !operations().any(|known| known == operation) {

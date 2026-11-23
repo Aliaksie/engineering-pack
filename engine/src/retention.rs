@@ -107,6 +107,7 @@ pub fn recognized(name: &str) -> bool {
             | "check-runs.json"
             | "stop-review.json"
             | "ticket.json"
+            | "issue.json"
     ) || hex_record(name, "routing-", ".json")
         || hex_record(name, "routing-", ".json.generation")
         || ["activity-", "workers-", "control-", "statusline-"]
