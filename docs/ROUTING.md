@@ -554,16 +554,17 @@ request still establishes the session's intent, so the first edit's hint names t
 project skills and references for the edited scope where the change happens.
 
 A hint is a few lines to act on, not a list of skills: in recorded sessions agents followed a
-concrete next step every time and opened none of the skills a hint listed. A prompt hint names
-`next: open <skill>`, the intent's workflow skill (the route's `next`), or the project skill that
-replaces it; it has none once that skill is disabled or not installed, and an edit hint never
-has one, since the edit is already the work. A hook answer and its `lookup` come next, ahead
+concrete next step every time, such as a command `craft ticket` gave, and opened none of the
+skills a hint named, not even a single workflow skill named as the next step. A prompt hint
+names `next: open <skill>` only when the route's `next` is the project's own skill that
+replaces the intent's workflow; a package's workflow skill stays in `craft route`, and an edit
+hint never has a next step, since the edit is already the work. A hook answer and its `lookup` come next, ahead
 of anything the configuration can lengthen: a hint over the host's limit is cut from its end.
 The project's own skills for the scope follow.
 Each standard is one line with what keeps it: a `run` standard's command and the
 `craft check --stage` that runs it, the anchor a `check` standard is checked against, a
 `review` standard's checklist. `read:` lists references, and the rest of the route (modules,
-missing inputs, a delegated execution, the task) stays as one JSON `data` line. The package's other skills and the default `main` execution are left out; `craft route`
+missing inputs, a delegated execution, the task) stays as one JSON `data` line. The package's skills and the default `main` execution are left out; `craft route`
 still reports them. A hint with nothing to say beyond its intent is not sent.
 
 A hook hint names only skills and references of packages the host installed. The hook looks
